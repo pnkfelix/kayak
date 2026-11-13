@@ -26,6 +26,11 @@ use super::*;
 // words and ends the run; each failure's call is out of the line, after the
 // `ret`, a check a conditional jump to it.
 //
+// A lambda (C412) is a function of its own, out of the line after the
+// code that makes it, and a closure of it, Fixpt's bloblet (below); a call
+// of a procedure as a value calls its closure's code, the closure in
+// `%r10`, whose free values the function first copies to its slots.
+//
 // Integers are fixnums alone, as yet: an operation whose result would be
 // past one fails, `not yet` (until the heap, and big integers on it).
 pub mod kc_x64 {
@@ -146,6 +151,31 @@ pub mod kc_x64 {
     #[inline]
     pub fn term_number() -> &'static (dyn Fn(&'static Sexp) -> i64 + Send + Sync) {
         &kc_l0::term_number
+    }
+
+    #[inline]
+    pub fn lambda_params() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::lambda_params
+    }
+
+    #[inline]
+    pub fn lambda_free() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::lambda_free
+    }
+
+    #[inline]
+    pub fn app_fn() -> &'static (dyn Fn(&'static Sexp) -> &'static Sexp + Send + Sync) {
+        &kc_l0::app_fn
+    }
+
+    #[inline]
+    pub fn app_args() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::app_args
+    }
+
+    #[inline]
+    pub fn gproc_arity() -> &'static (dyn Fn(&'static Sexp) -> i64 + Send + Sync) {
+        &kc_l0::gproc_arity
     }
 
     #[inline]
@@ -400,6 +430,66 @@ pub mod kc_x64 {
         }
     }
 
+    // A closure (C412), as Fixpt lays one out (`fixpt-heap`'s `layout.rs`,
+    // `closure`; `make_closure`): a bloblet of kind 8, its fields from the
+    // header up its free values, the last first, then its code, the heap's
+    // stub (none yet, 0), and a trailer, the words back to the header; the
+    // value its suffix's address, past the trailer, tag 4. Field `k` (from
+    // 1, the trailer) is at `-4 - 8k` from the value: the code at -28, free
+    // value `i` at `-36 - 8i`. The code is the function's address, aligned
+    // so that it reads as a fixnum (no code bloblets yet).
+    #[inline]
+    pub fn x64_closure_header(m: i64) -> i64 {
+        i64_plus(70i64, i64_star(i64_plus(m, 3i64), 16384i64))
+    }
+
+    #[inline]
+    pub fn x64_closure_trailer(m: i64) -> i64 {
+        i64_plus(5i64, i64_star(i64_plus(m, 3i64), 8i64))
+    }
+
+    /// Free value `i` from slot `slots[i]`, at word `m - i` of the cell.
+    pub fn x64_stored_free(mut c: &'static X64Code, mut slots: List<i64>, mut m: i64, mut j: i64) -> &'static X64Code {
+        loop {
+            if null_p(slots) {
+                return c;
+            } else {
+                (c, slots, j) = (x64_emit(x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(car(slots)), str_lit(", %rcx")))), string_append(str_lit("movq %rcx, "), string_append(i64_to_string(i64_star(8i64, i64_minus(m, j))), str_lit("(%r15)")))), cdr(slots), i64_plus(j, 1i64));
+                continue;
+            }
+        }
+    }
+
+    /// A closure of `code` over the values in `slots`, in `%rax`.
+    pub fn x64_emit_closure(c: &'static X64Code, code: Str, slots: List<i64>) -> &'static X64Code {
+        let m = size(slots);
+        let bytes = i64_star(8i64, i64_plus(m, 4i64));
+        let c = x64_emit(c, string_append(str_lit("leaq "), string_append(i64_to_string(bytes), str_lit("(%r15), %rdx"))));
+        let c = x64_emit(c, str_lit("cmpq %r14, %rdx"));
+        let c = x64_failing_if(c, str_lit("a"), x64_fail_heap());
+        let c = x64_emit(c, string_append(str_lit("movabsq $"), string_append(i64_to_string(x64_closure_header(m)), str_lit(", %rcx"))));
+        let c = x64_emit(c, str_lit("movq %rcx, 0(%r15)"));
+        let c = x64_stored_free(c, slots, m, 0i64);
+        let c = x64_emit(c, string_append(str_lit("leaq "), string_append(code, str_lit("(%rip), %rcx"))));
+        let c = x64_emit(c, string_append(str_lit("movq %rcx, "), string_append(i64_to_string(i64_star(8i64, i64_plus(m, 1i64))), str_lit("(%r15)"))));
+        let c = x64_emit(c, string_append(str_lit("movq $0, "), string_append(i64_to_string(i64_star(8i64, i64_plus(m, 2i64))), str_lit("(%r15)"))));
+        let c = x64_emit(c, string_append(str_lit("movq $"), string_append(i64_to_string(x64_closure_trailer(m)), string_append(str_lit(", "), string_append(i64_to_string(i64_star(8i64, i64_plus(m, 3i64))), str_lit("(%r15)"))))));
+        let c = x64_emit(c, string_append(str_lit("leaq "), string_append(i64_to_string(i64_plus(bytes, 4i64)), str_lit("(%r15), %rax"))));
+        x64_emit(c, str_lit("movq %rdx, %r15"))
+    }
+
+    /// A lambda's free values, from its closure in `%r10`, each to its slot.
+    pub fn x64_loaded_free(mut c: &'static X64Code, mut i: i64, mut m: i64, mut si: i64) -> &'static X64Code {
+        loop {
+            if i64_gt_eq(i, m) {
+                return c;
+            } else {
+                (c, i) = (x64_emit(x64_emit(c, string_append(str_lit("movq "), string_append(i64_to_string(i64_minus(-36i64, i64_star(8i64, i))), str_lit("(%r10), %rax")))), string_append(str_lit("movq %rax, "), x64_slot(i64_plus(si, i)))), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
     // Where each variable is: its binder's number and its slot.
     pub enum X64At {
         X64At(i64, i64),
@@ -429,6 +519,39 @@ pub mod kc_x64 {
                 }
             } else {
                 env = cdr(env);
+                continue;
+            }
+        }
+    }
+
+    pub fn x64_params_at(mut ps: Sexps, mut i: i64, mut env: List<&'static X64At>) -> List<&'static X64At> {
+        loop {
+            if null_p(ps) {
+                return env;
+            } else {
+                (ps, i, env) = (cdr(ps), i64_plus(i, 1i64), kayak_rt::heap_cons(x64_at({
+                    let tagcase_ = car(items(car(ps)));
+                    match *tagcase_ {
+                        Sexp::Num(k, f, p) => {
+                            k
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            -1i64
+                        }
+                    }
+                }, i), env));
+                continue;
+            }
+        }
+    }
+
+    pub fn x64_stored_params(mut c: &'static X64Code, mut regs: List<Str>, mut i: i64, mut n: i64) -> &'static X64Code {
+        loop {
+            if (i64_gt_eq(i, n) || null_p(regs)) {
+                return c;
+            } else {
+                (c, regs, i) = (x64_emit(c, string_append(str_lit("movq "), string_append(car(regs), string_append(str_lit(", "), x64_slot(i))))), cdr(regs), i64_plus(i, 1i64));
                 continue;
             }
         }
@@ -479,12 +602,76 @@ pub mod kc_x64 {
             let c = x64_emit_label(c, no);
             let c = x64_emit_expr(c, third(ps), si, env);
             x64_emit_label(c, past)
+        } else if string_eq_p(h, str_lit("lambda")) {
+            x64_emit_lambda(c, t, env)
+        } else if string_eq_p(h, str_lit("gproc")) {
+            x64_emit_closure(c, x64_proc_symbol(item_name()(t)), nil::<i64>())
+        } else if string_eq_p(h, str_lit("app")) {
+            let args = app_args()(t);
+            let n = size(args);
+            if i64_gt(n, 6i64) {
+                not_yet()(str_lit(""), str_lit("a call of more than six arguments"));
+                c
+            } else {
+                let c = x64_emit_expr(c, app_fn()(t), si, env);
+                let c = x64_using(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(si))), i64_plus(si, 1i64));
+                let c = x64_emit_args(c, args, i64_plus(si, 1i64), env);
+                let c = x64_moved_args(c, x64_arg_registers(), i64_plus(si, 1i64), n);
+                let c = x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(si), str_lit(", %r10"))));
+                x64_emit(c, str_lit("call *-28(%r10)"))
+            }
         } else if string_eq_p(h, str_lit("let")) {
             x64_emit_let(c, let_bindings()(t), let_body()(t), si, env, env)
         } else if string_eq_p(h, str_lit("seq")) {
             x64_emit_seq(c, seq_terms()(t), si, env)
         } else {
             x64_emit(c, string_append(str_lit("movabsq $"), string_append(i64_to_string(x64_constant_of(t)), str_lit(", %rax"))))
+        }
+    }
+
+    /// A lambda (C412): its function, out of the line, after the code's
+    /// `ret` with the failures' calls, its parameters' and free values'
+    /// slots first; and here, a closure of it over the free values.
+    pub fn x64_emit_lambda(c: &'static X64Code, t: &'static Sexp, env: List<&'static X64At>) -> &'static X64Code {
+        let ps = lambda_params()(t);
+        let n = size(ps);
+        let fv = lambda_free()(t);
+        let m = size(fv);
+        if i64_gt(n, 6i64) {
+            not_yet()(str_lit(""), str_lit("a lambda of more than six parameters"));
+            c
+        } else {
+            let tagcase_ = c;
+            match *tagcase_ {
+                X64Code::X64Code(ls, k, slots, fs, px) => {
+                    let sym = string_list_append(kayak_rt::heap_cons(str_lit("kcl_"), kayak_rt::heap_cons(px, kayak_rt::heap_cons(str_lit("_"), kayak_rt::heap_cons(i64_to_string(term_number()(t)), kayak_rt::nil())))));
+                    let inner = x64_using(x64_code(nil::<Str>(), k, 0i64, nil::<Str>(), px), i64_plus(n, m));
+                    let inner = x64_stored_params(inner, x64_arg_registers(), 0i64, n);
+                    let inner = x64_loaded_free(inner, 0i64, m, n);
+                    let env2 = x64_params_at(fv, n, x64_params_at(ps, 0i64, nil::<&'static kc_x64::X64At>()));
+                    let inner = x64_emit_expr(inner, item_body()(t), i64_plus(n, m), env2);
+                    let tagcase_ = inner;
+                    match *tagcase_ {
+                        X64Code::X64Code(ls2, k2, slots2, fs2, px2) => {
+                            let frame = x64_frame_of_call(slots2);
+                            x64_emit_closure(x64_code(ls, k2, slots, kayak_rt::heap_cons(string_list_append(append(kayak_rt::heap_cons(str_lit("    .p2align 4\n"), kayak_rt::heap_cons(sym, kayak_rt::heap_cons(str_lit(":\n    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil()))))), append(reverse(ls2), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n    ret\n"), kayak_rt::nil())))), reverse(fs2))))), fs), px), sym, map(lambda1s(move |v: &'static Sexp| {
+                                x64_slot_of({
+                                    let tagcase_ = car(items(v));
+                                    match *tagcase_ {
+                                        Sexp::Num(j, f, p) => {
+                                            j
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            -1i64
+                                        }
+                                    }
+                                }, env)
+                            }), fv))
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -663,39 +850,6 @@ pub mod kc_x64 {
     // expression's code for `kc_entry`, as many slots as it uses, and what it
     // ends with (a definition's value stored in its cell; an expression's value
     // given to the runtime's `kc_show`, which writes it); its failures' calls.
-    pub fn x64_params_at(mut ps: Sexps, mut i: i64, mut env: List<&'static X64At>) -> List<&'static X64At> {
-        loop {
-            if null_p(ps) {
-                return env;
-            } else {
-                (ps, i, env) = (cdr(ps), i64_plus(i, 1i64), kayak_rt::heap_cons(x64_at({
-                    let tagcase_ = car(items(car(ps)));
-                    match *tagcase_ {
-                        Sexp::Num(k, f, p) => {
-                            k
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            -1i64
-                        }
-                    }
-                }, i), env));
-                continue;
-            }
-        }
-    }
-
-    pub fn x64_stored_params(mut c: &'static X64Code, mut regs: List<Str>, mut i: i64, mut n: i64) -> &'static X64Code {
-        loop {
-            if (i64_gt_eq(i, n) || null_p(regs)) {
-                return c;
-            } else {
-                (c, regs, i) = (x64_emit(c, string_append(str_lit("movq "), string_append(car(regs), string_append(str_lit(", "), x64_slot(i))))), cdr(regs), i64_plus(i, 1i64));
-                continue;
-            }
-        }
-    }
-
     pub fn x64_asm_item_text(slots: i64, ls: List<Str>, fails: List<Str>) -> Str {
         string_list_append(kayak_rt::heap_cons(str_lit("(asm "), kayak_rt::heap_cons(i64_to_string(slots), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum()(str(string_list_append(reverse(ls)), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum()(str(string_list_append(reverse(fails)), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))))
     }

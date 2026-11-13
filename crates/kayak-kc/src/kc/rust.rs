@@ -12,7 +12,8 @@ use super::*;
 // procedure a Rust function, `kcp_NAME`, its types its declared ones; a
 // value definition a thread's cell, `KCG_NAME`, set as `main` comes to it
 // (so that it is made where Fixpt makes it, and fails there), read through
-// `kcg_NAME()`; an expression a statement of `main`.
+// `kcg_NAME()`; an expression a statement of `main`. A lambda (C412) is kayak-rt's
+// `lambdaN` of a Rust closure, a procedure's type `&'static dyn Fn`.
 
 // A primitive's kayak-rt function: its name as kfx spells it in Rust
 // (`names.kfx`'s `mangle`: `char->integer` is `char_to_integer`, `+` is
@@ -138,6 +139,26 @@ pub mod kc_rust {
     }
 
     #[inline]
+    pub fn lambda_params() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::lambda_params
+    }
+
+    #[inline]
+    pub fn app_fn() -> &'static (dyn Fn(&'static Sexp) -> &'static Sexp + Send + Sync) {
+        &kc_l0::app_fn
+    }
+
+    #[inline]
+    pub fn app_args() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+        &kc_l0::app_args
+    }
+
+    #[inline]
+    pub fn gproc_arity() -> &'static (dyn Fn(&'static Sexp) -> i64 + Send + Sync) {
+        &kc_l0::gproc_arity
+    }
+
+    #[inline]
     pub fn rust_primitive(n: Str) -> Str {
         mangle(n)
     }
@@ -209,6 +230,60 @@ pub mod kc_rust {
         string_append(str_lit("kcg_"), mangle_bare(n))
     }
 
+    pub fn words_of_commas(ws: List<Str>) -> Str {
+        if null_p(ws) {
+            str_lit("")
+        } else if null_p(cdr(ws)) {
+            car(ws)
+        } else {
+            string_append(car(ws), string_append(str_lit(", "), words_of_commas(cdr(ws))))
+        }
+    }
+
+    // A type as kayak-rt's Rust type.
+    pub fn rust_type(path: Str, t: &'static Sexp) -> Str {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                if (string_eq_p(n, str_lit("int")) || string_eq_p(n, str_lit("nat"))) {
+                    str_lit("Int")
+                } else if string_eq_p(n, str_lit("bool")) {
+                    str_lit("bool")
+                } else if string_eq_p(n, str_lit("char")) {
+                    str_lit("char")
+                } else if string_eq_p(n, str_lit("unit")) {
+                    str_lit("()")
+                } else {
+                    not_yet()(path, string_append(str_lit("a Rust type of "), n))
+                }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if sym_is_p(car(xs), str_lit("nat")) {
+                    str_lit("Int")
+                } else if sym_is_p(car(xs), str_lit("listof")) {
+                    string_append(str_lit("List<"), string_append(rust_type(path, second(xs)), str_lit(">")))
+                } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 4i64)) {
+                    string_list_append(kayak_rt::heap_cons(str_lit("&'static dyn Fn("), kayak_rt::heap_cons(words_of_commas(rust_param_types(path, items(third(xs)))), kayak_rt::heap_cons(str_lit(") -> "), kayak_rt::heap_cons(rust_type(path, fourth(xs)), kayak_rt::nil())))))
+                } else {
+                    not_yet()(path, string_append(str_lit("a Rust type of "), kc_datum()(t)))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                not_yet()(path, str_lit("a Rust type of this"))
+            }
+        }
+    }
+
+    #[inline]
+    pub fn rust_param_types(path: Str, ts: Sexps) -> List<Str> {
+        if null_p(ts) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(rust_type(path, car(ts)), rust_param_types(path, cdr(ts)))
+        }
+    }
+
     /// A term as a Rust expression of kayak-rt's.
     pub fn rust_of(t: &'static Sexp) -> Str {
         let (h, n) = (term_head()(t), term_number()(t));
@@ -237,6 +312,19 @@ pub mod kc_rust {
             string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_of(car(prim_args()(t))), kayak_rt::heap_cons(str_lit(" == "), kayak_rt::heap_cons(rust_of(second(prim_args()(t))), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
         } else if string_eq_p(h, str_lit("prim")) {
             string_list_append(kayak_rt::heap_cons(rust_primitive(prim_name()(t)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_args(prim_args()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))
+        } else if string_eq_p(h, str_lit("lambda")) {
+            let ps = lambda_params()(t);
+            string_list_append(kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(i64_to_string(size(ps)), kayak_rt::heap_cons(str_lit("(move |"), kayak_rt::heap_cons(words_of_commas(map(lambda1s(move |q: &'static Sexp| {
+                if i64_eq(size(items(q)), 3i64) {
+                    string_append(rust_variable(q), string_append(str_lit(": "), rust_type(str_lit(""), third(items(q)))))
+                } else {
+                    rust_variable(q)
+                }
+            }), ps)), kayak_rt::heap_cons(str_lit("| "), kayak_rt::heap_cons(rust_of(item_body()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))))
+        } else if string_eq_p(h, str_lit("app")) {
+            string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_of(app_fn()(t)), kayak_rt::heap_cons(str_lit(")("), kayak_rt::heap_cons(rust_args(app_args()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+        } else if string_eq_p(h, str_lit("gproc")) {
+            string_list_append(kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(i64_to_string(gproc_arity()(t)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_proc_name(item_name()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
         } else if string_eq_p(h, str_lit("int")) {
             string_append(str_lit("int_lit("), string_append(i64_to_string(n), str_lit("i64)")))
         } else if string_eq_p(h, str_lit("bool")) {
@@ -264,48 +352,6 @@ pub mod kc_rust {
             rust_of(car(ts))
         } else {
             string_append(rust_of(car(ts)), string_append(str_lit(", "), rust_args(cdr(ts))))
-        }
-    }
-
-    // A type as kayak-rt's Rust type.
-    pub fn rust_type(path: Str, t: &'static Sexp) -> Str {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                if (string_eq_p(n, str_lit("int")) || string_eq_p(n, str_lit("nat"))) {
-                    str_lit("Int")
-                } else if string_eq_p(n, str_lit("bool")) {
-                    str_lit("bool")
-                } else if string_eq_p(n, str_lit("char")) {
-                    str_lit("char")
-                } else if string_eq_p(n, str_lit("unit")) {
-                    str_lit("()")
-                } else {
-                    not_yet()(path, string_append(str_lit("a Rust type of "), n))
-                }
-            }
-            Sexp::Lst(xs, f, l, p) => {
-                if sym_is_p(car(xs), str_lit("nat")) {
-                    str_lit("Int")
-                } else if sym_is_p(car(xs), str_lit("listof")) {
-                    string_append(str_lit("List<"), string_append(rust_type(path, second(xs)), str_lit(">")))
-                } else {
-                    not_yet()(path, string_append(str_lit("a Rust type of "), kc_datum()(t)))
-                }
-            }
-            _ => {
-                let other = tagcase_;
-                not_yet()(path, str_lit("a Rust type of this"))
-            }
-        }
-    }
-
-    #[inline]
-    pub fn rust_param_types(path: Str, ts: Sexps) -> List<Str> {
-        if null_p(ts) {
-            nil::<Str>()
-        } else {
-            kayak_rt::heap_cons(rust_type(path, car(ts)), rust_param_types(path, cdr(ts)))
         }
     }
 
@@ -349,16 +395,6 @@ pub mod kc_rust {
             nil::<Str>()
         } else {
             kayak_rt::heap_cons(string_append(rust_variable(car(ps)), string_append(str_lit(": "), car(ts))), rust_params(cdr(ps), cdr(ts)))
-        }
-    }
-
-    pub fn words_of_commas(ws: List<Str>) -> Str {
-        if null_p(ws) {
-            str_lit("")
-        } else if null_p(cdr(ws)) {
-            car(ws)
-        } else {
-            string_append(car(ws), string_append(str_lit(", "), words_of_commas(cdr(ws))))
         }
     }
 

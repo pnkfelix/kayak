@@ -7,7 +7,8 @@
  procedure a Rust function, `kcp_NAME`, its types its declared ones; a
  value definition a thread's cell, `KCG_NAME`, set as `main` comes to it
  (so that it is made where Fixpt makes it, and fails there), read through
- `kcg_NAME()`; an expression a statement of `main`."
+ `kcg_NAME()`; an expression a statement of `main`. A lambda (C412) is kayak-rt's
+ `lambdaN` of a Rust closure, a procedure's type `&'static dyn Fn`."
 
 "A primitive's kayak-rt function: its name as kfx spells it in Rust
  (`names.kfx`'s `mangle`: `char->integer` is `char_to_integer`, `+` is
@@ -17,7 +18,7 @@
   (module
     (hide
       (import kc-front arg-first arg-rest kc-hex kc-datum kc-items-of kc-keys kc-type (type qbody))
-      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args let-bindings let-body if-parts seq-terms prim-name prim-args term-number))
+      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args let-bindings let-body if-parts seq-terms prim-name prim-args term-number lambda-params app-fn app-args gproc-arity))
 
     (hide
       (define rust-primitive (subr kfx (string) string) (lambda (n) (mangle n)))
@@ -43,6 +44,32 @@
       (define rust-cell-name (subr kfx (string) string) (lambda (n) (string-append "KCG_" (mangle-bare n))))
 
       (define rust-global-name (subr kfx (string) string) (lambda (n) (string-append "kcg_" (mangle-bare n))))
+
+      (define-rec
+        (words-of-commas (subr kfx ((listof string acyclic)) string)
+          (lambda (ws) (cond ((null? ws) "") ((null? (cdr ws)) (car ws)) (else (string-append (car ws) (string-append ", " (words-of-commas (cdr ws))))))))))
+
+      "A type as kayak-rt's Rust type."
+      (define-rec
+        (rust-type (subr kfx (string sexp) string)
+          (lambda (path t)
+            (tagcase t
+              (sym (n f p)
+                (cond ((or (string=? n "int") (string=? n "nat")) "Int")
+                      ((string=? n "bool") "bool")
+                      ((string=? n "char") "char")
+                      ((string=? n "unit") "()")
+                      (else (not-yet path (string-append "a Rust type of " n)))))
+              (lst (xs f l p)
+                (cond ((sym-is? (car xs) "nat") "Int")
+                      ((sym-is? (car xs) "listof") (string-append "List<" (string-append (rust-type path (second xs)) ">")))
+                ;; A procedure as a value: kayak-rt's, a `dyn Fn` on its heap (C412).
+                ((and (sym-is? (car xs) "subr") (i64= (size xs) 4))
+                 (string-list-append (list "&'static dyn Fn(" (words-of-commas (rust-param-types path (items (third xs)))) ") -> " (rust-type path (fourth xs)))))
+                      (else (not-yet path (string-append "a Rust type of " (kc-datum t))))))
+              (else other (not-yet path "a Rust type of this")))))
+        (rust-param-types (subr kfx (string sexps) (listof string acyclic))
+          (lambda (path ts) (if (null? ts) nil (cons (rust-type path (car ts)) (rust-param-types path (cdr ts)))))))
 
       (define-rec
        (rust-of (subr kfx (sexp) string)
@@ -78,7 +105,20 @@
                    (string-list-append (list "(" (rust-of (car (prim-args t))) " == " (rust-of (second (prim-args t))) ")")))
                   ((string=? h "prim")
                    (string-list-append (list (rust-primitive (prim-name t)) "(" (rust-args (prim-args t)) ")")))
-                  ((string=? h "int") (string-append "int_lit(" (string-append (i64->string n) "i64)")))
+                  ;; A lambda, kayak-rt's `lambdaN` of a Rust closure, `move`, what it
+            ;; captures `Copy`; its parameters typed where written (C412).
+            ((string=? h "lambda")
+             (let ((ps (lambda-params t)))
+               (string-list-append
+                 (list "lambda" (i64->string (size ps)) "(move |"
+                       (words-of-commas (map (lambda ((q sexp)) (if (i64= (size (items q)) 3)
+                                                                    (string-append (rust-variable q) (string-append ": " (rust-type "" (third (items q)))))
+                                                                    (rust-variable q)))
+                                             ps))
+                       "| " (rust-of (item-body t)) ")"))))
+            ((string=? h "app") (string-list-append (list "(" (rust-of (app-fn t)) ")(" (rust-args (app-args t)) ")")))
+            ((string=? h "gproc") (string-list-append (list "lambda" (i64->string (gproc-arity t)) "(" (rust-proc-name (item-name t)) ")")))
+            ((string=? h "int") (string-append "int_lit(" (string-append (i64->string n) "i64)")))
                   ((string=? h "bool") (if (i64= n 1) "true" "false"))
                   ((string=? h "char") (string-append "'\\u{" (string-append (kc-hex n "") "}'")))
                   ((string=? h "unit") "()")
@@ -89,25 +129,6 @@
           (cond ((null? ts) "")
                 ((null? (cdr ts)) (rust-of (car ts)))
                 (else (string-append (rust-of (car ts)) (string-append ", " (rust-args (cdr ts)))))))))
-
-      "A type as kayak-rt's Rust type."
-      (define-rec
-        (rust-type (subr kfx (string sexp) string)
-          (lambda (path t)
-            (tagcase t
-              (sym (n f p)
-                (cond ((or (string=? n "int") (string=? n "nat")) "Int")
-                      ((string=? n "bool") "bool")
-                      ((string=? n "char") "char")
-                      ((string=? n "unit") "()")
-                      (else (not-yet path (string-append "a Rust type of " n)))))
-              (lst (xs f l p)
-                (cond ((sym-is? (car xs) "nat") "Int")
-                      ((sym-is? (car xs) "listof") (string-append "List<" (string-append (rust-type path (second xs)) ">")))
-                      (else (not-yet path (string-append "a Rust type of " (kc-datum t))))))
-              (else other (not-yet path "a Rust type of this")))))
-        (rust-param-types (subr kfx (string sexps) (listof string acyclic))
-          (lambda (path ts) (if (null? ts) nil (cons (rust-type path (car ts)) (rust-param-types path (cdr ts)))))))
 
       "A procedure's type's parts: `(subr EFFECT (PARAM ...) RESULT)`."
       (define subr-params (subr kfx (sexp) sexps)
@@ -121,10 +142,6 @@
           (lambda (ps ts)
             (if (or (null? ps) (null? ts)) nil
                 (cons (string-append (rust-variable (car ps)) (string-append ": " (car ts))) (rust-params (cdr ps) (cdr ts)))))))
-
-      (define-rec
-        (words-of-commas (subr kfx ((listof string acyclic)) string)
-          (lambda (ws) (cond ((null? ws) "") ((null? (cdr ws)) (car ws)) (else (string-append (car ws) (string-append ", " (words-of-commas (cdr ws))))))))))
 
     (define-rec
       (sexp-at (subr kfx (sexps i64) sexp)

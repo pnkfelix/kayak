@@ -8,6 +8,8 @@
 //! and pairs (tag 1, the address of a cell of two words) written as lists.
 //! Step 8: a program of many forms, each top-level expression's value
 //! written by `kc_show`, called by kc's code, on a line of its own.
+//! Step 9: closures, bloblets (tag 4) of Fixpt's layout, written by their
+//! kind.
 //!
 //! kc's code is called through `extern "C"`: the one place here that is
 //! not safe Rust.
@@ -17,6 +19,7 @@ const TAG_MASK: u64 = 0b111;
 const TAG_FIXNUM: u64 = 0b000;
 const TAG_PAIR: u64 = 0b001;
 const TAG_IMMEDIATE: u64 = 0b011;
+const TAG_BLOBLET: u64 = 0b100;
 const IMM_SHIFT: u32 = 3;
 const IMM_MASK: u64 = 0b1_1111;
 const IMM_PAYLOAD_SHIFT: u32 = 8;
@@ -120,6 +123,9 @@ fn atom(v: u64) -> String {
                 k => format!("#<immediate {k}>"),
             }
         }
+        // A bloblet: as yet, a closure, the one kind kc makes (C412). Fixpt
+        // writes one by its machine's name for it; this is kc's.
+        TAG_BLOBLET => "#<procedure>".into(),
         _ => format!("#<value {v:#x}>"),
     }
 }

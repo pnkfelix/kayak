@@ -21,6 +21,9 @@ use super::*;
 // and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
 // `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
 // (C407): a program of many forms, each an item of its own (`l0-item`).
+// Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
+// free variables found here; `(app F ARG ...)`, a call of a procedure as a
+// value; `(gproc NAME ARITY)`, a procedure the program defines as one.
 pub mod kc_l0 {
     use super::*;
 
@@ -52,6 +55,11 @@ pub mod kc_l0 {
     #[inline]
     pub fn lambda_of() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
         &kc_front::lambda_of
+    }
+
+    #[inline]
+    pub fn kc_datum() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_front::kc_datum
     }
 
     pub type Qbody = kc_front::Qbody;
@@ -164,6 +172,214 @@ pub mod kc_l0 {
         }
     }
 
+    // `l0-item PATH KEY`: the form KEY of the checked program as an item of
+    // the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
+    // procedure the program defines (its parameters numbered first), `(global
+    // NAME TERM)` of any other definition, `(expr TERM)` of any other form. Its
+    // names are the program's definitions before it (`scope`), then the
+    // standard ones; a reference to a global's value `(gvar NAME)`, a call of
+    // a global procedure `(call NAME ARG ...)`.
+    pub fn l0_params(mut ps: Sexps, mut k: i64, mut env: List<&'static L0Bound>, mut done: List<Str>) -> &'static L0MadeParams {
+        loop {
+            if null_p(ps) {
+                return l0_made_params(words_of(reverse(done)), env, k);
+            } else {
+                let (n, ty) = ({
+                    let tagcase_ = car(ps);
+                    match *tagcase_ {
+                        Sexp::Sym(m, f, p) => {
+                            m
+                        }
+                        Sexp::Lst(ys, f, l, p) => {
+                            let tagcase_ = car(ys);
+                            match *tagcase_ {
+                                Sexp::Sym(m, f2, p2) => {
+                                    m
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }, {
+                    let tagcase_ = car(ps);
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            if null_p(cdr(ys)) {
+                                str_lit("")
+                            } else {
+                                string_append(str_lit(" "), kc_datum()(second(ys)))
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                });
+                (ps, k, env, done) = (cdr(ps), i64_plus(k, 1i64), kayak_rt::heap_cons(l0_bound(n, k), env), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(ty, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))), done));
+                continue;
+            }
+        }
+    }
+
+    /// A procedure's arity, as the definitions before this form say it.
+    pub fn l0_global_arity(mut n: Str, mut scope: Sexps) -> i64 {
+        loop {
+            if null_p(scope) {
+                return 0i64;
+            } else {
+                let i = items(car(scope));
+                if (not(null_p(cdr(i))) && sym_is_p(second(i), n) && not(null_p(cdr(cdr(i))))) {
+                    let tagcase_ = third(i);
+                    match *tagcase_ {
+                        Sexp::Num(k, f, p) => {
+                            return k;
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            return 0i64;
+                        }
+                    }
+                } else {
+                    scope = cdr(scope);
+                    continue;
+                }
+            }
+        }
+    }
+
+    pub fn i64_member_p(mut k: i64, mut ks: List<i64>) -> bool {
+        loop {
+            if null_p(ks) {
+                return false;
+            } else if i64_eq(car(ks), k) {
+                return true;
+            } else {
+                ks = cdr(ks);
+                continue;
+            }
+        }
+    }
+
+    pub fn l0_numbers_of(bs: Sexps) -> List<i64> {
+        map(lambda1s(move |b: &'static Sexp| {
+            let tagcase_ = car(items(b));
+            match *tagcase_ {
+                Sexp::Num(k, f, p) => {
+                    k
+                }
+                _ => {
+                    let other = tagcase_;
+                    the::<i64>(-1i64)
+                }
+            }
+        }), bs)
+    }
+
+    // A lambda's free variables (C412): the variables its body uses, each
+    // `(K NAME)`, but those it binds (its parameters, its `let`s); of a
+    // lambda inside it, that one's free variables. Binders are numbered apart
+    // in a form, so a number names one binder.
+    pub fn l0_used(t: &'static Sexp, acc: Sexps) -> Sexps {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    acc
+                } else if sym_is_p(car(xs), str_lit("var")) {
+                    kayak_rt::heap_cons(lst(cdr(xs), f, l, p), acc)
+                } else if sym_is_p(car(xs), str_lit("lambda")) {
+                    onto(items(fourth(xs)), acc)
+                } else {
+                    l0_used_all(xs, acc)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                acc
+            }
+        }
+    }
+
+    pub fn l0_used_all(mut ts: Sexps, mut acc: Sexps) -> Sexps {
+        loop {
+            if null_p(ts) {
+                return acc;
+            } else {
+                (ts, acc) = (cdr(ts), l0_used(car(ts), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn l0_let_bound(t: &'static Sexp, acc: List<i64>) -> List<i64> {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    acc
+                } else if sym_is_p(car(xs), str_lit("lambda")) {
+                    acc
+                } else if sym_is_p(car(xs), str_lit("let")) {
+                    l0_let_bound_all(cdr(cdr(xs)), l0_let_bound_all(items(second(xs)), onto(l0_numbers_of(items(second(xs))), acc)))
+                } else {
+                    l0_let_bound_all(xs, acc)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                acc
+            }
+        }
+    }
+
+    pub fn l0_let_bound_all(mut ts: Sexps, mut acc: List<i64>) -> List<i64> {
+        loop {
+            if null_p(ts) {
+                return acc;
+            } else {
+                (ts, acc) = (cdr(ts), l0_let_bound(car(ts), acc));
+                continue;
+            }
+        }
+    }
+
+    /// Each of `used` not `bound`, once, in the order first used.
+    pub fn l0_free(mut used: Sexps, mut bound: List<i64>, mut acc: Sexps) -> Sexps {
+        loop {
+            if null_p(used) {
+                return reverse(acc);
+            } else {
+                let k = {
+                    let tagcase_ = car(items(car(used)));
+                    match *tagcase_ {
+                        Sexp::Num(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            the::<i64>(-1i64)
+                        }
+                    }
+                };
+                if (i64_member_p(k, bound) || i64_member_p(k, l0_numbers_of(acc))) {
+                    used = cdr(used);
+                    continue;
+                } else {
+                    (used, acc) = (cdr(used), kayak_rt::heap_cons(car(used), acc));
+                    continue;
+                }
+            }
+        }
+    }
+
     /// The term of `e`, an expression, its names bound as `env` says; the
     /// binders it makes numbered from `next`.
     pub fn l0_of(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut e: &'static Sexp) -> &'static L0Made {
@@ -187,7 +403,7 @@ pub mod kc_l0 {
                     } else if string_eq_p(l0_global_kind(n, scope), str_lit("value")) {
                         return l0_made(string_append(str_lit("(gvar "), string_append(n, str_lit(")"))), next);
                     } else if string_eq_p(l0_global_kind(n, scope), str_lit("proc")) {
-                        return l0_made(not_yet(path, string_append(str_lit("a procedure as a value, "), n)), next);
+                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(gproc "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(l0_global_arity(n, scope)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), next);
                     } else if string_eq_p(n, str_lit("#t")) {
                         return l0_made(str_lit("(bool 1)"), next);
                     } else if string_eq_p(n, str_lit("#f")) {
@@ -213,8 +429,13 @@ pub mod kc_l0 {
                             }
                         }
                     };
-                    if (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit("")))) {
-                        return l0_made(not_yet(path, string_append(str_lit("a call of a local, "), h)), next);
+                    if (string_eq_p(h, str_lit("")) || (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit("")))) || string_eq_p(l0_global_kind(h, scope), str_lit("value"))) {
+                        let tagcase_ = l0_terms(path, scope, env, next, xs, nil::<Str>());
+                        match *tagcase_ {
+                            L0Made::L0Made(ts, n1) => {
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(app "), kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))), n1);
+                            }
+                        }
                     } else if string_eq_p(l0_global_kind(h, scope), str_lit("proc")) {
                         let tagcase_ = l0_terms(path, scope, env, next, cdr(xs), nil::<Str>());
                         match *tagcase_ {
@@ -226,8 +447,32 @@ pub mod kc_l0 {
                                 }, kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
                             }
                         }
-                    } else if string_eq_p(l0_global_kind(h, scope), str_lit("value")) {
-                        return l0_made(not_yet(path, string_append(str_lit("a call of a global's value, "), h)), next);
+                    } else if (string_eq_p(h, str_lit("lambda")) && i64_gt_eq(size(xs), 3i64) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        let tagcase_ = l0_params(items(second(xs)), i64_plus(next, 1i64), env, nil::<Str>());
+                        match *tagcase_ {
+                            L0MadeParams::L0MadeParams(ps, inner, k) => {
+                                let tagcase_ = l0_seq(path, scope, inner, k, cdr(cdr(xs)), nil::<Str>());
+                                match *tagcase_ {
+                                    L0Made::L0Made(b, n1) => {
+                                        let body = car(read_all(b, str_lit("l0"), 1i64));
+                                        let own = l0_numbers_of(items(car(read_all(string_append(str_lit("("), string_append(ps, str_lit(")"))), str_lit("l0"), 1i64))));
+                                        let free = l0_free(reverse(l0_used(body, nil::<&'static Sexp>())), onto(own, l0_let_bound(body, nil::<i64>())), nil::<&'static Sexp>());
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(lambda "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kc_datum(), free)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))), n1);
+                                    }
+                                }
+                            }
+                        }
                     } else if (string_eq_p(h, str_lit("quote")) && i64_eq(size(xs), 2i64) && {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
@@ -484,48 +729,6 @@ pub mod kc_l0 {
                         continue;
                     }
                 }
-            }
-        }
-    }
-
-    // `l0-item PATH KEY`: the form KEY of the checked program as an item of
-    // the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
-    // procedure the program defines (its parameters numbered first), `(global
-    // NAME TERM)` of any other definition, `(expr TERM)` of any other form. Its
-    // names are the program's definitions before it (`scope`), then the
-    // standard ones; a reference to a global's value `(gvar NAME)`, a call of
-    // a global procedure `(call NAME ARG ...)`.
-    pub fn l0_params(mut ps: Sexps, mut k: i64, mut env: List<&'static L0Bound>, mut done: List<Str>) -> &'static L0MadeParams {
-        loop {
-            if null_p(ps) {
-                return l0_made_params(words_of(reverse(done)), env, k);
-            } else {
-                let n = {
-                    let tagcase_ = car(ps);
-                    match *tagcase_ {
-                        Sexp::Sym(m, f, p) => {
-                            m
-                        }
-                        Sexp::Lst(ys, f, l, p) => {
-                            let tagcase_ = car(ys);
-                            match *tagcase_ {
-                                Sexp::Sym(m, f2, p2) => {
-                                    m
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    str_lit("")
-                                }
-                            }
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            str_lit("")
-                        }
-                    }
-                };
-                (ps, k, env, done) = (cdr(ps), i64_plus(k, 1i64), kayak_rt::heap_cons(l0_bound(n, k), env), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), done));
-                continue;
             }
         }
     }
@@ -825,6 +1028,88 @@ pub mod kc_l0 {
                             let other = tagcase_;
                             0i64
                         }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                0i64
+            }
+        }
+    }
+
+    // A `(lambda ID (PARAM ...) (FREE ...) BODY)`'s number (`term-number`),
+    // parameters (each `(K NAME)` or `(K NAME TYPE)`), free variables (each
+    // `(K NAME)`) and body (`item-body`); an `(app F ARG ...)`'s procedure and
+    // arguments; a `(gproc NAME ARITY)`'s arity (C412).
+    #[inline]
+    pub fn lambda_params(t: &'static Sexp) -> Sexps {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                items(third(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    #[inline]
+    pub fn lambda_free(t: &'static Sexp) -> Sexps {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                items(fourth(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    #[inline]
+    pub fn app_fn(t: &'static Sexp) -> &'static Sexp {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                second(xs)
+            }
+            _ => {
+                let other = tagcase_;
+                t
+            }
+        }
+    }
+
+    #[inline]
+    pub fn app_args(t: &'static Sexp) -> Sexps {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                cdr(cdr(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    pub fn gproc_arity(t: &'static Sexp) -> i64 {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let tagcase_ = third(xs);
+                match *tagcase_ {
+                    Sexp::Num(k, f2, p2) => {
+                        k
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        0i64
                     }
                 }
             }

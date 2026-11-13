@@ -21,6 +21,11 @@
  words and ends the run; each failure's call is out of the line, after the
  `ret`, a check a conditional jump to it.
 
+ A lambda (C412) is a function of its own, out of the line after the
+ code that makes it, and a closure of it, Fixpt's bloblet (below); a call
+ of a procedure as a value calls its closure's code, the closure in
+ `%r10`, whose free values the function first copies to its slots.
+
  Integers are fixnums alone, as yet: an operation whose result would be
  past one fails, `not yet` (until the heap, and big integers on it)."
 
@@ -28,7 +33,7 @@
   (module
     (hide
       (import kc-front arg-first arg-rest kc-hex kc-datum kc-items-of kc-keys (type qbody))
-      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number)
+      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number lambda-params lambda-free app-fn app-args gproc-arity)
       (import kc-rust sexp-at))
 
     (hide
@@ -153,6 +158,57 @@
                 c
                 (x64-moved-args (x64-emit c (string-append "movq " (string-append (x64-slot si) (string-append ", " (car regs))))) (cdr regs) (i64+ si 1) (i64- n 1))))))
 
+      "A closure (C412), as Fixpt lays one out (`fixpt-heap`'s `layout.rs`,
+       `closure`; `make_closure`): a bloblet of kind 8, its fields from the
+       header up its free values, the last first, then its code, the heap's
+       stub (none yet, 0), and a trailer, the words back to the header; the
+       value its suffix's address, past the trailer, tag 4. Field `k` (from
+       1, the trailer) is at `-4 - 8k` from the value: the code at -28, free
+       value `i` at `-36 - 8i`. The code is the function's address, aligned
+       so that it reads as a fixnum (no code bloblets yet)."
+      (define x64-closure-header (subr kfx (i64) i64)
+        (lambda (m) (i64+ 70 (i64* (i64+ m 3) 16384))))
+
+      (define x64-closure-trailer (subr kfx (i64) i64)
+        (lambda (m) (i64+ 5 (i64* (i64+ m 3) 8))))
+
+      (define-rec
+        (x64-stored-free (subr kfx (x64-code (listof i64 acyclic) i64 i64) x64-code)
+          (lambda (c slots m j)
+            "Free value `i` from slot `slots[i]`, at word `m - i` of the cell."
+            (if (null? slots)
+                c
+                (x64-stored-free (x64-emit (x64-emit c (string-append "movq " (string-append (x64-slot (car slots)) ", %rcx")))
+                                           (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64- m j))) "(%r15)")))
+                                 (cdr slots) m (i64+ j 1))))))
+
+      (define x64-emit-closure (subr kfx (x64-code string (listof i64 acyclic)) x64-code)
+        (lambda (c code slots)
+          "A closure of `code` over the values in `slots`, in `%rax`."
+          (let* ((m (size slots)) (bytes (i64* 8 (i64+ m 4)))
+                 (c (x64-emit c (string-append "leaq " (string-append (i64->string bytes) "(%r15), %rdx"))))
+                 (c (x64-emit c "cmpq %r14, %rdx"))
+                 (c (x64-failing-if c "a" x64-fail-heap))
+                 (c (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-closure-header m)) ", %rcx"))))
+                 (c (x64-emit c "movq %rcx, 0(%r15)"))
+                 (c (x64-stored-free c slots m 0))
+                 (c (x64-emit c (string-append "leaq " (string-append code "(%rip), %rcx"))))
+                 (c (x64-emit c (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64+ m 1))) "(%r15)"))))
+                 (c (x64-emit c (string-append "movq $0, " (string-append (i64->string (i64* 8 (i64+ m 2))) "(%r15)"))))
+                 (c (x64-emit c (string-append "movq $" (string-append (i64->string (x64-closure-trailer m)) (string-append ", " (string-append (i64->string (i64* 8 (i64+ m 3))) "(%r15)"))))))
+                 (c (x64-emit c (string-append "leaq " (string-append (i64->string (i64+ bytes 4)) "(%r15), %rax")))))
+            (x64-emit c "movq %rdx, %r15"))))
+
+      (define-rec
+        (x64-loaded-free (subr kfx (x64-code i64 i64 i64) x64-code)
+          (lambda (c i m si)
+            "A lambda's free values, from its closure in `%r10`, each to its slot."
+            (if (i64>= i m)
+                c
+                (x64-loaded-free (x64-emit (x64-emit c (string-append "movq " (string-append (i64->string (i64- -36 (i64* 8 i))) "(%r10), %rax")))
+                                           (string-append "movq %rax, " (x64-slot (i64+ si i))))
+                                 (i64+ i 1) m si)))))
+
       "Where each variable is: its binder's number and its slot."
       (define-datatype x64-at (x64-at i64 i64))
 
@@ -162,6 +218,18 @@
             (cond ((null? env) (the i64 -1))
                   ((tagcase (car env) (x64-at (j s) (i64= j k))) (tagcase (car env) (x64-at (j s) s)))
                   (else (x64-slot-of k (cdr env)))))))
+
+      (define-rec
+        (x64-params-at (subr kfx (sexps i64 (listof x64-at acyclic)) (listof x64-at acyclic))
+          (lambda (ps i env)
+            (if (null? ps) env
+                (x64-params-at (cdr ps) (i64+ i 1) (cons (x64-at (tagcase (car (items (car ps))) (num (k f p) k) (else other -1)) i) env))))))
+
+      (define-rec
+        (x64-stored-params (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
+          (lambda (c regs i n)
+            (if (or (i64>= i n) (null? regs)) c
+                (x64-stored-params (x64-emit c (string-append "movq " (string-append (car regs) (string-append ", " (x64-slot i))))) (cdr regs) (i64+ i 1) n)))))
 
       (define-rec
         (x64-emit-expr (subr kfx (x64-code sexp i64 (listof x64-at acyclic)) x64-code)
@@ -205,9 +273,54 @@
                             (c (x64-emit-label c no))
                             (c (x64-emit-expr c (third ps) si env)))
                        (x64-emit-label c past)))
+                    ((string=? h "lambda") (x64-emit-lambda c t env))
+                    ((string=? h "gproc") (x64-emit-closure c (x64-proc-symbol (item-name t)) nil))
+                    ((string=? h "app")
+                     ;; The procedure into slot `si`, its arguments after it, then its
+                     ;; code called, the closure in `%r10` (C412).
+                     (let* ((args (app-args t)) (n (size args)))
+                       (if (i64> n 6)
+                           (begin (not-yet "" "a call of more than six arguments") c)
+                           (let* ((c (x64-emit-expr c (app-fn t) si env))
+                                  (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
+                                  (c (x64-emit-args c args (i64+ si 1) env))
+                                  (c (x64-moved-args c x64-arg-registers (i64+ si 1) n))
+                                  (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %r10")))))
+                             (x64-emit c "call *-28(%r10)")))))
                     ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env))
                     ((string=? h "seq") (x64-emit-seq c (seq-terms t) si env))
                     (else (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-constant-of t)) ", %rax"))))))))
+
+        (x64-emit-lambda (subr kfx (x64-code sexp (listof x64-at acyclic)) x64-code)
+          (lambda (c t env)
+            "A lambda (C412): its function, out of the line, after the code's
+             `ret` with the failures' calls, its parameters' and free values'
+             slots first; and here, a closure of it over the free values."
+            (let* ((ps (lambda-params t)) (n (size ps)) (fv (lambda-free t)) (m (size fv)))
+              (if (i64> n 6)
+                  (begin (not-yet "" "a lambda of more than six parameters") c)
+                  (tagcase c
+                    (x64-code (ls k slots fs px)
+                      (let* ((sym (string-list-append (list "kcl_" px "_" (i64->string (term-number t)))))
+                             (inner (x64-using (x64-code nil k 0 nil px) (i64+ n m)))
+                             (inner (x64-stored-params inner x64-arg-registers 0 n))
+                             (inner (x64-loaded-free inner 0 m n))
+                             (env2 (x64-params-at fv n (x64-params-at ps 0 nil)))
+                             (inner (x64-emit-expr inner (item-body t) (i64+ n m) env2)))
+                        (tagcase inner
+                          (x64-code (ls2 k2 slots2 fs2 px2)
+                            (let ((frame (x64-frame-of-call slots2)))
+                              (x64-emit-closure
+                                (x64-code ls k2 slots
+                                          (cons (string-list-append
+                                                  (append (list "    .p2align 4\n" sym ":\n    subq $" (i64->string frame) ", %rsp\n")
+                                                          (append (reverse ls2)
+                                                                  (cons (string-list-append (list "    addq $" (i64->string frame) ", %rsp\n    ret\n"))
+                                                                        (reverse fs2)))))
+                                                fs)
+                                          px)
+                                sym
+                                (map (lambda ((v sexp)) (x64-slot-of (tagcase (car (items v)) (num (j f p) j) (else other -1)) env)) fv))))))))))))
 
         (x64-emit-let (subr kfx (x64-code sexps sexp i64 (listof x64-at acyclic) (listof x64-at acyclic)) x64-code)
           (lambda (c bs body si env inner)
@@ -335,18 +448,6 @@
        expression's code for `kc_entry`, as many slots as it uses, and what it
        ends with (a definition's value stored in its cell; an expression's value
        given to the runtime's `kc_show`, which writes it); its failures' calls."
-      (define-rec
-        (x64-params-at (subr kfx (sexps i64 (listof x64-at acyclic)) (listof x64-at acyclic))
-          (lambda (ps i env)
-            (if (null? ps) env
-                (x64-params-at (cdr ps) (i64+ i 1) (cons (x64-at (tagcase (car (items (car ps))) (num (k f p) k) (else other -1)) i) env))))))
-
-      (define-rec
-        (x64-stored-params (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
-          (lambda (c regs i n)
-            (if (or (i64>= i n) (null? regs)) c
-                (x64-stored-params (x64-emit c (string-append "movq " (string-append (car regs) (string-append ", " (x64-slot i))))) (cdr regs) (i64+ i 1) n)))))
-
       (define x64-asm-item-text (subr kfx (i64 (listof string acyclic) (listof string acyclic)) string)
         (lambda (slots ls fails)
           (string-list-append

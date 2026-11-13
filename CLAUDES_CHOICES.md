@@ -11495,3 +11495,54 @@ The names kc prefixed to keep apart from the checker's (`x64-`, `kc-`)
 are left as they are: a rename would be churn, and a new name of kc's may
 now be any name. 172 programs as before (`kc-steps.py`), every one by
 native code, 30 by Rust.
+
+## C412. kc, step 9: closures (2026-11-13)
+
+The user: "Go for it" (kc's files as modules, C411, then the steps).
+
+**L0** (`kc/l0.kfx`): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
+parameters numbered after its own number, each `(K NAME)` or, where the
+type is written, `(K NAME TYPE)`; its free variables found as the term is
+made: the variables its body uses, a lambda inside it contributing its own
+free variables, less the lambda's parameters and the `let`s inside it.
+Binders are numbered apart in a form (C404), so a number names one binder
+and no renaming is needed. `(app F ARG ...)`: a call of a procedure as a
+value, a local's, a global value's, any expression's (`((car fs) x)`).
+`(gproc NAME ARITY)`: a procedure the program defines, as a value (its
+arity from the scope's interfaces, for the Rust back end).
+
+**Native** (`kc/x64.kfx`): a closure is Fixpt's bloblet (`fixpt-heap`'s
+`layout.rs`, `closure`; `heap.rs`'s `make_closure`), laid out from its
+header up: the free values, the last first; the code; the heap's stub
+(none yet, 0); a trailer, the words back to the header; the value its
+suffix's address, tag 4. So field `k` is at `-4 - 8k` from the value,
+whatever the closure's size: the code at -28, free value `i` at
+`-36 - 8i`, one load each, as Fixpt meant. The header is Fixpt's (kind 8,
+`F` the fields with the trailer, `B` 0). Two departures, each for a later
+step: the code word is the function's address (aligned to 16, so that it
+reads as a fixnum to a collector), not a code bloblet; and the stub is 0.
+A lambda is a function of its own (`kcl_FORM_ID`), placed out of the line
+with the failures' calls; entered with its arguments in the six registers
+and its closure in `%r10`, it stores both its parameters and its free
+values in its frame's slots, so that the body sees variables only in
+slots, as before. A call of a value: the procedure into a slot, the
+arguments after it, moved to their registers, then `call *-28(%r10)`. A
+procedure the program defines, as a value, is a closure over nothing of
+its `kcp_` function, made where it is used. The checker's types make
+every called value a closure of the right arity, so no check is made.
+
+**Rust** (`kc/rust.kfx`): as kfx's emitter does (`put-lambda`), kayak-rt's
+`lambdaN(move |x: T| BODY)`, a `&'static dyn Fn` on its heap, what it
+captures `Copy`; its parameters typed where written, else rustc infers
+them; a procedure's type `&'static dyn Fn(A, ...) -> R`; a call
+`(F)(ARG, ...)`; a defined procedure as a value `lambdaN(kcp_NAME)`.
+
+**The runtime** writes a closure `#<procedure>`: Fixpt writes one by its
+machine's name for it (`#<cellular-closure 2 fields 0 bytes>` on
+fx-cells-rsinterp), so no step's program states one as its value.
+
+`tests/kc/step9/`: 26 programs (17 FX-26, 9 KFX), each of Fixpt's answer:
+a closure called at once, captured values, one returned from a procedure,
+curried three deep, a procedure given one and one given as one, closures
+in a list, a closure's failure, six parameters. 198 programs in all, each
+by native code, 39 by Rust; none wrong.

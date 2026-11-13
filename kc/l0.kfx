@@ -15,12 +15,15 @@
  `(if T C E)` (C405); `and`, `or`, `cond` (which must end with `else`)
  and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
  `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
- (C407): a program of many forms, each an item of its own (`l0-item`)."
+ (C407): a program of many forms, each an item of its own (`l0-item`).
+ Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
+ free variables found here; `(app F ARG ...)`, a call of a procedure as a
+ value; `(gproc NAME ARITY)`, a procedure the program defines as one."
 
 (define kc-l0
   (module
     (hide
-      (import kc-front arg-first arg-rest form-name kc-form define-value lambda-of (type qbody)))
+      (import kc-front arg-first arg-rest form-name kc-form define-value lambda-of kc-datum (type qbody)))
 
     (hide
       (define fixnum-max i64 1152921504606846975)
@@ -65,6 +68,83 @@
                       (tagcase (car i) (sym (k f p) k) (else other ""))
                       (l0-global-kind n (cdr scope))))))))
 
+      "`l0-item PATH KEY`: the form KEY of the checked program as an item of
+       the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
+       procedure the program defines (its parameters numbered first), `(global
+       NAME TERM)` of any other definition, `(expr TERM)` of any other form. Its
+       names are the program's definitions before it (`scope`), then the
+       standard ones; a reference to a global's value `(gvar NAME)`, a call of
+       a global procedure `(call NAME ARG ...)`."
+      (define-rec
+        (l0-params (subr kfx (sexps i64 (listof l0-bound acyclic) (listof string acyclic)) l0-made-params)
+          (lambda (ps k env done)
+            (if (null? ps)
+                (l0-made-params (words-of (reverse done)) env k)
+                (let ((n (tagcase (car ps) (sym (m f p) m) (lst (ys f l p) (tagcase (car ys) (sym (m f2 p2) m) (else other ""))) (else other "")))
+                      ;; Its type, where it is written (`(x T)`), for the Rust back end.
+                      (ty (tagcase (car ps) (lst (ys f l p) (if (null? (cdr ys)) "" (string-append " " (kc-datum (second ys))))) (else other ""))))
+                  (l0-params (cdr ps) (i64+ k 1) (cons (l0-bound n k) env)
+                             (cons (string-list-append (list "(" (i64->string k) " " n ty ")")) done)))))))
+
+      (define-rec
+        (l0-global-arity (subr kfx (string sexps) i64)
+          (lambda (n scope)
+            "A procedure's arity, as the definitions before this form say it."
+            (if (null? scope)
+                0
+                (let ((i (items (car scope))))
+                  (if (and (not (null? (cdr i))) (sym-is? (second i) n) (not (null? (cdr (cdr i)))))
+                      (tagcase (third i) (num (k f p) k) (else other 0))
+                      (l0-global-arity n (cdr scope))))))))
+
+      (define-rec
+        (i64-member? (subr kfx (i64 (listof i64 acyclic)) bool)
+          (lambda (k ks) (cond ((null? ks) #f) ((i64= (car ks) k) #t) (else (i64-member? k (cdr ks)))))))
+
+      (define l0-numbers-of (subr kfx (sexps) (listof i64 acyclic))
+        (lambda (bs) (map (lambda ((b sexp)) (tagcase (car (items b)) (num (k f p) k) (else other (the i64 -1)))) bs)))
+
+      "A lambda's free variables (C412): the variables its body uses, each
+       `(K NAME)`, but those it binds (its parameters, its `let`s); of a
+       lambda inside it, that one's free variables. Binders are numbered apart
+       in a form, so a number names one binder."
+      (define-rec
+        (l0-used (subr kfx (sexp sexps) sexps)
+          (lambda (t acc)
+            (tagcase t
+              (lst (xs f l p)
+                (cond ((null? xs) acc)
+                      ((sym-is? (car xs) "var") (cons (lst (cdr xs) f l p) acc))
+                      ((sym-is? (car xs) "lambda") (onto (items (fourth xs)) acc))
+                      (else (l0-used-all xs acc))))
+              (else other acc))))
+        (l0-used-all (subr kfx (sexps sexps) sexps)
+          (lambda (ts acc) (if (null? ts) acc (l0-used-all (cdr ts) (l0-used (car ts) acc))))))
+
+      (define-rec
+        (l0-let-bound (subr kfx (sexp (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (t acc)
+            (tagcase t
+              (lst (xs f l p)
+                (cond ((null? xs) acc)
+                      ((sym-is? (car xs) "lambda") acc)
+                      ((sym-is? (car xs) "let") (l0-let-bound-all (cdr (cdr xs)) (l0-let-bound-all (items (second xs)) (onto (l0-numbers-of (items (second xs))) acc))))
+                      (else (l0-let-bound-all xs acc))))
+              (else other acc))))
+        (l0-let-bound-all (subr kfx (sexps (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (ts acc) (if (null? ts) acc (l0-let-bound-all (cdr ts) (l0-let-bound (car ts) acc))))))
+
+      (define-rec
+        (l0-free (subr kfx (sexps (listof i64 acyclic) sexps) sexps)
+          (lambda (used bound acc)
+            "Each of `used` not `bound`, once, in the order first used."
+            (if (null? used)
+                (reverse acc)
+                (let ((k (tagcase (car (items (car used))) (num (n f p) n) (else other (the i64 -1)))))
+                  (if (or (i64-member? k bound) (i64-member? k (l0-numbers-of acc)))
+                      (l0-free (cdr used) bound acc)
+                      (l0-free (cdr used) bound (cons (car used) acc))))))))
+
       (define-rec
         (l0-of (subr kfx (string sexps (listof l0-bound acyclic) i64 sexp) l0-made)
           (lambda (path scope env next e)
@@ -80,7 +160,9 @@
                 (let ((k (l0-number-of n env)))
                   (cond ((i64>= k 0) (l0-made (string-list-append (list "(var " (i64->string k) " " n ")")) next))
                         ((string=? (l0-global-kind n scope) "value") (l0-made (string-append "(gvar " (string-append n ")")) next))
-                        ((string=? (l0-global-kind n scope) "proc") (l0-made (not-yet path (string-append "a procedure as a value, " n)) next))
+                        ;; A procedure the program defines, as a value (C412).
+                        ((string=? (l0-global-kind n scope) "proc")
+                         (l0-made (string-list-append (list "(gproc " n " " (i64->string (l0-global-arity n scope)) ")")) next))
                         ((string=? n "#t") (l0-made "(bool 1)" next))
                         ((string=? n "#f") (l0-made "(bool 0)" next))
                         ((string=? n "#u") (l0-made "(unit)" next))
@@ -88,12 +170,27 @@
                         (else (l0-made (not-yet path (string-append "a global, " n)) next)))))
               (lst (xs f l p)
                 (let ((h (tagcase (car xs) (sym (n f2 p2) n) (else other ""))))
-                  (cond ((and (i64>= (l0-number-of h env) 0) (not (string=? h ""))) (l0-made (not-yet path (string-append "a call of a local, " h)) next))
+                  (cond ((or (string=? h "") (and (i64>= (l0-number-of h env) 0) (not (string=? h "")))
+                             (string=? (l0-global-kind h scope) "value"))
+                         ;; A call of a procedure as a value: a local's, a global
+                         ;; value's, any expression's (C412).
+                         (tagcase (l0-terms path scope env next xs nil)
+                           (l0-made (ts n1) (l0-made (string-list-append (list "(app " ts ")")) n1))))
                         ((string=? (l0-global-kind h scope) "proc")
                          ;; A call of a procedure the program defines (C407).
                          (tagcase (l0-terms path scope env next (cdr xs) nil)
                            (l0-made (args n1) (l0-made (string-list-append (list "(call " h (if (string=? args "") "" " ") args ")")) n1))))
-                        ((string=? (l0-global-kind h scope) "value") (l0-made (not-yet path (string-append "a call of a global's value, " h)) next))
+                        ((and (string=? h "lambda") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                         ;; Its parameters numbered after its own number, `next`; what it
+                         ;; uses of the binders around it, its free variables (C412).
+                         (tagcase (l0-params (items (second xs)) (i64+ next 1) env nil)
+                           (l0-made-params (ps inner k)
+                             (tagcase (l0-seq path scope inner k (cdr (cdr xs)) nil)
+                               (l0-made (b n1)
+                                 (let* ((body (car (read-all b "l0" 1)))
+                                        (own (l0-numbers-of (items (car (read-all (string-append "(" (string-append ps ")")) "l0" 1)))))
+                                        (free (l0-free (reverse (l0-used body nil)) (onto own (l0-let-bound body nil)) nil)))
+                                   (l0-made (string-list-append (list "(lambda " (i64->string next) " (" ps ") (" (words-of (map kc-datum free)) ") " b ")")) n1)))))))
                         ((and (string=? h "quote") (i64= (size xs) 2) (tagcase (second xs) (lst (ys f2 l2 p2) (null? ys)) (else other #f)))
                          (l0-made "(nil)" next))
                         ((and (string=? h "let") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
@@ -215,23 +312,7 @@
                     (l0-made (car done) next)
                     (l0-made (string-append "(seq " (string-append (words-of (reverse done)) ")")) next))
                 (tagcase (l0-of path scope env next (car es))
-                  (l0-made (t n1) (l0-seq path scope env n1 (cdr es) (cons t done))))))))
-
-      "`l0-item PATH KEY`: the form KEY of the checked program as an item of
-       the core language (C407): `(proc NAME ((K NAME) ...) BODY)` of a
-       procedure the program defines (its parameters numbered first), `(global
-       NAME TERM)` of any other definition, `(expr TERM)` of any other form. Its
-       names are the program's definitions before it (`scope`), then the
-       standard ones; a reference to a global's value `(gvar NAME)`, a call of
-       a global procedure `(call NAME ARG ...)`."
-      (define-rec
-        (l0-params (subr kfx (sexps i64 (listof l0-bound acyclic) (listof string acyclic)) l0-made-params)
-          (lambda (ps k env done)
-            (if (null? ps)
-                (l0-made-params (words-of (reverse done)) env k)
-                (let ((n (tagcase (car ps) (sym (m f p) m) (lst (ys f l p) (tagcase (car ys) (sym (m f2 p2) m) (else other ""))) (else other ""))))
-                  (l0-params (cdr ps) (i64+ k 1) (cons (l0-bound n k) env)
-                             (cons (string-list-append (list "(" (i64->string k) " " n ")")) done))))))))
+                  (l0-made (t n1) (l0-seq path scope env n1 (cdr es) (cons t done)))))))))
 
     (define q-l0-item qbody
       (lambda (d run a)
@@ -309,4 +390,23 @@
       (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
 
     (define term-number (subr kfx (sexp) i64)
-      (lambda (t) (tagcase t (lst (xs f l p) (if (null? (cdr xs)) 0 (tagcase (second xs) (num (k f2 p2) k) (else other 0)))) (else other 0))))))
+      (lambda (t) (tagcase t (lst (xs f l p) (if (null? (cdr xs)) 0 (tagcase (second xs) (num (k f2 p2) k) (else other 0)))) (else other 0))))
+
+    "A `(lambda ID (PARAM ...) (FREE ...) BODY)`'s number (`term-number`),
+     parameters (each `(K NAME)` or `(K NAME TYPE)`), free variables (each
+     `(K NAME)`) and body (`item-body`); an `(app F ARG ...)`'s procedure and
+     arguments; a `(gproc NAME ARITY)`'s arity (C412)."
+    (define lambda-params (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (items (third xs))) (else other nil))))
+
+    (define lambda-free (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (items (fourth xs))) (else other nil))))
+
+    (define app-fn (subr kfx (sexp) sexp)
+      (lambda (t) (tagcase t (lst (xs f l p) (second xs)) (else other t))))
+
+    (define app-args (subr kfx (sexp) sexps)
+      (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
+
+    (define gproc-arity (subr kfx (sexp) i64)
+      (lambda (t) (tagcase t (lst (xs f l p) (tagcase (third xs) (num (k f2 p2) k) (else other 0))) (else other 0))))))
