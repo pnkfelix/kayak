@@ -11259,3 +11259,29 @@ truthiness; `(if 1 2 3)` is refused), `if` has its three parts, `and` and
   untaken branch's failure not happening; 117 in all, every one Fixpt's
   answer on each back end.
 
+## C406. kc, step 7: pairs, and the heap (2026-11-12)
+
+Ghuloum's seventh step: the heap, and pairs on it; no collector yet, as
+his has none there.
+- **The core language**: `cons`, `car`, `cdr`, `pair?` as primitives;
+  `(list a b ...)` made `cons`es, its last onto `nil`, its elements made
+  in order. `set-car!` and the rest wait for regions (FX-26's frozen data
+  refuses them otherwise), `length` and its kin for procedures.
+- **Native**, in Fixpt's format: a pair is its cell's address, tag 1, a
+  cell of two words, car then cdr. `kc_entry` is given the heap's first
+  free word and its end, kept in `%r15` and `%r14` (callee-saved: pushed
+  and put back, the frame still keeping the stack aligned); `cons` takes
+  two words, a heap used up failing in kc's words (`kc: not yet: the heap
+  used up`); `car` and `cdr` check the tag (`car or cdr of a non-pair`,
+  Fixpt's words) and load at -1 and 7 from the value.
+- **The runtime**: a heap of 64 MiB, given to `kc_entry`; a pair written
+  as Fixpt's `print.rs` writes one, its elements, and a tail that is not a
+  list after ` . ` (no labels: nothing can make a cycle yet).
+- **Rust**: kayak-rt's lists, `heap_cons`, `car`, `cdr` (KFX's `cons`
+  makes lists, C197); `pair?` that a list is not empty; `nil` of no type a
+  use says only when it is the whole program. kayak-rt's `car` and `cdr` of
+  `nil` now fail in Fixpt's words (they said `car: nil`).
+- Tests: `tests/kc/step7/`, 27 programs (six KFX); 144 in all, every one
+  Fixpt's answer on each back end. **Found on the way**: the checker
+  refuses `(cons (list 1) (list 2))`, which Fixpt takes (TODO).
+

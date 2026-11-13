@@ -1,0 +1,2 @@
+;; => 55
+(let* ((l (list 1 2 3 4 5 6 7 8 9 10))) (+ (car l) (+ (car (cdr l)) (+ (car (cdr (cdr l))) (+ (car (cdr (cdr (cdr l)))) (+ (car (cdr (cdr (cdr (cdr l))))) (+ (car (cdr (cdr (cdr (cdr (cdr l)))))) (+ (car (cdr (cdr (cdr (cdr (cdr (cdr l))))))) (+ (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr l)))))))) (+ (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr l))))))))) (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr l))))))))))))))))))))

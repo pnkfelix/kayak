@@ -51,6 +51,12 @@
                (append (list "{ ")
                        (append (map (lambda ((e sexp)) (string-list-append (list "let _ = " (rust-of e) "; "))) (rust-but-last (seq-terms t)))
                                (list (rust-of (car (reverse (seq-terms t)))) " }")))))
+            ;; A pair, a list's (KFX's `cons` makes lists, C197), on
+            ;; kayak-rt's heap; `pair?` of a list, that it is not empty (C406).
+            ((and (string=? h "prim") (string=? (prim-name t) "cons"))
+             (string-list-append (list "heap_cons(" (rust-args (prim-args t)) ")")))
+            ((and (string=? h "prim") (string=? (prim-name t) "pair?"))
+             (string-list-append (list "(!null_p(" (rust-of (car (prim-args t))) "))")))
             ((and (string=? h "prim") (string=? (prim-name t) "eq?"))
              ;; Of immediates, which are equal as values (C403).
              (string-list-append (list "(" (rust-of (car (prim-args t))) " == " (rust-of (second (prim-args t))) ")")))
@@ -60,7 +66,7 @@
             ((string=? h "bool") (if (i64= n 1) "true" "false"))
             ((string=? h "char") (string-append "'\\u{" (string-append (hex-digits n "") "}'")))
             ((string=? h "unit") "()")
-            ((string=? h "nil") "nil::<()>()")
+            ((string=? h "nil") "nil()")
             (else (begin (error (string-append "kc: the Rust back end has no term " h)) ""))))))
  (rust-args (subr kfx (sexps) string)
   (lambda (ts)
@@ -77,6 +83,7 @@
             "use kayak_rt::*;\n\n"
             "pub fn main() -> Str {\n"
             "    let mut out = String::new();\n"
-            "    Show::show(&" (rust-of (l0-term d run path)) ", &mut out);\n"
+            ;; `nil` alone: of no element type a use would say.
+            "    Show::show(&" (let ((t (l0-term d run path))) (if (string=? (term-head t) "nil") "nil::<()>()" (rust-of t))) ", &mut out);\n"
             "    shown(out)\n"
             "}\n")))))

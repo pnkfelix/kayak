@@ -18,7 +18,8 @@ use super::*;
 // more than one expression, and `begin`, `(seq E ...)`. A name a binding
 // form binds is a variable, shadowing a primitive's or `nil`'s. Step 6:
 // `(if T C E)` (C405); `and`, `or`, `cond` (which must end with `else`)
-// and `case` made `if`s.
+// and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
+// `pair?` as primitives, `(list a b ...)` `cons`es.
 #[inline]
 pub fn fixnum_max() -> i64 {
     1152921504606846975i64
@@ -28,7 +29,7 @@ pub fn fixnum_max() -> i64 {
 pub fn unary_primitives() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::nil())))))
+        kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::nil()))))))))
     })
 }
 
@@ -36,7 +37,7 @@ pub fn unary_primitives() -> List<Str> {
 pub fn binary_primitives() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::nil())))))))))))))))))))
+        kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::nil()))))))))))))))))))))
     })
 }
 
@@ -187,6 +188,13 @@ pub fn l0_of(mut path: Str, mut env: List<&'static L0Bound>, mut next: i64, mut 
                     continue;
                 } else if string_eq_p(h, str_lit("begin")) {
                     return l0_seq(path, env, next, cdr(xs), nil::<Str>());
+                } else if (string_eq_p(h, str_lit("list")) && not(null_p(cdr(xs)))) {
+                    e = lst(kayak_rt::heap_cons(sym(str_lit("cons"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(if null_p(cdr(cdr(xs))) {
+                        sym(str_lit("nil"), f, p)
+                    } else {
+                        lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p)
+                    }, kayak_rt::nil()))), f, l, p);
+                    continue;
                 } else if (string_eq_p(h, str_lit("if")) && i64_eq(size(xs), 4i64)) {
                     let tagcase_ = l0_of(path, env, next, second(xs));
                     match *tagcase_ {

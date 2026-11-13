@@ -4,7 +4,8 @@
 //! as Fixpt writes it (`fixpt-runtime`'s `print.rs`). Step 1: fixnums (three
 //! tag bits, tag 0, the value above them). Step 2: immediates (tag 3, a kind
 //! in the five bits above it, a payload from bit 8). Step 3: a failure,
-//! `kc_fail`, said as Fixpt says it.
+//! `kc_fail`, said as Fixpt says it. Step 7: the heap, given to `kc_entry`,
+//! and pairs (tag 1, the address of a cell of two words) written as lists.
 //!
 //! kc's code is called through `extern "C"`: the one place here that is
 //! not safe Rust.
@@ -12,6 +13,7 @@
 
 const TAG_MASK: u64 = 0b111;
 const TAG_FIXNUM: u64 = 0b000;
+const TAG_PAIR: u64 = 0b001;
 const TAG_IMMEDIATE: u64 = 0b011;
 const IMM_SHIFT: u32 = 3;
 const IMM_MASK: u64 = 0b1_1111;
@@ -23,7 +25,18 @@ const IMM_UNIT: u64 = 3;
 const IMM_CHAR: u64 = 8;
 
 unsafe extern "C" {
-    fn kc_entry() -> u64;
+    fn kc_entry(heap: *mut u64, end: *mut u64) -> u64;
+}
+
+/// The heap's words: no collector yet, so all a run may use (C406).
+const HEAP_WORDS: usize = 1 << 23;
+
+/// A pair's car and cdr.
+fn pair(v: u64) -> (u64, u64) {
+    let p = (v - TAG_PAIR) as *const u64;
+    // SAFETY: a pair's value is its cell's address, tag 1, a cell of two
+    // words kc's code made on the heap, which lives as long as the run.
+    unsafe { (*p, *p.add(1)) }
 }
 
 /// A character as Fixpt writes it (`print.rs`'s `put_char`).
@@ -46,6 +59,45 @@ fn put_char(out: &mut String, c: char) {
 
 /// A value as Fixpt writes it.
 fn written(v: u64) -> String {
+    let mut out = String::new();
+    put(&mut out, v);
+    out
+}
+
+/// A list as Fixpt writes it (`print.rs`'s `put`): its elements, and a
+/// tail that is not a list after ` . `.
+fn put(out: &mut String, v: u64) {
+    if v & TAG_MASK != TAG_PAIR {
+        out.push_str(&atom(v));
+        return;
+    }
+    out.push('(');
+    let (car, mut rest) = pair(v);
+    put(out, car);
+    loop {
+        if rest == null() {
+            break;
+        }
+        if rest & TAG_MASK == TAG_PAIR {
+            let (a, d) = pair(rest);
+            out.push(' ');
+            put(out, a);
+            rest = d;
+        } else {
+            out.push_str(" . ");
+            put(out, rest);
+            break;
+        }
+    }
+    out.push(')');
+}
+
+const fn null() -> u64 {
+    (IMM_NULL << IMM_SHIFT) | TAG_IMMEDIATE
+}
+
+/// A value other than a pair as Fixpt writes it.
+fn atom(v: u64) -> String {
     match v & TAG_MASK {
         TAG_FIXNUM => ((v as i64) >> 3).to_string(),
         TAG_IMMEDIATE => {
@@ -76,6 +128,9 @@ fn written(v: u64) -> String {
 pub extern "C" fn kc_fail(what: u64) -> ! {
     let message = match what {
         1 => "not a Unicode scalar value",
+        4 => "car or cdr of a non-pair",
+        // kc's own: no collector yet.
+        5 => "kc: not yet: the heap used up (no collector yet)",
         // kc's own, not Fixpt's: its integers are fixnums alone, as yet.
         2 => "kc: not yet: an integer past a fixnum",
         3 => "division by zero",
@@ -87,8 +142,11 @@ pub extern "C" fn kc_fail(what: u64) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
-    // SAFETY: `kc_entry` is kc's code, which takes nothing and gives a value.
-    let v = unsafe { kc_entry() };
+    let heap: &'static mut [u64] = Vec::leak(vec![0u64; HEAP_WORDS]);
+    let range = heap.as_mut_ptr_range();
+    // SAFETY: `kc_entry` is kc's code, which takes the heap's first free
+    // word and its end and gives a value.
+    let v = unsafe { kc_entry(range.start, range.end) };
     println!("{}", written(v));
     0
 }

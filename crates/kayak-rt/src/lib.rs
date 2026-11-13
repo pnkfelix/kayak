@@ -314,7 +314,7 @@ pub fn cons<'r, T>(car: T, cdr: ListAt<'r, T>) -> ListAt<'r, T> {
 pub fn car<T: Copy>(xs: ListAt<'_, T>) -> T {
     match xs {
         Some(p) => p.car,
-        None => fail("car: nil"),
+        None => fail("car or cdr of a non-pair"),
     }
 }
 
@@ -322,7 +322,7 @@ pub fn car<T: Copy>(xs: ListAt<'_, T>) -> T {
 pub fn cdr<'r, T>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
     match xs {
         Some(p) => p.cdr,
-        None => fail("cdr: nil"),
+        None => fail("car or cdr of a non-pair"),
     }
 }
 

@@ -4,7 +4,12 @@
  for the runtime (`crates/kayak-kcrt`) to write: a fixnum its value
  shifted past three tag bits, tag 0; an immediate, tag 3, its kind above
  the tag (false 0, true 1, the empty list 2, unit 3, a character 8), its
- payload from bit 8 (a character's code).
+ payload from bit 8 (a character's code); a pair, the address of its
+ cell of two words, car and cdr, tag 1.
+
+ `kc_entry` is given the heap, its first free word and its end, kept in
+ `%r15` and `%r14` (callee-saved, so saved and put back): a `cons` takes
+ two words from it, no collector yet (C406).
 
  Each term is compiled to code that leaves its value in `%rax` (Ghuloum's
  `emit-expr`, C402); a primitive's first arguments are kept in the frame's
@@ -31,6 +36,8 @@
 (define x64-fail-not-a-char i64 1)
 (define x64-fail-past-fixnum i64 2)
 (define x64-fail-division i64 3)
+(define x64-fail-not-a-pair i64 4)
+(define x64-fail-heap i64 5)
 
 (define x64-constant-of (subr kfx (sexp) i64)
   (lambda (t)
@@ -178,6 +185,16 @@
                     (c (x64-emit c "shlq $8, %rdx"))
                     (c (x64-emit c "orq $67, %rdx")))
                (x64-emit c "movq %rdx, %rax")))
+            ;; A pair is its cell's address, tag 1: its car at -1 from the
+            ;; value, its cdr at 7 (C406).
+            ((or (string=? n "car") (string=? n "cdr"))
+             (let* ((c (x64-emit c "movq %rax, %rdx"))
+                    (c (x64-emit c "andq $7, %rdx"))
+                    (c (x64-emit c "cmpq $1, %rdx"))
+                    (c (x64-failing-if c "ne" x64-fail-not-a-pair)))
+               (x64-emit c (if (string=? n "car") "movq -1(%rax), %rax" "movq 7(%rax), %rax"))))
+            ((string=? n "pair?")
+             (x64-boolean-if (x64-emit (x64-emit (x64-emit c "movq %rax, %rdx") "andq $7, %rdx") "cmpq $1, %rdx") "e"))
             (else (begin (error (string-append "kc: the native back end has no primitive " n)) c)))))
 
   (x64-emit-binary (subr kfx (x64-code string) x64-code)
@@ -191,6 +208,16 @@
             ((string=? n "+") (x64-failing-if (x64-emit c "addq %rcx, %rax") "o" x64-fail-past-fixnum))
             ((string=? n "-") (x64-failing-if (x64-emit c "subq %rcx, %rax") "o" x64-fail-past-fixnum))
             ((string=? n "*") (x64-failing-if (x64-emit (x64-emit c "sarq $3, %rax") "imulq %rcx, %rax") "o" x64-fail-past-fixnum))
+            ;; Two words from the heap, `%r15` its next free one and `%r14` its
+            ;; end: no collector yet, so a heap used up fails (C406).
+            ((string=? n "cons")
+             (let* ((c (x64-emit c "leaq 16(%r15), %rdx"))
+                    (c (x64-emit c "cmpq %r14, %rdx"))
+                    (c (x64-failing-if c "a" x64-fail-heap))
+                    (c (x64-emit c "movq %rax, 0(%r15)"))
+                    (c (x64-emit c "movq %rcx, 8(%r15)"))
+                    (c (x64-emit c "leaq 1(%r15), %rax")))
+               (x64-emit c "movq %rdx, %r15")))
             ((string=? n "max") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovl %rcx, %rax"))
             ((string=? n "min") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovg %rcx, %rax"))
             ((or (string=? n "quotient") (string=? n "remainder") (string=? n "modulo"))
@@ -223,7 +250,8 @@
                         (x64-emit c "shlq $3, %rax"))))))
             (else (begin (error (string-append "kc: the native back end has no primitive " n)) c))))))
 
-"The frame's bytes: its slots, and 8 more if that keeps the stack aligned."
+"The frame's bytes: its slots, and 8 more if that keeps the stack aligned
+ (entered 8 below a multiple of 16, two registers pushed)."
 (define x64-frame (subr kfx (i64) i64)
   (lambda (slots) (let ((b (i64* 8 slots))) (if (i64= (i64-remainder b 16) 8) b (i64+ b 8)))))
 
@@ -236,9 +264,15 @@
                         "    .text\n"
                         "    .globl kc_entry\n"
                         "kc_entry:\n"
+                        "    pushq %r15\n"
+                        "    pushq %r14\n"
+                        "    movq %rdi, %r15\n"
+                        "    movq %rsi, %r14\n"
                         "    subq $" (i64->string (x64-frame slots)) ", %rsp\n")
                   (append (reverse ls)
                           (append (list "    addq $" (i64->string (x64-frame slots)) ", %rsp\n"
+                                        "    popq %r14\n"
+                                        "    popq %r15\n"
                                         "    ret\n")
                                   (append (reverse fails)
                                           (list "    .section .note.GNU-stack,\"\",@progbits\n"))))))))))

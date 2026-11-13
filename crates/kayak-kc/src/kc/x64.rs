@@ -9,7 +9,12 @@ use super::*;
 // for the runtime (`crates/kayak-kcrt`) to write: a fixnum its value
 // shifted past three tag bits, tag 0; an immediate, tag 3, its kind above
 // the tag (false 0, true 1, the empty list 2, unit 3, a character 8), its
-// payload from bit 8 (a character's code).
+// payload from bit 8 (a character's code); a pair, the address of its
+// cell of two words, car and cdr, tag 1.
+//
+// `kc_entry` is given the heap, its first free word and its end, kept in
+// `%r15` and `%r14` (callee-saved, so saved and put back): a `cons` takes
+// two words from it, no collector yet (C406).
 //
 // Each term is compiled to code that leaves its value in `%rax` (Ghuloum's
 // `emit-expr`, C402); a primitive's first arguments are kept in the frame's
@@ -62,6 +67,16 @@ pub fn x64_fail_past_fixnum() -> i64 {
 #[inline]
 pub fn x64_fail_division() -> i64 {
     3i64
+}
+
+#[inline]
+pub fn x64_fail_not_a_pair() -> i64 {
+    4i64
+}
+
+#[inline]
+pub fn x64_fail_heap() -> i64 {
+    5i64
 }
 
 /// A constant term's value, as a word of Fixpt's format.
@@ -334,6 +349,18 @@ pub fn x64_emit_unary(c: &'static X64Code, n: Str) -> &'static X64Code {
         let c = x64_emit(c, str_lit("shlq $8, %rdx"));
         let c = x64_emit(c, str_lit("orq $67, %rdx"));
         x64_emit(c, str_lit("movq %rdx, %rax"))
+    } else if (string_eq_p(n, str_lit("car")) || string_eq_p(n, str_lit("cdr"))) {
+        let c = x64_emit(c, str_lit("movq %rax, %rdx"));
+        let c = x64_emit(c, str_lit("andq $7, %rdx"));
+        let c = x64_emit(c, str_lit("cmpq $1, %rdx"));
+        let c = x64_failing_if(c, str_lit("ne"), x64_fail_not_a_pair());
+        x64_emit(c, if string_eq_p(n, str_lit("car")) {
+            str_lit("movq -1(%rax), %rax")
+        } else {
+            str_lit("movq 7(%rax), %rax")
+        })
+    } else if string_eq_p(n, str_lit("pair?")) {
+        x64_boolean_if(x64_emit(x64_emit(x64_emit(c, str_lit("movq %rax, %rdx")), str_lit("andq $7, %rdx")), str_lit("cmpq $1, %rdx")), str_lit("e"))
     } else {
         error(string_append(str_lit("kc: the native back end has no primitive "), n));
         c
@@ -353,6 +380,14 @@ pub fn x64_emit_binary(c: &'static X64Code, n: Str) -> &'static X64Code {
         x64_failing_if(x64_emit(c, str_lit("subq %rcx, %rax")), str_lit("o"), x64_fail_past_fixnum())
     } else if string_eq_p(n, str_lit("*")) {
         x64_failing_if(x64_emit(x64_emit(c, str_lit("sarq $3, %rax")), str_lit("imulq %rcx, %rax")), str_lit("o"), x64_fail_past_fixnum())
+    } else if string_eq_p(n, str_lit("cons")) {
+        let c = x64_emit(c, str_lit("leaq 16(%r15), %rdx"));
+        let c = x64_emit(c, str_lit("cmpq %r14, %rdx"));
+        let c = x64_failing_if(c, str_lit("a"), x64_fail_heap());
+        let c = x64_emit(c, str_lit("movq %rax, 0(%r15)"));
+        let c = x64_emit(c, str_lit("movq %rcx, 8(%r15)"));
+        let c = x64_emit(c, str_lit("leaq 1(%r15), %rax"));
+        x64_emit(c, str_lit("movq %rdx, %r15"))
     } else if string_eq_p(n, str_lit("max")) {
         x64_emit(x64_emit(c, str_lit("cmpq %rcx, %rax")), str_lit("cmovl %rcx, %rax"))
     } else if string_eq_p(n, str_lit("min")) {
@@ -391,7 +426,8 @@ pub fn x64_emit_binary(c: &'static X64Code, n: Str) -> &'static X64Code {
     }
 }
 
-// The frame's bytes: its slots, and 8 more if that keeps the stack aligned.
+// The frame's bytes: its slots, and 8 more if that keeps the stack aligned
+// (entered 8 below a multiple of 16, two registers pushed).
 #[inline]
 pub fn x64_frame(slots: i64) -> i64 {
     let b = i64_star(8i64, slots);
@@ -406,7 +442,7 @@ pub fn q_asm(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'sta
     let tagcase_ = x64_emit_expr(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>()), l0_term(d, run, path), 0i64, nil::<&'static X64At>());
     match *tagcase_ {
         X64Code::X64Code(ls, n, slots, fails) => {
-            string_list_append(append(kayak_rt::heap_cons(str_lit("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::heap_cons(str_lit("    .globl kc_entry\n"), kayak_rt::heap_cons(str_lit("kc_entry:\n"), kayak_rt::heap_cons(str_lit("    subq $"), kayak_rt::heap_cons(i64_to_string(x64_frame(slots)), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil()))))))))), append(reverse(ls), append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(x64_frame(slots)), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::nil())))), append(reverse(fails), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))
+            string_list_append(append(kayak_rt::heap_cons(str_lit("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::heap_cons(str_lit("    .globl kc_entry\n"), kayak_rt::heap_cons(str_lit("kc_entry:\n"), kayak_rt::heap_cons(str_lit("    pushq %r15\n"), kayak_rt::heap_cons(str_lit("    pushq %r14\n"), kayak_rt::heap_cons(str_lit("    movq %rdi, %r15\n"), kayak_rt::heap_cons(str_lit("    movq %rsi, %r14\n"), kayak_rt::heap_cons(str_lit("    subq $"), kayak_rt::heap_cons(i64_to_string(x64_frame(slots)), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil()))))))))))))), append(reverse(ls), append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(x64_frame(slots)), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::heap_cons(str_lit("    popq %r14\n"), kayak_rt::heap_cons(str_lit("    popq %r15\n"), kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::nil())))))), append(reverse(fails), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))
         }
     }
 }

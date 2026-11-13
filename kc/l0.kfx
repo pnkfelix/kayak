@@ -13,13 +13,14 @@
  more than one expression, and `begin`, `(seq E ...)`. A name a binding
  form binds is a variable, shadowing a primitive's or `nil`'s. Step 6:
  `(if T C E)` (C405); `and`, `or`, `cond` (which must end with `else`)
- and `case` made `if`s."
+ and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
+ `pair?` as primitives, `(list a b ...)` `cons`es."
 
 (define fixnum-max i64 1152921504606846975)
 
-(define unary-primitives (listof string acyclic) (list "not" "null?" "zero?" "char->integer" "integer->char"))
+(define unary-primitives (listof string acyclic) (list "not" "null?" "zero?" "char->integer" "integer->char" "car" "cdr" "pair?"))
 (define binary-primitives (listof string acyclic)
-  (list "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
+  (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
         "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"))
 
 (define not-yet (subr kfx (string string) string)
@@ -76,6 +77,12 @@
                                            (lst (cons (sym "let*" f p) (cons (lst (cdr bs) f l p) (cdr (cdr xs)))) f l p))
                                      f l p)))))
                   ((string=? h "begin") (l0-seq path env next (cdr xs) nil))
+                  ;; `(list a b ...)`, `cons`es of each, its last onto `nil` (C406).
+                  ((and (string=? h "list") (not (null? (cdr xs))))
+                   (l0-of path env next
+                          (lst (list (sym "cons" f p) (second xs)
+                                     (if (null? (cdr (cdr xs))) (sym "nil" f p) (lst (cons (car xs) (cdr (cdr xs))) f l p)))
+                               f l p)))
                   ((and (string=? h "if") (i64= (size xs) 4))
                    (tagcase (l0-of path env next (second xs))
                      (l0-made (a n1)

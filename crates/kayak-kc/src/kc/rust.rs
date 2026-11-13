@@ -96,6 +96,10 @@ pub fn rust_of(t: &'static Sexp) -> Str {
         string_list_append(append(kayak_rt::heap_cons(str_lit("{ "), kayak_rt::nil()), append(map(lambda1s(move |e: &'static Sexp| {
             string_list_append(kayak_rt::heap_cons(str_lit("let _ = "), kayak_rt::heap_cons(rust_of(e), kayak_rt::heap_cons(str_lit("; "), kayak_rt::nil()))))
         }), rust_but_last(seq_terms(t))), kayak_rt::heap_cons(rust_of(car(reverse(seq_terms(t)))), kayak_rt::heap_cons(str_lit(" }"), kayak_rt::nil())))))
+    } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name(t), str_lit("cons"))) {
+        string_list_append(kayak_rt::heap_cons(str_lit("heap_cons("), kayak_rt::heap_cons(rust_args(prim_args(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))
+    } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name(t), str_lit("pair?"))) {
+        string_list_append(kayak_rt::heap_cons(str_lit("(!null_p("), kayak_rt::heap_cons(rust_of(car(prim_args(t))), kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))
     } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name(t), str_lit("eq?"))) {
         string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_of(car(prim_args(t))), kayak_rt::heap_cons(str_lit(" == "), kayak_rt::heap_cons(rust_of(second(prim_args(t))), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
     } else if string_eq_p(h, str_lit("prim")) {
@@ -113,7 +117,7 @@ pub fn rust_of(t: &'static Sexp) -> Str {
     } else if string_eq_p(h, str_lit("unit")) {
         str_lit("()")
     } else if string_eq_p(h, str_lit("nil")) {
-        str_lit("nil::<()>()")
+        str_lit("nil()")
     } else {
         error(string_append(str_lit("kc: the Rust back end has no term "), h));
         str_lit("")
@@ -132,6 +136,13 @@ pub fn rust_args(ts: Sexps) -> Str {
 
 pub fn q_rust(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
     db_get(d, run, string_append(str_lit("kfx "), path));
-    string_list_append(kayak_rt::heap_cons(str_lit("// Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("use kayak_rt::*;\n\n"), kayak_rt::heap_cons(str_lit("pub fn main() -> Str {\n"), kayak_rt::heap_cons(str_lit("    let mut out = String::new();\n"), kayak_rt::heap_cons(str_lit("    Show::show(&"), kayak_rt::heap_cons(rust_of(l0_term(d, run, path)), kayak_rt::heap_cons(str_lit(", &mut out);\n"), kayak_rt::heap_cons(str_lit("    shown(out)\n"), kayak_rt::heap_cons(str_lit("}\n"), kayak_rt::nil()))))))))))))
+    string_list_append(kayak_rt::heap_cons(str_lit("// Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("use kayak_rt::*;\n\n"), kayak_rt::heap_cons(str_lit("pub fn main() -> Str {\n"), kayak_rt::heap_cons(str_lit("    let mut out = String::new();\n"), kayak_rt::heap_cons(str_lit("    Show::show(&"), kayak_rt::heap_cons({
+        let t = l0_term(d, run, path);
+        if string_eq_p(term_head(t), str_lit("nil")) {
+            str_lit("nil::<()>()")
+        } else {
+            rust_of(t)
+        }
+    }, kayak_rt::heap_cons(str_lit(", &mut out);\n"), kayak_rt::heap_cons(str_lit("    shown(out)\n"), kayak_rt::heap_cons(str_lit("}\n"), kayak_rt::nil()))))))))))))
 }
 
