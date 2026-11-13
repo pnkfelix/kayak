@@ -4909,9 +4909,44 @@ pub mod expressions {
         }
     }
 
+    /// The top level's `n`, `(with #%toplevel n)` or `#%toplevel:n` (Fixpt's
+    /// `docs/fx26.md`, "`#%toplevel`"; C397): the newest global of the
+    /// name, else the standard one, whatever binds `n` here. Where nothing
+    /// does, `toplevel-plain` at `at-pos`, as Fixpt's checkers note it
+    /// plain, so that it compiles as the plain name.
+    pub fn toplevel_value(v: &'static Cv, s: &'static St, n: Str, at_pos: i64) -> &'static Res {
+        let top = toplevel_binds(v);
+        let b = find_bind(n, top);
+        if null_p(b) {
+            match refuse(at_offset(v, at_pos), unbound_said(n)) {}
+        } else {
+            let bs = cv_binds(v);
+            let inner = find_bind(n, bs);
+            let plain = if null_p(toplevel_sizes(v)) {
+                let tagcase_ = car(inner);
+                match *tagcase_ {
+                    Bind::Bind(k, sc, w) => {
+                        (string_eq_p(w, str_lit("global")) || string_eq_p(w, str_lit("prim")))
+                    }
+                }
+            } else {
+                i64_gt_eq(bind_index(n, bs, 0i64), i64_minus(size(bs), size(top)))
+            };
+            let s = kfx_restricted(v, s, str_lit("`#%toplevel`, FX-26's, which KFX has not (C397)"));
+            let s = if plain {
+                note_fact(s, cv_file(v), at_pos, str_lit("toplevel-plain"))
+            } else {
+                s
+            };
+            synth_name(with_binds(v, b), s, n, at_pos)
+        }
+    }
+
     pub fn synth_name(v: &'static Cv, s: &'static St, name: Str, at_pos: i64) -> &'static Res {
         if (string_eq_p(name, str_lit("#t")) || string_eq_p(name, str_lit("#f"))) {
             res(ty_bool(), nil::<Str>(), s)
+        } else if not(string_eq_p(toplevel_named(name), str_lit(""))) {
+            toplevel_value(v, s, toplevel_named(name), at_pos)
         } else if string_eq_p(name, str_lit("#u")) {
             res(ty_unit(), nil::<Str>(), s)
         } else if keyword_name_p(name) {
@@ -7416,7 +7451,26 @@ pub mod expressions {
             } else {
                 scope_bind(m, v)
             };
-            if string_eq_p(m, str_lit("#%fx")) {
+            if string_eq_p(m, str_lit("#%toplevel")) {
+                // `(with #%toplevel n)`, the top level's `n` wherever it is
+                // (`toplevel-value`).
+                if (i64_eq(size(xs), 2i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    found_then_fitted(v, toplevel_value(v, s, sym_name(second(xs)), cv_pos(v)), expected)
+                } else {
+                    match refuse(v, str_lit("(with #%toplevel name) names one name")) {}
+                }
+            } else if string_eq_p(m, str_lit("#%fx")) {
                 // `(with #%fx n)`, the standard `n` wherever it is (C199; Fixpt's
                 // TODO §46), whatever names it here: its type, as named where
                 // nothing shadows it. FX-26's; KFX's standard names are not shadowed.
@@ -11628,11 +11682,47 @@ pub mod expressions {
     /// cannot take the union whole (Fixpt's U3, rule 5, C357), else as it
     /// is (`synth-call-whole`).
     pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected: Tys) -> &'static Res {
-        let at = split_argument(v, s, h, args, expected);
-        if null_p(at) {
-            synth_call_whole(v, s, h, args, expected)
+        if not(string_eq_p(toplevel_named(h), str_lit(""))) {
+            toplevel_call(v, s, toplevel_named(h), args, expected)
         } else {
-            split_call(v, s, h, args, expected, car(at))
+            let at = split_argument(v, s, h, args, expected);
+            if null_p(at) {
+                synth_call_whole(v, s, h, args, expected)
+            } else {
+                split_call(v, s, h, args, expected, car(at))
+            }
+        }
+    }
+
+    /// `(#%toplevel:f e ...)`: a call of the top level's `f` (C397), by its
+    /// name with the top level's binding innermost, so that every rule of a
+    /// call of `f` holds; plain, as `toplevel-value` says it, noted at the
+    /// call.
+    pub fn toplevel_call(v: &'static Cv, s: &'static St, n: Str, args: Sexps, expected: Tys) -> &'static Res {
+        let top = toplevel_binds(v);
+        let b = find_bind(n, top);
+        if null_p(b) {
+            match refuse(v, unbound_said(n)) {}
+        } else {
+            let bs = cv_binds(v);
+            let inner = find_bind(n, bs);
+            let plain = if null_p(toplevel_sizes(v)) {
+                let tagcase_ = car(inner);
+                match *tagcase_ {
+                    Bind::Bind(k, sc, w) => {
+                        (string_eq_p(w, str_lit("global")) || string_eq_p(w, str_lit("prim")))
+                    }
+                }
+            } else {
+                i64_gt_eq(bind_index(n, bs, 0i64), i64_minus(size(bs), size(top)))
+            };
+            let s = kfx_restricted(v, s, str_lit("`#%toplevel`, FX-26's, which KFX has not (C397)"));
+            let s = if plain {
+                note_fact(s, cv_file(v), cv_pos(v), str_lit("toplevel-plain"))
+            } else {
+                s
+            };
+            synth_call(with_binds(v, b), s, n, args, expected)
         }
     }
 

@@ -5477,9 +5477,15 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     }
 }
 
-/// The forms in order; `found`, the types elaborated so far.
-pub fn check_tops(mut v: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'static Elab {
+/// The forms in order; `found`, the types elaborated so far. Each checked
+/// with its `%toplevel` marker (`toplevel-marked`).
+pub fn check_tops(mut v0: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'static Elab {
     loop {
+        let v = if null_p(forms) {
+            v0
+        } else {
+            toplevel_marked(v0)
+        };
         if null_p(forms) {
             return elab(v, found);
         } else if module_def_p(car(forms)) {
@@ -5489,14 +5495,14 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'
                     let tagcase_ = check_module(near(v, src_file, src_line, src_pos), car(forms));
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            (v, forms, found) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), onto(more, found));
+                            (v0, forms, found) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), onto(more, found));
                             continue;
                         }
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    forms = cdr(forms);
+                    (v0, forms) = (v, cdr(forms));
                     continue;
                 }
             }
@@ -5507,19 +5513,19 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'
                     let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), car(forms));
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            (v, forms, found) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), onto(more, found));
+                            (v0, forms, found) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), onto(more, found));
                             continue;
                         }
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    forms = cdr(forms);
+                    (v0, forms) = (v, cdr(forms));
                     continue;
                 }
             }
         } else {
-            (v, forms) = (check_top(v, car(forms)), cdr(forms));
+            (v0, forms) = (check_top(v, car(forms)), cdr(forms));
             continue;
         }
     }

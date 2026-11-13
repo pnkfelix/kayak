@@ -899,7 +899,12 @@ pub mod incremental {
                     let tagcase_ = car(es);
                     match *tagcase_ {
                         Sexp::Sym(n, f, p) => {
-                            name_read(n, ix, am, acc)
+                            let acc = name_read(n, ix, am, acc);
+                            if string_eq_p(toplevel_named(n), str_lit("")) {
+                                acc
+                            } else {
+                                name_read(toplevel_named(n), ix, am, acc)
+                            }
                         }
                         Sexp::Lst(xs, f, l, p) => {
                             names_walk(xs, ix, am, acc)
@@ -952,7 +957,11 @@ pub mod incremental {
                 match *tagcase_ {
                     Reads::Reads(fm, cm, am, als2, chain) => {
                         names_walk(kayak_rt::heap_cons(form, kayak_rt::nil()), ix, am, read_key(fnv_strings(map(&bind_code, concat(map(lambda1s(move |k: Str| {
-                            find_bind(k, mk)
+                            if string_eq_p(k, str_lit("%toplevel")) {
+                                nil::<&'static Bind>()
+                            } else {
+                                find_bind(k, mk)
+                            }
                         }), marker_names()))), fnv_string(where_text(here, group, tv), fnv_string(i64_to_string(chain), h))), r))
                     }
                 }
@@ -1263,11 +1272,12 @@ pub mod incremental {
         }
     }
 
-    pub fn check_tops_memo(mut v: &'static Cv, mut forms: Sexps, mut texts: Strings, mut old: Memos, mut r: &'static Reads, mut found: Typeds, mut made: Memos) -> &'static CheckedMemo {
+    pub fn check_tops_memo(mut v0: &'static Cv, mut forms: Sexps, mut texts: Strings, mut old: Memos, mut r: &'static Reads, mut found: Typeds, mut made: Memos) -> &'static CheckedMemo {
         loop {
             if null_p(forms) {
-                return checked_memo(v, found, made);
+                return checked_memo(v0, found, made);
             } else {
+                let v = toplevel_marked(v0);
                 let form = car(forms);
                 let file = datum_file(form);
                 let start = datum_pos(form);
@@ -1303,7 +1313,7 @@ pub mod incremental {
                                     let tagcase_ = module_finish(p, elab(done, items_found));
                                     match *tagcase_ {
                                         Elab::Elab(v2, more) => {
-                                            (v, forms, texts, r, found, made) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), cdr(texts), reads_anew(r, v2, ambient_of(v, v2)), onto(more, found), made2);
+                                            (v0, forms, texts, r, found, made) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), cdr(texts), reads_anew(r, v2, ambient_of(v, v2)), onto(more, found), made2);
                                             continue;
                                         }
                                     }
@@ -1312,7 +1322,7 @@ pub mod incremental {
                         }
                         _ => {
                             let other = tagcase_;
-                            (forms, texts) = (cdr(forms), cdr(texts));
+                            (v0, forms, texts) = (v, cdr(forms), cdr(texts));
                             continue;
                         }
                     }
@@ -1325,7 +1335,7 @@ pub mod incremental {
                             }));
                             match *tagcase_ {
                                 Redone::Redone(v2, more, ambient) => {
-                                    (v, forms, texts, r, found, made) = (v2, cdr(forms), cdr(texts), reads_after(keyed_reads(kd), v2, ambient), onto(more, found), kayak_rt::heap_cons(car(hit), made));
+                                    (v0, forms, texts, r, found, made) = (v2, cdr(forms), cdr(texts), reads_after(keyed_reads(kd), v2, ambient), onto(more, found), kayak_rt::heap_cons(car(hit), made));
                                     continue;
                                 }
                             }
@@ -1359,7 +1369,7 @@ pub mod incremental {
                             }));
                             match *tagcase_ {
                                 Change::Change(text, ambient) => {
-                                    (v, forms, texts, r, found, made) = (v2, cdr(forms), cdr(texts), reads_after(keyed_reads(kd), v2, ambient), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));
+                                    (v0, forms, texts, r, found, made) = (v2, cdr(forms), cdr(texts), reads_after(keyed_reads(kd), v2, ambient), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));
                                     continue;
                                 }
                             }

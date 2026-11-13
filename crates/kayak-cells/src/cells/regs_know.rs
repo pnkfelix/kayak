@@ -325,8 +325,18 @@ pub fn r_global_seen_p(n: Str, k: i64) -> bool {
 // sees, its value if a fast version folds it; else none (a standard
 // name).
 pub fn r_where(env: Renv, n: Str) -> Rlocs {
-    let l = r_local_loc(env, n);
-    if not(null_p(l)) {
+    let l = if top_marked_p(n) {
+        nil::<&'static Rloc>()
+    } else {
+        r_local_loc(env, n)
+    };
+    if top_marked_p(n) {
+        if r_global_seen_p(std_named(n), r_genv(env)) {
+            kayak_rt::heap_cons(rl_global(std_named(n)), kayak_rt::nil())
+        } else {
+            nil::<&'static Rloc>()
+        }
+    } else if not(null_p(l)) {
         l
     } else if std_marked_p(n) {
         nil::<&'static Rloc>()
@@ -382,7 +392,7 @@ pub fn r_standard_name(env: Renv, f: &'static Cx) -> Str {
             if std_marked_p(n) {
                 std_named(n)
             } else if null_p(r_where(env, n)) {
-                n
+                std_named(n)
             } else {
                 str_lit("")
             }

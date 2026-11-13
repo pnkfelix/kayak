@@ -477,7 +477,9 @@
                 acc
                 (names-walk (cdr es) ix am
                   (tagcase (car es)
-                    (sym (n f p) (name-read n ix am acc))
+                    ;; `#%toplevel:x` reads the top level's `x` (`toplevel-named`).
+                    (sym (n f p) (let ((acc (name-read n ix am acc)))
+                                   (if (string=? (toplevel-named n) "") acc (name-read (toplevel-named n) ix am acc))))
                     (lst (xs f l p) (names-walk xs ix am acc))
                     (else other acc))))))
         (name-read (subr kfx (string bix fmap read-key) read-key)
@@ -502,9 +504,11 @@
               (tagcase r
                 (reads (fm cm am als2 chain)
                   ;; The markers, as the checker reads them (`scope-bind`): the
-                  ;; innermost of each kind.
+                  ;; innermost of each kind; but `%toplevel`, whose lengths say
+                  ;; only where the top level's bindings begin, each read by
+                  ;; name (C397).
                   (names-walk (list form) ix am
-                             (read-key (fnv-strings (map bind-code (concat (map (lambda ((k string)) (find-bind k mk)) marker-names)))
+                             (read-key (fnv-strings (map bind-code (concat (map (lambda ((k string)) (if (string=? k "%toplevel") nil (find-bind k mk))) marker-names)))
                                                     (fnv-string (where-text here group tv) (fnv-string (i64->string chain) h)))
                                        r))))))))
 
@@ -683,10 +687,11 @@
 
       (define-rec
         (check-tops-memo (subr kfx (cv sexps strings memos reads typeds memos) checked-memo)
-          (lambda (v forms texts old r found made)
+          (lambda (v0 forms texts old r found made)
             (if (null? forms)
-                (checked-memo v found made)
-                (let* ((form (car forms))
+                (checked-memo v0 found made)
+                (let* ((v (toplevel-marked v0))
+                       (form (car forms))
                        (file (datum-file form))
                        (start (datum-pos form))
                        (kd (reads-key v r form (fnv-string "check" fnv-offset)))

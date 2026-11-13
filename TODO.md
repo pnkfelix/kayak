@@ -1507,3 +1507,16 @@ keys' `letrena`, and `pair-identity` until allowed.
 - Macro provenance (`%provenance-id`, the heap's provenances, Fixpt
   9e75efab): with procedural macros, if kayak's front end takes them.
 
+## 51. FX-26 as Fixpt has it (the user, 2026-11-12; `docs/research/fx26-macros.md`)
+
+Track A, by stage: 0 `#%toplevel` (done, C397); 1 the expander's core;
+2 inferred signatures and ellipsis; 3 macros that make definitions and
+descriptions, `import-with-syntax`; 4 binding shapes and hygiene; 5
+procedural macros; 6 the rest of the refusals and the differing lines.
+Track B after it: the Rust runtime (`coopt-adoption.md` steps 4-6), and
+Twobit-style optimizations in KFX.
+- `listof/nested.fx`: a list of lists against `(mu t (oneof (listof t)
+  symbol))` refused ("a symbol is expected here").
+- A family through `#%toplevel` reads its arguments at the top level too
+  (C397): to read them in place.
+

@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"shadowed.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"x : int ! pure",
+"f : (subr (read (globals x)) (int) int) ! pure",
+"g : (subr (read @heap) ((listof int @heap)) int) ! pure",
+"(11 3 2) : (listof int acyclic) ! (maxeff (read @heap) (alloc @heap) (read (globals f g x)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+]
+}
+]
+}

@@ -165,8 +165,13 @@
 (define std-written-var (subr kfx (string i64) cx) (lambda (n a) (x-var (string-append "#%fx!:" n) a)))
 (define std-written? (subr kfx (string) bool) (lambda (n) (has-prefix? n "#%fx!:")))
 (define std-marked? (subr kfx (string) bool) (lambda (n) (or (has-prefix? n "#%fx:") (std-written? n))))
+"`(with #%toplevel n)` where something binds `n` (C397): the program's
+ global `n`, whatever binds it here, or the standard `n` if the program
+ defines none (Fixpt's `c-with`), marked `#%top:`. Where nothing does, the
+ checker noted it plain, and it is the plain name (`toplevel-x`)."
+(define top-marked? (subr kfx (string) bool) (lambda (n) (has-prefix? n "#%top:")))
 (define std-named (subr kfx (string) string)
-  (lambda (n) (cond ((std-written? n) (after-prefix n "#%fx!:")) ((std-marked? n) (after-prefix n "#%fx:")) (else n))))
+  (lambda (n) (cond ((std-written? n) (after-prefix n "#%fx!:")) ((std-marked? n) (after-prefix n "#%fx:")) ((top-marked? n) (after-prefix n "#%top:")) (else n))))
 
 (define-rec
   (c-free-all (subr kfx (cxs strings strings) strings)
@@ -174,7 +179,7 @@
   (c-free (subr kfx (cx strings strings) strings)
     (lambda (x bound acc)
       (tagcase x
-        (x-var (n a) (if (or (std-marked? n) (string-member? n bound)) acc (c-adjoin acc n)))
+        (x-var (n a) (if (or (std-marked? n) (top-marked? n) (string-member? n bound)) acc (c-adjoin acc n)))
         (x-lambda (ps body a) (c-free body (c-names ps bound) acc))
         (x-app (f args a) (c-free f bound (c-free-all args bound acc)))
         (x-if (t th el a) (c-free t bound (c-free th bound (c-free el bound acc))))
@@ -724,6 +729,24 @@
                (q-free? (car items) depth)
                (q-items-free? (cdr items) inner inner))))))
 
+"The globals by name (C266): for each, how many there were once it was
+ first defined, in a table by its name's hash, so that whether a name is
+ a global, or one of the first so many, is found at once, where a walk of
+ `cg-globals` had been most of a large program's compile; and how many
+ there are."
+(define-datatype gfirst (gfirst string i64))
+(define-type gbucket (listof gfirst acyclic))
+(define global-buckets int 4096)
+(define cg-global-table (ref (arrayof gbucket @g) @g) (new (make-array global-buckets (the gbucket nil))))
+(define cg-global-count (ref i64 @g) (new 0))
+(define-rec
+  (gfirst-in (subr kfx (gbucket string) i64)
+    (lambda (bs n) (cond ((null? bs) 0) ((tagcase (car bs) (gfirst (m k) (string=? m n))) (tagcase (car bs) (gfirst (m k) k))) (else (gfirst-in (cdr bs) n))))))
+(define global-bucket (subr kfx (string) int) (lambda (n) (modulo (string-hash n) global-buckets)))
+"How many globals there were once `n` was first defined; 0 if it never was."
+(define global-first (subr gen (string) i64) (lambda (n) (gfirst-in (array-ref (get cg-global-table) (global-bucket n)) n)))
+(define global? (subr gen (string) bool) (lambda (n) (i64> (global-first n) 0)))
+
 (define-rec
   (parse-x (subr gen (sexp) cx)
     (lambda (e)
@@ -757,6 +780,8 @@
                 ;; A keyword (C294): the standard `symbol->keyword` of its name,
                 ;; as Fixpt's parsers rewrite it.
                 ((keyword-name? n) (keyword-x n p))
+                ;; `#%toplevel:x`, `(with #%toplevel x)` (C397).
+                ((not (string=? (toplevel-named n) "")) (toplevel-x (toplevel-named n) f p))
                 ;; A module made in place (C90), made where it is named.
                 ((not (null? (made-module (get cg-made) n))) (car (made-module (get cg-made) n)))
                 (else (x-var n p))))
@@ -764,6 +789,12 @@
           (if (null? xs)
               (begin (cg-fail "not an expression: ()") (x-unit p))
               (parse-form (tagcase (car xs) (sym (n f2 p2) n) (else other "")) xs e f p))))))
+
+  (toplevel-x (subr gen (string string i64) cx)
+    (lambda (n f p)
+      "The top level's `n`, at `p`: the plain name where the checker noted it
+       so, else marked (`top-marked?`)."
+      (if (fact-noted? (get cg-facts) f p "toplevel-plain") (x-var n p) (x-var (string-append "#%top:" n) p))))
 
   (parse-xs (subr gen (sexps) cxs)
     (lambda (es) (if (null? es) nil (cons (parse-x (car es)) (parse-xs (cdr es))))))
@@ -864,6 +895,9 @@
             ;; `(with #%fx n)`: the standard `n`, whatever is bound to it (C221).
             ((and (string=? h "with") (i64= (size xs) 3) (sym-is? (second xs) "#%fx") (tagcase (third xs) (sym (n f2 p2) #t) (else other #f)))
              (std-written-var (sym-name (third xs)) a))
+            ;; `(with #%toplevel n)`: the top level's `n` (C397).
+            ((and (string=? h "with") (i64= (size xs) 3) (sym-is? (second xs) "#%toplevel") (tagcase (third xs) (sym (n f2 p2) #t) (else other #f)))
+             (toplevel-x (sym-name (third xs)) f a))
             ((string=? h "with") (parse-with (second xs) (parse-body (cdr (cdr xs)) a) f a))
             ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap") (string=? h "letfreeze"))
              ;; What it makes besides the region: nothing, an arena, a reap,
@@ -889,7 +923,9 @@
              (begin
                (if (fact-noted? (get cg-call-facts) f a "call-fx") (set cg-fx-calls (cons a (get cg-fx-calls))) #u)
                (if (fact-noted? (get cg-call-facts) f a "call-native") (set cg-native-calls (cons a (get cg-native-calls))) #u)
-               (x-app (parse-x (car xs)) (parse-args (cdr xs)) a))))))
+               ;; `(#%toplevel:f e …)`: the checker noted it at the call (C397).
+               (x-app (if (string=? (toplevel-named h) "") (parse-x (car xs)) (toplevel-x (toplevel-named h) f a))
+                      (parse-args (cdr xs)) a))))))
 
   (parse-bloblet (subr gen (string sexps string i64) cx)
     (lambda (op args f a)
@@ -1732,23 +1768,6 @@
 "The globals defined so far, the newest first."
 (define cg-globals (ref strings @g) (new nil))
 
-"The globals by name (C266): for each, how many there were once it was
- first defined, in a table by its name's hash, so that whether a name is
- a global, or one of the first so many, is found at once, where a walk of
- `cg-globals` had been most of a large program's compile; and how many
- there are."
-(define-datatype gfirst (gfirst string i64))
-(define-type gbucket (listof gfirst acyclic))
-(define global-buckets int 4096)
-(define cg-global-table (ref (arrayof gbucket @g) @g) (new (make-array global-buckets (the gbucket nil))))
-(define cg-global-count (ref i64 @g) (new 0))
-(define-rec
-  (gfirst-in (subr kfx (gbucket string) i64)
-    (lambda (bs n) (cond ((null? bs) 0) ((tagcase (car bs) (gfirst (m k) (string=? m n))) (tagcase (car bs) (gfirst (m k) k))) (else (gfirst-in (cdr bs) n))))))
-(define global-bucket (subr kfx (string) int) (lambda (n) (modulo (string-hash n) global-buckets)))
-"How many globals there were once `n` was first defined; 0 if it never was."
-(define global-first (subr gen (string) i64) (lambda (n) (gfirst-in (array-ref (get cg-global-table) (global-bucket n)) n)))
-(define global? (subr gen (string) bool) (lambda (n) (i64> (global-first n) 0)))
 (define globals-count (subr gen () i64) (lambda () (get cg-global-count)))
 (define globals-reset! (subr gen () unit)
   (lambda () (begin (set cg-globals nil) (set cg-global-count 0) (set cg-global-table (make-array global-buckets (the gbucket nil))))))
@@ -1769,8 +1788,11 @@
  globals; none means standard."
 (define c-where (subr gen (cenv string) found)
   (lambda (e n)
-    (let ((l (c-find e n)))
-      (cond ((not (null? l)) l)
+    (let ((l (if (top-marked? n) nil (c-find e n))))
+      ;; The program's global, or, it defining none, the standard one (Fixpt's
+      ;; `c-fx-name`), whatever binds the name here.
+      (cond ((top-marked? n) (if (global? (after-prefix n "#%top:")) (list (at-global (after-prefix n "#%top:"))) nil))
+            ((not (null? l)) l)
             ((not (string=? (alias-of (get cg-aliases) n) "")) (list (at-global (alias-of (get cg-aliases) n))))
             ((global? n) (list (at-global n)))
             (else nil)))))
@@ -2125,7 +2147,7 @@
  else \"\"."
 (define c-standard-name (subr gen (cx cenv) string)
   (lambda (f e)
-    (tagcase f (x-var (n a) (cond ((std-marked? n) (std-named n)) ((null? (c-where e n)) n) (else ""))) (else y ""))))
+    (tagcase f (x-var (n a) (cond ((std-marked? n) (std-named n)) ((null? (c-where e n)) (std-named n)) (else ""))) (else y ""))))
 
 "The datum a quote builds, as a literal, where it is made of literals and
  symbols: none, or one."

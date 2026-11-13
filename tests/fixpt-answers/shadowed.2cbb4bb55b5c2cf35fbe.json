@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"shadowed.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define x : int ! pure",
+"define f : (subr (read (globals x)) (int) int) ! pure",
+"define g : (subr (read @heap) ((listof int @heap)) int) ! pure",
+"(listof int acyclic) ! (maxeff (alloc @heap) (read (globals f g x)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+]
+}
+]
+}

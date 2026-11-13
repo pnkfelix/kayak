@@ -2181,9 +2181,29 @@
                         (if (string=? wher "prim") (note-fact s file pos "prim-ref") s)))
                     (else other s)))))))
 
+      (toplevel-value (subr kfx (cv st string i64) res)
+        (lambda (v s n at-pos)
+          "The top level's `n`, `(with #%toplevel n)` or `#%toplevel:n` (Fixpt's
+           `docs/fx26.md`, \"`#%toplevel`\"; C397): the newest global of the
+           name, else the standard one, whatever binds `n` here. Where nothing
+           does, `toplevel-plain` at `at-pos`, as Fixpt's checkers note it
+           plain, so that it compiles as the plain name."
+          (let* ((top (toplevel-binds v)) (b (find-bind n top)))
+            (if (null? b)
+                (refuse (at-offset v at-pos) (unbound-said n))
+                (let* ((bs (cv-binds v))
+                       (inner (find-bind n bs))
+                       (plain (if (null? (toplevel-sizes v))
+                                  (tagcase (car inner) (bind (k sc w) (or (string=? w "global") (string=? w "prim"))))
+                                  (i64>= (bind-index n bs 0) (i64- (size bs) (size top)))))
+                       (s (kfx-restricted v s "`#%toplevel`, FX-26's, which KFX has not (C397)"))
+                       (s (if plain (note-fact s (cv-file v) at-pos "toplevel-plain") s)))
+                  (synth-name (with-binds v b) s n at-pos))))))
+
       (synth-name (subr kfx (cv st string i64) res)
         (lambda (v s name at-pos)
           (cond ((or (string=? name "#t") (string=? name "#f")) (res (ty-bool) nil s))
+                ((not (string=? (toplevel-named name) "")) (toplevel-value v s (toplevel-named name) at-pos))
                 ((string=? name "#u") (res (ty-unit) nil s))
                 ((keyword-name? name)
                  "A keyword (C291): itself, as a number is, FX-26's; kayak's
@@ -3324,7 +3344,13 @@
                   global."
                  (let* ((m (tagcase (car xs) (sym (n f p) n) (else other "")))
                         (found (if (string=? m "") nil (scope-bind m v))))
-                   (cond ((string=? m "#%fx")
+                   (cond ((string=? m "#%toplevel")
+                          "`(with #%toplevel n)`, the top level's `n` wherever it is
+                           (`toplevel-value`)."
+                          (if (and (i64= (size xs) 2) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
+                              (found-then-fitted v (toplevel-value v s (sym-name (second xs)) (cv-pos v)) expected)
+                              (refuse v "(with #%toplevel name) names one name")))
+                         ((string=? m "#%fx")
                           "`(with #%fx n)`, the standard `n` wherever it is (C199; Fixpt's
                            TODO §46), whatever names it here: its type, as named where
                            nothing shadows it. FX-26's; KFX's standard names are not shadowed."
@@ -5152,10 +5178,30 @@
           "A call of a name, taken apart by a union argument's members where it
            cannot take the union whole (Fixpt's U3, rule 5, C357), else as it
            is (`synth-call-whole`)."
-          (let ((at (split-argument v s h args expected)))
-            (if (null? at)
-                (synth-call-whole v s h args expected)
-                (split-call v s h args expected (car at))))))
+          (if (not (string=? (toplevel-named h) ""))
+              (toplevel-call v s (toplevel-named h) args expected)
+              (let ((at (split-argument v s h args expected)))
+                (if (null? at)
+                    (synth-call-whole v s h args expected)
+                    (split-call v s h args expected (car at)))))))
+
+      (toplevel-call (subr kfx (cv st string sexps tys) res)
+        (lambda (v s n args expected)
+          "`(#%toplevel:f e ...)`: a call of the top level's `f` (C397), by its
+           name with the top level's binding innermost, so that every rule of a
+           call of `f` holds; plain, as `toplevel-value` says it, noted at the
+           call."
+          (let* ((top (toplevel-binds v)) (b (find-bind n top)))
+            (if (null? b)
+                (refuse v (unbound-said n))
+                (let* ((bs (cv-binds v))
+                       (inner (find-bind n bs))
+                       (plain (if (null? (toplevel-sizes v))
+                                  (tagcase (car inner) (bind (k sc w) (or (string=? w "global") (string=? w "prim"))))
+                                  (i64>= (bind-index n bs 0) (i64- (size bs) (size top)))))
+                       (s (kfx-restricted v s "`#%toplevel`, FX-26's, which KFX has not (C397)"))
+                       (s (if plain (note-fact s (cv-file v) (cv-pos v) "toplevel-plain") s)))
+                  (synth-call (with-binds v b) s n args expected))))))
 
       (split-argument (subr kfx (cv st string sexps tys) strings)
         (lambda (v s h args expected)

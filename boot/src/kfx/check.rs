@@ -359,7 +359,7 @@ pub fn bix_adds(mut t: &'static Bix, mut bs: Binds) -> &'static Bix {
 pub fn marker_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("%module"), kayak_rt::heap_cons(str_lit("%loaded"), kayak_rt::heap_cons(str_lit("%instance"), kayak_rt::heap_cons(str_lit("%toplambda"), kayak_rt::nil()))))
+        kayak_rt::heap_cons(str_lit("%module"), kayak_rt::heap_cons(str_lit("%loaded"), kayak_rt::heap_cons(str_lit("%instance"), kayak_rt::heap_cons(str_lit("%toplambda"), kayak_rt::heap_cons(str_lit("%toplevel"), kayak_rt::nil())))))
     })
 }
 
@@ -1506,6 +1506,164 @@ pub fn scope_bind(name: Str, v: &'static Cv) -> Binds {
     }
 }
 
+pub fn digits_i64_of(mut cs: Chars, mut n: i64) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else {
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        }
+    }
+}
+
+pub fn string_to_i64(t: Str) -> i64 {
+    let cs = string_chars(t);
+    if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
+        i64_minus(0i64, digits_i64_of(cdr(cs), 0i64))
+    } else {
+        digits_i64_of(cs, 0i64)
+    }
+}
+
+// `#%toplevel` (Fixpt's `docs/fx26.md`, "`#%toplevel`, the top level's
+// bindings"; stage 0 of `docs/research/fx26-macros.md`): the top level's
+// names, whatever binds them where they are named. Each top-level form is
+// checked with a marker, `%toplevel`, saying how long its scope's lists of
+// bindings, abbreviations and effects were as it began: the rest of each,
+// from there on, is the top level's (each list is innermost first).
+pub fn binds_from(mut xs: Binds, mut n: i64) -> Binds {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn aliases_from(mut xs: Aliases, mut n: i64) -> Aliases {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn effdefs_from(mut xs: Effdefs, mut n: i64) -> Effdefs {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The lengths the marker says, or none outside a top-level form.
+pub fn toplevel_sizes(v: &'static Cv) -> List<i64> {
+    let m = find_bind(str_lit("%toplevel"), {
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+                mk
+            }
+        }
+    });
+    if null_p(m) {
+        nil::<i64>()
+    } else {
+        let tagcase_ = car(m);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(ns, t) => {
+                        map(lambda1s(move |x: Str| {
+                            string_to_i64(x)
+                        }), ns)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Where `n`'s innermost binding is in `bs`, counting from `i`; past the
+/// end if nowhere.
+pub fn bind_index(mut n: Str, mut bs: Binds, mut i: i64) -> i64 {
+    loop {
+        if null_p(bs) {
+            return i;
+        } else if {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(k, sc, w) => {
+                    string_eq_p(k, n)
+                }
+            }
+        } {
+            return i;
+        } else {
+            (bs, i) = (cdr(bs), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The top level's bindings, innermost first: those from the marker on,
+/// or, with none, the program's and the standard ones.
+pub fn toplevel_binds(v: &'static Cv) -> Binds {
+    let (n, bs) = (toplevel_sizes(v), cv_binds(v));
+    if null_p(n) {
+        filter(lambda1s(move |b: &'static Bind| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Bind::Bind(k, sc, w) => {
+                    (string_eq_p(w, str_lit("global")) || string_eq_p(w, str_lit("prim")))
+                }
+            }
+        }), bs)
+    } else {
+        binds_from(bs, i64_minus(size(bs), car(n)))
+    }
+}
+
+/// `v` as the top level sees: its bindings, abbreviations and effects, no
+/// type variables, and no more.
+pub fn toplevel_view(v: &'static Cv) -> &'static Cv {
+    let n = toplevel_sizes(v);
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            cv_reindexed(cv(toplevel_binds(v), ds, if null_p(n) {
+                als
+            } else {
+                aliases_from(als, i64_minus(size(als), car(cdr(n))))
+            }, if null_p(n) {
+                es
+            } else {
+                effdefs_from(es, i64_minus(size(es), car(cdr(cdr(n)))))
+            }, here, group, file, line, fs, nil::<Str>(), at, ix, mk))
+        }
+    }
+}
+
+/// Of `#%toplevel:x`, `x`; of any other name, ``.
+#[inline]
+pub fn toplevel_named(s: Str) -> Str {
+    if (has_prefix_p(s, str_lit("#%toplevel:")) && i64_gt(string_length_i64(s), 11i64)) {
+        after_prefix(s, str_lit("#%toplevel:"))
+    } else {
+        str_lit("")
+    }
+}
+
 // First-class modules (C170; Fixpt's `docs/research/first-class-modules.md`):
 // a module's type, `(ty-data "%mtype" (item ...))`, each item `%abs t`, a
 // description `%desc t` of its type, an effect's `%edesc e` (its atoms a
@@ -2033,6 +2191,10 @@ pub fn parse_effect(mut v: &'static Cv, mut tvars: Strings, mut e: &'static Sexp
                 } else if string_member_p(string_append(str_lit("~"), s), tvars) {
                     // A poly's effect binder (C46): an atom of its own, `~e`.
                     return kayak_rt::heap_cons(string_append(str_lit("~"), s), kayak_rt::nil());
+                } else if not(string_eq_p(toplevel_named(s), str_lit(""))) {
+                    // `#%toplevel:e`: the effect `e` as the top level reads it.
+                    (v, tvars, e) = (toplevel_view(v), nil::<Str>(), sym(toplevel_named(s), at_file, at_pos));
+                    continue;
                 } else {
                     return find_effdef(v, s, cv_effdefs(v));
                 }
@@ -2040,6 +2202,35 @@ pub fn parse_effect(mut v: &'static Cv, mut tvars: Strings, mut e: &'static Sexp
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
                 if sym_is_p(car(xs), str_lit("maxeff")) {
                     return parse_effects(v, tvars, cdr(xs));
+                } else if (not(null_p(xs)) && {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            not(string_eq_p(toplevel_named(n), str_lit("")))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // `(#%toplevel:f r ...)`: the top level's effect function applied.
+                    (v, tvars, e) = (toplevel_view(v), nil::<Str>(), lst(kayak_rt::heap_cons({
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                sym(toplevel_named(n), f, p)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                car(xs)
+                            }
+                        }
+                    }, cdr(xs)), src_file, src_line, src_pos));
+                    continue;
+                } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%toplevel"))) {
+                    (v, tvars, e) = (toplevel_view(v), nil::<Str>(), third(xs));
+                    continue;
                 } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64) && {
                     let tagcase_ = second(xs);
                     match *tagcase_ {
@@ -4838,26 +5029,6 @@ pub fn lin_text(a: &'static Lin) -> Str {
     }
 }
 
-pub fn digits_i64_of(mut cs: Chars, mut n: i64) -> i64 {
-    loop {
-        if null_p(cs) {
-            return n;
-        } else {
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        }
-    }
-}
-
-pub fn string_to_i64(t: Str) -> i64 {
-    let cs = string_chars(t);
-    if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
-        i64_minus(0i64, digits_i64_of(cdr(cs), 0i64))
-    } else {
-        digits_i64_of(cs, 0i64)
-    }
-}
-
 pub fn fact_words_from(mut cs: Chars, mut w: Chars, mut acc: Strings) -> Strings {
     loop {
         if null_p(cs) {
@@ -7266,7 +7437,11 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Sym(s, at_file, at_pos) => {
-                if string_eq_p(s, str_lit("i64")) {
+                if not(string_eq_p(toplevel_named(s), str_lit(""))) {
+                    // `#%toplevel:t`: `t` as the top level reads it.
+                    (v, tvars, t) = (toplevel_view(v), nil::<Str>(), sym(toplevel_named(s), at_file, at_pos));
+                    continue;
+                } else if string_eq_p(s, str_lit("i64")) {
                     return ty_i64();
                 } else if string_eq_p(s, str_lit("int")) {
                     return ty_int();
@@ -7414,7 +7589,68 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 }
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                if sym_is_p(car(xs), str_lit("listof")) {
+                if (not(null_p(xs)) && {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            not(string_eq_p(toplevel_named(n), str_lit("")))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // `(#%toplevel:f d ...)`: the top level's `f` applied, or, where it
+                    // binds no function `f`, the type form `f` (as Fixpt has it).
+                    (v, tvars, t) = (toplevel_view(v), nil::<Str>(), lst(kayak_rt::heap_cons({
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                sym(toplevel_named(n), f, p)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                car(xs)
+                            }
+                        }
+                    }, cdr(xs)), src_file, src_line, src_pos));
+                    continue;
+                } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%toplevel"))) {
+                    // `(select #%toplevel T)`: `T` as the top level reads it.
+                    (v, tvars, t) = (toplevel_view(v), nil::<Str>(), third(xs));
+                    continue;
+                } else if (sym_is_p(car(xs), str_lit("select")) && i64_gt_eq(size(xs), 3i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            not(string_eq_p(toplevel_named(n), str_lit("")))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // `(select #%toplevel:m t)`: the top level's `m`'s `t`.
+                    (v, tvars, t) = (toplevel_view(v), nil::<Str>(), lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons({
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                sym(toplevel_named(n), f, p)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                second(xs)
+                            }
+                        }
+                    }, cdr(cdr(xs)))), src_file, src_line, src_pos));
+                    continue;
+                } else if (sym_is_p(car(xs), str_lit("listof")) && i64_eq(size(xs), 2i64)) {
+                    // `(listof T)`, its region left out: `(listof T acyclic)` (Fixpt's
+                    // `docs/fx26.md`, 2026-11-05; C397).
+                    return ty_list(parse_type(v, tvars, second(xs)), parse_region(v, tvars, sym(str_lit("acyclic"), src_file, src_pos)));
+                } else if sym_is_p(car(xs), str_lit("listof")) {
                     return no_knot(v, lambda1s(move |x: Str| {
                         x
                     }), ty_list(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs))));
@@ -15386,6 +15622,16 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
                     cv(bind_onto(more, bs), ds, als, es, here, group, file, line, fs, tv, at, bix_adds(ix, more), marks_adds(mk, more))
                 }
             }
+        }
+    }
+}
+
+// Each top-level form's marker (`toplevel-sizes`).
+pub fn toplevel_marked(v: &'static Cv) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            with_binds(v, kayak_rt::heap_cons(bind(str_lit("%toplevel"), scheme(kayak_rt::heap_cons(i64_to_string(size(bs)), kayak_rt::heap_cons(i64_to_string(size(als)), kayak_rt::heap_cons(i64_to_string(size(es)), kayak_rt::nil()))), ty_unit()), str_lit("mark")), kayak_rt::nil()))
         }
     }
 }

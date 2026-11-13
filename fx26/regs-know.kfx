@@ -149,8 +149,11 @@
  name)."
 (define r-where (subr gen (renv string) rlocs)
   (lambda (env n)
-    (let ((l (r-local-loc env n)))
-      (cond ((not (null? l)) l)
+    (let ((l (if (top-marked? n) nil (r-local-loc env n))))
+      (cond ((top-marked? n)
+             ;; `(with #%toplevel n)` shadowed (C397): the global, or the standard one.
+             (if (r-global-seen? (std-named n) (r-genv env)) (list (rl-global (std-named n))) nil))
+            ((not (null? l)) l)
             ((std-marked? n) nil)
             ((r-global-seen? n (r-genv env))
              (let ((c (r-local-loc env (const-name n)))) (if (null? c) (list (rl-global n)) c)))
@@ -168,7 +171,7 @@
 (define r-standard-name (subr gen (renv cx) string)
   (lambda (env f)
     (tagcase (r-operator f)
-      (x-var (n a) (cond ((std-marked? n) (std-named n)) ((null? (r-where env n)) n) (else "")))
+      (x-var (n a) (cond ((std-marked? n) (std-named n)) ((null? (r-where env n)) (std-named n)) (else "")))
       (else y ""))))
 
 "Whether a name is a standard operation had as a value, a closure made

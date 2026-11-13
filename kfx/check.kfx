@@ -141,7 +141,7 @@
 
 "Names `marker` tests against, made once (C264): a list written in place is
  made at each call."
-(define marker-names strings (list "%module" "%loaded" "%instance" "%toplambda"))
+(define marker-names strings (list "%module" "%loaded" "%instance" "%toplambda" "%toplevel"))
 
 (define marker? (subr kfx (string) bool)
   (lambda (n) (string-member? n marker-names)))
@@ -724,6 +724,71 @@
             (find-bind name mk)
             (let ((all (bix-at ix name))) (if (null? all) nil (the binds (list (car all))))))))))
 
+(define-rec
+  (digits-i64-of (subr kfx (chars i64) i64)
+    (lambda (cs n) (if (null? cs) n (digits-i64-of (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+
+(define string->i64 (subr kfx (string) i64)
+  (lambda (t)
+    (let ((cs (string-chars t)))
+      (if (and (not (null? cs)) (char=? (car cs) #\-)) (i64- 0 (digits-i64-of (cdr cs) 0)) (digits-i64-of cs 0)))))
+
+"`#%toplevel` (Fixpt's `docs/fx26.md`, \"`#%toplevel`, the top level's
+ bindings\"; stage 0 of `docs/research/fx26-macros.md`): the top level's
+ names, whatever binds them where they are named. Each top-level form is
+ checked with a marker, `%toplevel`, saying how long its scope's lists of
+ bindings, abbreviations and effects were as it began: the rest of each,
+ from there on, is the top level's (each list is innermost first)."
+(define-rec
+  (binds-from (subr kfx (binds i64) binds)
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (binds-from (cdr xs) (i64- n 1)))))
+  (aliases-from (subr kfx (aliases i64) aliases)
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (aliases-from (cdr xs) (i64- n 1)))))
+  (effdefs-from (subr kfx (effdefs i64) effdefs)
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (effdefs-from (cdr xs) (i64- n 1))))))
+
+(define toplevel-sizes (subr kfx (cv) (listof i64 acyclic))
+  (lambda (v)
+    "The lengths the marker says, or none outside a top-level form."
+    (let ((m (find-bind "%toplevel" (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) mk)))))
+      (if (null? m) nil (tagcase (car m) (bind (n sc w) (tagcase sc (scheme (ns t) (map (lambda ((x string)) (string->i64 x)) ns)))))))))
+
+(define-rec
+  (bind-index (subr kfx (string binds i64) i64)
+    (lambda (n bs i)
+      "Where `n`'s innermost binding is in `bs`, counting from `i`; past the
+       end if nowhere."
+      (cond ((null? bs) i)
+            ((tagcase (car bs) (bind (k sc w) (string=? k n))) i)
+            (else (bind-index n (cdr bs) (i64+ i 1)))))))
+
+(define toplevel-binds (subr kfx (cv) binds)
+  (lambda (v)
+    "The top level's bindings, innermost first: those from the marker on,
+     or, with none, the program's and the standard ones."
+    (let ((n (toplevel-sizes v)) (bs (cv-binds v)))
+      (if (null? n)
+          (filter (lambda ((b bind)) (tagcase b (bind (k sc w) (or (string=? w "global") (string=? w "prim"))))) bs)
+          (binds-from bs (i64- (size bs) (car n)))))))
+
+(define toplevel-view (subr kfx (cv) cv)
+  (lambda (v)
+    "`v` as the top level sees: its bindings, abbreviations and effects, no
+     type variables, and no more."
+    (let ((n (toplevel-sizes v)))
+      (tagcase v
+        (cv (bs ds als es here group file line fs tv at ix mk)
+          (cv-reindexed
+            (cv (toplevel-binds v) ds
+                (if (null? n) als (aliases-from als (i64- (size als) (car (cdr n)))))
+                (if (null? n) es (effdefs-from es (i64- (size es) (car (cdr (cdr n))))))
+                here group file line fs nil at ix mk)))))))
+
+(define toplevel-named (subr kfx (string) string)
+  (lambda (s)
+    "Of `#%toplevel:x`, `x`; of any other name, ``."
+    (if (and (has-prefix? s "#%toplevel:") (i64> (string-length-i64 s) 11)) (after-prefix s "#%toplevel:") "")))
+
 "First-class modules (C170; Fixpt's `docs/research/first-class-modules.md`):
  a module's type, `(ty-data \"%mtype\" (item ...))`, each item `%abs t`, a
  description `%desc t` of its type, an effect's `%edesc e` (its atoms a
@@ -911,9 +976,18 @@
                 ((string-member? (string-append "~" s) tvars)
                  "A poly's effect binder (C46): an atom of its own, `~e`."
                  (list (string-append "~" s)))
+                ((not (string=? (toplevel-named s) ""))
+                 "`#%toplevel:e`: the effect `e` as the top level reads it."
+                 (parse-effect (toplevel-view v) nil (sym (toplevel-named s) at-file at-pos)))
                 (else (find-effdef v s (cv-effdefs v)))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "maxeff") (parse-effects v tvars (cdr xs)))
+                ((and (not (null? xs)) (tagcase (car xs) (sym (n f p) (not (string=? (toplevel-named n) ""))) (else other #f)))
+                 "`(#%toplevel:f r ...)`: the top level's effect function applied."
+                 (parse-effect (toplevel-view v) nil
+                               (lst (cons (tagcase (car xs) (sym (n f p) (sym (toplevel-named n) f p)) (else other (car xs))) (cdr xs)) src-file src-line src-pos)))
+                ((and (sym-is? (car xs) "select") (i64= (size xs) 3) (sym-is? (second xs) "#%toplevel"))
+                 (parse-effect (toplevel-view v) nil (third xs)))
                 ((and (sym-is? (car xs) "select") (i64= (size xs) 3) (tagcase (second xs) (sym (n f p) #t) (else other #f))
                       (mtype? (bound-type v (sym-name (second xs)))))
                  "An effect a module value gives (C170)."
@@ -2011,15 +2085,6 @@
     (tagcase a (lin (c ts) (words-of (cons (i64->string c) (concat (map (lambda ((t lterm)) (tagcase t (lterm (n j) (the strings (list n (i64->string j)))))) ts))))))))
 
 (define-rec
-  (digits-i64-of (subr kfx (chars i64) i64)
-    (lambda (cs n) (if (null? cs) n (digits-i64-of (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
-
-(define string->i64 (subr kfx (string) i64)
-  (lambda (t)
-    (let ((cs (string-chars t)))
-      (if (and (not (null? cs)) (char=? (car cs) #\-)) (i64- 0 (digits-i64-of (cdr cs) 0)) (digits-i64-of cs 0)))))
-
-(define-rec
   (fact-words-from (subr kfx (chars chars strings) strings)
     (lambda (cs w acc)
       (cond ((null? cs) (reverse (if (null? w) acc (the strings (cons (list->string (reverse w)) acc)))))
@@ -3023,7 +3088,10 @@
       "`tvars`: the type variables in scope."
       (tagcase t
         (sym (s at-file at-pos)
-          (cond ((string=? s "i64") (ty-i64))
+          (cond ((not (string=? (toplevel-named s) ""))
+                 "`#%toplevel:t`: `t` as the top level reads it."
+                 (parse-type (toplevel-view v) nil (sym (toplevel-named s) at-file at-pos)))
+                ((string=? s "i64") (ty-i64))
                 ((string=? s "int") (ty-int))
                 ((string=? s "nat") (ty-nat))
                 ((string=? s "f64") (ty-f64))
@@ -3089,7 +3157,24 @@
                                   (mu-wrapped v s (parse-type v (cons (string-append "%expanding " s) tvars) body)))
                                  (else (named-as v tvars s nil (mu-wrapped v s (parse-type v (cons (string-append "%expanding " s) tvars) body))))))))))))
         (lst (xs src-file src-line src-pos)
-          (cond ((sym-is? (car xs) "listof")
+          (cond ((and (not (null? xs)) (tagcase (car xs) (sym (n f p) (not (string=? (toplevel-named n) ""))) (else other #f)))
+                 "`(#%toplevel:f d ...)`: the top level's `f` applied, or, where it
+                  binds no function `f`, the type form `f` (as Fixpt has it)."
+                 (parse-type (toplevel-view v) nil
+                             (lst (cons (tagcase (car xs) (sym (n f p) (sym (toplevel-named n) f p)) (else other (car xs))) (cdr xs)) src-file src-line src-pos)))
+                ((and (sym-is? (car xs) "select") (i64= (size xs) 3) (sym-is? (second xs) "#%toplevel"))
+                 "`(select #%toplevel T)`: `T` as the top level reads it."
+                 (parse-type (toplevel-view v) nil (third xs)))
+                ((and (sym-is? (car xs) "select") (i64>= (size xs) 3)
+                      (tagcase (second xs) (sym (n f p) (not (string=? (toplevel-named n) ""))) (else other #f)))
+                 "`(select #%toplevel:m t)`: the top level's `m`'s `t`."
+                 (parse-type (toplevel-view v) nil
+                             (lst (cons (car xs) (cons (tagcase (second xs) (sym (n f p) (sym (toplevel-named n) f p)) (else other (second xs))) (cdr (cdr xs)))) src-file src-line src-pos)))
+                ((and (sym-is? (car xs) "listof") (i64= (size xs) 2))
+                 "`(listof T)`, its region left out: `(listof T acyclic)` (Fixpt's
+                  `docs/fx26.md`, 2026-11-05; C397)."
+                 (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (sym "acyclic" src-file src-pos))))
+                ((sym-is? (car xs) "listof")
                  (no-knot v (lambda ((x string)) x) (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
                 ((and (sym-is? (car xs) "narrayof") (i64= (size xs) 4))
                  "An array of exactly `n` elements (C207; Fixpt's TODO §77, N5c): an
@@ -6221,6 +6306,13 @@
           (if (not (null? clash))
               (refuse v (string-append "two names that are one in Rust: " (car clash)))
               (tagcase v (cv (bs ds als es here group file line fs tv at ix mk) (cv (bind-onto more bs) ds als es here group file line fs tv at (bix-adds ix more) (marks-adds mk more)))))))))
+
+"Each top-level form's marker (`toplevel-sizes`)."
+(define toplevel-marked (subr kfx (cv) cv)
+  (lambda (v)
+    (tagcase v
+      (cv (bs ds als es here group file line fs tv at ix mk)
+        (with-binds v (list (bind "%toplevel" (scheme (list (i64->string (size bs)) (i64->string (size als)) (i64->string (size es))) (ty-unit)) "mark")))))))
 
 (define place-key (subr kfx (sexp) string)
   (lambda (e) (string-append (datum-file e) (string-append ":" (i64->string (datum-pos e))))))

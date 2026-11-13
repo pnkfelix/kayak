@@ -181,7 +181,9 @@ pub mod restrictions {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc")) || string_eq_p(n, str_lit("cwcc"))) {
+                if (string_eq_p(n, str_lit("#%toplevel")) || has_prefix_p(n, str_lit("#%toplevel:"))) {
+                    match restriction_refused(file, line, string_append(n, str_lit(", the top level's names whatever binds them here, FX-26's, which KFX has not (C397)"))) {}
+                } else if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc")) || string_eq_p(n, str_lit("cwcc"))) {
                     match restriction_refused(file, line, string_append(n, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {}
                 } else if string_member_p(n, mark_names()) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}

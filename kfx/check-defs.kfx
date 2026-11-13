@@ -2861,8 +2861,10 @@
             (module-finish p (check-items (prep-inner p) (prep-name p) (module-order (prep-inner p) (prep-forms p)) nil)))))))
 
 (define check-tops (subr kfx (cv sexps typeds) elab)
-  (lambda (v forms found)
-    "The forms in order; `found`, the types elaborated so far."
+  (lambda (v0 forms found)
+    "The forms in order; `found`, the types elaborated so far. Each checked
+     with its `%toplevel` marker (`toplevel-marked`)."
+    (let ((v (if (null? forms) v0 (toplevel-marked v0))))
     (cond ((null? forms) (elab v found))
           ((module-def? (car forms))
            (tagcase (car forms)
@@ -2876,7 +2878,7 @@
                (tagcase (check-untyped (near v src-file src-line src-pos) (car forms))
                  (elab (v2 more) (check-tops (at v2 "" nil) (cdr forms) (onto more found)))))
              (else other (check-tops v (cdr forms) found))))
-          (else (check-tops (check-top v (car forms)) (cdr forms) found)))))
+          (else (check-tops (check-top v (car forms)) (cdr forms) found))))))
 
 "What checking a program gives the emitter: the types of the definitions
  written with none, and the facts."

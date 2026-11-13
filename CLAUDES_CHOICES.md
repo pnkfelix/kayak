@@ -10951,3 +10951,52 @@ none carried:
   (`kayak-rt/src/text.rs`) unchanged.
 Every mark at 4e13016.
 
+## C397. FX-26 as Fixpt has it, stage 0: `#%toplevel` (2026-11-12)
+
+The user: "start implementing FX26 to match Fixpt. It's had a lot of new
+features. And its runtime got a lot better". Measured at 4e13016 and
+planned in `docs/research/fx26-macros.md`: features first (macros, most
+of the 151 programs kayak's checker refuses that Fixpt accepts), then
+speed through the planned Rust runtime (`coopt-adoption.md` steps 4-6),
+the user choosing both; and, the user adding, Twobit-style optimizations
+in the one KFX source, which Fixpt's two compilers made hard. Things that
+do not seem right are kept for the user in `docs/to-discuss.md`.
+
+Stage 0 is `#%toplevel`, which every expansion uses (Fixpt's `docs/fx26.md`,
+"`#%toplevel`, the top level's bindings"):
+- **Where the top level begins**: each top-level form is checked with a
+  marker, `%toplevel` (`toplevel-marked`, in `check-tops` and the
+  incremental `check-tops-memo` alike), saying how long its scope's lists
+  of bindings, abbreviations and effects were; what follows from there is
+  the top level's (`toplevel-binds`, `toplevel-view`: those lists, no type
+  variables). Module members come in as `item`s, and a `with`'s under
+  their bare names, so no tag tells them apart: the lengths do. The
+  incremental keys leave the marker out and read `#%toplevel:x` as naming
+  `x`, so an earlier definition added re-checks only what names it.
+- **Values**: `(with #%toplevel n)` and `#%toplevel:n`, in an expression
+  and at a call's head (`toplevel-value`, `toplevel-call`): the top
+  level's binding put innermost, so every rule a call of `n` has holds;
+  where nothing shadows `n`, `toplevel-plain` noted, as Fixpt's checkers
+  note it plain. KFX refuses it (`kfx-restricted`), as it has no use yet.
+- **Descriptions**: `#%toplevel:t` as a type, an effect, a description to
+  `proj`, a function's head (`(#%toplevel:box int)`, or the type form
+  where the top level binds no function `listof`), `(select #%toplevel T)`
+  and `(select #%toplevel:m t)`, each read in the top-level view. A
+  family's arguments are read there too: right where they name nothing
+  local, as in Fixpt's tests; to read them in place when a test needs it.
+- **`cg.kfx`**: plain, the plain name; else `#%top:n`, the program's
+  global whatever binds `n` (`c-where`, `r-where`), or the standard `n`
+  where the program defines none (Fixpt's `c-fx-name`), so that a
+  shadowed `(#%toplevel:car l)` is still the in-line `pair-car`. The
+  globals' table moved ahead of the parser.
+- **Found on the way**: `(listof T)`, its region left out, crashed the
+  checker (`car: nil`); it is `(listof T acyclic)`, as Fixpt has had it
+  since 2026-11-05 (`listof/acyclic-by-default.fx` now the same). And
+  `listof/nested.fx`'s list of lists against a recursive union is refused,
+  a gap of its own (TODO).
+- Tests: Fixpt's `modules/toplevel-qualified-*.fx`, eight agreeing in
+  value and lines (but for kayak naming an abbreviation where Fixpt
+  writes what it stands for, which kayak does everywhere), two refused by
+  both; kayak's `toplevel/shadowed.fx`, a shadowed global and a shadowed
+  standard name, its words Fixpt's exactly.
+

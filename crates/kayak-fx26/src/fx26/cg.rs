@@ -2005,12 +2005,22 @@ pub fn std_marked_p(n: Str) -> bool {
     (has_prefix_p(n, str_lit("#%fx:")) || std_written_p(n))
 }
 
+// `(with #%toplevel n)` where something binds `n` (C397): the program's
+// global `n`, whatever binds it here, or the standard `n` if the program
+// defines none (Fixpt's `c-with`), marked `#%top:`. Where nothing does, the
+// checker noted it plain, and it is the plain name (`toplevel-x`).
 #[inline]
+pub fn top_marked_p(n: Str) -> bool {
+    has_prefix_p(n, str_lit("#%top:"))
+}
+
 pub fn std_named(n: Str) -> Str {
     if std_written_p(n) {
         after_prefix(n, str_lit("#%fx!:"))
     } else if std_marked_p(n) {
         after_prefix(n, str_lit("#%fx:"))
+    } else if top_marked_p(n) {
+        after_prefix(n, str_lit("#%top:"))
     } else {
         n
     }
@@ -2032,7 +2042,7 @@ pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strin
         let tagcase_ = x;
         match *tagcase_ {
             Cx::XVar(n, a) => {
-                if (std_marked_p(n) || string_member_p(n, bound)) {
+                if (std_marked_p(n) || top_marked_p(n) || string_member_p(n, bound)) {
                     return acc;
                 } else {
                     return c_adjoin(acc, n);
@@ -3403,6 +3413,83 @@ pub fn q_items_free_p(mut items: Sexps, mut depth: i64, mut inner: i64) -> bool 
     }
 }
 
+// The globals by name (C266): for each, how many there were once it was
+// first defined, in a table by its name's hash, so that whether a name is
+// a global, or one of the first so many, is found at once, where a walk of
+// `cg-globals` had been most of a large program's compile; and how many
+// there are.
+pub enum Gfirst {
+    Gfirst(Str, i64),
+}
+
+pub fn gfirst(f0: Str, f1: i64) -> &'static Gfirst {
+    kayak_rt::heap_alloc(Gfirst::Gfirst(f0, f1))
+}
+
+pub type Gbucket = List<&'static Gfirst>;
+
+#[inline]
+pub fn global_buckets() -> Int {
+    int_lit(4096)
+}
+
+#[inline]
+pub fn cg_global_table() -> Ref<Array<Gbucket>> {
+    kayak_rt::kept_constant!(ONCE: Ref<Array<Gbucket>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_array(global_buckets(), the::<Gbucket>(nil::<&'static Gfirst>())))
+    })
+}
+
+#[inline]
+pub fn cg_global_count() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn gfirst_in(mut bs: Gbucket, mut n: Str) -> i64 {
+    loop {
+        if null_p(bs) {
+            return 0i64;
+        } else if {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Gfirst::Gfirst(m, k) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Gfirst::Gfirst(m, k) => {
+                    return k;
+                }
+            }
+        } else {
+            bs = cdr(bs);
+            continue;
+        }
+    }
+}
+
+#[inline]
+pub fn global_bucket(n: Str) -> Int {
+    modulo(string_hash(n), global_buckets())
+}
+
+// How many globals there were once `n` was first defined; 0 if it never was.
+#[inline]
+pub fn global_first(n: Str) -> i64 {
+    gfirst_in(array_ref(get(cg_global_table()), global_bucket(n)), n)
+}
+
+#[inline]
+pub fn global_p(n: Str) -> bool {
+    i64_gt(global_first(n), 0i64)
+}
+
 /// `e`, converted where the checker found it converted (C230).
 pub fn parse_x(e: &'static Sexp) -> &'static Cx {
     let x = parse_x_as_is(e);
@@ -3451,6 +3538,8 @@ pub fn parse_x_as_is(e: &'static Sexp) -> &'static Cx {
                 x_unit(p)
             } else if keyword_name_p(n) {
                 keyword_x(n, p)
+            } else if not(string_eq_p(toplevel_named(n), str_lit(""))) {
+                toplevel_x(toplevel_named(n), f, p)
             } else if not(null_p(made_module(get(cg_made()), n))) {
                 car(made_module(get(cg_made()), n))
             } else {
@@ -3476,6 +3565,17 @@ pub fn parse_x_as_is(e: &'static Sexp) -> &'static Cx {
                 }, xs, e, f, p)
             }
         }
+    }
+}
+
+/// The top level's `n`, at `p`: the plain name where the checker noted it
+/// so, else marked (`top-marked?`).
+#[inline]
+pub fn toplevel_x(n: Str, f: Str, p: i64) -> &'static Cx {
+    if fact_noted_p(get(cg_facts()), f, p, str_lit("toplevel-plain")) {
+        x_var(n, p)
+    } else {
+        x_var(string_append(str_lit("#%top:"), n), p)
     }
 }
 
@@ -3650,6 +3750,19 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         }
     }) {
         std_written_var(sym_name(third(xs)), a)
+    } else if (string_eq_p(h, str_lit("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%toplevel")) && {
+        let tagcase_ = third(xs);
+        match *tagcase_ {
+            Sexp::Sym(n, f2, p2) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        toplevel_x(sym_name(third(xs)), f, a)
     } else if string_eq_p(h, str_lit("with")) {
         parse_with(second(xs), parse_body(cdr(cdr(xs)), a), f, a)
     } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("letfreeze"))) {
@@ -3699,7 +3812,11 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         } else {
             ()
         };
-        x_app(parse_x(car(xs)), parse_args(cdr(xs)), a)
+        x_app(if string_eq_p(toplevel_named(h), str_lit("")) {
+            parse_x(car(xs))
+        } else {
+            toplevel_x(toplevel_named(h), f, a)
+        }, parse_args(cdr(xs)), a)
     }
 }
 
@@ -5612,83 +5729,6 @@ pub fn cg_globals() -> Ref<Strings> {
     })
 }
 
-// The globals by name (C266): for each, how many there were once it was
-// first defined, in a table by its name's hash, so that whether a name is
-// a global, or one of the first so many, is found at once, where a walk of
-// `cg-globals` had been most of a large program's compile; and how many
-// there are.
-pub enum Gfirst {
-    Gfirst(Str, i64),
-}
-
-pub fn gfirst(f0: Str, f1: i64) -> &'static Gfirst {
-    kayak_rt::heap_alloc(Gfirst::Gfirst(f0, f1))
-}
-
-pub type Gbucket = List<&'static Gfirst>;
-
-#[inline]
-pub fn global_buckets() -> Int {
-    int_lit(4096)
-}
-
-#[inline]
-pub fn cg_global_table() -> Ref<Array<Gbucket>> {
-    kayak_rt::kept_constant!(ONCE: Ref<Array<Gbucket>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_array(global_buckets(), the::<Gbucket>(nil::<&'static Gfirst>())))
-    })
-}
-
-#[inline]
-pub fn cg_global_count() -> Ref<i64> {
-    kayak_rt::kept_constant!(ONCE: Ref<i64>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(0i64)
-    })
-}
-
-pub fn gfirst_in(mut bs: Gbucket, mut n: Str) -> i64 {
-    loop {
-        if null_p(bs) {
-            return 0i64;
-        } else if {
-            let tagcase_ = car(bs);
-            match *tagcase_ {
-                Gfirst::Gfirst(m, k) => {
-                    string_eq_p(m, n)
-                }
-            }
-        } {
-            let tagcase_ = car(bs);
-            match *tagcase_ {
-                Gfirst::Gfirst(m, k) => {
-                    return k;
-                }
-            }
-        } else {
-            bs = cdr(bs);
-            continue;
-        }
-    }
-}
-
-#[inline]
-pub fn global_bucket(n: Str) -> Int {
-    modulo(string_hash(n), global_buckets())
-}
-
-// How many globals there were once `n` was first defined; 0 if it never was.
-#[inline]
-pub fn global_first(n: Str) -> i64 {
-    gfirst_in(array_ref(get(cg_global_table()), global_bucket(n)), n)
-}
-
-#[inline]
-pub fn global_p(n: Str) -> bool {
-    i64_gt(global_first(n), 0i64)
-}
-
 #[inline]
 pub fn globals_count() -> i64 {
     get(cg_global_count())
@@ -5728,8 +5768,18 @@ pub fn alias_of(mut al: List<Strings>, mut n: Str) -> Str {
 // Where `n` is: in the locals, else a session's global (C340), else in the
 // globals; none means standard.
 pub fn c_where(e: Cenv, n: Str) -> Found {
-    let l = c_find(e, n);
-    if not(null_p(l)) {
+    let l = if top_marked_p(n) {
+        nil::<&'static Loc>()
+    } else {
+        c_find(e, n)
+    };
+    if top_marked_p(n) {
+        if global_p(after_prefix(n, str_lit("#%top:"))) {
+            kayak_rt::heap_cons(at_global(after_prefix(n, str_lit("#%top:"))), kayak_rt::nil())
+        } else {
+            nil::<&'static Loc>()
+        }
+    } else if not(null_p(l)) {
         l
     } else if not(string_eq_p(alias_of(get(cg_aliases()), n), str_lit(""))) {
         kayak_rt::heap_cons(at_global(alias_of(get(cg_aliases()), n)), kayak_rt::nil())
@@ -6613,7 +6663,7 @@ pub fn c_standard_name(f: &'static Cx, e: Cenv) -> Str {
             if std_marked_p(n) {
                 std_named(n)
             } else if null_p(c_where(e, n)) {
-                n
+                std_named(n)
             } else {
                 str_lit("")
             }
