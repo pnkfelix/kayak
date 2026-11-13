@@ -11442,3 +11442,34 @@ larger too). The compiler's own data are datatypes, not structural sums,
 so this says little of step 2 (KFX's datatypes as structural sums too, as
 FX-26's `define-data` makes them), which waits on a measurement of its own.
 
+
+## C410. KFX's datatypes stay nominal, after a measurement (2026-11-13)
+
+C409's step 2: KFX's `define-datatype` expanded as FX-26's is (Fixpt's
+`parser.fx`, `expand-datatype`), a `sumof` of products and a procedure for
+each constructor, so that a datatype's subtyping would be a sum's. Built
+to the compiler's fixed point, then measured, the compiler compiling
+itself: 10.6 s and 7.5 GB at most, from 2.31 s and 1.2 GB; and kfx
+compiling `cells/cells.unit` was killed at 15 GB.
+
+**Why.** The checker's types are trees, copied by every walk (`zonk`,
+`replace-var`, `show-ty`, `parse-type`): a datatype named is its whole
+body, every datatype in it written out too, so that a type's size grows
+with how deep its datatypes nest. Fixpt's checker keeps each type once,
+in an arena (`TyId`, `ast.rs`), and so is not bothered. Two narrower
+fixes (a recursive type compared with itself not unfolded; the noted
+pair of a recursive comparison keyed by the abbreviation's name) did not
+help: the cost is in every walk.
+
+**The choice**, of three put to the user (a datatype kept by its name and
+unfolded where its shape is read; the checker's types shared, as Fixpt's;
+or KFX's datatypes nominal, as they were): the user, "3; it will probably
+be a better match for Rust code gen anyway." KFX stays within FX-26: a
+nominal datatype is refused wherever a structural one would be, and more.
+`sumof` is structural (C409) for a program that wants a sum's subtyping.
+
+The work is kept, uncommitted, as `git stash` "C410 WIP" (the expansion;
+the checker writing a recursive type by its abbreviation's name rather
+than as `%mu NAME`, a symbol the reader cannot read back; the emitter
+finding a named sum's tags; the tags' `const` assertion hashing each tag
+once, which rustc otherwise gave up on at some 170 tags).

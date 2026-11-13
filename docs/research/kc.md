@@ -125,3 +125,7 @@ enum an arm or a construction is of comes from the term's type, as the
 checker found it, never from a tag alone (as kfx's emitter now does, C408).
 The native back end keeps Fixpt's own representation of sums.
 
+Since then: kfx's sums are one erased `Sum`, its tag hashed (C409), and
+KFX's datatypes stay nominal, Rust's types of their own, the cost of
+expanding them into sums measured too high for the checker (C410).
+
