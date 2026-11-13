@@ -11988,3 +11988,31 @@ literals, escapes, the empty string, code points past ASCII, `string-ref`
 at even and odd positions and past either end, comparisons, appends,
 substrings and their failure, symbols interned through `string->symbol`
 and compared, strings in procedures, closures and lists.
+
+## C422. kc, step 11 (second part): arrays (2026-11-13)
+
+The user: "I'm sorry: did you say fx26 has no vectors?" (C421: it has,
+arrays). FX-26's arrays, `(arrayof T r)`: `make-array`, `array-ref`,
+`array-set!`, `array-length`; and `(the T e)`, which L0 makes `e`.
+
+**Native, in Fixpt's layout** (its `make-array`, `%make-bloblet-filled`;
+`array-ref`, `field@` of the index and 2): a bloblet of kind 32, as many
+fields as elements and a trailer, from the heap (`%r15`), each field the
+value; element `i` the field `i + 2`, counted back from the value (`-4 -
+8 (i + 2)`, a load); the length the trailer's distance less one, so
+`array-length` is a load and a subtraction. The index compared unsigned
+against it, so that one below 0 is past the end. All inline; no runtime
+call but a failure's.
+
+**What a failure says**: Fixpt's machines each word an array index out of
+range their own way (`docs/to-discuss.md` 9), so kc says its own, in a
+string's way, "array index out of range (length N)", and no step's
+program states an answer for one; a negative length, as most of Fixpt's
+do, "a bloblet's field count must be non-negative". The runtime writes an
+array as Fixpt does a bloblet, `#<bloblet N fields 0 bytes>`.
+
+**Rust**: kayak-rt's `Array<T>`, its `make_array` and the rest by `mangle`.
+
+`tests/kc/step11/`: 8 FX-26 programs and 7 KFX more: reads, writes, the
+empty array, one written out, one under `the`, of strings, filled and summed
+in loops, made in a procedure. 270 programs in all, 68 by Rust, none wrong.

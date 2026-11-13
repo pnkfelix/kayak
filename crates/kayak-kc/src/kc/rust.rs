@@ -292,6 +292,8 @@ pub mod kc_rust {
                     str_lit("Int")
                 } else if sym_is_p(car(xs), str_lit("listof")) {
                     string_append(str_lit("List<"), string_append(rust_type(path, second(xs)), str_lit(">")))
+                } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64)) {
+                    string_append(str_lit("Array<"), string_append(rust_type(path, second(xs)), str_lit(">")))
                 } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 4i64)) {
                     string_list_append(kayak_rt::heap_cons(str_lit("&'static dyn Fn("), kayak_rt::heap_cons(words_of_commas(rust_param_types(path, items(third(xs)))), kayak_rt::heap_cons(str_lit(") -> "), kayak_rt::heap_cons(rust_type(path, fourth(xs)), kayak_rt::nil())))))
                 } else {

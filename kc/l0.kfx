@@ -16,7 +16,7 @@
  and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
  `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
  (C407): a program of many forms, each an item of its own (`l0-item`).
- Step 11: strings and symbols (C421): `(string \"TEXT\")`, `(symbol
+ Step 11: strings and symbols (C421); arrays (C422), and `(the T e)`: `(string \"TEXT\")`, `(symbol
  \"NAME\")`, the strings' primitives, `substring` of three arguments.
  Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
  free variables found here; `(app F ARG ...)`, a call of a procedure as a
@@ -33,14 +33,16 @@
       (define unary-primitives (listof string acyclic)
         (list "not" "null?" "zero?" "char->integer" "integer->char" "car" "cdr" "pair?"
               ;; Step 11 (C421).
-              "string-length" "symbol->string" "string->symbol" "string?" "symbol?"))
+              "string-length" "symbol->string" "string->symbol" "string?" "symbol?"
+              ;; Step 11's arrays (C422).
+              "array-length"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
               "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"
-              "string-ref" "string=?" "string<?" "string-append"))
+              "string-ref" "string=?" "string<?" "string-append" "make-array" "array-ref"))
 
-      (define ternary-primitives (listof string acyclic) (list "substring")))
+      (define ternary-primitives (listof string acyclic) (list "substring" "array-set!")))
 
     (define not-yet (subr kfx (string string) string)
       (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
@@ -221,6 +223,8 @@
                                                  (lst (cons (sym "let*" f p) (cons (lst (cdr bs) f l p) (cdr (cdr xs)))) f l p))
                                            f l p)))))
                         ((string=? h "begin") (l0-seq path scope env next (cdr xs) nil))
+                        ;; `(the T e)`: `e`, its type the checker's (C422).
+                        ((and (string=? h "the") (i64= (size xs) 3)) (l0-of path scope env next (third xs)))
                         ;; `(list a b ...)`, `cons`es of each, its last onto `nil` (C406).
                         ((and (string=? h "list") (not (null? (cdr xs))))
                          (l0-of path scope env next

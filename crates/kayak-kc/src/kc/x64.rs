@@ -538,6 +538,36 @@ pub mod kc_x64 {
         x64_emit(x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("movq %rcx, %rsi")), string_append(str_lit("call "), f))
     }
 
+    // An array's element (C422; Fixpt's `make-array` and `array-ref`):
+    // `%rax` the array, `%rcx` the index, a fixnum, checked against the
+    // length (the trailer's distance, less one), unsigned, so that one
+    // below 0 is past it; `%rsi` made the address from which the element
+    // is at -20 (the value's tag 4, then the trailer and the element's
+    // place counted back from it, `-4 - 8 (i + 2)`).
+    pub fn x64_array_index(c: &'static X64Code) -> &'static X64Code {
+        let k = x64_fresh_label(c);
+        let bad = x64_label(c, str_lit("fail"), k);
+        let c = x64_labelled(c);
+        let c = x64_emit(c, str_lit("sarq $3, %rcx"));
+        let c = x64_emit(c, str_lit("movq -12(%rax), %rsi"));
+        let c = x64_emit(c, str_lit("shrq $3, %rsi"));
+        let c = x64_emit(c, str_lit("decq %rsi"));
+        let c = x64_emit(c, str_lit("cmpq %rsi, %rcx"));
+        let c = x64_emit(c, string_append(str_lit("jae "), bad));
+        let c = {
+            let tagcase_ = c;
+            match *tagcase_ {
+                X64Code::X64Code(ls, n, slots, fs, px) => {
+                    x64_code(ls, n, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit(":\n    movq %rsi, %rdi\n    call kc_array_index_fail\n"), kayak_rt::nil()))), fs), px)
+                }
+            }
+        };
+        let c = x64_emit(c, str_lit("movq %rcx, %rsi"));
+        let c = x64_emit(c, str_lit("shlq $3, %rsi"));
+        let c = x64_emit(c, str_lit("negq %rsi"));
+        x64_emit(c, str_lit("addq %rax, %rsi"))
+    }
+
     // Where each variable is: its binder's number and its slot.
     pub enum X64At {
         X64At(i64, i64),
@@ -679,6 +709,14 @@ pub mod kc_x64 {
             let c = x64_emit(c, str_lit("call kc_intern"));
             let c = x64_emit(c, string_append(str_lit("movq %rax, "), string_append(cell, str_lit("(%rip)"))));
             x64_emit_label(c, done)
+        } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("array-set!"))) {
+            let args = prim_args()(t);
+            let c = x64_emit_args(c, args, si, env);
+            let c = x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(si), str_lit(", %rax"))));
+            let c = x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(i64_plus(si, 1i64)), str_lit(", %rcx"))));
+            let c = x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(i64_plus(si, 2i64)), str_lit(", %rdx"))));
+            let c = x64_array_index(c);
+            x64_emit(x64_emit(c, str_lit("movq %rdx, -20(%rsi)")), string_append(str_lit("movq $"), string_append(i64_to_string(x64_constant_of(car(read_all(str_lit("(unit)"), str_lit("l0"), 1i64)))), str_lit(", %rax"))))
         } else if (string_eq_p(h, str_lit("prim")) && i64_eq(size(prim_args()(t)), 3i64)) {
             let args = prim_args()(t);
             let c = x64_emit_args(c, args, si, env);
@@ -895,6 +933,8 @@ pub mod kc_x64 {
             x64_emit(x64_emit(c, str_lit("movq -4(%rax), %rax")), str_lit("shlq $3, %rax"))
         } else if string_eq_p(n, str_lit("symbol->string")) {
             x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_symbol_to_string"))
+        } else if string_eq_p(n, str_lit("array-length")) {
+            x64_emit(x64_emit(c, str_lit("movq -12(%rax), %rax")), str_lit("subq $13, %rax"))
         } else if string_eq_p(n, str_lit("string->symbol")) {
             x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_intern"))
         } else if string_eq_p(n, str_lit("string?")) {
@@ -958,6 +998,46 @@ pub mod kc_x64 {
             let c = x64_emit(c, str_lit("shlq $8, %rdx"));
             let c = x64_emit(c, str_lit("orq $67, %rdx"));
             x64_emit(c, str_lit("movq %rdx, %rax"))
+        } else if string_eq_p(n, str_lit("array-ref")) {
+            x64_emit(x64_array_index(c), str_lit("movq -20(%rsi), %rax"))
+        } else if string_eq_p(n, str_lit("make-array")) {
+            let k = x64_fresh_label(c);
+            let r#loop = x64_label(c, str_lit("fill"), k);
+            let done = x64_label(c, str_lit("filled"), k);
+            let bad = x64_label(c, str_lit("fail"), k);
+            let c = x64_labelled(c);
+            let c = x64_emit(c, str_lit("sarq $3, %rax"));
+            let c = x64_emit(c, str_lit("testq %rax, %rax"));
+            let c = x64_emit(c, string_append(str_lit("js "), bad));
+            let c = {
+                let tagcase_ = c;
+                match *tagcase_ {
+                    X64Code::X64Code(ls, n2, slots, fs, px) => {
+                        x64_code(ls, n2, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit(":\n    call kc_make_array_fail\n"), kayak_rt::nil()))), fs), px)
+                    }
+                }
+            };
+            let c = x64_emit(c, str_lit("leaq 16(%r15,%rax,8), %rdx"));
+            let c = x64_emit(c, str_lit("cmpq %r14, %rdx"));
+            let c = x64_failing_if(c, str_lit("a"), x64_fail_heap());
+            let c = x64_emit(c, str_lit("leaq 1(%rax), %rsi"));
+            let c = x64_emit(c, str_lit("shlq $14, %rsi"));
+            let c = x64_emit(c, str_lit("orq $262, %rsi"));
+            let c = x64_emit(c, str_lit("movq %rsi, 0(%r15)"));
+            let c = x64_emit(c, str_lit("movq $1, %rdi"));
+            let c = x64_emit_label(c, r#loop);
+            let c = x64_emit(c, str_lit("cmpq %rax, %rdi"));
+            let c = x64_emit(c, string_append(str_lit("ja "), done));
+            let c = x64_emit(c, str_lit("movq %rcx, 0(%r15,%rdi,8)"));
+            let c = x64_emit(c, str_lit("incq %rdi"));
+            let c = x64_emit(c, string_append(str_lit("jmp "), r#loop));
+            let c = x64_emit_label(c, done);
+            let c = x64_emit(c, str_lit("leaq 1(%rax), %rsi"));
+            let c = x64_emit(c, str_lit("shlq $3, %rsi"));
+            let c = x64_emit(c, str_lit("orq $5, %rsi"));
+            let c = x64_emit(c, str_lit("movq %rsi, 8(%r15,%rax,8)"));
+            let c = x64_emit(c, str_lit("leaq 4(%rdx), %rax"));
+            x64_emit(c, str_lit("movq %rdx, %r15"))
         } else if string_eq_p(n, str_lit("string=?")) {
             x64_calling(c, str_lit("kc_string_eq"))
         } else if string_eq_p(n, str_lit("string<?")) {

@@ -61,3 +61,12 @@ where it was seen and what it would take.
    (2026-11-13): "Surely that statement is out of date, or at least the
    justification?" kayak reads labels in data alone (`read-data`, C417);
    in program text it would be an FX-26 extension, Fixpt's first.
+9. **An array's index out of range is said differently by each of Fixpt's
+   machines.** `(array-ref xs 3)` of three elements: `rs-scheme-vm` "bloblet
+   field: the bloblet has no field -5"; `fx-ast-eval` and the native-calls
+   cellular machine "field@: no field 5 of #<bloblet 4 fields 0 bytes>"; the
+   other cellular machines "`field@` named a field that is not there". The
+   words are each machine's internals, not FX-26's; strings, by contrast,
+   say "string index out of range (length N)" everywhere. kc says "array
+   index out of range (length N)" (C422) and its tests state no answer for
+   it. Worth one FX-26 message, Fixpt's first.

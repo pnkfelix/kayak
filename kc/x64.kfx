@@ -247,6 +247,29 @@
           "`%rax`, then `%rcx`, given to the runtime's `f`, its answer in `%rax`."
           (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi") (string-append "call " f))))
 
+      "An array's element (C422; Fixpt's `make-array` and `array-ref`):
+       `%rax` the array, `%rcx` the index, a fixnum, checked against the
+       length (the trailer's distance, less one), unsigned, so that one
+       below 0 is past it; `%rsi` made the address from which the element
+       is at -20 (the value's tag 4, then the trailer and the element's
+       place counted back from it, `-4 - 8 (i + 2)`)."
+      (define x64-array-index (subr kfx (x64-code) x64-code)
+        (lambda (c)
+          (let* ((k (x64-fresh-label c)) (bad (x64-label c "fail" k))
+                 (c (x64-labelled c))
+                 (c (x64-emit c "sarq $3, %rcx"))
+                 (c (x64-emit c "movq -12(%rax), %rsi"))
+                 (c (x64-emit c "shrq $3, %rsi"))
+                 (c (x64-emit c "decq %rsi"))
+                 (c (x64-emit c "cmpq %rsi, %rcx"))
+                 (c (x64-emit c (string-append "jae " bad)))
+                 (c (tagcase c (x64-code (ls n slots fs px)
+                                 (x64-code ls n slots (cons (string-list-append (list bad ":\n    movq %rsi, %rdi\n    call kc_array_index_fail\n")) fs) px))))
+                 (c (x64-emit c "movq %rcx, %rsi"))
+                 (c (x64-emit c "shlq $3, %rsi"))
+                 (c (x64-emit c "negq %rsi")))
+            (x64-emit c "addq %rax, %rsi"))))
+
       "Where each variable is: its binder's number and its slot."
       (define-datatype x64-at (x64-at i64 i64))
 
@@ -334,6 +357,17 @@
                             (c (x64-emit c "call kc_intern"))
                             (c (x64-emit c (string-append "movq %rax, " (string-append cell "(%rip)")))))
                        (x64-emit-label c done)))
+                    ((and (string=? h "prim") (string=? (prim-name t) "array-set!"))
+                     ;; The array, the index and the value into slots, then into
+                     ;; `%rax`, `%rcx`, `%rdx`; the index checked as `array-ref`'s
+                     ;; is; unit (C422).
+                     (let* ((args (prim-args t))
+                            (c (x64-emit-args c args si env))
+                            (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rax"))))
+                            (c (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si 1)) ", %rcx"))))
+                            (c (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si 2)) ", %rdx"))))
+                            (c (x64-array-index c)))
+                       (x64-emit (x64-emit c "movq %rdx, -20(%rsi)") (string-append "movq $" (string-append (i64->string (x64-constant-of (car (read-all "(unit)" "l0" 1)))) ", %rax")))))
                     ((and (string=? h "prim") (i64= (size (prim-args t)) 3))
                      ;; `substring`: its arguments into slots, then given to the runtime.
                      (let* ((args (prim-args t))
@@ -489,6 +523,8 @@
                   ;; A string's length is its first word, at its suffix (C421).
                   ((string=? n "string-length") (x64-emit (x64-emit c "movq -4(%rax), %rax") "shlq $3, %rax"))
                   ((string=? n "symbol->string") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_symbol_to_string"))
+                  ;; Its fields less the trailer, from the trailer's distance (C422).
+                  ((string=? n "array-length") (x64-emit (x64-emit c "movq -12(%rax), %rax") "subq $13, %rax"))
                   ((string=? n "string->symbol") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_intern"))
                   ((string=? n "string?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_string"))
                   ((string=? n "symbol?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_symbol"))
@@ -539,6 +575,39 @@
                           (c (x64-emit c "shlq $8, %rdx"))
                           (c (x64-emit c "orq $67, %rdx")))
                      (x64-emit c "movq %rdx, %rax")))
+                  ((string=? n "array-ref") (x64-emit (x64-array-index c) "movq -20(%rsi), %rax"))
+                  ((string=? n "make-array")
+                   ;; `%rax` the length, `%rcx` the value: a bloblet of kind 32 of
+                   ;; as many fields and a trailer (Fixpt's `make-array`,
+                   ;; `%make-bloblet-filled`), from the heap; each field the value.
+                   (let* ((k (x64-fresh-label c)) (loop (x64-label c "fill" k)) (done (x64-label c "filled" k)) (bad (x64-label c "fail" k))
+                          (c (x64-labelled c))
+                          (c (x64-emit c "sarq $3, %rax"))
+                          (c (x64-emit c "testq %rax, %rax"))
+                          (c (x64-emit c (string-append "js " bad)))
+                          (c (tagcase c (x64-code (ls n2 slots fs px)
+                                          (x64-code ls n2 slots (cons (string-list-append (list bad ":\n    call kc_make_array_fail\n")) fs) px))))
+                          (c (x64-emit c "leaq 16(%r15,%rax,8), %rdx"))
+                          (c (x64-emit c "cmpq %r14, %rdx"))
+                          (c (x64-failing-if c "a" x64-fail-heap))
+                          (c (x64-emit c "leaq 1(%rax), %rsi"))
+                          (c (x64-emit c "shlq $14, %rsi"))
+                          (c (x64-emit c "orq $262, %rsi"))
+                          (c (x64-emit c "movq %rsi, 0(%r15)"))
+                          (c (x64-emit c "movq $1, %rdi"))
+                          (c (x64-emit-label c loop))
+                          (c (x64-emit c "cmpq %rax, %rdi"))
+                          (c (x64-emit c (string-append "ja " done)))
+                          (c (x64-emit c "movq %rcx, 0(%r15,%rdi,8)"))
+                          (c (x64-emit c "incq %rdi"))
+                          (c (x64-emit c (string-append "jmp " loop)))
+                          (c (x64-emit-label c done))
+                          (c (x64-emit c "leaq 1(%rax), %rsi"))
+                          (c (x64-emit c "shlq $3, %rsi"))
+                          (c (x64-emit c "orq $5, %rsi"))
+                          (c (x64-emit c "movq %rsi, 8(%r15,%rax,8)"))
+                          (c (x64-emit c "leaq 4(%rdx), %rax")))
+                     (x64-emit c "movq %rdx, %r15")))
                   ((string=? n "string=?") (x64-calling c "kc_string_eq"))
                   ((string=? n "string<?") (x64-calling c "kc_string_lt"))
                   ((string=? n "string-append") (x64-calling c "kc_string_append"))

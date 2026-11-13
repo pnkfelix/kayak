@@ -84,6 +84,8 @@
               (lst (xs f l p)
                 (cond ((sym-is? (car xs) "nat") "Int")
                       ((sym-is? (car xs) "listof") (string-append "List<" (string-append (rust-type path (second xs)) ">")))
+                ;; An array at a region, kayak-rt's `Array` (C422).
+                ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3)) (string-append "Array<" (string-append (rust-type path (second xs)) ">")))
                 ;; A procedure as a value: kayak-rt's, a `dyn Fn` on its heap (C412).
                 ((and (sym-is? (car xs) "subr") (i64= (size xs) 4))
                  (string-list-append (list "&'static dyn Fn(" (words-of-commas (rust-param-types path (items (third xs)))) ") -> " (rust-type path (fourth xs)))))

@@ -111,6 +111,7 @@ const fn null() -> u64 {
 const KIND_STRING: u64 = 1;
 const KIND_SYMBOL: u64 = 2;
 const KIND_CLOSURE: u64 = 8;
+const KIND_BLOBLET: u64 = 32;
 const TAG_HEADER: u64 = 0b110;
 const TAG_TRAILER: u64 = 0b101;
 
@@ -266,6 +267,19 @@ pub extern "C" fn kc_is_symbol(v: u64) -> u64 {
     boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_SYMBOL)
 }
 
+/// An array's index past its end, or below 0 (C422): kc's words, in a
+/// string's way; Fixpt's machines each say it their own way.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_array_index_fail(len: u64) -> ! {
+    failed(&format!("array index out of range (length {len})"))
+}
+
+/// `make-array` of a length below 0.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_make_array_fail() -> ! {
+    failed("a bloblet's field count must be non-negative")
+}
+
 /// `string-ref` past its string's end, as Fixpt says it.
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_string_index_fail(len: u64) -> ! {
@@ -327,6 +341,12 @@ fn atom(v: u64) -> String {
             }
             KIND_SYMBOL => string_text(kc_symbol_to_string(v)),
             KIND_CLOSURE => "#<procedure>".into(),
+            // An array (C422), as Fixpt writes a bloblet: its fields with its
+            // trailer.
+            KIND_BLOBLET => format!(
+                "#<bloblet {} fields 0 bytes>",
+                word(v - TAG_BLOBLET - 8) >> 3
+            ),
             k => format!("#<object of kind {k}>"),
         },
         _ => format!("#<value {v:#x}>"),
