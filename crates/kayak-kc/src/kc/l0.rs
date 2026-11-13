@@ -3,53 +3,129 @@
 use kayak_rt::*;
 use super::*;
 
-// l0.kfx: kc's first language (Ghuloum's step 1, docs/research/kc.md): a
-// program that is one integer, its value. `l0 PATH`: the checked program in
-// it, `(int N)`; anything else not yet.
+// l0.kfx: kc's core language, grown by Ghuloum's steps (docs/research/kc.md).
+// `l0 PATH`: the checked program as a term of it, as text. Step 1: an
+// integer, `(int N)`, a fixnum (C399). Step 2: the immediates (C401):
+// `(bool 1)` and `(bool 0)`, `(char CODE)`, `(unit)`, `(nil)`, the empty
+// list. Anything else: not yet.
 #[inline]
 pub fn fixnum_max() -> i64 {
     1152921504606846975i64
+}
+
+#[inline]
+pub fn not_yet(path: Str, what: Str) -> Str {
+    error(string_append(str_lit("kc: "), string_append(path, string_append(str_lit(": not yet: "), what))));
+    str_lit("")
+}
+
+/// The term of `e`, an expression.
+pub fn l0_of(path: Str, e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Num(k, f, p) => {
+            if (i64_gt(k, fixnum_max()) || i64_lt(k, i64_minus(0i64, i64_plus(fixnum_max(), 1i64)))) {
+                not_yet(path, str_lit("an integer past a fixnum"))
+            } else {
+                string_append(str_lit("(int "), string_append(i64_to_string(k), str_lit(")")))
+            }
+        }
+        Sexp::Chr(c, f, p) => {
+            string_append(str_lit("(char "), string_append(i64_to_string(char_to_i64(c)), str_lit(")")))
+        }
+        Sexp::Sym(n, f, p) => {
+            if string_eq_p(n, str_lit("#t")) {
+                str_lit("(bool 1)")
+            } else if string_eq_p(n, str_lit("#f")) {
+                str_lit("(bool 0)")
+            } else if string_eq_p(n, str_lit("#u")) {
+                str_lit("(unit)")
+            } else if string_eq_p(n, str_lit("nil")) {
+                str_lit("(nil)")
+            } else {
+                not_yet(path, string_append(str_lit("a variable, "), n))
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            if (i64_eq(size(xs), 2i64) && sym_is_p(car(xs), str_lit("quote")) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f2, l2, p2) => {
+                        null_p(ys)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                str_lit("(nil)")
+            } else {
+                not_yet(path, str_lit("a form"))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            not_yet(path, str_lit("this expression"))
+        }
+    }
 }
 
 pub fn q_l0(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
     db_get(d, run, string_append(str_lit("checked "), path));
     let forms = kc_forms(d, run, path);
     if (null_p(forms) || not(null_p(cdr(forms)))) {
-        error(string_append(str_lit("kc: "), string_append(path, str_lit(": not yet: a program of other than one form"))));
-        str_lit("")
+        not_yet(path, str_lit("a program of other than one form"))
     } else {
-        let tagcase_ = car(forms);
-        match *tagcase_ {
-            Sexp::Num(k, f, p) => {
-                if (i64_gt(k, fixnum_max()) || i64_lt(k, i64_minus(0i64, i64_plus(fixnum_max(), 1i64)))) {
-                    error(string_append(str_lit("kc: "), string_append(path, str_lit(": not yet: an integer past a fixnum"))));
+        l0_of(path, car(forms))
+    }
+}
+
+// An `l0` program's term.
+#[inline]
+pub fn l0_term(d: Db, run: Runner, path: Str) -> &'static Sexp {
+    car(read_all(db_get(d, run, string_append(str_lit("l0 "), path)), str_lit("l0"), 1i64))
+}
+
+// A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`).
+pub fn term_head(t: &'static Sexp) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f2, p2) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
                     str_lit("")
-                } else {
-                    string_append(str_lit("(int "), string_append(i64_to_string(k), str_lit(")")))
                 }
             }
-            _ => {
-                let other = tagcase_;
-                error(string_append(str_lit("kc: "), string_append(path, str_lit(": not yet: other than an integer"))));
-                str_lit("")
-            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
         }
     }
 }
 
-// An `l0` program's integer.
-pub fn l0_int(d: Db, run: Runner, path: Str) -> i64 {
-    let tagcase_ = car(read_all(db_get(d, run, string_append(str_lit("l0 "), path)), str_lit("l0"), 1i64));
+pub fn term_number(t: &'static Sexp) -> i64 {
+    let tagcase_ = t;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            let tagcase_ = second(xs);
-            match *tagcase_ {
-                Sexp::Num(k, f2, p2) => {
-                    k
-                }
-                _ => {
-                    let other = tagcase_;
-                    0i64
+            if null_p(cdr(xs)) {
+                0i64
+            } else {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Num(k, f2, p2) => {
+                        k
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        0i64
+                    }
                 }
             }
         }

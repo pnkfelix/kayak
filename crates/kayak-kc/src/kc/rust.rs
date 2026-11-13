@@ -4,9 +4,48 @@ use kayak_rt::*;
 use super::*;
 
 // rust.kfx: kc's Rust back end (docs/research/kc.md), of KFX: `rust PATH`,
-// a module whose `main` gives the program's value as Fixpt writes it.
+// a module whose `main` gives the program's value as Fixpt writes it, on
+// kayak-rt (its `Show`, which writes values as `fixpt eval` does).
+pub fn hex_digits(n: i64, acc: Str) -> Str {
+    let d = i64_remainder(n, 16i64);
+    let c = list_to_string(kayak_rt::heap_cons(i64_to_char(if i64_lt(d, 10i64) {
+        i64_plus(d, 48i64)
+    } else {
+        i64_plus(d, 87i64)
+    }), kayak_rt::nil()));
+    let acc = string_append(c, acc);
+    if i64_lt(n, 16i64) {
+        acc
+    } else {
+        hex_digits(i64_quotient(n, 16i64), acc)
+    }
+}
+
+/// A term as a Rust expression of kayak-rt's.
+pub fn rust_of(t: &'static Sexp) -> Str {
+    let (h, n) = (term_head(t), term_number(t));
+    if string_eq_p(h, str_lit("int")) {
+        string_append(str_lit("int_lit("), string_append(i64_to_string(n), str_lit("i64)")))
+    } else if string_eq_p(h, str_lit("bool")) {
+        if i64_eq(n, 1i64) {
+            str_lit("true")
+        } else {
+            str_lit("false")
+        }
+    } else if string_eq_p(h, str_lit("char")) {
+        string_append(str_lit("'\\u{"), string_append(hex_digits(n, str_lit("")), str_lit("}'")))
+    } else if string_eq_p(h, str_lit("unit")) {
+        str_lit("()")
+    } else if string_eq_p(h, str_lit("nil")) {
+        str_lit("nil::<()>()")
+    } else {
+        error(string_append(str_lit("kc: the Rust back end has no term "), h));
+        str_lit("")
+    }
+}
+
 pub fn q_rust(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
     db_get(d, run, string_append(str_lit("kfx "), path));
-    string_list_append(kayak_rt::heap_cons(str_lit("// Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("use kayak_rt::*;\n\n"), kayak_rt::heap_cons(str_lit("pub fn main() -> Str {\n"), kayak_rt::heap_cons(str_lit("    int_to_string(int_lit("), kayak_rt::heap_cons(i64_to_string(l0_int(d, run, path)), kayak_rt::heap_cons(str_lit("i64))\n"), kayak_rt::heap_cons(str_lit("}\n"), kayak_rt::nil()))))))))))
+    string_list_append(kayak_rt::heap_cons(str_lit("// Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("use kayak_rt::*;\n\n"), kayak_rt::heap_cons(str_lit("pub fn main() -> Str {\n"), kayak_rt::heap_cons(str_lit("    let mut out = String::new();\n"), kayak_rt::heap_cons(str_lit("    Show::show(&"), kayak_rt::heap_cons(rust_of(l0_term(d, run, path)), kayak_rt::heap_cons(str_lit(", &mut out);\n"), kayak_rt::heap_cons(str_lit("    shown(out)\n"), kayak_rt::heap_cons(str_lit("}\n"), kayak_rt::nil()))))))))))))
 }
 

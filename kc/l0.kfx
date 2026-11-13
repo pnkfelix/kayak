@@ -1,8 +1,35 @@
-"l0.kfx: kc's first language (Ghuloum's step 1, docs/research/kc.md): a
- program that is one integer, its value. `l0 PATH`: the checked program in
- it, `(int N)`; anything else not yet."
+"l0.kfx: kc's core language, grown by Ghuloum's steps (docs/research/kc.md).
+ `l0 PATH`: the checked program as a term of it, as text. Step 1: an
+ integer, `(int N)`, a fixnum (C399). Step 2: the immediates (C401):
+ `(bool 1)` and `(bool 0)`, `(char CODE)`, `(unit)`, `(nil)`, the empty
+ list. Anything else: not yet."
 
 (define fixnum-max i64 1152921504606846975)
+
+(define not-yet (subr kfx (string string) string)
+  (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
+
+(define-rec
+  (l0-of (subr kfx (string sexp) string)
+    (lambda (path e)
+      "The term of `e`, an expression."
+      (tagcase e
+        (num (k f p)
+          (if (or (i64> k fixnum-max) (i64< k (i64- 0 (i64+ fixnum-max 1))))
+              (not-yet path "an integer past a fixnum")
+              (string-append "(int " (string-append (i64->string k) ")"))))
+        (chr (c f p) (string-append "(char " (string-append (i64->string (char->i64 c)) ")")))
+        (sym (n f p)
+          (cond ((string=? n "#t") "(bool 1)")
+                ((string=? n "#f") "(bool 0)")
+                ((string=? n "#u") "(unit)")
+                ((string=? n "nil") "(nil)")
+                (else (not-yet path (string-append "a variable, " n)))))
+        (lst (xs f l p)
+          (if (and (i64= (size xs) 2) (sym-is? (car xs) "quote") (tagcase (second xs) (lst (ys f2 l2 p2) (null? ys)) (else other #f)))
+              "(nil)"
+              (not-yet path "a form")))
+        (else other (not-yet path "this expression"))))))
 
 (define q-l0 qbody
   (lambda (d run path)
@@ -10,17 +37,15 @@
       (db-get d run (string-append "checked " path))
       (let ((forms (kc-forms d run path)))
         (if (or (null? forms) (not (null? (cdr forms))))
-            (begin (error (string-append "kc: " (string-append path ": not yet: a program of other than one form"))) "")
-            (tagcase (car forms)
-              (num (k f p)
-                (if (or (i64> k fixnum-max) (i64< k (i64- 0 (i64+ fixnum-max 1))))
-                    (begin (error (string-append "kc: " (string-append path ": not yet: an integer past a fixnum"))) "")
-                    (string-append "(int " (string-append (i64->string k) ")"))))
-              (else other (begin (error (string-append "kc: " (string-append path ": not yet: other than an integer"))) ""))))))))
+            (not-yet path "a program of other than one form")
+            (l0-of path (car forms)))))))
 
-"An `l0` program's integer."
-(define l0-int (subr qe (db runner string) i64)
-  (lambda (d run path)
-    (tagcase (car (read-all (db-get d run (string-append "l0 " path)) "l0" 1))
-      (lst (xs f l p) (tagcase (second xs) (num (k f2 p2) k) (else other 0)))
-      (else other 0))))
+"An `l0` program's term."
+(define l0-term (subr qe (db runner string) sexp)
+  (lambda (d run path) (car (read-all (db-get d run (string-append "l0 " path)) "l0" 1))))
+
+"A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`)."
+(define term-head (subr kfx (sexp) string)
+  (lambda (t) (tagcase t (lst (xs f l p) (tagcase (car xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))
+(define term-number (subr kfx (sexp) i64)
+  (lambda (t) (tagcase t (lst (xs f l p) (if (null? (cdr xs)) 0 (tagcase (second xs) (num (k f2 p2) k) (else other 0)))) (else other 0))))

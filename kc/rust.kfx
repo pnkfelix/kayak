@@ -1,5 +1,25 @@
 "rust.kfx: kc's Rust back end (docs/research/kc.md), of KFX: `rust PATH`,
- a module whose `main` gives the program's value as Fixpt writes it."
+ a module whose `main` gives the program's value as Fixpt writes it, on
+ kayak-rt (its `Show`, which writes values as `fixpt eval` does)."
+
+(define-rec
+  (hex-digits (subr kfx (i64 string) string)
+    (lambda (n acc)
+      (let* ((d (i64-remainder n 16))
+             (c (list->string (list (i64->char (if (i64< d 10) (i64+ d 48) (i64+ d 87))))))
+             (acc (string-append c acc)))
+        (if (i64< n 16) acc (hex-digits (i64-quotient n 16) acc))))))
+
+(define rust-of (subr kfx (sexp) string)
+  (lambda (t)
+    "A term as a Rust expression of kayak-rt's."
+    (let ((h (term-head t)) (n (term-number t)))
+      (cond ((string=? h "int") (string-append "int_lit(" (string-append (i64->string n) "i64)")))
+            ((string=? h "bool") (if (i64= n 1) "true" "false"))
+            ((string=? h "char") (string-append "'\\u{" (string-append (hex-digits n "") "}'")))
+            ((string=? h "unit") "()")
+            ((string=? h "nil") "nil::<()>()")
+            (else (begin (error (string-append "kc: the Rust back end has no term " h)) ""))))))
 
 (define q-rust qbody
   (lambda (d run path)
@@ -9,5 +29,7 @@
       (list "// Made by kc (docs/research/kc.md) from " path ".\n"
             "use kayak_rt::*;\n\n"
             "pub fn main() -> Str {\n"
-            "    int_to_string(int_lit(" (i64->string (l0-int d run path)) "i64))\n"
+            "    let mut out = String::new();\n"
+            "    Show::show(&" (rust-of (l0-term d run path)) ", &mut out);\n"
+            "    shown(out)\n"
             "}\n")))))

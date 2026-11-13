@@ -553,17 +553,81 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
     }
 }
 
+pub fn ascii_lowered(cs: Chars) -> Chars {
+    if null_p(cs) {
+        nil::<char>()
+    } else {
+        kayak_rt::heap_cons({
+            let k = char_to_i64(car(cs));
+            if (i64_gt_eq(k, 65i64) && i64_lt_eq(k, 90i64)) {
+                i64_to_char(i64_plus(k, 32i64))
+            } else {
+                car(cs)
+            }
+        }, ascii_lowered(cdr(cs)))
+    }
+}
+
+/// The hexadecimal number `cs` writes, onto `n`; -1 if it writes none.
+pub fn char_hex_value(mut cs: Chars, mut n: i64) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else {
+            let k = char_to_i64(car(cs));
+            let d = if (i64_gt_eq(k, 48i64) && i64_lt_eq(k, 57i64)) {
+                i64_minus(k, 48i64)
+            } else if (i64_gt_eq(k, 97i64) && i64_lt_eq(k, 102i64)) {
+                i64_minus(k, 87i64)
+            } else {
+                the::<i64>(-1i64)
+            };
+            if (i64_lt(d, 0i64) || i64_gt(n, 1114111i64)) {
+                return the::<i64>(-1i64);
+            } else {
+                (cs, n) = (cdr(cs), i64_plus(i64_star(n, 16i64), d));
+                continue;
+            }
+        }
+    }
+}
+
+/// A character's name after `#\`, as Fixpt's reader takes it
+/// (`fixpt-read`'s `read_char`, C401): one character, itself; else a name,
+/// its case aside, or `x` and its code in hexadecimal.
 pub fn char_named(s: Str, file: Str, line: i64) -> char {
     if i64_eq(string_length_i64(s), 1i64) {
         string_ref_i64(s, 0i64)
-    } else if string_eq_p(s, str_lit("space")) {
-        ' '
-    } else if string_eq_p(s, str_lit("newline")) {
-        '\n'
-    } else if string_eq_p(s, str_lit("tab")) {
-        '\t'
     } else {
-        match read_error(file, line, string_append(str_lit("no character is named "), s)) {}
+        let n = list_to_string(ascii_lowered(string_chars(s)));
+        if string_eq_p(n, str_lit("space")) {
+            ' '
+        } else if (string_eq_p(n, str_lit("newline")) || string_eq_p(n, str_lit("linefeed")) || string_eq_p(n, str_lit("nl"))) {
+            '\n'
+        } else if string_eq_p(n, str_lit("tab")) {
+            '\t'
+        } else if string_eq_p(n, str_lit("return")) {
+            i64_to_char(13i64)
+        } else if (string_eq_p(n, str_lit("null")) || string_eq_p(n, str_lit("nul"))) {
+            i64_to_char(0i64)
+        } else if string_eq_p(n, str_lit("alarm")) {
+            i64_to_char(7i64)
+        } else if string_eq_p(n, str_lit("backspace")) {
+            i64_to_char(8i64)
+        } else if (string_eq_p(n, str_lit("delete")) || string_eq_p(n, str_lit("rubout"))) {
+            i64_to_char(127i64)
+        } else if (string_eq_p(n, str_lit("escape")) || string_eq_p(n, str_lit("altmode")) || string_eq_p(n, str_lit("esc"))) {
+            i64_to_char(27i64)
+        } else if char_eq_p(string_ref_i64(n, 0i64), 'x') {
+            let k = char_hex_value(cdr(string_chars(n)), 0i64);
+            if (i64_lt(k, 0i64) || i64_gt(k, 1114111i64) || (i64_gt_eq(k, 55296i64) && i64_lt_eq(k, 57343i64))) {
+                match read_error(file, line, string_append(str_lit("bad character name `#\\"), string_append(s, str_lit("`")))) {}
+            } else {
+                i64_to_char(k)
+            }
+        } else {
+            match read_error(file, line, string_append(str_lit("no character is named "), s)) {}
+        }
     }
 }
 

@@ -11138,3 +11138,24 @@ distraction"): Apalache, and Quint's TLC backend through it, need Java 17;
 a snap's OpenJDK 27 runs them with workarounds, but a first bounded run
 took more than ten minutes. Kept for when the engine is asynchronous.
 
+## C401. kc, step 2: the immediates (2026-11-12)
+
+Ghuloum's second step: booleans, characters, unit and the empty list.
+- **The core language** (`kc/l0.kfx`, now kc's core, grown by step):
+  `(bool 1)`, `(bool 0)`, `(char CODE)`, `(unit)`, `(nil)` (of `nil` and
+  `'()`) beside `(int N)`.
+- **Native**: each as a word of Fixpt's format (`value.rs`): tag 3, the
+  kind in the five bits above it (false 0, true 1, the empty list 2, unit
+  3, a character 8), a character's code from bit 8; kayak-kcrt writes them
+  as Fixpt's `print.rs` does (`#\space`, `#\x1`, `#\λ`).
+- **Rust**: kayak-rt's `Show`, which already writes values as `fixpt
+  eval` does, of the value built (`true`, `'\u{3bb}'`, `()`, `nil()`).
+- **The reader**, kfx's and so every front end's: Fixpt's character names
+  (`fixpt-read`'s `read_char`): case aside; `linefeed`, `nl`, `return`,
+  `null`/`nul`, `alarm`, `backspace`, `delete`/`rubout`,
+  `escape`/`altmode`/`esc`; and `#\xHEX`, a character by its code. kfx's
+  read only `space`, `newline` and `tab`, refusing `#\x3bb`, which Fixpt
+  reads.
+- Tests: `tests/kc/step2/`, thirteen programs (three KFX), each Fixpt's
+  answer on every back end that takes it.
+

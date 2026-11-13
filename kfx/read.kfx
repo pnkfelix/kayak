@@ -273,13 +273,47 @@
             ((char=? (car cs) #\-) (num (digits-value (cdr cs) 0 file line) file pos))
             (else (num (i64- 0 (digits-value cs 0 file line)) file pos))))))
 
+(define-rec
+  (ascii-lowered (subr kfx (chars) chars)
+    (lambda (cs)
+      (if (null? cs)
+          nil
+          (cons (let ((k (char->i64 (car cs)))) (if (and (i64>= k 65) (i64<= k 90)) (i64->char (i64+ k 32)) (car cs)))
+                (ascii-lowered (cdr cs))))))
+  (char-hex-value (subr kfx (chars i64) i64)
+    (lambda (cs n)
+      "The hexadecimal number `cs` writes, onto `n`; -1 if it writes none."
+      (if (null? cs)
+          n
+          (let* ((k (char->i64 (car cs)))
+                 (d (cond ((and (i64>= k 48) (i64<= k 57)) (i64- k 48))
+                          ((and (i64>= k 97) (i64<= k 102)) (i64- k 87))
+                          (else (the i64 -1)))))
+            (if (or (i64< d 0) (i64> n 1114111)) (the i64 -1) (char-hex-value (cdr cs) (i64+ (i64* n 16) d))))))))
+
 (define char-named (subr kfx (string string i64) char)
   (lambda (s file line)
-    (cond ((i64= (string-length-i64 s) 1) (string-ref-i64 s 0))
-          ((string=? s "space") #\space)
-          ((string=? s "newline") #\newline)
-          ((string=? s "tab") #\tab)
-          (else (read-error file line (string-append "no character is named " s))))))
+    "A character's name after `#\\`, as Fixpt's reader takes it
+     (`fixpt-read`'s `read_char`, C401): one character, itself; else a name,
+     its case aside, or `x` and its code in hexadecimal."
+    (if (i64= (string-length-i64 s) 1)
+        (string-ref-i64 s 0)
+        (let ((n (list->string (ascii-lowered (string-chars s)))))
+          (cond ((string=? n "space") #\space)
+                ((or (string=? n "newline") (string=? n "linefeed") (string=? n "nl")) #\newline)
+                ((string=? n "tab") #\tab)
+                ((string=? n "return") (i64->char 13))
+                ((or (string=? n "null") (string=? n "nul")) (i64->char 0))
+                ((string=? n "alarm") (i64->char 7))
+                ((string=? n "backspace") (i64->char 8))
+                ((or (string=? n "delete") (string=? n "rubout")) (i64->char 127))
+                ((or (string=? n "escape") (string=? n "altmode") (string=? n "esc")) (i64->char 27))
+                ((char=? (string-ref-i64 n 0) #\x)
+                 (let ((k (char-hex-value (cdr (string-chars n)) 0)))
+                   (if (or (i64< k 0) (i64> k 1114111) (and (i64>= k 55296) (i64<= k 57343)))
+                       (read-error file line (string-append "bad character name `#\\" (string-append s "`")))
+                       (i64->char k))))
+                (else (read-error file line (string-append "no character is named " s))))))))
 
 (define-rec
   (read-datum (subr kfx (here string string) got)

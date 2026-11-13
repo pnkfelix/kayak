@@ -1,7 +1,24 @@
 "x64.kfx: kc's native back end, x86-64 (docs/research/kc.md): `asm PATH`,
  assembly for the system's assembler, of `kc_entry`, which gives the
- program's value in `%rax`, in Fixpt's format (a fixnum shifted past its
- three tag bits, tag 0), for the runtime (`crates/kayak-kcrt`) to write."
+ program's value in `%rax` in Fixpt's format (`fixpt-heap`'s `value.rs`),
+ for the runtime (`crates/kayak-kcrt`) to write: a fixnum its value
+ shifted past three tag bits, tag 0; an immediate, tag 3, its kind above
+ the tag (false 0, true 1, the empty list 2, unit 3, a character 8), its
+ payload from bit 8 (a character's code)."
+
+(define immediate (subr kfx (i64 i64) i64)
+  (lambda (kind payload) (i64+ (i64* payload 256) (i64+ (i64* kind 8) 3))))
+
+(define word-of (subr kfx (sexp) i64)
+  (lambda (t)
+    "A term's value, as a word of Fixpt's format."
+    (let ((h (term-head t)) (n (term-number t)))
+      (cond ((string=? h "int") (i64* n 8))
+            ((string=? h "bool") (immediate n 0))
+            ((string=? h "nil") (immediate 2 0))
+            ((string=? h "unit") (immediate 3 0))
+            ((string=? h "char") (immediate 8 n))
+            (else (begin (error (string-append "kc: the native back end has no term " h)) 0))))))
 
 (define q-asm qbody
   (lambda (d run path)
@@ -10,6 +27,6 @@
             "    .text\n"
             "    .globl kc_entry\n"
             "kc_entry:\n"
-            "    movabsq $" (i64->string (i64* (l0-int d run path) 8)) ", %rax\n"
+            "    movabsq $" (i64->string (word-of (l0-term d run path))) ", %rax\n"
             "    ret\n"
             "    .section .note.GNU-stack,\"\",@progbits\n"))))

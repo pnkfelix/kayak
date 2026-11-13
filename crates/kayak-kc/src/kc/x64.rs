@@ -5,10 +5,37 @@ use super::*;
 
 // x64.kfx: kc's native back end, x86-64 (docs/research/kc.md): `asm PATH`,
 // assembly for the system's assembler, of `kc_entry`, which gives the
-// program's value in `%rax`, in Fixpt's format (a fixnum shifted past its
-// three tag bits, tag 0), for the runtime (`crates/kayak-kcrt`) to write.
+// program's value in `%rax` in Fixpt's format (`fixpt-heap`'s `value.rs`),
+// for the runtime (`crates/kayak-kcrt`) to write: a fixnum its value
+// shifted past three tag bits, tag 0; an immediate, tag 3, its kind above
+// the tag (false 0, true 1, the empty list 2, unit 3, a character 8), its
+// payload from bit 8 (a character's code).
+#[inline]
+pub fn immediate(kind: i64, payload: i64) -> i64 {
+    i64_plus(i64_star(payload, 256i64), i64_plus(i64_star(kind, 8i64), 3i64))
+}
+
+/// A term's value, as a word of Fixpt's format.
+pub fn word_of(t: &'static Sexp) -> i64 {
+    let (h, n) = (term_head(t), term_number(t));
+    if string_eq_p(h, str_lit("int")) {
+        i64_star(n, 8i64)
+    } else if string_eq_p(h, str_lit("bool")) {
+        immediate(n, 0i64)
+    } else if string_eq_p(h, str_lit("nil")) {
+        immediate(2i64, 0i64)
+    } else if string_eq_p(h, str_lit("unit")) {
+        immediate(3i64, 0i64)
+    } else if string_eq_p(h, str_lit("char")) {
+        immediate(8i64, n)
+    } else {
+        error(string_append(str_lit("kc: the native back end has no term "), h));
+        0i64
+    }
+}
+
 #[inline]
 pub fn q_asm(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-    string_list_append(kayak_rt::heap_cons(str_lit("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::heap_cons(str_lit("    .globl kc_entry\n"), kayak_rt::heap_cons(str_lit("kc_entry:\n"), kayak_rt::heap_cons(str_lit("    movabsq $"), kayak_rt::heap_cons(i64_to_string(i64_star(l0_int(d, run, path), 8i64)), kayak_rt::heap_cons(str_lit(", %rax\n"), kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))))))))
+    string_list_append(kayak_rt::heap_cons(str_lit("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::heap_cons(str_lit("    .globl kc_entry\n"), kayak_rt::heap_cons(str_lit("kc_entry:\n"), kayak_rt::heap_cons(str_lit("    movabsq $"), kayak_rt::heap_cons(i64_to_string(word_of(l0_term(d, run, path))), kayak_rt::heap_cons(str_lit(", %rax\n"), kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))))))))
 }
 
