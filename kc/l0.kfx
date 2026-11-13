@@ -4,11 +4,17 @@
  `(bool 1)` and `(bool 0)`, `(char CODE)`, `(unit)`, `(nil)`, the empty
  list. Step 3: the unary primitives (C402), `(prim NAME ARG)`: `not`,
  `null?`, `zero?`, `char->integer`, `integer->char`. Anything else: not
- yet. No binding form yet, so a primitive's name is the standard one."
+ yet. Step 4: binary primitives (C403), `(prim NAME A B)`: `+`, `-`,
+ `*`, `quotient`, `remainder`, `modulo`, `max`, `min`, `=`, `<`, `<=`,
+ `>`, `>=`, the `char` comparisons, `eq?`. No binding form yet, so a
+ primitive's name is the standard one."
 
 (define fixnum-max i64 1152921504606846975)
 
 (define unary-primitives (listof string acyclic) (list "not" "null?" "zero?" "char->integer" "integer->char"))
+(define binary-primitives (listof string acyclic)
+  (list "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
+        "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"))
 
 (define not-yet (subr kfx (string string) string)
   (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
@@ -34,6 +40,8 @@
                  "(nil)")
                 ((and (i64= (size xs) 2) (tagcase (car xs) (sym (n f2 p2) (string-member? n unary-primitives)) (else other #f)))
                  (string-append "(prim " (string-append (sym-name (car xs)) (string-append " " (string-append (l0-of path (second xs)) ")")))))
+                ((and (i64= (size xs) 3) (tagcase (car xs) (sym (n f2 p2) (string-member? n binary-primitives)) (else other #f)))
+                 (string-list-append (list "(prim " (sym-name (car xs)) " " (l0-of path (second xs)) " " (l0-of path (third xs)) ")")))
                 (else (not-yet path "a form"))))
         (else other (not-yet path "this expression"))))))
 
@@ -53,10 +61,12 @@
 "A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`)."
 (define term-head (subr kfx (sexp) string)
   (lambda (t) (tagcase t (lst (xs f l p) (tagcase (car xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))
-"A `(prim NAME ARG)`'s name and argument."
+"A `(prim NAME ARG ...)`'s name, its first argument, and its arguments."
 (define prim-name (subr kfx (sexp) string)
   (lambda (t) (tagcase t (lst (xs f l p) (tagcase (second xs) (sym (n f2 p2) n) (else other ""))) (else other ""))))
 (define prim-arg (subr kfx (sexp) sexp)
   (lambda (t) (tagcase t (lst (xs f l p) (third xs)) (else other t))))
+(define prim-args (subr kfx (sexp) sexps)
+  (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
 (define term-number (subr kfx (sexp) i64)
   (lambda (t) (tagcase t (lst (xs f l p) (if (null? (cdr xs)) 0 (tagcase (second xs) (num (k f2 p2) k) (else other 0)))) (else other 0))))

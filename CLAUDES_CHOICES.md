@@ -11188,3 +11188,33 @@ rest are not FX-26's; typed, it has no `integer?`).
   takes (TODO); and kc's names meet the checker's in their one namespace
   (`labelled`): kc's files to be modules (TODO).
 
+## C403. kc, step 4: binary primitives (2026-11-12)
+
+Ghuloum's fourth step, as FX-26 has it: `+`, `-`, `*`, `quotient`,
+`remainder`, `modulo`, `max`, `min`, `=`, `<`, `<=`, `>`, `>=`, `char=?`,
+`char<?`, `char<=?`, `char>?`, `char>=?`, `eq?` (FX-26's `+` takes two,
+not any number).
+- **The core language**: `(prim NAME ARG ...)`, of any arity.
+- **Native**: a primitive's first argument kept in a slot of the frame,
+  `8 * i(%rsp)`, while the second is made, then the two in `%rax` and
+  `%rcx`. `kc_entry`'s frame is as many slots as the code uses, rounded so
+  that the stack stays aligned for a call. A fixnum is its value times 8,
+  so a sum or difference of two is their words' and its overflow the
+  64-bit one, and a product needs one shifted back first. Comparisons a
+  `cmp` and `cmov`, characters comparing as their words do (the code above
+  the same low bits). `quotient` and the rest by `idiv`, a zero divisor
+  failing in Fixpt's words (`division by zero`); `modulo` the remainder
+  moved to the divisor's sign. A failure's call is now out of the line,
+  after the `ret`, a check a conditional jump to it.
+- **Integers are fixnums alone, as yet**: a result past one fails in kc's
+  words (`kc: not yet: an integer past a fixnum`), until the heap, and big
+  integers on it (step 7's).
+- **Rust**: a primitive's kayak-rt function is its name as kfx spells it
+  (`names.kfx`'s `mangle`: `+` `_plus`, `char<?` `char_lt_p`), as kayak-rt
+  names FX-26's standard operations; `eq?`, of immediates, `==`. kayak-rt's
+  division by zero now fails in Fixpt's words (it said `quotient: division
+  by zero`). The IR engine still says it so (`fx26/vprims.kfx`, kept as
+  it is; `tests/repl/plain.out`), as it is to be retired.
+- Tests: `tests/kc/step4/`, 37 programs (four KFX), three of them
+  failures; 72 in all, every one Fixpt's answer on each back end.
+

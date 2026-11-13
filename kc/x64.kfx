@@ -2,14 +2,21 @@
  assembly for the system's assembler, of `kc_entry`, which gives the
  program's value in `%rax` in Fixpt's format (`fixpt-heap`'s `value.rs`),
  for the runtime (`crates/kayak-kcrt`) to write: a fixnum its value
- shifted past three tag bits, tag 0; an x64-immediate, tag 3, its kind above
+ shifted past three tag bits, tag 0; an immediate, tag 3, its kind above
  the tag (false 0, true 1, the empty list 2, unit 3, a character 8), its
  payload from bit 8 (a character's code).
 
  Each term is compiled to code that leaves its value in `%rax` (Ghuloum's
- `x64-emit-expr`, C402). `kc_entry` keeps the stack aligned for a call (it
- is entered 8 below a multiple of 16), so that a failure may call the
- runtime's `kc_fail`, which writes Fixpt's words and ends the run."
+ `emit-expr`, C402); a primitive's first arguments are kept in the frame's
+ slots, `8 * i(%rsp)`, while the rest are made (C403). `kc_entry`'s frame
+ is as many slots as the code uses, and 8 bytes more where that keeps the
+ stack aligned for a call (it is entered 8 below a multiple of 16), so
+ that a failure may call the runtime's `kc_fail`, which writes Fixpt's
+ words and ends the run; each failure's call is out of the line, after the
+ `ret`, a check a conditional jump to it.
+
+ Integers are fixnums alone, as yet: an operation whose result would be
+ past one fails, `not yet` (until the heap, and big integers on it)."
 
 (define x64-immediate (subr kfx (i64 i64) i64)
   (lambda (kind payload) (i64+ (i64* payload 256) (i64+ (i64* kind 8) 3))))
@@ -17,9 +24,12 @@
 (define x64-word-false i64 3)
 (define x64-word-true i64 11)
 (define x64-word-nil i64 19)
+(define x64-fixnum-max i64 1152921504606846975)
 
 "The failures the runtime says, by number (kayak-kcrt's `kc_fail`)."
 (define x64-fail-not-a-char i64 1)
+(define x64-fail-past-fixnum i64 2)
+(define x64-fail-division i64 3)
 
 (define x64-constant-of (subr kfx (sexp) i64)
   (lambda (t)
@@ -32,34 +42,78 @@
             ((string=? h "char") (x64-immediate 8 n))
             (else (begin (error (string-append "kc: the native back end has no constant " h)) 0))))))
 
-"Code so far, its lines the newest first, and the next label's number."
-(define-datatype x64-code (x64-code (listof string acyclic) i64))
+"Code so far: its lines, the newest first; the next label's number; how
+ many of the frame's slots it uses; and the failures' calls, kept out of
+ the line, after the code's `ret` (the newest first)."
+(define-datatype x64-code (x64-code (listof string acyclic) i64 i64 (listof string acyclic)))
 
 (define x64-emit (subr kfx (x64-code string) x64-code)
-  (lambda (c line) (tagcase c (x64-code (ls n) (x64-code (cons (string-append "    " (string-append line "\n")) ls) n)))))
+  (lambda (c line) (tagcase c (x64-code (ls n k fs) (x64-code (cons (string-append "    " (string-append line "\n")) ls) n k fs)))))
 
 (define x64-emit-label (subr kfx (x64-code string) x64-code)
-  (lambda (c l) (tagcase c (x64-code (ls n) (x64-code (cons (string-append l ":\n") ls) n)))))
+  (lambda (c l) (tagcase c (x64-code (ls n k fs) (x64-code (cons (string-append l ":\n") ls) n k fs)))))
 
-(define x64-fresh-label (subr kfx (x64-code) i64) (lambda (c) (tagcase c (x64-code (ls n) n))))
-(define x64-labelled (subr kfx (x64-code) x64-code) (lambda (c) (tagcase c (x64-code (ls n) (x64-code ls (i64+ n 1))))))
+(define x64-fresh-label (subr kfx (x64-code) i64) (lambda (c) (tagcase c (x64-code (ls n k fs) n))))
+(define x64-labelled (subr kfx (x64-code) x64-code) (lambda (c) (tagcase c (x64-code (ls n k fs) (x64-code ls (i64+ n 1) k fs)))))
 (define x64-label-text (subr kfx (string i64) string) (lambda (what n) (string-append ".L" (string-append what (i64->string n)))))
+
+(define x64-using (subr kfx (x64-code i64) x64-code)
+  (lambda (c slots) (tagcase c (x64-code (ls n k fs) (x64-code ls n (if (i64> slots k) slots k) fs)))))
+
+(define x64-slot (subr kfx (i64) string)
+  (lambda (i) (string-append (i64->string (i64* 8 i)) "(%rsp)")))
 
 (define x64-boolean-if (subr kfx (x64-code string) x64-code)
   (lambda (c cc)
     "`%rax` made #t if the flags say `cc`, else #f."
     (x64-emit (x64-emit (x64-emit c (string-append "movl $" (string-append (i64->string x64-word-false) ", %eax")))
-                (string-append "movl $" (string-append (i64->string x64-word-true) ", %ecx")))
-          (string-append "cmov" (string-append cc " %rcx, %rax")))))
+                        (string-append "movl $" (string-append (i64->string x64-word-true) ", %ecx")))
+              (string-append "cmov" (string-append cc " %rcx, %rax")))))
+
+(define x64-failing-if (subr kfx (x64-code string i64) x64-code)
+  (lambda (c cc what)
+    "A jump, if the flags say `cc`, to the failure `what`, whose call is out
+     of the line, after the code's `ret`."
+    (let* ((k (x64-fresh-label c)) (bad (x64-label-text "fail" k))
+           (c (x64-emit (x64-labelled c) (string-append "j" (string-append cc (string-append " " bad))))))
+      (tagcase c
+        (x64-code (ls n slots fs)
+          (x64-code ls n slots
+                    (cons (string-list-append (list bad ":\n    movl $" (i64->string what) ", %edi\n    call kc_fail\n")) fs)))))))
+
+(define x64-comparisons (listof string acyclic) (list "=" "<" "<=" ">" ">=" "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"))
+
+(define x64-condition (subr kfx (string) string)
+  (lambda (n)
+    "The condition code of a comparison, its first argument in `%rax`, its
+     second in `%rcx`: characters compare as their words do, the code above
+     the same low bits."
+    (cond ((or (string=? n "=") (string=? n "char=?") (string=? n "eq?")) "e")
+          ((or (string=? n "<") (string=? n "char<?")) "l")
+          ((or (string=? n "<=") (string=? n "char<=?")) "le")
+          ((or (string=? n ">") (string=? n "char>?")) "g")
+          (else "ge"))))
 
 (define-rec
-  (x64-emit-expr (subr kfx (x64-code sexp) x64-code)
-    (lambda (c t)
-      "Code that leaves `t`'s value in `%rax`."
+  (x64-emit-expr (subr kfx (x64-code sexp i64) x64-code)
+    (lambda (c t si)
+      "Code that leaves `t`'s value in `%rax`, using the frame's slots from
+       `si`."
       (if (string=? (term-head t) "prim")
-          (x64-emit-primitive (x64-emit-expr c (prim-arg t)) (prim-name t))
+          (let ((args (prim-args t)))
+            (if (null? (cdr args))
+                (x64-emit-unary (x64-emit-expr c (car args) si) (prim-name t))
+                ;; The first in slot `si` while the second is made; then the
+                ;; first in `%rax`, the second in `%rcx`.
+                (let* ((c (x64-emit-expr c (car args) si))
+                       (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
+                       (c (x64-emit-expr c (second args) (i64+ si 1)))
+                       (c (x64-emit c "movq %rax, %rcx"))
+                       (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rax")))))
+                  (x64-emit-binary c (prim-name t)))))
           (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-constant-of t)) ", %rax"))))))
-  (x64-emit-primitive (subr kfx (x64-code string) x64-code)
+
+  (x64-emit-unary (subr kfx (x64-code string) x64-code)
     (lambda (c n)
       "Code that makes `%rax`, the argument, the primitive `n`'s value."
       (cond ((string=? n "not") (x64-boolean-if (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-false) ", %rax"))) "e"))
@@ -69,36 +123,77 @@
             ((string=? n "char->integer") (x64-emit (x64-emit c "shrq $5, %rax") "andq $-8, %rax"))
             ((string=? n "integer->char")
              ;; A Unicode scalar value: 0 to 0x10ffff, but not 0xd800 to 0xdfff.
-             (let* ((k (x64-fresh-label c)) (bad (x64-label-text "notchar" k)) (past (x64-label-text "char" k))
-                    (c (x64-labelled c))
-                    (c (x64-emit c "movq %rax, %rdx"))
+             (let* ((c (x64-emit c "movq %rax, %rdx"))
                     (c (x64-emit c "sarq $3, %rdx"))
                     (c (x64-emit c "cmpq $1114111, %rdx"))
-                    (c (x64-emit c (string-append "ja " bad)))
+                    (c (x64-failing-if c "a" x64-fail-not-a-char))
                     (c (x64-emit c "leaq -55296(%rdx), %rcx"))
                     (c (x64-emit c "cmpq $2047, %rcx"))
-                    (c (x64-emit c (string-append "jbe " bad)))
+                    (c (x64-failing-if c "be" x64-fail-not-a-char))
                     (c (x64-emit c "shlq $8, %rdx"))
-                    (c (x64-emit c "orq $67, %rdx"))
-                    (c (x64-emit c "movq %rdx, %rax"))
-                    (c (x64-emit c (string-append "jmp " past)))
-                    (c (x64-emit-label c bad))
-                    (c (x64-emit c (string-append "movl $" (string-append (i64->string x64-fail-not-a-char) ", %edi"))))
-                    (c (x64-emit c "call kc_fail")))
-               (x64-emit-label c past)))
+                    (c (x64-emit c "orq $67, %rdx")))
+               (x64-emit c "movq %rdx, %rax")))
+            (else (begin (error (string-append "kc: the native back end has no primitive " n)) c)))))
+
+  (x64-emit-binary (subr kfx (x64-code string) x64-code)
+    (lambda (c n)
+      "Code that makes `%rax`, the first argument, and `%rcx`, the second,
+       the primitive `n`'s value. A fixnum is its value times 8: a sum or a
+       difference of two is the sum's, its overflow the 64-bit one; a
+       product, one of them shifted back first."
+      (cond ((string-member? n x64-comparisons)
+             (x64-boolean-if (x64-emit c "cmpq %rcx, %rax") (x64-condition n)))
+            ((string=? n "+") (x64-failing-if (x64-emit c "addq %rcx, %rax") "o" x64-fail-past-fixnum))
+            ((string=? n "-") (x64-failing-if (x64-emit c "subq %rcx, %rax") "o" x64-fail-past-fixnum))
+            ((string=? n "*") (x64-failing-if (x64-emit (x64-emit c "sarq $3, %rax") "imulq %rcx, %rax") "o" x64-fail-past-fixnum))
+            ((string=? n "max") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovl %rcx, %rax"))
+            ((string=? n "min") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovg %rcx, %rax"))
+            ((or (string=? n "quotient") (string=? n "remainder") (string=? n "modulo"))
+             (let* ((c (x64-emit c "testq %rcx, %rcx"))
+                    (c (x64-failing-if c "e" x64-fail-division))
+                    (c (x64-emit c "sarq $3, %rax"))
+                    (c (x64-emit c "sarq $3, %rcx"))
+                    (c (x64-emit c "cqto"))
+                    (c (x64-emit c "idivq %rcx")))
+               (cond ((string=? n "quotient")
+                      ;; Only the least fixnum by -1 is past a fixnum.
+                      (let* ((c (x64-emit c (string-append "movabsq $" (string-append (i64->string x64-fixnum-max) ", %rdx"))))
+                             (c (x64-emit c "cmpq %rdx, %rax"))
+                             (c (x64-failing-if c "g" x64-fail-past-fixnum)))
+                        (x64-emit c "shlq $3, %rax")))
+                     ((string=? n "remainder") (x64-emit (x64-emit c "movq %rdx, %rax") "shlq $3, %rax"))
+                     (else
+                      ;; The remainder, of the divisor's sign: where the two
+                      ;; differ and it is not 0, the divisor added.
+                      (let* ((k (x64-fresh-label c)) (past (x64-label-text "mod" k))
+                             (c (x64-labelled c))
+                             (c (x64-emit c "movq %rdx, %rax"))
+                             (c (x64-emit c "testq %rax, %rax"))
+                             (c (x64-emit c (string-append "je " past)))
+                             (c (x64-emit c "movq %rax, %rdx"))
+                             (c (x64-emit c "xorq %rcx, %rdx"))
+                             (c (x64-emit c (string-append "jns " past)))
+                             (c (x64-emit c "addq %rcx, %rax"))
+                             (c (x64-emit-label c past)))
+                        (x64-emit c "shlq $3, %rax"))))))
             (else (begin (error (string-append "kc: the native back end has no primitive " n)) c))))))
+
+"The frame's bytes: its slots, and 8 more if that keeps the stack aligned."
+(define x64-frame (subr kfx (i64) i64)
+  (lambda (slots) (let ((b (i64* 8 slots))) (if (i64= (i64-remainder b 16) 8) b (i64+ b 8)))))
 
 (define q-asm qbody
   (lambda (d run path)
-    (tagcase (x64-emit-expr (x64-code nil 0) (l0-term d run path))
-      (x64-code (ls n)
+    (tagcase (x64-emit-expr (x64-code nil 0 0 nil) (l0-term d run path) 0)
+      (x64-code (ls n slots fails)
         (string-list-append
           (append (list "# Made by kc (docs/research/kc.md) from " path ".\n"
                         "    .text\n"
                         "    .globl kc_entry\n"
                         "kc_entry:\n"
-                        "    subq $8, %rsp\n")
+                        "    subq $" (i64->string (x64-frame slots)) ", %rsp\n")
                   (append (reverse ls)
-                          (list "    addq $8, %rsp\n"
-                                "    ret\n"
-                                "    .section .note.GNU-stack,\"\",@progbits\n"))))))))
+                          (append (list "    addq $" (i64->string (x64-frame slots)) ", %rsp\n"
+                                        "    ret\n")
+                                  (append (reverse fails)
+                                          (list "    .section .note.GNU-stack,\"\",@progbits\n"))))))))))

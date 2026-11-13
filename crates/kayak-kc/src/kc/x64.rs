@@ -7,14 +7,21 @@ use super::*;
 // assembly for the system's assembler, of `kc_entry`, which gives the
 // program's value in `%rax` in Fixpt's format (`fixpt-heap`'s `value.rs`),
 // for the runtime (`crates/kayak-kcrt`) to write: a fixnum its value
-// shifted past three tag bits, tag 0; an x64-immediate, tag 3, its kind above
+// shifted past three tag bits, tag 0; an immediate, tag 3, its kind above
 // the tag (false 0, true 1, the empty list 2, unit 3, a character 8), its
 // payload from bit 8 (a character's code).
 //
 // Each term is compiled to code that leaves its value in `%rax` (Ghuloum's
-// `x64-emit-expr`, C402). `kc_entry` keeps the stack aligned for a call (it
-// is entered 8 below a multiple of 16), so that a failure may call the
-// runtime's `kc_fail`, which writes Fixpt's words and ends the run.
+// `emit-expr`, C402); a primitive's first arguments are kept in the frame's
+// slots, `8 * i(%rsp)`, while the rest are made (C403). `kc_entry`'s frame
+// is as many slots as the code uses, and 8 bytes more where that keeps the
+// stack aligned for a call (it is entered 8 below a multiple of 16), so
+// that a failure may call the runtime's `kc_fail`, which writes Fixpt's
+// words and ends the run; each failure's call is out of the line, after the
+// `ret`, a check a conditional jump to it.
+//
+// Integers are fixnums alone, as yet: an operation whose result would be
+// past one fails, `not yet` (until the heap, and big integers on it).
 #[inline]
 pub fn x64_immediate(kind: i64, payload: i64) -> i64 {
     i64_plus(i64_star(payload, 256i64), i64_plus(i64_star(kind, 8i64), 3i64))
@@ -35,10 +42,25 @@ pub fn x64_word_nil() -> i64 {
     19i64
 }
 
+#[inline]
+pub fn x64_fixnum_max() -> i64 {
+    1152921504606846975i64
+}
+
 // The failures the runtime says, by number (kayak-kcrt's `kc_fail`).
 #[inline]
 pub fn x64_fail_not_a_char() -> i64 {
     1i64
+}
+
+#[inline]
+pub fn x64_fail_past_fixnum() -> i64 {
+    2i64
+}
+
+#[inline]
+pub fn x64_fail_division() -> i64 {
+    3i64
 }
 
 /// A constant term's value, as a word of Fixpt's format.
@@ -60,21 +82,22 @@ pub fn x64_constant_of(t: &'static Sexp) -> i64 {
     }
 }
 
-// Code so far, its lines the newest first, and the next label's number.
+// Code so far: its lines, the newest first; the next label's number; how
+// many of the frame's slots it uses; and the failures' calls, kept out of
+// the line, after the code's `ret` (the newest first).
 pub enum X64Code {
-    X64Code(List<Str>, i64),
+    X64Code(List<Str>, i64, i64, List<Str>),
 }
 
-pub fn x64_code(f0: List<Str>, f1: i64) -> &'static X64Code {
-    kayak_rt::heap_alloc(X64Code::X64Code(f0, f1))
+pub fn x64_code(f0: List<Str>, f1: i64, f2: i64, f3: List<Str>) -> &'static X64Code {
+    kayak_rt::heap_alloc(X64Code::X64Code(f0, f1, f2, f3))
 }
 
-#[inline]
 pub fn x64_emit(c: &'static X64Code, line: Str) -> &'static X64Code {
     let tagcase_ = c;
     match *tagcase_ {
-        X64Code::X64Code(ls, n) => {
-            x64_code(kayak_rt::heap_cons(string_append(str_lit("    "), string_append(line, str_lit("\n"))), ls), n)
+        X64Code::X64Code(ls, n, k, fs) => {
+            x64_code(kayak_rt::heap_cons(string_append(str_lit("    "), string_append(line, str_lit("\n"))), ls), n, k, fs)
         }
     }
 }
@@ -83,8 +106,8 @@ pub fn x64_emit(c: &'static X64Code, line: Str) -> &'static X64Code {
 pub fn x64_emit_label(c: &'static X64Code, l: Str) -> &'static X64Code {
     let tagcase_ = c;
     match *tagcase_ {
-        X64Code::X64Code(ls, n) => {
-            x64_code(kayak_rt::heap_cons(string_append(l, str_lit(":\n")), ls), n)
+        X64Code::X64Code(ls, n, k, fs) => {
+            x64_code(kayak_rt::heap_cons(string_append(l, str_lit(":\n")), ls), n, k, fs)
         }
     }
 }
@@ -93,7 +116,7 @@ pub fn x64_emit_label(c: &'static X64Code, l: Str) -> &'static X64Code {
 pub fn x64_fresh_label(c: &'static X64Code) -> i64 {
     let tagcase_ = c;
     match *tagcase_ {
-        X64Code::X64Code(ls, n) => {
+        X64Code::X64Code(ls, n, k, fs) => {
             n
         }
     }
@@ -103,8 +126,8 @@ pub fn x64_fresh_label(c: &'static X64Code) -> i64 {
 pub fn x64_labelled(c: &'static X64Code) -> &'static X64Code {
     let tagcase_ = c;
     match *tagcase_ {
-        X64Code::X64Code(ls, n) => {
-            x64_code(ls, i64_plus(n, 1i64))
+        X64Code::X64Code(ls, n, k, fs) => {
+            x64_code(ls, i64_plus(n, 1i64), k, fs)
         }
     }
 }
@@ -114,22 +137,91 @@ pub fn x64_label_text(what: Str, n: i64) -> Str {
     string_append(str_lit(".L"), string_append(what, i64_to_string(n)))
 }
 
+#[inline]
+pub fn x64_using(c: &'static X64Code, slots: i64) -> &'static X64Code {
+    let tagcase_ = c;
+    match *tagcase_ {
+        X64Code::X64Code(ls, n, k, fs) => {
+            x64_code(ls, n, if i64_gt(slots, k) {
+                slots
+            } else {
+                k
+            }, fs)
+        }
+    }
+}
+
+#[inline]
+pub fn x64_slot(i: i64) -> Str {
+    string_append(i64_to_string(i64_star(8i64, i)), str_lit("(%rsp)"))
+}
+
 /// `%rax` made #t if the flags say `cc`, else #f.
 pub fn x64_boolean_if(c: &'static X64Code, cc: Str) -> &'static X64Code {
     x64_emit(x64_emit(x64_emit(c, string_append(str_lit("movl $"), string_append(i64_to_string(x64_word_false()), str_lit(", %eax")))), string_append(str_lit("movl $"), string_append(i64_to_string(x64_word_true()), str_lit(", %ecx")))), string_append(str_lit("cmov"), string_append(cc, str_lit(" %rcx, %rax"))))
 }
 
-/// Code that leaves `t`'s value in `%rax`.
-pub fn x64_emit_expr(c: &'static X64Code, t: &'static Sexp) -> &'static X64Code {
+/// A jump, if the flags say `cc`, to the failure `what`, whose call is out
+/// of the line, after the code's `ret`.
+pub fn x64_failing_if(c: &'static X64Code, cc: Str, what: i64) -> &'static X64Code {
+    let k = x64_fresh_label(c);
+    let bad = x64_label_text(str_lit("fail"), k);
+    let c = x64_emit(x64_labelled(c), string_append(str_lit("j"), string_append(cc, string_append(str_lit(" "), bad))));
+    let tagcase_ = c;
+    match *tagcase_ {
+        X64Code::X64Code(ls, n, slots, fs) => {
+            x64_code(ls, n, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit(":\n    movl $"), kayak_rt::heap_cons(i64_to_string(what), kayak_rt::heap_cons(str_lit(", %edi\n    call kc_fail\n"), kayak_rt::nil()))))), fs))
+        }
+    }
+}
+
+#[inline]
+pub fn x64_comparisons() -> List<Str> {
+    static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::nil())))))))))))
+    })
+}
+
+/// The condition code of a comparison, its first argument in `%rax`, its
+/// second in `%rcx`: characters compare as their words do, the code above
+/// the same low bits.
+pub fn x64_condition(n: Str) -> Str {
+    if (string_eq_p(n, str_lit("=")) || string_eq_p(n, str_lit("char=?")) || string_eq_p(n, str_lit("eq?"))) {
+        str_lit("e")
+    } else if (string_eq_p(n, str_lit("<")) || string_eq_p(n, str_lit("char<?"))) {
+        str_lit("l")
+    } else if (string_eq_p(n, str_lit("<=")) || string_eq_p(n, str_lit("char<=?"))) {
+        str_lit("le")
+    } else if (string_eq_p(n, str_lit(">")) || string_eq_p(n, str_lit("char>?"))) {
+        str_lit("g")
+    } else {
+        str_lit("ge")
+    }
+}
+
+/// Code that leaves `t`'s value in `%rax`, using the frame's slots from
+/// `si`.
+pub fn x64_emit_expr(c: &'static X64Code, t: &'static Sexp, si: i64) -> &'static X64Code {
     if string_eq_p(term_head(t), str_lit("prim")) {
-        x64_emit_primitive(x64_emit_expr(c, prim_arg(t)), prim_name(t))
+        let args = prim_args(t);
+        if null_p(cdr(args)) {
+            x64_emit_unary(x64_emit_expr(c, car(args), si), prim_name(t))
+        } else {
+            let c = x64_emit_expr(c, car(args), si);
+            let c = x64_using(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(si))), i64_plus(si, 1i64));
+            let c = x64_emit_expr(c, second(args), i64_plus(si, 1i64));
+            let c = x64_emit(c, str_lit("movq %rax, %rcx"));
+            let c = x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(si), str_lit(", %rax"))));
+            x64_emit_binary(c, prim_name(t))
+        }
     } else {
         x64_emit(c, string_append(str_lit("movabsq $"), string_append(i64_to_string(x64_constant_of(t)), str_lit(", %rax"))))
     }
 }
 
 /// Code that makes `%rax`, the argument, the primitive `n`'s value.
-pub fn x64_emit_primitive(c: &'static X64Code, n: Str) -> &'static X64Code {
+pub fn x64_emit_unary(c: &'static X64Code, n: Str) -> &'static X64Code {
     if string_eq_p(n, str_lit("not")) {
         x64_boolean_if(x64_emit(c, string_append(str_lit("cmpq $"), string_append(i64_to_string(x64_word_false()), str_lit(", %rax")))), str_lit("e"))
     } else if string_eq_p(n, str_lit("null?")) {
@@ -139,36 +231,89 @@ pub fn x64_emit_primitive(c: &'static X64Code, n: Str) -> &'static X64Code {
     } else if string_eq_p(n, str_lit("char->integer")) {
         x64_emit(x64_emit(c, str_lit("shrq $5, %rax")), str_lit("andq $-8, %rax"))
     } else if string_eq_p(n, str_lit("integer->char")) {
-        let k = x64_fresh_label(c);
-        let bad = x64_label_text(str_lit("notchar"), k);
-        let past = x64_label_text(str_lit("char"), k);
-        let c = x64_labelled(c);
         let c = x64_emit(c, str_lit("movq %rax, %rdx"));
         let c = x64_emit(c, str_lit("sarq $3, %rdx"));
         let c = x64_emit(c, str_lit("cmpq $1114111, %rdx"));
-        let c = x64_emit(c, string_append(str_lit("ja "), bad));
+        let c = x64_failing_if(c, str_lit("a"), x64_fail_not_a_char());
         let c = x64_emit(c, str_lit("leaq -55296(%rdx), %rcx"));
         let c = x64_emit(c, str_lit("cmpq $2047, %rcx"));
-        let c = x64_emit(c, string_append(str_lit("jbe "), bad));
+        let c = x64_failing_if(c, str_lit("be"), x64_fail_not_a_char());
         let c = x64_emit(c, str_lit("shlq $8, %rdx"));
         let c = x64_emit(c, str_lit("orq $67, %rdx"));
-        let c = x64_emit(c, str_lit("movq %rdx, %rax"));
-        let c = x64_emit(c, string_append(str_lit("jmp "), past));
-        let c = x64_emit_label(c, bad);
-        let c = x64_emit(c, string_append(str_lit("movl $"), string_append(i64_to_string(x64_fail_not_a_char()), str_lit(", %edi"))));
-        let c = x64_emit(c, str_lit("call kc_fail"));
-        x64_emit_label(c, past)
+        x64_emit(c, str_lit("movq %rdx, %rax"))
     } else {
         error(string_append(str_lit("kc: the native back end has no primitive "), n));
         c
     }
 }
 
+/// Code that makes `%rax`, the first argument, and `%rcx`, the second,
+/// the primitive `n`'s value. A fixnum is its value times 8: a sum or a
+/// difference of two is the sum's, its overflow the 64-bit one; a
+/// product, one of them shifted back first.
+pub fn x64_emit_binary(c: &'static X64Code, n: Str) -> &'static X64Code {
+    if string_member_p(n, x64_comparisons()) {
+        x64_boolean_if(x64_emit(c, str_lit("cmpq %rcx, %rax")), x64_condition(n))
+    } else if string_eq_p(n, str_lit("+")) {
+        x64_failing_if(x64_emit(c, str_lit("addq %rcx, %rax")), str_lit("o"), x64_fail_past_fixnum())
+    } else if string_eq_p(n, str_lit("-")) {
+        x64_failing_if(x64_emit(c, str_lit("subq %rcx, %rax")), str_lit("o"), x64_fail_past_fixnum())
+    } else if string_eq_p(n, str_lit("*")) {
+        x64_failing_if(x64_emit(x64_emit(c, str_lit("sarq $3, %rax")), str_lit("imulq %rcx, %rax")), str_lit("o"), x64_fail_past_fixnum())
+    } else if string_eq_p(n, str_lit("max")) {
+        x64_emit(x64_emit(c, str_lit("cmpq %rcx, %rax")), str_lit("cmovl %rcx, %rax"))
+    } else if string_eq_p(n, str_lit("min")) {
+        x64_emit(x64_emit(c, str_lit("cmpq %rcx, %rax")), str_lit("cmovg %rcx, %rax"))
+    } else if (string_eq_p(n, str_lit("quotient")) || string_eq_p(n, str_lit("remainder")) || string_eq_p(n, str_lit("modulo"))) {
+        let c = x64_emit(c, str_lit("testq %rcx, %rcx"));
+        let c = x64_failing_if(c, str_lit("e"), x64_fail_division());
+        let c = x64_emit(c, str_lit("sarq $3, %rax"));
+        let c = x64_emit(c, str_lit("sarq $3, %rcx"));
+        let c = x64_emit(c, str_lit("cqto"));
+        let c = x64_emit(c, str_lit("idivq %rcx"));
+        if string_eq_p(n, str_lit("quotient")) {
+            let c = x64_emit(c, string_append(str_lit("movabsq $"), string_append(i64_to_string(x64_fixnum_max()), str_lit(", %rdx"))));
+            let c = x64_emit(c, str_lit("cmpq %rdx, %rax"));
+            let c = x64_failing_if(c, str_lit("g"), x64_fail_past_fixnum());
+            x64_emit(c, str_lit("shlq $3, %rax"))
+        } else if string_eq_p(n, str_lit("remainder")) {
+            x64_emit(x64_emit(c, str_lit("movq %rdx, %rax")), str_lit("shlq $3, %rax"))
+        } else {
+            let k = x64_fresh_label(c);
+            let past = x64_label_text(str_lit("mod"), k);
+            let c = x64_labelled(c);
+            let c = x64_emit(c, str_lit("movq %rdx, %rax"));
+            let c = x64_emit(c, str_lit("testq %rax, %rax"));
+            let c = x64_emit(c, string_append(str_lit("je "), past));
+            let c = x64_emit(c, str_lit("movq %rax, %rdx"));
+            let c = x64_emit(c, str_lit("xorq %rcx, %rdx"));
+            let c = x64_emit(c, string_append(str_lit("jns "), past));
+            let c = x64_emit(c, str_lit("addq %rcx, %rax"));
+            let c = x64_emit_label(c, past);
+            x64_emit(c, str_lit("shlq $3, %rax"))
+        }
+    } else {
+        error(string_append(str_lit("kc: the native back end has no primitive "), n));
+        c
+    }
+}
+
+// The frame's bytes: its slots, and 8 more if that keeps the stack aligned.
+#[inline]
+pub fn x64_frame(slots: i64) -> i64 {
+    let b = i64_star(8i64, slots);
+    if i64_eq(i64_remainder(b, 16i64), 8i64) {
+        b
+    } else {
+        i64_plus(b, 8i64)
+    }
+}
+
 pub fn q_asm(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
-    let tagcase_ = x64_emit_expr(x64_code(nil::<Str>(), 0i64), l0_term(d, run, path));
+    let tagcase_ = x64_emit_expr(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>()), l0_term(d, run, path), 0i64);
     match *tagcase_ {
-        X64Code::X64Code(ls, n) => {
-            string_list_append(append(kayak_rt::heap_cons(str_lit("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::heap_cons(str_lit("    .globl kc_entry\n"), kayak_rt::heap_cons(str_lit("kc_entry:\n"), kayak_rt::heap_cons(str_lit("    subq $8, %rsp\n"), kayak_rt::nil()))))))), append(reverse(ls), kayak_rt::heap_cons(str_lit("    addq $8, %rsp\n"), kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))
+        X64Code::X64Code(ls, n, slots, fails) => {
+            string_list_append(append(kayak_rt::heap_cons(str_lit("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(".\n"), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::heap_cons(str_lit("    .globl kc_entry\n"), kayak_rt::heap_cons(str_lit("kc_entry:\n"), kayak_rt::heap_cons(str_lit("    subq $"), kayak_rt::heap_cons(i64_to_string(x64_frame(slots)), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil()))))))))), append(reverse(ls), append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(x64_frame(slots)), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::nil())))), append(reverse(fails), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))
         }
     }
 }

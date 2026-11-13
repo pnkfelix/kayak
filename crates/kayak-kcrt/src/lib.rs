@@ -76,6 +76,9 @@ fn written(v: u64) -> String {
 pub extern "C" fn kc_fail(what: u64) -> ! {
     let message = match what {
         1 => "not a Unicode scalar value",
+        // kc's own, not Fixpt's: its integers are fixnums alone, as yet.
+        2 => "kc: not yet: an integer past a fixnum",
+        3 => "division by zero",
         _ => "a failure kc's runtime has no words for",
     };
     eprintln!("evaluation failed: {message}");

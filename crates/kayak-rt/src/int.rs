@@ -270,10 +270,12 @@ pub fn _star(a: Int, b: Int) -> Int {
 }
 
 /// Quotient, truncated toward zero, and remainder, of the dividend's sign.
-fn divide(a: Int, b: Int, name: &str) -> (Int, Int) {
+/// A divisor of zero fails in Fixpt's words, `division by zero` (C403;
+/// `name` was said before them).
+fn divide(a: Int, b: Int, _name: &str) -> (Int, Int) {
     if let (Int::Small(x), Int::Small(y)) = (a, b) {
         if y == 0 {
-            crate::error(leak_string(format!("{name}: division by zero")));
+            crate::error(leak_string("division by zero".to_string()));
         }
         if let (Some(q), Some(r)) = (x.checked_div(y), x.checked_rem(y)) {
             return (Int::Small(q), Int::Small(r));
@@ -281,7 +283,7 @@ fn divide(a: Int, b: Int, name: &str) -> (Int, Int) {
     }
     let (a, b) = (wide(a), wide(b));
     if b.magnitude.is_empty() {
-        crate::error(leak_string(format!("{name}: division by zero")));
+        crate::error(leak_string("division by zero".to_string()));
     }
     let (q, r) = divide_magnitudes(&a.magnitude, &b.magnitude);
     (

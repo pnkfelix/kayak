@@ -9,7 +9,10 @@ use super::*;
 // `(bool 1)` and `(bool 0)`, `(char CODE)`, `(unit)`, `(nil)`, the empty
 // list. Step 3: the unary primitives (C402), `(prim NAME ARG)`: `not`,
 // `null?`, `zero?`, `char->integer`, `integer->char`. Anything else: not
-// yet. No binding form yet, so a primitive's name is the standard one.
+// yet. Step 4: binary primitives (C403), `(prim NAME A B)`: `+`, `-`,
+// `*`, `quotient`, `remainder`, `modulo`, `max`, `min`, `=`, `<`, `<=`,
+// `>`, `>=`, the `char` comparisons, `eq?`. No binding form yet, so a
+// primitive's name is the standard one.
 #[inline]
 pub fn fixnum_max() -> i64 {
     1152921504606846975i64
@@ -20,6 +23,14 @@ pub fn unary_primitives() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
         kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::nil())))))
+    })
+}
+
+#[inline]
+pub fn binary_primitives() -> List<Str> {
+    static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::nil())))))))))))))))))))
     })
 }
 
@@ -83,6 +94,19 @@ pub fn l0_of(path: Str, e: &'static Sexp) -> Str {
                 }
             }) {
                 string_append(str_lit("(prim "), string_append(sym_name(car(xs)), string_append(str_lit(" "), string_append(l0_of(path, second(xs)), str_lit(")")))))
+            } else if (i64_eq(size(xs), 3i64) && {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        string_member_p(n, binary_primitives())
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                string_list_append(kayak_rt::heap_cons(str_lit("(prim "), kayak_rt::heap_cons(sym_name(car(xs)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(l0_of(path, second(xs)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(l0_of(path, third(xs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))))
             } else {
                 not_yet(path, str_lit("a form"))
             }
@@ -133,7 +157,7 @@ pub fn term_head(t: &'static Sexp) -> Str {
     }
 }
 
-// A `(prim NAME ARG)`'s name and argument.
+// A `(prim NAME ARG ...)`'s name, its first argument, and its arguments.
 pub fn prim_name(t: &'static Sexp) -> Str {
     let tagcase_ = t;
     match *tagcase_ {
@@ -166,6 +190,20 @@ pub fn prim_arg(t: &'static Sexp) -> &'static Sexp {
         _ => {
             let other = tagcase_;
             t
+        }
+    }
+}
+
+#[inline]
+pub fn prim_args(t: &'static Sexp) -> Sexps {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            cdr(cdr(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Sexp>()
         }
     }
 }
