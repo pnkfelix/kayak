@@ -110,6 +110,7 @@ higher-kinds/okasaki-stack.fx
 higher-kinds/poly-global-read.fx
 higher-kinds/poly-over-constructor.fx
 higher-kinds/proj-await.fx
+higher-kinds/type-form-head.fx
 kayak/checker/let-cons-car.fx
 kayak/checker/let-cons-region.fx
 kayak/checker/module-place-effects.fx
@@ -126,6 +127,7 @@ kayak/made-code-x86_64/code-freed.fx
 kayak/made-code-x86_64/kept-across-collections.fx
 kayak/made-code-x86_64/stubs-escapes.fx
 kayak/modules/values-in-order.fx
+listof/acyclic-by-default.fx
 made-code-x86_64/allocated.fx
 made-code-x86_64/declared.fx
 made-code-x86_64/frames.fx
@@ -223,6 +225,14 @@ modules/stack-by-poly.fx
 modules/star-reads.fx
 modules/star-self.fx
 modules/strings.fx
+modules/toplevel-qualified-desc.fx
+modules/toplevel-qualified-effect.fx
+modules/toplevel-qualified-family.fx
+modules/toplevel-qualified-form.fx
+modules/toplevel-qualified-select.fx
+modules/toplevel-qualified-type.fx
+modules/toplevel-qualified-value.fx
+modules/toplevel-qualified-with.fx
 modules/transparent-as-abstract.fx
 modules/transparent.fx
 modules/type-and-value.fx

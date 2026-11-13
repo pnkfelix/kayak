@@ -10977,7 +10977,10 @@ Stage 0 is `#%toplevel`, which every expansion uses (Fixpt's `docs/fx26.md`,
   and at a call's head (`toplevel-value`, `toplevel-call`): the top
   level's binding put innermost, so every rule a call of `n` has holds;
   where nothing shadows `n`, `toplevel-plain` noted, as Fixpt's checkers
-  note it plain. KFX refuses it (`kfx-restricted`), as it has no use yet.
+  note it plain. KFX refuses every spelling, values and descriptions
+  alike, in the restriction pass (`restrict.kfx`), as kfx's Rust has no
+  way to say it (the first full check found a type through it reaching
+  Rust).
 - **Descriptions**: `#%toplevel:t` as a type, an effect, a description to
   `proj`, a function's head (`(#%toplevel:box int)`, or the type form
   where the top level binds no function `listof`), `(select #%toplevel T)`
