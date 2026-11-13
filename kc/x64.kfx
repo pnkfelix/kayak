@@ -39,7 +39,7 @@
   (module
     (hide
       (import kc-front kc-hex kc-datum kc-items-of kc-keys (type qbody))
-      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number lambda-params lambda-free app-fn app-args gproc-arity)
+      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number term-text lambda-params lambda-free app-fn app-args gproc-arity)
       (import kc-rust sexp-at))
 
     (hide
@@ -215,6 +215,38 @@
                                            (string-append "movq %rax, " (x64-slot (i64+ si i))))
                                  (i64+ i 1) m si)))))
 
+      "A string as Fixpt lays one out (C421; `fixpt-heap`'s `make_string`): a
+       header of kind 1, its words all suffix; its length; its code points,
+       two a word, the first in the low half. In `.rodata`, from `label`,
+       the string's value `label` + 4 (its suffix, tag 4)."
+      (define-rec
+        (x64-points (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (cs acc)
+            (cond ((null? cs) (reverse acc))
+                  ((null? (cdr cs)) (reverse (cons (string-append "    .quad " (string-append (i64->string (char->i64 (car cs))) "\n")) acc)))
+                  (else (x64-points (cdr (cdr cs))
+                                    (cons (string-list-append (list "    .quad " (i64->string (i64+ (char->i64 (car cs)) (i64* (char->i64 (second-char cs)) 4294967296))) "\n")) acc)))))))
+
+      (define second-char (subr kfx ((listof char acyclic)) char) (lambda (cs) (car (cdr cs))))
+
+      (define x64-string-data (subr kfx (string string) string)
+        (lambda (label text)
+          (let* ((cs (string-chars text)) (n (size cs)) (words (i64+ 1 (i64-quotient (i64+ n 1) 2))))
+            (string-list-append
+              (append (list "    .section .rodata\n    .p2align 3\n    .quad " (i64->string (i64+ 14 (i64* (i64* 8 words) 4294967296))) "\n"
+                            label ":\n    .quad " (i64->string n) "\n")
+                      (append (x64-points cs nil) (list "    .text\n")))))))
+
+      "A literal's data, out of the line with the failures' calls, and its
+       label."
+      (define x64-data (subr kfx (x64-code string) x64-code)
+        (lambda (c text) (tagcase c (x64-code (ls n k fs px) (x64-code ls n k (cons text fs) px)))))
+
+      (define x64-calling (subr kfx (x64-code string) x64-code)
+        (lambda (c f)
+          "`%rax`, then `%rcx`, given to the runtime's `f`, its answer in `%rax`."
+          (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi") (string-append "call " f))))
+
       "Where each variable is: its binder's number and its slot."
       (define-datatype x64-at (x64-at i64 i64))
 
@@ -247,7 +279,7 @@
             "Code that leaves `t`'s value in `%rax`, using the frame's slots from
              `si`, its variables where `env` says."
             (let ((h (term-head t)))
-              (cond ((string=? h "prim")
+              (cond ((and (string=? h "prim") (i64< (size (prim-args t)) 3))
                      (let ((args (prim-args t)))
                        (if (null? (cdr args))
                            (x64-emit-unary (x64-emit-expr c (car args) si env) (prim-name t))
@@ -283,6 +315,31 @@
                             (c (x64-emit-label c no))
                             (c (x64-emit-expr c (third ps) si env)))
                        (x64-emit-label c past)))
+                    ((string=? h "string")
+                     ;; Its data in `.rodata`; its value its suffix's address, tag 4.
+                     (let* ((k (x64-fresh-label c)) (l (x64-label c "str" k)) (c (x64-labelled c))
+                            (c (x64-data c (x64-string-data l (term-text t)))))
+                       (x64-emit c (string-append "leaq " (string-append l "+4(%rip), %rax")))))
+                    ((string=? h "symbol")
+                     ;; Interned by the runtime the first time it is met, and kept
+                     ;; in a cell of its name's, common to every object that names
+                     ;; it, so that one name is one symbol, `eq?` to itself (C421).
+                     (let* ((k (x64-fresh-label c)) (l (x64-label c "str" k)) (done (x64-label c "sym" k)) (c (x64-labelled c))
+                            (cell (string-append "kcy_" (x64-name (term-text t))))
+                            (c (x64-data c (string-append (x64-string-data l (term-text t)) (string-append "    .comm " (string-append cell ",8,8\n")))))
+                            (c (x64-emit c (string-append "movq " (string-append cell "(%rip), %rax"))))
+                            (c (x64-emit c "testq %rax, %rax"))
+                            (c (x64-emit c (string-append "jne " done)))
+                            (c (x64-emit c (string-append "leaq " (string-append l "+4(%rip), %rdi"))))
+                            (c (x64-emit c "call kc_intern"))
+                            (c (x64-emit c (string-append "movq %rax, " (string-append cell "(%rip)")))))
+                       (x64-emit-label c done)))
+                    ((and (string=? h "prim") (i64= (size (prim-args t)) 3))
+                     ;; `substring`: its arguments into slots, then given to the runtime.
+                     (let* ((args (prim-args t))
+                            (c (x64-emit-args c args si env))
+                            (c (x64-moved-args c x64-arg-registers si 3)))
+                       (x64-emit c "call kc_substring")))
                     ((string=? h "lambda") (x64-emit-lambda c t env))
                     ((string=? h "gproc") (x64-emit-closure c (x64-proc-symbol (item-name t)) nil))
                     ((string=? h "app")
@@ -429,6 +486,12 @@
                      (x64-emit c (if (string=? n "car") "movq -1(%rax), %rax" "movq 7(%rax), %rax"))))
                   ((string=? n "pair?")
                    (x64-boolean-if (x64-emit (x64-emit (x64-emit c "movq %rax, %rdx") "andq $7, %rdx") "cmpq $1, %rdx") "e"))
+                  ;; A string's length is its first word, at its suffix (C421).
+                  ((string=? n "string-length") (x64-emit (x64-emit c "movq -4(%rax), %rax") "shlq $3, %rax"))
+                  ((string=? n "symbol->string") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_symbol_to_string"))
+                  ((string=? n "string->symbol") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_intern"))
+                  ((string=? n "string?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_string"))
+                  ((string=? n "symbol?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_symbol"))
                   (else (begin (error (string-append "kc: the native back end has no primitive " n)) c)))))
 
         (x64-emit-binary (subr kfx (x64-code string) x64-code)
@@ -452,6 +515,33 @@
                           (c (x64-emit c "movq %rcx, 8(%r15)"))
                           (c (x64-emit c "leaq 1(%r15), %rax")))
                      (x64-emit c "movq %rdx, %r15")))
+                  ((string=? n "string-ref")
+                   ;; The index checked against the length, unsigned, so that one
+                   ;; below 0 is past it too; then the word of its code point, the
+                   ;; low half or the high, made a character (C421).
+                   (let* ((k (x64-fresh-label c)) (bad (x64-label c "fail" k)) (even (x64-label c "even" k)) (past (x64-label c "ref" k))
+                          (c (x64-labelled c))
+                          (c (x64-emit c "sarq $3, %rcx"))
+                          (c (x64-emit c "cmpq -4(%rax), %rcx"))
+                          (c (x64-emit c (string-append "jae " bad)))
+                          (c (tagcase c (x64-code (ls n2 slots fs px)
+                                          (x64-code ls n2 slots (cons (string-list-append (list bad ":\n    movq -4(%rax), %rdi\n    call kc_string_index_fail\n")) fs) px))))
+                          (c (x64-emit c "movq %rcx, %rdx"))
+                          (c (x64-emit c "shrq $1, %rdx"))
+                          (c (x64-emit c "movq 4(%rax,%rdx,8), %rdx"))
+                          (c (x64-emit c "testq $1, %rcx"))
+                          (c (x64-emit c (string-append "jz " even)))
+                          (c (x64-emit c "shrq $32, %rdx"))
+                          (c (x64-emit c (string-append "jmp " past)))
+                          (c (x64-emit-label c even))
+                          (c (x64-emit c "movl %edx, %edx"))
+                          (c (x64-emit-label c past))
+                          (c (x64-emit c "shlq $8, %rdx"))
+                          (c (x64-emit c "orq $67, %rdx")))
+                     (x64-emit c "movq %rdx, %rax")))
+                  ((string=? n "string=?") (x64-calling c "kc_string_eq"))
+                  ((string=? n "string<?") (x64-calling c "kc_string_lt"))
+                  ((string=? n "string-append") (x64-calling c "kc_string_append"))
                   ((string=? n "max") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovl %rcx, %rax"))
                   ((string=? n "min") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovg %rcx, %rax"))
                   ((or (string=? n "quotient") (string=? n "remainder") (string=? n "modulo"))

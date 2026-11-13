@@ -570,7 +570,16 @@ pub fn string_ref_i64(s: Str, i: i64) -> char {
             char_byte(s, i).and_then(|b| s.text[b..].chars().next())
         }
     });
-    found.unwrap_or_else(|| fail("string-ref: out of range"))
+    found.unwrap_or_else(|| string_index_failed(s))
+}
+
+/// `string-ref` past a string's end, as Fixpt says it (C421).
+#[cold]
+fn string_index_failed(s: Str) -> ! {
+    fail(&format!(
+        "string index out of range (length {})",
+        string_length_i64(s)
+    ))
 }
 
 #[inline]
@@ -741,7 +750,7 @@ pub fn string_length(s: Str) -> Int {
 #[inline]
 pub fn string_ref(s: Str, i: Int) -> char {
     if _lt(i, int_lit(0)) || _gt(i, int_lit(i64::MAX)) {
-        fail("string-ref: out of range")
+        string_index_failed(s)
     }
     string_ref_i64(s, int_to_i64(i))
 }

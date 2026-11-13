@@ -129,6 +129,11 @@ pub mod kc_rust {
     }
 
     #[inline]
+    pub fn term_text() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+        &kc_l0::term_text
+    }
+
+    #[inline]
     pub fn lambda_params() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
         &kc_l0::lambda_params
     }
@@ -230,6 +235,37 @@ pub mod kc_rust {
         }
     }
 
+    // A Rust string literal of `s` (C421).
+    pub fn rust_escaped(mut cs: List<char>, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else {
+                let c = car(cs);
+                let k = char_to_i64(c);
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(if char_eq_p(c, '"') {
+                    str_lit("\\\"")
+                } else if char_eq_p(c, '\\') {
+                    str_lit("\\\\")
+                } else if char_eq_p(c, '\n') {
+                    str_lit("\\n")
+                } else if char_eq_p(c, '\t') {
+                    str_lit("\\t")
+                } else if i64_lt(k, 32i64) {
+                    string_append(str_lit("\\u{"), string_append(kc_hex()(k, str_lit("")), str_lit("}")))
+                } else {
+                    list_to_string(kayak_rt::heap_cons(c, kayak_rt::nil()))
+                }, acc));
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn rust_string(s: Str) -> Str {
+        string_append(str_lit("\""), string_append(string_list_append(reverse(rust_escaped(string_chars(s), nil::<Str>()))), str_lit("\"")))
+    }
+
     // A type as kayak-rt's Rust type.
     pub fn rust_type(path: Str, t: &'static Sexp) -> Str {
         let tagcase_ = t;
@@ -243,6 +279,10 @@ pub mod kc_rust {
                     str_lit("char")
                 } else if string_eq_p(n, str_lit("unit")) {
                     str_lit("()")
+                } else if string_eq_p(n, str_lit("string")) {
+                    str_lit("Str")
+                } else if string_eq_p(n, str_lit("symbol")) {
+                    str_lit("Symbol")
                 } else {
                     not_yet()(path, string_append(str_lit("a Rust type of "), n))
                 }
@@ -315,6 +355,10 @@ pub mod kc_rust {
             string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_of(app_fn()(t)), kayak_rt::heap_cons(str_lit(")("), kayak_rt::heap_cons(rust_args(app_args()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
         } else if string_eq_p(h, str_lit("gproc")) {
             string_list_append(kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(i64_to_string(gproc_arity()(t)), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(rust_proc_name(item_name()(t)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+        } else if string_eq_p(h, str_lit("string")) {
+            string_append(str_lit("str_lit("), string_append(rust_string(term_text()(t)), str_lit(")")))
+        } else if string_eq_p(h, str_lit("symbol")) {
+            string_append(str_lit("symbol_lit(str_lit("), string_append(rust_string(term_text()(t)), str_lit("))")))
         } else if string_eq_p(h, str_lit("int")) {
             string_append(str_lit("int_lit("), string_append(i64_to_string(n), str_lit("i64)")))
         } else if string_eq_p(h, str_lit("bool")) {

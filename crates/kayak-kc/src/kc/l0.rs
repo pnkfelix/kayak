@@ -21,6 +21,8 @@ use super::*;
 // and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
 // `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
 // (C407): a program of many forms, each an item of its own (`l0-item`).
+// Step 11: strings and symbols (C421): `(string "TEXT")`, `(symbol
+// "NAME")`, the strings' primitives, `substring` of three arguments.
 // Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
 // free variables found here; `(app F ARG ...)`, a call of a procedure as a
 // value; `(gproc NAME ARITY)`, a procedure the program defines as one.
@@ -73,15 +75,22 @@ pub mod kc_l0 {
     pub fn unary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::nil()))))))))
+            kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::nil())))))))))))))
+        })
+    }
+
+    pub fn binary_primitives() -> List<Str> {
+        static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::nil()))))))))))))))))))))))))
         })
     }
 
     #[inline]
-    pub fn binary_primitives() -> List<Str> {
+    pub fn ternary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::nil()))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit("substring"), kayak_rt::nil())
         })
     }
 
@@ -404,6 +413,9 @@ pub mod kc_l0 {
                 Sexp::Chr(c, f, p) => {
                     return l0_made(string_append(str_lit("(char "), string_append(i64_to_string(char_to_i64(c)), str_lit(")"))), next);
                 }
+                Sexp::Str(t, f, p) => {
+                    return l0_made(string_append(str_lit("(string "), string_append(kc_datum()(e), str_lit(")"))), next);
+                }
                 Sexp::Sym(n, f, p) => {
                     let k = l0_number_of(n, env);
                     if i64_gt_eq(k, 0i64) {
@@ -494,6 +506,19 @@ pub mod kc_l0 {
                         }
                     }) {
                         return l0_made(str_lit("(nil)"), next);
+                    } else if (string_eq_p(h, str_lit("quote")) && i64_eq(size(xs), 2i64) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                not((string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        return l0_made(string_append(str_lit("(symbol "), string_append(kc_datum()(str(sym_name(second(xs)), str_lit(""), 0i64)), str_lit(")"))), next);
                     } else if (string_eq_p(h, str_lit("let")) && i64_gt_eq(size(xs), 3i64) && {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
@@ -584,6 +609,13 @@ pub mod kc_l0 {
                         match *tagcase_ {
                             L0Made::L0Made(a, n1) => {
                                 return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                            }
+                        }
+                    } else if (i64_eq(size(xs), 4i64) && string_member_p(h, ternary_primitives())) {
+                        let tagcase_ = l0_terms(path, scope, env, next, cdr(xs), nil::<Str>());
+                        match *tagcase_ {
+                            L0Made::L0Made(ts, n1) => {
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
                             }
                         }
                     } else if (i64_eq(size(xs), 3i64) && string_member_p(h, binary_primitives())) {
@@ -1043,6 +1075,33 @@ pub mod kc_l0 {
             _ => {
                 let other = tagcase_;
                 nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    // A `(string "TEXT")`'s or `(symbol "NAME")`'s text (C421).
+    pub fn term_text(t: &'static Sexp) -> Str {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(cdr(xs)) {
+                    str_lit("")
+                } else {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Str(s, f2, p2) => {
+                            s
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
             }
         }
     }

@@ -9,7 +9,12 @@
 //! Step 8: a program of many forms, each top-level expression's value
 //! written by `kc_show`, called by kc's code, on a line of its own.
 //! Step 9: closures, bloblets (tag 4) of Fixpt's layout, written by their
-//! kind.
+//! kind. Step 11: strings and symbols (C421), of Fixpt's layout too
+//! (`fixpt-heap`'s `make_string`, `intern`): a string's words its length
+//! and its code points, two a word; a symbol's fields its name, its hash and
+//! its global slot. What kc's code makes of them past a literal (an
+//! append, a symbol interned) is made here, in this runtime's own memory:
+//! no collector yet, so nothing is freed.
 //!
 //! kc's code is called through `extern "C"`: the one place here that is
 //! not safe Rust.
@@ -101,6 +106,194 @@ const fn null() -> u64 {
     (IMM_NULL << IMM_SHIFT) | TAG_IMMEDIATE
 }
 
+// ------------------------------------------------------------ objects
+
+const KIND_STRING: u64 = 1;
+const KIND_SYMBOL: u64 = 2;
+const KIND_CLOSURE: u64 = 8;
+const TAG_HEADER: u64 = 0b110;
+const TAG_TRAILER: u64 = 0b101;
+
+fn word(addr: u64) -> u64 {
+    // SAFETY: an address kc's code or this runtime made an object at, the
+    // object's own words, which live as long as the run.
+    unsafe { *(addr as *const u64) }
+}
+
+/// A bloblet's header (its suffix's address `v - 4`): the word before it,
+/// or, before that, a trailer saying how far back the header is.
+fn header(v: u64) -> u64 {
+    let p = v - TAG_BLOBLET;
+    let w = word(p - 8);
+    if w & TAG_MASK == TAG_TRAILER {
+        word(p - 8 - 8 * (w >> 3))
+    } else {
+        w
+    }
+}
+
+fn kind(v: u64) -> u64 {
+    (header(v) >> 3) & 0xff
+}
+
+/// A string's code points.
+fn string_text(v: u64) -> String {
+    let p = v - TAG_BLOBLET;
+    let n = word(p) as usize;
+    (0..n)
+        .map(|i| {
+            let w = word(p + 8 + 8 * (i as u64 / 2));
+            let c = if i % 2 == 0 {
+                w as u32
+            } else {
+                (w >> 32) as u32
+            };
+            char::from_u32(c).unwrap_or('\u{fffd}')
+        })
+        .collect()
+}
+
+/// Words this runtime makes, as long as the run.
+fn made(words: Vec<u64>) -> u64 {
+    Vec::leak(words).as_ptr() as u64
+}
+
+/// A string of `s`, as Fixpt lays one out: a header of kind 1, its words
+/// all suffix; the length; the code points, two a word.
+fn make_string(s: &str) -> u64 {
+    let cs: Vec<u32> = s.chars().map(|c| c as u32).collect();
+    let n = cs.len();
+    let words = 1 + n.div_ceil(2);
+    let mut w = vec![
+        TAG_HEADER | (KIND_STRING << 3) | ((8 * words as u64) << 32),
+        n as u64,
+    ];
+    for k in 0..n.div_ceil(2) {
+        let lo = cs[2 * k] as u64;
+        let hi = if 2 * k + 1 < n {
+            (cs[2 * k + 1] as u64) << 32
+        } else {
+            0
+        };
+        w.push(lo | hi);
+    }
+    made(w) + 8 + TAG_BLOBLET
+}
+
+std::thread_local! {
+    static SYMBOLS: std::cell::RefCell<std::collections::HashMap<String, u64>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// A symbol of the name string `s`, the one of that name: as Fixpt's
+/// `intern` makes one, its fields its name, its hash (FNV-1a, a fixnum) and
+/// a global slot (none here, -1), and a trailer.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_intern(s: u64) -> u64 {
+    let name = string_text(s);
+    SYMBOLS.with(|t| {
+        if let Some(&v) = t.borrow().get(&name) {
+            return v;
+        }
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for b in name.bytes() {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x100_0000_01b3);
+        }
+        let hash = ((h as i64 & i64::MAX) << 3) as u64;
+        let name_v = make_string(&name);
+        // Header (kind 2, four fields with the trailer), the fields, the
+        // trailer four back to the header; the value past it.
+        let w = vec![
+            TAG_HEADER | (KIND_SYMBOL << 3) | (4 << 14),
+            name_v,
+            hash,
+            (-1i64 << 3) as u64,
+            TAG_TRAILER | (4 << 3),
+        ];
+        let v = made(w) + 40 + TAG_BLOBLET;
+        t.borrow_mut().insert(name, v);
+        v
+    })
+}
+
+fn boolean(b: bool) -> u64 {
+    if b {
+        (IMM_TRUE << IMM_SHIFT) | TAG_IMMEDIATE
+    } else {
+        (IMM_FALSE << IMM_SHIFT) | TAG_IMMEDIATE
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_string_eq(a: u64, b: u64) -> u64 {
+    boolean(string_text(a) == string_text(b))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_string_lt(a: u64, b: u64) -> u64 {
+    boolean(string_text(a) < string_text(b))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_string_append(a: u64, b: u64) -> u64 {
+    make_string(&(string_text(a) + &string_text(b)))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_substring(s: u64, i: u64, j: u64) -> u64 {
+    let cs: Vec<char> = string_text(s).chars().collect();
+    let (i, j) = ((i as i64) >> 3, (j as i64) >> 3);
+    if i < 0 || j < i || j as usize > cs.len() {
+        failed("substring range out of bounds")
+    }
+    make_string(&cs[i as usize..j as usize].iter().collect::<String>())
+}
+
+/// A symbol's name: its field 0, the string it was made of.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_symbol_to_string(v: u64) -> u64 {
+    word(v - TAG_BLOBLET - 40 + 8)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_is_string(v: u64) -> u64 {
+    boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_STRING)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_is_symbol(v: u64) -> u64 {
+    boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_SYMBOL)
+}
+
+/// `string-ref` past its string's end, as Fixpt says it.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_string_index_fail(len: u64) -> ! {
+    failed(&format!("string index out of range (length {len})"))
+}
+
+fn failed(message: &str) -> ! {
+    eprintln!("evaluation failed: {message}");
+    std::process::exit(1)
+}
+
+/// A string as Fixpt writes one (`print.rs`'s `put_string`).
+fn put_string(out: &mut String, s: &str) {
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            '\r' => out.push_str("\\r"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\x{:x};", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+}
+
 /// A value other than a pair as Fixpt writes it.
 fn atom(v: u64) -> String {
     match v & TAG_MASK {
@@ -123,9 +316,19 @@ fn atom(v: u64) -> String {
                 k => format!("#<immediate {k}>"),
             }
         }
-        // A bloblet: as yet, a closure, the one kind kc makes (C412). Fixpt
-        // writes one by its machine's name for it; this is kc's.
-        TAG_BLOBLET => "#<procedure>".into(),
+        // A bloblet, by its kind: a string, a symbol (C421); a closure
+        // (C412), which Fixpt writes by its machine's name for it, this
+        // kc's.
+        TAG_BLOBLET => match kind(v) {
+            KIND_STRING => {
+                let mut out = String::new();
+                put_string(&mut out, &string_text(v));
+                out
+            }
+            KIND_SYMBOL => string_text(kc_symbol_to_string(v)),
+            KIND_CLOSURE => "#<procedure>".into(),
+            k => format!("#<object of kind {k}>"),
+        },
         _ => format!("#<value {v:#x}>"),
     }
 }

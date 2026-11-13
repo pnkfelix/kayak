@@ -11944,3 +11944,47 @@ source read twice (`kc-load!`'s inputs, `checked`'s check), the memos read
 from text and written again, and on the command line the database's files.
 So each form's check as a query of its own, which would spare the walk, no
 longer pays for itself: not done.
+
+## C421. kc, step 11 (first part): strings and symbols (2026-11-13)
+
+The user: "Go ahead" (step 11, then types in kc's core, which need symbols:
+a sum's tag is one in Fixpt's layout). And: "I'm sorry: did you say fx26
+has no vectors?" It has: arrays, `(arrayof T r)` (`make-array`,
+`array-ref`, `array-set!`, `array-length`), FX-26's mutable vectors; a
+reader's `#(...)`, an opaque `vector` in a `datum`; bytevectors and flat
+arrays. What it has not is Scheme's `vector` and `vector-ref` by those
+names, which was all I had found. Arrays are step 11's second part (C422).
+
+**L0**: `(string "TEXT")`, `(symbol "NAME")` (a quoted symbol); the
+primitives `string-length`, `string-ref`, `string=?`, `string<?`,
+`string-append`, `substring` (L0's first of three arguments),
+`symbol->string`, `string->symbol`, `string?`, `symbol?`.
+
+**Native, in Fixpt's layout** (`fixpt-heap`'s `make_string`, `intern`):
+a string a bloblet of kind 1, all suffix: its length, then its code
+points, two a word, UTF-32 as Fixpt's are, so that `string-ref` is a load;
+a literal in `.rodata`, its value its suffix's address, tag 4.
+`string-length` and `string-ref` inline (the index compared unsigned, so
+that one below 0 is past the end; past it, the runtime's
+`kc_string_index_fail`, Fixpt's words, `string index out of range (length
+N)`). A symbol a bloblet of kind 2, its fields its name, its hash (FNV-1a,
+a fixnum) and its global slot, and a trailer; interned by the runtime
+(`kc_intern`), so that `eq?` is a comparison of words; a literal's symbol
+kept, once interned, in a cell of its name's, `.comm`, which every object
+that names it shares (so `kc build`'s objects agree on one symbol each).
+What is made past a literal (`string-append`, `substring`, a symbol
+interned) the runtime makes in its own memory (no collector yet), as are
+`string=?` and the rest. The runtime writes strings as Fixpt's `put_string`
+does, symbols by their names.
+
+**Rust**: `str_lit`, `symbol_lit`; the primitives kayak-rt's, by `mangle`;
+`string` `Str`, `symbol` `Symbol`. kayak-rt's `string-ref` past the end now
+says Fixpt's words, `string index out of range (length N)` (it said
+`string-ref: out of range`). KFX refuses `eq?` (C75), so its symbols are
+compared not, as yet.
+
+`tests/kc/step11/`: 26 FX-26 programs and 19 KFX, each Fixpt's answer:
+literals, escapes, the empty string, code points past ASCII, `string-ref`
+at even and odd positions and past either end, comparisons, appends,
+substrings and their failure, symbols interned through `string->symbol`
+and compared, strings in procedures, closures and lists.

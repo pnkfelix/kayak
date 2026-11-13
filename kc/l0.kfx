@@ -16,6 +16,8 @@
  and `case` made `if`s. Step 7: pairs (C406), `cons`, `car`, `cdr`,
  `pair?` as primitives, `(list a b ...)` `cons`es. Step 8: procedures
  (C407): a program of many forms, each an item of its own (`l0-item`).
+ Step 11: strings and symbols (C421): `(string \"TEXT\")`, `(symbol
+ \"NAME\")`, the strings' primitives, `substring` of three arguments.
  Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
  free variables found here; `(app F ARG ...)`, a call of a procedure as a
  value; `(gproc NAME ARITY)`, a procedure the program defines as one."
@@ -28,11 +30,17 @@
     (hide
       (define fixnum-max i64 1152921504606846975)
 
-      (define unary-primitives (listof string acyclic) (list "not" "null?" "zero?" "char->integer" "integer->char" "car" "cdr" "pair?"))
+      (define unary-primitives (listof string acyclic)
+        (list "not" "null?" "zero?" "char->integer" "integer->char" "car" "cdr" "pair?"
+              ;; Step 11 (C421).
+              "string-length" "symbol->string" "string->symbol" "string?" "symbol?"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
-              "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?")))
+              "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"
+              "string-ref" "string=?" "string<?" "string-append"))
+
+      (define ternary-primitives (listof string acyclic) (list "substring")))
 
     (define not-yet (subr kfx (string string) string)
       (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
@@ -159,6 +167,8 @@
                     (l0-made (not-yet path "an integer past a fixnum") next)
                     (l0-made (string-append "(int " (string-append (i64->string k) ")")) next)))
               (chr (c f p) (l0-made (string-append "(char " (string-append (i64->string (char->i64 c)) ")")) next))
+              ;; A string, its text as the reader reads it back (C421).
+              (str (t f p) (l0-made (string-append "(string " (string-append (kc-datum e) ")")) next))
               (sym (n f p)
                 (let ((k (l0-number-of n env)))
                   (cond ((i64>= k 0) (l0-made (string-list-append (list "(var " (i64->string k) " " n ")")) next))
@@ -196,6 +206,9 @@
                                    (l0-made (string-list-append (list "(lambda " (i64->string next) " (" ps ") (" (words-of (map kc-datum free)) ") " b ")")) n1)))))))
                         ((and (string=? h "quote") (i64= (size xs) 2) (tagcase (second xs) (lst (ys f2 l2 p2) (null? ys)) (else other #f)))
                          (l0-made "(nil)" next))
+                        ;; A quoted symbol, its name as a string (C421).
+                        ((and (string=? h "quote") (i64= (size xs) 2) (tagcase (second xs) (sym (n f2 p2) (not (or (string=? n "#t") (string=? n "#f")))) (else other #f)))
+                         (l0-made (string-append "(symbol " (string-append (kc-datum (str (sym-name (second xs)) "" 0)) ")")) next))
                         ((and (string=? h "let") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
                          (l0-let path scope env next (items (second xs)) (cdr (cdr xs)) nil env))
                         ((and (string=? h "let*") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
@@ -244,6 +257,9 @@
                         ((and (i64= (size xs) 2) (string-member? h unary-primitives))
                          (tagcase (l0-of path scope env next (second xs))
                            (l0-made (a n1) (l0-made (string-list-append (list "(prim " h " " a ")")) n1))))
+                        ((and (i64= (size xs) 4) (string-member? h ternary-primitives))
+                         (tagcase (l0-terms path scope env next (cdr xs) nil)
+                           (l0-made (ts n1) (l0-made (string-list-append (list "(prim " h " " ts ")")) n1))))
                         ((and (i64= (size xs) 3) (string-member? h binary-primitives))
                          (tagcase (l0-of path scope env next (second xs))
                            (l0-made (a n1)
@@ -412,6 +428,10 @@
 
     (define prim-args (subr kfx (sexp) sexps)
       (lambda (t) (tagcase t (lst (xs f l p) (cdr (cdr xs))) (else other nil))))
+
+    "A `(string \"TEXT\")`'s or `(symbol \"NAME\")`'s text (C421)."
+    (define term-text (subr kfx (sexp) string)
+      (lambda (t) (tagcase t (lst (xs f l p) (if (null? (cdr xs)) "" (tagcase (second xs) (str (s f2 p2) s) (else other "")))) (else other ""))))
 
     (define term-number (subr kfx (sexp) i64)
       (lambda (t) (tagcase t (lst (xs f l p) (if (null? (cdr xs)) 0 (tagcase (second xs) (num (k f2 p2) k) (else other 0)))) (else other 0))))
