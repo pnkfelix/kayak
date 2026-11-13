@@ -63,8 +63,13 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn kc_scope() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str, &'static Sexp) -> List<&'static Sexp> {
-        &kc_front::kc_scope
+    pub fn kc_scope_entry() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, i64, Str) -> &'static Sexp {
+        &kc_front::kc_scope_entry
+    }
+
+    #[inline]
+    pub fn kc_position() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str) -> i64 {
+        &kc_front::kc_position
     }
 
     pub type Qbody = kc_front::Qbody;
@@ -151,10 +156,14 @@ pub mod kc_l0 {
     }
 
     /// What the program's definitions before this form make `n`: `proc`,
-    /// `value`, or `` (the newest, should one be defined again).
+    /// `value`, or `` (none, `(none NAME)`). A name `scope` does not say
+    /// yet is asked for (C416): `kc-need NAME`, an `error`, which
+    /// `l0-item` catches, and runs this again with `n`'s entry too, so
+    /// that an item depends on the names it looks up and on no other.
     pub fn l0_global_kind(mut n: Str, mut scope: Sexps) -> Str {
         loop {
             if null_p(scope) {
+                error(string_append(str_lit("kc-need "), n));
                 return str_lit("");
             } else {
                 let i = items(car(scope));
@@ -162,7 +171,11 @@ pub mod kc_l0 {
                     let tagcase_ = car(i);
                     match *tagcase_ {
                         Sexp::Sym(k, f, p) => {
-                            return k;
+                            if string_eq_p(k, str_lit("none")) {
+                                return str_lit("");
+                            } else {
+                                return k;
+                            }
                         }
                         _ => {
                             let other = tagcase_;
@@ -738,11 +751,8 @@ pub mod kc_l0 {
         }
     }
 
-    pub fn q_l0_item(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-        let path = arg_first()(a);
-        let key = arg_rest()(a);
-        let f = kc_form()(d, run, path, key);
-        let scope = kc_scope()(d, run, path, key, f);
+    /// Form `f` as an item, its names' entries `scope`.
+    pub fn l0_item_text(path: Str, f: &'static Sexp, scope: Sexps) -> Str {
         if string_eq_p(form_name()(f), str_lit("")) {
             let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, f);
             match *tagcase_ {
@@ -761,7 +771,6 @@ pub mod kc_l0 {
                 }
             } else {
                 let lx = items(car(l));
-                let scope = kayak_rt::heap_cons(car(read_all(db_get(d, run, string_append(str_lit("interface "), string_append(path, string_append(str_lit(" "), key)))), str_lit("scope"), 1i64)), scope);
                 let tagcase_ = l0_params(items(second(lx)), 0i64, nil::<&'static kc_l0::L0Bound>(), nil::<Str>());
                 match *tagcase_ {
                     L0MadeParams::L0MadeParams(ps, env, k) => {
@@ -775,6 +784,37 @@ pub mod kc_l0 {
                 }
             }
         }
+    }
+
+    /// The item, each name it looks up that `scope` does not say added to
+    /// it, one by one, from the database (C416).
+    pub fn l0_item_of(mut d: Db, mut run: Runner, mut path: Str, mut at: i64, mut f: &'static Sexp, mut scope: Sexps) -> Str {
+        loop {
+            let r = kayak_rt::attempt(|| { l0_item_text(path, f, scope) }, |m: Str| {
+                string_append(str_lit("%failed "), m)
+            });
+            if has_prefix_p(r, str_lit("%failed kc-need ")) {
+                scope = kayak_rt::heap_cons(kc_scope_entry()(d, run, path, at, after_prefix(r, str_lit("%failed kc-need "))), scope);
+                continue;
+            } else if has_prefix_p(r, str_lit("%failed ")) {
+                error(after_prefix(r, str_lit("%failed ")));
+                return str_lit("");
+            } else {
+                return r;
+            }
+        }
+    }
+
+    pub fn q_l0_item(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
+        let path = arg_first()(a);
+        let key = arg_rest()(a);
+        let f = kc_form()(d, run, path, key);
+        let at = kc_position()(d, run, path, key);
+        l0_item_of(d, run, path, at, f, if (string_eq_p(form_name()(f), str_lit("")) || null_p(lambda_of()(define_value()(f)))) {
+            nil::<&'static Sexp>()
+        } else {
+            kayak_rt::heap_cons(car(read_all(db_get(d, run, string_append(str_lit("interface "), string_append(path, string_append(str_lit(" "), key)))), str_lit("scope"), 1i64)), kayak_rt::nil())
+        })
     }
 
     // An item of the program, as a term.

@@ -11737,3 +11737,30 @@ each (about 0.12 ms a form: 0.6 s at 5000); and the driver reads the file
 whole, each form's input set (most to what it was). A form's check as a
 query of its own, keyed by the interfaces it reads, would make an edit's
 check the edited form's alone.
+
+## C416. kc's items depend on the names they look up, and no others (2026-11-13)
+
+The user, of the database's file: "Yeah let's talk about the database file
+format"; then, of the plan (kc's dependencies first, then keys as data, datum
+labels, a graph file apart from its payloads): "Making keys structured data is
+totally up my alley".
+
+Measured first (5000 procedures, the database 22.9 MB): keys and dependencies
+were 10 MB of it, and an `l0-item` read the interfaces of every symbol its
+form has (C414's `kc-scope`): its parameters, `lambda`, `define`, the type
+words `int`, `subr`, `pure`, and some twice: twelve dependencies of p2500's
+item, which needs four.
+
+Now `l0-of` asks for what it looks up as it comes to it, and for nothing
+else (`l0-global-kind`): a name its scope does not say yet is `kc-need NAME`,
+an `error`, which `l0-item` catches (FX-26's `attempt`, C415: the making of
+an item writes nothing) and runs it again with that name's entry from the
+database (`kc-scope-entry`: its interface, and its position if it is
+defined; `(none NAME)` if it is none before the form). A form of k global
+names is made k+1 times, each small; its dependencies are the same code
+path's as its making, so no second walker of the core language can drift
+from the first. A procedure's own interface is in its scope from the first.
+p2500's item now depends on its form, its position, its interface and `*`
+(a program may define `*`). The kc-steps sweep runs 2241 bodies, from 3036.
+The database at 5000 procedures: 19.6 MB; the bench's steps a little faster
+(`same` 0.84 s, from 0.90; in serve, as they were).

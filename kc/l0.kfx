@@ -23,7 +23,7 @@
 (define kc-l0
   (module
     (hide
-      (import kc-front arg-first arg-rest form-name kc-form define-value lambda-of kc-datum kc-scope (type qbody)))
+      (import kc-front arg-first arg-rest form-name kc-form define-value lambda-of kc-datum kc-scope-entry kc-position (type qbody)))
 
     (hide
       (define fixnum-max i64 1152921504606846975)
@@ -60,12 +60,15 @@
         (l0-global-kind (subr kfx (string sexps) string)
           (lambda (n scope)
             "What the program's definitions before this form make `n`: `proc`,
-             `value`, or `` (the newest, should one be defined again)."
+             `value`, or `` (none, `(none NAME)`). A name `scope` does not say
+             yet is asked for (C416): `kc-need NAME`, an `error`, which
+             `l0-item` catches, and runs this again with `n`'s entry too, so
+             that an item depends on the names it looks up and on no other."
             (if (null? scope)
-                ""
+                (begin (error (string-append "kc-need " n)) "")
                 (let ((i (items (car scope))))
                   (if (and (not (null? (cdr i))) (sym-is? (second i) n))
-                      (tagcase (car i) (sym (k f p) k) (else other ""))
+                      (tagcase (car i) (sym (k f p) (if (string=? k "none") "" k)) (else other ""))
                       (l0-global-kind n (cdr scope))))))))
 
       "`l0-item PATH KEY`: the form KEY of the checked program as an item of
@@ -314,29 +317,47 @@
                 (tagcase (l0-of path scope env next (car es))
                   (l0-made (t n1) (l0-seq path scope env n1 (cdr es) (cons t done)))))))))
 
+    (hide
+      (define l0-item-text (subr kfx (string sexp sexps) string)
+        (lambda (path f scope)
+          "Form `f` as an item, its names' entries `scope`."
+          (if (string=? (form-name f) "")
+              (tagcase (l0-of path scope nil 0 f) (l0-made (t n) (string-append "(expr " (string-append t ")"))))
+              (let ((l (lambda-of (define-value f))))
+                (if (null? l)
+                    (tagcase (l0-of path scope nil 0 (define-value f))
+                      (l0-made (t n) (string-list-append (list "(global " (form-name f) " " t ")"))))
+                    (let ((lx (items (car l))))
+                      (tagcase (l0-params (items (second lx)) 0 nil nil)
+                        (l0-made-params (ps env k)
+                          (tagcase (l0-seq path scope env k (cdr (cdr lx)) nil)
+                            (l0-made (b n) (string-list-append (list "(proc " (form-name f) " (" ps ") " b ")"))))))))))))
+
+      (define-rec
+        (l0-item-of (subr qe (db runner string i64 sexp sexps) string)
+          (lambda (d run path at f scope)
+            "The item, each name it looks up that `scope` does not say added to
+             it, one by one, from the database (C416)."
+            (let ((r (attempt (l0-item-text path f scope) (lambda ((m string)) (string-append "%failed " m)))))
+              (cond ((has-prefix? r "%failed kc-need ")
+                     (l0-item-of d run path at f (cons (kc-scope-entry d run path at (after-prefix r "%failed kc-need ")) scope)))
+                    ((has-prefix? r "%failed ") (begin (error (after-prefix r "%failed ")) ""))
+                    (else r)))))))
+
     (define q-l0-item qbody
       (lambda (d run a)
         ;; Of a program the checker passed: the driver asks `checked` first
         ;; (C415). Not read here, so that a check's value changing (a refusal,
         ;; then none) reaches no item whose form is as it was.
-        (let* ((path (arg-first a)) (key (arg-rest a)))
-          (begin
-            (let* ((f (kc-form d run path key))
-                   ;; The definitions before it that it names (C414).
-                   (scope (kc-scope d run path key f)))
-              (if (string=? (form-name f) "")
-                  (tagcase (l0-of path scope nil 0 f) (l0-made (t n) (string-append "(expr " (string-append t ")"))))
-                  (let ((l (lambda-of (define-value f))))
-                    (if (null? l)
-                        (tagcase (l0-of path scope nil 0 (define-value f))
-                          (l0-made (t n) (string-list-append (list "(global " (form-name f) " " t ")"))))
-                        ;; Its own name in its scope too: it may call itself.
-                        (let* ((lx (items (car l)))
-                               (scope (cons (car (read-all (db-get d run (string-append "interface " (string-append path (string-append " " key)))) "scope" 1)) scope)))
-                          (tagcase (l0-params (items (second lx)) 0 nil nil)
-                            (l0-made-params (ps env k)
-                              (tagcase (l0-seq path scope env k (cdr (cdr lx)) nil)
-                                (l0-made (b n) (string-list-append (list "(proc " (form-name f) " (" ps ") " b ")")))))))))))))))
+        (let* ((path (arg-first a)) (key (arg-rest a))
+               (f (kc-form d run path key))
+               (at (kc-position d run path key)))
+          ;; A procedure's own name in its scope from the first: it may call
+          ;; itself, and is no definition before it.
+          (l0-item-of d run path at f
+                      (if (or (string=? (form-name f) "") (null? (lambda-of (define-value f))))
+                          nil
+                          (list (car (read-all (db-get d run (string-append "interface " (string-append path (string-append " " key)))) "scope" 1))))))))
 
     "An item of the program, as a term."
     (define l0-item (subr qe (db runner string string) sexp)

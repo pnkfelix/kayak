@@ -32,8 +32,8 @@ use super::*;
 // of a name the program does not define
 //
 // A form's scope is not a query of its own (C414): what a form needs of
-// the program's names, it asks of each name it mentions (`kc-scope`), so
-// that an edit elsewhere does not reach it.
+// the program's names, it asks of each name it looks up (`kc-scope-entry`,
+// C416), so that an edit elsewhere does not reach it.
 
 // A query's body.
 pub mod kc_front {
@@ -411,65 +411,24 @@ pub mod kc_front {
         }
     }
 
-    /// The names `e` mentions, each once.
-    pub fn sexp_names(e: &'static Sexp, acc: List<Str>) -> List<Str> {
-        let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                if string_member_p(n, acc) {
-                    acc
-                } else {
-                    kayak_rt::heap_cons(n, acc)
-                }
-            }
-            Sexp::Lst(xs, f, l, p) => {
-                sexps_names(xs, acc)
-            }
-            _ => {
-                let other = tagcase_;
-                acc
-            }
-        }
-    }
-
-    pub fn sexps_names(mut es: Sexps, mut acc: List<Str>) -> List<Str> {
-        loop {
-            if null_p(es) {
-                return acc;
-            } else {
-                (es, acc) = (cdr(es), sexp_names(car(es), acc));
-                continue;
-            }
-        }
-    }
-
+    // Where form `key` is among the forms.
     #[inline]
     pub fn kc_position(d: Db, run: Runner, path: Str, key: Str) -> i64 {
         string_to_i64(db_get(d, run, string_list_append(kayak_rt::heap_cons(str_lit("position "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(key, kayak_rt::nil())))))))
     }
 
-    pub fn kc_scope_names(mut d: Db, mut run: Runner, mut path: Str, mut at: i64, mut ns: List<Str>) -> Sexps {
-        loop {
-            if null_p(ns) {
-                return nil::<&'static Sexp>();
-            } else {
-                let i = car(read_all(db_get(d, run, string_list_append(kayak_rt::heap_cons(str_lit("interface "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(car(ns), kayak_rt::nil())))))), str_lit("scope"), 1i64));
-                if (not(sym_is_p(car(items(i)), str_lit("expr"))) && i64_lt(kc_position(d, run, path, car(ns)), at)) {
-                    return kayak_rt::heap_cons(i, kc_scope_names(d, run, path, at, cdr(ns)));
-                } else {
-                    ns = cdr(ns);
-                    continue;
-                }
-            }
+    // What `name` is to the form at `at` (C414, C416): its definition's
+    // interface, `(proc NAME ARITY)` or `(value NAME)`, if one comes before;
+    // else `(none NAME)`. A name's interface read, and its position if it is
+    // defined, and nothing else: so that a form depends on the names it looks
+    // up, each alone.
+    pub fn kc_scope_entry(d: Db, run: Runner, path: Str, at: i64, name: Str) -> &'static Sexp {
+        let i = car(read_all(db_get(d, run, string_list_append(kayak_rt::heap_cons(str_lit("interface "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(name, kayak_rt::nil())))))), str_lit("scope"), 1i64));
+        if (not(sym_is_p(car(items(i)), str_lit("expr"))) && i64_lt(kc_position(d, run, path, name), at)) {
+            i
+        } else {
+            lst(kayak_rt::heap_cons(sym(str_lit("none"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(name, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
         }
-    }
-
-    // The definitions before form `key` that its datum `f` names: their
-    // interfaces (C414), each read by its name alone, so that what this form
-    // depends on is the names it mentions and where they are defined.
-    #[inline]
-    pub fn kc_scope(d: Db, run: Runner, path: Str, key: Str, f: &'static Sexp) -> Sexps {
-        kc_scope_names(d, run, path, kc_position(d, run, path, key), sexp_names(f, nil::<Str>()))
     }
 
     // What a check comes to (C415): the types found, as text, and the memos

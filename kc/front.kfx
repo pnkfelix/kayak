@@ -27,8 +27,8 @@
                          of a name the program does not define
 
  A form's scope is not a query of its own (C414): what a form needs of
- the program's names, it asks of each name it mentions (`kc-scope`), so
- that an edit elsewhere does not reach it."
+ the program's names, it asks of each name it looks up (`kc-scope-entry`,
+ C416), so that an edit elsewhere does not reach it."
 
 "A query's body."
 
@@ -237,38 +237,22 @@
                     (string-append "(value " (string-append (form-name f) ")"))
                     (string-list-append (list "(proc " (form-name f) " " (i64->string (size (items (second (items (car l)))))) ")"))))))))
 
-    (hide
-      (define-rec
-        (sexp-names (subr kfx (sexp (listof string acyclic)) (listof string acyclic))
-          (lambda (e acc)
-            "The names `e` mentions, each once."
-            (tagcase e
-              (sym (n f p) (if (string-member? n acc) acc (cons n acc)))
-              (lst (xs f l p) (sexps-names xs acc))
-              (else other acc))))
-        (sexps-names (subr kfx (sexps (listof string acyclic)) (listof string acyclic))
-          (lambda (es acc) (if (null? es) acc (sexps-names (cdr es) (sexp-names (car es) acc))))))
+    "Where form `key` is among the forms."
+    (define kc-position (subr qe (db runner string string) i64)
+      (lambda (d run path key)
+        (string->i64 (db-get d run (string-list-append (list "position " path " " key))))))
 
-      (define kc-position (subr qe (db runner string string) i64)
-        (lambda (d run path key)
-          (string->i64 (db-get d run (string-list-append (list "position " path " " key))))))
-
-      (define-rec
-        (kc-scope-names (subr qe (db runner string i64 (listof string acyclic)) sexps)
-          (lambda (d run path at ns)
-            (if (null? ns)
-                nil
-                (let ((i (car (read-all (db-get d run (string-list-append (list "interface " path " " (car ns)))) "scope" 1))))
-                  (if (and (not (sym-is? (car (items i)) "expr")) (i64< (kc-position d run path (car ns)) at))
-                      (cons i (kc-scope-names d run path at (cdr ns)))
-                      (kc-scope-names d run path at (cdr ns)))))))))
-
-    "The definitions before form `key` that its datum `f` names: their
-     interfaces (C414), each read by its name alone, so that what this form
-     depends on is the names it mentions and where they are defined."
-    (define kc-scope (subr qe (db runner string string sexp) sexps)
-      (lambda (d run path key f)
-        (kc-scope-names d run path (kc-position d run path key) (sexp-names f nil))))
+    "What `name` is to the form at `at` (C414, C416): its definition's
+     interface, `(proc NAME ARITY)` or `(value NAME)`, if one comes before;
+     else `(none NAME)`. A name's interface read, and its position if it is
+     defined, and nothing else: so that a form depends on the names it looks
+     up, each alone."
+    (define kc-scope-entry (subr qe (db runner string i64 string) sexp)
+      (lambda (d run path at name)
+        (let ((i (car (read-all (db-get d run (string-list-append (list "interface " path " " name))) "scope" 1))))
+          (if (and (not (sym-is? (car (items i)) "expr")) (i64< (kc-position d run path name) at))
+              i
+              (lst (list (sym "none" "" 0) (sym name "" 0)) "" 0 0)))))
 
     ;;; ------------------------------------------------------------ checking
     (hide
