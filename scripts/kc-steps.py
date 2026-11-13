@@ -102,8 +102,10 @@ def main():
         want = stated(p)
         if fx:
             r = run([fx, "--fx26-machine", "fx-cells-rsinterp", "eval", p], cwd=os.path.dirname(p))
-            lines = [l for l in r.stdout.splitlines() if l.strip() and not l.startswith(";")]
+            lines = [l for l in (r.stdout + r.stderr).splitlines() if l.strip() and not l.startswith(";")]
             got = lines[-1].split(" : ")[0] if lines else "(none)"
+            if got.startswith("! evaluation failed: "):
+                got = "! " + got[len("! evaluation failed: "):]
             if got != want:
                 wrong.append("%s: states %s, Fixpt gives %s" % (name, want, got))
         s = os.path.join(WORK, name.replace("/", "--") + ".s")
@@ -117,7 +119,11 @@ def main():
         if r.returncode != 0:
             wrong.append("%s: cc: %s" % (name, r.stderr.strip()))
             continue
-        got = run([exe]).stdout.strip()
+        r = run([exe])
+        got = r.stdout.strip()
+        if r.returncode != 0:
+            # A failure, as `fixpt eval` says one: `! MESSAGE`.
+            got = "! " + r.stderr.strip().split("evaluation failed: ")[-1]
         if got != want:
             wrong.append("%s: native gives %s, not %s" % (name, got, want))
     kfx = [p for p in ps if p.endswith(".kfx")]
@@ -132,12 +138,23 @@ def main():
             wrong.append("%s: kc --rust: %s" % (os.path.relpath(p, TESTS), r.stderr.strip()))
             continue
         mods.append("mod p%d;" % i)
-        calls.append('    println!("{}\\t{}", %r, p%d::main().as_str());' % (os.path.relpath(p, TESTS), i))
+        calls.append('    shown(%r, std::panic::catch_unwind(p%d::main));' % (os.path.relpath(p, TESTS), i))
     open(os.path.join(crate, "Cargo.toml"), "w").write(
         '[package]\nname = "kc-rust"\nversion = "0.1.0"\nedition = "2024"\n\n[workspace]\n\n'
         '[dependencies]\nkayak-rt = { path = "%s" }\n' % os.path.join(ROOT, "crates", "kayak-rt"))
     open(os.path.join(crate, "src", "main.rs"), "w").write(
-        "\n".join(mods) + "\n\nfn main() {\n" + "\n".join(calls).replace("'", '"') + "\n}\n")
+        "\n".join(mods) + "\n\n"
+        "/// A program's value, or its failure as `fixpt eval` says one: `! MESSAGE`.\n"
+        "fn shown(name: &str, r: std::thread::Result<kayak_rt::Str>) {\n"
+        "    match r {\n"
+        "        Ok(v) => println!(\"{}\\t{}\", name, v.as_str()),\n"
+        "        Err(e) => {\n"
+        "            let m = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default();\n"
+        "            println!(\"{}\\t! {}\", name, m)\n"
+        "        }\n"
+        "    }\n"
+        "}\n\n"
+        "fn main() {\n    std::panic::set_hook(Box::new(|_| {}));\n" + "\n".join(calls).replace("'", '"') + "\n}\n")
     r = run(["cargo", "run", "--release", "-q"], cwd=crate,
             env=dict(os.environ, CARGO_TARGET_DIR=os.path.join(ROOT, "target", "kc-rust-target")))
     if r.returncode != 0:

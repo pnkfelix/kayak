@@ -3,7 +3,8 @@
 //! writes the value it gives, in Fixpt's format (`fixpt-heap`'s `value.rs`),
 //! as Fixpt writes it (`fixpt-runtime`'s `print.rs`). Step 1: fixnums (three
 //! tag bits, tag 0, the value above them). Step 2: immediates (tag 3, a kind
-//! in the five bits above it, a payload from bit 8).
+//! in the five bits above it, a payload from bit 8). Step 3: a failure,
+//! `kc_fail`, said as Fixpt says it.
 //!
 //! kc's code is called through `extern "C"`: the one place here that is
 //! not safe Rust.
@@ -67,6 +68,18 @@ fn written(v: u64) -> String {
         }
         _ => format!("#<value {v:#x}>"),
     }
+}
+
+/// A failure of kc's code, by number (`kc/x64.kfx`'s `fail-…`), said in
+/// Fixpt's words, as `fixpt eval` says a failure, and the run ended.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_fail(what: u64) -> ! {
+    let message = match what {
+        1 => "not a Unicode scalar value",
+        _ => "a failure kc's runtime has no words for",
+    };
+    eprintln!("evaluation failed: {message}");
+    std::process::exit(1)
 }
 
 #[unsafe(no_mangle)]

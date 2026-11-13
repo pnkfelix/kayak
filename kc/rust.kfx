@@ -10,16 +10,25 @@
              (acc (string-append c acc)))
         (if (i64< n 16) acc (hex-digits (i64-quotient n 16) acc))))))
 
-(define rust-of (subr kfx (sexp) string)
+"Each unary primitive's kayak-rt function (C402)."
+(define rust-primitive (subr kfx (string) string)
+  (lambda (n)
+    (cond ((string=? n "not") "not") ((string=? n "null?") "null_p") ((string=? n "zero?") "zero_p")
+          ((string=? n "char->integer") "char_to_integer") ((string=? n "integer->char") "integer_to_char")
+          (else (begin (error (string-append "kc: the Rust back end has no primitive " n)) "")))))
+
+(define-rec
+ (rust-of (subr kfx (sexp) string)
   (lambda (t)
     "A term as a Rust expression of kayak-rt's."
     (let ((h (term-head t)) (n (term-number t)))
-      (cond ((string=? h "int") (string-append "int_lit(" (string-append (i64->string n) "i64)")))
+      (cond ((string=? h "prim") (string-append (rust-primitive (prim-name t)) (string-append "(" (string-append (rust-of (prim-arg t)) ")"))))
+            ((string=? h "int") (string-append "int_lit(" (string-append (i64->string n) "i64)")))
             ((string=? h "bool") (if (i64= n 1) "true" "false"))
             ((string=? h "char") (string-append "'\\u{" (string-append (hex-digits n "") "}'")))
             ((string=? h "unit") "()")
             ((string=? h "nil") "nil::<()>()")
-            (else (begin (error (string-append "kc: the Rust back end has no term " h)) ""))))))
+            (else (begin (error (string-append "kc: the Rust back end has no term " h)) "")))))))
 
 (define q-rust qbody
   (lambda (d run path)

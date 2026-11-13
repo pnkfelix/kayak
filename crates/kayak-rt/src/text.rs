@@ -10,8 +10,16 @@ pub fn char_to_integer(c: char) -> Int {
     i64_to_int(c as i64)
 }
 
+/// A code past a Unicode scalar value fails in Fixpt's words, a big one
+/// too (its low bits were taken for it before C402).
 pub fn integer_to_char(n: Int) -> char {
-    crate::i64_to_char(int_to_i64(n))
+    match n {
+        Int::Small(v) => match u32::try_from(v).ok().and_then(char::from_u32) {
+            Some(c) => c,
+            None => fail("not a Unicode scalar value"),
+        },
+        Int::Big(_) => fail("not a Unicode scalar value"),
+    }
 }
 
 #[inline]

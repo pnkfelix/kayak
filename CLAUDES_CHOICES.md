@@ -11159,3 +11159,32 @@ Ghuloum's second step: booleans, characters, unit and the empty list.
 - Tests: `tests/kc/step2/`, thirteen programs (three KFX), each Fixpt's
   answer on every back end that takes it.
 
+## C402. kc, step 3: unary primitives (2026-11-12)
+
+Ghuloum's third step, as FX-26 has it: `not`, `null?`, `zero?`,
+`char->integer`, `integer->char` (Ghuloum's `add1`, `fixnum?` and the
+rest are not FX-26's; typed, it has no `integer?`).
+- **The core language**: `(prim NAME ARG)`; no binding form yet, so a
+  primitive's name is the standard one.
+- **Native**: the first code that computes. Each term is compiled to code
+  that leaves its value in `%rax` (Ghuloum's `emit-expr`): a constant
+  moved in; `not`, `null?`, `zero?` a comparison and `cmov` of `#t`'s and
+  `#f`'s words; `char->integer` two instructions (`(c << 8 | 67) >> 5`, its
+  tag bits cleared, is the fixnum `c << 3`); `integer->char` a range check
+  (a Unicode scalar value: 0 to 0x10ffff, but no surrogate) and the
+  immediate built. `kc_entry` keeps the stack aligned for a call, so that a
+  failure calls the runtime's `kc_fail`, which says Fixpt's words
+  (`evaluation failed: not a Unicode scalar value`) and ends the run.
+- **Rust**: kayak-rt's own (`not`, `null_p`, `zero_p`, `char_to_integer`,
+  `integer_to_char`). `integer_to_char` now fails in Fixpt's words, and
+  for a big integer too, whose low 64 bits it had taken for the code (so
+  that `(integer->char (+ 97 (expt 2 64)))` was `#\a`).
+- **Failures are answers**: the harness writes Fixpt's `! evaluation
+  failed: M` (on its standard error), the native run's, and a Rust
+  module's panic (each run under `catch_unwind`) alike as `! M`.
+- Tests: `tests/kc/step3/`, sixteen programs (three KFX), three of them
+  failures; 35 in all, every one Fixpt's answer on each back end.
+- **Found on the way**: the checker refuses `(null? '())`, which Fixpt
+  takes (TODO); and kc's names meet the checker's in their one namespace
+  (`labelled`): kc's files to be modules (TODO).
+

@@ -1539,4 +1539,10 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   Apalache; the snap's OpenJDK 27 works with `QUINT_HOME` and a temporary
   directory it can see); the model of the asynchronous engine when it is;
   the model's traces replayed against the KFX engine; Kani, if wanted.
+- The checker refuses `(null? '())` ("a type null? is called at that
+  nothing here says"), which Fixpt takes (`#t`): stricter, a gap (found by
+  kc's step 3, C402).
+- kc's files share one namespace with the checker's (kc.unit), so a name
+  of kc's meets one of the checker's (`labelled`, `got`): kc's files as
+  modules, their helpers hidden, as `restrict.kfx` is.
 

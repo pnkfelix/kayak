@@ -2,31 +2,103 @@
  assembly for the system's assembler, of `kc_entry`, which gives the
  program's value in `%rax` in Fixpt's format (`fixpt-heap`'s `value.rs`),
  for the runtime (`crates/kayak-kcrt`) to write: a fixnum its value
- shifted past three tag bits, tag 0; an immediate, tag 3, its kind above
+ shifted past three tag bits, tag 0; an x64-immediate, tag 3, its kind above
  the tag (false 0, true 1, the empty list 2, unit 3, a character 8), its
- payload from bit 8 (a character's code)."
+ payload from bit 8 (a character's code).
 
-(define immediate (subr kfx (i64 i64) i64)
+ Each term is compiled to code that leaves its value in `%rax` (Ghuloum's
+ `x64-emit-expr`, C402). `kc_entry` keeps the stack aligned for a call (it
+ is entered 8 below a multiple of 16), so that a failure may call the
+ runtime's `kc_fail`, which writes Fixpt's words and ends the run."
+
+(define x64-immediate (subr kfx (i64 i64) i64)
   (lambda (kind payload) (i64+ (i64* payload 256) (i64+ (i64* kind 8) 3))))
 
-(define word-of (subr kfx (sexp) i64)
+(define x64-word-false i64 3)
+(define x64-word-true i64 11)
+(define x64-word-nil i64 19)
+
+"The failures the runtime says, by number (kayak-kcrt's `kc_fail`)."
+(define x64-fail-not-a-char i64 1)
+
+(define x64-constant-of (subr kfx (sexp) i64)
   (lambda (t)
-    "A term's value, as a word of Fixpt's format."
+    "A constant term's value, as a word of Fixpt's format."
     (let ((h (term-head t)) (n (term-number t)))
       (cond ((string=? h "int") (i64* n 8))
-            ((string=? h "bool") (immediate n 0))
-            ((string=? h "nil") (immediate 2 0))
-            ((string=? h "unit") (immediate 3 0))
-            ((string=? h "char") (immediate 8 n))
-            (else (begin (error (string-append "kc: the native back end has no term " h)) 0))))))
+            ((string=? h "bool") (x64-immediate n 0))
+            ((string=? h "nil") (x64-immediate 2 0))
+            ((string=? h "unit") (x64-immediate 3 0))
+            ((string=? h "char") (x64-immediate 8 n))
+            (else (begin (error (string-append "kc: the native back end has no constant " h)) 0))))))
+
+"Code so far, its lines the newest first, and the next label's number."
+(define-datatype x64-code (x64-code (listof string acyclic) i64))
+
+(define x64-emit (subr kfx (x64-code string) x64-code)
+  (lambda (c line) (tagcase c (x64-code (ls n) (x64-code (cons (string-append "    " (string-append line "\n")) ls) n)))))
+
+(define x64-emit-label (subr kfx (x64-code string) x64-code)
+  (lambda (c l) (tagcase c (x64-code (ls n) (x64-code (cons (string-append l ":\n") ls) n)))))
+
+(define x64-fresh-label (subr kfx (x64-code) i64) (lambda (c) (tagcase c (x64-code (ls n) n))))
+(define x64-labelled (subr kfx (x64-code) x64-code) (lambda (c) (tagcase c (x64-code (ls n) (x64-code ls (i64+ n 1))))))
+(define x64-label-text (subr kfx (string i64) string) (lambda (what n) (string-append ".L" (string-append what (i64->string n)))))
+
+(define x64-boolean-if (subr kfx (x64-code string) x64-code)
+  (lambda (c cc)
+    "`%rax` made #t if the flags say `cc`, else #f."
+    (x64-emit (x64-emit (x64-emit c (string-append "movl $" (string-append (i64->string x64-word-false) ", %eax")))
+                (string-append "movl $" (string-append (i64->string x64-word-true) ", %ecx")))
+          (string-append "cmov" (string-append cc " %rcx, %rax")))))
+
+(define-rec
+  (x64-emit-expr (subr kfx (x64-code sexp) x64-code)
+    (lambda (c t)
+      "Code that leaves `t`'s value in `%rax`."
+      (if (string=? (term-head t) "prim")
+          (x64-emit-primitive (x64-emit-expr c (prim-arg t)) (prim-name t))
+          (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-constant-of t)) ", %rax"))))))
+  (x64-emit-primitive (subr kfx (x64-code string) x64-code)
+    (lambda (c n)
+      "Code that makes `%rax`, the argument, the primitive `n`'s value."
+      (cond ((string=? n "not") (x64-boolean-if (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-false) ", %rax"))) "e"))
+            ((string=? n "null?") (x64-boolean-if (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-nil) ", %rax"))) "e"))
+            ((string=? n "zero?") (x64-boolean-if (x64-emit c "testq %rax, %rax") "e"))
+            ;; (c << 8 | 67) >> 5 is c << 3 | 2; the tag bits cleared, a fixnum.
+            ((string=? n "char->integer") (x64-emit (x64-emit c "shrq $5, %rax") "andq $-8, %rax"))
+            ((string=? n "integer->char")
+             ;; A Unicode scalar value: 0 to 0x10ffff, but not 0xd800 to 0xdfff.
+             (let* ((k (x64-fresh-label c)) (bad (x64-label-text "notchar" k)) (past (x64-label-text "char" k))
+                    (c (x64-labelled c))
+                    (c (x64-emit c "movq %rax, %rdx"))
+                    (c (x64-emit c "sarq $3, %rdx"))
+                    (c (x64-emit c "cmpq $1114111, %rdx"))
+                    (c (x64-emit c (string-append "ja " bad)))
+                    (c (x64-emit c "leaq -55296(%rdx), %rcx"))
+                    (c (x64-emit c "cmpq $2047, %rcx"))
+                    (c (x64-emit c (string-append "jbe " bad)))
+                    (c (x64-emit c "shlq $8, %rdx"))
+                    (c (x64-emit c "orq $67, %rdx"))
+                    (c (x64-emit c "movq %rdx, %rax"))
+                    (c (x64-emit c (string-append "jmp " past)))
+                    (c (x64-emit-label c bad))
+                    (c (x64-emit c (string-append "movl $" (string-append (i64->string x64-fail-not-a-char) ", %edi"))))
+                    (c (x64-emit c "call kc_fail")))
+               (x64-emit-label c past)))
+            (else (begin (error (string-append "kc: the native back end has no primitive " n)) c))))))
 
 (define q-asm qbody
   (lambda (d run path)
-    (string-list-append
-      (list "# Made by kc (docs/research/kc.md) from " path ".\n"
-            "    .text\n"
-            "    .globl kc_entry\n"
-            "kc_entry:\n"
-            "    movabsq $" (i64->string (word-of (l0-term d run path))) ", %rax\n"
-            "    ret\n"
-            "    .section .note.GNU-stack,\"\",@progbits\n"))))
+    (tagcase (x64-emit-expr (x64-code nil 0) (l0-term d run path))
+      (x64-code (ls n)
+        (string-list-append
+          (append (list "# Made by kc (docs/research/kc.md) from " path ".\n"
+                        "    .text\n"
+                        "    .globl kc_entry\n"
+                        "kc_entry:\n"
+                        "    subq $8, %rsp\n")
+                  (append (reverse ls)
+                          (list "    addq $8, %rsp\n"
+                                "    ret\n"
+                                "    .section .note.GNU-stack,\"\",@progbits\n"))))))))

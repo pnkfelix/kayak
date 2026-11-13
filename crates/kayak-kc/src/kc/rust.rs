@@ -21,10 +21,30 @@ pub fn hex_digits(n: i64, acc: Str) -> Str {
     }
 }
 
+// Each unary primitive's kayak-rt function (C402).
+pub fn rust_primitive(n: Str) -> Str {
+    if string_eq_p(n, str_lit("not")) {
+        str_lit("not")
+    } else if string_eq_p(n, str_lit("null?")) {
+        str_lit("null_p")
+    } else if string_eq_p(n, str_lit("zero?")) {
+        str_lit("zero_p")
+    } else if string_eq_p(n, str_lit("char->integer")) {
+        str_lit("char_to_integer")
+    } else if string_eq_p(n, str_lit("integer->char")) {
+        str_lit("integer_to_char")
+    } else {
+        error(string_append(str_lit("kc: the Rust back end has no primitive "), n));
+        str_lit("")
+    }
+}
+
 /// A term as a Rust expression of kayak-rt's.
 pub fn rust_of(t: &'static Sexp) -> Str {
     let (h, n) = (term_head(t), term_number(t));
-    if string_eq_p(h, str_lit("int")) {
+    if string_eq_p(h, str_lit("prim")) {
+        string_append(rust_primitive(prim_name(t)), string_append(str_lit("("), string_append(rust_of(prim_arg(t)), str_lit(")"))))
+    } else if string_eq_p(h, str_lit("int")) {
         string_append(str_lit("int_lit("), string_append(i64_to_string(n), str_lit("i64)")))
     } else if string_eq_p(h, str_lit("bool")) {
         if i64_eq(n, 1i64) {

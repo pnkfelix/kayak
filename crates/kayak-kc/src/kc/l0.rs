@@ -7,10 +7,20 @@ use super::*;
 // `l0 PATH`: the checked program as a term of it, as text. Step 1: an
 // integer, `(int N)`, a fixnum (C399). Step 2: the immediates (C401):
 // `(bool 1)` and `(bool 0)`, `(char CODE)`, `(unit)`, `(nil)`, the empty
-// list. Anything else: not yet.
+// list. Step 3: the unary primitives (C402), `(prim NAME ARG)`: `not`,
+// `null?`, `zero?`, `char->integer`, `integer->char`. Anything else: not
+// yet. No binding form yet, so a primitive's name is the standard one.
 #[inline]
 pub fn fixnum_max() -> i64 {
     1152921504606846975i64
+}
+
+#[inline]
+pub fn unary_primitives() -> List<Str> {
+    static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::nil())))))
+    })
 }
 
 #[inline]
@@ -60,6 +70,19 @@ pub fn l0_of(path: Str, e: &'static Sexp) -> Str {
                 }
             }) {
                 str_lit("(nil)")
+            } else if (i64_eq(size(xs), 2i64) && {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        string_member_p(n, unary_primitives())
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                string_append(str_lit("(prim "), string_append(sym_name(car(xs)), string_append(str_lit(" "), string_append(l0_of(path, second(xs)), str_lit(")")))))
             } else {
                 not_yet(path, str_lit("a form"))
             }
@@ -106,6 +129,43 @@ pub fn term_head(t: &'static Sexp) -> Str {
         _ => {
             let other = tagcase_;
             str_lit("")
+        }
+    }
+}
+
+// A `(prim NAME ARG)`'s name and argument.
+pub fn prim_name(t: &'static Sexp) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f2, p2) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+#[inline]
+pub fn prim_arg(t: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            third(xs)
+        }
+        _ => {
+            let other = tagcase_;
+            t
         }
     }
 }
