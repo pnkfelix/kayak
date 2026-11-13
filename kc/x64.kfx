@@ -26,6 +26,12 @@
  of a procedure as a value calls its closure's code, the closure in
  `%r10`, whose free values the function first copies to its slots.
 
+ A call in tail position (C413) gives its function's frame back and jumps
+ to the callee, which returns to this one's caller: the arguments are all
+ in registers, so nothing of the frame is needed after. A function's frame
+ is a symbol (`.set` once its code is made), so that each of its returns
+ and tail calls may give it back before its size is known.
+
  Integers are fixnums alone, as yet: an operation whose result would be
  past one fails, `not yet` (until the heap, and big integers on it)."
 
@@ -232,6 +238,10 @@
                 (x64-stored-params (x64-emit c (string-append "movq " (string-append (car regs) (string-append ", " (x64-slot i))))) (cdr regs) (i64+ i 1) n)))))
 
       (define-rec
+        (x64-but-last (subr kfx (sexps) sexps)
+          (lambda (xs) (if (or (null? xs) (null? (cdr xs))) nil (cons (car xs) (x64-but-last (cdr xs)))))))
+
+      (define-rec
         (x64-emit-expr (subr kfx (x64-code sexp i64 (listof x64-at acyclic)) x64-code)
           (lambda (c t si env)
             "Code that leaves `t`'s value in `%rax`, using the frame's slots from
@@ -287,7 +297,7 @@
                                   (c (x64-moved-args c x64-arg-registers (i64+ si 1) n))
                                   (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %r10")))))
                              (x64-emit c "call *-28(%r10)")))))
-                    ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env))
+                    ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env ""))
                     ((string=? h "seq") (x64-emit-seq c (seq-terms t) si env))
                     (else (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-constant-of t)) ", %rax"))))))))
 
@@ -302,37 +312,78 @@
                   (tagcase c
                     (x64-code (ls k slots fs px)
                       (let* ((sym (string-list-append (list "kcl_" px "_" (i64->string (term-number t)))))
-                             (inner (x64-using (x64-code nil k 0 nil px) (i64+ n m)))
+                             (fr (x64-label c "frame" k))
+                             (inner (x64-using (x64-code nil (i64+ k 1) 0 nil px) (i64+ n m)))
                              (inner (x64-stored-params inner x64-arg-registers 0 n))
                              (inner (x64-loaded-free inner 0 m n))
                              (env2 (x64-params-at fv n (x64-params-at ps 0 nil)))
-                             (inner (x64-emit-expr inner (item-body t) (i64+ n m) env2)))
+                             (inner (x64-emit-tail inner (item-body t) (i64+ n m) env2 fr)))
                         (tagcase inner
                           (x64-code (ls2 k2 slots2 fs2 px2)
                             (let ((frame (x64-frame-of-call slots2)))
                               (x64-emit-closure
                                 (x64-code ls k2 slots
                                           (cons (string-list-append
-                                                  (append (list "    .p2align 4\n" sym ":\n    subq $" (i64->string frame) ", %rsp\n")
+                                                  (append (list "    .p2align 4\n" sym ":\n    subq $" fr ", %rsp\n")
                                                           (append (reverse ls2)
-                                                                  (cons (string-list-append (list "    addq $" (i64->string frame) ", %rsp\n    ret\n"))
-                                                                        (reverse fs2)))))
+                                                                  (append (reverse fs2)
+                                                                          (list "    .set " fr ", " (i64->string frame) "\n")))))
                                                 fs)
                                           px)
                                 sym
                                 (map (lambda ((v sexp)) (x64-slot-of (tagcase (car (items v)) (num (j f p) j) (else other -1)) env)) fv))))))))))))
 
-        (x64-emit-let (subr kfx (x64-code sexps sexp i64 (listof x64-at acyclic) (listof x64-at acyclic)) x64-code)
-          (lambda (c bs body si env inner)
+        (x64-emit-tail (subr kfx (x64-code sexp i64 (listof x64-at acyclic) string) x64-code)
+          (lambda (c t si env fr)
+            "Code for `t` in tail position (C413), of a function whose frame is
+             `fr` bytes: its value returned, or, a call, the frame given back and
+             the callee jumped to, so that it returns to this one's caller; its
+             arguments are in registers, so no frame of the caller's is written."
+            (let ((h (term-head t)))
+              (cond ((string=? h "if")
+                     (let* ((ps (if-parts t))
+                            (k (x64-fresh-label c)) (no (x64-label c "else" k))
+                            (c (x64-labelled c))
+                            (c (x64-emit-expr c (car ps) si env))
+                            (c (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-false) ", %rax"))))
+                            (c (x64-emit c (string-append "je " no)))
+                            (c (x64-emit-tail c (second ps) si env fr))
+                            (c (x64-emit-label c no)))
+                       (x64-emit-tail c (third ps) si env fr)))
+                    ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env fr))
+                    ((string=? h "seq")
+                     (let ((ts (seq-terms t)))
+                       (x64-emit-tail (x64-emit-seq c (x64-but-last ts) si env) (car (reverse ts)) si env fr)))
+                    ((and (string=? h "call") (i64<= (size (call-args t)) 6))
+                     (let* ((args (call-args t)) (n (size args))
+                            (c (x64-emit-args c args si env))
+                            (c (x64-moved-args c x64-arg-registers si n))
+                            (c (x64-emit c (string-append "addq $" (string-append fr ", %rsp")))))
+                       (x64-emit c (string-append "jmp " (x64-proc-symbol (call-name t))))))
+                    ((and (string=? h "app") (i64<= (size (app-args t)) 6))
+                     (let* ((args (app-args t)) (n (size args))
+                            (c (x64-emit-expr c (app-fn t) si env))
+                            (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
+                            (c (x64-emit-args c args (i64+ si 1) env))
+                            (c (x64-moved-args c x64-arg-registers (i64+ si 1) n))
+                            (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %r10"))))
+                            (c (x64-emit c (string-append "addq $" (string-append fr ", %rsp")))))
+                       (x64-emit c "jmp *-28(%r10)")))
+                    (else
+                     (x64-emit (x64-emit (x64-emit-expr c t si env) (string-append "addq $" (string-append fr ", %rsp"))) "ret"))))))
+
+        (x64-emit-let (subr kfx (x64-code sexps sexp i64 (listof x64-at acyclic) (listof x64-at acyclic) string) x64-code)
+          (lambda (c bs body si env inner fr)
             "Each binding's value made where the `let` is (`env`), into a slot of
-             its own; then the body, the binders in scope (`inner`) (C404)."
+             its own; then the body, the binders in scope (`inner`) (C404), in
+             tail position if `fr`, its function's frame, is given (C413)."
             (if (null? bs)
-                (x64-emit-expr c body si inner)
+                (if (string=? fr "") (x64-emit-expr c body si inner) (x64-emit-tail c body si inner fr))
                 (let* ((b (items (car bs)))
                        (k (tagcase (car b) (num (n f p) n) (else other (the i64 -1))))
                        (c (x64-emit-expr c (third b) si env))
                        (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1))))
-                  (x64-emit-let c (cdr bs) body (i64+ si 1) env (cons (x64-at k si) inner))))))
+                  (x64-emit-let c (cdr bs) body (i64+ si 1) env (cons (x64-at k si) inner) fr)))))
 
         (x64-emit-args (subr kfx (x64-code sexps i64 (listof x64-at acyclic)) x64-code)
           (lambda (c args si env)
@@ -463,14 +514,16 @@
                  (let* ((ps (item-params i)) (n (size ps)))
                    (if (i64> n 6)
                        (not-yet path "a procedure of more than six parameters")
-                       (tagcase (x64-emit-expr (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n)
-                                               (item-body i) n (x64-params-at ps 0 nil))
-                         (x64-code (ls m slots fails px2)
-                           (let ((frame (x64-frame-of-call slots)))
+                       ;; Its body in tail position, its frame `fr`, a symbol set to
+                       ;; its size once its code is made (C413).
+                       (let ((fr (string-append ".L" (string-append px "_frame"))))
+                         (tagcase (x64-emit-tail (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n)
+                                                 (item-body i) n (x64-params-at ps 0 nil) fr)
+                           (x64-code (ls m slots fails px2)
                              (x64-asm-item-text 0
-                               (append ls (list (string-list-append (list "    .globl " (x64-proc-symbol (item-name i)) "\n" (x64-proc-symbol (item-name i)) ":\n    subq $" (i64->string frame) ", %rsp\n"))))
+                               (append ls (list (string-list-append (list "    .globl " (x64-proc-symbol (item-name i)) "\n" (x64-proc-symbol (item-name i)) ":\n    subq $" fr ", %rsp\n"))))
                                ;; Its frame made first, its code after (`ls` is newest first).
-                               (append fails (list (string-list-append (list "    addq $" (i64->string frame) ", %rsp\n    ret\n")))))))))))
+                               (cons (string-list-append (list "    .set " fr ", " (i64->string (x64-frame-of-call slots)) "\n")) fails))))))))
                 ((string=? k "global")
                  (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
                    (x64-code (ls m slots fails px2)

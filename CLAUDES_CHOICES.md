@@ -11546,3 +11546,35 @@ a closure called at once, captured values, one returned from a procedure,
 curried three deep, a procedure given one and one given as one, closures
 in a list, a closure's failure, six parameters. 198 programs in all, each
 by native code, 39 by Rust; none wrong.
+
+## C413. kc, step 10: tail calls (2026-11-13)
+
+The user: "Go for it" (step 10).
+
+**Native** (`kc/x64.kfx`, `x64-emit-tail`): a procedure's and a lambda's
+body is made in tail position: an `if`'s branches, a `let`'s body, a
+`seq`'s last term, each in turn. A call there, of a procedure the program
+defines or of a value, makes its arguments as any call does, moves them to
+their registers (and a value's closure to `%r10`), gives the frame back
+and jumps to the callee (`jmp kcp_NAME`, `jmp *-28(%r10)`), which returns
+to this function's caller. Since kc's calls take their arguments in the
+six registers alone (more is `not yet`), nothing of the caller's frame is
+read after it is given back, and no argument is written over the
+caller's: Ghuloum's shuffle is not needed yet. Any other term in tail
+position returns its value (`addq`, `ret`), so an `if` in tail position
+needs no join. A function's frame size is known only once its code is
+made, and each return and tail call gives it back before then: the frame
+is a local symbol (`.L…_frame`), `.set` after the code, which the
+assembler resolves (checked: `subq $sym, %rsp` with `sym` set later is
+assembled with the size).
+
+**Rust**: nothing yet. Rust guarantees no tail calls (`become` is not
+stable), so the KFX programs of this step loop a thousand times, not a
+million; a trampoline, or the async back end's own loop, is for later.
+
+`tests/kc/step10/`: 12 programs of Fixpt's answers: loops of a million in
+an `if`, a `let`, a `begin`, a `cond`; a tail call to another procedure;
+through a closure (a lambda applied in tail position that tail-calls the
+procedure); with a closure as an argument; with six arguments; one
+recursion not in tail position, of ten thousand. Without tail calls each
+loop of a million overflows the stack. 210 programs in all, none wrong.

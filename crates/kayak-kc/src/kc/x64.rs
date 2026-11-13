@@ -31,6 +31,12 @@ use super::*;
 // of a procedure as a value calls its closure's code, the closure in
 // `%r10`, whose free values the function first copies to its slots.
 //
+// A call in tail position (C413) gives its function's frame back and jumps
+// to the callee, which returns to this one's caller: the arguments are all
+// in registers, so nothing of the frame is needed after. A function's frame
+// is a symbol (`.set` once its code is made), so that each of its returns
+// and tail calls may give it back before its size is known.
+//
 // Integers are fixnums alone, as yet: an operation whose result would be
 // past one fails, `not yet` (until the heap, and big integers on it).
 pub mod kc_x64 {
@@ -557,6 +563,15 @@ pub mod kc_x64 {
         }
     }
 
+    #[inline]
+    pub fn x64_but_last(xs: Sexps) -> Sexps {
+        if (null_p(xs) || null_p(cdr(xs))) {
+            nil::<&'static Sexp>()
+        } else {
+            kayak_rt::heap_cons(car(xs), x64_but_last(cdr(xs)))
+        }
+    }
+
     /// Code that leaves `t`'s value in `%rax`, using the frame's slots from
     /// `si`, its variables where `env` says.
     pub fn x64_emit_expr(c: &'static X64Code, t: &'static Sexp, si: i64, env: List<&'static X64At>) -> &'static X64Code {
@@ -621,7 +636,7 @@ pub mod kc_x64 {
                 x64_emit(c, str_lit("call *-28(%r10)"))
             }
         } else if string_eq_p(h, str_lit("let")) {
-            x64_emit_let(c, let_bindings()(t), let_body()(t), si, env, env)
+            x64_emit_let(c, let_bindings()(t), let_body()(t), si, env, env, str_lit(""))
         } else if string_eq_p(h, str_lit("seq")) {
             x64_emit_seq(c, seq_terms()(t), si, env)
         } else {
@@ -645,16 +660,17 @@ pub mod kc_x64 {
             match *tagcase_ {
                 X64Code::X64Code(ls, k, slots, fs, px) => {
                     let sym = string_list_append(kayak_rt::heap_cons(str_lit("kcl_"), kayak_rt::heap_cons(px, kayak_rt::heap_cons(str_lit("_"), kayak_rt::heap_cons(i64_to_string(term_number()(t)), kayak_rt::nil())))));
-                    let inner = x64_using(x64_code(nil::<Str>(), k, 0i64, nil::<Str>(), px), i64_plus(n, m));
+                    let fr = x64_label(c, str_lit("frame"), k);
+                    let inner = x64_using(x64_code(nil::<Str>(), i64_plus(k, 1i64), 0i64, nil::<Str>(), px), i64_plus(n, m));
                     let inner = x64_stored_params(inner, x64_arg_registers(), 0i64, n);
                     let inner = x64_loaded_free(inner, 0i64, m, n);
                     let env2 = x64_params_at(fv, n, x64_params_at(ps, 0i64, nil::<&'static kc_x64::X64At>()));
-                    let inner = x64_emit_expr(inner, item_body()(t), i64_plus(n, m), env2);
+                    let inner = x64_emit_tail(inner, item_body()(t), i64_plus(n, m), env2, fr);
                     let tagcase_ = inner;
                     match *tagcase_ {
                         X64Code::X64Code(ls2, k2, slots2, fs2, px2) => {
                             let frame = x64_frame_of_call(slots2);
-                            x64_emit_closure(x64_code(ls, k2, slots, kayak_rt::heap_cons(string_list_append(append(kayak_rt::heap_cons(str_lit("    .p2align 4\n"), kayak_rt::heap_cons(sym, kayak_rt::heap_cons(str_lit(":\n    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil()))))), append(reverse(ls2), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n    ret\n"), kayak_rt::nil())))), reverse(fs2))))), fs), px), sym, map(lambda1s(move |v: &'static Sexp| {
+                            x64_emit_closure(x64_code(ls, k2, slots, kayak_rt::heap_cons(string_list_append(append(kayak_rt::heap_cons(str_lit("    .p2align 4\n"), kayak_rt::heap_cons(sym, kayak_rt::heap_cons(str_lit(":\n    subq $"), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil()))))), append(reverse(ls2), append(reverse(fs2), kayak_rt::heap_cons(str_lit("    .set "), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::nil()))))))))), fs), px), sym, map(lambda1s(move |v: &'static Sexp| {
                                 x64_slot_of({
                                     let tagcase_ = car(items(v));
                                     match *tagcase_ {
@@ -675,11 +691,63 @@ pub mod kc_x64 {
         }
     }
 
+    /// Code for `t` in tail position (C413), of a function whose frame is
+    /// `fr` bytes: its value returned, or, a call, the frame given back and
+    /// the callee jumped to, so that it returns to this one's caller; its
+    /// arguments are in registers, so no frame of the caller's is written.
+    pub fn x64_emit_tail(mut c: &'static X64Code, mut t: &'static Sexp, mut si: i64, mut env: List<&'static X64At>, mut fr: Str) -> &'static X64Code {
+        loop {
+            let h = term_head()(t);
+            if string_eq_p(h, str_lit("if")) {
+                let ps = if_parts()(t);
+                let k = x64_fresh_label(c);
+                let no = x64_label(c, str_lit("else"), k);
+                let c = x64_labelled(c);
+                let c = x64_emit_expr(c, car(ps), si, env);
+                let c = x64_emit(c, string_append(str_lit("cmpq $"), string_append(i64_to_string(x64_word_false()), str_lit(", %rax"))));
+                let c = x64_emit(c, string_append(str_lit("je "), no));
+                let c = x64_emit_tail(c, second(ps), si, env, fr);
+                let c = x64_emit_label(c, no);
+                return x64_emit_tail(c, third(ps), si, env, fr);
+            } else if string_eq_p(h, str_lit("let")) {
+                return x64_emit_let(c, let_bindings()(t), let_body()(t), si, env, env, fr);
+            } else if string_eq_p(h, str_lit("seq")) {
+                let ts = seq_terms()(t);
+                (c, t) = (x64_emit_seq(c, x64_but_last(ts), si, env), car(reverse(ts)));
+                continue;
+            } else if (string_eq_p(h, str_lit("call")) && i64_lt_eq(size(call_args()(t)), 6i64)) {
+                let args = call_args()(t);
+                let n = size(args);
+                let c = x64_emit_args(c, args, si, env);
+                let c = x64_moved_args(c, x64_arg_registers(), si, n);
+                let c = x64_emit(c, string_append(str_lit("addq $"), string_append(fr, str_lit(", %rsp"))));
+                return x64_emit(c, string_append(str_lit("jmp "), x64_proc_symbol(call_name()(t))));
+            } else if (string_eq_p(h, str_lit("app")) && i64_lt_eq(size(app_args()(t)), 6i64)) {
+                let args = app_args()(t);
+                let n = size(args);
+                let c = x64_emit_expr(c, app_fn()(t), si, env);
+                let c = x64_using(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(si))), i64_plus(si, 1i64));
+                let c = x64_emit_args(c, args, i64_plus(si, 1i64), env);
+                let c = x64_moved_args(c, x64_arg_registers(), i64_plus(si, 1i64), n);
+                let c = x64_emit(c, string_append(str_lit("movq "), string_append(x64_slot(si), str_lit(", %r10"))));
+                let c = x64_emit(c, string_append(str_lit("addq $"), string_append(fr, str_lit(", %rsp"))));
+                return x64_emit(c, str_lit("jmp *-28(%r10)"));
+            } else {
+                return x64_emit(x64_emit(x64_emit_expr(c, t, si, env), string_append(str_lit("addq $"), string_append(fr, str_lit(", %rsp")))), str_lit("ret"));
+            }
+        }
+    }
+
     /// Each binding's value made where the `let` is (`env`), into a slot of
-    /// its own; then the body, the binders in scope (`inner`) (C404).
-    pub fn x64_emit_let(c: &'static X64Code, bs: Sexps, body: &'static Sexp, si: i64, env: List<&'static X64At>, inner: List<&'static X64At>) -> &'static X64Code {
+    /// its own; then the body, the binders in scope (`inner`) (C404), in
+    /// tail position if `fr`, its function's frame, is given (C413).
+    pub fn x64_emit_let(c: &'static X64Code, bs: Sexps, body: &'static Sexp, si: i64, env: List<&'static X64At>, inner: List<&'static X64At>, fr: Str) -> &'static X64Code {
         if null_p(bs) {
-            x64_emit_expr(c, body, si, inner)
+            if string_eq_p(fr, str_lit("")) {
+                x64_emit_expr(c, body, si, inner)
+            } else {
+                x64_emit_tail(c, body, si, inner, fr)
+            }
         } else {
             let b = items(car(bs));
             let k = {
@@ -696,7 +764,7 @@ pub mod kc_x64 {
             };
             let c = x64_emit_expr(c, third(b), si, env);
             let c = x64_using(x64_emit(c, string_append(str_lit("movq %rax, "), x64_slot(si))), i64_plus(si, 1i64));
-            x64_emit_let(c, cdr(bs), body, i64_plus(si, 1i64), env, kayak_rt::heap_cons(x64_at(k, si), inner))
+            x64_emit_let(c, cdr(bs), body, i64_plus(si, 1i64), env, kayak_rt::heap_cons(x64_at(k, si), inner), fr)
         }
     }
 
@@ -866,11 +934,11 @@ pub mod kc_x64 {
             if i64_gt(n, 6i64) {
                 not_yet()(path, str_lit("a procedure of more than six parameters"))
             } else {
-                let tagcase_ = x64_emit_expr(x64_stored_params(x64_using(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>(), px), n), x64_arg_registers(), 0i64, n), item_body()(i), n, x64_params_at(ps, 0i64, nil::<&'static kc_x64::X64At>()));
+                let fr = string_append(str_lit(".L"), string_append(px, str_lit("_frame")));
+                let tagcase_ = x64_emit_tail(x64_stored_params(x64_using(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>(), px), n), x64_arg_registers(), 0i64, n), item_body()(i), n, x64_params_at(ps, 0i64, nil::<&'static kc_x64::X64At>()), fr);
                 match *tagcase_ {
                     X64Code::X64Code(ls, m, slots, fails, px2) => {
-                        let frame = x64_frame_of_call(slots);
-                        x64_asm_item_text(0i64, append(ls, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("    .globl "), kayak_rt::heap_cons(x64_proc_symbol(item_name()(i)), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(x64_proc_symbol(item_name()(i)), kayak_rt::heap_cons(str_lit(":\n    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil())))))))), kayak_rt::nil())), append(fails, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n    ret\n"), kayak_rt::nil())))), kayak_rt::nil())))
+                        x64_asm_item_text(0i64, append(ls, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("    .globl "), kayak_rt::heap_cons(x64_proc_symbol(item_name()(i)), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(x64_proc_symbol(item_name()(i)), kayak_rt::heap_cons(str_lit(":\n    subq $"), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil())))))))), kayak_rt::nil())), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("    .set "), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(i64_to_string(x64_frame_of_call(slots)), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::nil())))))), fails))
                     }
                 }
             }
