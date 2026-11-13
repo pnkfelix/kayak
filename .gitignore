@@ -1,3 +1,5 @@
 /target
 .DS_Store
 __pycache__/
+tools/quint/node_modules/
+tools/quint/home/

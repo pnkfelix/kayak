@@ -1535,4 +1535,8 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   a checked program's refusal to be one, said, and kept, as any value.
 - kc: each query reads its file's forms again from the text (`kc-forms`);
   the forms as a query's value once values are kept decoded.
+- Models (`docs/research/models.md`): exhaustive checking (Java 17+ for
+  Apalache; the snap's OpenJDK 27 works with `QUINT_HOME` and a temporary
+  directory it can see); the model of the asynchronous engine when it is;
+  the model's traces replayed against the KFX engine; Kani, if wanted.
 

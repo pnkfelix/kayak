@@ -11108,3 +11108,33 @@ run, by every back end that takes it, its value Fixpt's.
   `pure` is no effect at all, so a procedure calling another global is
   `kfx` (reading globals): the engine's helpers say so.
 
+## C400. A model of the query database, in Quint, and the bug it found (2026-11-12)
+
+The user: "We may need to make some kind of model of the incremental
+computation mechanism"; "I think you should look at Quint. And maybe Kani,
+though I'm less convinced of that latter bit for this purpose."
+`docs/research/models.md` has it: `models/db.qnt`, the engine's
+algorithm abstractly (three levels of queries, reads depending on what is
+read, verification in read order, early cutoff, the durability shortcut),
+its property that every value is a run from scratch's and every node the
+shortcut takes as current is; a fixed instance and an unfixed one, the
+engine before the fixes; `scripts/models.py` in the full check, Quint's
+simulator on both (the fixed must hold, the unfixed must fail); Quint
+0.33.1 pinned in `tools/quint`.
+
+**It found a bug at once** that `db-verify`'s 300 random edits had not:
+a node verified by its reads, each made current, kept the least
+durability it had when it last ran, though one read's had been lowered
+since (an input lowered from 2 to 0, its value the same, `m 1` run again
+to the same value, `s` then verified by its reads); a later edit at the
+low durability did not touch the shortcut at `s`'s stale one, and `s` was
+taken as current, 0 where a run from scratch gives 1. Now a node verified
+by its reads takes their least durability as it is (`db-reads-durability`,
+`node-reverified`). The counterexample is a fixed case of `db-verify`
+(`regression s=1`; the engine before gives `s=0`).
+
+Exhaustive checking set aside, the user agreeing ("this may have been a
+distraction"): Apalache, and Quint's TLC backend through it, need Java 17;
+a snap's OpenJDK 27 runs them with workarounds, but a first bounded run
+took more than ten minutes. Kept for when the engine is asynchronous.
+

@@ -83,6 +83,23 @@
                         (steps d (i64- n 1) s4 vals durs
                                (tally (if (string=? got want) wrong (i64+ wrong 1)) (i64+ mine ours) (i64+ theirs (db-runs fresh)))))))))))))))
 
+"The model's counterexample (models/db.qnt, C400), as it found it: `s`
+ asked while `x 1` is of durability 2; `x 1` lowered to durability 0, its
+ value the same, and `s` asked again (verified by its reads, `m 1` run
+ again to the same value); then `x 1` edited at durability 0. `s` must be
+ 1, a fresh database's; the engine before C400 kept `s`'s durability 2 and
+ took it as current, 0."
+(define regression (subr qe () string)
+  (lambda ()
+    (let ((d (db-make)))
+      (begin
+        (db-set! d "x 0" "0" 2) (db-set! d "x 1" "0" 2) (db-set! d "x 2" "0" 2)
+        (db-get d run "s")
+        (db-set! d "x 1" "0" 0)
+        (db-get d run "s")
+        (db-set! d "x 1" "1" 0)
+        (string-append "regression s=" (db-get d run "s"))))))
+
 (define main (subr qe () string)
   (lambda ()
     (let* ((d (db-make)) (vals (the (listof i64 acyclic) (list 0 0 0 0 0))) (durs (the (listof i64 acyclic) (list 0 1 2 3 0))))
@@ -90,4 +107,4 @@
         (set-all! d vals durs 0)
         (tagcase (steps d 300 20261112 vals durs (tally 0 0 0))
           (tally (wrong mine theirs)
-            (string-list-append (list "300 steps, " (i64->string wrong) " disagreed; bodies run " (i64->string mine) " against " (i64->string theirs) " from scratch"))))))))
+            (string-list-append (list (regression) "; 300 steps, " (i64->string wrong) " disagreed; bodies run " (i64->string mine) " against " (i64->string theirs) " from scratch"))))))))

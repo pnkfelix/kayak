@@ -1,0 +1,8 @@
+{
+  "name": "kayak-quint",
+  "private": true,
+  "description": "Quint, pinned, for kayak's models (docs/research/models.md): npm ci here, then npx quint.",
+  "dependencies": {
+    "@informalsystems/quint": "0.33.1"
+  }
+}

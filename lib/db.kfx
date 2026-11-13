@@ -17,7 +17,9 @@
  - **Verification** walks a node's reads in order, each made current
    first; the first that changed after the node was verified sends it to
    be run again (rustc's rule: after one changed, the body might have read
-   other things).
+   other things). A node verified so takes its reads' least durability as
+   it is now (C400).
+ - **Modelled** in `models/db.qnt` (Quint), checked by its simulator.
  - **Early cutoff**: a node run again whose value has the fingerprint it
    had keeps its revision of change, so what read it stays current.
  - **Persisted**: the whole database as text (`db-text`, `db-of-text`), so
@@ -136,6 +138,9 @@
 (define node-verified-at (subr kfx (node i64) node)
   (lambda (n r) (tagcase n (node (i v c f ds du x) (node i r c f ds du x)))))
 
+(define node-reverified (subr kfx (node i64 i64) node)
+  (lambda (n r d) (tagcase n (node (i v c f ds du x) (node i r c f ds d x)))))
+
 (define-rec
   (db-nth (subr kfx ((listof i64 acyclic) i64) i64)
     (lambda (xs i) (cond ((null? xs) 0) ((i64= i 0) (car xs)) (else (db-nth (cdr xs) (i64- i 1)))))))
@@ -230,21 +235,28 @@
               ((i64= (node-verified (car old)) r) (node-value (car old)))
               ((i64<= (db-nth (get (extract d last)) (node-durability (car old))) (node-verified (car old)))
                (begin (db-put! d k (node-verified-at (car old) r)) (node-value (car old))))
-              ((db-reads-unchanged? d run (node-deps (car old)) (node-verified (car old)))
-               (begin (db-put! d k (node-verified-at (car old) r)) (node-value (car old))))
-              (else (db-execute d run k old))))))
+              (else
+               ;; Its reads, each made current in order: if none changed after
+               ;; it was verified, it is current, its least durability theirs
+               ;; as they are now (an input's lowered durability may have
+               ;; lowered it: found by `models/db.qnt`, C400).
+               (let ((du (db-reads-durability d run (node-deps (car old)) (node-verified (car old)) (i64- durabilities 1))))
+                 (if (i64>= du 0)
+                     (begin (db-put! d k (node-reverified (car old) r du)) (node-value (car old)))
+                     (db-execute d run k old))))))))
 
-  (db-reads-unchanged? (subr qe (db runner (listof string acyclic) i64) bool)
-    (lambda (d run ks since)
-      "Whether none of `ks`, each made current in turn, changed after `since`."
+  (db-reads-durability (subr qe (db runner (listof string acyclic) i64 i64) i64)
+    (lambda (d run ks since du)
+      "If none of `ks`, each made current in turn, changed after `since`,
+       their least durability, and `du`'s; else -1, at the first that did."
       (if (null? ks)
-          #t
+          du
           (begin
             (db-current d run (car ks))
             (let ((n (db-node d (car ks))))
               (if (or (null? n) (i64> (node-changed (car n)) since))
-                  #f
-                  (db-reads-unchanged? d run (cdr ks) since)))))))
+                  -1
+                  (db-reads-durability d run (cdr ks) since (if (i64< (node-durability (car n)) du) (node-durability (car n)) du))))))))
 
   (db-execute (subr qe (db runner string (listof node acyclic)) string)
     (lambda (d run k old)

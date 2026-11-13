@@ -22,7 +22,9 @@ use super::*;
 // - **Verification** walks a node's reads in order, each made current
 // first; the first that changed after the node was verified sends it to
 // be run again (rustc's rule: after one changed, the body might have read
-// other things).
+// other things). A node verified so takes its reads' least durability as
+// it is now (C400).
+// - **Modelled** in `models/db.qnt` (Quint), checked by its simulator.
 // - **Early cutoff**: a node run again whose value has the fingerprint it
 // had keeps its revision of change, so what read it stays current.
 // - **Persisted**: the whole database as text (`db-text`, `db-of-text`), so
@@ -299,6 +301,16 @@ pub fn node_verified_at(n: &'static Node, r: i64) -> &'static Node {
     }
 }
 
+#[inline]
+pub fn node_reverified(n: &'static Node, r: i64, d: i64) -> &'static Node {
+    let tagcase_ = n;
+    match *tagcase_ {
+        Node::Node(i, v, c, f, ds, du, x) => {
+            node(i, r, c, f, ds, d, x)
+        }
+    }
+}
+
 pub fn db_nth(mut xs: List<i64>, mut i: i64) -> i64 {
     loop {
         if null_p(xs) {
@@ -455,26 +467,34 @@ pub fn db_current(d: Db, run: Runner, k: Str) -> Str {
     } else if i64_lt_eq(db_nth(get(d.3), node_durability(car(old))), node_verified(car(old))) {
         db_put_x(d, k, node_verified_at(car(old), r));
         node_value(car(old))
-    } else if db_reads_unchanged_p(d, run, node_deps(car(old)), node_verified(car(old))) {
-        db_put_x(d, k, node_verified_at(car(old), r));
-        node_value(car(old))
     } else {
-        db_execute(d, run, k, old)
+        let du = db_reads_durability(d, run, node_deps(car(old)), node_verified(car(old)), i64_minus(durabilities(), 1i64));
+        if i64_gt_eq(du, 0i64) {
+            db_put_x(d, k, node_reverified(car(old), r, du));
+            node_value(car(old))
+        } else {
+            db_execute(d, run, k, old)
+        }
     }
 }
 
-/// Whether none of `ks`, each made current in turn, changed after `since`.
-pub fn db_reads_unchanged_p(mut d: Db, mut run: Runner, mut ks: List<Str>, mut since: i64) -> bool {
+/// If none of `ks`, each made current in turn, changed after `since`,
+/// their least durability, and `du`'s; else -1, at the first that did.
+pub fn db_reads_durability(mut d: Db, mut run: Runner, mut ks: List<Str>, mut since: i64, mut du: i64) -> i64 {
     loop {
         if null_p(ks) {
-            return true;
+            return du;
         } else {
             db_current(d, run, car(ks));
             let n = db_node(d, car(ks));
             if (null_p(n) || i64_gt(node_changed(car(n)), since)) {
-                return false;
+                return -1i64;
             } else {
-                ks = cdr(ks);
+                (ks, du) = (cdr(ks), if i64_lt(node_durability(car(n)), du) {
+                    node_durability(car(n))
+                } else {
+                    du
+                });
                 continue;
             }
         }

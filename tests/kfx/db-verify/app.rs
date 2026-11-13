@@ -174,6 +174,24 @@ pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: &'
     }
 }
 
+// The model's counterexample (models/db.qnt, C400), as it found it: `s`
+// asked while `x 1` is of durability 2; `x 1` lowered to durability 0, its
+// value the same, and `s` asked again (verified by its reads, `m 1` run
+// again to the same value); then `x 1` edited at durability 0. `s` must be
+// 1, a fresh database's; the engine before C400 kept `s`'s durability 2 and
+// took it as current, 0.
+pub fn regression() -> Str {
+    let d = db_make();
+    db_set_x(d, str_lit("x 0"), str_lit("0"), 2i64);
+    db_set_x(d, str_lit("x 1"), str_lit("0"), 2i64);
+    db_set_x(d, str_lit("x 2"), str_lit("0"), 2i64);
+    db_get(d, &run, str_lit("s"));
+    db_set_x(d, str_lit("x 1"), str_lit("0"), 0i64);
+    db_get(d, &run, str_lit("s"));
+    db_set_x(d, str_lit("x 1"), str_lit("1"), 0i64);
+    string_append(str_lit("regression s="), db_get(d, &run, str_lit("s")))
+}
+
 pub fn main() -> Str {
     let d = db_make();
     let vals = the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::nil()))))));
@@ -182,7 +200,7 @@ pub fn main() -> Str {
     let tagcase_ = steps(d, 300i64, 20261112i64, vals, durs, tally(0i64, 0i64, 0i64));
     match *tagcase_ {
         Tally::Tally(wrong, mine, theirs) => {
-            string_list_append(kayak_rt::heap_cons(str_lit("300 steps, "), kayak_rt::heap_cons(i64_to_string(wrong), kayak_rt::heap_cons(str_lit(" disagreed; bodies run "), kayak_rt::heap_cons(i64_to_string(mine), kayak_rt::heap_cons(str_lit(" against "), kayak_rt::heap_cons(i64_to_string(theirs), kayak_rt::heap_cons(str_lit(" from scratch"), kayak_rt::nil()))))))))
+            string_list_append(kayak_rt::heap_cons(regression(), kayak_rt::heap_cons(str_lit("; 300 steps, "), kayak_rt::heap_cons(i64_to_string(wrong), kayak_rt::heap_cons(str_lit(" disagreed; bodies run "), kayak_rt::heap_cons(i64_to_string(mine), kayak_rt::heap_cons(str_lit(" against "), kayak_rt::heap_cons(i64_to_string(theirs), kayak_rt::heap_cons(str_lit(" from scratch"), kayak_rt::nil())))))))))
         }
     }
 }
