@@ -17,7 +17,7 @@
 (define kc-rust
   (module
     (hide
-      (import kc-front arg-first arg-rest kc-hex kc-datum kc-items-of kc-keys kc-type (type qbody))
+      (import kc-front kc-hex kc-datum kc-items-of kc-keys kc-type (type qbody))
       (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args let-bindings let-body if-parts seq-terms prim-name prim-args term-number lambda-params app-fn app-args gproc-arity))
 
     (hide
@@ -155,8 +155,8 @@
      function, `(global CELL INIT)` of a value definition's cell and the
      statement that sets it, `(expr STMT)` of an expression's statement."
     (define q-rust-item qbody
-      (lambda (d run a)
-        (let* ((path (arg-first a)) (key (arg-rest a)) (i (l0-item d run path key)) (k (item-kind i)))
+      (lambda (d run a-path a-key)
+        (let* ((path a-path) (key a-key) (i (l0-item d run path key)) (k (item-kind i)))
           (cond ((string=? k "proc")
                  (let* ((t (kc-type d run path (item-name i))))
                    (if (not (sym-is? (car (items t)) "subr"))
@@ -192,9 +192,9 @@
                                     ")"))))))))
 
     (define q-rust qbody
-      (lambda (d run path)
+      (lambda (d run path a-key)
         (begin
-          (db-get d run (string-append "kfx " path))
+          (db-get d run (key1 "kfx" path))
           (let ((its (kc-items-of d run "rust-item" path (kc-keys d run path))))
             (string-list-append
               (append (list "// Made by kc (docs/research/kc.md) from " path ".\n"

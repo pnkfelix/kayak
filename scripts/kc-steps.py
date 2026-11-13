@@ -83,7 +83,9 @@ def cutoff():
         os.remove(db)
     wrong = []
     # The forms are inputs, set by the driver from one reading of the text
-    # (C414): no query reads the whole program but the checker.
+    # (C414): no query reads the whole program but the checker. The whole
+    # program's assembly is not kept in the database's files (C417): the
+    # file it was written to is, its fingerprint the one the database has.
     for text, want in [("42\n", ["asm", "asm-item", "checked", "l0-item"]),
                        # The same datum: the forms' inputs the same, all else spared.
                        ("  42   ; the same value, written otherwise\n", ["checked"]),

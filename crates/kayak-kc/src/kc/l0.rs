@@ -28,22 +28,12 @@ pub mod kc_l0 {
     use super::*;
 
     #[inline]
-    pub fn arg_first() -> &'static (dyn Fn(Str) -> Str + Send + Sync) {
-        &kc_front::arg_first
-    }
-
-    #[inline]
-    pub fn arg_rest() -> &'static (dyn Fn(Str) -> Str + Send + Sync) {
-        &kc_front::arg_rest
-    }
-
-    #[inline]
     pub fn form_name() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
         &kc_front::form_name
     }
 
     #[inline]
-    pub fn kc_form() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str) -> &'static Sexp {
+    pub fn kc_form() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> &'static Sexp {
         &kc_front::kc_form
     }
 
@@ -63,12 +53,12 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn kc_scope_entry() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, i64, Str) -> &'static Sexp {
+    pub fn kc_scope_entry() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, i64, Str) -> &'static Sexp {
         &kc_front::kc_scope_entry
     }
 
     #[inline]
-    pub fn kc_position() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str) -> i64 {
+    pub fn kc_position() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> i64 {
         &kc_front::kc_position
     }
 
@@ -805,22 +795,22 @@ pub mod kc_l0 {
         }
     }
 
-    pub fn q_l0_item(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-        let path = arg_first()(a);
-        let key = arg_rest()(a);
+    pub fn q_l0_item(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+        let path = a_path;
+        let key = a_key;
         let f = kc_form()(d, run, path, key);
         let at = kc_position()(d, run, path, key);
         l0_item_of(d, run, path, at, f, if (string_eq_p(form_name()(f), str_lit("")) || null_p(lambda_of()(define_value()(f)))) {
             nil::<&'static Sexp>()
         } else {
-            kayak_rt::heap_cons(car(read_all(db_get(d, run, string_append(str_lit("interface "), string_append(path, string_append(str_lit(" "), key)))), str_lit("scope"), 1i64)), kayak_rt::nil())
+            kayak_rt::heap_cons(car(read_all(db_get(d, run, key2(str_lit("interface"), path, key)), str_lit("scope"), 1i64)), kayak_rt::nil())
         })
     }
 
     // An item of the program, as a term.
     #[inline]
     pub fn l0_item(d: Db, run: Runner, path: Str, key: Str) -> &'static Sexp {
-        car(read_all(db_get(d, run, string_append(str_lit("l0-item "), string_append(path, string_append(str_lit(" "), key)))), str_lit("l0"), 1i64))
+        car(read_all(db_get(d, run, key2(str_lit("l0-item"), path, key)), str_lit("l0"), 1i64))
     }
 
     // A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`).

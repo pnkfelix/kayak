@@ -38,7 +38,7 @@
 (define kc-x64
   (module
     (hide
-      (import kc-front arg-first arg-rest kc-hex kc-datum kc-items-of kc-keys (type qbody))
+      (import kc-front kc-hex kc-datum kc-items-of kc-keys (type qbody))
       (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args var-number let-bindings let-body if-parts seq-terms prim-name prim-args term-number lambda-params lambda-free app-fn app-args gproc-arity)
       (import kc-rust sexp-at))
 
@@ -507,8 +507,8 @@
                   (kc-datum (str (string-list-append (reverse fails)) "" 0)) ")")))))
 
     (define q-asm-item qbody
-      (lambda (d run a)
-        (let* ((path (arg-first a)) (key (arg-rest a)) (i (l0-item d run path key)) (k (item-kind i))
+      (lambda (d run a-path a-key)
+        (let* ((path a-path) (key a-key) (i (l0-item d run path key)) (k (item-kind i))
                (px (x64-name key)))
           (cond ((string=? k "proc")
                  (let* ((ps (item-params i)) (n (size ps)))
@@ -535,7 +535,7 @@
 
     (hide
       (define x64-asm-of (subr qe (db runner string string) sexp)
-        (lambda (d run path key) (car (read-all (db-get d run (string-append "asm-item " (string-append path (string-append " " key)))) "asm" 1))))
+        (lambda (d run path key) (car (read-all (db-get d run (key2 "asm-item" path key)) "asm" 1))))
 
       (define x64-part (subr kfx (sexp i64) string)
         (lambda (x i) (tagcase (sexp-at (items x) i) (str (s f p) s) (else other ""))))
@@ -551,7 +551,7 @@
      `kc_entry`, which keeps the heap in `%r15` and `%r14` and makes the
      value definitions and expressions in order."
     (define q-asm qbody
-      (lambda (d run path)
+      (lambda (d run path a-key)
         (let* ((keys (kc-keys d run path))
                (its (kc-items-of d run "asm-item" path keys))
                (l0s (kc-items-of d run "l0-item" path keys))

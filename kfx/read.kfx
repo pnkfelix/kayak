@@ -381,6 +381,102 @@
     "Every datum in `text`, of `file` from `line`."
     (read-from (here (string-chars text) line 0) text file)))
 
+"Datum labels (C417), as Fixpt's reader has them for data
+ (`fixpt-read`'s `datum_labels`) and its listings write them: `#N=` before
+ a datum where it is first written, `#N#` for it after, so that what is
+ written once is read once and shared. For data only (`read-data`): FX-26's
+ program text has none (`fx26-grammar.md`), so `read-all` reads `#0=` as a
+ name, which no program defines. Read as the reader reads any token, then
+ resolved, in the order written."
+"The labels made so far: an AVL tree by number."
+(define-datatype labels (lb-none) (lb-node labels i64 sexp i64 labels))
+(define-datatype resolved (resolved sexps labels))
+
+(define lb-height (subr kfx (labels) i64)
+  (lambda (t) (tagcase t (lb-none () 0) (lb-node (l k x h r) h))))
+
+(define lb-make (subr kfx (labels i64 sexp labels) labels)
+  (lambda (l k x r) (lb-node l k x (i64+ 1 (let ((a (lb-height l)) (b (lb-height r))) (if (i64> a b) a b))) r)))
+
+(define lb-balanced (subr kfx (labels i64 sexp labels) labels)
+  (lambda (l k x r)
+    (let ((hl (lb-height l)) (hr (lb-height r)))
+      (cond ((i64> hl (i64+ hr 1))
+             (tagcase l
+               (lb-node (ll lk lx lh lr)
+                 (if (i64>= (lb-height ll) (lb-height lr))
+                     (lb-make ll lk lx (lb-make lr k x r))
+                     (tagcase lr (lb-node (rl rk rx rh rr) (lb-make (lb-make ll lk lx rl) rk rx (lb-make rr k x r))) (else o (lb-make l k x r)))))
+               (else o (lb-make l k x r))))
+            ((i64> hr (i64+ hl 1))
+             (tagcase r
+               (lb-node (rl rk rx rh rr)
+                 (if (i64>= (lb-height rr) (lb-height rl))
+                     (lb-make (lb-make l k x rl) rk rx rr)
+                     (tagcase rl (lb-node (ll lk lx lh lr) (lb-make (lb-make l k x ll) lk lx (lb-make lr rk rx rr))) (else o (lb-make l k x r)))))
+               (else o (lb-make l k x r))))
+            (else (lb-make l k x r))))))
+
+(define-rec
+  (lb-put (subr kfx (labels i64 sexp) labels)
+    (lambda (t k x)
+      (tagcase t
+        (lb-none () (lb-node (lb-none) k x 1 (lb-none)))
+        (lb-node (l j y h r)
+          (cond ((i64= k j) (lb-node l j x h r))
+                ((i64< k j) (lb-balanced (lb-put l k x) j y r))
+                (else (lb-balanced l j y (lb-put r k x))))))))
+  (lb-get (subr kfx (labels i64) sexps)
+    (lambda (t k)
+      (tagcase t
+        (lb-none () nil)
+        (lb-node (l j y h r) (cond ((i64= k j) (list y)) ((i64< k j) (lb-get l k)) (else (lb-get r k))))))))
+
+(define datum-label-of (subr kfx (sexp string) i64)
+  (lambda (e mark)
+    "`N` of a name `#N=` (`mark` `=`) or `#N#` (`#`); -1 if it is none."
+    (tagcase e
+      (sym (n f p)
+        (let ((k (string-length-i64 n)))
+          (if (and (i64>= k 3) (char=? (string-ref-i64 n 0) #\#)
+                   (string=? (substring n (i64->int (i64- k 1)) (i64->int k)) mark)
+                   (only-of? (string-chars (substring n 1 (i64->int (i64- k 1)))) "0123456789"))
+              (i64- 0 (digits-value (string-chars (substring n 1 (i64->int (i64- k 1)))) 0 f 0))
+              -1)))
+      (else other -1))))
+
+(define-rec
+  (labels-resolved (subr kfx (sexps labels sexps) resolved)
+    (lambda (xs ls acc)
+      "Items `xs`, each label made and each reference to one resolved, onto
+       `acc` (newest first); and the labels after."
+      (if (null? xs)
+          (resolved (reverse acc) ls)
+          (let ((def (datum-label-of (car xs) "=")) (use (datum-label-of (car xs) "#")))
+            (cond ((and (i64>= def 0) (not (null? (cdr xs))))
+                   (tagcase (datum-resolved (car (cdr xs)) ls)
+                     (resolved (ys ls2)
+                       (labels-resolved (cdr (cdr xs)) (lb-put ls2 def (car ys)) (cons (car ys) acc)))))
+                  ((i64>= use 0)
+                   (let ((found (lb-get ls use)))
+                     (if (null? found)
+                         (begin (error (string-append "kfx: no datum is labelled #" (string-append (i64->string use) "="))) (resolved nil ls))
+                         (labels-resolved (cdr xs) ls (cons (car found) acc)))))
+                  (else
+                   (tagcase (datum-resolved (car xs) ls)
+                     (resolved (ys ls2) (labels-resolved (cdr xs) ls2 (cons (car ys) acc))))))))))
+  (datum-resolved (subr kfx (sexp labels) resolved)
+    (lambda (e ls)
+      "A datum, its labels resolved: of a list, its items'."
+      (tagcase e
+        (lst (xs f l p) (tagcase (labels-resolved xs ls nil) (resolved (ys ls2) (resolved (list (lst ys f l p)) ls2))))
+        (else other (resolved (list e) ls))))))
+
+(define read-data (subr kfx (string string) sexps)
+  (lambda (text file)
+    "Every datum in `text`, data of `file`, its datum labels resolved."
+    (tagcase (labels-resolved (read-all text file 1) (lb-none) nil) (resolved (xs ls) xs))))
+
 "Taking `sexp`s apart"
 
 (define datum-file (subr kfx (sexp) string)

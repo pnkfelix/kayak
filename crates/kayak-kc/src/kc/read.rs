@@ -764,6 +764,242 @@ pub fn read_all(text: Str, file: Str, line: i64) -> Sexps {
     read_from(here(string_chars(text), line, 0i64), text, file)
 }
 
+// Datum labels (C417), as Fixpt's reader has them for data
+// (`fixpt-read`'s `datum_labels`) and its listings write them: `#N=` before
+// a datum where it is first written, `#N#` for it after, so that what is
+// written once is read once and shared. For data only (`read-data`): FX-26's
+// program text has none (`fx26-grammar.md`), so `read-all` reads `#0=` as a
+// name, which no program defines. Read as the reader reads any token, then
+// resolved, in the order written.
+
+// The labels made so far: an AVL tree by number.
+pub enum Labels {
+    LbNone(),
+    LbNode(&'static Labels, i64, &'static Sexp, i64, &'static Labels),
+}
+
+pub fn lb_none() -> &'static Labels {
+    kayak_rt::heap_alloc(Labels::LbNone())
+}
+
+pub fn lb_node(f0: &'static Labels, f1: i64, f2: &'static Sexp, f3: i64, f4: &'static Labels) -> &'static Labels {
+    kayak_rt::heap_alloc(Labels::LbNode(f0, f1, f2, f3, f4))
+}
+
+pub enum Resolved {
+    Resolved(Sexps, &'static Labels),
+}
+
+pub fn resolved(f0: Sexps, f1: &'static Labels) -> &'static Resolved {
+    kayak_rt::heap_alloc(Resolved::Resolved(f0, f1))
+}
+
+#[inline]
+pub fn lb_height(t: &'static Labels) -> i64 {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Labels::LbNone() => {
+            0i64
+        }
+        Labels::LbNode(l, k, x, h, r) => {
+            h
+        }
+    }
+}
+
+pub fn lb_make(l: &'static Labels, k: i64, x: &'static Sexp, r: &'static Labels) -> &'static Labels {
+    lb_node(l, k, x, i64_plus(1i64, {
+        let (a, b) = (lb_height(l), lb_height(r));
+        if i64_gt(a, b) {
+            a
+        } else {
+            b
+        }
+    }), r)
+}
+
+pub fn lb_balanced(l: &'static Labels, k: i64, x: &'static Sexp, r: &'static Labels) -> &'static Labels {
+    let (hl, hr) = (lb_height(l), lb_height(r));
+    if i64_gt(hl, i64_plus(hr, 1i64)) {
+        let tagcase_ = l;
+        match *tagcase_ {
+            Labels::LbNode(ll, lk, lx, lh, lr) => {
+                if i64_gt_eq(lb_height(ll), lb_height(lr)) {
+                    lb_make(ll, lk, lx, lb_make(lr, k, x, r))
+                } else {
+                    let tagcase_ = lr;
+                    match *tagcase_ {
+                        Labels::LbNode(rl, rk, rx, rh, rr) => {
+                            lb_make(lb_make(ll, lk, lx, rl), rk, rx, lb_make(rr, k, x, r))
+                        }
+                        _ => {
+                            let o = tagcase_;
+                            lb_make(l, k, x, r)
+                        }
+                    }
+                }
+            }
+            _ => {
+                let o = tagcase_;
+                lb_make(l, k, x, r)
+            }
+        }
+    } else if i64_gt(hr, i64_plus(hl, 1i64)) {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Labels::LbNode(rl, rk, rx, rh, rr) => {
+                if i64_gt_eq(lb_height(rr), lb_height(rl)) {
+                    lb_make(lb_make(l, k, x, rl), rk, rx, rr)
+                } else {
+                    let tagcase_ = rl;
+                    match *tagcase_ {
+                        Labels::LbNode(ll, lk, lx, lh, lr) => {
+                            lb_make(lb_make(l, k, x, ll), lk, lx, lb_make(lr, rk, rx, rr))
+                        }
+                        _ => {
+                            let o = tagcase_;
+                            lb_make(l, k, x, r)
+                        }
+                    }
+                }
+            }
+            _ => {
+                let o = tagcase_;
+                lb_make(l, k, x, r)
+            }
+        }
+    } else {
+        lb_make(l, k, x, r)
+    }
+}
+
+pub fn lb_put(t: &'static Labels, k: i64, x: &'static Sexp) -> &'static Labels {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Labels::LbNone() => {
+            lb_node(lb_none(), k, x, 1i64, lb_none())
+        }
+        Labels::LbNode(l, j, y, h, r) => {
+            if i64_eq(k, j) {
+                lb_node(l, j, x, h, r)
+            } else if i64_lt(k, j) {
+                lb_balanced(lb_put(l, k, x), j, y, r)
+            } else {
+                lb_balanced(l, j, y, lb_put(r, k, x))
+            }
+        }
+    }
+}
+
+pub fn lb_get(mut t: &'static Labels, mut k: i64) -> Sexps {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Labels::LbNone() => {
+                return nil::<&'static Sexp>();
+            }
+            Labels::LbNode(l, j, y, h, r) => {
+                if i64_eq(k, j) {
+                    return kayak_rt::heap_cons(y, kayak_rt::nil());
+                } else if i64_lt(k, j) {
+                    t = l;
+                    continue;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// `N` of a name `#N=` (`mark` `=`) or `#N#` (`#`); -1 if it is none.
+pub fn datum_label_of(e: &'static Sexp, mark: Str) -> i64 {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            let k = string_length_i64(n);
+            if (i64_gt_eq(k, 3i64) && char_eq_p(string_ref_i64(n, 0i64), '#') && string_eq_p(substring(n, i64_to_int(i64_minus(k, 1i64)), i64_to_int(k)), mark) && only_of_p(string_chars(substring(n, int_lit(1), i64_to_int(i64_minus(k, 1i64)))), str_lit("0123456789"))) {
+                i64_minus(0i64, digits_value(string_chars(substring(n, int_lit(1), i64_to_int(i64_minus(k, 1i64)))), 0i64, f, 0i64))
+            } else {
+                -1i64
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            -1i64
+        }
+    }
+}
+
+/// Items `xs`, each label made and each reference to one resolved, onto
+/// `acc` (newest first); and the labels after.
+pub fn labels_resolved(mut xs: Sexps, mut ls: &'static Labels, mut acc: Sexps) -> &'static Resolved {
+    loop {
+        if null_p(xs) {
+            return resolved(reverse(acc), ls);
+        } else {
+            let (def, r#use) = (datum_label_of(car(xs), str_lit("=")), datum_label_of(car(xs), str_lit("#")));
+            if (i64_gt_eq(def, 0i64) && not(null_p(cdr(xs)))) {
+                let tagcase_ = datum_resolved(car(cdr(xs)), ls);
+                match *tagcase_ {
+                    Resolved::Resolved(ys, ls2) => {
+                        (xs, ls, acc) = (cdr(cdr(xs)), lb_put(ls2, def, car(ys)), kayak_rt::heap_cons(car(ys), acc));
+                        continue;
+                    }
+                }
+            } else if i64_gt_eq(r#use, 0i64) {
+                let found = lb_get(ls, r#use);
+                if null_p(found) {
+                    error(string_append(str_lit("kfx: no datum is labelled #"), string_append(i64_to_string(r#use), str_lit("="))));
+                    return resolved(nil::<&'static Sexp>(), ls);
+                } else {
+                    (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(found), acc));
+                    continue;
+                }
+            } else {
+                let tagcase_ = datum_resolved(car(xs), ls);
+                match *tagcase_ {
+                    Resolved::Resolved(ys, ls2) => {
+                        (xs, ls, acc) = (cdr(xs), ls2, kayak_rt::heap_cons(car(ys), acc));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A datum, its labels resolved: of a list, its items'.
+pub fn datum_resolved(e: &'static Sexp, ls: &'static Labels) -> &'static Resolved {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let tagcase_ = labels_resolved(xs, ls, nil::<&'static Sexp>());
+            match *tagcase_ {
+                Resolved::Resolved(ys, ls2) => {
+                    resolved(kayak_rt::heap_cons(lst(ys, f, l, p), kayak_rt::nil()), ls2)
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            resolved(kayak_rt::heap_cons(e, kayak_rt::nil()), ls)
+        }
+    }
+}
+
+/// Every datum in `text`, data of `file`, its datum labels resolved.
+#[inline]
+pub fn read_data(text: Str, file: Str) -> Sexps {
+    let tagcase_ = labels_resolved(read_all(text, file, 1i64), lb_none(), nil::<&'static Sexp>());
+    match *tagcase_ {
+        Resolved::Resolved(xs, ls) => {
+            xs
+        }
+    }
+}
+
 // Taking `sexp`s apart
 /// The file a datum was read from; ``, for one the compiler made.
 pub fn datum_file(e: &'static Sexp) -> Str {

@@ -23,7 +23,7 @@
 (define kc-l0
   (module
     (hide
-      (import kc-front arg-first arg-rest form-name kc-form define-value lambda-of kc-datum kc-scope-entry kc-position (type qbody)))
+      (import kc-front form-name kc-form define-value lambda-of kc-datum kc-scope-entry kc-position (type qbody)))
 
     (hide
       (define fixnum-max i64 1152921504606846975)
@@ -345,11 +345,11 @@
                     (else r)))))))
 
     (define q-l0-item qbody
-      (lambda (d run a)
+      (lambda (d run a-path a-key)
         ;; Of a program the checker passed: the driver asks `checked` first
         ;; (C415). Not read here, so that a check's value changing (a refusal,
         ;; then none) reaches no item whose form is as it was.
-        (let* ((path (arg-first a)) (key (arg-rest a))
+        (let* ((path a-path) (key a-key)
                (f (kc-form d run path key))
                (at (kc-position d run path key)))
           ;; A procedure's own name in its scope from the first: it may call
@@ -357,11 +357,11 @@
           (l0-item-of d run path at f
                       (if (or (string=? (form-name f) "") (null? (lambda-of (define-value f))))
                           nil
-                          (list (car (read-all (db-get d run (string-append "interface " (string-append path (string-append " " key)))) "scope" 1))))))))
+                          (list (car (read-all (db-get d run (key2 "interface" path key)) "scope" 1))))))))
 
     "An item of the program, as a term."
     (define l0-item (subr qe (db runner string string) sexp)
-      (lambda (d run path key) (car (read-all (db-get d run (string-append "l0-item " (string-append path (string-append " " key)))) "l0" 1))))
+      (lambda (d run path key) (car (read-all (db-get d run (key2 "l0-item" path key)) "l0" 1))))
 
     "A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`)."
     (define term-head (subr kfx (sexp) string)

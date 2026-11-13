@@ -43,16 +43,6 @@ pub mod kc_x64 {
     use super::*;
 
     #[inline]
-    pub fn arg_first() -> &'static (dyn Fn(Str) -> Str + Send + Sync) {
-        &kc_front::arg_first
-    }
-
-    #[inline]
-    pub fn arg_rest() -> &'static (dyn Fn(Str) -> Str + Send + Sync) {
-        &kc_front::arg_rest
-    }
-
-    #[inline]
     pub fn kc_hex() -> &'static (dyn Fn(i64, Str) -> Str + Send + Sync) {
         &kc_front::kc_hex
     }
@@ -63,12 +53,12 @@ pub mod kc_x64 {
     }
 
     #[inline]
-    pub fn kc_items_of() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str, List<Str>) -> List<&'static Sexp> {
+    pub fn kc_items_of() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str, List<Str>) -> List<&'static Sexp> {
         &kc_front::kc_items_of
     }
 
     #[inline]
-    pub fn kc_keys() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str) -> List<Str> {
+    pub fn kc_keys() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str) -> List<Str> {
         &kc_front::kc_keys
     }
 
@@ -80,7 +70,7 @@ pub mod kc_x64 {
     }
 
     #[inline]
-    pub fn l0_item() -> &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, Str, Str) -> &'static Sexp {
+    pub fn l0_item() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> &'static Sexp {
         &kc_l0::l0_item
     }
 
@@ -922,9 +912,9 @@ pub mod kc_x64 {
         string_list_append(kayak_rt::heap_cons(str_lit("(asm "), kayak_rt::heap_cons(i64_to_string(slots), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum()(str(string_list_append(reverse(ls)), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum()(str(string_list_append(reverse(fails)), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))))
     }
 
-    pub fn q_asm_item(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, a: Str) -> Str {
-        let path = arg_first()(a);
-        let key = arg_rest()(a);
+    pub fn q_asm_item(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+        let path = a_path;
+        let key = a_key;
         let i = l0_item()(d, run, path, key);
         let k = item_kind()(i);
         let px = x64_name(key);
@@ -961,7 +951,7 @@ pub mod kc_x64 {
 
     #[inline]
     pub fn x64_asm_of(d: Db, run: Runner, path: Str, key: Str) -> &'static Sexp {
-        car(read_all(db_get(d, run, string_append(str_lit("asm-item "), string_append(path, string_append(str_lit(" "), key)))), str_lit("asm"), 1i64))
+        car(read_all(db_get(d, run, key2(str_lit("asm-item"), path, key)), str_lit("asm"), 1i64))
     }
 
     #[inline]
@@ -1013,7 +1003,7 @@ pub mod kc_x64 {
     // `asm PATH`: the program: each global's cell; each procedure; then
     // `kc_entry`, which keeps the heap in `%r15` and `%r14` and makes the
     // value definitions and expressions in order.
-    pub fn q_asm(d: Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, run: &'static dyn Fn(Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>, Str) -> Str, path: Str) -> Str {
+    pub fn q_asm(d: Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
         let keys = kc_keys()(d, run, path);
         let its = kc_items_of()(d, run, str_lit("asm-item"), path, keys);
         let l0s = kc_items_of()(d, run, str_lit("l0-item"), path, keys);

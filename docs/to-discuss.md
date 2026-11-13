@@ -51,3 +51,13 @@ where it was seen and what it would take.
    a bug had been fixed). Perhaps `--bless` should say when it writes a
    platform file, or refuse to unless asked.
 
+8. **FX-26's "no datum labels" has outlived its reason (to raise with
+   Fixpt).** `docs/fx26-grammar.md` (2026-10-02): "No datum labels (`#0=`):
+   nothing in FX-26 is a cyclic datum." Since then FX-26 has `set-cdr!`,
+   lists at a writable region "may be cyclic", and `docs/fx26.md`'s
+   `datum` section anticipates "a reader of datum labels (`#1=(a . #1#)`)"
+   for frozen data that may have a cycle; Fixpt's printer writes cycles
+   with labels and its listings label every shared object. The user
+   (2026-11-13): "Surely that statement is out of date, or at least the
+   justification?" kayak reads labels in data alone (`read-data`, C417);
+   in program text it would be an FX-26 extension, Fixpt's first.

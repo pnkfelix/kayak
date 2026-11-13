@@ -27,15 +27,18 @@ use super::*;
 // - **Modelled** in `models/db.qnt` (Quint), checked by its simulator.
 // - **Early cutoff**: a node run again whose value has the fingerprint it
 // had keeps its revision of change, so what read it stays current.
-// - **Persisted**: the whole database as text (`db-text`, `db-of-text`), so
-// a run begins with the graph and the values of the last.
+// - **Persisted** in two files (C417): the graph, a datum, and the values,
+// a payload read as it is needed (`db-files`, `db-of-files`).
 //
-// Values are text, the database's alone: a query's value is what its body
-// gives as text, its fingerprint FNV-1a of it (`lib/query.kfx`). A client
-// reads it back as it wrote it. Keys are text too, a query's name, a space,
-// its argument. The bodies are one procedure the client gives every ask,
-// `run`, which is given a key and runs that key's query: so the database's
-// type names no procedure of itself.
+// Keys are data (C417; the user: "Making keys structured data is totally
+// up my alley"): a query's name and its arguments, `(l0-item "PATH"
+// "KEY")`, each interned as a number the first time it is met, by its
+// text, so that the nodes are found by number and what a node read is a
+// list of numbers. Values are text, the database's alone: a query's value is
+// what its body gives as text, its fingerprint FNV-1a of it
+// (`lib/query.kfx`). The bodies are one procedure the client gives every
+// ask, `run`, which is given a key and runs that key's query: so the
+// database's type names no procedure of itself.
 //
 // Synchronous, as K0 is: a body runs to its end, its asks nested in it. In
 // one region, `@q`, and of one effect, `qe`, every body's (the compiler's
@@ -47,157 +50,522 @@ use super::*;
 // which a database of one compiler's (its identity in its first line) has
 // one of.
 
-// A node: whether it is an input; the revision it was verified in; the one
-// its value changed in; its value's fingerprint; what it read, in order;
-// the least durability of that (an input's, its own); its value.
+// A value as a node keeps it (C417): its text; where it is in the payload
+// read with the database, its offset and length, and whether it is escaped
+// there (past ASCII, or with a `\`), cut out when it is read;
+// or none, a value the database was not asked to keep, made again when it
+// is read.
+pub enum Value {
+    VText(Str),
+    VAt(i64, i64, bool),
+    VNone(),
+}
+
+pub fn v_text(f0: Str) -> &'static Value {
+    kayak_rt::heap_alloc(Value::VText(f0))
+}
+
+pub fn v_at(f0: i64, f1: i64, f2: bool) -> &'static Value {
+    kayak_rt::heap_alloc(Value::VAt(f0, f1, f2))
+}
+
+pub fn v_none() -> &'static Value {
+    kayak_rt::heap_alloc(Value::VNone())
+}
+
+// A node: its key; whether it is an input; the revision it was verified
+// in; the one its value changed in; its value's fingerprint; what it read,
+// in order, by number; the least durability of that (an input's, its own);
+// its value.
 pub enum Node {
-    Node(bool, i64, i64, i64, List<Str>, i64, Str),
+    Node(&'static Sexp, bool, i64, i64, i64, List<i64>, i64, &'static Value),
 }
 
-pub fn node(f0: bool, f1: i64, f2: i64, f3: i64, f4: List<Str>, f5: i64, f6: Str) -> &'static Node {
-    kayak_rt::heap_alloc(Node::Node(f0, f1, f2, f3, f4, f5, f6))
+pub fn node(f0: &'static Sexp, f1: bool, f2: i64, f3: i64, f4: i64, f5: List<i64>, f6: i64, f7: &'static Value) -> &'static Node {
+    kayak_rt::heap_alloc(Node::Node(f0, f1, f2, f3, f4, f5, f6, f7))
 }
 
-// Nodes by key: an AVL tree, as `lib/query.kfx`'s `fmap`.
-pub enum Nmap {
-    NmNone(),
-    NmNode(&'static Nmap, Str, &'static Node, i64, &'static Nmap),
+// Nodes by number, and numbers by a key's text: AVL trees, as
+// `lib/query.kfx`'s `fmap`.
+pub enum Imap {
+    ImNone(),
+    ImNode(&'static Imap, i64, &'static Node, i64, &'static Imap),
 }
 
-pub fn nm_none() -> &'static Nmap {
-    kayak_rt::heap_alloc(Nmap::NmNone())
+pub fn im_none() -> &'static Imap {
+    kayak_rt::heap_alloc(Imap::ImNone())
 }
 
-pub fn nm_node(f0: &'static Nmap, f1: Str, f2: &'static Node, f3: i64, f4: &'static Nmap) -> &'static Nmap {
-    kayak_rt::heap_alloc(Nmap::NmNode(f0, f1, f2, f3, f4))
+pub fn im_node(f0: &'static Imap, f1: i64, f2: &'static Node, f3: i64, f4: &'static Imap) -> &'static Imap {
+    kayak_rt::heap_alloc(Imap::ImNode(f0, f1, f2, f3, f4))
 }
 
-// A query being run: its key, what it has read so far (the newest first),
-// and the least durability of that.
+pub enum Kmap {
+    KmNone(),
+    KmNode(&'static Kmap, Str, i64, i64, &'static Kmap),
+}
+
+pub fn km_none() -> &'static Kmap {
+    kayak_rt::heap_alloc(Kmap::KmNone())
+}
+
+pub fn km_node(f0: &'static Kmap, f1: Str, f2: i64, f3: i64, f4: &'static Kmap) -> &'static Kmap {
+    kayak_rt::heap_alloc(Kmap::KmNode(f0, f1, f2, f3, f4))
+}
+
+// A query being run: its key's number, what it has read so far (the newest
+// first), and the least durability of that.
 pub enum Frame {
-    Frame(Str, List<Str>, i64),
+    Frame(i64, List<i64>, i64),
 }
 
-pub fn frame(f0: Str, f1: List<Str>, f2: i64) -> &'static Frame {
+pub fn frame(f0: i64, f1: List<i64>, f2: i64) -> &'static Frame {
     kayak_rt::heap_alloc(Frame::Frame(f0, f1, f2))
 }
 
-// The database: the revision; the nodes; the queries being run, the
-// innermost first; for each durability, 0 to 3, the revision an input of it
-// or more last changed in; how many times a body has run, and whose (for tests
-// and measures).
-pub type Db = Product_3rev_5nodes_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Nmap>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<Str>>>;
+// The database: the revision; the nodes, by number; the numbers, by key; the
+// next number; the payload its values were read from; the queries being
+// run, the innermost first; for each durability, 0 to 3, the revision an
+// input of it or more last changed in; how many times a body has run, and
+// whose (for tests and measures).
+pub type Db = Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<Sexps>>;
 
 // What runs a query: given the database and a key, its value.
-pub type Runner = &'static dyn Fn(Db, Str) -> Str;
+pub type Runner = &'static dyn Fn(Db, &'static Sexp) -> Str;
 
 #[inline]
 pub fn durabilities() -> i64 {
     4i64
 }
 
+// A key of a query of one argument, or two: `(NAME "A")`, `(NAME "A" "B")`.
 #[inline]
-pub fn nm_height(t: &'static Nmap) -> i64 {
+pub fn key1(q: Str, a: Str) -> &'static Sexp {
+    lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), kayak_rt::heap_cons(str(a, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+}
+
+#[inline]
+pub fn key2(q: Str, a: Str, b: Str) -> &'static Sexp {
+    lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), kayak_rt::heap_cons(str(a, str_lit(""), 0i64), kayak_rt::heap_cons(str(b, str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+}
+
+// A key's query's name, and its argument `i` (from 0) as text.
+pub fn key_query(k: &'static Sexp) -> Str {
+    let tagcase_ = k;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if null_p(xs) {
+                str_lit("")
+            } else {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            }
+        }
+        Sexp::Sym(n, f, p) => {
+            n
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+#[inline]
+pub fn key_arg(k: &'static Sexp, i: i64) -> Str {
+    let tagcase_ = k;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            key_arg_of(cdr(xs), i)
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+pub fn key_arg_of(mut xs: Sexps, mut i: i64) -> Str {
+    loop {
+        if null_p(xs) {
+            return str_lit("");
+        } else if i64_eq(i, 0i64) {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Str(s, f, p) => {
+                    return s;
+                }
+                Sexp::Sym(s, f, p) => {
+                    return s;
+                }
+                Sexp::Num(n, f, p) => {
+                    return i64_to_string(n);
+                }
+                _ => {
+                    let other = tagcase_;
+                    return str_lit("");
+                }
+            }
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn hex_of(n: i64, acc: Str) -> Str {
+    let d = i64_remainder(n, 16i64);
+    let acc = string_append(list_to_string(kayak_rt::heap_cons(i64_to_char(if i64_lt(d, 10i64) {
+        i64_plus(d, 48i64)
+    } else {
+        i64_plus(d, 87i64)
+    }), kayak_rt::nil())), acc);
+    if i64_lt(n, 16i64) {
+        acc
+    } else {
+        hex_of(i64_quotient(n, 16i64), acc)
+    }
+}
+
+// A key as text, the one text of every key alike: how it is interned, and
+// how it is written.
+pub fn key_escaped(mut cs: List<char>, mut acc: List<Str>) -> List<Str> {
+    loop {
+        if null_p(cs) {
+            return acc;
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(if char_eq_p(car(cs), '"') {
+                str_lit("\\\"")
+            } else if char_eq_p(car(cs), '\\') {
+                str_lit("\\\\")
+            } else if char_eq_p(car(cs), '\n') {
+                str_lit("\\n")
+            } else if char_eq_p(car(cs), '\t') {
+                str_lit("\\t")
+            } else if i64_gt(char_to_i64(car(cs)), 127i64) {
+                string_append(str_lit("\\u{"), string_append(hex_of(char_to_i64(car(cs)), str_lit("")), str_lit("}")))
+            } else {
+                list_to_string(kayak_rt::heap_cons(car(cs), kayak_rt::nil()))
+            }, acc));
+            continue;
+        }
+    }
+}
+
+/// Whether `s` from `i` needs no escape: no `"`, `\`, control or past-ASCII
+/// character. By index, a string's characters not made a list.
+pub fn plain_from_p(mut s: Str, mut i: i64, mut n: i64) -> bool {
+    loop {
+        if i64_gt_eq(i, n) {
+            return true;
+        } else {
+            let k = char_to_i64(string_ref_i64(s, i));
+            if i64_gt_eq(k, 32i64) {
+                if i64_lt_eq(k, 126i64) {
+                    if not(i64_eq(k, 34i64)) {
+                        if not(i64_eq(k, 92i64)) {
+                            i = i64_plus(i, 1i64);
+                            continue;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+}
+
+pub fn str_text(s: Str) -> Str {
+    if plain_from_p(s, 0i64, string_length_i64(s)) {
+        string_append(str_lit("\""), string_append(s, str_lit("\"")))
+    } else {
+        string_append(str_lit("\""), string_append(string_list_append(reverse(key_escaped(string_chars(s), nil::<Str>()))), str_lit("\"")))
+    }
+}
+
+pub fn key_text(k: &'static Sexp) -> Str {
+    let tagcase_ = k;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            n
+        }
+        Sexp::Str(s, f, p) => {
+            str_text(s)
+        }
+        Sexp::Num(n, f, p) => {
+            i64_to_string(n)
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            string_append(str_lit("("), string_append(keys_text(xs), str_lit(")")))
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("?")
+        }
+    }
+}
+
+pub fn keys_text(xs: Sexps) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else if null_p(cdr(xs)) {
+        key_text(car(xs))
+    } else {
+        string_append(key_text(car(xs)), string_append(str_lit(" "), keys_text(cdr(xs))))
+    }
+}
+
+#[inline]
+pub fn im_height(t: &'static Imap) -> i64 {
     let tagcase_ = t;
     match *tagcase_ {
-        Nmap::NmNone() => {
+        Imap::ImNone() => {
             0i64
         }
-        Nmap::NmNode(l, k, x, h, r) => {
+        Imap::ImNode(l, k, x, h, r) => {
             h
         }
     }
 }
 
-pub fn nm_make(l: &'static Nmap, k: Str, x: &'static Node, r: &'static Nmap) -> &'static Nmap {
-    let (hl, hr) = (nm_height(l), nm_height(r));
-    nm_node(l, k, x, i64_plus(1i64, if i64_gt(hl, hr) {
-        hl
-    } else {
-        hr
+pub fn im_make(l: &'static Imap, k: i64, x: &'static Node, r: &'static Imap) -> &'static Imap {
+    im_node(l, k, x, i64_plus(1i64, {
+        let (a, b) = (im_height(l), im_height(r));
+        if i64_gt(a, b) {
+            a
+        } else {
+            b
+        }
     }), r)
 }
 
-pub fn nm_balanced(l: &'static Nmap, k: Str, x: &'static Node, r: &'static Nmap) -> &'static Nmap {
-    let (hl, hr) = (nm_height(l), nm_height(r));
+pub fn im_balanced(l: &'static Imap, k: i64, x: &'static Node, r: &'static Imap) -> &'static Imap {
+    let (hl, hr) = (im_height(l), im_height(r));
     if i64_gt(hl, i64_plus(hr, 1i64)) {
         let tagcase_ = l;
         match *tagcase_ {
-            Nmap::NmNode(ll, lk, lx, lh, lr) => {
-                if i64_gt_eq(nm_height(ll), nm_height(lr)) {
-                    nm_make(ll, lk, lx, nm_make(lr, k, x, r))
+            Imap::ImNode(ll, lk, lx, lh, lr) => {
+                if i64_gt_eq(im_height(ll), im_height(lr)) {
+                    im_make(ll, lk, lx, im_make(lr, k, x, r))
                 } else {
                     let tagcase_ = lr;
                     match *tagcase_ {
-                        Nmap::NmNode(rl, rk, rx, rh, rr) => {
-                            nm_make(nm_make(ll, lk, lx, rl), rk, rx, nm_make(rr, k, x, r))
+                        Imap::ImNode(rl, rk, rx, rh, rr) => {
+                            im_make(im_make(ll, lk, lx, rl), rk, rx, im_make(rr, k, x, r))
                         }
-                        Nmap::NmNone() => {
-                            nm_make(l, k, x, r)
+                        Imap::ImNone() => {
+                            im_make(l, k, x, r)
                         }
                     }
                 }
             }
-            Nmap::NmNone() => {
-                nm_make(l, k, x, r)
+            Imap::ImNone() => {
+                im_make(l, k, x, r)
             }
         }
     } else if i64_gt(hr, i64_plus(hl, 1i64)) {
         let tagcase_ = r;
         match *tagcase_ {
-            Nmap::NmNode(rl, rk, rx, rh, rr) => {
-                if i64_gt_eq(nm_height(rr), nm_height(rl)) {
-                    nm_make(nm_make(l, k, x, rl), rk, rx, rr)
+            Imap::ImNode(rl, rk, rx, rh, rr) => {
+                if i64_gt_eq(im_height(rr), im_height(rl)) {
+                    im_make(im_make(l, k, x, rl), rk, rx, rr)
                 } else {
                     let tagcase_ = rl;
                     match *tagcase_ {
-                        Nmap::NmNode(ml, mk, mx, mh, mr) => {
-                            nm_make(nm_make(l, k, x, ml), mk, mx, nm_make(mr, rk, rx, rr))
+                        Imap::ImNode(ml, mk, mx, mh, mr) => {
+                            im_make(im_make(l, k, x, ml), mk, mx, im_make(mr, rk, rx, rr))
                         }
-                        Nmap::NmNone() => {
-                            nm_make(l, k, x, r)
+                        Imap::ImNone() => {
+                            im_make(l, k, x, r)
                         }
                     }
                 }
             }
-            Nmap::NmNone() => {
-                nm_make(l, k, x, r)
+            Imap::ImNone() => {
+                im_make(l, k, x, r)
             }
         }
     } else {
-        nm_make(l, k, x, r)
+        im_make(l, k, x, r)
     }
 }
 
-pub fn nm_put(t: &'static Nmap, n: Str, x: &'static Node) -> &'static Nmap {
+pub fn im_put(t: &'static Imap, n: i64, x: &'static Node) -> &'static Imap {
     let tagcase_ = t;
     match *tagcase_ {
-        Nmap::NmNone() => {
-            nm_node(nm_none(), n, x, 1i64, nm_none())
+        Imap::ImNone() => {
+            im_node(im_none(), n, x, 1i64, im_none())
         }
-        Nmap::NmNode(l, k, y, h, r) => {
-            if string_eq_p(n, k) {
-                nm_node(l, k, x, h, r)
-            } else if string_lt_p(n, k) {
-                nm_balanced(nm_put(l, n, x), k, y, r)
+        Imap::ImNode(l, k, y, h, r) => {
+            if i64_eq(n, k) {
+                im_node(l, k, x, h, r)
+            } else if i64_lt(n, k) {
+                im_balanced(im_put(l, n, x), k, y, r)
             } else {
-                nm_balanced(l, k, y, nm_put(r, n, x))
+                im_balanced(l, k, y, im_put(r, n, x))
             }
         }
     }
 }
 
 /// `n`'s node, as a list of one, or none.
-pub fn nm_get(mut t: &'static Nmap, mut n: Str) -> List<&'static Node> {
+pub fn im_get(mut t: &'static Imap, mut n: i64) -> List<&'static Node> {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
-            Nmap::NmNone() => {
+            Imap::ImNone() => {
                 return nil::<&'static Node>();
             }
-            Nmap::NmNode(l, k, x, h, r) => {
-                if string_eq_p(n, k) {
+            Imap::ImNode(l, k, x, h, r) => {
+                if i64_eq(n, k) {
                     return kayak_rt::heap_cons(x, kayak_rt::nil());
+                } else if i64_lt(n, k) {
+                    t = l;
+                    continue;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// The numbers, in order, onto `acc`.
+pub fn im_list(mut t: &'static Imap, mut acc: List<i64>) -> List<i64> {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Imap::ImNone() => {
+                return acc;
+            }
+            Imap::ImNode(l, k, x, h, r) => {
+                (t, acc) = (l, kayak_rt::heap_cons(k, im_list(r, acc)));
+                continue;
+            }
+        }
+    }
+}
+
+#[inline]
+pub fn km_height(t: &'static Kmap) -> i64 {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Kmap::KmNone() => {
+            0i64
+        }
+        Kmap::KmNode(l, k, x, h, r) => {
+            h
+        }
+    }
+}
+
+pub fn km_make(l: &'static Kmap, k: Str, x: i64, r: &'static Kmap) -> &'static Kmap {
+    km_node(l, k, x, i64_plus(1i64, {
+        let (a, b) = (km_height(l), km_height(r));
+        if i64_gt(a, b) {
+            a
+        } else {
+            b
+        }
+    }), r)
+}
+
+pub fn km_balanced(l: &'static Kmap, k: Str, x: i64, r: &'static Kmap) -> &'static Kmap {
+    let (hl, hr) = (km_height(l), km_height(r));
+    if i64_gt(hl, i64_plus(hr, 1i64)) {
+        let tagcase_ = l;
+        match *tagcase_ {
+            Kmap::KmNode(ll, lk, lx, lh, lr) => {
+                if i64_gt_eq(km_height(ll), km_height(lr)) {
+                    km_make(ll, lk, lx, km_make(lr, k, x, r))
+                } else {
+                    let tagcase_ = lr;
+                    match *tagcase_ {
+                        Kmap::KmNode(rl, rk, rx, rh, rr) => {
+                            km_make(km_make(ll, lk, lx, rl), rk, rx, km_make(rr, k, x, r))
+                        }
+                        Kmap::KmNone() => {
+                            km_make(l, k, x, r)
+                        }
+                    }
+                }
+            }
+            Kmap::KmNone() => {
+                km_make(l, k, x, r)
+            }
+        }
+    } else if i64_gt(hr, i64_plus(hl, 1i64)) {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Kmap::KmNode(rl, rk, rx, rh, rr) => {
+                if i64_gt_eq(km_height(rr), km_height(rl)) {
+                    km_make(km_make(l, k, x, rl), rk, rx, rr)
+                } else {
+                    let tagcase_ = rl;
+                    match *tagcase_ {
+                        Kmap::KmNode(ml, mk, mx, mh, mr) => {
+                            km_make(km_make(l, k, x, ml), mk, mx, km_make(mr, rk, rx, rr))
+                        }
+                        Kmap::KmNone() => {
+                            km_make(l, k, x, r)
+                        }
+                    }
+                }
+            }
+            Kmap::KmNone() => {
+                km_make(l, k, x, r)
+            }
+        }
+    } else {
+        km_make(l, k, x, r)
+    }
+}
+
+pub fn km_put(t: &'static Kmap, n: Str, x: i64) -> &'static Kmap {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Kmap::KmNone() => {
+            km_node(km_none(), n, x, 1i64, km_none())
+        }
+        Kmap::KmNode(l, k, y, h, r) => {
+            if string_eq_p(n, k) {
+                km_node(l, k, x, h, r)
+            } else if string_lt_p(n, k) {
+                km_balanced(km_put(l, n, x), k, y, r)
+            } else {
+                km_balanced(l, k, y, km_put(r, n, x))
+            }
+        }
+    }
+}
+
+/// `n`'s number; -1 if it has none.
+pub fn km_get(mut t: &'static Kmap, mut n: Str) -> i64 {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Kmap::KmNone() => {
+                return -1i64;
+            }
+            Kmap::KmNode(l, k, x, h, r) => {
+                if string_eq_p(n, k) {
+                    return x;
                 } else if string_lt_p(n, k) {
                     t = l;
                     continue;
@@ -210,18 +578,12 @@ pub fn nm_get(mut t: &'static Nmap, mut n: Str) -> List<&'static Node> {
     }
 }
 
-/// The keys, in order, onto `acc`.
-pub fn nm_list(mut t: &'static Nmap, mut acc: List<Str>) -> List<Str> {
-    loop {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Nmap::NmNone() => {
-                return acc;
-            }
-            Nmap::NmNode(l, k, x, h, r) => {
-                (t, acc) = (l, kayak_rt::heap_cons(k, nm_list(r, acc)));
-                continue;
-            }
+#[inline]
+pub fn node_key(n: &'static Node) -> &'static Sexp {
+    let tagcase_ = n;
+    match *tagcase_ {
+        Node::Node(k, i, v, c, f, ds, du, x) => {
+            k
         }
     }
 }
@@ -230,7 +592,7 @@ pub fn nm_list(mut t: &'static Nmap, mut acc: List<Str>) -> List<Str> {
 pub fn node_input_p(n: &'static Node) -> bool {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
+        Node::Node(k, i, v, c, f, ds, du, x) => {
             i
         }
     }
@@ -240,7 +602,7 @@ pub fn node_input_p(n: &'static Node) -> bool {
 pub fn node_verified(n: &'static Node) -> i64 {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
+        Node::Node(k, i, v, c, f, ds, du, x) => {
             v
         }
     }
@@ -250,7 +612,7 @@ pub fn node_verified(n: &'static Node) -> i64 {
 pub fn node_changed(n: &'static Node) -> i64 {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
+        Node::Node(k, i, v, c, f, ds, du, x) => {
             c
         }
     }
@@ -260,17 +622,17 @@ pub fn node_changed(n: &'static Node) -> i64 {
 pub fn node_fp(n: &'static Node) -> i64 {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
+        Node::Node(k, i, v, c, f, ds, du, x) => {
             f
         }
     }
 }
 
 #[inline]
-pub fn node_deps(n: &'static Node) -> List<Str> {
+pub fn node_deps(n: &'static Node) -> List<i64> {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
+        Node::Node(k, i, v, c, f, ds, du, x) => {
             ds
         }
     }
@@ -280,17 +642,17 @@ pub fn node_deps(n: &'static Node) -> List<Str> {
 pub fn node_durability(n: &'static Node) -> i64 {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
+        Node::Node(k, i, v, c, f, ds, du, x) => {
             du
         }
     }
 }
 
 #[inline]
-pub fn node_value(n: &'static Node) -> Str {
+pub fn node_kept(n: &'static Node) -> &'static Value {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
+        Node::Node(k, i, v, c, f, ds, du, x) => {
             x
         }
     }
@@ -300,8 +662,8 @@ pub fn node_value(n: &'static Node) -> Str {
 pub fn node_verified_at(n: &'static Node, r: i64) -> &'static Node {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
-            node(i, r, c, f, ds, du, x)
+        Node::Node(k, i, v, c, f, ds, du, x) => {
+            node(k, i, r, c, f, ds, du, x)
         }
     }
 }
@@ -310,8 +672,22 @@ pub fn node_verified_at(n: &'static Node, r: i64) -> &'static Node {
 pub fn node_reverified(n: &'static Node, r: i64, d: i64) -> &'static Node {
     let tagcase_ = n;
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
-            node(i, r, c, f, ds, d, x)
+        Node::Node(k, i, v, c, f, ds, du, x) => {
+            node(k, i, r, c, f, ds, d, x)
+        }
+    }
+}
+
+#[inline]
+pub fn node_has_value_p(n: &'static Node) -> bool {
+    let tagcase_ = node_kept(n);
+    match *tagcase_ {
+        Value::VNone() => {
+            false
+        }
+        _ => {
+            let other = tagcase_;
+            true
         }
     }
 }
@@ -351,7 +727,7 @@ pub fn zeros(n: i64) -> List<i64> {
     }
 }
 
-pub fn key_in_p(mut k: Str, mut fs: List<&'static Frame>) -> bool {
+pub fn id_in_p(mut k: i64, mut fs: List<&'static Frame>) -> bool {
     loop {
         if null_p(fs) {
             return false;
@@ -359,7 +735,7 @@ pub fn key_in_p(mut k: Str, mut fs: List<&'static Frame>) -> bool {
             let tagcase_ = car(fs);
             match *tagcase_ {
                 Frame::Frame(fk, ds, du) => {
-                    string_eq_p(fk, k)
+                    i64_eq(fk, k)
                 }
             }
         } {
@@ -372,7 +748,7 @@ pub fn key_in_p(mut k: Str, mut fs: List<&'static Frame>) -> bool {
 }
 
 pub fn db_make() -> Db {
-    Product_3rev_5nodes_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<&'static Nmap>>(kayak_rt::heap_new(nm_none())), the::<Ref<List<&'static Frame>>>(kayak_rt::heap_new(nil::<&'static Frame>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())))
+    Product_3rev_5nodes_3ids_4next_7payload_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<&'static Imap>>(kayak_rt::heap_new(im_none())), the::<Ref<&'static Kmap>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Str>>(kayak_rt::heap_new(str_lit(""))), the::<Ref<List<&'static Frame>>>(kayak_rt::heap_new(nil::<&'static Frame>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<&'static Sexp>())))
 }
 
 #[inline]
@@ -382,76 +758,198 @@ pub fn db_revision(d: Db) -> i64 {
 
 #[inline]
 pub fn db_runs(d: Db) -> i64 {
-    get(d.4)
+    get(d.7)
 }
 
 // The keys whose bodies ran, the newest first: so that a test can say what
 // an edit made run again, and what it spared.
 #[inline]
-pub fn db_ran(d: Db) -> List<Str> {
-    get(d.5)
+pub fn db_ran(d: Db) -> Sexps {
+    get(d.8)
+}
+
+// A key's number, made the first time the key is met.
+pub fn db_id(d: Db, k: &'static Sexp) -> i64 {
+    let t = key_text(k);
+    let i = km_get(get(d.2), t);
+    if i64_gt_eq(i, 0i64) {
+        i
+    } else {
+        let n = get(d.3);
+        set(d.2, km_put(get(d.2), t, n));
+        set(d.3, i64_plus(n, 1i64));
+        n
+    }
 }
 
 #[inline]
-pub fn db_node(d: Db, k: Str) -> List<&'static Node> {
-    nm_get(get(d.1), k)
+pub fn db_node_at(d: Db, i: i64) -> List<&'static Node> {
+    im_get(get(d.1), i)
 }
 
 #[inline]
-pub fn db_put_x(d: Db, k: Str, n: &'static Node) -> () {
-    set(d.1, nm_put(get(d.1), k, n))
+pub fn db_node(d: Db, k: &'static Sexp) -> List<&'static Node> {
+    db_node_at(d, db_id(d, k))
+}
+
+#[inline]
+pub fn db_put_x(d: Db, i: i64, n: &'static Node) -> () {
+    set(d.1, im_put(get(d.1), i, n))
+}
+
+/// A value's characters as the payload keeps them, the newest first.
+pub fn ascii_escaped(mut cs: List<char>, mut acc: List<Str>) -> List<Str> {
+    loop {
+        if null_p(cs) {
+            return acc;
+        } else {
+            let k = char_to_i64(car(cs));
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(if char_eq_p(car(cs), '\\') {
+                str_lit("\\\\")
+            } else if i64_gt(k, 127i64) {
+                string_append(str_lit("\\u{"), string_append(hex_of(k, str_lit("")), str_lit("}")))
+            } else {
+                list_to_string(kayak_rt::heap_cons(car(cs), kayak_rt::nil()))
+            }, acc));
+            continue;
+        }
+    }
+}
+
+pub fn ascii_only_p(mut cs: List<char>) -> bool {
+    loop {
+        if null_p(cs) {
+            return true;
+        } else if i64_gt(char_to_i64(car(cs)), 127i64) {
+            return false;
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+#[inline]
+pub fn payload_text(x: Str) -> Str {
+    if ascii_only_p(string_chars(x)) {
+        x
+    } else {
+        string_list_append(reverse(ascii_escaped(string_chars(x), nil::<Str>())))
+    }
+}
+
+pub fn ascii_unescaped(mut cs: List<char>, mut acc: List<char>) -> Str {
+    loop {
+        if null_p(cs) {
+            return list_to_string(reverse(acc));
+        } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
+            (cs, acc) = (cdr(cdr(cs)), kayak_rt::heap_cons('\\', acc));
+            continue;
+        } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), 'u')) {
+            return ascii_code(cdr(cdr(cdr(cs))), 0i64, acc);
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn ascii_code(mut cs: List<char>, mut n: i64, mut acc: List<char>) -> Str {
+    loop {
+        if null_p(cs) {
+            return list_to_string(reverse(acc));
+        } else if char_eq_p(car(cs), '}') {
+            return ascii_unescaped(cdr(cs), kayak_rt::heap_cons(i64_to_char(n), acc));
+        } else {
+            let k = char_to_i64(car(cs));
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 16i64), if i64_lt(k, 58i64) {
+                i64_minus(k, 48i64)
+            } else {
+                i64_minus(k, 87i64)
+            }));
+            continue;
+        }
+    }
+}
+
+// A node's value as text: kept, cut from the payload, or `` if none is
+// kept (a reader makes it again first).
+pub fn node_value_in(d: Db, n: &'static Node) -> Str {
+    let tagcase_ = node_kept(n);
+    match *tagcase_ {
+        Value::VText(s) => {
+            s
+        }
+        Value::VAt(o, len, esc) => {
+            let x = substring(get(d.4), i64_to_int(o), i64_to_int(i64_plus(o, len)));
+            if esc {
+                ascii_unescaped(string_chars(x), nil::<char>())
+            } else {
+                x
+            }
+        }
+        Value::VNone() => {
+            str_lit("")
+        }
+    }
+}
+
+#[inline]
+pub fn node_value(d: Db, n: &'static Node) -> Str {
+    node_value_in(d, n)
 }
 
 // A side store (C415): text kept with the database under a name, no
 // query's input and no query's value: no revision for it, nothing depends
 // on it. For what is content-addressed, whose use can spare work and change
 // no value (the checker's memos, each keyed by a fingerprint of all it was
-// made from); kept as the nodes are, under `%side NAME`, and so written and
-// read with them.
+// made from); kept as the nodes are, under the key `(%side NAME)`, and so
+// written and read with them.
 #[inline]
 pub fn db_side(d: Db, k: Str) -> Str {
-    let n = db_node(d, string_append(str_lit("%side "), k));
+    let n = db_node(d, key1(str_lit("%side"), k));
     if null_p(n) {
         str_lit("")
     } else {
-        node_value(car(n))
+        node_value_in(d, car(n))
     }
 }
 
-#[inline]
 pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
-    db_put_x(d, string_append(str_lit("%side "), k), node(true, 0i64, 0i64, 0i64, nil::<Str>(), 0i64, text))
+    let key = key1(str_lit("%side"), k);
+    db_put_x(d, db_id(d, key), node(key, true, 0i64, 0i64, 0i64, nil::<i64>(), 0i64, v_text(text)))
 }
 
 // Input `k` set to `text`, of durability `du`: a new revision if its value
 // is new.
-pub fn db_set_x(d: Db, k: Str, text: Str, du: i64) -> () {
+pub fn db_set_x(d: Db, k: &'static Sexp, text: Str, du: i64) -> () {
     let fp = (&queries::fnv_string)(text, queries::fnv_offset());
-    let old = db_node(d, k);
+    let i = db_id(d, k);
+    let old = db_node_at(d, i);
     if (not(null_p(old)) && node_input_p(car(old)) && i64_eq(node_fp(car(old)), fp) && i64_eq(node_durability(car(old)), du)) {
         ()
     } else {
         let r = i64_plus(get(d.0), 1i64);
         set(d.0, r);
-        set(d.3, bumped(get(d.3), if (not(null_p(old)) && i64_gt(node_durability(car(old)), du)) {
+        set(d.6, bumped(get(d.6), if (not(null_p(old)) && i64_gt(node_durability(car(old)), du)) {
             node_durability(car(old))
         } else {
             du
         }, r, 0i64));
-        db_put_x(d, k, node(true, r, r, fp, nil::<Str>(), du, text))
+        db_put_x(d, i, node(k, true, r, r, fp, nil::<i64>(), du, v_text(text)))
     }
 }
 
-// That the innermost query being run read `k`, of durability `du`.
-pub fn note_read_x(d: Db, k: Str, du: i64) -> () {
-    let fs = get(d.2);
+// That the innermost query being run read `i`, of durability `du`.
+pub fn note_read_x(d: Db, i: i64, du: i64) -> () {
+    let fs = get(d.5);
     if null_p(fs) {
         ()
     } else {
         let tagcase_ = car(fs);
         match *tagcase_ {
             Frame::Frame(fk, ds, fdu) => {
-                set(d.2, kayak_rt::heap_cons(frame(fk, kayak_rt::heap_cons(k, ds), if i64_lt(du, fdu) {
+                set(d.5, kayak_rt::heap_cons(frame(fk, kayak_rt::heap_cons(i, ds), if i64_lt(du, fdu) {
                     du
                 } else {
                     fdu
@@ -462,14 +960,15 @@ pub fn note_read_x(d: Db, k: Str, du: i64) -> () {
 }
 
 /// `k`'s value, current, and that the query being run read it.
-pub fn db_get(d: Db, run: Runner, k: Str) -> Str {
-    if key_in_p(k, get(d.2)) {
-        error(string_append(str_lit("a cycle of queries, through "), k));
+pub fn db_get(d: Db, run: Runner, k: &'static Sexp) -> Str {
+    let i = db_id(d, k);
+    if id_in_p(i, get(d.5)) {
+        error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
         str_lit("")
     } else {
-        let x = db_current(d, run, k);
-        note_read_x(d, k, {
-            let n = db_node(d, k);
+        let x = db_current(d, run, i, k);
+        note_read_x(d, i, {
+            let n = db_node_at(d, i);
             if null_p(n) {
                 0i64
             } else {
@@ -480,48 +979,66 @@ pub fn db_get(d: Db, run: Runner, k: Str) -> Str {
     }
 }
 
-/// `k`'s value, made current: an input's as set; a query's verified, or
-/// run again.
-pub fn db_current(d: Db, run: Runner, k: Str) -> Str {
-    let (old, r) = (db_node(d, k), get(d.0));
+/// `k`'s value, made current (`db-made-current`); one of a query whose
+/// value was not kept (C417) made again: its fingerprint the one it had,
+/// nothing that read it runs.
+pub fn db_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> Str {
+    db_made_current(d, run, i, k);
+    let n = db_node_at(d, i);
+    if node_has_value_p(car(n)) {
+        node_value_in(d, car(n))
+    } else {
+        db_execute(d, run, i, k, n)
+    }
+}
+
+/// `k` made current, its value not read: an input as set; a query
+/// verified, or run again.
+pub fn db_made_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> () {
+    let (old, r) = (db_node_at(d, i), get(d.0));
     if null_p(old) {
-        db_execute(d, run, k, old)
+        db_execute(d, run, i, k, old);
+        ()
     } else if node_input_p(car(old)) {
-        node_value(car(old))
+        ()
     } else if i64_eq(node_verified(car(old)), r) {
-        node_value(car(old))
-    } else if i64_lt_eq(db_nth(get(d.3), node_durability(car(old))), node_verified(car(old))) {
-        db_put_x(d, k, node_verified_at(car(old), r));
-        node_value(car(old))
+        ()
+    } else if i64_lt_eq(db_nth(get(d.6), node_durability(car(old))), node_verified(car(old))) {
+        db_put_x(d, i, node_verified_at(car(old), r))
     } else {
         let du = db_reads_durability(d, run, node_deps(car(old)), node_verified(car(old)), i64_minus(durabilities(), 1i64));
         if i64_gt_eq(du, 0i64) {
-            db_put_x(d, k, node_reverified(car(old), r, du));
-            node_value(car(old))
+            db_put_x(d, i, node_reverified(car(old), r, du))
         } else {
-            db_execute(d, run, k, old)
+            db_execute(d, run, i, k, old);
+            ()
         }
     }
 }
 
-/// If none of `ks`, each made current in turn, changed after `since`,
+/// If none of `is`, each made current in turn, changed after `since`,
 /// their least durability, and `du`'s; else -1, at the first that did.
-pub fn db_reads_durability(mut d: Db, mut run: Runner, mut ks: List<Str>, mut since: i64, mut du: i64) -> i64 {
+pub fn db_reads_durability(mut d: Db, mut run: Runner, mut is: List<i64>, mut since: i64, mut du: i64) -> i64 {
     loop {
-        if null_p(ks) {
+        if null_p(is) {
             return du;
         } else {
-            db_current(d, run, car(ks));
-            let n = db_node(d, car(ks));
-            if (null_p(n) || i64_gt(node_changed(car(n)), since)) {
+            let n0 = db_node_at(d, car(is));
+            if null_p(n0) {
                 return -1i64;
             } else {
-                (ks, du) = (cdr(ks), if i64_lt(node_durability(car(n)), du) {
-                    node_durability(car(n))
+                db_made_current(d, run, car(is), node_key(car(n0)));
+                let n = db_node_at(d, car(is));
+                if (null_p(n) || i64_gt(node_changed(car(n)), since)) {
+                    return -1i64;
                 } else {
-                    du
-                });
-                continue;
+                    (is, du) = (cdr(is), if i64_lt(node_durability(car(n)), du) {
+                        node_durability(car(n))
+                    } else {
+                        du
+                    });
+                    continue;
+                }
             }
         }
     }
@@ -529,50 +1046,241 @@ pub fn db_reads_durability(mut d: Db, mut run: Runner, mut ks: List<Str>, mut si
 
 /// `k`'s query run, its reads recorded; its value's fingerprint the
 /// same as `old`'s, its revision of change kept (early cutoff).
-pub fn db_execute(d: Db, run: Runner, k: Str, old: List<&'static Node>) -> Str {
-    set(d.2, kayak_rt::heap_cons(frame(k, nil::<Str>(), i64_minus(durabilities(), 1i64)), get(d.2)));
+pub fn db_execute(d: Db, run: Runner, i: i64, k: &'static Sexp, old: List<&'static Node>) -> Str {
+    set(d.5, kayak_rt::heap_cons(frame(i, nil::<i64>(), i64_minus(durabilities(), 1i64)), get(d.5)));
     let x = run(d, k);
-    let fr = car(get(d.2));
+    let fr = car(get(d.5));
     let r = get(d.0);
     let fp = (&queries::fnv_string)(x, queries::fnv_offset());
-    set(d.2, cdr(get(d.2)));
-    set(d.4, i64_plus(get(d.4), 1i64));
-    set(d.5, kayak_rt::heap_cons(k, get(d.5)));
+    set(d.5, cdr(get(d.5)));
+    set(d.7, i64_plus(get(d.7), 1i64));
+    set(d.8, kayak_rt::heap_cons(k, get(d.8)));
     {
         let tagcase_ = fr;
         match *tagcase_ {
             Frame::Frame(fk, ds, du) => {
-                db_put_x(d, k, node(false, r, if (not(null_p(old)) && i64_eq(node_fp(car(old)), fp)) {
+                db_put_x(d, i, node(k, false, r, if (not(null_p(old)) && i64_eq(node_fp(car(old)), fp)) {
                     node_changed(car(old))
                 } else {
                     r
-                }, fp, reverse(ds), du, x))
+                }, fp, reverse(ds), du, v_text(x)))
             }
         }
     };
     x
 }
 
-// The database as text, and back (`db-text`, `db-of-text`): a first line
-// saying the format and whose it is, then the revision, the durabilities'
-// revisions, and each node, every field a decimal or a text written as its
-// length, a colon and itself, separated by spaces, a node a line.
+// `k` made current, and its value's fingerprint, its value neither read nor
+// made (C417): so that a client holding a value already (a file it wrote)
+// may know it is as it was.
+pub fn db_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
+    let i = db_id(d, k);
+    db_made_current(d, run, i, k);
+    node_fp(car(db_node_at(d, i)))
+}
+
+// The database as two files, and back (`db-files`, `db-of-files`; C417):
+//
+// - the graph, three datums: `(kayak-db 2 WHOSE REVISION (LAST ...) LENGTH)`,
+// whose it is (a compiler's identity), the durabilities' revisions, and
+// the payload's length; then `(keys #0=KEY ...)`, each key labelled by
+// its number where it is written (datum labels, `kfx/read.kfx`'s
+// `read-data`), and each text in the keys written more than once, a path,
+// labelled where first written; then `(nodes (#N# INPUT VERIFIED CHANGED
+// FINGERPRINT DURABILITY (#M# ...) VALUE) ...)`, each node's key and what
+// it read by their labels, its value `(at OFFSET LENGTH)` in the payload,
+// or `none`;
+// - the payload: the values kept, one after another, cut out when read;
+// ASCII alone, so that a value is cut out of it at once, wherever it is
+// (a `substring` of ASCII text is one; of any other, a walk from its
+// start): a value past ASCII written with each `` `\` and each
+// character past ASCII `u{HEX}`, and marked so (`atx`); any other as it
+// is.
+//
+// A key whose value `keep` says is not to be kept (a whole program's output,
+// made again from its parts, which are kept) is written `none`: its node,
+// fingerprint and reads are kept, so that it is verified as any is, and
+// made again only when its value is read.
+pub enum DbFilesMade {
+    DbFilesMade(Str, Str),
+}
+
+pub fn db_files_made(f0: Str, f1: Str) -> &'static DbFilesMade {
+    kayak_rt::heap_alloc(DbFilesMade::DbFilesMade(f0, f1))
+}
+
 #[inline]
 pub fn db_format() -> Str {
-    str_lit("kayak db 1")
+    str_lit("kayak-db 2")
 }
 
-#[inline]
-pub fn field(s: Str) -> Str {
-    string_append(i64_to_string(string_length_i64(s)), string_append(str_lit(":"), s))
+pub enum KeyedOut {
+    KeyedOut(List<Str>, &'static Kmap, i64),
 }
 
+pub fn keyed_out(f0: List<Str>, f1: &'static Kmap, f2: i64) -> &'static KeyedOut {
+    kayak_rt::heap_alloc(KeyedOut::KeyedOut(f0, f1, f2))
+}
+
+/// Key `k` as text onto `acc` (newest first), each text in it seen
+/// before by its label, each seen first labelled, from `n`.
+pub fn key_written(k: &'static Sexp, seen: &'static Kmap, n: i64, acc: List<Str>) -> &'static KeyedOut {
+    let tagcase_ = k;
+    match *tagcase_ {
+        Sexp::Str(s, f, p) => {
+            let j = km_get(seen, s);
+            if i64_gt_eq(j, 0i64) {
+                keyed_out(kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(j), str_lit("#"))), acc), seen, n)
+            } else {
+                keyed_out(kayak_rt::heap_cons(str_text(s), kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(n), str_lit("="))), acc)), km_put(seen, s, n), i64_plus(n, 1i64))
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            let tagcase_ = keys_written(xs, seen, n, kayak_rt::heap_cons(str_lit("("), acc));
+            match *tagcase_ {
+                KeyedOut::KeyedOut(acc2, seen2, n2) => {
+                    keyed_out(kayak_rt::heap_cons(str_lit(")"), acc2), seen2, n2)
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            keyed_out(kayak_rt::heap_cons(key_text(k), acc), seen, n)
+        }
+    }
+}
+
+pub fn keys_written(mut xs: Sexps, mut seen: &'static Kmap, mut n: i64, mut acc: List<Str>) -> &'static KeyedOut {
+    loop {
+        if null_p(xs) {
+            return keyed_out(acc, seen, n);
+        } else {
+            let tagcase_ = key_written(car(xs), seen, n, acc);
+            match *tagcase_ {
+                KeyedOut::KeyedOut(acc2, seen2, n2) => {
+                    (xs, seen, n, acc) = (cdr(xs), seen2, n2, if null_p(cdr(xs)) {
+                        acc2
+                    } else {
+                        kayak_rt::heap_cons(str_lit(" "), acc2)
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn labels_text(mut is: List<i64>, mut acc: List<Str>) -> List<Str> {
+    loop {
+        if null_p(is) {
+            return acc;
+        } else {
+            (is, acc) = (cdr(is), kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("#"))), if null_p(acc) {
+                acc
+            } else {
+                kayak_rt::heap_cons(str_lit(" "), acc)
+            }));
+            continue;
+        }
+    }
+}
+
+// A record of the graph (C417): `(LEN ...)`, `LEN` the length of what follows
+// it and its space, to the record's `)`, so that a reader may step over it
+// unread: `body` is that, its `)` included.
 #[inline]
-pub fn fields_of(ss: List<Str>) -> List<Str> {
-    if null_p(ss) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(field(car(ss)), fields_of(cdr(ss))))
+pub fn length_first(body: Str) -> Str {
+    string_append(str_lit("\n ("), string_append(i64_to_string(string_length_i64(body)), string_append(str_lit(" "), body)))
+}
+
+pub enum MadeFiles {
+    MadeFiles(List<Str>, List<Str>, List<Str>, &'static Kmap, i64, i64),
+}
+
+pub fn made_files(f0: List<Str>, f1: List<Str>, f2: List<Str>, f3: &'static Kmap, f4: i64, f5: i64) -> &'static MadeFiles {
+    kayak_rt::heap_alloc(MadeFiles::MadeFiles(f0, f1, f2, f3, f4, f5))
+}
+
+/// Each node of `is`, its key into the keys, its line into the nodes, its
+/// value onto the payload.
+pub fn nodes_files(mut d: Db, mut is: List<i64>, mut keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync), mut m: &'static MadeFiles) -> &'static MadeFiles {
+    loop {
+        if null_p(is) {
+            return m;
+        } else {
+            let tagcase_ = m;
+            match *tagcase_ {
+                MadeFiles::MadeFiles(keys, nodes, payload, seen, labels, at) => {
+                    let n = car(db_node_at(d, car(is)));
+                    let tagcase_ = key_written(node_key(n), seen, labels, kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("="))), kayak_rt::nil()));
+                    match *tagcase_ {
+                        KeyedOut::KeyedOut(key_parts, seen2, labels2) => {
+                            let kept = (node_input_p(n) || keep(node_key(n)));
+                            let raw = {
+                                let tagcase_ = node_kept(n);
+                                match *tagcase_ {
+                                    Value::VAt(o, l, esc) => {
+                                        substring(get(d.4), i64_to_int(o), i64_to_int(i64_plus(o, l)))
+                                    }
+                                    Value::VText(t) => {
+                                        if kept {
+                                            payload_text(t)
+                                        } else {
+                                            str_lit("")
+                                        }
+                                    }
+                                    Value::VNone() => {
+                                        str_lit("")
+                                    }
+                                }
+                            };
+                            let esc = {
+                                let tagcase_ = node_kept(n);
+                                match *tagcase_ {
+                                    Value::VAt(o, l, e) => {
+                                        e
+                                    }
+                                    Value::VText(t) => {
+                                        (kept && not(ascii_only_p(string_chars(t))))
+                                    }
+                                    Value::VNone() => {
+                                        false
+                                    }
+                                }
+                            };
+                            let x = if kept {
+                                raw
+                            } else {
+                                str_lit("")
+                            };
+                            let len = string_length_i64(x);
+                            (is, m) = (cdr(is), made_files(kayak_rt::heap_cons(length_first(string_append(string_list_append(reverse(key_parts)), str_lit(")"))), keys), kayak_rt::heap_cons(length_first(string_list_append(kayak_rt::heap_cons(str_lit("#"), kayak_rt::heap_cons(i64_to_string(car(is)), kayak_rt::heap_cons(str_lit("# "), kayak_rt::heap_cons(if node_input_p(n) {
+                                str_lit("1 ")
+                            } else {
+                                str_lit("0 ")
+                            }, kayak_rt::heap_cons(i64_to_string(node_verified(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_changed(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_fp(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_durability(n)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(string_list_append(reverse(labels_text(node_deps(n), nil::<Str>()))), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(if (kept && node_has_value_p(n)) {
+                                string_list_append(kayak_rt::heap_cons(if esc {
+                                    str_lit("(atx ")
+                                } else {
+                                    str_lit("(at ")
+                                }, kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(len), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                            } else {
+                                str_lit("none")
+                            }, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), nodes), if kept {
+                                kayak_rt::heap_cons(x, payload)
+                            } else {
+                                payload
+                            }, seen2, labels2, if kept {
+                                i64_plus(at, len)
+                            } else {
+                                at
+                            }));
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -585,178 +1293,570 @@ pub fn numbers_text(xs: List<i64>) -> List<Str> {
     }
 }
 
-pub fn node_line(k: Str, n: &'static Node) -> Str {
-    let tagcase_ = n;
+// The database as its two files, `whose` it is; `keep` says of a query's
+// key whether its value is kept.
+pub fn db_files(d: Db, whose: Str, keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync)) -> &'static DbFilesMade {
+    let is = im_list(get(d.1), nil::<i64>());
+    let tagcase_ = nodes_files(d, is, keep, made_files(nil::<Str>(), nil::<Str>(), nil::<Str>(), km_none(), get(d.3), 0i64));
     match *tagcase_ {
-        Node::Node(i, v, c, f, ds, du, x) => {
-            string_list_append(append(kayak_rt::heap_cons(field(k), kayak_rt::heap_cons(if i {
-                str_lit(" 1")
-            } else {
-                str_lit(" 0")
-            }, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(v), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(c), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(du), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(size(ds)), kayak_rt::nil())))))))))))), append(fields_of(ds), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(field(x), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::nil()))))))
+        MadeFiles::MadeFiles(keys, nodes, payload, seen, labels, at) => {
+            db_files_made(string_list_append(append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::nil()))))))), append(cdr(numbers_text(get(d.6))), append(kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")\n(keys"), kayak_rt::nil()))), append(reverse(keys), append(kayak_rt::heap_cons(str_lit(")\n(nodes"), kayak_rt::nil()), append(reverse(nodes), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::nil())))))))), string_list_append(reverse(payload)))
         }
     }
 }
 
-pub fn nodes_lines(mut t: &'static Nmap, mut acc: List<Str>) -> List<Str> {
+// Reading them back: the graph scanned by offset (C417), never made a list
+// of its characters, nor a datum: it is ASCII alone, so an offset is a
+// character's. A key's text, by which it is interned, is made of its parts as
+// written, which the writer wrote as `key-text` writes them.
+pub enum Scanned {
+    Scanned(i64, i64),
+}
+
+pub fn scanned(f0: i64, f1: i64) -> &'static Scanned {
+    kayak_rt::heap_alloc(Scanned::Scanned(f0, f1))
+}
+
+pub enum Atom {
+    Atom(&'static Sexp, Str),
+}
+
+pub fn atom(f0: &'static Sexp, f1: Str) -> &'static Atom {
+    kayak_rt::heap_alloc(Atom::Atom(f0, f1))
+}
+
+pub enum Amap {
+    AmNone(),
+    AmNode(&'static Amap, i64, &'static Atom, i64, &'static Amap),
+}
+
+pub fn am_none() -> &'static Amap {
+    kayak_rt::heap_alloc(Amap::AmNone())
+}
+
+pub fn am_node(f0: &'static Amap, f1: i64, f2: &'static Atom, f3: i64, f4: &'static Amap) -> &'static Amap {
+    kayak_rt::heap_alloc(Amap::AmNode(f0, f1, f2, f3, f4))
+}
+
+pub enum Part {
+    Part(&'static Sexp, Str, &'static Amap, i64),
+}
+
+pub fn part(f0: &'static Sexp, f1: Str, f2: &'static Amap, f3: i64) -> &'static Part {
+    kayak_rt::heap_alloc(Part::Part(f0, f1, f2, f3))
+}
+
+pub enum Parts {
+    Parts(Sexps, List<Str>, &'static Amap, i64),
+}
+
+pub fn parts(f0: Sexps, f1: List<Str>, f2: &'static Amap, f3: i64) -> &'static Parts {
+    kayak_rt::heap_alloc(Parts::Parts(f0, f1, f2, f3))
+}
+
+#[inline]
+pub fn am_height(t: &'static Amap) -> i64 {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Amap::AmNone() => {
+            0i64
+        }
+        Amap::AmNode(l, k, x, h, r) => {
+            h
+        }
+    }
+}
+
+pub fn am_make(l: &'static Amap, k: i64, x: &'static Atom, r: &'static Amap) -> &'static Amap {
+    am_node(l, k, x, i64_plus(1i64, {
+        let (a, b) = (am_height(l), am_height(r));
+        if i64_gt(a, b) {
+            a
+        } else {
+            b
+        }
+    }), r)
+}
+
+pub fn am_balanced(l: &'static Amap, k: i64, x: &'static Atom, r: &'static Amap) -> &'static Amap {
+    let (hl, hr) = (am_height(l), am_height(r));
+    if i64_gt(hl, i64_plus(hr, 1i64)) {
+        let tagcase_ = l;
+        match *tagcase_ {
+            Amap::AmNode(ll, lk, lx, lh, lr) => {
+                if i64_gt_eq(am_height(ll), am_height(lr)) {
+                    am_make(ll, lk, lx, am_make(lr, k, x, r))
+                } else {
+                    let tagcase_ = lr;
+                    match *tagcase_ {
+                        Amap::AmNode(rl, rk, rx, rh, rr) => {
+                            am_make(am_make(ll, lk, lx, rl), rk, rx, am_make(rr, k, x, r))
+                        }
+                        Amap::AmNone() => {
+                            am_make(l, k, x, r)
+                        }
+                    }
+                }
+            }
+            Amap::AmNone() => {
+                am_make(l, k, x, r)
+            }
+        }
+    } else if i64_gt(hr, i64_plus(hl, 1i64)) {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Amap::AmNode(rl, rk, rx, rh, rr) => {
+                if i64_gt_eq(am_height(rr), am_height(rl)) {
+                    am_make(am_make(l, k, x, rl), rk, rx, rr)
+                } else {
+                    let tagcase_ = rl;
+                    match *tagcase_ {
+                        Amap::AmNode(ml, mk, mx, mh, mr) => {
+                            am_make(am_make(l, k, x, ml), mk, mx, am_make(mr, rk, rx, rr))
+                        }
+                        Amap::AmNone() => {
+                            am_make(l, k, x, r)
+                        }
+                    }
+                }
+            }
+            Amap::AmNone() => {
+                am_make(l, k, x, r)
+            }
+        }
+    } else {
+        am_make(l, k, x, r)
+    }
+}
+
+pub fn am_put(t: &'static Amap, n: i64, x: &'static Atom) -> &'static Amap {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Amap::AmNone() => {
+            am_node(am_none(), n, x, 1i64, am_none())
+        }
+        Amap::AmNode(l, k, y, h, r) => {
+            if i64_eq(n, k) {
+                am_node(l, k, x, h, r)
+            } else if i64_lt(n, k) {
+                am_balanced(am_put(l, n, x), k, y, r)
+            } else {
+                am_balanced(l, k, y, am_put(r, n, x))
+            }
+        }
+    }
+}
+
+pub fn am_get(mut t: &'static Amap, mut n: i64) -> List<&'static Atom> {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
-            Nmap::NmNone() => {
-                return acc;
+            Amap::AmNone() => {
+                return nil::<&'static Atom>();
             }
-            Nmap::NmNode(l, k, x, h, r) => {
-                (t, acc) = (l, kayak_rt::heap_cons(node_line(k, x), nodes_lines(r, acc)));
-                continue;
+            Amap::AmNode(l, k, x, h, r) => {
+                if i64_eq(n, k) {
+                    return kayak_rt::heap_cons(x, kayak_rt::nil());
+                } else if i64_lt(n, k) {
+                    t = l;
+                    continue;
+                } else {
+                    t = r;
+                    continue;
+                }
             }
         }
     }
 }
 
-pub fn db_text(d: Db, whose: Str) -> Str {
-    string_list_append(kayak_rt::heap_cons(string_append(db_format(), string_append(str_lit(" "), string_append(whose, str_lit("\n")))), kayak_rt::heap_cons(i64_to_string(get(d.0)), append(numbers_text(get(d.3)), kayak_rt::heap_cons(str_lit("\n"), nodes_lines(get(d.1), nil::<Str>()))))))
+#[inline]
+pub fn sc_char(s: Str, i: i64, n: i64) -> i64 {
+    if i64_lt(i, n) {
+        char_to_i64(string_ref_i64(s, i))
+    } else {
+        -1i64
+    }
 }
 
-// Reading it: a cursor over the text, `at`, moved past what is read.
-pub enum ReadNum {
-    ReadNum(i64, i64),
-}
-
-pub fn read_num(f0: i64, f1: i64) -> &'static ReadNum {
-    kayak_rt::heap_alloc(ReadNum::ReadNum(f0, f1))
-}
-
-pub enum ReadTxt {
-    ReadTxt(Str, i64),
-}
-
-pub fn read_txt(f0: Str, f1: i64) -> &'static ReadTxt {
-    kayak_rt::heap_alloc(ReadTxt::ReadTxt(f0, f1))
-}
-
-pub enum ReadTexts {
-    ReadTexts(List<Str>, i64),
-}
-
-pub fn read_texts(f0: List<Str>, f1: i64) -> &'static ReadTexts {
-    kayak_rt::heap_alloc(ReadTexts::ReadTexts(f0, f1))
-}
-
-pub enum ReadNums {
-    ReadNums(List<i64>, i64),
-}
-
-pub fn read_nums(f0: List<i64>, f1: i64) -> &'static ReadNums {
-    kayak_rt::heap_alloc(ReadNums::ReadNums(f0, f1))
-}
-
-/// The decimal number at `i`, after any spaces; and where it ends.
-pub fn number_at(mut s: Str, mut i: i64, mut n: i64, mut acc: i64, mut neg: bool) -> &'static ReadNum {
+pub fn sc_ws(mut s: Str, mut i: i64, mut n: i64) -> i64 {
     loop {
-        if i64_gt_eq(i, n) {
-            return read_num(0i64, i);
-        } else if char_eq_p(string_ref_i64(s, i), ' ') {
+        let c = sc_char(s, i, n);
+        if (i64_eq(c, 32i64) || i64_eq(c, 10i64)) {
             i = i64_plus(i, 1i64);
             continue;
-        } else if char_eq_p(string_ref_i64(s, i), '-') {
-            return db_digits_at(s, i64_plus(i, 1i64), n, 0i64, true);
         } else {
-            return db_digits_at(s, i, n, 0i64, false);
+            return i;
         }
     }
 }
 
-pub fn db_digits_at(mut s: Str, mut i: i64, mut n: i64, mut acc: i64, mut neg: bool) -> &'static ReadNum {
+pub fn sc_close(mut s: Str, mut i: i64, mut n: i64) -> i64 {
     loop {
-        if (i64_gt_eq(i, n) || {
-            let c = string_ref_i64(s, i);
-            (char_lt_p(c, '0') || char_gt_p(c, '9'))
-        }) {
-            return read_num(if neg {
-                i64_minus(0i64, acc)
-            } else {
-                acc
-            }, i);
+        let c = sc_char(s, i, n);
+        if (i64_lt(c, 0i64) || i64_eq(c, 41i64)) {
+            return i;
         } else {
-            (i, acc) = (i64_plus(i, 1i64), i64_plus(i64_star(acc, 10i64), i64_minus(char_to_i64(string_ref_i64(s, i)), 48i64)));
+            i = i64_plus(i, 1i64);
             continue;
         }
     }
 }
 
-/// The field at `i`, its length, a colon and itself; and where it ends.
-pub fn text_at(s: Str, i: i64, n: i64) -> &'static ReadTxt {
-    let tagcase_ = number_at(s, i, n, 0i64, false);
+pub fn sc_digits(mut s: Str, mut i: i64, mut n: i64, mut acc: i64) -> &'static Scanned {
+    loop {
+        let c = sc_char(s, i, n);
+        if (i64_gt_eq(c, 48i64) && i64_lt_eq(c, 57i64)) {
+            (i, acc) = (i64_plus(i, 1i64), i64_plus(i64_star(acc, 10i64), i64_minus(c, 48i64)));
+            continue;
+        } else {
+            return scanned(acc, i);
+        }
+    }
+}
+
+// The number at `i`, after any spaces; and where it ends.
+pub fn sc_int(s: Str, i: i64, n: i64) -> &'static Scanned {
+    let i = sc_ws(s, i, n);
+    if i64_eq(sc_char(s, i, n), 45i64) {
+        let tagcase_ = sc_digits(s, i64_plus(i, 1i64), n, 0i64);
+        match *tagcase_ {
+            Scanned::Scanned(v, e) => {
+                scanned(i64_minus(0i64, v), e)
+            }
+        }
+    } else {
+        sc_digits(s, i, n, 0i64)
+    }
+}
+
+/// From inside a string's quotes: whether a `\` is in it (1), and where
+/// its closing quote is.
+pub fn sc_str_end(mut s: Str, mut i: i64, mut n: i64, mut esc: i64) -> &'static Scanned {
+    loop {
+        let c = sc_char(s, i, n);
+        if i64_lt(c, 0i64) {
+            return scanned(esc, i);
+        } else if i64_eq(c, 92i64) {
+            (i, esc) = (i64_plus(i, 2i64), 1i64);
+            continue;
+        } else if i64_eq(c, 34i64) {
+            return scanned(esc, i);
+        } else {
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn str_unescaped(mut cs: List<char>, mut acc: List<char>) -> Str {
+    loop {
+        if null_p(cs) {
+            return list_to_string(reverse(acc));
+        } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs)))) {
+            let e = car(cdr(cs));
+            if char_eq_p(e, 'n') {
+                (cs, acc) = (cdr(cdr(cs)), kayak_rt::heap_cons('\n', acc));
+                continue;
+            } else if char_eq_p(e, 't') {
+                (cs, acc) = (cdr(cdr(cs)), kayak_rt::heap_cons('\t', acc));
+                continue;
+            } else if char_eq_p(e, 'u') {
+                return str_code(cdr(cdr(cdr(cs))), 0i64, acc);
+            } else {
+                (cs, acc) = (cdr(cdr(cs)), kayak_rt::heap_cons(e, acc));
+                continue;
+            }
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn str_code(mut cs: List<char>, mut n: i64, mut acc: List<char>) -> Str {
+    loop {
+        if null_p(cs) {
+            return list_to_string(reverse(acc));
+        } else if char_eq_p(car(cs), '}') {
+            return str_unescaped(cdr(cs), kayak_rt::heap_cons(i64_to_char(n), acc));
+        } else {
+            let k = char_to_i64(car(cs));
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 16i64), if i64_lt(k, 58i64) {
+                i64_minus(k, 48i64)
+            } else {
+                i64_minus(k, 87i64)
+            }));
+            continue;
+        }
+    }
+}
+
+// A string at `i` (its opening quote): itself, its text as written, and where
+// it ends.
+pub fn sc_str(s: Str, i: i64, n: i64, atoms: &'static Amap) -> &'static Part {
+    let tagcase_ = sc_str_end(s, i64_plus(i, 1i64), n, 0i64);
     match *tagcase_ {
-        ReadNum::ReadNum(len, j) => {
-            let from = i64_plus(j, 1i64);
-            read_txt(substring(s, i64_to_int(from), i64_to_int(i64_plus(from, len))), i64_plus(from, len))
+        Scanned::Scanned(esc, e) => {
+            let inner = substring(s, i64_to_int(i64_plus(i, 1i64)), i64_to_int(e));
+            part(str(if i64_eq(esc, 1i64) {
+                str_unescaped(string_chars(inner), nil::<char>())
+            } else {
+                inner
+            }, str_lit(""), 0i64), substring(s, i64_to_int(i), i64_to_int(i64_plus(e, 1i64))), atoms, i64_plus(e, 1i64))
         }
     }
 }
 
-pub fn texts_at(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: List<Str>) -> &'static ReadTexts {
+pub fn sc_name_end(mut s: Str, mut i: i64, mut n: i64) -> i64 {
     loop {
-        if i64_lt_eq(count, 0i64) {
-            return read_texts(reverse(acc), i);
+        let c = sc_char(s, i, n);
+        if (i64_lt(c, 0i64) || i64_eq(c, 32i64) || i64_eq(c, 10i64) || i64_eq(c, 40i64) || i64_eq(c, 41i64)) {
+            return i;
         } else {
-            let tagcase_ = text_at(s, i, n);
-            match *tagcase_ {
-                ReadTxt::ReadTxt(t, j) => {
-                    (i, count, acc) = (j, i64_minus(count, 1i64), kayak_rt::heap_cons(t, acc));
-                    continue;
-                }
-            }
+            i = i64_plus(i, 1i64);
+            continue;
         }
     }
 }
 
-pub fn numbers_at(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: List<i64>) -> &'static ReadNums {
-    loop {
-        if i64_lt_eq(count, 0i64) {
-            return read_nums(reverse(acc), i);
-        } else {
-            let tagcase_ = number_at(s, i, n, 0i64, false);
-            match *tagcase_ {
-                ReadNum::ReadNum(x, j) => {
-                    (i, count, acc) = (j, i64_minus(count, 1i64), kayak_rt::heap_cons(x, acc));
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-/// The nodes from `i`, a line each, into `t`; a line cut short ends them.
-pub fn nodes_at(mut s: Str, mut i: i64, mut n: i64, mut t: &'static Nmap) -> &'static Nmap {
-    loop {
-        if i64_gt_eq(i64_plus(i, 1i64), n) {
-            return t;
-        } else {
-            let tagcase_ = text_at(s, i, n);
-            match *tagcase_ {
-                ReadTxt::ReadTxt(k, j) => {
-                    let tagcase_ = numbers_at(s, j, n, 6i64, nil::<i64>());
+/// One part of a key: a string, labelled where first written and named by
+/// its label after; a number; or a name.
+pub fn sc_part(s: Str, i: i64, n: i64, atoms: &'static Amap) -> &'static Part {
+    let i = sc_ws(s, i, n);
+    let c = sc_char(s, i, n);
+    if i64_eq(c, 35i64) {
+        let tagcase_ = sc_digits(s, i64_plus(i, 1i64), n, 0i64);
+        match *tagcase_ {
+            Scanned::Scanned(k, e) => {
+                if i64_eq(sc_char(s, e, n), 61i64) {
+                    let tagcase_ = sc_part(s, i64_plus(e, 1i64), n, atoms);
                     match *tagcase_ {
-                        ReadNums::ReadNums(ns, j2) => {
-                            if not(i64_eq(size(ns), 6i64)) {
-                                return t;
+                        Part::Part(x, t, atoms2, e2) => {
+                            part(x, t, am_put(atoms2, k, atom(x, t)), e2)
+                        }
+                    }
+                } else {
+                    let found = am_get(atoms, k);
+                    if null_p(found) {
+                        error(str_lit("kayak-db: a label no part made"));
+                        part(sym(str_lit(""), str_lit(""), 0i64), str_lit(""), atoms, i64_plus(e, 1i64))
+                    } else {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Atom::Atom(x, t) => {
+                                part(x, t, atoms, i64_plus(e, 1i64))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else if i64_eq(c, 34i64) {
+        sc_str(s, i, n, atoms)
+    } else if (i64_eq(c, 45i64) || (i64_gt_eq(c, 48i64) && i64_lt_eq(c, 57i64))) {
+        let tagcase_ = sc_int(s, i, n);
+        match *tagcase_ {
+            Scanned::Scanned(v, e) => {
+                part(num(v, str_lit(""), 0i64), substring(s, i64_to_int(i), i64_to_int(e)), atoms, e)
+            }
+        }
+    } else {
+        let e = sc_name_end(s, i, n);
+        let t = substring(s, i64_to_int(i), i64_to_int(e));
+        part(sym(t, str_lit(""), 0i64), t, atoms, e)
+    }
+}
+
+/// A key's parts to its `)`, the newest first.
+pub fn sc_parts(s: Str, i: i64, n: i64, atoms: &'static Amap, xs: Sexps, ts: List<Str>) -> &'static Parts {
+    let i = sc_ws(s, i, n);
+    if i64_eq(sc_char(s, i, n), 41i64) {
+        parts(xs, ts, atoms, i64_plus(i, 1i64))
+    } else {
+        let tagcase_ = sc_part(s, i, n, atoms);
+        match *tagcase_ {
+            Part::Part(x, t, atoms2, e) => {
+                sc_parts(s, e, n, atoms2, kayak_rt::heap_cons(x, xs), kayak_rt::heap_cons(t, ts))
+            }
+        }
+    }
+}
+
+pub fn texts_spaced(mut ts: List<Str>, mut acc: List<Str>) -> List<Str> {
+    loop {
+        if null_p(ts) {
+            return acc;
+        } else {
+            (ts, acc) = (cdr(ts), kayak_rt::heap_cons(car(ts), if null_p(acc) {
+                acc
+            } else {
+                kayak_rt::heap_cons(str_lit(" "), acc)
+            }));
+            continue;
+        }
+    }
+}
+
+/// Each record `(LEN #N=(KEY ...))` of the keys, to its `)`; the greatest
+/// number, and where the keys end.
+pub fn keys_scanned_x(d: Db, s: Str, i: i64, n: i64, atoms: &'static Amap, top: i64) -> &'static Scanned {
+    let i = sc_ws(s, i, n);
+    if not(i64_eq(sc_char(s, i, n), 40i64)) {
+        scanned(top, i64_plus(i, 1i64))
+    } else {
+        let tagcase_ = sc_int(s, i64_plus(i, 1i64), n);
+        match *tagcase_ {
+            Scanned::Scanned(len, b) => {
+                let b = i64_plus(b, 1i64);
+                let after = i64_plus(b, len);
+                let tagcase_ = sc_digits(s, i64_plus(b, 1i64), n, 0i64);
+                match *tagcase_ {
+                    Scanned::Scanned(k, e) => {
+                        let tagcase_ = sc_parts(s, i64_plus(e, 2i64), n, atoms, nil::<&'static Sexp>(), nil::<Str>());
+                        match *tagcase_ {
+                            Parts::Parts(xs, ts, atoms2, e2) => {
+                                let (key, text) = (lst(reverse(xs), str_lit(""), 0i64, 0i64), string_append(str_lit("("), string_append(string_list_append(texts_spaced(ts, nil::<Str>())), str_lit(")"))));
+                                set(d.2, km_put(get(d.2), text, k));
+                                set(d.1, im_put(get(d.1), k, node(key, false, 0i64, 0i64, 0i64, nil::<i64>(), 0i64, v_none())));
+                                keys_scanned_x(d, s, after, n, atoms2, if i64_gt(k, top) {
+                                    k
+                                } else {
+                                    top
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The `#N#`s of a node's reads, to their `)`, in order.
+pub fn labels_scanned(s: Str, i: i64, n: i64, acc: List<i64>) -> List<i64> {
+    let i = sc_ws(s, i, n);
+    if not(i64_eq(sc_char(s, i, n), 35i64)) {
+        reverse(acc)
+    } else {
+        let tagcase_ = sc_digits(s, i64_plus(i, 1i64), n, 0i64);
+        match *tagcase_ {
+            Scanned::Scanned(k, e) => {
+                labels_scanned(s, i64_plus(e, 1i64), n, kayak_rt::heap_cons(k, acc))
+            }
+        }
+    }
+}
+
+pub fn sc_ints(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: List<i64>) -> List<i64> {
+    loop {
+        if i64_lt_eq(count, 0i64) {
+            return reverse(kayak_rt::heap_cons(i, acc));
+        } else {
+            let tagcase_ = sc_int(s, i, n);
+            match *tagcase_ {
+                Scanned::Scanned(v, e) => {
+                    (i, count, acc) = (e, i64_minus(count, 1i64), kayak_rt::heap_cons(v, acc));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// Each record `(LEN #N# INPUT VERIFIED CHANGED FINGERPRINT DURABILITY
+/// (#M# ...) VALUE)` of the nodes, to their `)`.
+pub fn nodes_scanned_x(d: Db, s: Str, i: i64, n: i64) -> () {
+    let i = sc_ws(s, i, n);
+    if not(i64_eq(sc_char(s, i, n), 40i64)) {
+        ()
+    } else {
+        let tagcase_ = sc_int(s, i64_plus(i, 1i64), n);
+        match *tagcase_ {
+            Scanned::Scanned(len, b) => {
+                let after = i64_plus(i64_plus(b, 1i64), len);
+                let tagcase_ = sc_digits(s, i64_plus(b, 2i64), n, 0i64);
+                match *tagcase_ {
+                    Scanned::Scanned(k, e) => {
+                        let ns = sc_ints(s, i64_plus(e, 1i64), n, 5i64, nil::<i64>());
+                        let p = sc_ws(s, db_nth(ns, 5i64), n);
+                        let deps = labels_scanned(s, i64_plus(p, 1i64), n, nil::<i64>());
+                        let v = sc_ws(s, i64_plus(sc_close(s, i64_plus(p, 1i64), n), 1i64), n);
+                        let val = if i64_eq(sc_char(s, v, n), 40i64) {
+                            let x = i64_eq(sc_char(s, i64_plus(v, 3i64), n), 120i64);
+                            let o = sc_int(s, i64_plus(v, if x {
+                                4i64
                             } else {
-                                let tagcase_ = texts_at(s, j2, n, db_nth(ns, 5i64), nil::<Str>());
-                                match *tagcase_ {
-                                    ReadTexts::ReadTexts(ds, j3) => {
-                                        let tagcase_ = text_at(s, j3, n);
-                                        match *tagcase_ {
-                                            ReadTxt::ReadTxt(x, j4) => {
-                                                if i64_gt(j4, n) {
-                                                    return t;
-                                                } else {
-                                                    (i, t) = (i64_plus(j4, 1i64), nm_put(t, k, node(i64_eq(db_nth(ns, 0i64), 1i64), db_nth(ns, 1i64), db_nth(ns, 2i64), db_nth(ns, 3i64), ds, db_nth(ns, 4i64), x)));
-                                                    continue;
-                                                }
-                                            }
+                                3i64
+                            }), n);
+                            let tagcase_ = o;
+                            match *tagcase_ {
+                                Scanned::Scanned(off, e2) => {
+                                    let tagcase_ = sc_int(s, e2, n);
+                                    match *tagcase_ {
+                                        Scanned::Scanned(l, e3) => {
+                                            v_at(off, l, x)
                                         }
                                     }
+                                }
+                            }
+                        } else {
+                            v_none()
+                        };
+                        let key = node_key(car(db_node_at(d, k)));
+                        db_put_x(d, k, node(key, i64_eq(db_nth(ns, 0i64), 1i64), db_nth(ns, 1i64), db_nth(ns, 2i64), db_nth(ns, 3i64), deps, db_nth(ns, 4i64), val));
+                        nodes_scanned_x(d, s, after, n)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The database the two files write, if the graph says it is `whose` and
+/// the payload is as long as it says; else an empty one, as files of
+/// another format, or another's, or cut short, have none for this.
+pub fn db_of_files(graph: Str, payload: Str, whose: Str) -> Db {
+    let d = db_make();
+    let h = string_append(str_lit("("), string_append(db_format(), str_lit(" ")));
+    let n = string_length_i64(graph);
+    let hn = string_length_i64(h);
+    if not((i64_gt_eq(n, hn) && string_eq_p(substring(graph, int_lit(0), i64_to_int(hn)), h) && i64_eq(sc_char(graph, hn, n), 34i64))) {
+        d
+    } else {
+        let tagcase_ = sc_str(graph, hn, n, am_none());
+        match *tagcase_ {
+            Part::Part(w, wt, atoms, e) => {
+                let ns = sc_ints(graph, e, n, 1i64, nil::<i64>());
+                let lasts = sc_ints(graph, i64_plus(sc_ws(graph, db_nth(ns, 1i64), n), 1i64), n, durabilities(), nil::<i64>());
+                let plen = sc_int(graph, i64_plus(sc_close(graph, db_nth(lasts, durabilities()), n), 1i64), n);
+                let tagcase_ = plen;
+                match *tagcase_ {
+                    Scanned::Scanned(pl, e2) => {
+                        if not(({
+                            let tagcase_ = w;
+                            match *tagcase_ {
+                                Sexp::Str(t, f, p) => {
+                                    string_eq_p(t, whose)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        } && i64_eq(pl, string_length_i64(payload)))) {
+                            d
+                        } else {
+                            let k0 = sc_ws(graph, i64_plus(sc_close(graph, e2, n), 1i64), n);
+                            let top = keys_scanned_x(d, graph, i64_plus(k0, 5i64), n, am_none(), -1i64);
+                            let tagcase_ = top;
+                            match *tagcase_ {
+                                Scanned::Scanned(t, e3) => {
+                                    set(d.0, db_nth(ns, 0i64));
+                                    set(d.6, reverse(cdr(reverse(lasts))));
+                                    set(d.4, payload);
+                                    set(d.3, i64_plus(t, 1i64));
+                                    nodes_scanned_x(d, graph, i64_plus(sc_ws(graph, e3, n), 6i64), n);
+                                    d
                                 }
                             }
                         }
@@ -767,31 +1867,24 @@ pub fn nodes_at(mut s: Str, mut i: i64, mut n: i64, mut t: &'static Nmap) -> &'s
     }
 }
 
-/// The database `s` writes, if its first line says it is `whose`; else an
-/// empty one, as text of another format, or another's, has none for this.
-pub fn db_of_text(s: Str, whose: Str) -> Db {
-    let head = string_append(db_format(), string_append(str_lit(" "), string_append(whose, str_lit("\n"))));
-    let n = string_length_i64(s);
-    let h = string_length_i64(head);
-    let d = db_make();
-    if not((i64_gt_eq(n, h) && string_eq_p(substring(s, int_lit(0), i64_to_int(h)), head))) {
-        d
-    } else {
-        let tagcase_ = numbers_at(s, h, n, i64_plus(durabilities(), 1i64), nil::<i64>());
+// The keys the database has nodes of, in order of number.
+pub fn im_keys(mut t: &'static Imap, mut acc: Sexps) -> Sexps {
+    loop {
+        let tagcase_ = t;
         match *tagcase_ {
-            ReadNums::ReadNums(ns, j) => {
-                set(d.0, car(ns));
-                set(d.3, cdr(ns));
-                set(d.1, nodes_at(s, i64_plus(j, 1i64), n, nm_none()));
-                d
+            Imap::ImNone() => {
+                return acc;
+            }
+            Imap::ImNode(l, k, x, h, r) => {
+                (t, acc) = (l, kayak_rt::heap_cons(node_key(x), im_keys(r, acc)));
+                continue;
             }
         }
     }
 }
 
-// The keys the database has, in order.
 #[inline]
-pub fn db_keys(d: Db) -> List<Str> {
-    nm_list(get(d.1), nil::<Str>())
+pub fn db_keys(d: Db) -> Sexps {
+    im_keys(get(d.1), nil::<&'static Sexp>())
 }
 

@@ -17,6 +17,61 @@ use super::*;
 // more than 3, else `small` (reading `x 0` only sometimes). The answer:
 // how many steps, how many disagreed, and how many bodies the database ran
 // against how many the fresh ones did.
+
+// Keys as the database has them (C417), of this test's text `q` or `q arg`,
+// and back.
+pub fn k_words(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> List<Str> {
+    loop {
+        if null_p(cs) {
+            return reverse(if null_p(w) {
+                acc
+            } else {
+                kayak_rt::heap_cons(list_to_string(reverse(w)), acc)
+            });
+        } else if char_eq_p(car(cs), ' ') {
+            (cs, w, acc) = (cdr(cs), nil::<char>(), if null_p(w) {
+                acc
+            } else {
+                kayak_rt::heap_cons(list_to_string(reverse(w)), acc)
+            });
+            continue;
+        } else {
+            (cs, w) = (cdr(cs), kayak_rt::heap_cons(car(cs), w));
+            continue;
+        }
+    }
+}
+
+pub fn k_of(s: Str) -> &'static Sexp {
+    let ws = k_words(string_chars(s), nil::<char>(), nil::<Str>());
+    if null_p(cdr(ws)) {
+        lst(kayak_rt::heap_cons(sym(car(ws), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
+    } else {
+        key1(car(ws), car(cdr(ws)))
+    }
+}
+
+#[inline]
+pub fn k_text(k: &'static Sexp) -> Str {
+    if string_eq_p(key_arg(k, 0i64), str_lit("")) {
+        key_query(k)
+    } else {
+        string_append(key_query(k), string_append(str_lit(" "), key_arg(k, 0i64)))
+    }
+}
+
+#[inline]
+pub fn reread(d: Db, whose: Str) -> Db {
+    let tagcase_ = db_files(d, str_lit("test"), lambda1s(move |k: &'static Sexp| {
+        true
+    }));
+    match *tagcase_ {
+        DbFilesMade::DbFilesMade(g, p) => {
+            db_of_files(g, p, whose)
+        }
+    }
+}
+
 pub fn digits(mut cs: List<char>, mut n: i64) -> i64 {
     loop {
         if null_p(cs) {
@@ -29,7 +84,7 @@ pub fn digits(mut cs: List<char>, mut n: i64) -> i64 {
 }
 
 #[inline]
-pub fn num(s: Str) -> i64 {
+pub fn num_of(s: Str) -> i64 {
     digits(string_chars(s), 0i64)
 }
 
@@ -46,21 +101,22 @@ pub fn key_after(mut cs: List<char>) -> Str {
     }
 }
 
-pub fn run(d: Db, k: Str) -> Str {
+pub fn run(d: Db, key: &'static Sexp) -> Str {
+    let k = k_text(key);
     let h = string_ref_i64(k, 0i64);
     if char_eq_p(h, 'm') {
-        i64_to_string(i64_remainder(num(db_get(d, &run, string_append(str_lit("x "), key_after(string_chars(k))))), 3i64))
+        i64_to_string(i64_remainder(num_of(db_get(d, &run, k_of(string_append(str_lit("x "), key_after(string_chars(k)))))), 3i64))
     } else if char_eq_p(h, 's') {
-        if string_eq_p(db_get(d, &run, str_lit("m 0")), str_lit("0")) {
-            i64_to_string(i64_plus(num(db_get(d, &run, str_lit("m 1"))), num(db_get(d, &run, str_lit("m 2")))))
+        if string_eq_p(db_get(d, &run, k_of(str_lit("m 0"))), str_lit("0")) {
+            i64_to_string(i64_plus(num_of(db_get(d, &run, k_of(str_lit("m 1")))), num_of(db_get(d, &run, k_of(str_lit("m 2"))))))
         } else {
-            db_get(d, &run, str_lit("m 3"))
+            db_get(d, &run, k_of(str_lit("m 3")))
         }
     } else if char_eq_p(h, 't') {
-        i64_to_string(i64_plus(num(db_get(d, &run, str_lit("s"))), num(db_get(d, &run, str_lit("m 4")))))
+        i64_to_string(i64_plus(num_of(db_get(d, &run, k_of(str_lit("s")))), num_of(db_get(d, &run, k_of(str_lit("m 4"))))))
     } else if char_eq_p(h, 'u') {
-        if i64_gt(num(db_get(d, &run, str_lit("t"))), 3i64) {
-            string_append(str_lit("big:"), db_get(d, &run, str_lit("x 0")))
+        if i64_gt(num_of(db_get(d, &run, k_of(str_lit("t")))), 3i64) {
+            string_append(str_lit("big:"), db_get(d, &run, k_of(str_lit("x 0"))))
         } else {
             str_lit("small")
         }
@@ -125,7 +181,7 @@ pub fn set_all_x(mut d: Db, mut vals: List<i64>, mut durs: List<i64>, mut i: i64
         if null_p(vals) {
             return ();
         } else {
-            db_set_x(d, string_append(str_lit("x "), i64_to_string(i)), i64_to_string(car(vals)), car(durs));
+            db_set_x(d, k_of(string_append(str_lit("x "), i64_to_string(i))), i64_to_string(car(vals)), car(durs));
             (vals, durs, i) = (cdr(vals), cdr(durs), i64_plus(i, 1i64));
             continue;
         }
@@ -154,13 +210,13 @@ pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: &'
         let k = nth_key(query_keys(), below(s4, 8i64));
         let vals = put_at(vals, i, x);
         let durs = put_at(durs, i, du);
-        db_set_x(d, string_append(str_lit("x "), i64_to_string(i)), i64_to_string(x), du);
+        db_set_x(d, k_of(string_append(str_lit("x "), i64_to_string(i))), i64_to_string(x), du);
         let before = db_runs(d);
-        let got = db_get(d, &run, k);
+        let got = db_get(d, &run, k_of(k));
         let ours = i64_minus(db_runs(d), before);
         let fresh = db_make();
         set_all_x(fresh, vals, durs, 0i64);
-        let want = db_get(fresh, &run, k);
+        let want = db_get(fresh, &run, k_of(k));
         let tagcase_ = acc;
         match *tagcase_ {
             Tally::Tally(wrong, mine, theirs) => {
@@ -182,14 +238,14 @@ pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: &'
 // took it as current, 0.
 pub fn regression() -> Str {
     let d = db_make();
-    db_set_x(d, str_lit("x 0"), str_lit("0"), 2i64);
-    db_set_x(d, str_lit("x 1"), str_lit("0"), 2i64);
-    db_set_x(d, str_lit("x 2"), str_lit("0"), 2i64);
-    db_get(d, &run, str_lit("s"));
-    db_set_x(d, str_lit("x 1"), str_lit("0"), 0i64);
-    db_get(d, &run, str_lit("s"));
-    db_set_x(d, str_lit("x 1"), str_lit("1"), 0i64);
-    string_append(str_lit("regression s="), db_get(d, &run, str_lit("s")))
+    db_set_x(d, k_of(str_lit("x 0")), str_lit("0"), 2i64);
+    db_set_x(d, k_of(str_lit("x 1")), str_lit("0"), 2i64);
+    db_set_x(d, k_of(str_lit("x 2")), str_lit("0"), 2i64);
+    db_get(d, &run, k_of(str_lit("s")));
+    db_set_x(d, k_of(str_lit("x 1")), str_lit("0"), 0i64);
+    db_get(d, &run, k_of(str_lit("s")));
+    db_set_x(d, k_of(str_lit("x 1")), str_lit("1"), 0i64);
+    string_append(str_lit("regression s="), db_get(d, &run, k_of(str_lit("s"))))
 }
 
 pub fn main() -> Str {

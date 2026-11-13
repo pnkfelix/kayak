@@ -1,5 +1,6 @@
 ; The query database (lib/db.kfx) against itself from scratch, under random edits.
 ../../kfx/base.kfx
+../../kfx/read.kfx
 ../../lib/query.kfx
 ../../lib/db.kfx
 db-verify/app.kfx

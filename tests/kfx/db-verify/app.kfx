@@ -13,27 +13,49 @@
  how many steps, how many disagreed, and how many bodies the database ran
  against how many the fresh ones did."
 
+"Keys as the database has them (C417), of this test's text `q` or `q arg`,
+ and back."
+(define-rec
+  (k-words (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (cs w acc)
+      (cond ((null? cs) (reverse (if (null? w) acc (cons (list->string (reverse w)) acc))))
+            ((char=? (car cs) #\space) (k-words (cdr cs) nil (if (null? w) acc (cons (list->string (reverse w)) acc))))
+            (else (k-words (cdr cs) (cons (car cs) w) acc))))))
+
+(define k-of (subr kfx (string) sexp)
+  (lambda (s)
+    (let ((ws (k-words (string-chars s) nil nil)))
+      (if (null? (cdr ws)) (lst (list (sym (car ws) "" 0)) "" 0 0) (key1 (car ws) (car (cdr ws)))))))
+
+(define k-text (subr kfx (sexp) string)
+  (lambda (k) (if (string=? (key-arg k 0) "") (key-query k) (string-append (key-query k) (string-append " " (key-arg k 0))))))
+
+(define reread (subr qe (db string) db)
+  (lambda (d whose)
+    (tagcase (db-files d "test" (lambda ((k sexp)) #t)) (db-files-made (g p) (db-of-files g p whose)))))
+
 (define-rec
   (digits (subr kfx ((listof char acyclic) i64) i64)
     (lambda (cs n) (if (null? cs) n (digits (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
-(define num (subr kfx (string) i64) (lambda (s) (digits (string-chars s) 0)))
+(define num-of (subr kfx (string) i64) (lambda (s) (digits (string-chars s) 0)))
 
 (define-rec
   (key-after (subr kfx ((listof char acyclic)) string)
     (lambda (cs) (cond ((null? cs) "") ((char=? (car cs) #\space) (list->string (cdr cs))) (else (key-after (cdr cs)))))))
 
 (define-rec
-  (run (subr qe (db string) string)
-    (lambda (d k)
+  (run (subr qe (db sexp) string)
+    (lambda (d key)
+     (let ((k (k-text key)))
       (let ((h (string-ref-i64 k 0)))
-        (cond ((char=? h #\m) (i64->string (i64-remainder (num (db-get d run (string-append "x " (key-after (string-chars k))))) 3)))
+        (cond ((char=? h #\m) (i64->string (i64-remainder (num-of (db-get d run (k-of (string-append "x " (key-after (string-chars k)))))) 3)))
               ((char=? h #\s)
-               (if (string=? (db-get d run "m 0") "0")
-                   (i64->string (i64+ (num (db-get d run "m 1")) (num (db-get d run "m 2"))))
-                   (db-get d run "m 3")))
-              ((char=? h #\t) (i64->string (i64+ (num (db-get d run "s")) (num (db-get d run "m 4")))))
-              ((char=? h #\u) (if (i64> (num (db-get d run "t")) 3) (string-append "big:" (db-get d run "x 0")) "small"))
-              (else (begin (error (string-append "no query " k)) "")))))))
+               (if (string=? (db-get d run (k-of "m 0")) "0")
+                   (i64->string (i64+ (num-of (db-get d run (k-of "m 1"))) (num-of (db-get d run (k-of "m 2")))))
+                   (db-get d run (k-of "m 3"))))
+              ((char=? h #\t) (i64->string (i64+ (num-of (db-get d run (k-of "s"))) (num-of (db-get d run (k-of "m 4"))))))
+              ((char=? h #\u) (if (i64> (num-of (db-get d run (k-of "t"))) 3) (string-append "big:" (db-get d run (k-of "x 0"))) "small"))
+              (else (begin (error (string-append "no query " k)) ""))))))))
 
 "A linear congruential generator's next state, and a number below `n` of it."
 (define next-seed (subr kfx (i64) i64) (lambda (s) (i64+ (i64* s 6364136223846793005) 1442695040888963407)))
@@ -56,7 +78,7 @@
   (set-all! (subr qe (db (listof i64 acyclic) (listof i64 acyclic) i64) unit)
     (lambda (d vals durs i)
       (if (null? vals) #u
-          (begin (db-set! d (string-append "x " (i64->string i)) (i64->string (car vals)) (car durs))
+          (begin (db-set! d (k-of (string-append "x " (i64->string i))) (i64->string (car vals)) (car durs))
                  (set-all! d (cdr vals) (cdr durs) (i64+ i 1)))))))
 
 (define-datatype tally (tally i64 i64 i64))
@@ -70,14 +92,14 @@
                  (i (below s1 5)) (x (below s2 6)) (du (below s3 4)) (k (nth-key query-keys (below s4 8)))
                  (vals (put-at vals i x)) (durs (put-at durs i du)))
             (begin
-              (db-set! d (string-append "x " (i64->string i)) (i64->string x) du)
+              (db-set! d (k-of (string-append "x " (i64->string i))) (i64->string x) du)
               (let* ((before (db-runs d))
-                     (got (db-get d run k))
+                     (got (db-get d run (k-of k)))
                      (ours (i64- (db-runs d) before))
                      (fresh (db-make)))
                 (begin
                   (set-all! fresh vals durs 0)
-                  (let ((want (db-get fresh run k)))
+                  (let ((want (db-get fresh run (k-of k))))
                     (tagcase acc
                       (tally (wrong mine theirs)
                         (steps d (i64- n 1) s4 vals durs
@@ -93,12 +115,12 @@
   (lambda ()
     (let ((d (db-make)))
       (begin
-        (db-set! d "x 0" "0" 2) (db-set! d "x 1" "0" 2) (db-set! d "x 2" "0" 2)
-        (db-get d run "s")
-        (db-set! d "x 1" "0" 0)
-        (db-get d run "s")
-        (db-set! d "x 1" "1" 0)
-        (string-append "regression s=" (db-get d run "s"))))))
+        (db-set! d (k-of "x 0") "0" 2) (db-set! d (k-of "x 1") "0" 2) (db-set! d (k-of "x 2") "0" 2)
+        (db-get d run (k-of "s"))
+        (db-set! d (k-of "x 1") "0" 0)
+        (db-get d run (k-of "s"))
+        (db-set! d (k-of "x 1") "1" 0)
+        (string-append "regression s=" (db-get d run (k-of "s")))))))
 
 (define main (subr qe () string)
   (lambda ()

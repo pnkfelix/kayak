@@ -11764,3 +11764,80 @@ p2500's item now depends on its form, its position, its interface and `*`
 (a program may define `*`). The kc-steps sweep runs 2241 bodies, from 3036.
 The database at 5000 procedures: 19.6 MB; the bench's steps a little faster
 (`same` 0.84 s, from 0.90; in serve, as they were).
+
+## C417. The database's keys as data, its files a graph and a payload (2026-11-13)
+
+The user, of the database's file: "surely this could be datum formatted,
+using the #n= and #n# notation to handle sharing? ... Separating the graph
+file from the payload file sounds like a good idea", "It's fine for *this*
+to be specific to Kayak", "Making keys structured data is totally up my
+alley"; of non-ASCII text, "What kc / KFX source is non ascii?" (none of
+kc's; the payload holds the user's program's text, and some of the
+checker's messages have `≤` or `…`); "Should we design the format to allow
+for faster lookups? Eg include before each sexp the number of bytes one
+should skip to jump to next sexp?", then "Go ahead"; and, of what is made:
+"It would be nice if you detected that the transpiled rust ends up
+unchanged and thus rustc invocations can be avoided".
+
+**Keys as data** (`lib/db.kfx`): a key is a datum, a query's name and its
+arguments, `(l0-item "PATH" "p2500")` (`key1`, `key2`; `key-query`,
+`key-arg`), interned the first time it is met by its text (`key-text`) as
+a number: the nodes by number (an AVL tree, `imap`), what a node read a
+list of numbers, a node its key. kc's queries take their key's arguments,
+`(d run PATH KEY)`; the runner dispatches on `key-query`.
+
+**The files**: the graph, `DB`, three parts: a header `(kayak-db 2 WHOSE
+REVISION (LAST ...) PAYLOAD-LENGTH)`; `(keys (LEN #N=(QUERY ARG ...)) ...)`,
+each key labelled by its number, each text in the keys written more than
+once (the path) labelled where first written, `#M="..."`, `#M#` after;
+`(nodes (LEN #N# INPUT VERIFIED CHANGED FINGERPRINT DURABILITY (#M# ...)
+VALUE) ...)`, a node's key and reads by their labels, its value `(at OFFSET
+LENGTH)` in the payload, `(atx ...)` if escaped there, or `none`. Each
+record's first element is its length (the user's suggestion), so that a
+reader may step over it; the file is a datum with labels all the same,
+which `read-data` (below) reads. The payload, `DB.payload`, is the values
+end to end, cut out when a query reads one.
+
+**ASCII alone**, both files, so that an offset is a character's (kayak-rt's
+`substring` and `string-ref` are constant time on ASCII text, a walk from
+the start on any other): a key's text past ASCII written `\u{HEX}`; a value
+past ASCII written with `\` and what is past ASCII escaped, and marked
+`atx`. kc's programs are ASCII, but a program's text, its memos and some of
+the checker's messages need not be.
+
+**Read by offset** (`db-of-files`): a scanner of the graph, by index, that
+makes no list of its characters and no datum of it; a key's text, by which
+it is interned, assembled from its parts as written (the writer wrote them
+as `key-text` does), not printed again. **Verified without values**: a
+node's reads made current by revisions and fingerprints alone
+(`db-made-current`), so that a run reads from the payload only the values
+its queries read.
+
+**Outputs as files**: the whole program's output (`asm`, `rust`) is not
+kept in the files; the file it was written to is. `db-fingerprint` makes a
+node current and gives its fingerprint, its value neither read nor made;
+the driver writes the output only if the file's text has another
+fingerprint, and leaves it, and its time, as it was otherwise, so that
+cargo's rustc, or the assembler, need not run again (the user's ask).
+
+**Datum labels in data** (`kfx/read.kfx`'s `read-data`): `#N=` and `#N#`
+resolved after reading, in the order written, for data only, as Fixpt's
+reader has them (`fixpt-read`'s `datum_labels`) and its listings write
+them; FX-26's program text has none (`fx26-grammar.md`, a statement the
+user doubts, `docs/to-discuss.md` 8), so `read-all` reads `#0=` as a name.
+
+**Measured** (5000 procedures, best of 3): the files 3.1 MB and 7.8 MB, from
+23 MB of text; an unchanged run 0.79 s on the command line (0.90 s at C415)
+and 0.26 s in serve (0.25); a body edited 1.82 s and 1.16 s (1.79 s, 1.09
+s). The bench's rows (`bench/kc.tsv`) are labelled with the commit the work
+was measured on, C416's. On the way: the general reader on the graph took
+three times as long as C415's format (2.5 s); what a node read printed
+again to be interned; the payload's values unescaped at every read. The
+scanner, the parts' texts as written, and escaping only past ASCII, each
+measured, made it so.
+
+Not yet: a record read only when its node is asked for (the lengths make
+it possible, as the user suggested; a whole build verifies every node, so
+it helps a partial one); `kc build`, each form's code an object file of its
+own, reused while its fingerprint is (the user: "detect that the generated
+object code is actually unchanged in order to avoid downstream work").

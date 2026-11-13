@@ -7,6 +7,27 @@
  database read back from its text runs none, and one read back as
  another's has nothing."
 
+"Keys as the database has them (C417), of this test's text `q` or `q arg`,
+ and back."
+(define-rec
+  (k-words (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (cs w acc)
+      (cond ((null? cs) (reverse (if (null? w) acc (cons (list->string (reverse w)) acc))))
+            ((char=? (car cs) #\space) (k-words (cdr cs) nil (if (null? w) acc (cons (list->string (reverse w)) acc))))
+            (else (k-words (cdr cs) (cons (car cs) w) acc))))))
+
+(define k-of (subr kfx (string) sexp)
+  (lambda (s)
+    (let ((ws (k-words (string-chars s) nil nil)))
+      (if (null? (cdr ws)) (lst (list (sym (car ws) "" 0)) "" 0 0) (key1 (car ws) (car (cdr ws)))))))
+
+(define k-text (subr kfx (sexp) string)
+  (lambda (k) (if (string=? (key-arg k 0) "") (key-query k) (string-append (key-query k) (string-append " " (key-arg k 0))))))
+
+(define reread (subr qe (db string) db)
+  (lambda (d whose)
+    (tagcase (db-files d "test" (lambda ((k sexp)) #t)) (db-files-made (g p) (db-of-files g p whose)))))
+
 (define-rec
   (words-from (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
     (lambda (cs w acc)
@@ -25,35 +46,36 @@
 (define string->i64-of (subr kfx (string) i64) (lambda (s) (digits (string-chars s) 0)))
 
 (define-rec
-  (run (subr qe (db string) string)
-    (lambda (d k)
+  (run (subr qe (db sexp) string)
+    (lambda (d key)
+     (let ((k (k-text key)))
       (let ((q (car (words-from (string-chars k) nil nil))))
-        (cond ((string=? q "len") (i64->string (string-length-i64 (db-get d run (string-append "file " (after-space k))))))
-              ((string=? q "total") (i64->string (sum-lens d (words-from (string-chars (db-get d run "files")) nil nil) 0)))
-              (else (begin (error (string-append "no query " k)) ""))))))
+        (cond ((string=? q "len") (i64->string (string-length-i64 (db-get d run (k-of (string-append "file " (after-space k)))))))
+              ((string=? q "total") (i64->string (sum-lens d (words-from (string-chars (db-get d run (k-of "files"))) nil nil) 0)))
+              (else (begin (error (string-append "no query " k)) "")))))))
   (sum-lens (subr qe (db (listof string acyclic) i64) i64)
     (lambda (d ns acc)
-      (if (null? ns) acc (sum-lens d (cdr ns) (i64+ acc (string->i64-of (db-get d run (string-append "len " (car ns))))))))))
+      (if (null? ns) acc (sum-lens d (cdr ns) (i64+ acc (string->i64-of (db-get d run (k-of (string-append "len " (car ns)))))))))))
 
 "An ask of `total`: its value and the bodies it ran."
 (define asked (subr qe (db string) string)
   (lambda (d what)
-    (let* ((before (db-runs d)) (v (db-get d run "total")))
+    (let* ((before (db-runs d)) (v (db-get d run (k-of "total"))))
       (string-append what (string-append "=" (string-append v (string-append "/" (i64->string (i64- (db-runs d) before)))))))))
 
 (define main (subr qe () string)
   (lambda ()
     (let ((d (db-make)))
       (begin
-        (db-set! d "files" "a b" 2)
-        (db-set! d "file a" "xyz" 0)
-        (db-set! d "file b" "hello" 0)
+        (db-set! d (k-of "files") "a b" 2)
+        (db-set! d (k-of "file a") "xyz" 0)
+        (db-set! d (k-of "file b") "hello" 0)
         (let* ((first (asked d "first"))
                (again (asked d "again"))
-               (same (begin (db-set! d "file a" "abc" 0) (asked d "same-length")))
-               (longer (begin (db-set! d "file b" "hello!" 0) (asked d "longer")))
-               (d2 (db-of-text (db-text d "test") "test"))
+               (same (begin (db-set! d (k-of "file a") "abc" 0) (asked d "same-length")))
+               (longer (begin (db-set! d (k-of "file b") "hello!" 0) (asked d "longer")))
+               (d2 (reread d "test"))
                (read-back (asked d2 "read-back"))
-               (edited (begin (db-set! d2 "file a" "abcd" 0) (asked d2 "edited")))
-               (other (string-append "another's-keys=" (i64->string (size (db-keys (db-of-text (db-text d "test") "another")))))))
+               (edited (begin (db-set! d2 (k-of "file a") "abcd" 0) (asked d2 "edited")))
+               (other (string-append "another's-keys=" (i64->string (size (db-keys (reread d "another")))))))
           (string-list-append (list first " " again " " same " " longer " " read-back " " edited " " other)))))))

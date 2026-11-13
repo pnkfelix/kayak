@@ -22,15 +22,18 @@
  - **Modelled** in `models/db.qnt` (Quint), checked by its simulator.
  - **Early cutoff**: a node run again whose value has the fingerprint it
    had keeps its revision of change, so what read it stays current.
- - **Persisted**: the whole database as text (`db-text`, `db-of-text`), so
-   a run begins with the graph and the values of the last.
+ - **Persisted** in two files (C417): the graph, a datum, and the values,
+   a payload read as it is needed (`db-files`, `db-of-files`).
 
- Values are text, the database's alone: a query's value is what its body
- gives as text, its fingerprint FNV-1a of it (`lib/query.kfx`). A client
- reads it back as it wrote it. Keys are text too, a query's name, a space,
- its argument. The bodies are one procedure the client gives every ask,
- `run`, which is given a key and runs that key's query: so the database's
- type names no procedure of itself.
+ Keys are data (C417; the user: \"Making keys structured data is totally
+ up my alley\"): a query's name and its arguments, `(l0-item \"PATH\"
+ \"KEY\")`, each interned as a number the first time it is met, by its
+ text, so that the nodes are found by number and what a node read is a
+ list of numbers. Values are text, the database's alone: a query's value is
+ what its body gives as text, its fingerprint FNV-1a of it
+ (`lib/query.kfx`). The bodies are one procedure the client gives every
+ ask, `run`, which is given a key and runs that key's query: so the
+ database's type names no procedure of itself.
 
  Synchronous, as K0 is: a body runs to its end, its asks nested in it. In
  one region, `@q`, and of one effect, `qe`, every body's (the compiler's
@@ -43,107 +46,240 @@
  one of."
 (define-effect qe (maxeff (read @globals) spin nondet (read @q) (write @q) (alloc @q)))
 
-"A node: whether it is an input; the revision it was verified in; the one
- its value changed in; its value's fingerprint; what it read, in order;
- the least durability of that (an input's, its own); its value."
-(define-datatype node (node bool i64 i64 i64 (listof string acyclic) i64 string))
+"A value as a node keeps it (C417): its text; where it is in the payload
+ read with the database, its offset and length, and whether it is escaped
+ there (past ASCII, or with a `\\`), cut out when it is read;
+ or none, a value the database was not asked to keep, made again when it
+ is read."
+(define-datatype value (v-text string) (v-at i64 i64 bool) (v-none))
 
-"Nodes by key: an AVL tree, as `lib/query.kfx`'s `fmap`."
-(define-datatype nmap (nm-none) (nm-node nmap string node i64 nmap))
+"A node: its key; whether it is an input; the revision it was verified
+ in; the one its value changed in; its value's fingerprint; what it read,
+ in order, by number; the least durability of that (an input's, its own);
+ its value."
+(define-datatype node (node sexp bool i64 i64 i64 (listof i64 acyclic) i64 value))
 
-"A query being run: its key, what it has read so far (the newest first),
- and the least durability of that."
-(define-datatype frame (frame string (listof string acyclic) i64))
+"Nodes by number, and numbers by a key's text: AVL trees, as
+ `lib/query.kfx`'s `fmap`."
+(define-datatype imap (im-none) (im-node imap i64 node i64 imap))
+(define-datatype kmap (km-none) (km-node kmap string i64 i64 kmap))
 
-"The database: the revision; the nodes; the queries being run, the
- innermost first; for each durability, 0 to 3, the revision an input of it
- or more last changed in; how many times a body has run, and whose (for tests
- and measures)."
+"A query being run: its key's number, what it has read so far (the newest
+ first), and the least durability of that."
+(define-datatype frame (frame i64 (listof i64 acyclic) i64))
+
+"The database: the revision; the nodes, by number; the numbers, by key; the
+ next number; the payload its values were read from; the queries being
+ run, the innermost first; for each durability, 0 to 3, the revision an
+ input of it or more last changed in; how many times a body has run, and
+ whose (for tests and measures)."
 (define-type db
   (productof (rev (ref i64 @q))
-             (nodes (ref nmap @q))
+             (nodes (ref imap @q))
+             (ids (ref kmap @q))
+             (next (ref i64 @q))
+             (payload (ref string @q))
              (frames (ref (listof frame acyclic) @q))
              (last (ref (listof i64 acyclic) @q))
              (runs (ref i64 @q))
-             (ran (ref (listof string acyclic) @q))))
+             (ran (ref sexps @q))))
 
 "What runs a query: given the database and a key, its value."
-(define-type runner (subr qe (db string) string))
+(define-type runner (subr qe (db sexp) string))
 
 (define durabilities i64 4)
 
-;;; ------------------------------------------------------------ nodes by key
+;;; ------------------------------------------------------------ keys
 
-(define nm-height (subr kfx (nmap) i64)
-  (lambda (t) (tagcase t (nm-none () 0) (nm-node (l k x h r) h))))
+"A key of a query of one argument, or two: `(NAME \"A\")`, `(NAME \"A\" \"B\")`."
+(define key1 (subr kfx (string string) sexp)
+  (lambda (q a) (lst (list (sym q "" 0) (str a "" 0)) "" 0 0)))
 
-(define nm-make (subr kfx (nmap string node nmap) nmap)
-  (lambda (l k x r)
-    (let ((hl (nm-height l)) (hr (nm-height r)))
-      (nm-node l k x (i64+ 1 (if (i64> hl hr) hl hr)) r))))
+(define key2 (subr kfx (string string string) sexp)
+  (lambda (q a b) (lst (list (sym q "" 0) (str a "" 0) (str b "" 0)) "" 0 0)))
 
-(define nm-balanced (subr kfx (nmap string node nmap) nmap)
-  (lambda (l k x r)
-    (let ((hl (nm-height l)) (hr (nm-height r)))
-      (cond ((i64> hl (i64+ hr 1))
-             (tagcase l
-               (nm-node (ll lk lx lh lr)
-                 (if (i64>= (nm-height ll) (nm-height lr))
-                     (nm-make ll lk lx (nm-make lr k x r))
-                     (tagcase lr
-                       (nm-node (rl rk rx rh rr) (nm-make (nm-make ll lk lx rl) rk rx (nm-make rr k x r)))
-                       (nm-none () (nm-make l k x r)))))
-               (nm-none () (nm-make l k x r))))
-            ((i64> hr (i64+ hl 1))
-             (tagcase r
-               (nm-node (rl rk rx rh rr)
-                 (if (i64>= (nm-height rr) (nm-height rl))
-                     (nm-make (nm-make l k x rl) rk rx rr)
-                     (tagcase rl
-                       (nm-node (ml mk mx mh mr) (nm-make (nm-make l k x ml) mk mx (nm-make mr rk rx rr)))
-                       (nm-none () (nm-make l k x r)))))
-               (nm-none () (nm-make l k x r))))
-            (else (nm-make l k x r))))))
+"A key's query's name, and its argument `i` (from 0) as text."
+(define key-query (subr kfx (sexp) string)
+  (lambda (k) (tagcase k (lst (xs f l p) (if (null? xs) "" (tagcase (car xs) (sym (n f2 p2) n) (else other "")))) (sym (n f p) n) (else other ""))))
 
 (define-rec
-  (nm-put (subr kfx (nmap string node) nmap)
+  (key-arg (subr kfx (sexp i64) string)
+    (lambda (k i)
+      (tagcase k
+        (lst (xs f l p) (key-arg-of (cdr xs) i))
+        (else other ""))))
+  (key-arg-of (subr kfx (sexps i64) string)
+    (lambda (xs i)
+      (cond ((null? xs) "")
+            ((i64= i 0) (tagcase (car xs) (str (s f p) s) (sym (s f p) s) (num (n f p) (i64->string n)) (else other "")))
+            (else (key-arg-of (cdr xs) (i64- i 1)))))))
+
+(define-rec
+  (hex-of (subr kfx (i64 string) string)
+    (lambda (n acc)
+      (let* ((d (i64-remainder n 16))
+             (acc (string-append (list->string (list (i64->char (if (i64< d 10) (i64+ d 48) (i64+ d 87))))) acc)))
+        (if (i64< n 16) acc (hex-of (i64-quotient n 16) acc))))))
+
+"A key as text, the one text of every key alike: how it is interned, and
+ how it is written."
+(define-rec
+  (key-escaped (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (cs acc)
+      (if (null? cs)
+          acc
+          (key-escaped (cdr cs)
+                       (cons (cond ((char=? (car cs) #\") "\\\"")
+                                   ((char=? (car cs) #\\) "\\\\")
+                                   ((char=? (car cs) #\newline) "\\n")
+                                   ((char=? (car cs) #\tab) "\\t")
+                                   ;; Past ASCII, so that the graph is ASCII (C417).
+                                   ((i64> (char->i64 (car cs)) 127) (string-append "\\u{" (string-append (hex-of (char->i64 (car cs)) "") "}")))
+                                   (else (list->string (list (car cs)))))
+                             acc))))))
+
+(define-rec
+  (plain-from? (subr kfx (string i64 i64) bool)
+    (lambda (s i n)
+      "Whether `s` from `i` needs no escape: no `\"`, `\\`, control or past-ASCII
+       character. By index, a string's characters not made a list."
+      (if (i64>= i n)
+          #t
+          (let ((k (char->i64 (string-ref-i64 s i))))
+            (and (i64>= k 32) (i64<= k 126) (not (i64= k 34)) (not (i64= k 92)) (plain-from? s (i64+ i 1) n)))))))
+
+(define str-text (subr kfx (string) string)
+  (lambda (s)
+    (if (plain-from? s 0 (string-length-i64 s))
+        (string-append "\"" (string-append s "\""))
+        (string-append "\"" (string-append (string-list-append (reverse (key-escaped (string-chars s) nil))) "\"")))))
+
+(define-rec
+  (key-text (subr kfx (sexp) string)
+    (lambda (k)
+      (tagcase k
+        (sym (n f p) n)
+        (str (s f p) (str-text s))
+        (num (n f p) (i64->string n))
+        (lst (xs f l p) (string-append "(" (string-append (keys-text xs) ")")))
+        (else other "?"))))
+  (keys-text (subr kfx (sexps) string)
+    (lambda (xs)
+      (cond ((null? xs) "")
+            ((null? (cdr xs)) (key-text (car xs)))
+            (else (string-append (key-text (car xs)) (string-append " " (keys-text (cdr xs)))))))))
+
+;;; ------------------------------------------------------------ the trees
+
+(define im-height (subr kfx (imap) i64)
+  (lambda (t) (tagcase t (im-none () 0) (im-node (l k x h r) h))))
+
+(define im-make (subr kfx (imap i64 node imap) imap)
+  (lambda (l k x r) (im-node l k x (i64+ 1 (let ((a (im-height l)) (b (im-height r))) (if (i64> a b) a b))) r)))
+
+(define im-balanced (subr kfx (imap i64 node imap) imap)
+  (lambda (l k x r)
+    (let ((hl (im-height l)) (hr (im-height r)))
+      (cond ((i64> hl (i64+ hr 1))
+             (tagcase l
+               (im-node (ll lk lx lh lr)
+                 (if (i64>= (im-height ll) (im-height lr))
+                     (im-make ll lk lx (im-make lr k x r))
+                     (tagcase lr (im-node (rl rk rx rh rr) (im-make (im-make ll lk lx rl) rk rx (im-make rr k x r))) (im-none () (im-make l k x r)))))
+               (im-none () (im-make l k x r))))
+            ((i64> hr (i64+ hl 1))
+             (tagcase r
+               (im-node (rl rk rx rh rr)
+                 (if (i64>= (im-height rr) (im-height rl))
+                     (im-make (im-make l k x rl) rk rx rr)
+                     (tagcase rl (im-node (ml mk mx mh mr) (im-make (im-make l k x ml) mk mx (im-make mr rk rx rr))) (im-none () (im-make l k x r)))))
+               (im-none () (im-make l k x r))))
+            (else (im-make l k x r))))))
+
+(define-rec
+  (im-put (subr kfx (imap i64 node) imap)
     (lambda (t n x)
       (tagcase t
-        (nm-none () (nm-node (nm-none) n x 1 (nm-none)))
-        (nm-node (l k y h r)
-          (cond ((string=? n k) (nm-node l k x h r))
-                ((string<? n k) (nm-balanced (nm-put l n x) k y r))
-                (else (nm-balanced l k y (nm-put r n x))))))))
-  (nm-get (subr kfx (nmap string) (listof node acyclic))
+        (im-none () (im-node (im-none) n x 1 (im-none)))
+        (im-node (l k y h r)
+          (cond ((i64= n k) (im-node l k x h r))
+                ((i64< n k) (im-balanced (im-put l n x) k y r))
+                (else (im-balanced l k y (im-put r n x))))))))
+  (im-get (subr kfx (imap i64) (listof node acyclic))
     (lambda (t n)
       "`n`'s node, as a list of one, or none."
       (tagcase t
-        (nm-none () nil)
-        (nm-node (l k x h r) (cond ((string=? n k) (list x)) ((string<? n k) (nm-get l n)) (else (nm-get r n))))))))
+        (im-none () nil)
+        (im-node (l k x h r) (cond ((i64= n k) (list x)) ((i64< n k) (im-get l n)) (else (im-get r n))))))))
 
 (define-rec
-  (nm-list (subr kfx (nmap (listof string acyclic)) (listof string acyclic))
+  (im-list (subr kfx (imap (listof i64 acyclic)) (listof i64 acyclic))
     (lambda (t acc)
-      "The keys, in order, onto `acc`."
+      "The numbers, in order, onto `acc`."
       (tagcase t
-        (nm-none () acc)
-        (nm-node (l k x h r) (nm-list l (cons k (nm-list r acc))))))))
+        (im-none () acc)
+        (im-node (l k x h r) (im-list l (cons k (im-list r acc))))))))
+
+(define km-height (subr kfx (kmap) i64)
+  (lambda (t) (tagcase t (km-none () 0) (km-node (l k x h r) h))))
+
+(define km-make (subr kfx (kmap string i64 kmap) kmap)
+  (lambda (l k x r) (km-node l k x (i64+ 1 (let ((a (km-height l)) (b (km-height r))) (if (i64> a b) a b))) r)))
+
+(define km-balanced (subr kfx (kmap string i64 kmap) kmap)
+  (lambda (l k x r)
+    (let ((hl (km-height l)) (hr (km-height r)))
+      (cond ((i64> hl (i64+ hr 1))
+             (tagcase l
+               (km-node (ll lk lx lh lr)
+                 (if (i64>= (km-height ll) (km-height lr))
+                     (km-make ll lk lx (km-make lr k x r))
+                     (tagcase lr (km-node (rl rk rx rh rr) (km-make (km-make ll lk lx rl) rk rx (km-make rr k x r))) (km-none () (km-make l k x r)))))
+               (km-none () (km-make l k x r))))
+            ((i64> hr (i64+ hl 1))
+             (tagcase r
+               (km-node (rl rk rx rh rr)
+                 (if (i64>= (km-height rr) (km-height rl))
+                     (km-make (km-make l k x rl) rk rx rr)
+                     (tagcase rl (km-node (ml mk mx mh mr) (km-make (km-make l k x ml) mk mx (km-make mr rk rx rr))) (km-none () (km-make l k x r)))))
+               (km-none () (km-make l k x r))))
+            (else (km-make l k x r))))))
+
+(define-rec
+  (km-put (subr kfx (kmap string i64) kmap)
+    (lambda (t n x)
+      (tagcase t
+        (km-none () (km-node (km-none) n x 1 (km-none)))
+        (km-node (l k y h r)
+          (cond ((string=? n k) (km-node l k x h r))
+                ((string<? n k) (km-balanced (km-put l n x) k y r))
+                (else (km-balanced l k y (km-put r n x))))))))
+  (km-get (subr kfx (kmap string) i64)
+    (lambda (t n)
+      "`n`'s number; -1 if it has none."
+      (tagcase t
+        (km-none () -1)
+        (km-node (l k x h r) (cond ((string=? n k) x) ((string<? n k) (km-get l n)) (else (km-get r n))))))))
 
 ;;; ------------------------------------------------------------ the fields
 
-(define node-input? (subr kfx (node) bool) (lambda (n) (tagcase n (node (i v c f ds du x) i))))
-(define node-verified (subr kfx (node) i64) (lambda (n) (tagcase n (node (i v c f ds du x) v))))
-(define node-changed (subr kfx (node) i64) (lambda (n) (tagcase n (node (i v c f ds du x) c))))
-(define node-fp (subr kfx (node) i64) (lambda (n) (tagcase n (node (i v c f ds du x) f))))
-(define node-deps (subr kfx (node) (listof string acyclic)) (lambda (n) (tagcase n (node (i v c f ds du x) ds))))
-(define node-durability (subr kfx (node) i64) (lambda (n) (tagcase n (node (i v c f ds du x) du))))
-(define node-value (subr kfx (node) string) (lambda (n) (tagcase n (node (i v c f ds du x) x))))
+(define node-key (subr kfx (node) sexp) (lambda (n) (tagcase n (node (k i v c f ds du x) k))))
+(define node-input? (subr kfx (node) bool) (lambda (n) (tagcase n (node (k i v c f ds du x) i))))
+(define node-verified (subr kfx (node) i64) (lambda (n) (tagcase n (node (k i v c f ds du x) v))))
+(define node-changed (subr kfx (node) i64) (lambda (n) (tagcase n (node (k i v c f ds du x) c))))
+(define node-fp (subr kfx (node) i64) (lambda (n) (tagcase n (node (k i v c f ds du x) f))))
+(define node-deps (subr kfx (node) (listof i64 acyclic)) (lambda (n) (tagcase n (node (k i v c f ds du x) ds))))
+(define node-durability (subr kfx (node) i64) (lambda (n) (tagcase n (node (k i v c f ds du x) du))))
+(define node-kept (subr kfx (node) value) (lambda (n) (tagcase n (node (k i v c f ds du x) x))))
 
 (define node-verified-at (subr kfx (node i64) node)
-  (lambda (n r) (tagcase n (node (i v c f ds du x) (node i r c f ds du x)))))
+  (lambda (n r) (tagcase n (node (k i v c f ds du x) (node k i r c f ds du x)))))
 
 (define node-reverified (subr kfx (node i64 i64) node)
-  (lambda (n r d) (tagcase n (node (i v c f ds du x) (node i r c f ds d x)))))
+  (lambda (n r d) (tagcase n (node (k i v c f ds du x) (node k i r c f ds d x)))))
+
+(define node-has-value? (subr kfx (node) bool)
+  (lambda (n) (tagcase (node-kept n) (v-none () #f) (else other #t))))
 
 (define-rec
   (db-nth (subr kfx ((listof i64 acyclic) i64) i64)
@@ -160,55 +296,125 @@
     (lambda (n) (if (i64<= n 0) nil (cons 0 (zeros (i64- n 1)))))))
 
 (define-rec
-  (key-in? (subr kfx (string (listof frame acyclic)) bool)
+  (id-in? (subr kfx (i64 (listof frame acyclic)) bool)
     (lambda (k fs)
       (cond ((null? fs) #f)
-            ((tagcase (car fs) (frame (fk ds du) (string=? fk k))) #t)
-            (else (key-in? k (cdr fs)))))))
+            ((tagcase (car fs) (frame (fk ds du) (i64= fk k))) #t)
+            (else (id-in? k (cdr fs)))))))
 
 ;;; ------------------------------------------------------------ the database
 
 (define db-make (subr qe () db)
   (lambda ()
     (product (rev (the (ref i64 @q) (new 1)))
-             (nodes (the (ref nmap @q) (new (nm-none))))
+             (nodes (the (ref imap @q) (new (im-none))))
+             (ids (the (ref kmap @q) (new (km-none))))
+             (next (the (ref i64 @q) (new 0)))
+             (payload (the (ref string @q) (new "")))
              (frames (the (ref (listof frame acyclic) @q) (new nil)))
              (last (the (ref (listof i64 acyclic) @q) (new (zeros durabilities))))
              (runs (the (ref i64 @q) (new 0)))
-             (ran (the (ref (listof string acyclic) @q) (new nil))))))
+             (ran (the (ref sexps @q) (new nil))))))
 
 (define db-revision (subr qe (db) i64) (lambda (d) (get (extract d rev))))
 (define db-runs (subr qe (db) i64) (lambda (d) (get (extract d runs))))
 "The keys whose bodies ran, the newest first: so that a test can say what
  an edit made run again, and what it spared."
-(define db-ran (subr qe (db) (listof string acyclic)) (lambda (d) (get (extract d ran))))
+(define db-ran (subr qe (db) sexps) (lambda (d) (get (extract d ran))))
 
-(define db-node (subr qe (db string) (listof node acyclic))
-  (lambda (d k) (nm-get (get (extract d nodes)) k)))
+"A key's number, made the first time the key is met."
+(define db-id (subr qe (db sexp) i64)
+  (lambda (d k)
+    (let* ((t (key-text k)) (i (km-get (get (extract d ids)) t)))
+      (if (i64>= i 0)
+          i
+          (let ((n (get (extract d next))))
+            (begin
+              (set (extract d ids) (km-put (get (extract d ids)) t n))
+              (set (extract d next) (i64+ n 1))
+              n))))))
 
-(define db-put! (subr qe (db string node) unit)
-  (lambda (d k n) (set (extract d nodes) (nm-put (get (extract d nodes)) k n))))
+(define db-node-at (subr qe (db i64) (listof node acyclic))
+  (lambda (d i) (im-get (get (extract d nodes)) i)))
+
+(define db-node (subr qe (db sexp) (listof node acyclic))
+  (lambda (d k) (db-node-at d (db-id d k))))
+
+(define db-put! (subr qe (db i64 node) unit)
+  (lambda (d i n) (set (extract d nodes) (im-put (get (extract d nodes)) i n))))
+
+(define-rec
+  (ascii-escaped (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (cs acc)
+      "A value's characters as the payload keeps them, the newest first."
+      (if (null? cs)
+          acc
+          (let ((k (char->i64 (car cs))))
+            (ascii-escaped (cdr cs)
+                           (cons (cond ((char=? (car cs) #\\) "\\\\")
+                                       ((i64> k 127) (string-append "\\u{" (string-append (hex-of k "") "}")))
+                                       (else (list->string (list (car cs)))))
+                                 acc)))))))
+
+(define-rec
+  (ascii-only? (subr kfx ((listof char acyclic)) bool)
+    (lambda (cs) (cond ((null? cs) #t) ((i64> (char->i64 (car cs)) 127) #f) (else (ascii-only? (cdr cs)))))))
+
+(define payload-text (subr kfx (string) string)
+  (lambda (x) (if (ascii-only? (string-chars x)) x (string-list-append (reverse (ascii-escaped (string-chars x) nil))))))
+
+(define-rec
+  (ascii-unescaped (subr kfx ((listof char acyclic) (listof char acyclic)) string)
+    (lambda (cs acc)
+      (cond ((null? cs) (list->string (reverse acc)))
+            ((and (char=? (car cs) #\\) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\)) (ascii-unescaped (cdr (cdr cs)) (cons #\\ acc)))
+            ((and (char=? (car cs) #\\) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\u))
+             (ascii-code (cdr (cdr (cdr cs))) 0 acc))
+            (else (ascii-unescaped (cdr cs) (cons (car cs) acc))))))
+  (ascii-code (subr kfx ((listof char acyclic) i64 (listof char acyclic)) string)
+    (lambda (cs n acc)
+      (cond ((null? cs) (list->string (reverse acc)))
+            ((char=? (car cs) #\}) (ascii-unescaped (cdr cs) (cons (i64->char n) acc)))
+            (else (let ((k (char->i64 (car cs))))
+                    (ascii-code (cdr cs) (i64+ (i64* n 16) (if (i64< k 58) (i64- k 48) (i64- k 87))) acc)))))))
+
+"A node's value as text: kept, cut from the payload, or `` if none is
+ kept (a reader makes it again first)."
+(define node-value-in (subr qe (db node) string)
+  (lambda (d n)
+    (tagcase (node-kept n)
+      (v-text (s) s)
+      (v-at (o len esc)
+        (let ((x (substring (get (extract d payload)) (i64->int o) (i64->int (i64+ o len)))))
+          (if esc (ascii-unescaped (string-chars x) nil) x)))
+      (v-none () ""))))
+
+(define node-value (subr qe (db node) string)
+  (lambda (d n) (node-value-in d n)))
 
 "A side store (C415): text kept with the database under a name, no
  query's input and no query's value: no revision for it, nothing depends
  on it. For what is content-addressed, whose use can spare work and change
  no value (the checker's memos, each keyed by a fingerprint of all it was
- made from); kept as the nodes are, under `%side NAME`, and so written and
- read with them."
+ made from); kept as the nodes are, under the key `(%side NAME)`, and so
+ written and read with them."
 (define db-side (subr qe (db string) string)
   (lambda (d k)
-    (let ((n (db-node d (string-append "%side " k))))
-      (if (null? n) "" (node-value (car n))))))
+    (let ((n (db-node d (key1 "%side" k))))
+      (if (null? n) "" (node-value-in d (car n))))))
 
 (define db-side-put! (subr qe (db string string) unit)
-  (lambda (d k text) (db-put! d (string-append "%side " k) (node #t 0 0 0 nil 0 text))))
+  (lambda (d k text)
+    (let ((key (key1 "%side" k)))
+      (db-put! d (db-id d key) (node key #t 0 0 0 nil 0 (v-text text))))))
 
 "Input `k` set to `text`, of durability `du`: a new revision if its value
  is new."
-(define db-set! (subr qe (db string string i64) unit)
+(define db-set! (subr qe (db sexp string i64) unit)
   (lambda (d k text du)
     (let* ((fp ((with queries fnv-string) text (with queries fnv-offset)))
-           (old (db-node d k)))
+           (i (db-id d k))
+           (old (db-node-at d i)))
       (if (and (not (null? old)) (node-input? (car old)) (i64= (node-fp (car old)) fp) (i64= (node-durability (car old)) du))
           #u
           (let ((r (i64+ (get (extract d rev)) 1)))
@@ -220,39 +426,50 @@
               (set (extract d last) (bumped (get (extract d last))
                                             (if (and (not (null? old)) (i64> (node-durability (car old)) du)) (node-durability (car old)) du)
                                             r 0))
-              (db-put! d k (node #t r r fp nil du text))))))))
+              (db-put! d i (node k #t r r fp nil du (v-text text)))))))))
 
-"That the innermost query being run read `k`, of durability `du`."
-(define note-read! (subr qe (db string i64) unit)
-  (lambda (d k du)
+"That the innermost query being run read `i`, of durability `du`."
+(define note-read! (subr qe (db i64 i64) unit)
+  (lambda (d i du)
     (let ((fs (get (extract d frames))))
       (if (null? fs)
           #u
           (tagcase (car fs)
             (frame (fk ds fdu)
-              (set (extract d frames) (cons (frame fk (cons k ds) (if (i64< du fdu) du fdu)) (cdr fs)))))))))
+              (set (extract d frames) (cons (frame fk (cons i ds) (if (i64< du fdu) du fdu)) (cdr fs)))))))))
 
 (define-rec
-  (db-get (subr qe (db runner string) string)
+  (db-get (subr qe (db runner sexp) string)
     (lambda (d run k)
       "`k`'s value, current, and that the query being run read it."
-      (if (key-in? k (get (extract d frames)))
-          (begin (error (string-append "a cycle of queries, through " k)) "")
-          (let ((x (db-current d run k)))
-            (begin
-              (note-read! d k (let ((n (db-node d k))) (if (null? n) 0 (node-durability (car n)))))
-              x)))))
+      (let ((i (db-id d k)))
+        (if (id-in? i (get (extract d frames)))
+            (begin (error (string-append "a cycle of queries, through " (key-text k))) "")
+            (let ((x (db-current d run i k)))
+              (begin
+                (note-read! d i (let ((n (db-node-at d i))) (if (null? n) 0 (node-durability (car n)))))
+                x))))))
 
-  (db-current (subr qe (db runner string) string)
-    (lambda (d run k)
-      "`k`'s value, made current: an input's as set; a query's verified, or
-       run again."
-      (let ((old (db-node d k)) (r (get (extract d rev))))
-        (cond ((null? old) (db-execute d run k old))
-              ((node-input? (car old)) (node-value (car old)))
-              ((i64= (node-verified (car old)) r) (node-value (car old)))
+  (db-current (subr qe (db runner i64 sexp) string)
+    (lambda (d run i k)
+      "`k`'s value, made current (`db-made-current`); one of a query whose
+       value was not kept (C417) made again: its fingerprint the one it had,
+       nothing that read it runs."
+      (begin
+        (db-made-current d run i k)
+        (let ((n (db-node-at d i)))
+          (if (node-has-value? (car n)) (node-value-in d (car n)) (db-execute d run i k n))))))
+
+  (db-made-current (subr qe (db runner i64 sexp) unit)
+    (lambda (d run i k)
+      "`k` made current, its value not read: an input as set; a query
+       verified, or run again."
+      (let ((old (db-node-at d i)) (r (get (extract d rev))))
+        (cond ((null? old) (begin (db-execute d run i k old) #u))
+              ((node-input? (car old)) #u)
+              ((i64= (node-verified (car old)) r) #u)
               ((i64<= (db-nth (get (extract d last)) (node-durability (car old))) (node-verified (car old)))
-               (begin (db-put! d k (node-verified-at (car old) r)) (node-value (car old))))
+               (db-put! d i (node-verified-at (car old) r)))
               (else
                ;; Its reads, each made current in order: if none changed after
                ;; it was verified, it is current, its least durability theirs
@@ -260,28 +477,33 @@
                ;; lowered it: found by `models/db.qnt`, C400).
                (let ((du (db-reads-durability d run (node-deps (car old)) (node-verified (car old)) (i64- durabilities 1))))
                  (if (i64>= du 0)
-                     (begin (db-put! d k (node-reverified (car old) r du)) (node-value (car old)))
-                     (db-execute d run k old))))))))
+                     (db-put! d i (node-reverified (car old) r du))
+                     (begin (db-execute d run i k old) #u))))))))
 
-  (db-reads-durability (subr qe (db runner (listof string acyclic) i64 i64) i64)
-    (lambda (d run ks since du)
-      "If none of `ks`, each made current in turn, changed after `since`,
+  (db-reads-durability (subr qe (db runner (listof i64 acyclic) i64 i64) i64)
+    (lambda (d run is since du)
+      "If none of `is`, each made current in turn, changed after `since`,
        their least durability, and `du`'s; else -1, at the first that did."
-      (if (null? ks)
+      (if (null? is)
           du
-          (begin
-            (db-current d run (car ks))
-            (let ((n (db-node d (car ks))))
-              (if (or (null? n) (i64> (node-changed (car n)) since))
-                  -1
-                  (db-reads-durability d run (cdr ks) since (if (i64< (node-durability (car n)) du) (node-durability (car n)) du))))))))
+          (let ((n0 (db-node-at d (car is))))
+            (if (null? n0)
+                -1
+                (begin
+                  ;; Made current, its value not read (C417): what a node read
+                  ;; is verified by revisions and fingerprints alone.
+                  (db-made-current d run (car is) (node-key (car n0)))
+                  (let ((n (db-node-at d (car is))))
+                    (if (or (null? n) (i64> (node-changed (car n)) since))
+                        -1
+                        (db-reads-durability d run (cdr is) since (if (i64< (node-durability (car n)) du) (node-durability (car n)) du))))))))))
 
-  (db-execute (subr qe (db runner string (listof node acyclic)) string)
-    (lambda (d run k old)
+  (db-execute (subr qe (db runner i64 sexp (listof node acyclic)) string)
+    (lambda (d run i k old)
       "`k`'s query run, its reads recorded; its value's fingerprint the
        same as `old`'s, its revision of change kept (early cutoff)."
       (begin
-        (set (extract d frames) (cons (frame k nil (i64- durabilities 1)) (get (extract d frames))))
+        (set (extract d frames) (cons (frame i nil (i64- durabilities 1)) (get (extract d frames))))
         (let* ((x (run d k))
                (fr (car (get (extract d frames))))
                (r (get (extract d rev)))
@@ -292,135 +514,403 @@
             (set (extract d ran) (cons k (get (extract d ran))))
             (tagcase fr
               (frame (fk ds du)
-                (db-put! d k (node #f r (if (and (not (null? old)) (i64= (node-fp (car old)) fp)) (node-changed (car old)) r)
-                                   fp (reverse ds) du x))))
+                (db-put! d i (node k #f r (if (and (not (null? old)) (i64= (node-fp (car old)) fp)) (node-changed (car old)) r)
+                                   fp (reverse ds) du (v-text x)))))
             x))))))
 
-;;; ------------------------------------------------------------ as text
+"`k` made current, and its value's fingerprint, its value neither read nor
+ made (C417): so that a client holding a value already (a file it wrote)
+ may know it is as it was."
+(define db-fingerprint (subr qe (db runner sexp) i64)
+  (lambda (d run k)
+    (let ((i (db-id d k)))
+      (begin (db-made-current d run i k) (node-fp (car (db-node-at d i)))))))
 
-"The database as text, and back (`db-text`, `db-of-text`): a first line
- saying the format and whose it is, then the revision, the durabilities'
- revisions, and each node, every field a decimal or a text written as its
- length, a colon and itself, separated by spaces, a node a line."
+;;; ------------------------------------------------------------ as files
 
-(define db-format string "kayak db 1")
+"The database as two files, and back (`db-files`, `db-of-files`; C417):
 
-(define field (subr kfx (string) string)
-  (lambda (s) (string-append (i64->string (string-length-i64 s)) (string-append ":" s))))
+ - the graph, three datums: `(kayak-db 2 WHOSE REVISION (LAST ...) LENGTH)`,
+   whose it is (a compiler's identity), the durabilities' revisions, and
+   the payload's length; then `(keys #0=KEY ...)`, each key labelled by
+   its number where it is written (datum labels, `kfx/read.kfx`'s
+   `read-data`), and each text in the keys written more than once, a path,
+   labelled where first written; then `(nodes (#N# INPUT VERIFIED CHANGED
+   FINGERPRINT DURABILITY (#M# ...) VALUE) ...)`, each node's key and what
+   it read by their labels, its value `(at OFFSET LENGTH)` in the payload,
+   or `none`;
+ - the payload: the values kept, one after another, cut out when read;
+   ASCII alone, so that a value is cut out of it at once, wherever it is
+   (a `substring` of ASCII text is one; of any other, a walk from its
+   start): a value past ASCII written with each `\` `\\` and each
+   character past ASCII `\u{HEX}`, and marked so (`atx`); any other as it
+   is.
+
+ A key whose value `keep` says is not to be kept (a whole program's output,
+ made again from its parts, which are kept) is written `none`: its node,
+ fingerprint and reads are kept, so that it is verified as any is, and
+ made again only when its value is read."
+(define-datatype db-files-made (db-files-made string string))
+
+(define db-format string "kayak-db 2")
+
+(define-datatype keyed-out (keyed-out (listof string acyclic) kmap i64))
 
 (define-rec
-  (fields-of (subr kfx ((listof string acyclic)) (listof string acyclic))
-    (lambda (ss) (if (null? ss) nil (cons " " (cons (field (car ss)) (fields-of (cdr ss))))))))
+  (key-written (subr kfx (sexp kmap i64 (listof string acyclic)) keyed-out)
+    (lambda (k seen n acc)
+      "Key `k` as text onto `acc` (newest first), each text in it seen
+       before by its label, each seen first labelled, from `n`."
+      (tagcase k
+        (str (s f p)
+          (let ((j (km-get seen s)))
+            (if (i64>= j 0)
+                (keyed-out (cons (string-append "#" (string-append (i64->string j) "#")) acc) seen n)
+                (keyed-out (cons (str-text s) (cons (string-append "#" (string-append (i64->string n) "=")) acc)) (km-put seen s n) (i64+ n 1)))))
+        (lst (xs f l p)
+          (tagcase (keys-written xs seen n (cons "(" acc))
+            (keyed-out (acc2 seen2 n2) (keyed-out (cons ")" acc2) seen2 n2))))
+        (else other (keyed-out (cons (key-text k) acc) seen n)))))
+  (keys-written (subr kfx (sexps kmap i64 (listof string acyclic)) keyed-out)
+    (lambda (xs seen n acc)
+      (if (null? xs)
+          (keyed-out acc seen n)
+          (tagcase (key-written (car xs) seen n acc)
+            (keyed-out (acc2 seen2 n2)
+              (keys-written (cdr xs) seen2 n2 (if (null? (cdr xs)) acc2 (cons " " acc2)))))))))
+
+(define-rec
+  (labels-text (subr kfx ((listof i64 acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (is acc)
+      (if (null? is)
+          acc
+          (labels-text (cdr is) (cons (string-append "#" (string-append (i64->string (car is)) "#")) (if (null? acc) acc (cons " " acc))))))))
+
+"A record of the graph (C417): `(LEN ...)`, `LEN` the length of what follows
+ it and its space, to the record's `)`, so that a reader may step over it
+ unread: `body` is that, its `)` included."
+(define length-first (subr kfx (string) string)
+  (lambda (body) (string-append "\n (" (string-append (i64->string (string-length-i64 body)) (string-append " " body)))))
+
+(define-datatype made-files (made-files (listof string acyclic) (listof string acyclic) (listof string acyclic) kmap i64 i64))
+
+(define-rec
+  (nodes-files (subr qe (db (listof i64 acyclic) (subr kfx (sexp) bool) made-files) made-files)
+    (lambda (d is keep m)
+      "Each node of `is`, its key into the keys, its line into the nodes, its
+       value onto the payload."
+      (if (null? is)
+          m
+          (tagcase m
+            (made-files (keys nodes payload seen labels at)
+              (let ((n (car (db-node-at d (car is)))))
+                (tagcase (key-written (node-key n) seen labels (list (string-append "#" (string-append (i64->string (car is)) "="))))
+                  (keyed-out (key-parts seen2 labels2)
+                    (let* ((kept (or (node-input? n) (keep (node-key n))))
+                           ;; A value read with the database, as it is there, not
+                           ;; looked at; one made since, escaped if it must be.
+                           (raw (tagcase (node-kept n)
+                                  (v-at (o l esc) (substring (get (extract d payload)) (i64->int o) (i64->int (i64+ o l))))
+                                  (v-text (t) (if kept (payload-text t) ""))
+                                  (v-none () "")))
+                           (esc (tagcase (node-kept n)
+                                  (v-at (o l e) e)
+                                  (v-text (t) (and kept (not (ascii-only? (string-chars t)))))
+                                  (v-none () #f)))
+                           (x (if kept raw ""))
+                           (len (string-length-i64 x)))
+                      (nodes-files d (cdr is) keep
+                        (made-files (cons (length-first (string-append (string-list-append (reverse key-parts)) ")")) keys)
+                                    (cons (length-first (string-list-append
+                                            (list "#" (i64->string (car is)) "# " (if (node-input? n) "1 " "0 ")
+                                                  (i64->string (node-verified n)) " " (i64->string (node-changed n)) " "
+                                                  (i64->string (node-fp n)) " " (i64->string (node-durability n)) " ("
+                                                  (string-list-append (reverse (labels-text (node-deps n) nil))) ") "
+                                                  (if (and kept (node-has-value? n)) (string-list-append (list (if esc "(atx " "(at ") (i64->string at) " " (i64->string len) ")")) "none")
+                                                  ")")))
+                                          nodes)
+                                    (if kept (cons x payload) payload)
+                                    seen2 labels2 (if kept (i64+ at len) at)))))))))))))
 
 (define-rec
   (numbers-text (subr kfx ((listof i64 acyclic)) (listof string acyclic))
     (lambda (xs) (if (null? xs) nil (cons " " (cons (i64->string (car xs)) (numbers-text (cdr xs))))))))
 
-(define node-line (subr kfx (string node) string)
-  (lambda (k n)
-    (tagcase n
-      (node (i v c f ds du x)
-        (string-list-append
-          (append (list (field k) (if i " 1" " 0") " " (i64->string v) " " (i64->string c) " " (i64->string f)
-                        " " (i64->string du) " " (i64->string (size ds)))
-                  (append (fields-of ds) (list " " (field x) "\n"))))))))
+"The database as its two files, `whose` it is; `keep` says of a query's
+ key whether its value is kept."
+(define db-files (subr qe (db string (subr kfx (sexp) bool)) db-files-made)
+  (lambda (d whose keep)
+    (let ((is (im-list (get (extract d nodes)) nil)))
+      (tagcase (nodes-files d is keep (made-files nil nil nil (km-none) (get (extract d next)) 0))
+        (made-files (keys nodes payload seen labels at)
+          (db-files-made
+            (string-list-append
+              (append (list "(" db-format " " (str-text whose) " " (i64->string (get (extract d rev))) " (")
+                (append (cdr (numbers-text (get (extract d last))))
+                  (append (list ") " (i64->string at) ")\n(keys")
+                    (append (reverse keys)
+                      (append (list ")\n(nodes")
+                        (append (reverse nodes) (list ")\n"))))))))
+            (string-list-append (reverse payload))))))))
+
+"Reading them back: the graph scanned by offset (C417), never made a list
+ of its characters, nor a datum: it is ASCII alone, so an offset is a
+ character's. A key's text, by which it is interned, is made of its parts as
+ written, which the writer wrote as `key-text` writes them."
+(define-datatype scanned (scanned i64 i64))
+(define-datatype atom (atom sexp string))
+(define-datatype amap (am-none) (am-node amap i64 atom i64 amap))
+(define-datatype part (part sexp string amap i64))
+(define-datatype parts (parts sexps (listof string acyclic) amap i64))
+
+(define am-height (subr kfx (amap) i64) (lambda (t) (tagcase t (am-none () 0) (am-node (l k x h r) h))))
+(define am-make (subr kfx (amap i64 atom amap) amap)
+  (lambda (l k x r) (am-node l k x (i64+ 1 (let ((a (am-height l)) (b (am-height r))) (if (i64> a b) a b))) r)))
+(define am-balanced (subr kfx (amap i64 atom amap) amap)
+  (lambda (l k x r)
+    (let ((hl (am-height l)) (hr (am-height r)))
+      (cond ((i64> hl (i64+ hr 1))
+             (tagcase l
+               (am-node (ll lk lx lh lr)
+                 (if (i64>= (am-height ll) (am-height lr))
+                     (am-make ll lk lx (am-make lr k x r))
+                     (tagcase lr (am-node (rl rk rx rh rr) (am-make (am-make ll lk lx rl) rk rx (am-make rr k x r))) (am-none () (am-make l k x r)))))
+               (am-none () (am-make l k x r))))
+            ((i64> hr (i64+ hl 1))
+             (tagcase r
+               (am-node (rl rk rx rh rr)
+                 (if (i64>= (am-height rr) (am-height rl))
+                     (am-make (am-make l k x rl) rk rx rr)
+                     (tagcase rl (am-node (ml mk mx mh mr) (am-make (am-make l k x ml) mk mx (am-make mr rk rx rr))) (am-none () (am-make l k x r)))))
+               (am-none () (am-make l k x r))))
+            (else (am-make l k x r))))))
+(define-rec
+  (am-put (subr kfx (amap i64 atom) amap)
+    (lambda (t n x)
+      (tagcase t
+        (am-none () (am-node (am-none) n x 1 (am-none)))
+        (am-node (l k y h r)
+          (cond ((i64= n k) (am-node l k x h r))
+                ((i64< n k) (am-balanced (am-put l n x) k y r))
+                (else (am-balanced l k y (am-put r n x))))))))
+  (am-get (subr kfx (amap i64) (listof atom acyclic))
+    (lambda (t n)
+      (tagcase t
+        (am-none () nil)
+        (am-node (l k x h r) (cond ((i64= n k) (list x)) ((i64< n k) (am-get l n)) (else (am-get r n))))))))
+
+(define sc-char (subr kfx (string i64 i64) i64)
+  (lambda (s i n) (if (i64< i n) (char->i64 (string-ref-i64 s i)) -1)))
 
 (define-rec
-  (nodes-lines (subr kfx (nmap (listof string acyclic)) (listof string acyclic))
+  (sc-ws (subr kfx (string i64 i64) i64)
+    (lambda (s i n) (let ((c (sc-char s i n))) (if (or (i64= c 32) (i64= c 10)) (sc-ws s (i64+ i 1) n) i)))))
+
+(define-rec
+  (sc-close (subr kfx (string i64 i64) i64)
+    (lambda (s i n) (let ((c (sc-char s i n))) (if (or (i64< c 0) (i64= c 41)) i (sc-close s (i64+ i 1) n))))))
+
+(define-rec
+  (sc-digits (subr kfx (string i64 i64 i64) scanned)
+    (lambda (s i n acc)
+      (let ((c (sc-char s i n)))
+        (if (and (i64>= c 48) (i64<= c 57)) (sc-digits s (i64+ i 1) n (i64+ (i64* acc 10) (i64- c 48))) (scanned acc i))))))
+
+"The number at `i`, after any spaces; and where it ends."
+(define sc-int (subr kfx (string i64 i64) scanned)
+  (lambda (s i n)
+    (let ((i (sc-ws s i n)))
+      (if (i64= (sc-char s i n) 45)
+          (tagcase (sc-digits s (i64+ i 1) n 0) (scanned (v e) (scanned (i64- 0 v) e)))
+          (sc-digits s i n 0)))))
+
+(define-rec
+  (sc-str-end (subr kfx (string i64 i64 i64) scanned)
+    (lambda (s i n esc)
+      "From inside a string's quotes: whether a `\\` is in it (1), and where
+       its closing quote is."
+      (let ((c (sc-char s i n)))
+        (cond ((i64< c 0) (scanned esc i))
+              ((i64= c 92) (sc-str-end s (i64+ i 2) n 1))
+              ((i64= c 34) (scanned esc i))
+              (else (sc-str-end s (i64+ i 1) n esc)))))))
+
+(define-rec
+  (str-unescaped (subr kfx ((listof char acyclic) (listof char acyclic)) string)
+    (lambda (cs acc)
+      (cond ((null? cs) (list->string (reverse acc)))
+            ((and (char=? (car cs) #\\) (not (null? (cdr cs))))
+             (let ((e (car (cdr cs))))
+               (cond ((char=? e #\n) (str-unescaped (cdr (cdr cs)) (cons #\newline acc)))
+                     ((char=? e #\t) (str-unescaped (cdr (cdr cs)) (cons #\tab acc)))
+                     ((char=? e #\u) (str-code (cdr (cdr (cdr cs))) 0 acc))
+                     (else (str-unescaped (cdr (cdr cs)) (cons e acc))))))
+            (else (str-unescaped (cdr cs) (cons (car cs) acc))))))
+  (str-code (subr kfx ((listof char acyclic) i64 (listof char acyclic)) string)
+    (lambda (cs n acc)
+      (cond ((null? cs) (list->string (reverse acc)))
+            ((char=? (car cs) #\}) (str-unescaped (cdr cs) (cons (i64->char n) acc)))
+            (else (let ((k (char->i64 (car cs))))
+                    (str-code (cdr cs) (i64+ (i64* n 16) (if (i64< k 58) (i64- k 48) (i64- k 87))) acc)))))))
+
+"A string at `i` (its opening quote): itself, its text as written, and where
+ it ends."
+(define sc-str (subr kfx (string i64 i64 amap) part)
+  (lambda (s i n atoms)
+    (tagcase (sc-str-end s (i64+ i 1) n 0)
+      (scanned (esc e)
+        (let ((inner (substring s (i64->int (i64+ i 1)) (i64->int e))))
+          (part (str (if (i64= esc 1) (str-unescaped (string-chars inner) nil) inner) "" 0)
+                (substring s (i64->int i) (i64->int (i64+ e 1)))
+                atoms (i64+ e 1)))))))
+
+(define-rec
+  (sc-name-end (subr kfx (string i64 i64) i64)
+    (lambda (s i n) (let ((c (sc-char s i n))) (if (or (i64< c 0) (i64= c 32) (i64= c 10) (i64= c 40) (i64= c 41)) i (sc-name-end s (i64+ i 1) n))))))
+
+(define-rec
+  (sc-part (subr kfx (string i64 i64 amap) part)
+    (lambda (s i n atoms)
+      "One part of a key: a string, labelled where first written and named by
+       its label after; a number; or a name."
+      (let* ((i (sc-ws s i n)) (c (sc-char s i n)))
+        (cond ((i64= c 35)
+               (tagcase (sc-digits s (i64+ i 1) n 0)
+                 (scanned (k e)
+                   (if (i64= (sc-char s e n) 61)
+                       (tagcase (sc-part s (i64+ e 1) n atoms)
+                         (part (x t atoms2 e2) (part x t (am-put atoms2 k (atom x t)) e2)))
+                       (let ((found (am-get atoms k)))
+                         (if (null? found)
+                             (begin (error "kayak-db: a label no part made") (part (sym "" "" 0) "" atoms (i64+ e 1)))
+                             (tagcase (car found) (atom (x t) (part x t atoms (i64+ e 1))))))))))
+              ((i64= c 34) (sc-str s i n atoms))
+              ((or (i64= c 45) (and (i64>= c 48) (i64<= c 57)))
+               (tagcase (sc-int s i n) (scanned (v e) (part (num v "" 0) (substring s (i64->int i) (i64->int e)) atoms e))))
+              (else
+               (let ((e (sc-name-end s i n)))
+                 (let ((t (substring s (i64->int i) (i64->int e)))) (part (sym t "" 0) t atoms e))))))))
+  (sc-parts (subr kfx (string i64 i64 amap sexps (listof string acyclic)) parts)
+    (lambda (s i n atoms xs ts)
+      "A key's parts to its `)`, the newest first."
+      (let ((i (sc-ws s i n)))
+        (if (i64= (sc-char s i n) 41)
+            (parts xs ts atoms (i64+ i 1))
+            (tagcase (sc-part s i n atoms)
+              (part (x t atoms2 e) (sc-parts s e n atoms2 (cons x xs) (cons t ts)))))))))
+
+(define-rec
+  (texts-spaced (subr kfx ((listof string acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (ts acc) (if (null? ts) acc (texts-spaced (cdr ts) (cons (car ts) (if (null? acc) acc (cons " " acc))))))))
+
+(define-rec
+  (keys-scanned! (subr qe (db string i64 i64 amap i64) scanned)
+    (lambda (d s i n atoms top)
+      "Each record `(LEN #N=(KEY ...))` of the keys, to its `)`; the greatest
+       number, and where the keys end."
+      (let ((i (sc-ws s i n)))
+        (if (not (i64= (sc-char s i n) 40))
+            (scanned top (i64+ i 1))
+            (tagcase (sc-int s (i64+ i 1) n)
+              (scanned (len b)
+                (let* ((b (i64+ b 1)) (after (i64+ b len)))
+                  (tagcase (sc-digits s (i64+ b 1) n 0)
+                    (scanned (k e)
+                      (tagcase (sc-parts s (i64+ e 2) n atoms nil nil)
+                        (parts (xs ts atoms2 e2)
+                          (let ((key (lst (reverse xs) "" 0 0))
+                                (text (string-append "(" (string-append (string-list-append (texts-spaced ts nil)) ")"))))
+                            (begin
+                              (set (extract d ids) (km-put (get (extract d ids)) text k))
+                              (set (extract d nodes) (im-put (get (extract d nodes)) k (node key #f 0 0 0 nil 0 (v-none))))
+                              (keys-scanned! d s after n atoms2 (if (i64> k top) k top))))))))))))))))
+
+(define-rec
+  (labels-scanned (subr kfx (string i64 i64 (listof i64 acyclic)) (listof i64 acyclic))
+    (lambda (s i n acc)
+      "The `#N#`s of a node's reads, to their `)`, in order."
+      (let ((i (sc-ws s i n)))
+        (if (not (i64= (sc-char s i n) 35))
+            (reverse acc)
+            (tagcase (sc-digits s (i64+ i 1) n 0)
+              (scanned (k e) (labels-scanned s (i64+ e 1) n (cons k acc)))))))))
+
+(define-rec
+  (sc-ints (subr kfx (string i64 i64 i64 (listof i64 acyclic)) (listof i64 acyclic))
+    (lambda (s i n count acc)
+      (if (i64<= count 0)
+          (reverse (cons i acc))
+          (tagcase (sc-int s i n) (scanned (v e) (sc-ints s e n (i64- count 1) (cons v acc))))))))
+
+(define-rec
+  (nodes-scanned! (subr qe (db string i64 i64) unit)
+    (lambda (d s i n)
+      "Each record `(LEN #N# INPUT VERIFIED CHANGED FINGERPRINT DURABILITY
+       (#M# ...) VALUE)` of the nodes, to their `)`."
+      (let ((i (sc-ws s i n)))
+        (if (not (i64= (sc-char s i n) 40))
+            #u
+            (tagcase (sc-int s (i64+ i 1) n)
+              (scanned (len b)
+                (let ((after (i64+ (i64+ b 1) len)))
+                  (tagcase (sc-digits s (i64+ b 2) n 0)
+                    (scanned (k e)
+                      (let* ((ns (sc-ints s (i64+ e 1) n 5 nil))
+                             (p (sc-ws s (db-nth ns 5) n))
+                             (deps (labels-scanned s (i64+ p 1) n nil))
+                             (v (sc-ws s (i64+ (sc-close s (i64+ p 1) n) 1) n))
+                             (val (if (i64= (sc-char s v n) 40)
+                                      (let* ((x (i64= (sc-char s (i64+ v 3) n) 120))
+                                             (o (sc-int s (i64+ v (if x 4 3)) n)))
+                                        (tagcase o
+                                          (scanned (off e2) (tagcase (sc-int s e2 n) (scanned (l e3) (v-at off l x))))))
+                                      (v-none)))
+                             (key (node-key (car (db-node-at d k)))))
+                        (begin
+                          (db-put! d k (node key (i64= (db-nth ns 0) 1) (db-nth ns 1) (db-nth ns 2) (db-nth ns 3) deps (db-nth ns 4) val))
+                          (nodes-scanned! d s after n)))))))))))))
+
+(define db-of-files (subr qe (string string string) db)
+  (lambda (graph payload whose)
+    "The database the two files write, if the graph says it is `whose` and
+     the payload is as long as it says; else an empty one, as files of
+     another format, or another's, or cut short, have none for this."
+    (let* ((d (db-make))
+           (h (string-append "(" (string-append db-format " ")))
+           (n (string-length-i64 graph))
+           (hn (string-length-i64 h)))
+      (if (not (and (i64>= n hn) (string=? (substring graph 0 (i64->int hn)) h) (i64= (sc-char graph hn n) 34)))
+          d
+          (tagcase (sc-str graph hn n (am-none))
+            (part (w wt atoms e)
+              (let* ((ns (sc-ints graph e n 1 nil))
+                     (lasts (sc-ints graph (i64+ (sc-ws graph (db-nth ns 1) n) 1) n durabilities nil))
+                     (plen (sc-int graph (i64+ (sc-close graph (db-nth lasts durabilities) n) 1) n)))
+                (tagcase plen
+                  (scanned (pl e2)
+                    (if (not (and (tagcase w (str (t f p) (string=? t whose)) (else other #f)) (i64= pl (string-length-i64 payload))))
+                        d
+                        (let* ((k0 (sc-ws graph (i64+ (sc-close graph e2 n) 1) n))
+                               ;; `(keys`, then its records.
+                               (top (keys-scanned! d graph (i64+ k0 5) n (am-none) -1)))
+                          (tagcase top
+                            (scanned (t e3)
+                              (begin
+                                (set (extract d rev) (db-nth ns 0))
+                                (set (extract d last) (reverse (cdr (reverse lasts))))
+                                (set (extract d payload) payload)
+                                (set (extract d next) (i64+ t 1))
+                                ;; `(nodes`, then its records.
+                                (nodes-scanned! d graph (i64+ (sc-ws graph e3 n) 6) n)
+                                d))))))))))))))
+
+"The keys the database has nodes of, in order of number."
+(define-rec
+  (im-keys (subr kfx (imap sexps) sexps)
     (lambda (t acc)
       (tagcase t
-        (nm-none () acc)
-        (nm-node (l k x h r) (nodes-lines l (cons (node-line k x) (nodes-lines r acc))))))))
+        (im-none () acc)
+        (im-node (l k x h r) (im-keys l (cons (node-key x) (im-keys r acc))))))))
 
-(define db-text (subr qe (db string) string)
-  (lambda (d whose)
-    (string-list-append
-      (cons (string-append db-format (string-append " " (string-append whose "\n")))
-            (cons (i64->string (get (extract d rev)))
-                  (append (numbers-text (get (extract d last)))
-                          (cons "\n" (nodes-lines (get (extract d nodes)) nil))))))))
-
-"Reading it: a cursor over the text, `at`, moved past what is read."
-(define-datatype read-num (read-num i64 i64))
-(define-datatype read-txt (read-txt string i64))
-(define-datatype read-texts (read-texts (listof string acyclic) i64))
-(define-datatype read-nums (read-nums (listof i64 acyclic) i64))
-
-(define-rec
-  (number-at (subr kfx (string i64 i64 i64 bool) read-num)
-    (lambda (s i n acc neg)
-      "The decimal number at `i`, after any spaces; and where it ends."
-      (cond ((i64>= i n) (read-num 0 i))
-            ((char=? (string-ref-i64 s i) #\space) (number-at s (i64+ i 1) n acc neg))
-            ((char=? (string-ref-i64 s i) #\-) (db-digits-at s (i64+ i 1) n 0 #t))
-            (else (db-digits-at s i n 0 #f)))))
-  (db-digits-at (subr kfx (string i64 i64 i64 bool) read-num)
-    (lambda (s i n acc neg)
-      (if (or (i64>= i n) (let ((c (string-ref-i64 s i))) (or (char<? c #\0) (char>? c #\9))))
-          (read-num (if neg (i64- 0 acc) acc) i)
-          (db-digits-at s (i64+ i 1) n (i64+ (i64* acc 10) (i64- (char->i64 (string-ref-i64 s i)) 48)) neg)))))
-
-(define text-at (subr kfx (string i64 i64) read-txt)
-  (lambda (s i n)
-    "The field at `i`, its length, a colon and itself; and where it ends."
-    (tagcase (number-at s i n 0 #f)
-      (read-num (len j)
-        (let ((from (i64+ j 1)))
-          (read-txt (substring s (i64->int from) (i64->int (i64+ from len))) (i64+ from len)))))))
-
-(define-rec
-  (texts-at (subr kfx (string i64 i64 i64 (listof string acyclic)) read-texts)
-    (lambda (s i n count acc)
-      (if (i64<= count 0)
-          (read-texts (reverse acc) i)
-          (tagcase (text-at s i n) (read-txt (t j) (texts-at s j n (i64- count 1) (cons t acc))))))))
-
-(define-rec
-  (numbers-at (subr kfx (string i64 i64 i64 (listof i64 acyclic)) read-nums)
-    (lambda (s i n count acc)
-      (if (i64<= count 0)
-          (read-nums (reverse acc) i)
-          (tagcase (number-at s i n 0 #f) (read-num (x j) (numbers-at s j n (i64- count 1) (cons x acc))))))))
-
-(define-rec
-  (nodes-at (subr kfx (string i64 i64 nmap) nmap)
-    (lambda (s i n t)
-      "The nodes from `i`, a line each, into `t`; a line cut short ends them."
-      (if (i64>= (i64+ i 1) n)
-          t
-          (tagcase (text-at s i n)
-            (read-txt (k j)
-              (tagcase (numbers-at s j n 6 nil)
-                (read-nums (ns j2)
-                  (if (not (i64= (size ns) 6))
-                      t
-                      (tagcase (texts-at s j2 n (db-nth ns 5) nil)
-                        (read-texts (ds j3)
-                          (tagcase (text-at s j3 n)
-                            (read-txt (x j4)
-                              (if (i64> j4 n)
-                                  t
-                                  (nodes-at s (i64+ j4 1) n
-                                            (nm-put t k (node (i64= (db-nth ns 0) 1) (db-nth ns 1) (db-nth ns 2) (db-nth ns 3) ds (db-nth ns 4) x)))))))))))))))))
-
-(define db-of-text (subr qe (string string) db)
-  (lambda (s whose)
-    "The database `s` writes, if its first line says it is `whose`; else an
-     empty one, as text of another format, or another's, has none for this."
-    (let* ((head (string-append db-format (string-append " " (string-append whose "\n"))))
-           (n (string-length-i64 s))
-           (h (string-length-i64 head))
-           (d (db-make)))
-      (if (not (and (i64>= n h) (string=? (substring s 0 (i64->int h)) head)))
-          d
-          (tagcase (numbers-at s h n (i64+ durabilities 1) nil)
-            (read-nums (ns j)
-              (begin
-                (set (extract d rev) (car ns))
-                (set (extract d last) (cdr ns))
-                (set (extract d nodes) (nodes-at s (i64+ j 1) n (nm-none)))
-                d)))))))
-
-"The keys the database has, in order."
-(define db-keys (subr qe (db) (listof string acyclic))
-  (lambda (d) (nm-list (get (extract d nodes)) nil)))
+(define db-keys (subr qe (db) sexps)
+  (lambda (d) (im-keys (get (extract d nodes)) nil)))
