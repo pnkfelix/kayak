@@ -2053,7 +2053,7 @@
               (let ((maskable (filter (lambda ((a string)) (maskable-atom? (resolve-atom s a))) es)))
                 (if (or (null? maskable) (not (masking-form? e)))
                     r
-                    (let* ((seen (concat (map (lambda ((n string))
+                    (let* ((seen (onto (concat (map (lambda ((n string))
                                                 (let ((found (scope-bind n v)))
                                                   (if (null? found) nil
                                                       (tagcase (car found)
@@ -2062,7 +2062,23 @@
                                                               ;; A module's items' types not here: unseen (C182).
                                                               (the strings (list "%opaque"))
                                                               (tagcase sc (scheme (tv u) (regions-in v s u nil)))))))))
-                                              (distinct (names-in e)))))
+                                              (distinct (names-in e))))
+                                 ;; What `(with #%toplevel n)` and `(with #%fx n)` name:
+                                 ;; the top level's or the standard binding, whatever
+                                 ;; binds `n` here (Fixpt's f0eb630d).
+                                 (concat (map (lambda ((r string))
+                                                (let* ((fx (has-prefix? r "fx:"))
+                                                       (n (if fx (after-prefix r "fx:") (after-prefix r "top:")))
+                                                       (found (filter (lambda ((b bind))
+                                                                        (tagcase b (bind (k sc w) (and (string=? k n) (or (not fx) (string=? w "prim"))))))
+                                                                      (if fx (cv-binds v) (toplevel-binds v)))))
+                                                  (if (null? found) nil
+                                                      (tagcase (car found)
+                                                        (bind (m sc w)
+                                                          (if (string=? w "module")
+                                                              (the strings (list "%opaque"))
+                                                              (tagcase sc (scheme (tv u) (regions-in v s u nil)))))))))
+                                              (distinct (named-refs-in e))))))
                            (out (regions-in v s t nil)))
                       (if (or (string-member? "%opaque" seen) (string-member? "%opaque" out))
                           r

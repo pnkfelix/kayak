@@ -1,0 +1,65 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"diamond-sum.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define double : (subr (alloc @heap) (elt-sig) (moduleof (desc t (sumof (#:l (select $1 t)) (#:r (select $1 t)))) (val v t))) ! pure",
+"define m0 : (moduleof (desc t int) (val v int)) ! pure",
+"define m1 : (moduleof (desc t (sumof (#:l int) (#:r int))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m0)))",
+"define m2 : (moduleof (desc t (sumof (#:l (select m1 t)) (#:r (select m1 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m1)))",
+"define m3 : (moduleof (desc t (sumof (#:l (select m2 t)) (#:r (select m2 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m2)))",
+"define m4 : (moduleof (desc t (sumof (#:l (select m3 t)) (#:r (select m3 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m3)))",
+"define m5 : (moduleof (desc t (sumof (#:l (select m4 t)) (#:r (select m4 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m4)))",
+"define m6 : (moduleof (desc t (sumof (#:l (select m5 t)) (#:r (select m5 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m5)))",
+"define m7 : (moduleof (desc t (sumof (#:l (select m6 t)) (#:r (select m6 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m6)))",
+"define m8 : (moduleof (desc t (sumof (#:l (select m7 t)) (#:r (select m7 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m7)))",
+"define m9 : (moduleof (desc t (sumof (#:l (select m8 t)) (#:r (select m8 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m8)))",
+"define m10 : (moduleof (desc t (sumof (#:l (select m9 t)) (#:r (select m9 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m9)))",
+"define m11 : (moduleof (desc t (sumof (#:l (select m10 t)) (#:r (select m10 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m10)))",
+"define m12 : (moduleof (desc t (sumof (#:l (select m11 t)) (#:r (select m11 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m11)))",
+"define m13 : (moduleof (desc t (sumof (#:l (select m12 t)) (#:r (select m12 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m12)))",
+"define m14 : (moduleof (desc t (sumof (#:l (select m13 t)) (#:r (select m13 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m13)))",
+"define m15 : (moduleof (desc t (sumof (#:l (select m14 t)) (#:r (select m14 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m14)))",
+"define m16 : (moduleof (desc t (sumof (#:l (select m15 t)) (#:r (select m15 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m15)))",
+"define m17 : (moduleof (desc t (sumof (#:l (select m16 t)) (#:r (select m16 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m16)))",
+"define m18 : (moduleof (desc t (sumof (#:l (select m17 t)) (#:r (select m17 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m17)))",
+"define m19 : (moduleof (desc t (sumof (#:l (select m18 t)) (#:r (select m18 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m18)))",
+"define m20 : (moduleof (desc t (sumof (#:l (select m19 t)) (#:r (select m19 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m19)))",
+"define m21 : (moduleof (desc t (sumof (#:l (select m20 t)) (#:r (select m20 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m20)))",
+"define m22 : (moduleof (desc t (sumof (#:l (select m21 t)) (#:r (select m21 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m21)))",
+"define m23 : (moduleof (desc t (sumof (#:l (select m22 t)) (#:r (select m22 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m22)))",
+"define m24 : (moduleof (desc t (sumof (#:l (select m23 t)) (#:r (select m23 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m23)))",
+"define m25 : (moduleof (desc t (sumof (#:l (select m24 t)) (#:r (select m24 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m24)))",
+"define m26 : (moduleof (desc t (sumof (#:l (select m25 t)) (#:r (select m25 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m25)))",
+"define m27 : (moduleof (desc t (sumof (#:l (select m26 t)) (#:r (select m26 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m26)))",
+"define m28 : (moduleof (desc t (sumof (#:l (select m27 t)) (#:r (select m27 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m27)))",
+"define m29 : (moduleof (desc t (sumof (#:l (select m28 t)) (#:r (select m28 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m28)))",
+"define m30 : (moduleof (desc t (sumof (#:l (select m29 t)) (#:r (select m29 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m29)))",
+"define m31 : (moduleof (desc t (sumof (#:l (select m30 t)) (#:r (select m30 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m30)))",
+"define m32 : (moduleof (desc t (sumof (#:l (select m31 t)) (#:r (select m31 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m31)))",
+"define m33 : (moduleof (desc t (sumof (#:l (select m32 t)) (#:r (select m32 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m32)))",
+"define m34 : (moduleof (desc t (sumof (#:l (select m33 t)) (#:r (select m33 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m33)))",
+"define m35 : (moduleof (desc t (sumof (#:l (select m34 t)) (#:r (select m34 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m34)))",
+"define m36 : (moduleof (desc t (sumof (#:l (select m35 t)) (#:r (select m35 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m35)))",
+"define m37 : (moduleof (desc t (sumof (#:l (select m36 t)) (#:r (select m36 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m36)))",
+"define m38 : (moduleof (desc t (sumof (#:l (select m37 t)) (#:r (select m37 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m37)))",
+"define m39 : (moduleof (desc t (sumof (#:l (select m38 t)) (#:r (select m38 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m38)))",
+"define m40 : (moduleof (desc t (sumof (#:l (select m39 t)) (#:r (select m39 t)))) (val v t)) ! (maxeff (alloc @heap) (read (globals double m39)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
+]
+}
+]
+}

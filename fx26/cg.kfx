@@ -18,7 +18,7 @@
  twin, the `regs-*.kfx` files' (C248), from the twins noted here
  (`cg-twins`); the form loop and the listing in `cg-top.kfx`, after them.
  fixpt-source: crates/fixpt-fx26/src/compile.fx@0d933ff
- fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@196dd2a
  fixpt-source: crates/fixpt-fx26/src/compile-state.fx@0d933ff
  fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
  fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
@@ -2550,7 +2550,13 @@
                                (lparts (qs body region)
                                  (begin (set cg-lambda-at (lambda-at x))
                                         (c-lambda qs body (c-module-own n e later body (size qs)) d c (list n) region))))
-                             (begin (c-exp x e d c #f) (the patches nil))))
+                             ;; Its word named for the member, as a `let`'s
+                             ;; for what it binds (Fixpt's a43473c, `TODO.md`
+                             ;; §255).
+                             (begin (set c-bind-name (list n))
+                                    (c-exp x e d c #f)
+                                    (set c-bind-name nil)
+                                    (the patches nil))))
                      (waits (onto ws (map (lambda ((p patch)) (tagcase p (patch (j s) (wait d j s)))) ps))))
                 (begin
                   (c-give-waiting c waits d)

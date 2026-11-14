@@ -12,7 +12,7 @@
 "out": [
 "",
 "word program (30 cells, cellular):",
-"     0: closure word lambda@362 over 0",
+"     0: closure word less@362 over 0",
 "     3: lit 37",
 "     5: slot 0",
 "     7: prim %make-frozen 2",
@@ -35,7 +35,7 @@
 "       2: reg 2",
 "       4: return",
 "",
-"word lambda@362 (6 cells, cellular):",
+"word less@362 (6 cells, cellular):",
 "     0: slot 0",
 "     2: slot 1",
 "     4: int-less",
@@ -52,7 +52,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
 ]
 }
 ]

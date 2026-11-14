@@ -70,3 +70,16 @@ where it was seen and what it would take.
    say "string index out of range (length N)" everywhere. kc says "array
    index out of range (length N)" (C422) and its tests state no answer for
    it. Worth one FX-26 message, Fixpt's first.
+10. **Fixpt fcb33f0 refuses a `load-module` of a built-in module after
+   about 50 definitions (a regression, Fixpt's first).** Since 6864363b
+   (heap syntax, its first stage; fd18a6ec, its parent, is fine):
+   `(define c (load-module "fx26:conditions.fx"))` after 50 one-line
+   definitions `(define fK (subr pure (int) int) (lambda (x) (+ x (* x
+   K))))`, by `fixpt eval` on any machine, says "the checkers disagree:
+   the Rust checker takes `c`'s definition, and the one written in FX-26
+   refuses it: cannot read `fx26:conditions.fx`: it was not read"
+   (`parser-exps.fx`, `parse-loaded`, finding no loaded file at the form's
+   start). After 25 it is taken. kayak's corpus meets it in four programs
+   (`conditions`, `made-*-x86_64`, `fx26:convention-types.fx`), KFX's
+   prelude being their 61 lines first. **Fixed** in Fixpt 95f92e6f;
+   the pin is past it (196dd2a, C427).

@@ -23,7 +23,7 @@
 "    18: lit 37",
 "    20: prim %make-frozen 1",
 "    23: slot! 0",
-"    25: closure word lambda@321 over 0",
+"    25: closure word get@321 over 0",
 "    28: lit 37",
 "    30: slot 0",
 "    32: slot 1",
@@ -43,7 +43,7 @@
 "    61: tcall 0",
 "    63: exit",
 "",
-"word lambda@321 (3 cells, cellular):",
+"word get@321 (3 cells, cellular):",
 "     0: lit 42",
 "     2: return",
 "  its register code (5 cells, not compiled):",
@@ -57,7 +57,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
 ]
 }
 ]

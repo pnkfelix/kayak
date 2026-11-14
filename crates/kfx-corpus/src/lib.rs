@@ -423,6 +423,11 @@ pub mod promises;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/reals-past-1e21.rs"]
+pub mod reals_past_1e21;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/recursion.rs"]
 pub mod recursion;
 
@@ -638,6 +643,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("processes", processes::main),
     ("procs", procs::main),
     ("promises", promises_main),
+    ("reals-past-1e21", reals_past_1e21::main),
     ("recursion", recursion::main),
     ("region-alias", region_alias::main),
     ("region-poly", region_poly::main),

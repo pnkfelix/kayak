@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"race-deadline.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define spin-forever : (subr (maxeff (read (globals spin-forever)) spin) (int) int) ! pure",
+"define timeout : (icell int @c) ! (alloc @c)",
+"define start : i64 ! (io clock-read)",
+"define timer : (addr int @p) ! (maxeff (alloc @p) (init @c) (io clock) (read (globals start timeout)) nondet)",
+"int ! (maxeff (await @c) (read (globals spin-forever timeout)) nondet spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
+]
+}
+]
+}

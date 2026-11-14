@@ -12,17 +12,17 @@
 "out": [
 "",
 "word program (102 cells, cellular):",
-"     0: closure word lambda@301 over 0",
-"     3: closure word lambda@301 over 0",
+"     0: closure word up-t@301 over 0",
+"     3: closure word down-t@301 over 0",
 "     6: lit 0",
 "     8: slot 0",
 "    10: tcall 1",
 "    12: slot 0",
 "    14: slot 1",
-"    16: closure word lambda@402 over 2",
+"    16: closure word inc@402 over 2",
 "    19: lit 41",
 "    21: slot 1",
-"    23: closure word lambda@505 over 1",
+"    23: closure word value@505 over 1",
 "    26: lit 37",
 "    28: slot 2",
 "    30: slot 3",
@@ -65,7 +65,7 @@
 "   100: drop",
 "   101: exit",
 "",
-"word lambda@505 (6 cells, cellular):",
+"word value@505 (6 cells, cellular):",
 "     0: slot 0",
 "     2: free 0",
 "     4: ttailcall 1",
@@ -74,7 +74,7 @@
 "       2: lexical 0",
 "       4: tailinvoke 1 1",
 "",
-"word lambda@402 (13 cells, cellular):",
+"word inc@402 (13 cells, cellular):",
 "     0: slot 0",
 "     2: free 1",
 "     4: tcall 1",
@@ -95,7 +95,7 @@
 "      22: pop 1",
 "      24: tailinvoke 1 1",
 "",
-"word lambda@301 (3 cells, cellular):",
+"word down-t@301 (3 cells, cellular):",
 "     0: slot 0",
 "     2: return",
 "  its register code (5 cells, not compiled):",
@@ -103,7 +103,7 @@
 "       2: reg 1",
 "       4: return",
 "",
-"word lambda@301 (3 cells, cellular):",
+"word up-t@301 (3 cells, cellular):",
 "     0: slot 0",
 "     2: return",
 "  its register code (5 cells, not compiled):",
@@ -117,7 +117,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
 ]
 }
 ]

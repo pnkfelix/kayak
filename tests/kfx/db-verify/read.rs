@@ -445,15 +445,6 @@ pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
     }), cs))
 }
 
-#[inline]
-pub fn before_point(cs: Chars) -> Chars {
-    if (null_p(cs) || char_eq_p(car(cs), '.')) {
-        nil::<char>()
-    } else {
-        kayak_rt::heap_cons(car(cs), before_point(cdr(cs)))
-    }
-}
-
 /// Hex digits onto `n`, as `digits-value`'s are, negated; one past an i64
 /// refused (C116: Fixpt's arm64 encoder writes its instructions so).
 pub fn hex_value(mut cs: Chars, mut n: i64, mut file: Str, mut line: i64) -> i64 {
@@ -526,15 +517,7 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
         } else {
             cs
         }, str_lit("0123456789."))) {
-            if i64_gt(size(digits_after_zeros(before_point(if char_eq_p(car(cs), '-') {
-                cdr(cs)
-            } else {
-                cs
-            }))), 21i64) {
-                match read_error(file, line, string_append(str_lit("a real of 1e21 or more, which FX-26 reads as an int: "), s)) {}
-            } else {
-                real(s, file, pos)
-            }
+            real(s, file, pos)
         } else {
             match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
         }

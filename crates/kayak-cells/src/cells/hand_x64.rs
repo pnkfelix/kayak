@@ -31,7 +31,7 @@ use super::*;
 // calls by `call` and `ret` (C137).
 // - Tier 6 (`--direct`): register code as native procedures beside tier
 // 5's, leaving for it where it would give back (C138).
-// fixpt-source: crates/fixpt-native/src/cellular/x64.rs@4e13016
+// fixpt-source: crates/fixpt-native/src/cellular/x64.rs@196dd2a
 pub mod made__load__0__fx26_x86_64 {
     use super::*;
 

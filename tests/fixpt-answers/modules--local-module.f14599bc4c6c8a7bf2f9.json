@@ -70,8 +70,73 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 0,
+"out": [
+"",
+"word program (51 cells, cellular):",
+"     0: closure word up-t@93 over 0",
+"     3: closure word down-t@93 over 0",
+"     6: lit 1",
+"     8: slot 0",
+"    10: tcall 1",
+"    12: slot 1",
+"    14: closure word get@204 over 1",
+"    17: lit 37",
+"    19: slot 2",
+"    21: slot 3",
+"    23: prim %make-frozen 3",
+"    26: slot! 0",
+"    28: drop",
+"    29: drop",
+"    30: drop",
+"    31: slot 0",
+"    33: field 2",
+"    35: slot 0",
+"    37: field 3",
+"    39: slot 1",
+"    41: slot 2",
+"    43: tcall 1",
+"    45: slot! 1",
+"    47: drop",
+"    48: slot! 0",
+"    50: exit",
+"",
+"word get@204 (6 cells, cellular):",
+"     0: slot 0",
+"     2: free 0",
+"     4: ttailcall 1",
+"  its register code (7 cells, not compiled):",
+"       0: args 1",
+"       2: lexical 0",
+"       4: tailinvoke 1 1",
+"",
+"word down-t@93 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"",
+"word up-t@93 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
 ]
 }
 ]

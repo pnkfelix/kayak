@@ -27,6 +27,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "kayak-hash"
+version = "0.1.0"
+
+[[package]]
 name = "kayak-jit"
 version = "0.1.0"
 
@@ -45,6 +49,9 @@ version = "0.1.0"
 [[package]]
 name = "kayak-reps"
 version = "0.1.0"
+dependencies = [
+ "kayak-hash",
+]
 
 [[package]]
 name = "kayak-rt"

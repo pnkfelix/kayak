@@ -5,6 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+# Fixpt's name for it, so that the code taken whole names it as Fixpt's does.
+fixpt-hash = { package = "kayak-hash", path = "../kayak-hash" }
 
 [lints]
 workspace = true

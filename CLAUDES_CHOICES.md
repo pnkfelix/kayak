@@ -12140,3 +12140,69 @@ compiled; the checker stopped 688 (most meant to be refused; but 154 for
 recursive, mutual (a million deep), capturing a procedure's parameter;
 `plambda` and `proj`. Found on the way: kayak's checker refuses `((proj new
 @h) 5)`, which Fixpt takes (TODO).
+
+## C427. The pin moved to Fixpt 196dd2a (2026-11-13/14)
+
+The user: "Pull Fixpt from GitHub main, and adapt to it". 4e13016 to
+fcb33f0, 21 commits, most of them Fixpt's own machinery: heap syntax (its
+Rust front end reads, expands and parses FX-26's `syn` in the heap, no
+`Syntax` left), no hash map seeded (one process's caches the same bytes as
+another's: `fixpt-hash`), dumps that outlive their sources, `,disassemble`
+naming a module's members, `cons` and primitives in line on x86_64, a
+scheduler that fires what is due each time round (TODO §270, in the
+`processes.fx` kayak copies), and §69 decided (a hidden abstract type in
+an exported one stays refused, its message now saying the ways out). Two
+things kayak carried over:
+- **Masking through `#%toplevel`** (f0eb630d, TODO §267): an expression's
+  effect keeps what its free names' types can see, and kayak's checker,
+  like Fixpt's Rust one before, looked `n` up where `(with #%toplevel n)`
+  is, so a local `n` hid the top level's: `(let ((g 5)) ((with #%toplevel
+  g) g))` lost `g`'s latent `(alloc @heap)`. Now `named-refs-in` finds
+  each `(with #%toplevel n)`, `#%toplevel:n` and `(with #%fx n)`, and
+  `masked-res` sees the regions of the top level's or the standard binding
+  named. KFX refuses `#%toplevel` (C397), so only FX-26 programs are
+  affected; `tests/repl/toplevel-mask.in` asks `,type` of Fixpt's three
+  shapes, the engine running no `#%toplevel` yet. (Fixpt's third case, a
+  functor's dependent type, kayak's checker refuses, as it did.)
+- **`fixpt-hash`**: the `fixpt-reps` kayak copies whole (C300) names its
+  maps `fixpt_hash::HashMap`, so its file is copied whole too
+  (scripts/built-in.py), as a crate `kayak-hash` that `kayak-reps` names
+  `fixpt-hash`.
+- And a module member's word named for it, as a `let`'s binding is
+  (a43473c7, in `fx26/cg.kfx`'s `c-module-make`).
+
+Drift otherwise read and not carried:
+- `heap.rs`, `value.rs`, `layout.rs`, `print.rs`, `literal.rs`, the
+  engine's `cellular.rs`, `prim.rs`: unseeded hashers, `#[inline(always)]`,
+  a heap never at the fixed base; no format or behaviour kayak ports.
+- `disasm.rs`: where a procedure was written, in `native_source`'s header,
+  which kayak's listing reader does not read.
+- The native `cellular.rs` and `x64.rs` (fa620fad): `cons` made in line,
+  and a word's `prim P N` called directly with `P` and `N` known. Kayak's
+  x86_64 machine (`cells/hand-x64.kfx`) already makes `cons` in line and
+  does its primitives, giving the rest back to tier 1: nothing to carry.
+- `check.rs` otherwise: heap syntax and hashers; its generative
+  declarations (`kfx/reps.kfx`) unchanged.
+Every mark at the pin.
+
+What the check found:
+- **Reals of 1e21 or more** (6864363b): Fixpt's checkers both read the
+  Rust reader's syntax now, so `1000000000000000000000.0` is an `f64` in
+  each, where FX-26's had read an int and the two disagreed. KFX refused
+  such a literal for that (`kfx/read.kfx`); it reads it as Fixpt does now,
+  and `tests/kfx-refused/real-past-1e21.kfx` is
+  `tests/kfx/reals-past-1e21.kfx`, Fixpt's answer kept.
+- **Fixpt's `cost/diamond-*`**: their last form is a macro's use that
+  makes definitions, which the cells test, reading the text, took for a
+  value (`#u` against Fixpt's `m40`). Where tier 1 leaves `#u` and Fixpt
+  wrote something else, it asks `fixpt check`, which says `define NAME`.
+- **A regression of Fixpt's** (6864363b too; `docs/to-discuss.md` item
+  10): a `load-module` of a built-in module after about 50 definitions is
+  refused, the FX-26 checker finding no loaded file ("it was not read").
+  Four of kayak's corpus programs meet it, KFX's prelude before them.
+  Reported; Fixpt fixed it in 95f92e6f (spans in characters, the table
+  of texts by base gone, whose base 0 a built-in module took), and the
+  user, 2026-11-14: "Update Fixpt from GitHub and try again". The pin
+  moved on to 196dd2a (that fix, and 196dd2a8's reader finding ASCII
+  once); neither touches a source kayak ports, the marks moved with it,
+  and the corpus agrees again.

@@ -12,7 +12,7 @@
 "out": [
 "",
 "word program (90 cells, cellular):",
-"     0: closure word lambda@311 over 0",
+"     0: closure word double@311 over 0",
 "     3: lit 0",
 "     5: lit 37",
 "     7: slot 0",
@@ -21,7 +21,7 @@
 "    14: slot! 0",
 "    16: drop",
 "    17: global! m",
-"    19: closure word lambda@391 over 0",
+"    19: closure word double@391 over 0",
 "    22: lit 37",
 "    24: slot 0",
 "    26: prim %make-frozen 2",
@@ -60,7 +60,7 @@
 "    88: int-add",
 "    89: exit",
 "",
-"word lambda@391 (8 cells, cellular):",
+"word double@391 (8 cells, cellular):",
 "     0: slot 0",
 "     2: lit 2",
 "     4: prim %fx26-mul 2",
@@ -71,7 +71,7 @@
 "       4: prim2imm %fx26-mul 2",
 "       7: return",
 "",
-"word lambda@311 (8 cells, cellular):",
+"word double@311 (8 cells, cellular):",
 "     0: slot 0",
 "     2: lit 2",
 "     4: prim %fx26-mul 2",
@@ -88,7 +88,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
 ]
 }
 ]

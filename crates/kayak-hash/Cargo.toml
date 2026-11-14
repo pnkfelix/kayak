@@ -1,0 +1,12 @@
+[package]
+name = "kayak-hash"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Fixpt's `fixpt-hash`, taken whole (scripts/built-in.py): the hash maps
+# with no seed of each process's own, which the code taken from Fixpt
+# (`kayak-reps`) names as `fixpt_hash`.
+
+[lints]
+workspace = true

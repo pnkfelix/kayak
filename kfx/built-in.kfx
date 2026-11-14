@@ -1,6 +1,6 @@
 "built-in.kfx: the modules Fixpt builds in that KFX has (C107), each
  loaded by its name, `(load-module \"fx26:NAME\")`, its text Fixpt's at
- 4e13016. Written by scripts/built-in.py: edit that, not this."
+ 196dd2a. Written by scripts/built-in.py: edit that, not this."
 
 (define built-in-0 string
   ";; Conditions, design B (`docs/research/conditions.md`, `TODO.md` §89): a
@@ -1932,6 +1932,11 @@
 (define n-st-cards int 208)  ; a State field's offset
 (define n-st-code-lo int 216)  ; a State field's offset
 (define n-st-code-delta int 864)  ; a State field's offset
+(define n-st-top int 176)  ; a State field's offset
+(define n-st-alloc-limit int 184)  ; a State field's offset
+(define n-st-words int 192)  ; a State field's offset
+(define n-st-regs int 776)  ; a State field's offset
+(define n-st-prim-call int 888)  ; a State field's offset
 (define n-false int 3)  ; a Value's bits
 (define n-true int 11)  ; a Value's bits
 (define n-prompt-mark int 51)  ; a Value's bits
@@ -2675,7 +2680,12 @@
                    (let ((i (ready)))
                      (if (>= i 0)
                          i
-                         (let ((t (pop-any)))
+                         ;; What is due fired first, every time round: a
+                         ;; task preempted is parked and popped again, so
+                         ;; one that spins would otherwise keep a deadline,
+                         ;; the input or a process's news from ever being
+                         ;; seen (`TODO.md` §270).
+                         (let ((t (begin ((proj %sched unit unit bool) 30 #u #u) (pop-any))))
                            (cond ((procedure? t) (begin (run-task t) (go)))
                                  (((proj %sched unit unit bool) 21 #u #u) (go))
                                  ;; Preempted since it looked, it may have

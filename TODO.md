@@ -1519,6 +1519,8 @@ Twobit-style optimizations in KFX.
   symbol))` refused ("a symbol is expected here").
 - A family through `#%toplevel` reads its arguments at the top level too
   (C397): to read them in place.
+- The engine (`kayak-fx26`) runs no `#%toplevel` ("the engine: nothing is
+  named #%toplevel"), which its checker takes (C427's test asks `,type`).
 
 ## 52. kc (the user, 2026-11-12; `docs/research/kc.md`)
 

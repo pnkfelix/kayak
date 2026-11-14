@@ -6917,6 +6917,28 @@
 (define names-in (subr kfx (sexp) strings) (lambda (e) (names-in-onto e nil)))
 (define names-in-all (subr kfx (sexps) strings) (lambda (es) (names-all-onto es nil)))
 
+(define-rec
+  (named-refs-onto (subr kfx (sexp strings) strings)
+    (lambda (e acc)
+      "Each binding `e` names past what binds the name where it is used, onto
+       `acc`: `top:n` for `(with #%toplevel n)` and `#%toplevel:n`, the top
+       level's `n`; `fx:n` for `(with #%fx n)`, the standard one. For
+       masking, which sees their types' regions, not those of the `n` in
+       scope (Fixpt's f0eb630d, its TODO §267)."
+      (tagcase e
+        (sym (n at-file at-pos)
+          (if (string=? (toplevel-named n) "") acc (cons (string-append "top:" (toplevel-named n)) acc)))
+        (lst (xs src-file src-line src-pos)
+          (if (and (i64= (size xs) 3) (sym-is? (car xs) "with")
+                   (or (sym-is? (second xs) "#%toplevel") (sym-is? (second xs) "#%fx"))
+                   (tagcase (third xs) (sym (n f p) #t) (else other #f)))
+              (cons (string-append (if (sym-is? (second xs) "#%fx") "fx:" "top:") (sym-name (third xs))) acc)
+              (named-refs-all-onto xs acc)))
+        (else other acc))))
+  (named-refs-all-onto (subr kfx (sexps strings) strings)
+    (lambda (es acc) (if (null? es) acc (named-refs-onto (car es) (named-refs-all-onto (cdr es) acc))))))
+(define named-refs-in (subr kfx (sexp) strings) (lambda (e) (named-refs-onto e nil)))
+
 (define reaches? (subr kfx (cv st sexp sexp string) bool)
   (lambda (v s body tag r)
     "Whether `body` may reach a tag of region `r` but `tag`: whether a

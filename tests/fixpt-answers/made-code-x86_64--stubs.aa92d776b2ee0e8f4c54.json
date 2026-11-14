@@ -20,7 +20,7 @@
 "call-k : (subr (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native)) () k-caller) ! pure",
 "-42 : int ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native))",
 "42 : int ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) (goto @k) (comefrom @k) spin (io native))",
-"; not in the native convention yet, so run as cellular code: `lambda/lambda@53`: it calls `stay-cellular`",
+"; not in the native convention yet, so run as cellular code: `lambda/lambda@8720`: it calls `stay-cellular`",
 "42 : int ! (maxeff (read @heap) (read @globals) (write @heap) (alloc @heap) spin (io native))",
 ""
 ],
@@ -28,7 +28,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
 ]
 }
 ]

@@ -17145,6 +17145,64 @@ pub fn names_in_all(es: Sexps) -> Strings {
     names_all_onto(es, nil::<Str>())
 }
 
+/// Each binding `e` names past what binds the name where it is used, onto
+/// `acc`: `top:n` for `(with #%toplevel n)` and `#%toplevel:n`, the top
+/// level's `n`; `fx:n` for `(with #%fx n)`, the standard one. For
+/// masking, which sees their types' regions, not those of the `n` in
+/// scope (Fixpt's f0eb630d, its TODO §267).
+pub fn named_refs_onto(e: &'static Sexp, acc: Strings) -> Strings {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, at_file, at_pos) => {
+            if string_eq_p(toplevel_named(n), str_lit("")) {
+                acc
+            } else {
+                kayak_rt::heap_cons(string_append(str_lit("top:"), toplevel_named(n)), acc)
+            }
+        }
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("with")) && (sym_is_p(second(xs), str_lit("#%toplevel")) || sym_is_p(second(xs), str_lit("#%fx"))) && {
+                let tagcase_ = third(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                kayak_rt::heap_cons(string_append(if sym_is_p(second(xs), str_lit("#%fx")) {
+                    str_lit("fx:")
+                } else {
+                    str_lit("top:")
+                }, sym_name(third(xs))), acc)
+            } else {
+                named_refs_all_onto(xs, acc)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            acc
+        }
+    }
+}
+
+#[inline]
+pub fn named_refs_all_onto(es: Sexps, acc: Strings) -> Strings {
+    if null_p(es) {
+        acc
+    } else {
+        named_refs_onto(car(es), named_refs_all_onto(cdr(es), acc))
+    }
+}
+
+#[inline]
+pub fn named_refs_in(e: &'static Sexp) -> Strings {
+    named_refs_onto(e, nil::<Str>())
+}
+
 /// Whether `body` may reach a tag of region `r` but `tag`: whether a
 /// name in it, but `tag`'s if it is one, has a type that mentions `r`; a
 /// module's name, whether anything it gives has (C116: `(with m f)`, a

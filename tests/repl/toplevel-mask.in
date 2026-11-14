@@ -1,0 +1,9 @@
+; Masking sees what `(with #%toplevel n)` names, the top level's `n`,
+; whatever binds `n` where it is used (Fixpt's f0eb630d, its TODO §267):
+; each call keeps `g`'s latent `(alloc @heap)`. Asked with `,type`: the
+; engine runs no `#%toplevel` yet.
+(define g (subr (alloc @heap) (int) int) (lambda (n) n))
+,type ((with #%toplevel g) 1)
+,type (let ((g 5)) ((with #%toplevel g) g))
+,type (let ((g 5)) ((with #%toplevel g) 1))
+,type (let ((h 5)) (g h))

@@ -1,0 +1,5 @@
+((with #%toplevel g) 1) : int ! (maxeff (alloc @heap) (read (globals g)))
+(let ((g 5)) ((with #%toplevel g) g)) : int ! (maxeff (alloc @heap) (read (globals g)))
+(let ((g 5)) ((with #%toplevel g) 1)) : int ! (maxeff (alloc @heap) (read (globals g)))
+(let ((h 5)) (g h)) : int ! (maxeff (alloc @heap) (read (globals g)))
+g : (subr (alloc @heap) (int) int) ! pure

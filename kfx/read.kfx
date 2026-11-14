@@ -221,10 +221,6 @@
     "Whether every character of `cs` is one of `allowed`'s."
     (not (any? (lambda ((c char)) (not (has-char? (string-chars allowed) c))) cs))))
 
-(define-rec
-  (before-point (subr kfx (chars) chars)
-    (lambda (cs) (if (or (null? cs) (char=? (car cs) #\.)) nil (cons (car cs) (before-point (cdr cs)))))))
-
 (define hex-value (subr kfx (chars i64 string i64) i64)
   (lambda (cs n file line)
     "Hex digits onto `n`, as `digits-value`'s are, negated; one past an i64
@@ -263,9 +259,10 @@
              (if (exponent-real? cs) (real s file pos) (read-error file line (string-append "no number KFX reads: " s))))
             ((has-char? cs #\.)
              (if (and (real-token? cs) (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789."))
-                 (if (i64> (size (digits-after-zeros (before-point (if (char=? (car cs) #\-) (cdr cs) cs)))) 21)
-                     (read-error file line (string-append "a real of 1e21 or more, which FX-26 reads as an int: " s))
-                     (real s file pos))
+                 ;; A real of 1e21 or more too: FX-26 read it as an int,
+                 ;; and Fixpt's checkers disagreed, until both read the
+                 ;; Rust reader's syntax (Fixpt's 6864363b, C427).
+                 (real s file pos)
                  (read-error file line (string-append "no number KFX reads: " s))))
             ((not (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789"))
              (read-error file line (string-append "no number KFX reads: " s)))

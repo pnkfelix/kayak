@@ -14,15 +14,15 @@
 "; the Rust compiler:",
 "",
 "word program (104 cells, cellular):",
-"     0: closure word lambda@1001:70 over 0",
-"     3: closure word lambda@1001:70 over 0",
+"     0: closure word up-t@1001:70 over 0",
+"     3: closure word down-t@1001:70 over 0",
 "     6: lit 41",
 "     8: slot 2",
 "    10: slot 0",
 "    12: tcall 1",
 "    14: slot 1",
-"    16: closure word lambda@1001:282 over 1",
-"    19: closure word lambda@1001:361 over 0",
+"    16: closure word value@1001:282 over 1",
+"    19: closure word both@1001:361 over 0",
 "    22: lit 37",
 "    24: slot 2",
 "    26: slot 3",
@@ -68,7 +68,7 @@
 "   102: int-add",
 "   103: exit",
 "",
-"word lambda@1001:361 (6 cells, cellular):",
+"word both@1001:361 (6 cells, cellular):",
 "     0: slot 0",
 "     2: slot 0",
 "     4: cons",
@@ -83,7 +83,7 @@
 "      16: pop 1",
 "      18: return",
 "",
-"word lambda@1001:282 (10 cells, cellular):",
+"word value@1001:282 (10 cells, cellular):",
 "     0: lit 1",
 "     2: slot 0",
 "     4: free 0",
@@ -101,7 +101,7 @@
 "      18: pop 1",
 "      20: return",
 "",
-"word lambda@1001:70 (3 cells, cellular):",
+"word down-t@1001:70 (3 cells, cellular):",
 "     0: slot 0",
 "     2: return",
 "  its register code (5 cells, not compiled):",
@@ -109,7 +109,7 @@
 "       2: reg 1",
 "       4: return",
 "",
-"word lambda@1001:70 (3 cells, cellular):",
+"word up-t@1001:70 (3 cells, cellular):",
 "     0: slot 0",
 "     2: return",
 "  its register code (5 cells, not compiled):",
@@ -123,7 +123,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
 ]
 }
 ]

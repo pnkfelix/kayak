@@ -371,6 +371,22 @@ fn one(name: &str, path: &Path, ours: bool) -> Found {
             );
         }
         let have = got.stdout.trim();
+        // A last form that defines though its text does not say so (a
+        // macro's use, expanded to definitions: Fixpt's `cost/diamond-*`,
+        // C427): `fixpt eval` writes a definition as it writes a value, so
+        // `fixpt check` is asked, which says `define NAME`.
+        if have == "#u" && Some(have) != want.as_deref() {
+            let checked = ask(strs(&["check", &p]));
+            let last_defines = checked.is_ok_and(|c| {
+                c.stdout
+                    .lines()
+                    .rfind(|l| !l.trim().is_empty() && !l.starts_with(';'))
+                    .is_some_and(|l| l.starts_with("define "))
+            });
+            if last_defines {
+                return found("no-value", "");
+            }
+        }
         if Some(have) != want.as_deref() {
             return found("differ", format!("fixpt: {want:?}, kayak: {have:?}"));
         }

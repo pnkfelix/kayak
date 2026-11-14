@@ -20,7 +20,7 @@
 "    11: global! %shared:<programs>/modules/../module-files/own-macros-base.fx",
 "    13: global %shared:<programs>/modules/../module-files/own-macros-base.fx",
 "    15: global! b",
-"    17: closure word lambda@1002:344 over 0",
+"    17: closure word input@1002:344 over 0",
 "    20: lit 37",
 "    22: slot 0",
 "    24: prim %make-frozen 2",
@@ -54,7 +54,7 @@
 "    82: int-add",
 "    83: exit",
 "",
-"word lambda@1002:344 (70 cells, cellular):",
+"word input@1002:344 (70 cells, cellular):",
 "     0: slot 0",
 "     2: lit 37",
 "     4: slot 1",
@@ -69,9 +69,9 @@
 "    24: slot 1",
 "    26: field 2",
 "    28: slot 2",
-"    30: closure word lambda/lambda@1002:472 over 1",
+"    30: closure word input/g@1002:472 over 1",
 "    33: slot 2",
-"    35: closure word lambda/lambda@1002:530 over 1",
+"    35: closure word input/h@1002:530 over 1",
 "    38: lit 37",
 "    40: slot 1",
 "    42: slot 3",
@@ -113,10 +113,10 @@
 "      45: field 2",
 "      47: setstk 4",
 "      49: load 1 4",
-"      52: lambda word lambda/lambda@1002:472 over 1",
+"      52: lambda word input/g@1002:472 over 1",
 "      56: setstk 2",
 "      58: load 1 4",
-"      61: lambda word lambda/lambda@1002:530 over 1",
+"      61: lambda word input/h@1002:530 over 1",
 "      65: setstk 3",
 "      67: const 37",
 "      69: setreg 1",
@@ -139,7 +139,7 @@
 "     110: pop 6",
 "     112: return",
 "",
-"word lambda/lambda@1002:530 (6 cells, cellular):",
+"word input/h@1002:530 (6 cells, cellular):",
 "     0: slot 0",
 "     2: free 0",
 "     4: int-add",
@@ -152,7 +152,7 @@
 "       8: op2 int-add 2",
 "      11: return",
 "",
-"word lambda/lambda@1002:472 (6 cells, cellular):",
+"word input/g@1002:472 (6 cells, cellular):",
 "     0: slot 0",
 "     2: free 0",
 "     4: int-add",
@@ -171,7 +171,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@4e130166ad42a615a2daf7d4c608266b8f9d6b3e"
+"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
 ]
 }
 ]

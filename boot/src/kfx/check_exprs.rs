@@ -4645,7 +4645,7 @@ pub mod expressions {
                 if (null_p(maskable) || not(masking_form_p(e))) {
                     r
                 } else {
-                    let seen = concat(map(lambda1s(move |n: Str| {
+                    let seen = onto(concat(map(lambda1s(move |n: Str| {
                         let found = scope_bind(n, v);
                         if null_p(found) {
                             nil::<Str>()
@@ -4666,7 +4666,45 @@ pub mod expressions {
                                 }
                             }
                         }
-                    }), distinct(names_in(e))));
+                    }), distinct(names_in(e)))), concat(map(lambda1s(move |r: Str| {
+                        let fx = has_prefix_p(r, str_lit("fx:"));
+                        let n = if fx {
+                            after_prefix(r, str_lit("fx:"))
+                        } else {
+                            after_prefix(r, str_lit("top:"))
+                        };
+                        let found = filter(lambda1s(move |b: &'static Bind| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Bind::Bind(k, sc, w) => {
+                                    (string_eq_p(k, n) && (not(fx) || string_eq_p(w, str_lit("prim"))))
+                                }
+                            }
+                        }), if fx {
+                            cv_binds(v)
+                        } else {
+                            toplevel_binds(v)
+                        });
+                        if null_p(found) {
+                            nil::<Str>()
+                        } else {
+                            let tagcase_ = car(found);
+                            match *tagcase_ {
+                                Bind::Bind(m, sc, w) => {
+                                    if string_eq_p(w, str_lit("module")) {
+                                        the::<Strings>(kayak_rt::heap_cons(str_lit("%opaque"), kayak_rt::nil()))
+                                    } else {
+                                        let tagcase_ = sc;
+                                        match *tagcase_ {
+                                            Scheme::Scheme(tv, u) => {
+                                                regions_in(v, s, u, nil::<Str>())
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }), distinct(named_refs_in(e)))));
                     let out = regions_in(v, s, t, nil::<Str>());
                     if (string_member_p(str_lit("%opaque"), seen) || string_member_p(str_lit("%opaque"), out)) {
                         r

@@ -60,6 +60,8 @@ COPIES = [
     ("crates/fixpt-reps/src/binary.rs", os.path.join(ROOT, "crates", "kayak-reps", "src", "fixpt", "binary.rs")),
     ("crates/fixpt-reps/src/fill.rs", os.path.join(ROOT, "crates", "kayak-reps", "src", "fixpt", "fill.rs")),
     ("crates/fixpt-reps/src/text.rs", os.path.join(ROOT, "crates", "kayak-reps", "src", "fixpt", "text.rs")),
+    # Its hash maps, unseeded: what `fixpt-reps` names as `fixpt_hash`.
+    ("crates/fixpt-hash/src/lib.rs", os.path.join(ROOT, "crates", "kayak-hash", "src", "lib.rs")),
 ]
 
 

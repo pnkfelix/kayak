@@ -23,7 +23,7 @@ use super::*;
 // twin, the `regs-*.kfx` files' (C248), from the twins noted here
 // (`cg-twins`); the form loop and the listing in `cg-top.kfx`, after them.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@0d933ff
-// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@196dd2a
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@0d933ff
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
@@ -7540,7 +7540,9 @@ pub fn c_module_make(mut its: List<&'static Cmem>, mut e: Cenv, mut d: i64, mut 
                             }
                         }
                     } else {
+                        set(c_bind_name(), kayak_rt::heap_cons(n, kayak_rt::nil()));
                         c_exp(x, e, d, c, false);
+                        set(c_bind_name(), nil::<Str>());
                         the::<Patches>(nil::<&'static Patch>())
                     };
                     let waits = onto(ws, map(lambda1s(move |p: &'static Patch| {
