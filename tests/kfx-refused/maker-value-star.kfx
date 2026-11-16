@@ -1,0 +1,13 @@
+"Refused: a module maker's value names a `->*` item of its module, whose
+ effect is found only after the module's values are made (Fixpt's rule,
+ C438; why the expander's `def-env-top` is written `pure`)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type (cnt (p place)) (moduleof (val total (subr (maxeff kfx (read p)) () i64))))
+(define cnt-in (poly ((p place)) (subr (maxeff kfx (alloc p)) ((place p)) (cnt p)))
+  (lambda (p)
+    (module
+      (define start (->* () i64) (lambda () 10))
+      (define n (ref i64 p) (new (start)))
+      (define total (subr (maxeff kfx (read p)) () i64) (lambda () (get n))))))
+(define main (subr kfx () string)
+  (lambda () (letrena a (let ((x (cnt-in a))) (i64->string (with x (total)))))))

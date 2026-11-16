@@ -2855,6 +2855,35 @@ pub fn maker_found(v: &'static Cv, form: &'static Sexp) -> Product_11_12<&'stati
         }
     }), items(second(lam)));
     let m = items(third(lam));
+    let stars = star_items(cdr(m));
+    let checked = map(lambda1s(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(lambda_form_p(fourth(items(f))))) {
+            let named = filter(lambda1s(move |n: Str| {
+                string_member_p(n, stars)
+            }), names_named_onto(fourth(items(f)), nil::<Str>()));
+            if null_p(named) {
+                ()
+            } else {
+                match refuse({
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f1, l1, p1) => {
+                            near(v, f1, l1, p1)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            v
+                        }
+                    }
+                }, {
+                    let x = car(named);
+                    string_append(str_lit("`"), string_append(sym_name(second(items(f))), string_append(str_lit("` names `"), string_append(x, string_append(str_lit("` as it is made, and `->*` finds `"), string_append(x, string_append(str_lit("`'s effect only after the module's values are made: write `"), string_append(x, str_lit("`'s effect, with `->` or `subr`")))))))))
+                }) {}
+            }
+        } else {
+            ()
+        }
+    }), cdr(m));
     let r = maker_items_found(with_tvars(with_binds({
         let tagcase_ = form;
         match *tagcase_ {

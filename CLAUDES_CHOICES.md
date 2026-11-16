@@ -12584,3 +12584,12 @@ process, may hold one of its own. Its interface, `mx-face`, gives
 
 Test: `tests/kfx/module-place-include.kfx` (Fixpt's answer, 23), in both
 modes. kfx on fx26.unit: 15.6 s, 7.5 GB (11.0 s, 5.2 GB at C431).
+
+## C438. A module maker's value may not name its `->*` items (2026-11-16)
+
+C437's check found it: kfx found a maker's `->*` items before its
+values were made, and so accepted a value that names one, which Fixpt
+refuses (its `->*` effects are found only after a module's values are
+made; the expander's `WRITTEN` exists for it). KFX ⊂ FX-26: kfx refuses
+it too (`maker-found`), in Fixpt's words, as `check-module` does a
+top-level module's. Test: `tests/kfx-refused/maker-value-star.kfx`.
