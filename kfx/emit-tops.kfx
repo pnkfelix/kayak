@@ -868,6 +868,24 @@
         "A module maker's values, in order, each `(x T e)` (C433)."
         (concat (map (lambda ((f sexp)) (if (maker-state? f) (the sexps (list (lst (cdr (items f)) "" 0 0))) nil)) forms))))
 
+    (define-rec
+      (maker-needy (subr kfx (string strings sexps strings) strings)
+        (lambda (p states defs needy)
+          "The items that take the instance (C434): each whose type names the
+           place `p`, or whose lambda names it, a value of the module, or an
+           item that takes it; found to a fixed point. The others are plain
+           functions, which may be given as values as they are."
+          (let ((more (concat (map (lambda ((d sexp))
+                                     (let* ((ys (items d)) (n (sym-name (car ys))))
+                                       (if (and (not (string-member? n needy))
+                                                (or (string-member? p (names-in (second ys)))
+                                                    (any? (lambda ((m string)) (or (string=? m p) (string-member? m states) (string-member? m needy)))
+                                                          (names-named-onto (third ys) nil))))
+                                           (the strings (list n))
+                                           nil)))
+                                   defs))))
+            (if (null? more) needy (maker-needy p states defs (onto more needy)))))))
+
     (define maker-item-type (subr kfx (string sexp) sexp)
       (lambda (p t)
         "A module maker's item's type, given the maker's place `p` first (C274),
@@ -1056,17 +1074,31 @@
                  (written (cdr (items (third (items lam)))))
                  (defs (maker-defs written))
                  (states (maker-states written))
-                 (siblings (map (lambda ((d sexp)) (sym-name (car (items d)))) defs))
+                 (siblings (maker-needy p (map (lambda ((d sexp)) (sym-name (car (items d)))) states) defs nil))
                  (pt (string-append "Place_" (camel p)))
                  (named (concat-strings (list iface "<" (lifetime p) ", " pt ">")))
                  (state-named (concat-strings (list iface "State<" (lifetime p) ", " pt ">")))
                  (c (with-locals c (cons (string-append "%maker-needs " name)
                                          (cons (concat-strings (list "%maker-state-type &" (lifetime p) " " state-named))
-                                               (map (lambda ((d sexp)) (string-append "%maker-state " (sym-name (car (items d))))) states)))))
+                                               (onto (map (lambda ((d sexp)) (string-append "%maker-state " (sym-name (car (items d))))) states)
+                                                     ;; An item that takes the instance, given as a value: a
+                                                     ;; closure over it, of its arity (C434).
+                                                     ;; Or, a plain function, one in the async mode (C434).
+                                                     (map (lambda ((d sexp))
+                                                            (let* ((ys (items d)) (t (unpoly (second ys))))
+                                                              (concat-strings (list (if (string-member? (sym-name (car ys)) siblings) "%maker-item " "%maker-plain ")
+                                                                                    (sym-name (car ys)) " "
+                                                                                    (i64->string (size (items (second (items (unpoly (third ys)))))))
+                                                                                    (if (and (head-is? t "subr") (i64= (size (items t)) 4) (fallible-effect? c (second (items t)))) " 1" " 0")))))
+                                                          defs))))))
                  (cp (with-locals c (list (string-append "%letrena " p) (string-append "%placeparam " p))))
                  (body (put-sep (lambda ((d sexp) (acc chars))
                                   (let ((ys (items d)))
-                                    (put-define c (car ys) (maker-item-type p (second ys)) (maker-item-lambda p siblings (third ys)) acc)))
+                                    (if (string-member? (sym-name (car ys)) siblings)
+                                        (put-define c (car ys) (maker-item-type p (second ys)) (maker-item-lambda p siblings (third ys)) acc)
+                                        ;; One that takes no instance: as it is, its calls of
+                                        ;; those that do given it (C434).
+                                        (put-define c (car ys) (second ys) (place-given p siblings (third ys)) acc))))
                                 "" defs nil))
                  ;; The state made (C433), in the module, where the items are named:
                  ;; each ref made, in order, its first value's expression able to
@@ -1106,16 +1138,26 @@
                                  (let* ((ys (items d))
                                         (t (unpoly (second ys)))
                                         (params (items (second (items (third ys))))))
-                                   (if (or (head-is? (second ys) "poly") (not (head-is? t "subr")) (not (i64= (size (items t)) 4))
-                                           (fallible-effect? c (second (items t))) (comefrom-effect? c (second (items t))))
-                                       (error (string-append "kfx: a module maker's item poly, or failing, or suspending, which KFX writes not yet (C274): " (sym-name (car ys))))
-                                       ;; In the async mode, `async`, as each item is (C376).
+                                   (if (or (not (head-is? t "subr")) (not (i64= (size (items t)) 4)) (comefrom-effect? c (second (items t))))
+                                       (error (string-append "kfx: a module maker's item suspending, which KFX writes not yet (C274): " (sym-name (car ys))))
+                                       ;; In the async mode, `async`, as each item is (C376). One
+                                       ;; that fails, a `Result`; one that is `poly`, generic
+                                       ;; (C434).
                                        (let* ((async (in-async-mode? c))
-                                              (acc (put (string-append (if async "    pub async fn " "    pub fn ") (string-append (mangle (sym-name (car ys))) "(self")) acc))
+                                              (fails (fallible-effect? c (second (items t))))
+                                              (acc (put (string-append (if async "    pub async fn " "    pub fn ") (mangle (sym-name (car ys)))) acc))
+                                              (acc (if (head-is? (second ys) "poly") (put-generics (items (second (items (second ys)))) #t acc) acc))
+                                              (acc (put "(self" acc))
                                               (acc (if (null? params) acc (put-params cp params (items (third (items t))) #f (put ", " acc))))
-                                              (acc (put-type cp (fourth (items t)) (put ") -> " acc)))
-                                              (acc (put (concat-strings (list " {\n        " (mangle name) "::" (mangle (sym-name (car ys))) "(self.0, self.1")) acc)))
-                                         (put (if async ").await\n    }\n" ")\n    }\n") (put-sep (lambda ((x sexp) (acc chars)) (put (mangle (param-name x)) (put ", " acc))) "" params acc))))))
+                                              (acc (if fails
+                                                       (put ", Unwind>" (put-type cp (fourth (items t)) (put ") -> Result<" acc)))
+                                                       (put-type cp (fourth (items t)) (put ") -> " acc))))
+                                              (needy (string-member? (sym-name (car ys)) siblings))
+                                              (args (words-of-sep (onto (if needy (the strings (list "self.0" "self.1")) nil)
+                                                                        (map (lambda ((x sexp)) (mangle (param-name x))) params))
+                                                                  ", "))
+                                              (acc (put (concat-strings (list " {\n        " (mangle name) "::" (mangle (sym-name (car ys))) "(" args)) acc)))
+                                         (put (if async ").await\n    }\n" ")\n    }\n") acc)))))
                                "\n" (filter (lambda ((d sexp)) (string-member? (sym-name (car (items d))) shown)) defs) acc))
                  (acc (put "}\n\n" acc))
                  (acc (put (string-append (if (in-async-mode? c) "pub async fn " "pub fn ") (mangle name)) acc))

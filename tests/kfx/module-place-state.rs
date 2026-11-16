@@ -31,7 +31,7 @@ pub mod counter_in {
     use super::*;
 
     #[inline]
-    pub fn start<'p, Place_P>(p: &'p Place_P, maker_st: &'p CounterState<'p, Place_P>) -> i64 {
+    pub fn start() -> i64 {
         10i64
     }
 
@@ -56,8 +56,8 @@ pub mod counter_in {
             bumps: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
         });
-        maker_st.base.set(Some(i64_star(2i64, start(p, maker_st))));
-        maker_st.n.set(Some(new(i64_minus(maker_st.base.get().unwrap(), start(p, maker_st)))));
+        maker_st.base.set(Some(i64_star(2i64, start())));
+        maker_st.n.set(Some(new(i64_minus(maker_st.base.get().unwrap(), start()))));
         maker_st.bumps.set(Some(new(0i64)));
         maker_st
     }

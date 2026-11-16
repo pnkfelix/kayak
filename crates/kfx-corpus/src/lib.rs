@@ -353,6 +353,11 @@ pub mod module_place;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/module-place-items.rs"]
+pub mod module_place_items;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/module-place-state.rs"]
 pub mod module_place_state;
 
@@ -644,6 +649,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("module-letrec", module_letrec::main),
     ("module-params", module_params::main),
     ("module-place", module_place::main),
+    ("module-place-items", module_place_items::main),
     ("module-place-state", module_place_state::main),
     ("module-poly-val", module_poly_val::main),
     ("module-shared-tag", module_shared_tag::main),

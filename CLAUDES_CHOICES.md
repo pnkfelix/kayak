@@ -12465,3 +12465,42 @@ two places, apart; a value of a procedure; Fixpt's answer, `212 111`).
 Next: an item that fails, or is `poly`, or is named other than called;
 a datatype in the module; then the translator makes the expander such a
 maker.
+
+## C434. A module maker's items: failing, `poly`, given as values (2026-11-16)
+
+Route 1's second step (C433): a module maker's items as Fixpt's
+expander's are.
+- **One that fails** (an abort to a prompt tag that is a value of the
+  module): its method returns a `Result`, as its function does.
+- **One that is `poly`** of types: the checker took a `lambda` where a
+  poly type of types is expected only of regions in KFX (C107), a module
+  value's item being no Rust function of its own; a maker's is, so in a
+  maker (`%module-maker` in scope) it is taken. Its method is generic.
+- **Only those that need it take the instance** (`maker-needy`, to a
+  fixed point): an item whose type names the place, or whose lambda
+  names it, a value of the module, or an item that takes it. The others
+  are plain functions, called and given as values as at the top level.
+- **One that takes the instance, given as a value**: a closure over the
+  place and the state, of the item's arity (`%maker-item NAME K`). It is
+  not `Send + Sync`: the place and the state are not. A procedure of an
+  effect a process may have (`pure`) that needs the instance cannot be so
+  given yet; Fixpt's expander gives such ones where `(write rs)` is in
+  the type (its `fails`), which no process has.
+
+Test: `tests/kfx/module-place-items.kfx` (Fixpt's answer, `18 after 11;
+refused: negative`), in the async mode too, which needed: a closure of
+an item given as a value boxing its future (`boxed`, or `body` if it
+fails), a plain item's capturing nothing, `Send + Sync`; and a `prompt`
+in a maker's item, whose body holds the place, no `'static` future:
+kayak-rt's `prompt_at`, a prompt of a body with a lifetime, an abort to
+its tag ending it as `prompt`'s does, a capture under it refused (one
+would keep the body past its place; Fixpt's expander captures none;
+`lang/items.sexp` lists it among the emitter's calls). Found by it: `--bless` on
+this machine keeps a new program's first answer as its `.out` (the
+shared one, arm64 macOS's home, C134) and a later one beside it as this
+platform's; a new program's `.out` written by hand once its text settles.
+Not taken: a datatype, a type, an effect in a maker's module (the
+emitter learns a program's datatypes and effects in a pass a maker's
+module is no part of). The expander's types are no state: its
+translator puts them outside the maker, or writes them out where they
+name the place. Next: the translator.

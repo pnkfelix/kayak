@@ -845,6 +845,32 @@
                    (put (item-path c s) (if (string-member? s (item-constants (module-items c m))) acc (put "&" acc)))))
                 ((or (string=? s "nil") (string-member? s (ctx-constants c)))
                  (put "()" (put (mangle s) acc)))
+                ((any? (lambda ((x string)) (has-prefix? x (string-append "%maker-item " (string-append s " ")))) (ctx-locals c))
+                 "A module maker's item that takes the instance, given as a value: a
+                  closure over the instance, of the item's arity (C434); its future
+                  boxed in the async mode."
+                 (let* ((ws (split-words (after-prefix (car (filter (lambda ((x string)) (has-prefix? x (string-append "%maker-item " (string-append s " ")))) (ctx-locals c)))
+                                                       (string-append "%maker-item " (string-append s " ")))))
+                        (k (digits-number (car ws)))
+                        (args (words-of-sep (map (lambda ((i i64)) (string-append "a" (i64->string i))) (counting 0 k)) ", "))
+                        (call (concat-strings (list (mangle s) "(p, maker_st" (if (i64= k 0) "" ", ") args ")"))))
+                   (put (concat-strings (list "kayak_rt::lambda" (i64->string k) "(move |" args "| "
+                                              (cond ((not (async-mode? c)) call)
+                                                    ((string=? (car (cdr ws)) "1") (string-append "kayak_rt::suspend::body(" (string-append call ")")))
+                                                    (else (string-append "kayak_rt::suspend::boxed(" (string-append call ")"))))
+                                              ")"))
+                        acc)))
+                ((and (async-mode? c) (any? (lambda ((x string)) (has-prefix? x (string-append "%maker-plain " (string-append s " ")))) (ctx-locals c)))
+                 "A module maker's plain item given as a value, in the async mode: a
+                  closure boxing its future, capturing nothing (C434)."
+                 (let* ((ws (split-words (after-prefix (car (filter (lambda ((x string)) (has-prefix? x (string-append "%maker-plain " (string-append s " ")))) (ctx-locals c)))
+                                                       (string-append "%maker-plain " (string-append s " ")))))
+                        (k (digits-number (car ws)))
+                        (args (words-of-sep (map (lambda ((i i64)) (string-append "a" (i64->string i))) (counting 0 k)) ", ")))
+                   (put (concat-strings (list "kayak_rt::lambda" (i64->string k) "s(move |" args "| "
+                                              (if (string=? (car (cdr ws)) "1") "kayak_rt::suspend::body(" "kayak_rt::suspend::boxed(")
+                                              (mangle s) "(" args ")))"))
+                        acc)))
                 ((string-member? (string-append "%maker-state " s) (ctx-locals c))
                  "A module maker's ref, its instance's (C433): made when the maker
                   is called, before any item runs."
@@ -3386,8 +3412,13 @@
                  (acc (put "let prompt_tag__ = " acc))
                  (acc (put-exp c (car xs) (i64+ n 1) (value) acc))
                  (acc (put-nl (i64+ n 1) (put ";" acc)))
-                 (acc (put (if (async-here? c) "match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move "
-                                               "match kayak_rt::suspend::block(kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
+                 ;; In a module maker's item, its body holds the place: `prompt_at`
+                 ;; (C434), which takes no capture.
+                 (acc (put (if (async-here? c)
+                               (if (any? (lambda ((x string)) (has-prefix? x "%maker-state-type ")) (ctx-locals c))
+                                   "match kayak_rt::suspend::prompt_at(prompt_tag__, kayak_rt::suspend::body(async move "
+                                   "match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
+                               "match kayak_rt::suspend::block(kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
                            acc))
                  (acc (put-block inner (list (second xs)) (i64+ n 1) (ok-value) acc))
                  (acc (put (if (async-here? c) ")).await {" "))) {") acc))

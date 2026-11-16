@@ -163,6 +163,46 @@ pub fn prompt<R: 'static, H: Copy + 'static>(
     }
 }
 
+/// `prompt`, of a body that is not `'static` (C434: a module maker's item's,
+/// which holds its place and its state): an abort to the tag ends it, as
+/// `prompt`'s does; a capture, which would keep the body past the place it
+/// holds, is refused, said where it is pending.
+pub fn prompt_at<'a, R: 'a, H: Copy + 'static>(
+    tag: Tag<R, H>,
+    body: BodyAt<'a, R>,
+) -> impl Future<Output = Result<Prompted<R, H>, Unwind>> + 'a {
+    PromptAtFuture { tag, body }
+}
+
+struct PromptAtFuture<'a, R: 'a, H: 'static> {
+    tag: Tag<R, H>,
+    body: BodyAt<'a, R>,
+}
+
+impl<'a, R: 'a, H: Copy + 'static> Future for PromptAtFuture<'a, R, H> {
+    type Output = Result<Prompted<R, H>, Unwind>;
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let tag = self.tag;
+        match self.body.as_mut().poll(cx) {
+            Poll::Ready(Ok(v)) => Poll::Ready(Ok(Prompted::Done(v))),
+            Poll::Ready(Err(u)) if u.is(tag) => Poll::Ready(Ok(Prompted::Aborted(tag.payload(u)))),
+            Poll::Ready(Err(u)) => Poll::Ready(Err(u)),
+            Poll::Pending => {
+                let mine = CAPTURE.with(|c| match &*c.borrow() {
+                    Some(p) => p.tag == tag.id(),
+                    None => false,
+                });
+                if mine {
+                    crate::fail(
+                        "a continuation captured under a prompt whose body holds a module maker's place: not yet",
+                    )
+                }
+                Poll::Pending
+            }
+        }
+    }
+}
+
 struct PromptFuture<R: 'static, H: 'static> {
     tag: Tag<R, H>,
     body: Option<Body<R>>,

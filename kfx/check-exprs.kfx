@@ -4807,7 +4807,9 @@
                      "A lambda where a poly type is expected, as FX-26 takes it: as the
                       plambda of that type's binders, rigid, in scope (C107, C158)."
                      (let ((names (poly-binders-of args)))
-                       (tagcase (check-lambda (with-tvars v names) (if (all-regions? names) s (kfx-restricted v s "a lambda where a poly type of types or sizes is expected, which KFX has not yet (C107)"))
+                       ;; A module maker's item (C434): a Rust function of its
+                       ;; module, generic, as a top-level one is.
+                       (tagcase (check-lambda (with-tvars v names) (if (or (all-regions? names) (not (null? (scope-bind "%module-maker" v)))) s (kfx-restricted v s "a lambda where a poly type of types or sizes is expected, which KFX has not yet (C107)"))
                                               params forms (poly-body args))
                          (res (t es s2) (res expected es s2)))))
                     (else (refuse v "a lambda where no procedure is expected"))))

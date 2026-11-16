@@ -10797,7 +10797,7 @@ pub mod expressions {
                         // A lambda where a poly type is expected, as FX-26 takes it: as the
                         // plambda of that type's binders, rigid, in scope (C107, C158).
                         let names = poly_binders_of(args);
-                        let tagcase_ = check_lambda(with_tvars(v, names), if all_regions_p(names) {
+                        let tagcase_ = check_lambda(with_tvars(v, names), if (all_regions_p(names) || not(null_p(scope_bind(str_lit("%module-maker"), v)))) {
                             s
                         } else {
                             kfx_restricted(v, s, str_lit("a lambda where a poly type of types or sizes is expected, which KFX has not yet (C107)"))

@@ -1530,6 +1530,32 @@ pub mod writing {
         }), forms))
     }
 
+    /// The items that take the instance (C434): each whose type names the
+    /// place `p`, or whose lambda names it, a value of the module, or an
+    /// item that takes it; found to a fixed point. The others are plain
+    /// functions, which may be given as values as they are.
+    pub fn maker_needy(mut p: Str, mut states: Strings, mut defs: Sexps, mut needy: Strings) -> Strings {
+        loop {
+            let more = concat(map(lambda1s(move |d: &'static Sexp| {
+                let ys = items(d);
+                let n = sym_name(car(ys));
+                if (not(string_member_p(n, needy)) && (string_member_p(p, names_in(second(ys))) || any_p(lambda1s(move |m: Str| {
+                    (string_eq_p(m, p) || string_member_p(m, states) || string_member_p(m, needy))
+                }), names_named_onto(third(ys), nil::<Str>())))) {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }), defs));
+            if null_p(more) {
+                return needy;
+            } else {
+                needy = onto(more, needy);
+                continue;
+            }
+        }
+    }
+
     /// A module maker's item's type, given the maker's place `p` first (C274),
     /// then its instance's state (C433).
     pub fn maker_item_type(p: Str, t: &'static Sexp) -> &'static Sexp {
@@ -1891,19 +1917,35 @@ pub mod writing {
         let written = cdr(items(third(items(lam))));
         let defs = maker_defs(written);
         let states = maker_states(written);
-        let siblings = map(lambda1s(move |d: &'static Sexp| {
+        let siblings = maker_needy(p, map(lambda1s(move |d: &'static Sexp| {
             sym_name(car(items(d)))
-        }), defs);
+        }), states), defs, nil::<Str>());
         let pt = string_append(str_lit("Place_"), camel(p));
         let named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
         let state_named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("State<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
-        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::heap_cons(concat_strings(kayak_rt::heap_cons(str_lit("%maker-state-type &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(state_named, kayak_rt::nil()))))), map(lambda1s(move |d: &'static Sexp| {
+        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::heap_cons(concat_strings(kayak_rt::heap_cons(str_lit("%maker-state-type &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(state_named, kayak_rt::nil()))))), onto(map(lambda1s(move |d: &'static Sexp| {
             string_append(str_lit("%maker-state "), sym_name(car(items(d))))
-        }), states))));
+        }), states), map(lambda1s(move |d: &'static Sexp| {
+            let ys = items(d);
+            let t = unpoly(second(ys));
+            concat_strings(kayak_rt::heap_cons(if string_member_p(sym_name(car(ys)), siblings) {
+                str_lit("%maker-item ")
+            } else {
+                str_lit("%maker-plain ")
+            }, kayak_rt::heap_cons(sym_name(car(ys)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(size(items(second(items(unpoly(third(ys))))))), kayak_rt::heap_cons(if (head_is_p(t, str_lit("subr")) && i64_eq(size(items(t)), 4i64) && fallible_effect_p(c, second(items(t)))) {
+                str_lit(" 1")
+            } else {
+                str_lit(" 0")
+            }, kayak_rt::nil()))))))
+        }), defs)))));
         let cp = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())));
         let body = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
             let ys = items(d);
-            put_define(c, car(ys), maker_item_type(p, second(ys)), maker_item_lambda(p, siblings, third(ys)), acc)
+            if string_member_p(sym_name(car(ys)), siblings) {
+                put_define(c, car(ys), maker_item_type(p, second(ys)), maker_item_lambda(p, siblings, third(ys)), acc)
+            } else {
+                put_define(c, car(ys), second(ys), place_given(p, siblings, third(ys)), acc)
+            }
         }), str_lit(""), defs, nil::<char>());
         let body = put(str_lit("pub fn maker_state"), put(str_lit("\n\n"), body));
         let body = put_place_generics(c, name, binders, nil::<Str>(), kayak_rt::heap_cons(p, kayak_rt::nil()), body);
@@ -1928,29 +1970,46 @@ pub mod writing {
             let ys = items(d);
             let t = unpoly(second(ys));
             let params = items(second(items(third(ys))));
-            if (head_is_p(second(ys), str_lit("poly")) || not(head_is_p(t, str_lit("subr"))) || not(i64_eq(size(items(t)), 4i64)) || fallible_effect_p(c, second(items(t))) || comefrom_effect_p(c, second(items(t)))) {
-                error(string_append(str_lit("kfx: a module maker's item poly, or failing, or suspending, which KFX writes not yet (C274): "), sym_name(car(ys))))
+            if (not(head_is_p(t, str_lit("subr"))) || not(i64_eq(size(items(t)), 4i64)) || comefrom_effect_p(c, second(items(t)))) {
+                error(string_append(str_lit("kfx: a module maker's item suspending, which KFX writes not yet (C274): "), sym_name(car(ys))))
             } else {
                 let r#async = in_async_mode_p(c);
+                let fails = fallible_effect_p(c, second(items(t)));
                 let acc = put(string_append(if r#async {
                     str_lit("    pub async fn ")
                 } else {
                     str_lit("    pub fn ")
-                }, string_append(mangle(sym_name(car(ys))), str_lit("(self"))), acc);
+                }, mangle(sym_name(car(ys)))), acc);
+                let acc = if head_is_p(second(ys), str_lit("poly")) {
+                    put_generics(items(second(items(second(ys)))), true, acc)
+                } else {
+                    acc
+                };
+                let acc = put(str_lit("(self"), acc);
                 let acc = if null_p(params) {
                     acc
                 } else {
                     put_params(cp, params, items(third(items(t))), false, put(str_lit(", "), acc))
                 };
-                let acc = put_type(cp, fourth(items(t)), put(str_lit(") -> "), acc));
-                let acc = put(concat_strings(kayak_rt::heap_cons(str_lit(" {\n        "), kayak_rt::heap_cons(mangle(name), kayak_rt::heap_cons(str_lit("::"), kayak_rt::heap_cons(mangle(sym_name(car(ys))), kayak_rt::heap_cons(str_lit("(self.0, self.1"), kayak_rt::nil())))))), acc);
+                let acc = if fails {
+                    put(str_lit(", Unwind>"), put_type(cp, fourth(items(t)), put(str_lit(") -> Result<"), acc)))
+                } else {
+                    put_type(cp, fourth(items(t)), put(str_lit(") -> "), acc))
+                };
+                let needy = string_member_p(sym_name(car(ys)), siblings);
+                let args = words_of_sep(onto(if needy {
+                    the::<Strings>(kayak_rt::heap_cons(str_lit("self.0"), kayak_rt::heap_cons(str_lit("self.1"), kayak_rt::nil())))
+                } else {
+                    nil::<Str>()
+                }, map(lambda1s(move |x: &'static Sexp| {
+                    mangle(param_name(x))
+                }), params)), str_lit(", "));
+                let acc = put(concat_strings(kayak_rt::heap_cons(str_lit(" {\n        "), kayak_rt::heap_cons(mangle(name), kayak_rt::heap_cons(str_lit("::"), kayak_rt::heap_cons(mangle(sym_name(car(ys))), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(args, kayak_rt::nil()))))))), acc);
                 put(if r#async {
                     str_lit(").await\n    }\n")
                 } else {
                     str_lit(")\n    }\n")
-                }, put_sep(lambda2s(move |x: &'static Sexp, acc: Chars| {
-                    put(mangle(param_name(x)), put(str_lit(", "), acc))
-                }), str_lit(""), params, acc))
+                }, acc)
             }
         }), str_lit("\n"), filter(lambda1s(move |d: &'static Sexp| {
             string_member_p(sym_name(car(items(d))), shown)

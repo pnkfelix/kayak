@@ -1,0 +1,39 @@
+"A module maker's items (C434), as Fixpt's expander's are: one that fails,
+ aborting to a prompt tag that is a value of the module; one that is
+ `poly`; ones named other than called, given to another as a value, one
+ a plain function, one that takes the instance."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type (parser (p place))
+  (moduleof (val parse (subr (maxeff kfx (read p) (write p) (goto p)) (i64) string))))
+
+(define parser-in (poly ((p place)) (subr (maxeff kfx (alloc p)) ((place p)) (parser p)))
+  (lambda (p)
+    (module
+      (define tag (prompt-tag string string (maxeff kfx (read p) (write p)) p) (make-continuation-prompt-tag))
+      (define tries (ref i64 p) (new 0))
+      (define refuse (subr (maxeff kfx (read p) (write p) (goto p)) (string) i64)
+        (lambda (why) (abort-current-continuation tag why)))
+      (define twice (poly ((a type)) (subr kfx ((subr kfx (a) a) a) a))
+        (lambda (f x) (f (f x))))
+      (define inc (subr kfx (i64) i64) (lambda (n) (i64+ n 1)))
+      (define bumped (subr (maxeff kfx (read p) (write p)) (i64) i64)
+        (lambda (n) (begin (set tries (i64+ (get tries) 10)) (i64+ n (get tries)))))
+      (define applied (subr (maxeff kfx (read p) (write p)) ((subr (maxeff kfx (read p) (write p)) (i64) i64) i64) i64)
+        (lambda (f x) (f x)))
+      (define checked (subr (maxeff kfx (read p) (write p) (goto p)) (i64) i64)
+        (lambda (n)
+          (begin (set tries (i64+ (get tries) 1))
+                 (if (i64< n 0) (refuse "negative") (applied bumped (twice inc n))))))
+      (define parse (subr (maxeff kfx (read p) (write p) (goto p)) (i64) string)
+        (lambda (n)
+          (prompt tag
+                  (string-append (i64->string (checked n)) (string-append " after " (i64->string (get tries))))
+                  (lambda ((why string)) (string-append "refused: " why))))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (letrena a
+      (let ((x (parser-in a)))
+        (string-append (with x (parse 5)) (string-append "; " (with x (parse -1))))))))

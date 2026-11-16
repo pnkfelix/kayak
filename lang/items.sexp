@@ -1006,6 +1006,7 @@
 (emitter-call "par2_shared" kayak)
 (emitter-call "payload" kayak)
 (emitter-call "prompt" kayak)
+(emitter-call "prompt_at" kayak)
 (emitter-call "quiesce" kayak)
 (emitter-call "rcons" kayak)
 (emitter-call "rmake_bloblet" kayak)

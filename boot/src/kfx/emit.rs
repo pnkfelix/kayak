@@ -1635,6 +1635,48 @@ pub mod emitter {
             })
         } else if (string_eq_p(s, str_lit("nil")) || string_member_p(s, ctx_constants(c))) {
             put(str_lit("()"), put(mangle(s), acc))
+        } else if any_p(lambda1s(move |x: Str| {
+            has_prefix_p(x, string_append(str_lit("%maker-item "), string_append(s, str_lit(" "))))
+        }), ctx_locals(c)) {
+            // A module maker's item that takes the instance, given as a value: a
+            // closure over the instance, of the item's arity (C434); its future
+            // boxed in the async mode.
+            let ws = split_words(after_prefix(car(filter(lambda1s(move |x: Str| {
+                has_prefix_p(x, string_append(str_lit("%maker-item "), string_append(s, str_lit(" "))))
+            }), ctx_locals(c))), string_append(str_lit("%maker-item "), string_append(s, str_lit(" ")))));
+            let k = digits_number(car(ws));
+            let args = words_of_sep(map(lambda1s(move |i: i64| {
+                string_append(str_lit("a"), i64_to_string(i))
+            }), counting(0i64, k)), str_lit(", "));
+            let call = concat_strings(kayak_rt::heap_cons(mangle(s), kayak_rt::heap_cons(str_lit("(p, maker_st"), kayak_rt::heap_cons(if i64_eq(k, 0i64) {
+                str_lit("")
+            } else {
+                str_lit(", ")
+            }, kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))));
+            put(concat_strings(kayak_rt::heap_cons(str_lit("kayak_rt::lambda"), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit("(move |"), kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit("| "), kayak_rt::heap_cons(if not(async_mode_p(c)) {
+                call
+            } else if string_eq_p(car(cdr(ws)), str_lit("1")) {
+                string_append(str_lit("kayak_rt::suspend::body("), string_append(call, str_lit(")")))
+            } else {
+                string_append(str_lit("kayak_rt::suspend::boxed("), string_append(call, str_lit(")")))
+            }, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), acc)
+        } else if (async_mode_p(c) && any_p(lambda1s(move |x: Str| {
+            has_prefix_p(x, string_append(str_lit("%maker-plain "), string_append(s, str_lit(" "))))
+        }), ctx_locals(c))) {
+            // A module maker's plain item given as a value, in the async mode: a
+            // closure boxing its future, capturing nothing (C434).
+            let ws = split_words(after_prefix(car(filter(lambda1s(move |x: Str| {
+                has_prefix_p(x, string_append(str_lit("%maker-plain "), string_append(s, str_lit(" "))))
+            }), ctx_locals(c))), string_append(str_lit("%maker-plain "), string_append(s, str_lit(" ")))));
+            let k = digits_number(car(ws));
+            let args = words_of_sep(map(lambda1s(move |i: i64| {
+                string_append(str_lit("a"), i64_to_string(i))
+            }), counting(0i64, k)), str_lit(", "));
+            put(concat_strings(kayak_rt::heap_cons(str_lit("kayak_rt::lambda"), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit("s(move |"), kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit("| "), kayak_rt::heap_cons(if string_eq_p(car(cdr(ws)), str_lit("1")) {
+                str_lit("kayak_rt::suspend::body(")
+            } else {
+                str_lit("kayak_rt::suspend::boxed(")
+            }, kayak_rt::heap_cons(mangle(s), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit(")))"), kayak_rt::nil()))))))))))), acc)
         } else if string_member_p(string_append(str_lit("%maker-state "), s), ctx_locals(c)) {
             // A module maker's ref, its instance's (C433): made when the maker
             // is called, before any item runs.
@@ -5992,7 +6034,13 @@ pub mod emitter {
         let acc = put_exp(c, car(xs), i64_plus(n, 1i64), value(), acc);
         let acc = put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc));
         let acc = put(if async_here_p(c) {
-            str_lit("match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
+            if any_p(lambda1s(move |x: Str| {
+                has_prefix_p(x, str_lit("%maker-state-type "))
+            }), ctx_locals(c)) {
+                str_lit("match kayak_rt::suspend::prompt_at(prompt_tag__, kayak_rt::suspend::body(async move ")
+            } else {
+                str_lit("match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
+            }
         } else {
             str_lit("match kayak_rt::suspend::block(kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
         }, acc);
