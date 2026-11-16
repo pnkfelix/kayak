@@ -6,13 +6,7 @@ use kayak_rt::*;
 // a module of procedures, each closing over the place; its interface a
 // module type over the place.
 
-/// What builder-in makes (C274): its module's items, the place given, and its
-/// refs, made in it as it is made (C433).
-pub struct BuilderState<'p, Place_P> {
-    pub phantom_: std::marker::PhantomData<&'p Place_P>,
-}
-
-pub struct Builder<'p, Place_P>(pub &'p Place_P, pub &'p BuilderState<'p, Place_P>);
+pub struct Builder<'p, Place_P>(pub &'p Place_P, pub &'p builder_in::BuilderState<'p, Place_P>);
 
 impl<'p, Place_P> Clone for Builder<'p, Place_P> {
     fn clone(&self) -> Self {
@@ -24,6 +18,12 @@ impl<'p, Place_P> Copy for Builder<'p, Place_P> {}
 
 pub mod builder_in {
     use super::*;
+
+    /// What builder-in makes (C274): its module's items, the place given, and its
+    /// values, made as it is made (C433).
+    pub struct BuilderState<'p, Place_P> {
+        pub phantom_: std::marker::PhantomData<&'p Place_P>,
+    }
 
     pub fn count_from<'p, Place_P: Holds<Cons<'p, i64>>>(mut p: &'p Place_P, mut maker_st: &'p BuilderState<'p, Place_P>, mut k: i64, mut n: i64, mut acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
         loop {

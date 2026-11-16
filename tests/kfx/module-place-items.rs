@@ -7,15 +7,7 @@ use kayak_rt::*;
 // `poly`; ones named other than called, given to another as a value, one
 // a plain function, one that takes the instance.
 
-/// What parser-in makes (C274): its module's items, the place given, and its
-/// refs, made in it as it is made (C433).
-pub struct ParserState<'p, Place_P> {
-    pub tag: std::cell::Cell<Option<Tag<Str, Str>>>,
-    pub tries: std::cell::Cell<Option<RefAt<'p, i64>>>,
-    pub phantom_: std::marker::PhantomData<&'p Place_P>,
-}
-
-pub struct Parser<'p, Place_P>(pub &'p Place_P, pub &'p ParserState<'p, Place_P>);
+pub struct Parser<'p, Place_P>(pub &'p Place_P, pub &'p parser_in::ParserState<'p, Place_P>);
 
 impl<'p, Place_P> Clone for Parser<'p, Place_P> {
     fn clone(&self) -> Self {
@@ -27,6 +19,14 @@ impl<'p, Place_P> Copy for Parser<'p, Place_P> {}
 
 pub mod parser_in {
     use super::*;
+
+    /// What parser-in makes (C274): its module's items, the place given, and its
+    /// values, made as it is made (C433).
+    pub struct ParserState<'p, Place_P> {
+        pub tag: std::cell::Cell<Option<Tag<Str, Str>>>,
+        pub tries: std::cell::Cell<Option<RefAt<'p, i64>>>,
+        pub phantom_: std::marker::PhantomData<&'p Place_P>,
+    }
 
     #[inline]
     pub fn refuse<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, why: Str) -> Result<i64, Unwind> {

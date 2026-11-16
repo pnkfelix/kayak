@@ -12523,3 +12523,19 @@ with the types found written in, and each noted for the emitter
 A maker for this is a procedure of places alone whose module has a
 `->*` item (`maker-form?`): the cells tests found a functor taken for
 one, its module's types unbound in the finding pass.
+
+## C436. A module maker's types and effects, those naming its place (2026-11-16)
+
+Route 1's fourth step. Of the expander's 23 datatypes and 119 type
+abbreviations none but one abbreviation (`namer`) names its regions, nor
+any datatype; of its 2 effects both do. The translator will define the
+rest outside the maker; what names the place stays in it. So a maker's
+module may now define type abbreviations and effects (`maker-type?`):
+written in its Rust module before its state's struct, which moved into
+the module, `m::IState`, where the types its fields name are; its items
+written in the module's context as a top-level module's are
+(`module-parts`), so that its effects and abbreviations are known where
+they are named. A datatype in a maker's module is refused: the checker
+reads a module value's as a structural sum, recursive ones not at all.
+Test: `tests/kfx/module-place-types.kfx` (Fixpt's answer, 19), in both
+modes.

@@ -368,6 +368,11 @@ pub mod module_place_state;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/module-place-types.rs"]
+pub mod module_place_types;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/module-poly-val.rs"]
 pub mod module_poly_val;
 
@@ -657,6 +662,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("module-place-items", module_place_items::main),
     ("module-place-star", module_place_star::main),
     ("module-place-state", module_place_state::main),
+    ("module-place-types", module_place_types::main),
     ("module-poly-val", module_poly_val::main),
     ("module-shared-tag", module_shared_tag::main),
     ("module-strings", module_strings::main),

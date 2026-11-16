@@ -854,7 +854,17 @@
                  (cons (lst (cdr (items (car forms))) "" 0 0) (maker-defs (cdr forms))))
                 ((head-is? (car forms) "define-rec") (onto (cdr (items (car forms))) (maker-defs (cdr forms))))
                 ((maker-state? (car forms)) (maker-defs (cdr forms)))
+                ((maker-type? (car forms)) (maker-defs (cdr forms)))
                 (else (error "kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433)"))))))
+
+    (define maker-type? (subr kfx (sexp) bool)
+      (lambda (f)
+        "A module maker's type abbreviation or effect (C436), one naming its
+         place: written in its module, as a module's are. Not a datatype,
+         which the checker reads as a structural sum in a module value."
+        (cond ((head-is? f "define-datatype")
+               (error "kfx: a datatype in a module maker's module, which the checker reads as a structural sum: define it outside (C436)"))
+              (else (or (head-is? f "define-type") (head-is? f "define-effect"))))))
 
     (define maker-state? (subr kfx (sexp) bool)
       (lambda (f)
@@ -1072,12 +1082,20 @@
                  (shown (concat (map (lambda ((it sexp)) (if (head-is? it "val") (the strings (list (sym-name (second (items it))))) nil))
                                      (let ((found (module-body c (string-append "%maker-iface " iface-name)))) (if (null? found) nil (cdr (items (car found))))))))
                  (written (cdr (items (third (items lam)))))
+                 (types (filter maker-type? written))
+                 ;; Its types, abbreviations and effects (C436), as a top-level module's:
+                 ;; its items written where they are known, as `m`'s.
+                 (parts (module-parts c name types))
+                 (c (tagcase parts (mparts (inner forms) inner)))
                  (defs (maker-defs written))
                  (states (maker-states written))
                  (siblings (maker-needy p (map (lambda ((d sexp)) (sym-name (car (items d)))) states) defs nil))
                  (pt (string-append "Place_" (camel p)))
                  (named (concat-strings (list iface "<" (lifetime p) ", " pt ">")))
                  (state-named (concat-strings (list iface "State<" (lifetime p) ", " pt ">")))
+                 ;; The state's struct is in the module, where the types its fields
+                 ;; name are (C436).
+                 (state-path (concat-strings (list (mangle name) "::" state-named)))
                  (c (with-locals c (cons (string-append "%maker-needs " name)
                                          (cons (concat-strings (list "%maker-state-type &" (lifetime p) " " state-named))
                                                (onto (map (lambda ((d sexp)) (string-append "%maker-state " (sym-name (car (items d))))) states)
@@ -1117,18 +1135,18 @@
                                                           (put (concat-strings (list "    maker_st." (mangle (sym-name (car ys))) ".set(Some(")) acc)))))
                                 "" states body))
                  (body (put "    maker_st\n}" body))
-                 (acc (put (concat-strings (list "/// What " name " makes (C274): its module's items, the place given, and its
-"
-                                                 "/// refs, made in it as it is made (C433).
-"
-                                                 "pub struct " state-named " {
-"))
-                           acc))
-                 (acc (put-sep (lambda ((d sexp) (acc chars))
-                                 (put ">>,\n" (put-type cp (second (items d)) (put (concat-strings (list "    pub " (mangle (sym-name (car (items d)))) ": std::cell::Cell<Option<")) acc))))
-                               "" states acc))
-                 (acc (put (concat-strings (list "    pub phantom_: std::marker::PhantomData<&" (lifetime p) " " pt ">,\n}\n\n"
-                                                 "pub struct " named "(pub &" (lifetime p) " " pt ", pub &" (lifetime p) " " state-named ");\n\n"
+                 ;; Before the items: the module's types, then the state's struct.
+                 (head (tagcase parts (mparts (inner forms) (put-tops inner forms nil))))
+                 (head (put (concat-strings (list "/// What " name " makes (C274): its module's items, the place given, and its\n"
+                                                  "/// values, made as it is made (C433).\n"
+                                                  "pub struct " state-named " {\n"))
+                            head))
+                 (head (put-sep (lambda ((d sexp) (acc chars))
+                                  (put ">>,\n" (put-type cp (second (items d)) (put (concat-strings (list "    pub " (mangle (sym-name (car (items d)))) ": std::cell::Cell<Option<")) acc))))
+                                "" states head))
+                 (head (put (concat-strings (list "    pub phantom_: std::marker::PhantomData<&" (lifetime p) " " pt ">,\n}\n\n")) head))
+                 (body (onto body head))
+                 (acc (put (concat-strings (list "pub struct " named "(pub &" (lifetime p) " " pt ", pub &" (lifetime p) " " state-path ");\n\n"
                                                  "impl<" (lifetime p) ", " pt "> Clone for " named " {\n    fn clone(&self) -> Self {\n        *self\n    }\n}\n\n"
                                                  "impl<" (lifetime p) ", " pt "> Copy for " named " {}\n\n"))
                            acc))

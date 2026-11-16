@@ -8,16 +8,7 @@ use kayak_rt::*;
 // procedures and name the values defined before it. Two counters, made in two places,
 // count apart.
 
-/// What counter-in makes (C274): its module's items, the place given, and its
-/// refs, made in it as it is made (C433).
-pub struct CounterState<'p, Place_P> {
-    pub base: std::cell::Cell<Option<i64>>,
-    pub n: std::cell::Cell<Option<RefAt<'p, i64>>>,
-    pub bumps: std::cell::Cell<Option<RefAt<'p, i64>>>,
-    pub phantom_: std::marker::PhantomData<&'p Place_P>,
-}
-
-pub struct Counter<'p, Place_P>(pub &'p Place_P, pub &'p CounterState<'p, Place_P>);
+pub struct Counter<'p, Place_P>(pub &'p Place_P, pub &'p counter_in::CounterState<'p, Place_P>);
 
 impl<'p, Place_P> Clone for Counter<'p, Place_P> {
     fn clone(&self) -> Self {
@@ -29,6 +20,15 @@ impl<'p, Place_P> Copy for Counter<'p, Place_P> {}
 
 pub mod counter_in {
     use super::*;
+
+    /// What counter-in makes (C274): its module's items, the place given, and its
+    /// values, made as it is made (C433).
+    pub struct CounterState<'p, Place_P> {
+        pub base: std::cell::Cell<Option<i64>>,
+        pub n: std::cell::Cell<Option<RefAt<'p, i64>>>,
+        pub bumps: std::cell::Cell<Option<RefAt<'p, i64>>>,
+        pub phantom_: std::marker::PhantomData<&'p Place_P>,
+    }
 
     #[inline]
     pub fn start() -> i64 {

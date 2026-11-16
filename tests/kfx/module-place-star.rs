@@ -6,14 +6,7 @@ use kayak_rt::*;
 // lambda, in order, as a top-level module's are, one naming the module's
 // ref among them.
 
-/// What counter-in makes (C274): its module's items, the place given, and its
-/// refs, made in it as it is made (C433).
-pub struct CntState<'p, Place_P> {
-    pub n: std::cell::Cell<Option<RefAt<'p, i64>>>,
-    pub phantom_: std::marker::PhantomData<&'p Place_P>,
-}
-
-pub struct Cnt<'p, Place_P>(pub &'p Place_P, pub &'p CntState<'p, Place_P>);
+pub struct Cnt<'p, Place_P>(pub &'p Place_P, pub &'p counter_in::CntState<'p, Place_P>);
 
 impl<'p, Place_P> Clone for Cnt<'p, Place_P> {
     fn clone(&self) -> Self {
@@ -25,6 +18,13 @@ impl<'p, Place_P> Copy for Cnt<'p, Place_P> {}
 
 pub mod counter_in {
     use super::*;
+
+    /// What counter-in makes (C274): its module's items, the place given, and its
+    /// values, made as it is made (C433).
+    pub struct CntState<'p, Place_P> {
+        pub n: std::cell::Cell<Option<RefAt<'p, i64>>>,
+        pub phantom_: std::marker::PhantomData<&'p Place_P>,
+    }
 
     #[inline]
     pub fn step(k: i64) -> i64 {
