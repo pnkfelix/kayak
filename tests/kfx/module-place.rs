@@ -6,8 +6,13 @@ use kayak_rt::*;
 // a module of procedures, each closing over the place; its interface a
 // module type over the place.
 
-/// What builder-in makes (C274): its module's items, the place given.
-pub struct Builder<'p, Place_P>(pub &'p Place_P);
+/// What builder-in makes (C274): its module's items, the place given, and its
+/// refs, made in it as it is made (C433).
+pub struct BuilderState<'p, Place_P> {
+    pub phantom_: std::marker::PhantomData<&'p Place_P>,
+}
+
+pub struct Builder<'p, Place_P>(pub &'p Place_P, pub &'p BuilderState<'p, Place_P>);
 
 impl<'p, Place_P> Clone for Builder<'p, Place_P> {
     fn clone(&self) -> Self {
@@ -20,7 +25,7 @@ impl<'p, Place_P> Copy for Builder<'p, Place_P> {}
 pub mod builder_in {
     use super::*;
 
-    pub fn count_from<'p, Place_P: Holds<Cons<'p, i64>>>(mut p: &'p Place_P, mut k: i64, mut n: i64, mut acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
+    pub fn count_from<'p, Place_P: Holds<Cons<'p, i64>>>(mut p: &'p Place_P, mut maker_st: &'p BuilderState<'p, Place_P>, mut k: i64, mut n: i64, mut acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
         loop {
             if i64_gt(k, n) {
                 return acc;
@@ -32,32 +37,41 @@ pub mod builder_in {
     }
 
     #[inline]
-    pub fn count_to<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P, n: i64) -> ListAt<'p, i64> {
-        count_from(p, 1i64, n, nil::<i64>())
+    pub fn count_to<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P, maker_st: &'p BuilderState<'p, Place_P>, n: i64) -> ListAt<'p, i64> {
+        count_from(p, maker_st, 1i64, n, nil::<i64>())
     }
 
     #[inline]
-    pub fn total<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P, xs: ListAt<'p, i64>) -> i64 {
+    pub fn total<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P, maker_st: &'p BuilderState<'p, Place_P>, xs: ListAt<'p, i64>) -> i64 {
         if null_p(xs) {
             0i64
         } else {
-            i64_plus(car(xs), total(p, cdr(xs)))
+            i64_plus(car(xs), total(p, maker_st, cdr(xs)))
         }
+    }
+
+
+
+    pub fn maker_state<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P) -> &'p BuilderState<'p, Place_P> {
+        let maker_st: &'p BuilderState<'p, Place_P> = kayak_rt::alloc(BuilderState {
+            phantom_: std::marker::PhantomData,
+        });
+        maker_st
     }
 }
 
 impl<'p, Place_P: Holds<Cons<'p, i64>>> Builder<'p, Place_P> {
     pub fn count_to(self, n: i64) -> ListAt<'p, i64> {
-        builder_in::count_to(self.0, n)
+        builder_in::count_to(self.0, self.1, n)
     }
 
     pub fn total(self, xs: ListAt<'p, i64>) -> i64 {
-        builder_in::total(self.0, xs)
+        builder_in::total(self.0, self.1, xs)
     }
 }
 
 pub fn builder_in<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P) -> Builder<'p, Place_P> {
-    Builder(p)
+    Builder(p, builder_in::maker_state(p))
 }
 
 pub fn again(mut k: i64, mut acc: i64) -> i64 {

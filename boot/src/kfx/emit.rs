@@ -1635,6 +1635,10 @@ pub mod emitter {
             })
         } else if (string_eq_p(s, str_lit("nil")) || string_member_p(s, ctx_constants(c))) {
             put(str_lit("()"), put(mangle(s), acc))
+        } else if string_member_p(string_append(str_lit("%maker-state "), s), ctx_locals(c)) {
+            // A module maker's ref, its instance's (C433): made when the maker
+            // is called, before any item runs.
+            put(str_lit(".get().unwrap()"), put(mangle(s), put(str_lit("maker_st."), acc)))
         } else {
             put(mangle(s), put(str_lit("&"), acc))
         }
@@ -3111,6 +3115,11 @@ pub mod emitter {
                 Sexp::Sym(s, at_file, at_pos) => {
                     if string_eq_p(s, str_lit("i64")) {
                         return put(str_lit("i64"), acc);
+                    } else if string_eq_p(s, str_lit("%maker-state")) {
+                        // A module maker's item's state, its instance's refs (C433).
+                        return put(after_prefix(car(filter(lambda1s(move |x: Str| {
+                            has_prefix_p(x, str_lit("%maker-state-type "))
+                        }), ctx_locals(c))), str_lit("%maker-state-type ")), acc);
                     } else if string_eq_p(s, str_lit("int")) {
                         return put(str_lit("Int"), acc);
                     } else if string_eq_p(s, str_lit("nat")) {

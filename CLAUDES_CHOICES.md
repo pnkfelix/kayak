@@ -12431,3 +12431,37 @@ datatype's constructors, a generative type's conversions, a syscall.
 
 Fixpt's programs beyond KFX the engine agrees on: 379 to 386. What the
 rest found is the checker's (TODO §51's list).
+
+## C433. A module maker's state: its values and refs, its instance's (2026-11-16)
+
+The REPL's front could not expand: the expander's state is in global
+regions (`@ms`…, where C429's translator put Fixpt's module's region
+parameters), and a process may share nothing that can be written. The
+user, asked what of this is the translator's: "Could you revise your
+translator to map region parameters in modules to some other kind of
+dynamic state that you transmit?", then, of extending C274's module
+makers so that each holds its state ("route 1"): "Go with route 1; this
+seems like a worthwhile KFX extension". Its first step.
+
+A module maker's module (C274) may now have values that are no
+procedures, `(define x T e)`, refs `(define n (ref T p) (new e))` among
+them: its instance's state, made when the maker is called. In Rust:
+- `IState<'p, Place_P>`, a field each, `Cell<Option<T>>`; the instance
+  `I(place, &state)`, still `Copy`;
+- each item given the place and then the state (`maker-st`), its calls of
+  the items given both (`place-given`); a value's name in an item, its
+  field (`maker_st.x.get().unwrap()`, KFX's values being `Copy`);
+- `m::maker_state(p)`, in the module, where the items are named: the
+  state allocated, then each value made in order, its expression able to
+  call the items and name the values before it (FX-26's `letrec*`, the
+  checker's rule of what is made before what); the maker `I(p,
+  m::maker_state(p))`.
+A ref is made by `new`, in the heap, not in the place: its type at the
+place takes it. The async mode found one more (`async-corpus`): its
+search for leaves (C377) tried each top-level procedure by writing it,
+a maker too, whose values a procedure's writing takes not; a maker is
+written as one (`put-maker`), so is no leaf. Test: `tests/kfx/module-place-state.kfx` (two counters in
+two places, apart; a value of a procedure; Fixpt's answer, `212 111`).
+Next: an item that fails, or is `poly`, or is named other than called;
+a datatype in the module; then the translator makes the expander such a
+maker.

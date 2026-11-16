@@ -853,28 +853,45 @@
                 ((and (head-is? (car forms) "define") (i64= (size (items (car forms))) 4) (lambda-form? (fourth (items (car forms)))))
                  (cons (lst (cdr (items (car forms))) "" 0 0) (maker-defs (cdr forms))))
                 ((head-is? (car forms) "define-rec") (onto (cdr (items (car forms))) (maker-defs (cdr forms))))
-                (else (error "kfx: a module maker's item not a procedure's definition, typed, which KFX writes not yet (C274)"))))))
+                ((maker-state? (car forms)) (maker-defs (cdr forms)))
+                (else (error "kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433)"))))))
+
+    (define maker-state? (subr kfx (sexp) bool)
+      (lambda (f)
+        "A module maker's value that is no procedure, `(define x T e)`, a ref
+         `(define n (ref T p) (new e))` among them (C433): its instance's
+         state, made when the maker is called."
+        (and (head-is? f "define") (i64= (size (items f)) 4) (not (lambda-form? (fourth (items f)))))))
+
+    (define maker-states (subr kfx (sexps) sexps)
+      (lambda (forms)
+        "A module maker's values, in order, each `(x T e)` (C433)."
+        (concat (map (lambda ((f sexp)) (if (maker-state? f) (the sexps (list (lst (cdr (items f)) "" 0 0))) nil)) forms))))
 
     (define maker-item-type (subr kfx (string sexp) sexp)
       (lambda (p t)
-        "A module maker's item's type, given the maker's place `p` first (C274)."
+        "A module maker's item's type, given the maker's place `p` first (C274),
+         then its instance's state (C433)."
         (let* ((binder (lst (list (sym p "" 0) (sym "place" "" 0)) "" 0 0))
                (bs (if (head-is? t "poly") (items (second (items t))) nil))
                (s (items (unpoly t))))
           (lst (list (sym "poly" "" 0) (lst (cons binder bs) "" 0 0)
-                     (lst (list (car s) (second s) (lst (cons (lst (list (sym "place" "" 0) (sym p "" 0)) "" 0 0) (items (third s))) "" 0 0) (fourth s)) "" 0 0))
+                     (lst (list (car s) (second s)
+                                (lst (cons (lst (list (sym "place" "" 0) (sym p "" 0)) "" 0 0) (cons (sym "%maker-state" "" 0) (items (third s)))) "" 0 0)
+                                (fourth s)) "" 0 0))
                "" 0 0))))
 
     (define-rec
       (place-given (subr kfx (string strings sexp) sexp)
         (lambda (p names e)
-          "`e`, its calls of `names` given the place `p` first (C274)."
+          "`e`, its calls of `names` given the place `p` first (C274), then the
+           instance's state (C433)."
           (tagcase e
             (lst (xs f l q)
               (cond ((null? xs) e)
                     ((sym-is? (car xs) "quote") e)
                     ((tagcase (car xs) (sym (n f2 p2) (string-member? n names)) (else other #f))
-                     (lst (cons (car xs) (cons (sym p "" 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr xs)))) f l q))
+                     (lst (cons (car xs) (cons (sym p "" 0) (cons (sym "maker-st" "" 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr xs))))) f l q))
                     (else (lst (map (lambda ((x sexp)) (place-given p names x)) xs) f l q))))
             (else other e)))))
 
@@ -883,7 +900,7 @@
         "A module maker's item's lambda, given the maker's place `p` first, and
          its calls of the maker's items (C274)."
         (let ((ys (items lam)))
-          (lst (cons (car ys) (cons (lst (cons (sym p "" 0) (items (second ys))) "" 0 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr (cdr ys))))) "" 0 0))))
+          (lst (cons (car ys) (cons (lst (cons (sym p "" 0) (cons (sym "maker-st" "" 0) (items (second ys)))) "" 0 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr (cdr ys))))) "" 0 0))))
 
     (define-rec
       (sum-tags-of (subr kfx (strings strings) strings)
@@ -1016,10 +1033,13 @@
           "A module maker (C274), `(define m (poly ((p place)) (subr E ((place
            p)) (i p))) (lambda (p) (module item ...)))`: in Rust, a `mod m` of
            its items, each a procedure given the place first, as the maker
-           is, their calls of each other given it too; the struct `I<'p,
-           Place_P>`, the place, whose methods are the items; and `m`, making
-           one. Each bound to hold what any item makes in the place: the
-           maker's `place-needs`."
+           is, then the instance's state, their calls of each other given
+           them too; the struct `I<'p, Place_P>`, the place and the state,
+           whose methods are the items; and `m`, making one. The state (C433):
+           the module's refs, `IState`'s fields, each made in the place, in
+           order, when the maker is called, its first value's expression able
+           to call the items. Each bound to hold what any item makes in the
+           place: the maker's `place-needs`."
           (let* ((name (sym-name (second xs)))
                  (typ (third xs))
                  (binders (items (second (items typ))))
@@ -1033,18 +1053,50 @@
                  ;; Its interface's values, the struct's methods.
                  (shown (concat (map (lambda ((it sexp)) (if (head-is? it "val") (the strings (list (sym-name (second (items it))))) nil))
                                      (let ((found (module-body c (string-append "%maker-iface " iface-name)))) (if (null? found) nil (cdr (items (car found))))))))
-                 (defs (maker-defs (cdr (items (third (items lam))))))
+                 (written (cdr (items (third (items lam)))))
+                 (defs (maker-defs written))
+                 (states (maker-states written))
                  (siblings (map (lambda ((d sexp)) (sym-name (car (items d)))) defs))
-                 (c (with-locals c (list (string-append "%maker-needs " name))))
-                 (cp (with-locals c (list (string-append "%letrena " p) (string-append "%placeparam " p))))
                  (pt (string-append "Place_" (camel p)))
                  (named (concat-strings (list iface "<" (lifetime p) ", " pt ">")))
+                 (state-named (concat-strings (list iface "State<" (lifetime p) ", " pt ">")))
+                 (c (with-locals c (cons (string-append "%maker-needs " name)
+                                         (cons (concat-strings (list "%maker-state-type &" (lifetime p) " " state-named))
+                                               (map (lambda ((d sexp)) (string-append "%maker-state " (sym-name (car (items d))))) states)))))
+                 (cp (with-locals c (list (string-append "%letrena " p) (string-append "%placeparam " p))))
                  (body (put-sep (lambda ((d sexp) (acc chars))
                                   (let ((ys (items d)))
                                     (put-define c (car ys) (maker-item-type p (second ys)) (maker-item-lambda p siblings (third ys)) acc)))
                                 "" defs nil))
-                 (acc (put (concat-strings (list "/// What " name " makes (C274): its module's items, the place given.\n"
-                                                 "pub struct " named "(pub &" (lifetime p) " " pt ");\n\n"
+                 ;; The state made (C433), in the module, where the items are named:
+                 ;; each ref made, in order, its first value's expression able to
+                 ;; call the items, which are given the state, its refs so far made.
+                 (body (put "pub fn maker_state" (put "\n\n" body)))
+                 (body (put-place-generics c name binders nil (list p) body))
+                 (body (put (concat-strings (list "(" (mangle p) ": &" (lifetime p) " " pt ") -> &" (lifetime p) " " state-named " {\n"
+                                                  "    let maker_st: &" (lifetime p) " " state-named " = kayak_rt::alloc(" iface "State {\n"))
+                            body))
+                 (body (put-sep (lambda ((d sexp) (acc chars)) (put (concat-strings (list "        " (mangle (sym-name (car (items d)))) ": std::cell::Cell::new(None),\n")) acc))
+                                "" states body))
+                 (body (put "        phantom_: std::marker::PhantomData,\n    });\n" body))
+                 (body (put-sep (lambda ((d sexp) (acc chars))
+                                  (let ((ys (items d)))
+                                    (put "));\n" (put-exp (with-locals cp (list p "maker-st")) (place-given p siblings (third ys)) 1 (value)
+                                                          (put (concat-strings (list "    maker_st." (mangle (sym-name (car ys))) ".set(Some(")) acc)))))
+                                "" states body))
+                 (body (put "    maker_st\n}" body))
+                 (acc (put (concat-strings (list "/// What " name " makes (C274): its module's items, the place given, and its
+"
+                                                 "/// refs, made in it as it is made (C433).
+"
+                                                 "pub struct " state-named " {
+"))
+                           acc))
+                 (acc (put-sep (lambda ((d sexp) (acc chars))
+                                 (put ">>,\n" (put-type cp (second (items d)) (put (concat-strings (list "    pub " (mangle (sym-name (car (items d)))) ": std::cell::Cell<Option<")) acc))))
+                               "" states acc))
+                 (acc (put (concat-strings (list "    pub phantom_: std::marker::PhantomData<&" (lifetime p) " " pt ">,\n}\n\n"
+                                                 "pub struct " named "(pub &" (lifetime p) " " pt ", pub &" (lifetime p) " " state-named ");\n\n"
                                                  "impl<" (lifetime p) ", " pt "> Clone for " named " {\n    fn clone(&self) -> Self {\n        *self\n    }\n}\n\n"
                                                  "impl<" (lifetime p) ", " pt "> Copy for " named " {}\n\n"))
                            acc))
@@ -1062,13 +1114,14 @@
                                               (acc (put (string-append (if async "    pub async fn " "    pub fn ") (string-append (mangle (sym-name (car ys))) "(self")) acc))
                                               (acc (if (null? params) acc (put-params cp params (items (third (items t))) #f (put ", " acc))))
                                               (acc (put-type cp (fourth (items t)) (put ") -> " acc)))
-                                              (acc (put (concat-strings (list " {\n        " (mangle name) "::" (mangle (sym-name (car ys))) "(self.0")) acc)))
+                                              (acc (put (concat-strings (list " {\n        " (mangle name) "::" (mangle (sym-name (car ys))) "(self.0, self.1")) acc)))
                                          (put (if async ").await\n    }\n" ")\n    }\n") (put-sep (lambda ((x sexp) (acc chars)) (put (mangle (param-name x)) (put ", " acc))) "" params acc))))))
                                "\n" (filter (lambda ((d sexp)) (string-member? (sym-name (car (items d))) shown)) defs) acc))
                  (acc (put "}\n\n" acc))
                  (acc (put (string-append (if (in-async-mode? c) "pub async fn " "pub fn ") (mangle name)) acc))
-                 (acc (put-place-generics c name binders nil (list p) acc)))
-            (put (concat-strings (list "(" (mangle p) ": &" (lifetime p) " " pt ") -> " named " {\n    " iface "(" (mangle p) ")\n}\n\n")) acc))))
+                 (acc (put-place-generics c name binders nil (list p) acc))
+                 (acc (put (concat-strings (list "(" (mangle p) ": &" (lifetime p) " " pt ") -> " named " {\n")) acc)))
+            (put (concat-strings (list "    " iface "(" (mangle p) ", " (mangle name) "::maker_state(" (mangle p) "))\n}\n\n")) acc))))
 
       (types-once (subr kfx (ctx sexps strings) sexps)
         (lambda (c forms given)
@@ -1328,6 +1381,10 @@
           (and (i64>= (size xs) 3)
                (tagcase (car xs) (sym (n at-file at-pos) (not (string=? n "main"))) (else other #f))
                (head-is? (unpoly (third xs)) "lambda")
+               ;; A module maker is written as one (`put-maker`, C274), not as a
+               ;; procedure: no leaf (C433: its values a procedure's writing
+               ;; takes not).
+               (not (and (i64= (size (items (unpoly (third xs)))) 3) (head-is? (third (items (unpoly (third xs)))) "module")))
                (head-is? (unpoly (second xs)) "subr")
                (not (comefrom-effect? c (second (items (unpoly (second xs))))))
                (let ((written (put-define (with-locals c (list "%probe")) (car xs) (second xs) (third xs) nil)))

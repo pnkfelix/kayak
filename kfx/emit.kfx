@@ -845,6 +845,10 @@
                    (put (item-path c s) (if (string-member? s (item-constants (module-items c m))) acc (put "&" acc)))))
                 ((or (string=? s "nil") (string-member? s (ctx-constants c)))
                  (put "()" (put (mangle s) acc)))
+                ((string-member? (string-append "%maker-state " s) (ctx-locals c))
+                 "A module maker's ref, its instance's (C433): made when the maker
+                  is called, before any item runs."
+                 (put ".get().unwrap()" (put (mangle s) (put "maker_st." acc))))
                 (else (put (mangle s) (put "&" acc))))))
 
       (define put-spaces (subr kfx (i64 chars) chars)
@@ -1639,6 +1643,9 @@
           (tagcase t
             (sym (s at-file at-pos)
               (cond ((string=? s "i64") (put "i64" acc))
+                    ((string=? s "%maker-state")
+                     "A module maker's item's state, its instance's refs (C433)."
+                     (put (after-prefix (car (filter (lambda ((x string)) (has-prefix? x "%maker-state-type ")) (ctx-locals c))) "%maker-state-type ") acc))
                     ((string=? s "int") (put "Int" acc))
                     ((string=? s "nat") (put "Int" acc))
                     ((string=? s "f64") (put "f64" acc))

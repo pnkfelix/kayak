@@ -1502,13 +1502,36 @@ pub mod writing {
                 return kayak_rt::heap_cons(lst(cdr(items(car(forms))), str_lit(""), 0i64, 0i64), maker_defs(cdr(forms)));
             } else if head_is_p(car(forms), str_lit("define-rec")) {
                 return onto(cdr(items(car(forms))), maker_defs(cdr(forms)));
+            } else if maker_state_p(car(forms)) {
+                forms = cdr(forms);
+                continue;
             } else {
-                return error(str_lit("kfx: a module maker's item not a procedure's definition, typed, which KFX writes not yet (C274)"));
+                return error(str_lit("kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433)"));
             }
         }
     }
 
-    /// A module maker's item's type, given the maker's place `p` first (C274).
+    /// A module maker's value that is no procedure, `(define x T e)`, a ref
+    /// `(define n (ref T p) (new e))` among them (C433): its instance's
+    /// state, made when the maker is called.
+    #[inline]
+    pub fn maker_state_p(f: &'static Sexp) -> bool {
+        (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(lambda_form_p(fourth(items(f)))))
+    }
+
+    /// A module maker's values, in order, each `(x T e)` (C433).
+    pub fn maker_states(forms: Sexps) -> Sexps {
+        concat(map(lambda1s(move |f: &'static Sexp| {
+            if maker_state_p(f) {
+                the::<Sexps>(kayak_rt::heap_cons(lst(cdr(items(f)), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+            } else {
+                nil::<&'static Sexp>()
+            }
+        }), forms))
+    }
+
+    /// A module maker's item's type, given the maker's place `p` first (C274),
+    /// then its instance's state (C433).
     pub fn maker_item_type(p: Str, t: &'static Sexp) -> &'static Sexp {
         let binder = lst(kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64);
         let bs = if head_is_p(t, str_lit("poly")) {
@@ -1517,10 +1540,11 @@ pub mod writing {
             nil::<&'static Sexp>()
         };
         let s = items(unpoly(t));
-        lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(binder, bs), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(s), kayak_rt::heap_cons(second(s), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), items(third(s))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(fourth(s), kayak_rt::nil())))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+        lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(binder, bs), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(s), kayak_rt::heap_cons(second(s), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(sym(str_lit("%maker-state"), str_lit(""), 0i64), items(third(s)))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(fourth(s), kayak_rt::nil())))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
     }
 
-    /// `e`, its calls of `names` given the place `p` first (C274).
+    /// `e`, its calls of `names` given the place `p` first (C274), then the
+    /// instance's state (C433).
     pub fn place_given(p: Str, names: Strings, e: &'static Sexp) -> &'static Sexp {
         let tagcase_ = e;
         match *tagcase_ {
@@ -1541,9 +1565,9 @@ pub mod writing {
                         }
                     }
                 } {
-                    lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), map(lambda1s(move |x: &'static Sexp| {
+                    lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("maker-st"), str_lit(""), 0i64), map(lambda1s(move |x: &'static Sexp| {
                         place_given(p, names, x)
-                    }), cdr(xs)))), f, l, q)
+                    }), cdr(xs))))), f, l, q)
                 } else {
                     lst(map(lambda1s(move |x: &'static Sexp| {
                         place_given(p, names, x)
@@ -1561,7 +1585,7 @@ pub mod writing {
     /// its calls of the maker's items (C274).
     pub fn maker_item_lambda(p: Str, names: Strings, lam: &'static Sexp) -> &'static Sexp {
         let ys = items(lam);
-        lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), items(second(ys))), str_lit(""), 0i64, 0i64), map(lambda1s(move |x: &'static Sexp| {
+        lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("maker-st"), str_lit(""), 0i64), items(second(ys)))), str_lit(""), 0i64, 0i64), map(lambda1s(move |x: &'static Sexp| {
             place_given(p, names, x)
         }), cdr(cdr(ys))))), str_lit(""), 0i64, 0i64)
     }
@@ -1830,10 +1854,13 @@ pub mod writing {
     /// A module maker (C274), `(define m (poly ((p place)) (subr E ((place
     /// p)) (i p))) (lambda (p) (module item ...)))`: in Rust, a `mod m` of
     /// its items, each a procedure given the place first, as the maker
-    /// is, their calls of each other given it too; the struct `I<'p,
-    /// Place_P>`, the place, whose methods are the items; and `m`, making
-    /// one. Each bound to hold what any item makes in the place: the
-    /// maker's `place-needs`.
+    /// is, then the instance's state, their calls of each other given
+    /// them too; the struct `I<'p, Place_P>`, the place and the state,
+    /// whose methods are the items; and `m`, making one. The state (C433):
+    /// the module's refs, `IState`'s fields, each made in the place, in
+    /// order, when the maker is called, its first value's expression able
+    /// to call the items. Each bound to hold what any item makes in the
+    /// place: the maker's `place-needs`.
     pub fn put_maker(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
         let name = sym_name(second(xs));
         let typ = third(xs);
@@ -1861,19 +1888,40 @@ pub mod writing {
                 cdr(items(car(found)))
             }
         }));
-        let defs = maker_defs(cdr(items(third(items(lam)))));
+        let written = cdr(items(third(items(lam))));
+        let defs = maker_defs(written);
+        let states = maker_states(written);
         let siblings = map(lambda1s(move |d: &'static Sexp| {
             sym_name(car(items(d)))
         }), defs);
-        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::nil()));
-        let cp = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())));
         let pt = string_append(str_lit("Place_"), camel(p));
         let named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
+        let state_named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("State<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
+        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::heap_cons(concat_strings(kayak_rt::heap_cons(str_lit("%maker-state-type &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(state_named, kayak_rt::nil()))))), map(lambda1s(move |d: &'static Sexp| {
+            string_append(str_lit("%maker-state "), sym_name(car(items(d))))
+        }), states))));
+        let cp = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())));
         let body = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
             let ys = items(d);
             put_define(c, car(ys), maker_item_type(p, second(ys)), maker_item_lambda(p, siblings, third(ys)), acc)
         }), str_lit(""), defs, nil::<char>());
-        let acc = put(concat_strings(kayak_rt::heap_cons(str_lit("/// What "), kayak_rt::heap_cons(name, kayak_rt::heap_cons(str_lit(" makes (C274): its module's items, the place given.\n"), kayak_rt::heap_cons(str_lit("pub struct "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit("(pub &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(");\n\n"), kayak_rt::heap_cons(str_lit("impl<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit("> Clone for "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {\n    fn clone(&self) -> Self {\n        *self\n    }\n}\n\n"), kayak_rt::heap_cons(str_lit("impl<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit("> Copy for "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {}\n\n"), kayak_rt::nil()))))))))))))))))))))))))), acc);
+        let body = put(str_lit("pub fn maker_state"), put(str_lit("\n\n"), body));
+        let body = put_place_generics(c, name, binders, nil::<Str>(), kayak_rt::heap_cons(p, kayak_rt::nil()), body);
+        let body = put(concat_strings(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(": &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(") -> &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(state_named, kayak_rt::heap_cons(str_lit(" {\n"), kayak_rt::heap_cons(str_lit("    let maker_st: &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(state_named, kayak_rt::heap_cons(str_lit(" = kayak_rt::alloc("), kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("State {\n"), kayak_rt::nil()))))))))))))))))))), body);
+        let body = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
+            put(concat_strings(kayak_rt::heap_cons(str_lit("        "), kayak_rt::heap_cons(mangle(sym_name(car(items(d)))), kayak_rt::heap_cons(str_lit(": std::cell::Cell::new(None),\n"), kayak_rt::nil())))), acc)
+        }), str_lit(""), states, body);
+        let body = put(str_lit("        phantom_: std::marker::PhantomData,\n    });\n"), body);
+        let body = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
+            let ys = items(d);
+            put(str_lit("));\n"), put_exp(with_locals(cp, kayak_rt::heap_cons(p, kayak_rt::heap_cons(str_lit("maker-st"), kayak_rt::nil()))), place_given(p, siblings, third(ys)), 1i64, value(), put(concat_strings(kayak_rt::heap_cons(str_lit("    maker_st."), kayak_rt::heap_cons(mangle(sym_name(car(ys))), kayak_rt::heap_cons(str_lit(".set(Some("), kayak_rt::nil())))), acc)))
+        }), str_lit(""), states, body);
+        let body = put(str_lit("    maker_st\n}"), body);
+        let acc = put(concat_strings(kayak_rt::heap_cons(str_lit("/// What "), kayak_rt::heap_cons(name, kayak_rt::heap_cons(str_lit(" makes (C274): its module's items, the place given, and its\n"), kayak_rt::heap_cons(str_lit("/// refs, made in it as it is made (C433).\n"), kayak_rt::heap_cons(str_lit("pub struct "), kayak_rt::heap_cons(state_named, kayak_rt::heap_cons(str_lit(" {\n"), kayak_rt::nil())))))))), acc);
+        let acc = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
+            put(str_lit(">>,\n"), put_type(cp, second(items(d)), put(concat_strings(kayak_rt::heap_cons(str_lit("    pub "), kayak_rt::heap_cons(mangle(sym_name(car(items(d)))), kayak_rt::heap_cons(str_lit(": std::cell::Cell<Option<"), kayak_rt::nil())))), acc)))
+        }), str_lit(""), states, acc);
+        let acc = put(concat_strings(kayak_rt::heap_cons(str_lit("    pub phantom_: std::marker::PhantomData<&"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">,\n}\n\n"), kayak_rt::heap_cons(str_lit("pub struct "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit("(pub &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(", pub &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(state_named, kayak_rt::heap_cons(str_lit(");\n\n"), kayak_rt::heap_cons(str_lit("impl<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit("> Clone for "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {\n    fn clone(&self) -> Self {\n        *self\n    }\n}\n\n"), kayak_rt::heap_cons(str_lit("impl<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit("> Copy for "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {}\n\n"), kayak_rt::nil()))))))))))))))))))))))))))))))), acc);
         let acc = put_module_around(c, name, body, acc);
         let acc = put(string_append(str_lit(" "), string_append(named, str_lit(" {\n"))), put_place_generics(c, name, binders, nil::<Str>(), kayak_rt::heap_cons(p, kayak_rt::nil()), put(str_lit("impl"), acc)));
         let acc = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
@@ -1895,7 +1943,7 @@ pub mod writing {
                     put_params(cp, params, items(third(items(t))), false, put(str_lit(", "), acc))
                 };
                 let acc = put_type(cp, fourth(items(t)), put(str_lit(") -> "), acc));
-                let acc = put(concat_strings(kayak_rt::heap_cons(str_lit(" {\n        "), kayak_rt::heap_cons(mangle(name), kayak_rt::heap_cons(str_lit("::"), kayak_rt::heap_cons(mangle(sym_name(car(ys))), kayak_rt::heap_cons(str_lit("(self.0"), kayak_rt::nil())))))), acc);
+                let acc = put(concat_strings(kayak_rt::heap_cons(str_lit(" {\n        "), kayak_rt::heap_cons(mangle(name), kayak_rt::heap_cons(str_lit("::"), kayak_rt::heap_cons(mangle(sym_name(car(ys))), kayak_rt::heap_cons(str_lit("(self.0, self.1"), kayak_rt::nil())))))), acc);
                 put(if r#async {
                     str_lit(").await\n    }\n")
                 } else {
@@ -1914,7 +1962,8 @@ pub mod writing {
             str_lit("pub fn ")
         }, mangle(name)), acc);
         let acc = put_place_generics(c, name, binders, nil::<Str>(), kayak_rt::heap_cons(p, kayak_rt::nil()), acc);
-        put(concat_strings(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(": &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(") -> "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {\n    "), kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(")\n}\n\n"), kayak_rt::nil())))))))))))))), acc)
+        let acc = put(concat_strings(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(": &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(") -> "), kayak_rt::heap_cons(named, kayak_rt::heap_cons(str_lit(" {\n"), kayak_rt::nil())))))))))), acc);
+        put(concat_strings(kayak_rt::heap_cons(str_lit("    "), kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(mangle(name), kayak_rt::heap_cons(str_lit("::maker_state("), kayak_rt::heap_cons(mangle(p), kayak_rt::heap_cons(str_lit("))\n}\n\n"), kayak_rt::nil())))))))))), acc)
     }
 
     /// A module's `include`s, each marked with the types one before it gave
@@ -2354,7 +2403,7 @@ pub mod writing {
                     false
                 }
             }
-        } && head_is_p(unpoly(third(xs)), str_lit("lambda")) && head_is_p(unpoly(second(xs)), str_lit("subr")) && not(comefrom_effect_p(c, second(items(unpoly(second(xs)))))) && {
+        } && head_is_p(unpoly(third(xs)), str_lit("lambda")) && not((i64_eq(size(items(unpoly(third(xs)))), 3i64) && head_is_p(third(items(unpoly(third(xs)))), str_lit("module")))) && head_is_p(unpoly(second(xs)), str_lit("subr")) && not(comefrom_effect_p(c, second(items(unpoly(second(xs)))))) && {
             let written = put_define(with_locals(c, kayak_rt::heap_cons(str_lit("%probe"), kayak_rt::nil())), car(xs), second(xs), third(xs), nil::<char>());
             not(chars_have_p(written, string_chars(str_lit("tiawa."))))
         })
