@@ -16394,10 +16394,16 @@ pub fn broken_said(v: &'static Cv, n: Str) -> Str {
 /// defined, named as a value, may be called by whoever is given it, and so
 /// loop: `spin`, as FX-26 has it. A global defined before cannot be, since
 /// nothing it reaches is defined after it (KFX defines each name once). A
-/// `letrec` member named is nothing more: a call of it says `spin` where
-/// it may not end, its type saying so (C190; Fixpt's, `native/made-native.fx`).
+/// `letrec` member of a group that may not end, so named, says `spin` too
+/// (C431); a call of it says `spin` where it may not end, its type saying
+/// so (C190; Fixpt's, `native/made-native.fx`).
 pub fn naming_effs(s: &'static St, name: Str, wher: Str, t: &'static Ty, group: Strings) -> Strings {
-    if not(string_eq_p(wher, str_lit("global"))) {
+    if (string_eq_p(wher, str_lit("rec")) && proc_type_p(s, t)) {
+        // A `letrec` member of a group that may not end, named other than as a
+        // call's operator: whoever is given it may call it again, with
+        // anything (Fixpt's; C431, `macros/typed-letrec-pure.fx`).
+        kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
+    } else if not(string_eq_p(wher, str_lit("global"))) {
         nil::<Str>()
     } else if (proc_type_p(s, t) && string_member_p(name, group)) {
         kayak_rt::heap_cons(str_lit("spin"), kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()))

@@ -52,6 +52,8 @@ PRIMS = {"keyword?": "mx-keyword?", "keyword->symbol": "mx-keyword->symbol",
          "%macros:limit": "mx-limit", "parse-number": "mx-parse-number",
          "datum-vector->list": "mx-datum-vector->list"}
 SHIM = os.path.join(ROOT, "fx26", "macros-shim.kfx")
+# The engine's driver of the expander, written by hand, read in last.
+DRIVER = os.path.join(ROOT, "fx26", "macros-driver.kfx")
 # Names a local may have in FX-26 and not in KFX, whose Rust kayak-rt or the
 # emitter writes (`kfx-name?`): renamed where they are bound and named.
 # The forms a region is written in: a region parameter's name in one of
@@ -768,7 +770,7 @@ def made():
             ' The shim (fx26/macros-shim.kfx) first; then each file, in the order\n'
             ' its loads need, the expander\'s whole, the parser\'s files\' what it\n'
             ' reaches.\n' + marks + '"\n\n'
-            '(define mx\n  (module\n' + shim + "\n" + body + "))\n")
+            '(define mx\n  (module\n' + shim + "\n" + body + "\n" + open(DRIVER, encoding="utf-8").read() + "))\n")
     return files, {"expander.kfx": text}
 
 

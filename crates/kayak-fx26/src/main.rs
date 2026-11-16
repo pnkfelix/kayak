@@ -31,7 +31,9 @@ fn run(args: Vec<String>) -> i64 {
             let path = path.clone();
             with_big_stack(move || rust_repl::scripted(&path))
         }
-        _ => with_big_stack(|| int_to_i64(fx26::engine_main())),
+        _ => with_big_stack(|| {
+            int_to_i64(fx26::engine_main().unwrap_or_else(|u| kayak_rt::unreachable_unwind(u)))
+        }),
     }
 }
 
@@ -46,7 +48,10 @@ fn run(args: Vec<String>) -> i64 {
             format!("{home}/.kayak_fx26_history"),
         ]);
     }
-    let status = with_big_stack(|| int_to_i64(fx26::main()));
+    // Its effect has the expander's control, `(goto @mp)`, caught where it is (C431).
+    let status = with_big_stack(|| {
+        int_to_i64(fx26::main().unwrap_or_else(|u| kayak_rt::unreachable_unwind(u)))
+    });
     kayak_rt::finish();
     status
 }

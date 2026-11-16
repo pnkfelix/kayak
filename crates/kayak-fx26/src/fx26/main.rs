@@ -18,6 +18,9 @@ use super::*;
 // The checker is the compiler's (kfx/check*.kfx): what it accepts, the
 // engine runs, for now.
 
+// The expander's (C431): Fixpt's regions, made kayak's, and its failure's control,
+// which a prompt at a region of the top level does not mask (Fixpt's rule).
+
 #[inline]
 pub fn fail_with(message: Str, status: Int) -> Void {
     write_err(string_append(str_lit("kayak-fx26: "), string_append(message, str_lit("\n"))));
@@ -140,6 +143,26 @@ pub fn forms_mention_p(es: Sexps, heads: Strings) -> bool {
             }
         }
     }), es)
+}
+
+#[inline]
+pub fn macro_heads() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("define-syntax"), kayak_rt::heap_cons(str_lit("define-syntax-rec"), kayak_rt::nil()))
+    })
+}
+
+// A program's forms, expanded, if it defines a macro, as Fixpt's parser
+// expands them (C431: Fixpt's expander, `fx26/macros/expander.kfx`); one
+// that defines none, as it is.
+#[inline]
+pub fn expanded(forms: Sexps) -> Result<Sexps, Unwind> {
+    if forms_mention_p(forms, macro_heads()) {
+        Ok((&mx::drive_program)(forms)?)
+    } else {
+        Ok(forms)
+    }
 }
 
 /// A program of processes, `%processes` defined first, the scheduler's
@@ -279,12 +302,12 @@ pub fn load_x(gs: Strings) -> () {
 
 #[inline]
 pub fn usage() -> Str {
-    str_lit("usage: kayak-fx26 [repl]                       the REPL (,help in it for more)\n       kayak-fx26 FILE ...                     the files, one program, checked\n                                               and run, each top-level\n                                               expression's value written\n       kayak-fx26 --main FILE ...              the same, then (main), its\n                                               string written\n       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the\n                                               ARGs, its low byte the status\n       kayak-fx26 --cells FILE ...             the program's cellular words,\n                                               as `fixpt compile` lists its\n       kayak-fx26 --cells-run FILE ...         the same, (main) last, for\n                                               `kayak-cells --main`\n       kayak-fx26 --keys FILE                  a REPL session from a script of\n                                               keys (tests/repl/)\n       kayak-fx26 --help                       this\n\nThe REPL's history is kept in ~/.kayak_fx26_history. Built with the\nrust-repl feature, the REPL is C103's, in Rust's threads: there,\nKAYAK_SPEC_DEBUG set, it writes each refusal of checking as you type to\nstderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,\nand where the time went.\n")
+    str_lit("usage: kayak-fx26 [repl]                       the REPL (,help in it for more)\n       kayak-fx26 FILE ...                     the files, one program, checked\n                                               and run, each top-level\n                                               expression's value written\n       kayak-fx26 --main FILE ...              the same, then (main), its\n                                               string written\n       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the\n                                               ARGs, its low byte the status\n       kayak-fx26 --cells FILE ...             the program's cellular words,\n                                               as `fixpt compile` lists its\n       kayak-fx26 --cells-run FILE ...         the same, (main) last, for\n                                               `kayak-cells --main`\n       kayak-fx26 --expanded FILE ...          the program as the expander\n                                               made it, a form a line\n       kayak-fx26 --keys FILE                  a REPL session from a script of\n                                               keys (tests/repl/)\n       kayak-fx26 --help                       this\n\nThe REPL's history is kept in ~/.kayak_fx26_history. Built with the\nrust-repl feature, the REPL is C103's, in Rust's threads: there,\nKAYAK_SPEC_DEBUG set, it writes each refusal of checking as you type to\nstderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,\nand where the time went.\n")
 }
 
 // The engine run on files (`kayak-fx26 FILE ...`), as `main` (start.kfx) runs
 // it for whatever is not the REPL.
-pub fn engine_main() -> Int {
+pub fn engine_main() -> Result<Int, Unwind> {
     let all = the::<Strings>(args());
     let sys = (not(null_p(all)) && string_eq_p(car(all), str_lit("--syscalls")));
     let r#as = if sys {
@@ -301,16 +324,21 @@ pub fn engine_main() -> Int {
     });
     if (not(null_p(r#as)) && (string_eq_p(car(r#as), str_lit("--help")) || string_eq_p(car(r#as), str_lit("-h")))) {
         say(usage());
-        int_lit(0)
+        Ok(int_lit(0))
     } else if null_p(paths) {
         write_err(usage());
         match exit(int_lit(2)) {};
-        int_lit(2)
+        Ok(int_lit(2))
+    } else if string_eq_p(car(r#as), str_lit("--expanded")) {
+        say_each(map(lambda1s(move |f: &'static Sexp| {
+            string_append(show_sexp(f), str_lit("\n"))
+        }), expanded(read_files(cdr(r#as)))?));
+        Ok(int_lit(0))
     } else if (string_eq_p(car(r#as), str_lit("--cells")) || string_eq_p(car(r#as), str_lit("--cells-run"))) {
         // `--cells-run`: the words with `(main)` after the program's forms, if it
         // has a `main`, for `kayak-cells --main` to run as `fixpt run` runs it,
         // its value the exit status (C337).
-        let read = with_processes(read_files(cdr(r#as)));
+        let read = with_processes(expanded(read_files(cdr(r#as)))?);
         let forms = if (string_eq_p(car(r#as), str_lit("--cells-run")) && string_member_p(str_lit("main"), global_names(read))) {
             onto(read, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("main")), kayak_rt::nil())), kayak_rt::nil()))
         } else {
@@ -322,11 +350,11 @@ pub fn engine_main() -> Int {
             Verdict::Verdict(found, fs) => {
                 compile_cells(forms, fs);
                 say_each(cells_listing());
-                int_lit(0)
+                Ok(int_lit(0))
             }
         }
     } else {
-        let forms = with_processes(read_files(paths));
+        let forms = with_processes(expanded(read_files(paths))?);
         let checked = check_program_as(forms, sys);
         let gs = onto(global_names(forms), onto(module_entries(forms), with_entries(verdict_facts(checked))));
         load_x(gs);
@@ -336,29 +364,29 @@ pub fn engine_main() -> Int {
         if with_main {
             let i = position_of(str_lit("main"), gs, 0i64);
             if (i64_lt(i, 0i64) && running) {
-                int_lit(0)
+                Ok(int_lit(0))
             } else if i64_lt(i, 0i64) {
                 match fail_with(str_lit("no main"), int_lit(1)) {};
-                int_lit(1)
+                Ok(int_lit(1))
             } else {
                 set(program_args(), after_dashes(r#as));
                 let w = run(2i64, 0i64, 0i64, w_nil(), 0i64, flatarray_ref_i64(get(globals()), i), w_nil());
                 if get(engine_failed()) {
                     failure_raised_x();
-                    int_lit(0)
+                    Ok(int_lit(0))
                 } else if is_obj_p(w, ob_string()) {
                     say(word_string(w));
-                    int_lit(0)
+                    Ok(int_lit(0))
                 } else if (running && fixnum_p(w)) {
                     match exit(i64_to_int(i64_and(fixnum_value(w), 255i64))) {};
-                    int_lit(0)
+                    Ok(int_lit(0))
                 } else {
                     say(show_word(w));
-                    int_lit(0)
+                    Ok(int_lit(0))
                 }
             }
         } else {
-            int_lit(0)
+            Ok(int_lit(0))
         }
     }
 }

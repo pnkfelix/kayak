@@ -134,6 +134,9 @@ def head_of(form):
     if head == "define-generative":
         return (head, 2)
     if head in ("define", "define*"):
+        # A typed macro's template's check (C431), hidden: Fixpt writes no line.
+        if len(xs) > 1 and xs[1].startswith("%template:"):
+            return (head, 0)
         return (head, 1)
     if head == "import":
         # One line for each value it defines; `(type ...)` and `(effect ...)`
@@ -181,6 +184,18 @@ def engine_expected(binary, path, text):
     return evaluator_values(binary, path, text) if "(native-code?)" in text else fixpt_values(binary, path, text)
 
 
+def written_as_expanded(path, text):
+    """A program that defines a macro, as the engine's expander makes it
+    (`kayak-fx26 --expanded`, C431): the forms whose values Fixpt writes are
+    its expansion's (a use of a macro that makes definitions writes a line
+    for each); else, or if it cannot, the text as it is."""
+    if "define-syntax" not in text:
+        return text
+    engine = os.path.join(ROOT, "target", "release", "kayak-fx26")
+    r = run([engine, "--expanded", path], cwd=os.path.dirname(path))
+    return r.stdout if r.returncode == 0 else text
+
+
 def fixpt_values_run(binary, path, text, machine=None):
     try:
         r = fixptcache.run(binary, ["--dialect", "fx26"] + (machine or fixptcache.ANSWERING) + ["--step-limit", "none", "eval", path], [path], timeout=LIMIT)
@@ -199,7 +214,7 @@ def fixpt_values_run(binary, path, text, machine=None):
     # `define-type` names, C286), is no value.
     lines = [l for l in r.stdout.splitlines() if not l.startswith(";") and not re.match(r"^[^\s\"]+ = ", l)]
     values = []
-    for head, count in forms(text):
+    for head, count in forms(written_as_expanded(path, text)):
         taken, lines = lines[:count], lines[count:]
         if head in ("expression", '"'):
             for l in taken:

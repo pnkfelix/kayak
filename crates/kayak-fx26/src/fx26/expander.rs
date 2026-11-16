@@ -185,6 +185,12 @@ pub mod mx {
         nil::<kayak_rt::value::Value>()
     }
 
+    // A list of datums as one datum (a vector's, as the reader keeps it).
+    #[inline]
+    pub fn mx_datum_list(xs: List<kayak_rt::value::Value>) -> kayak_rt::value::Value {
+        mx_datum_dotted(xs, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))
+    }
+
     pub enum Syn {
         Atom(kayak_rt::value::Value, Int, Int, Int),
         MxEagerReaderTypesLst(List<&'static Syn>, kayak_rt::value::Value, Int, Int, Int),
@@ -24619,6 +24625,578 @@ pub mod mx {
             aliases_defined_in(mx_fail, root, x)?;
             Ok(with_parts(x, nil::<bool>(), written))
         }
+    }
+
+    // macros-driver.kfx: the engine's driver of Fixpt's expander (C431), written
+    // by hand, read into the expander's module last (scripts/macros-port.py),
+    // as Fixpt's `parser-top.fx` drives it (`parse-tops`, `top-made`,
+    // `expanded-tops`, `written-top`): each top-level form, in order, made
+    // Fixpt's syntax; a `define-syntax` defined, its templates' checks (a
+    // typed macro's) given the checker as hidden definitions; any other form
+    // expanded, each form it makes shaped, sealed and its aliases resolved;
+    // and made the reader's datums again, for kayak's checker and compiler,
+    // which see only expansions, as Fixpt's checkers do.
+    //
+    // Places: a file's positions as Fixpt's are, each file `load-base` apart,
+    // its index the order it is met in (`drive-files`); a part a template made,
+    // its key's place in the template (`source-of`). A list's line, kayak's
+    // checker's place, kept by its position (`drive-lines`). Not yet: a file's
+    // macros (`import-with-syntax`), `hide`, `begin-for-syntax`, a shape's
+    // definition; each refused, saying so.
+    #[inline]
+    pub fn drive_files() -> Ref<List<Str>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<Str>>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<Str>())
+        })
+    }
+
+    // Each list's position and line, as met, the last first; then, sorted,
+    // the positions and the lines.
+    #[inline]
+    pub fn drive_met() -> Ref<List<Product_11_12<Int, Int>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<Product_11_12<Int, Int>>>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<Product_11_12<Int, Int>>())
+        })
+    }
+
+    #[inline]
+    pub fn drive_at() -> Ref<FlatArray<i64>> {
+        kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+        })
+    }
+
+    #[inline]
+    pub fn drive_line() -> Ref<FlatArray<i64>> {
+        kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+        })
+    }
+
+    #[inline]
+    pub fn drive_count() -> Ref<i64> {
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    #[inline]
+    pub fn drive_length(fs: List<Str>) -> Int {
+        if null_p(fs) {
+            int_lit(0)
+        } else {
+            _plus(int_lit(1), drive_length(cdr(fs)))
+        }
+    }
+
+    pub fn drive_nth(mut fs: List<Str>, mut i: Int) -> Str {
+        loop {
+            if _eq(i, int_lit(0)) {
+                return car(fs);
+            } else {
+                (fs, i) = (cdr(fs), _minus(i, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_index_in(mut f: Str, mut fs: List<Str>, mut i: Int) -> Int {
+        loop {
+            if null_p(fs) {
+                return int_lit(-1);
+            } else if string_eq_p(f, car(fs)) {
+                return i;
+            } else {
+                (fs, i) = (cdr(fs), _plus(i, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    // File `f`'s index, given the first time it is met.
+    pub fn drive_file_index(f: Str) -> Int {
+        let i = drive_index_in(f, get(drive_files()), int_lit(0));
+        if _gt_eq(i, int_lit(0)) {
+            i
+        } else {
+            set(drive_files(), append(get(drive_files()), kayak_rt::heap_cons(f, kayak_rt::nil())));
+            _minus(drive_length(get(drive_files())), int_lit(1))
+        }
+    }
+
+    #[inline]
+    pub fn drive_place(f: Str, pos: i64) -> Int {
+        _plus(_star(drive_file_index(f), load_base()), i64_to_int(pos))
+    }
+
+    pub fn drive_merge(xs: List<Product_11_12<Int, Int>>, ys: List<Product_11_12<Int, Int>>) -> List<Product_11_12<Int, Int>> {
+        if null_p(xs) {
+            ys
+        } else if null_p(ys) {
+            xs
+        } else if _lt_eq(car(xs).0, car(ys).0) {
+            kayak_rt::heap_cons(car(xs), drive_merge(cdr(xs), ys))
+        } else {
+            kayak_rt::heap_cons(car(ys), drive_merge(xs, cdr(ys)))
+        }
+    }
+
+    pub fn drive_split(mut xs: List<Product_11_12<Int, Int>>, mut a: List<Product_11_12<Int, Int>>, mut b: List<Product_11_12<Int, Int>>) -> Product_11_12<List<Product_11_12<Int, Int>>, List<Product_11_12<Int, Int>>> {
+        loop {
+            if null_p(xs) {
+                return Product_11_12(a, b);
+            } else {
+                (xs, a, b) = (cdr(xs), b, kayak_rt::heap_cons(car(xs), a));
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_sorted(xs: List<Product_11_12<Int, Int>>) -> List<Product_11_12<Int, Int>> {
+        if (null_p(xs) || null_p(cdr(xs))) {
+            xs
+        } else {
+            let halves = drive_split(xs, nil::<Product_11_12<Int, Int>>(), nil::<Product_11_12<Int, Int>>());
+            drive_merge(drive_sorted(halves.0), drive_sorted(halves.1))
+        }
+    }
+
+    pub fn drive_count_of(mut xs: List<Product_11_12<Int, Int>>, mut n: i64) -> i64 {
+        loop {
+            if null_p(xs) {
+                return n;
+            } else {
+                (xs, n) = (cdr(xs), i64_plus(n, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_fill_x(mut xs: List<Product_11_12<Int, Int>>, mut i: i64) -> () {
+        loop {
+            if null_p(xs) {
+                return ();
+            } else {
+                flatarray_set_i64_x(get(drive_at()), i, int_to_i64(car(xs).0));
+                flatarray_set_i64_x(get(drive_line()), i, int_to_i64(car(xs).1));
+                (xs, i) = (cdr(xs), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    // The lines met, made a table to search.
+    pub fn drive_lines_x() -> () {
+        let xs = drive_sorted(get(drive_met()));
+        let n = i64_plus(1i64, drive_count_of(xs, 0i64));
+        set(drive_at(), make_flatarray_i64(n, 0i64));
+        set(drive_line(), make_flatarray_i64(n, 1i64));
+        set(drive_count(), i64_minus(n, 1i64));
+        drive_fill_x(xs, 0i64)
+    }
+
+    // The line of the last list met at or before place `a`, by halving.
+    pub fn drive_search(mut a: i64, mut lo: i64, mut hi: i64) -> i64 {
+        loop {
+            if i64_gt_eq(lo, hi) {
+                if i64_eq(lo, 0i64) {
+                    return 1i64;
+                } else {
+                    return flatarray_ref_i64(get(drive_line()), i64_minus(lo, 1i64));
+                }
+            } else {
+                let mid = i64_quotient(i64_plus(lo, hi), 2i64);
+                if i64_lt_eq(flatarray_ref_i64(get(drive_at()), mid), a) {
+                    lo = i64_plus(mid, 1i64);
+                    continue;
+                } else {
+                    hi = mid;
+                    continue;
+                }
+            }
+        }
+    }
+
+    // Place `a`, a text's or a key a template's part has, as the file, the
+    // line and the position in it.
+    pub fn drive_placed(a0: Int) -> Product_11_12_13<Str, i64, i64> {
+        let a = if _gt_eq(a0, source_base()) {
+            mx_procedural_source_of(a0).0
+        } else {
+            a0
+        };
+        let i = quotient(a, load_base());
+        let fs = get(drive_files());
+        if (_gt_eq(a, source_base()) || _gt_eq(i, drive_length(fs))) {
+            Product_11_12_13(str_lit(""), 0i64, 0i64)
+        } else {
+            Product_11_12_13(drive_nth(fs, i), drive_search(int_to_i64(a), 0i64, get(drive_count())), int_to_i64(remainder(a, load_base())))
+        }
+    }
+
+    #[inline]
+    pub fn drive_unsupported(e: &'static Sexp) -> Void {
+        error(string_append(str_lit("kfx: a number KFX's reader read that the expander takes not yet: "), show_sexp(e)))
+    }
+
+    pub fn drive_atom(e: &'static Sexp) -> kayak_rt::value::Value {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                if string_eq_p(n, str_lit("#t")) {
+                    the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(true))
+                } else if string_eq_p(n, str_lit("#f")) {
+                    the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(false))
+                } else {
+                    the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(n)))
+                }
+            }
+            Sexp::Num(i, f, p) => {
+                the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(i64_to_int(i)))
+            }
+            Sexp::Str(x, f, p) => {
+                the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(x))
+            }
+            Sexp::Chr(c, f, p) => {
+                the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(c))
+            }
+            _ => {
+                let other = tagcase_;
+                match drive_unsupported(e) {};
+                the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
+            }
+        }
+    }
+
+    // Whether a list's items are dotted: `.` its next to last.
+    pub fn drive_dotted_p(mut xs: Sexps) -> bool {
+        loop {
+            if (null_p(xs) || null_p(cdr(xs)) || null_p(cdr(cdr(xs)))) {
+                return false;
+            } else if null_p(cdr(cdr(cdr(xs)))) {
+                return (sym_is_p(car(cdr(xs)), str_lit(".")) && not(sym_is_p(car(xs), str_lit("."))));
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn drive_before_dot(xs: Sexps) -> Sexps {
+        if sym_is_p(car(xs), str_lit(".")) {
+            nil::<&'static Sexp>()
+        } else {
+            kayak_rt::heap_cons(car(xs), drive_before_dot(cdr(xs)))
+        }
+    }
+
+    /// The reader's datum as Fixpt's syntax, its list's line kept.
+    pub fn drive_syn(e: &'static Sexp) -> &'static Syn {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let a = drive_place(f, p);
+                set(drive_met(), kayak_rt::heap_cons(Product_11_12(a, i64_to_int(l)), get(drive_met())));
+                if (not(null_p(xs)) && sym_is_p(car(xs), str_lit("#vector"))) {
+                    let items = drive_syns(cdr(xs));
+                    vec(items, mx_datum_list(syn_datums(items)), a, a, int_lit(0))
+                } else if drive_dotted_p(xs) {
+                    let (items, tail) = (drive_syns(drive_before_dot(xs)), drive_syn(last(xs)));
+                    dotted(items, tail, mx_datum_dotted(syn_datums(items), syn_to_datum(tail)), a, a, int_lit(0))
+                } else {
+                    let items = drive_syns(xs);
+                    mk_list(items, a, a)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                let a = drive_place(datum_file(e), datum_pos(e));
+                atom(drive_atom(e), a, a, int_lit(0))
+            }
+        }
+    }
+
+    #[inline]
+    pub fn drive_syns(xs: Sexps) -> SynsA {
+        if null_p(xs) {
+            nil::<&'static mx::Syn>()
+        } else {
+            kayak_rt::heap_cons(drive_syn(car(xs)), drive_syns(cdr(xs)))
+        }
+    }
+
+    /// A datum, as the reader would have read it, at `f`, `l`, `p`.
+    pub fn drive_datum(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> &'static Sexp {
+        if kayak_rt::value::null_p(d) {
+            lst(nil::<&'static Sexp>(), f, l, p)
+        } else if symbol_p(d) {
+            sym(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)), f, p)
+        } else if int_p(d) {
+            num(int_to_i64(kayak_rt::value::unbox::<Int>(d)), f, p)
+        } else if string_p(d) {
+            str(kayak_rt::value::unbox::<Str>(d), f, p)
+        } else if char_p(d) {
+            chr(kayak_rt::value::unbox::<char>(d), f, p)
+        } else if bool_p(d) {
+            sym(if kayak_rt::value::unbox::<bool>(d) {
+                str_lit("#t")
+            } else {
+                str_lit("#f")
+            }, f, p)
+        } else if kayak_rt::value::pair_p(d) {
+            lst(drive_datums(d, f, l, p), f, l, p)
+        } else {
+            sym(str_lit("#u"), f, p)
+        }
+    }
+
+    pub fn drive_datums(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> Sexps {
+        if kayak_rt::value::null_p(d) {
+            nil::<&'static Sexp>()
+        } else if kayak_rt::value::pair_p(d) {
+            let x = kayak_rt::value::car(d);
+            kayak_rt::heap_cons(drive_datum(x, f, l, p), drive_datums(kayak_rt::value::cdr(d), f, l, p))
+        } else {
+            kayak_rt::heap_cons(sym(str_lit("."), f, p), kayak_rt::heap_cons(drive_datum(d, f, l, p), kayak_rt::nil()))
+        }
+    }
+
+    /// Syntax as the reader's datum, where its place says.
+    pub fn drive_sexp(s: &'static Syn) -> &'static Sexp {
+        let w = drive_placed(syn_start(s));
+        let f = w.0;
+        let l = w.1;
+        let p = w.2;
+        let tagcase_ = s;
+        match *tagcase_ {
+            Syn::Atom(d, a, b, x) => {
+                drive_datum(d, f, l, p)
+            }
+            Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
+                lst(drive_sexps(items), f, l, p)
+            }
+            Syn::Dotted(items, tail, d, a, b, x) => {
+                lst(append(drive_sexps(items), kayak_rt::heap_cons(sym(str_lit("."), f, p), kayak_rt::heap_cons(drive_sexp(tail), kayak_rt::nil()))), f, l, p)
+            }
+            Syn::Vec(items, d, a, b, x) => {
+                lst(kayak_rt::heap_cons(sym(str_lit("#vector"), f, p), drive_sexps(items)), f, l, p)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn drive_sexps(xs: SynsA) -> Sexps {
+        if null_p(xs) {
+            nil::<&'static Sexp>()
+        } else {
+            kayak_rt::heap_cons(drive_sexp(car(xs)), drive_sexps(cdr(xs)))
+        }
+    }
+
+    // The names a form the checker reads defines as values: as Fixpt's parser's
+    // `top-names` finds them, of the forms an expansion makes.
+    pub fn drive_head(s: &'static Syn) -> Str {
+        let xs = proper_items(s);
+        if (not(null_p(xs)) && syn_symbol_p(car(xs))) {
+            syn_name(car(xs))
+        } else {
+            str_lit("")
+        }
+    }
+
+    pub fn drive_names(s: &'static Syn) -> Result<MxParserTypesNames, Unwind> {
+        let (xs, h) = (proper_items(s), drive_head(s));
+        if ((string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) && _gt_eq(len(xs), int_lit(3)) && syn_symbol_p(nth(xs, int_lit(1)))) {
+            Ok(kayak_rt::heap_cons(syn_symbol(nth(xs, int_lit(1)))?, kayak_rt::nil()))
+        } else if string_eq_p(h, str_lit("define-rec")) {
+            Ok(drive_rec_names(cdr(xs))?)
+        } else {
+            Ok(nil::<Symbol>())
+        }
+    }
+
+    pub fn drive_rec_names(mut bs: SynsA) -> Result<MxParserTypesNames, Unwind> {
+        loop {
+            if null_p(bs) {
+                return Ok(nil::<Symbol>());
+            } else if (not(null_p(proper_items(car(bs)))) && syn_symbol_p(car(proper_items(car(bs))))) {
+                return Ok(kayak_rt::heap_cons(syn_symbol(car(proper_items(car(bs))))?, drive_rec_names(cdr(bs))?));
+            } else {
+                bs = cdr(bs);
+                continue;
+            }
+        }
+    }
+
+    // Each name a form defines: a macro's, refused (`guard-defs`); else a
+    // global from now on.
+    pub fn drive_guard(mut xs: SynsA) -> Result<(), Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(());
+            } else {
+                drive_guard_names(drive_names(car(xs))?, car(xs))?;
+                xs = cdr(xs);
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_guard_names(mut ns: MxParserTypesNames, mut s: &'static Syn) -> Result<(), Unwind> {
+        loop {
+            if null_p(ns) {
+                return Ok(());
+            } else if macro_p(car(ns)) {
+                return Ok(match pfail_at(string_append(str_lit("`"), string_append(symbol_to_string(car(ns)), str_lit("` is a macro's name, which is not defined again"))), syn_start(s), syn_end(s))? {});
+            } else {
+                globals_x(kayak_rt::heap_cons(car(ns), kayak_rt::nil()));
+                ns = cdr(ns);
+                continue;
+            }
+        }
+    }
+
+    // Macros `ns`, of a name defined as a global already: refused at `s`.
+    pub fn drive_taken(mut ns: MxParserTypesNames, mut s: &'static Syn) -> Result<(), Unwind> {
+        loop {
+            if null_p(ns) {
+                return Ok(());
+            } else if global_now_p(car(ns)) {
+                return Ok(match pfail_at(string_append(str_lit("`"), string_append(symbol_to_string(car(ns)), str_lit("` is defined already: a macro may not take its name"))), syn_start(s), syn_end(s))? {});
+            } else {
+                ns = cdr(ns);
+                continue;
+            }
+        }
+    }
+
+    // A form an expansion made, as the parser is given it (`written-top`).
+    pub fn drive_written(x: &'static Syn) -> Result<&'static Syn, Unwind> {
+        let h = drive_head(x);
+        if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("import")) || string_eq_p(h, str_lit("define-datatype"))) {
+            Ok(x)
+        } else {
+            Ok(top_shaped(aliases_resolved(&pfail_at, sealed_written(&pfail_at, x)?, def_envs_given())?)?)
+        }
+    }
+
+    #[inline]
+    pub fn drive_written_each(xs: SynsA) -> Result<SynsA, Unwind> {
+        if null_p(xs) {
+            Ok(nil::<&'static mx::Syn>())
+        } else {
+            Ok(kayak_rt::heap_cons(drive_written(car(xs))?, drive_written_each(cdr(xs))?))
+        }
+    }
+
+    // Each check of macros `ns`' templates, expanded (`parse-checks`).
+    #[inline]
+    pub fn drive_checks(ns: MxParserTypesNames) -> Result<SynsA, Unwind> {
+        if null_p(ns) {
+            Ok(nil::<&'static mx::Syn>())
+        } else {
+            Ok(append(drive_checked(template_checks(&pfail_at, car(ns))?)?, drive_checks(cdr(ns))?))
+        }
+    }
+
+    #[inline]
+    pub fn drive_checked(cs: SynsA) -> Result<SynsA, Unwind> {
+        if null_p(cs) {
+            Ok(nil::<&'static mx::Syn>())
+        } else {
+            Ok(kayak_rt::heap_cons(aliases_resolved(&pfail_at, expand(&pfail_at, car(cs))?, def_envs_given())?, drive_checked(cdr(cs))?))
+        }
+    }
+
+    #[inline]
+    pub fn drive_not_yet(s: &'static Syn, what: Str) -> Result<SynsA, Unwind> {
+        match pfail_at(string_append(what, str_lit(": not yet in kayak's expander")), syn_start(s), syn_end(s))? {};
+        Ok(nil::<&'static mx::Syn>())
+    }
+
+    // What top-level form `s` makes, the forms the checker reads (`top-made`).
+    pub fn drive_form(s: &'static Syn) -> Result<SynsA, Unwind> {
+        if shape_definition_p(s) {
+            Ok(drive_not_yet(s, str_lit("a shape's definition"))?)
+        } else if defines_syntax_p(s) {
+            drive_taken(syntax_names(s)?, s)?;
+            Ok(drive_checks(define_macro(&pfail_at, s, nil::<Product_11_12_13_14_15<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>>>())?)?)
+        } else if for_syntax_p(s) {
+            Ok(drive_not_yet(s, str_lit("`begin-for-syntax`"))?)
+        } else if imports_syntax_p(s) {
+            Ok(drive_not_yet(s, str_lit("a file's macros, `import-with-syntax`"))?)
+        } else if string_eq_p(drive_head(s), str_lit("hide")) {
+            Ok(drive_not_yet(s, str_lit("`hide` at the top level, with macros"))?)
+        } else {
+            let xs = expand_top(&pfail_at, s)?;
+            let ms = made_syntax_taken_x();
+            let ws = drive_written_each(xs)?;
+            drive_taken(ms, s)?;
+            drive_guard(ws)?;
+            Ok(append(ws, drive_checks(ms)?))
+        }
+    }
+
+    #[inline]
+    pub fn drive_out() -> Ref<SynsA> {
+        kayak_rt::kept_constant!(ONCE: Ref<SynsA>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<&'static mx::Syn>())
+        })
+    }
+
+    // A refusal where Fixpt's parse is refused, as kayak's checker says one.
+    pub fn drive_refused(m: Str, a: Int) -> Void {
+        let w = drive_placed(a);
+        error(string_append(str_lit("kfx: "), string_append(w.0, string_append(str_lit(":"), string_append(i64_to_string(w.1), string_append(str_lit(": "), m))))))
+    }
+
+    pub fn drive_each(xs: SynsA) -> Result<Sexps, Unwind> {
+        if null_p(xs) {
+            Ok(nil::<&'static Sexp>())
+        } else {
+            let r = {
+                let prompt_tag__ = parse_tag();
+                match (move || -> Result<_, Unwind> {
+                    set(drive_out(), drive_form(car(xs))?);
+                    Ok(p_ok(nil::<&'static mx::MxParserTypesTop>()))
+                })() {
+                    Ok(v_) => v_,
+                    Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                        r
+                    }))(prompt_tag__.payload(u_)),
+                    Err(u_) => return Err(u_),
+                }
+            };
+            let tagcase_ = r;
+            match *tagcase_ {
+                Presult::PErr(m, a, b) => {
+                    match drive_refused(m, a) {};
+                    Ok(nil::<&'static Sexp>())
+                }
+                Presult::POk(ts) => {
+                    let made = drive_sexps(get(drive_out()));
+                    Ok(append(made, drive_each(cdr(xs))?))
+                }
+            }
+        }
+    }
+
+    // A program's forms, each expanded as Fixpt's parser expands it.
+    pub fn drive_program(forms: Sexps) -> Result<Sexps, Unwind> {
+        set(drive_files(), nil::<Str>());
+        set(drive_met(), nil::<Product_11_12<Int, Int>>());
+        macros_at_x(int_lit(0));
+        shapes_at_x(int_lit(0), nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<&'static mx::Syn>, Str, Str, bool>>());
+        let xs = drive_syns(forms);
+        drive_lines_x();
+        Ok(drive_each(xs)?)
     }
 }
 

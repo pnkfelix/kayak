@@ -831,7 +831,7 @@
            (v (with-binds typed (cons (bind "%reruns" (scheme nil (ty-unit)) "mark") (prim-binds typed)))))
       (begin (say (lines-text (reps-lines v forms))) 0))))
 
-(define main (subr (maxeff running repling (alloc @heap) (read @heap)) () int)
+(define main (subr (maxeff running repling expands (alloc @heap) (read @heap)) () int)
   (lambda ()
     (let ((as (the strings (args))))
       (cond ((or (null? as) (string=? (car as) "repl")) ((with tasks repl!) (history-of as)))

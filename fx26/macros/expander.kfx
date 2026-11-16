@@ -101,6 +101,9 @@
  `vector?` holds of a datum, which a procedural transformer's answer may
  be (stage 5); none, here."
 (define mx-datum-vector->list (subr pure (datum) (listof datum acyclic)) (lambda (d) nil))
+"A list of datums as one datum (a vector's, as the reader keeps it)."
+(define mx-datum-list (->* ((listof datum acyclic)) datum)
+  (lambda (xs) (mx-datum-dotted xs (the datum nil))))
 
 ;;; ============================================================ eager-reader-types.fx (the definitions the expander reaches)
 
@@ -12882,4 +12885,274 @@
                                 (extract made 1))))
           (begin (aliases-defined-in mx-fail root x)
                  (with-parts x nil written))))))
+
+"macros-driver.kfx: the engine's driver of Fixpt's expander (C431), written
+ by hand, read into the expander's module last (scripts/macros-port.py),
+ as Fixpt's `parser-top.fx` drives it (`parse-tops`, `top-made`,
+ `expanded-tops`, `written-top`): each top-level form, in order, made
+ Fixpt's syntax; a `define-syntax` defined, its templates' checks (a
+ typed macro's) given the checker as hidden definitions; any other form
+ expanded, each form it makes shaped, sealed and its aliases resolved;
+ and made the reader's datums again, for kayak's checker and compiler,
+ which see only expansions, as Fixpt's checkers do.
+
+ Places: a file's positions as Fixpt's are, each file `load-base` apart,
+ its index the order it is met in (`drive-files`); a part a template made,
+ its key's place in the template (`source-of`). A list's line, kayak's
+ checker's place, kept by its position (`drive-lines`). Not yet: a file's
+ macros (`import-with-syntax`), `hide`, `begin-for-syntax`, a shape's
+ definition; each refused, saying so."
+
+;;; ------------------------------------------------------------ places
+
+(define drive-files (ref (listof string acyclic) @ms) (new nil))
+"Each list's position and line, as met, the last first; then, sorted,
+ the positions and the lines."
+(define drive-met (ref (listof (tupleof int int) acyclic) @ms) (new nil))
+(define drive-at (ref (flatarrayof i64 @ms) @ms) (new (make-flatarray-i64 1 0)))
+(define drive-line (ref (flatarrayof i64 @ms) @ms) (new (make-flatarray-i64 1 0)))
+(define drive-count (ref i64 @ms) (new 0))
+
+(define drive-length (->* ((listof string acyclic)) int)
+  (lambda (fs) (if (null? fs) 0 (+ 1 (drive-length (cdr fs))))))
+(define drive-nth (->* ((listof string acyclic) int) string)
+  (lambda (fs i) (if (= i 0) (car fs) (drive-nth (cdr fs) (- i 1)))))
+(define drive-index-in (->* (string (listof string acyclic) int) int)
+  (lambda (f fs i)
+    (cond ((null? fs) -1) ((string=? f (car fs)) i) (else (drive-index-in f (cdr fs) (+ i 1))))))
+"File `f`'s index, given the first time it is met."
+(define drive-file-index (->* (string) int)
+  (lambda (f)
+    (let ((i (drive-index-in f (get drive-files) 0)))
+      (if (>= i 0)
+          i
+          (begin (set drive-files (append (get drive-files) (list f))) (- (drive-length (get drive-files)) 1))))))
+(define drive-place (->* (string i64) int)
+  (lambda (f pos) (+ (* (drive-file-index f) load-base) (i64->int pos))))
+
+(define drive-merge (->* ((listof (tupleof int int) acyclic) (listof (tupleof int int) acyclic)) (listof (tupleof int int) acyclic))
+  (lambda (xs ys)
+    (cond ((null? xs) ys)
+          ((null? ys) xs)
+          ((<= (extract (car xs) 1) (extract (car ys) 1)) (cons (car xs) (drive-merge (cdr xs) ys)))
+          (else (cons (car ys) (drive-merge xs (cdr ys)))))))
+(define drive-split (->* ((listof (tupleof int int) acyclic) (listof (tupleof int int) acyclic) (listof (tupleof int int) acyclic))
+                         (tupleof (listof (tupleof int int) acyclic) (listof (tupleof int int) acyclic)))
+  (lambda (xs a b) (if (null? xs) (tuple a b) (drive-split (cdr xs) b (cons (car xs) a)))))
+(define drive-sorted (->* ((listof (tupleof int int) acyclic)) (listof (tupleof int int) acyclic))
+  (lambda (xs)
+    (if (or (null? xs) (null? (cdr xs)))
+        xs
+        (let ((halves (drive-split xs nil nil)))
+          (drive-merge (drive-sorted (extract halves 1)) (drive-sorted (extract halves 2)))))))
+(define drive-count-of (->* ((listof (tupleof int int) acyclic) i64) i64)
+  (lambda (xs n) (if (null? xs) n (drive-count-of (cdr xs) (i64+ n 1)))))
+(define drive-fill! (->* ((listof (tupleof int int) acyclic) i64) unit)
+  (lambda (xs i)
+    (if (null? xs)
+        #u
+        (begin (flatarray-set-i64! (get drive-at) i (int->i64 (extract (car xs) 1)))
+               (flatarray-set-i64! (get drive-line) i (int->i64 (extract (car xs) 2)))
+               (drive-fill! (cdr xs) (i64+ i 1))))))
+"The lines met, made a table to search."
+(define drive-lines! (->* () unit)
+  (lambda ()
+    (let* ((xs (drive-sorted (get drive-met))) (n (i64+ 1 (drive-count-of xs 0))))
+      (begin (set drive-at (make-flatarray-i64 n 0))
+             (set drive-line (make-flatarray-i64 n 1))
+             (set drive-count (i64- n 1))
+             (drive-fill! xs 0)))))
+"The line of the last list met at or before place `a`, by halving."
+(define drive-search (->* (i64 i64 i64) i64)
+  (lambda (a lo hi)
+    (if (i64>= lo hi)
+        (if (i64= lo 0) 1 (flatarray-ref-i64 (get drive-line) (i64- lo 1)))
+        (let ((mid (i64-quotient (i64+ lo hi) 2)))
+          (if (i64<= (flatarray-ref-i64 (get drive-at) mid) a)
+              (drive-search a (i64+ mid 1) hi)
+              (drive-search a lo mid))))))
+"Place `a`, a text's or a key a template's part has, as the file, the
+ line and the position in it."
+(define drive-placed (->* (int) (tupleof string i64 i64))
+  (lambda (a0)
+    (let* ((a (if (>= a0 source-base) (extract (mx-procedural-source-of a0) 1) a0))
+           (i (quotient a load-base))
+           (fs (get drive-files)))
+      (if (or (>= a source-base) (>= i (drive-length fs)))
+          (tuple "" 0 0)
+          (tuple (drive-nth fs i) (drive-search (int->i64 a) 0 (get drive-count)) (int->i64 (remainder a load-base)))))))
+
+;;; ------------------------------------------------------------ datums and syntax
+
+(define drive-unsupported (->* (sexp) void)
+  (lambda (e) (error (string-append "kfx: a number KFX's reader read that the expander takes not yet: " (show-sexp e)))))
+(define drive-atom (->* (sexp) datum)
+  (lambda (e)
+    (tagcase e
+      ;; `#t` and `#f` as Fixpt's reader reads them, booleans (kfx's, names).
+      (sym (n f p) (cond ((string=? n "#t") (the datum #t)) ((string=? n "#f") (the datum #f)) (else (the datum (string->symbol n)))))
+      (num (i f p) (the datum (i64->int i)))
+      (str (x f p) (the datum x))
+      (chr (c f p) (the datum c))
+      (else other (begin (drive-unsupported e) (the datum nil))))))
+"Whether a list's items are dotted: `.` its next to last."
+(define drive-dotted? (->* (sexps) bool)
+  (lambda (xs)
+    (cond ((or (null? xs) (null? (cdr xs)) (null? (cdr (cdr xs)))) #f)
+          ((null? (cdr (cdr (cdr xs)))) (and (sym-is? (car (cdr xs)) ".") (not (sym-is? (car xs) "."))))
+          (else (drive-dotted? (cdr xs))))))
+(define drive-before-dot (->* (sexps) sexps)
+  (lambda (xs) (if (sym-is? (car xs) ".") nil (cons (car xs) (drive-before-dot (cdr xs))))))
+(define-rec
+  (drive-syn (->* (sexp) syn)
+    (lambda (e)
+      "The reader's datum as Fixpt's syntax, its list's line kept."
+      (tagcase e
+        (lst (xs f l p)
+          (let ((a (drive-place f p)))
+            (begin
+              (set drive-met (cons (tuple a (i64->int l)) (get drive-met)))
+              (cond ((and (not (null? xs)) (sym-is? (car xs) "#vector"))
+                     (let ((items (drive-syns (cdr xs)))) (vec items (mx-datum-list (syn-datums items)) a a 0)))
+                    ((drive-dotted? xs)
+                     (let ((items (drive-syns (drive-before-dot xs))) (tail (drive-syn (last xs))))
+                       (dotted items tail (mx-datum-dotted (syn-datums items) (syn->datum tail)) a a 0)))
+                    (else (let ((items (drive-syns xs))) (mk-list items a a)))))))
+        (else other (let ((a (drive-place (datum-file e) (datum-pos e)))) (atom (drive-atom e) a a 0))))))
+  (drive-syns (->* (sexps) syns-a)
+    (lambda (xs) (if (null? xs) nil (cons (drive-syn (car xs)) (drive-syns (cdr xs)))))))
+
+(define-rec
+  (drive-datum (->* (datum string i64 i64) sexp)
+    (lambda (d f l p)
+      "A datum, as the reader would have read it, at `f`, `l`, `p`."
+      (cond ((null? d) (lst nil f l p))
+            ((symbol? d) (sym (symbol->string d) f p))
+            ((int? d) (num (int->i64 d) f p))
+            ((string? d) (str d f p))
+            ((char? d) (chr d f p))
+            ((bool? d) (sym (if d "#t" "#f") f p))
+            ((pair? d) (lst (drive-datums d f l p) f l p))
+            (else (sym "#u" f p)))))
+  (drive-datums (->* (datum string i64 i64) sexps)
+    (lambda (d f l p)
+      (cond ((null? d) nil)
+            ((pair? d) (let ((x (car d))) (cons (drive-datum x f l p) (drive-datums (cdr d) f l p))))
+            (else (list (sym "." f p) (drive-datum d f l p)))))))
+(define-rec
+  (drive-sexp (->* (syn) sexp)
+    (lambda (s)
+      "Syntax as the reader's datum, where its place says."
+      (let* ((w (drive-placed (syn-start s))) (f (extract w 1)) (l (extract w 2)) (p (extract w 3)))
+        (tagcase s
+          (atom (d a b x) (drive-datum d f l p))
+          (mx-eager-reader-types-lst (items d a b x) (lst (drive-sexps items) f l p))
+          (dotted (items tail d a b x) (lst (append (drive-sexps items) (list (sym "." f p) (drive-sexp tail))) f l p))
+          (vec (items d a b x) (lst (cons (sym "#vector" f p) (drive-sexps items)) f l p))))))
+  (drive-sexps (->* (syns-a) sexps)
+    (lambda (xs) (if (null? xs) nil (cons (drive-sexp (car xs)) (drive-sexps (cdr xs)))))))
+
+;;; ------------------------------------------------------------ forms
+
+"The names a form the checker reads defines as values: as Fixpt's parser's
+ `top-names` finds them, of the forms an expansion makes."
+(define drive-head (->* (syn) string)
+  (lambda (s) (let ((xs (proper-items s))) (if (and (not (null? xs)) (syn-symbol? (car xs))) (syn-name (car xs)) ""))))
+(define drive-names (->* (syn) mx-parser-types-names)
+  (lambda (s)
+    (let ((xs (proper-items s)) (h (drive-head s)))
+      (cond ((and (or (string=? h "define") (string=? h "define*")) (>= (len xs) 3) (syn-symbol? (nth xs 1)))
+             (list (syn-symbol (nth xs 1))))
+            ((string=? h "define-rec") (drive-rec-names (cdr xs)))
+            (else nil)))))
+(define drive-rec-names (->* (syns-a) mx-parser-types-names)
+  (lambda (bs)
+    (cond ((null? bs) nil)
+          ((and (not (null? (proper-items (car bs)))) (syn-symbol? (car (proper-items (car bs)))))
+           (cons (syn-symbol (car (proper-items (car bs)))) (drive-rec-names (cdr bs))))
+          (else (drive-rec-names (cdr bs))))))
+"Each name a form defines: a macro's, refused (`guard-defs`); else a
+ global from now on."
+(define drive-guard (->* (syns-a) unit)
+  (lambda (xs)
+    (if (null? xs)
+        #u
+        (begin (drive-guard-names (drive-names (car xs)) (car xs)) (drive-guard (cdr xs))))))
+(define drive-guard-names (->* (mx-parser-types-names syn) unit)
+  (lambda (ns s)
+    (cond ((null? ns) #u)
+          ((macro? (car ns))
+           (pfail-at (string-append "`" (string-append (symbol->string (car ns)) "` is a macro's name, which is not defined again"))
+                     (syn-start s) (syn-end s)))
+          (else (begin (globals! (list (car ns))) (drive-guard-names (cdr ns) s))))))
+"Macros `ns`, of a name defined as a global already: refused at `s`."
+(define drive-taken (->* (mx-parser-types-names syn) unit)
+  (lambda (ns s)
+    (cond ((null? ns) #u)
+          ((global-now? (car ns))
+           (pfail-at (string-append "`" (string-append (symbol->string (car ns)) "` is defined already: a macro may not take its name"))
+                     (syn-start s) (syn-end s)))
+          (else (drive-taken (cdr ns) s)))))
+"A form an expansion made, as the parser is given it (`written-top`)."
+(define drive-written (->* (syn) syn)
+  (lambda (x)
+    (let ((h (drive-head x)))
+      (if (or (string=? h "include") (string=? h "import") (string=? h "define-datatype"))
+          x
+          (top-shaped (aliases-resolved pfail-at (sealed-written pfail-at x) (def-envs-given)))))))
+(define drive-written-each (->* (syns-a) syns-a)
+  (lambda (xs) (if (null? xs) nil (cons (drive-written (car xs)) (drive-written-each (cdr xs))))))
+"Each check of macros `ns`' templates, expanded (`parse-checks`)."
+(define drive-checks (->* (mx-parser-types-names) syns-a)
+  (lambda (ns)
+    (if (null? ns)
+        nil
+        (append (drive-checked (template-checks pfail-at (car ns))) (drive-checks (cdr ns))))))
+(define drive-checked (->* (syns-a) syns-a)
+  (lambda (cs)
+    (if (null? cs)
+        nil
+        (cons (aliases-resolved pfail-at (expand pfail-at (car cs)) (def-envs-given)) (drive-checked (cdr cs))))))
+(define drive-not-yet (->* (syn string) syns-a)
+  (lambda (s what)
+    (begin (pfail-at (string-append what ": not yet in kayak's expander") (syn-start s) (syn-end s)) nil)))
+"What top-level form `s` makes, the forms the checker reads (`top-made`)."
+(define drive-form (->* (syn) syns-a)
+  (lambda (s)
+    (cond ((shape-definition? s) (drive-not-yet s "a shape's definition"))
+          ((defines-syntax? s)
+           (begin (drive-taken (syntax-names s) s)
+                  (drive-checks (define-macro pfail-at s nil))))
+          ((for-syntax? s) (drive-not-yet s "`begin-for-syntax`"))
+          ((imports-syntax? s) (drive-not-yet s "a file's macros, `import-with-syntax`"))
+          ((string=? (drive-head s) "hide") (drive-not-yet s "`hide` at the top level, with macros"))
+          (else
+           (let* ((xs (expand-top pfail-at s)) (ms (made-syntax-taken!)) (ws (drive-written-each xs)))
+             (begin (drive-taken ms s) (drive-guard ws) (append ws (drive-checks ms))))))))
+
+(define drive-out (ref syns-a @ms) (new nil))
+"A refusal where Fixpt's parse is refused, as kayak's checker says one."
+(define drive-refused (->* (string int) void)
+  (lambda (m a)
+    (let ((w (drive-placed a)))
+      (error (string-append "kfx: " (string-append (extract w 1) (string-append ":" (string-append (i64->string (extract w 2))
+               (string-append ": " m)))))))))
+(define drive-each (->* (syns-a) sexps)
+  (lambda (xs)
+    (if (null? xs)
+        nil
+        (let ((r (prompt parse-tag (begin (set drive-out (drive-form (car xs))) (p-ok nil)) (lambda (r) r))))
+          (tagcase r
+            (p-err (m a b) (begin (drive-refused m a) nil))
+            (p-ok (ts) (let ((made (drive-sexps (get drive-out)))) (append made (drive-each (cdr xs))))))))))
+"A program's forms, each expanded as Fixpt's parser expands it."
+(define drive-program (->* (sexps) sexps)
+  (lambda (forms)
+    (begin
+      (set drive-files nil)
+      (set drive-met nil)
+      (macros-at! 0)
+      (shapes-at! 0 nil)
+      (let ((xs (drive-syns forms)))
+        (begin (drive-lines!) (drive-each xs))))))
 ))

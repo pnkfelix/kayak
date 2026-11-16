@@ -61,3 +61,6 @@
  `vector?` holds of a datum, which a procedural transformer's answer may
  be (stage 5); none, here."
 (define mx-datum-vector->list (subr pure (datum) (listof datum acyclic)) (lambda (d) nil))
+"A list of datums as one datum (a vector's, as the reader keeps it)."
+(define mx-datum-list (->* ((listof datum acyclic)) datum)
+  (lambda (xs) (mx-datum-dotted xs (the datum nil))))

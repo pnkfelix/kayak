@@ -12353,3 +12353,49 @@ build (1,866 errors). Three causes, each kfx's:
 
 The expander is in the engine's unit, built, run by nothing yet: the
 driver is next.
+
+## C431. The engine expands macros: Fixpt's expander, driven (2026-11-16)
+
+The user, asked whether a "driver" meant someone to run the script: the
+code in the engine that calls the expander between the reader and the
+checker, as Fixpt's `parser-top.fx` does. `fx26/macros-driver.kfx`,
+written by hand, read into the expander's module last (so it names its
+items, no globals), as `parse-tops`, `top-made`, `expanded-tops` and
+`written-top` drive it: each top-level form made Fixpt's syntax; a
+`define-syntax` defined, a name a global already refused, its typed
+templates' checks given the checker as hidden definitions
+(`%template:NAME:K`); any other form expanded (`expand-top`), each form
+it makes shaped, sealed, its aliases resolved (`top-shaped`,
+`sealed-written`, `aliases-resolved`), a definition of a macro's name
+refused; then the reader's datums again. Places: a file's positions as
+Fixpt's are (its index times `load-base`), a template's part's key its
+place in the template (`source-of`); a list's line kept by its position,
+an atom's the last list's before it. A failure, Fixpt's `p-err`, is
+caught at each form and said as kayak's refusals are. `#t` and `#f` are
+booleans to it, as Fixpt's reader reads them. The engine's `main` calls
+it for a program that names `define-syntax` (`expanded`); a program
+that does not is read as before. Not yet, each refused saying so: a
+file's macros, `hide`, `begin-for-syntax`, a shape's definition.
+
+What it took besides:
+- The engine compiles `(with #%toplevel n)` and `#%toplevel:n`, the top
+  level's `n`, as the expander writes a template's free names (TODO §51
+  had it as a gap, C397's checker taking it).
+- The expander's failure is a `goto` at a region of the top level, which
+  a prompt there does not mask (Fixpt's rule too): `engine-main` and
+  `main` say it (`expands`), not `driving`, which the REPL's procedures
+  share (in it, their Rust changed); `main.rs` unwraps the `Result`.
+- `kayak-fx26 --expanded FILE`: the program as expanded, a form a line.
+  `run-fixpt-programs.py` counts Fixpt's lines by it for a program that
+  defines a macro (a use that makes definitions writes one for each; a
+  template's check none).
+- `refused-fixpt-programs.py` holds the engine to Fixpt's refusals too,
+  for each program that defines a macro (`--cells`, checked, not run):
+  it found one, `macros/typed-letrec-pure.fx`. A `letrec` member of a
+  group that may not end, named other than as a call's operator, now
+  says `spin`, as Fixpt's does ("whoever is given it may call it again,
+  with anything"); kayak had said nothing (C190), refusing only at a
+  type written around it, which a template's check has not.
+
+Fixpt's programs beyond KFX the engine agrees on: 296 before, 379 now;
+it differs on none but `native/crossing-overflow.fx`, as before.

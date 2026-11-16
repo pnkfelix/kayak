@@ -1201,33 +1201,38 @@ pub fn lower_body(body: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
     }
 }
 
-pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
-    let local = find_local(n, sc, 0i64);
-    if (not(null_p(local)) && i64_eq(car(cdr(local)), -1i64) && i64_lt(car(cdr(cdr(local))), 0i64)) {
-        failed_if_run(string_append(str_lit("the engine: a with's value whose place the checker did not say: "), n))
-    } else if (not(null_p(local)) && i64_eq(car(cdr(local)), -1i64)) {
-        i_field(car(cdr(cdr(local))), i_local(car(local), 0i64))
-    } else if not(null_p(local)) {
-        i_local(car(local), car(cdr(local)))
-    } else if string_eq_p(n, str_lit("#t")) {
-        i_lit(v_bool(true))
-    } else if string_eq_p(n, str_lit("#f")) {
-        i_lit(v_bool(false))
-    } else if string_eq_p(n, str_lit("#u")) {
-        i_lit(v_unit())
-    } else if keyword_name_p(n) {
-        i_lit(v_symbol(string_to_symbol(n)))
-    } else if i64_gt_eq(position_of(n, gs, 0i64), 0i64) {
-        i_global(position_of(n, gs, 0i64), n)
-    } else if (string_eq_p(n, str_lit("nil")) || string_eq_p(n, str_lit("no-pair"))) {
-        i_lit(v_nil())
-    } else if (i64_gt_eq(prim_arity(prim_alias(n)), 0i64) && string_eq_p(standard_written(n), str_lit(""))) {
-        i_lit(v_prim(prim_alias(n), prim_arity(prim_alias(n))))
-    } else if not(string_eq_p(standard_written(n), str_lit(""))) {
-        lower(read_one(standard_written(n)), nil::<List<Str>>(), nil::<Str>())
-    } else {
-        error(string_append(str_lit("the engine: nothing is named "), n));
-        i_lit(v_unit())
+pub fn lower_name(mut n: Str, mut sc: Scope, mut gs: Strings) -> &'static Ir {
+    loop {
+        let local = find_local(n, sc, 0i64);
+        if (not(null_p(local)) && i64_eq(car(cdr(local)), -1i64) && i64_lt(car(cdr(cdr(local))), 0i64)) {
+            return failed_if_run(string_append(str_lit("the engine: a with's value whose place the checker did not say: "), n));
+        } else if (not(null_p(local)) && i64_eq(car(cdr(local)), -1i64)) {
+            return i_field(car(cdr(cdr(local))), i_local(car(local), 0i64));
+        } else if not(null_p(local)) {
+            return i_local(car(local), car(cdr(local)));
+        } else if has_prefix_p(n, str_lit("#%toplevel:")) {
+            (n, sc) = (after_prefix(n, str_lit("#%toplevel:")), nil::<List<Str>>());
+            continue;
+        } else if string_eq_p(n, str_lit("#t")) {
+            return i_lit(v_bool(true));
+        } else if string_eq_p(n, str_lit("#f")) {
+            return i_lit(v_bool(false));
+        } else if string_eq_p(n, str_lit("#u")) {
+            return i_lit(v_unit());
+        } else if keyword_name_p(n) {
+            return i_lit(v_symbol(string_to_symbol(n)));
+        } else if i64_gt_eq(position_of(n, gs, 0i64), 0i64) {
+            return i_global(position_of(n, gs, 0i64), n);
+        } else if (string_eq_p(n, str_lit("nil")) || string_eq_p(n, str_lit("no-pair"))) {
+            return i_lit(v_nil());
+        } else if (i64_gt_eq(prim_arity(prim_alias(n)), 0i64) && string_eq_p(standard_written(n), str_lit(""))) {
+            return i_lit(v_prim(prim_alias(n), prim_arity(prim_alias(n))));
+        } else if not(string_eq_p(standard_written(n), str_lit(""))) {
+            return lower(read_one(standard_written(n)), nil::<List<Str>>(), nil::<Str>());
+        } else {
+            error(string_append(str_lit("the engine: nothing is named "), n));
+            return i_lit(v_unit());
+        }
     }
 }
 
@@ -1453,6 +1458,21 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if string_eq_p(h, str_lit("rlambda")) {
             (h, xs) = (str_lit("lambda"), cdr(xs));
             continue;
+        } else if (string_eq_p(h, str_lit("with")) && sym_is_p(car(xs), str_lit("#%toplevel")) && i64_eq(size(xs), 2i64) && {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            // `(with #%toplevel n)`: the top level's `n`, whatever binds it here
+            // (C397), as the expander writes a template's free names (C431).
+            return lower_name(sym_name(second(xs)), nil::<List<Str>>(), gs);
         } else if (string_eq_p(h, str_lit("with")) && sym_is_p(car(xs), str_lit("#%fx"))) {
             // `(with #%fx n)`: the standard `n`, whatever names it here (C199).
             return lower_name(sym_name(second(xs)), nil::<List<Str>>(), nil::<Str>());

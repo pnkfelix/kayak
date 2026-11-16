@@ -27,11 +27,24 @@ def main():
         r = fixptcache.run(fixpt, ["--dialect", "fx26", "check", p], [p], timeout=60)
         return r.returncode != 0 or any(l.startswith("! ") for l in r.stdout.splitlines() + r.stderr.splitlines())
 
+    engine = os.path.join(ROOT, "target", "release", "kayak-fx26")
+
     def accepted_wrongly(p):
         if not refused_by_fixpt(p):
             return None
         k = subprocess.run([kfx, p], capture_output=True, text=True, timeout=60)
-        return os.path.relpath(p, progs) if k.returncode == 0 else None
+        if k.returncode == 0:
+            return os.path.relpath(p, progs)
+        # A program that defines a macro, which kfx refuses as KFX: the
+        # engine's expander and checker refuse it too (C431), checked and
+        # compiled, not run (`--cells`).
+        with open(p) as f:
+            if "define-syntax" in f.read():
+                e = subprocess.run([engine, "--cells", p], capture_output=True, text=True, timeout=60,
+                                   cwd=os.path.dirname(p))
+                if e.returncode == 0:
+                    return os.path.relpath(p, progs) + " (the engine)"
+        return None
 
     wrong = [x for x in fixptcache.parallel(accepted_wrongly, files) if x]
     refused = sum(1 for p in files if refused_by_fixpt(p))

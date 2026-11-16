@@ -1519,14 +1519,16 @@ Twobit-style optimizations in KFX.
   symbol))` refused ("a symbol is expected here").
 - A family through `#%toplevel` reads its arguments at the top level too
   (C397): to read them in place.
-- The engine (`kayak-fx26`) runs no `#%toplevel` ("the engine: nothing is
-  named #%toplevel"), which its checker takes (C427's test asks `,type`).
-- Stage 1, the expander (C429, C430): Fixpt's, made KFX by
-  `scripts/macros-port.py` (`fx26/macros/expander.kfx`, 12,800 lines),
-  in the engine's unit and built. Next: the engine's driver, as Fixpt's
-  `parser-top.fx`'s `top-made` and `expanded-tops` drive it (each form's
-  state as a value, `docs/research/fx26-macros.md`, "Cacheable and
-  incremental"); then kc.
+- Stage 1, the expander (C429-C431): Fixpt's, made KFX by
+  `scripts/macros-port.py` (`fx26/macros/expander.kfx`), driven by the
+  engine (`fx26/macros-driver.kfx`): 379 of Fixpt's programs beyond KFX
+  agree (296 before), the engine refuses each macro program Fixpt does.
+  Next: the driver's not-yets (a file's macros, `import-with-syntax`;
+  `hide`; `begin-for-syntax`; a shape's definition); the REPL (`,type`
+  and entries read through it); each form's state as a value, cached
+  (`docs/research/fx26-macros.md`, "Cacheable and incremental"); kc;
+  procedural macros (stage 5, a phase-1 namespace); the driver's lines
+  (each list's, met; an atom's, the last list's before it).
 - A `datum` shared, in Rust: it is data made and never written, but it is
   a `Value`, which holds a union's procedures and cells too, so no
   procedure another thread may run holds one (C102). Three of Fixpt's

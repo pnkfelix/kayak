@@ -643,6 +643,8 @@
                (failed-if-run (string-append "the engine: a with's value whose place the checker did not say: " n)))
               ((and (not (null? local)) (i64= (car (cdr local)) -1)) (i-field (car (cdr (cdr local))) (i-local (car local) 0)))
               ((not (null? local)) (i-local (car local) (car (cdr local))))
+              ;; `#%toplevel:n`: the top level's `n` (C397, C431).
+              ((has-prefix? n "#%toplevel:") (lower-name (after-prefix n "#%toplevel:") nil gs))
               ((string=? n "#t") (i-lit (v-bool #t)))
               ((string=? n "#f") (i-lit (v-bool #f)))
               ((string=? n "#u") (i-lit (v-unit)))
@@ -805,6 +807,10 @@
               given (`rcons`, `rnew`), where the engine drops it."
              (i-let (list (i-lit (v-unit))) (lower-body (cdr xs) (cons (list (binder-name (car xs))) sc) gs)))
             ((string=? h "rlambda") (lower-form "lambda" (cdr xs) e sc gs))
+            ((and (string=? h "with") (sym-is? (car xs) "#%toplevel") (i64= (size xs) 2) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
+             "`(with #%toplevel n)`: the top level's `n`, whatever binds it here
+              (C397), as the expander writes a template's free names (C431)."
+             (lower-name (sym-name (second xs)) nil gs))
             ((and (string=? h "with") (sym-is? (car xs) "#%fx"))
              "`(with #%fx n)`: the standard `n`, whatever names it here (C199)."
              (lower-name (sym-name (second xs)) nil nil))

@@ -1894,18 +1894,18 @@ pub fn reps_command(paths: Strings) -> Int {
     int_lit(0)
 }
 
-pub fn main() -> Int {
+pub fn main() -> Result<Int, Unwind> {
     let r#as = the::<Strings>(args());
     if (null_p(r#as) || string_eq_p(car(r#as), str_lit("repl"))) {
-        (&tasks::repl_x)(history_of(r#as))
+        Ok((&tasks::repl_x)(history_of(r#as)))
     } else if (string_eq_p(car(r#as), str_lit("--keys")) && not(null_p(cdr(r#as))) && null_p(cdr(cdr(r#as)))) {
-        (&tasks::scripted_x)(car(cdr(r#as)))
+        Ok((&tasks::scripted_x)(car(cdr(r#as))))
     } else if (string_eq_p(car(r#as), str_lit("--check")) && not(null_p(cdr(r#as)))) {
-        check_command(cdr(r#as))
+        Ok(check_command(cdr(r#as)))
     } else if (string_eq_p(car(r#as), str_lit("--reps")) && not(null_p(cdr(r#as)))) {
-        reps_command(cdr(r#as))
+        Ok(reps_command(cdr(r#as)))
     } else {
-        engine_main()
+        Ok(engine_main()?)
     }
 }
 
