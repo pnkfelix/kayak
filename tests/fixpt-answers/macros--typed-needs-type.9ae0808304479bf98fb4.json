@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"typed-needs-type.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/typed-needs-type.fx:4:82: argument 1 is a %type-of-e, where a int is expected",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

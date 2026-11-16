@@ -1,0 +1,57 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"named-family.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (32 cells, cellular):",
+"     0: closure word box-of over 0",
+"     3: global! box-of",
+"     5: closure word box-contents over 0",
+"     8: global! box-contents",
+"    10: lit 37",
+"    12: lit 7",
+"    14: prim %make-frozen 2",
+"    17: global box-of",
+"    19: tcall 1",
+"    21: global! a",
+"    23: global a",
+"    25: global box-contents",
+"    27: tcall 1",
+"    29: field 2",
+"    31: exit",
+"",
+"word box-contents (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"",
+"word box-of (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

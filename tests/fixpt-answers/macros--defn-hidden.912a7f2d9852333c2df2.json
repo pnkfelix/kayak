@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"defn-hidden.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define count : int ! pure",
+"define %count:1 : (ref int @r.1) ! (alloc @r.1)",
+"define tick : (subr (maxeff (read (globals %count:1)) (read @r.1) (write @r.1)) () int) ! pure",
+"int ! (maxeff (read (globals %count:1 tick)) (read @r.1) (write @r.1))",
+"int ! (maxeff (read (globals %count:1 tick)) (read @r.1) (write @r.1))",
+"int ! (maxeff (read (globals %count:1 count tick)) (read @r.1) (write @r.1))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

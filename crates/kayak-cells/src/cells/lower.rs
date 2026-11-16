@@ -694,8 +694,7 @@ pub fn module_item_names(its: Sexps, gs: Strings, exported: bool) -> Strings {
             if exported {
                 nil::<Str>()
             } else {
-                let n = binder_name(second(items(f)));
-                kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
+                kayak_rt::heap_cons(generative_seal(f), kayak_rt::heap_cons(generative_unseal(f), kayak_rt::nil()))
             }
         } else if (head_is_p(f, str_lit("include")) && not(include_named_p(f))) {
             if exported {
@@ -930,8 +929,7 @@ pub fn global_names(forms: Sexps) -> Strings {
                 sym_name(car(items(g)))
             }), cdr(cdr(items(f))))
         } else if head_is_p(f, str_lit("define-generative")) {
-            let n = binder_name(second(items(f)));
-            kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
+            kayak_rt::heap_cons(generative_seal(f), kayak_rt::heap_cons(generative_unseal(f), kayak_rt::nil()))
         } else if (head_is_p(f, str_lit("define-syscall")) || head_is_p(f, str_lit("define-optional-syscall"))) {
             let n = sym_name(second(items(f)));
             kayak_rt::heap_cons(string_append(str_lit("%syscall-available:"), n), kayak_rt::heap_cons(n, kayak_rt::nil()))
@@ -1880,8 +1878,7 @@ pub fn lower_tops_in(forms: Sexps, gs: Strings, sc0: Scope) -> List<&'static Top
             }), cdr(cdr(items(f))))
         } else if head_is_p(f, str_lit("define-generative")) {
             // A generative type's conversions, both ways: the value itself.
-            let n = binder_name(second(items(f)));
-            kayak_rt::heap_cons(top_define(i_define(position_of(string_append(str_lit("up-"), n), gs, 0i64), i_lit(v_prim(str_lit("%identity"), 1i64)))), kayak_rt::heap_cons(top_define(i_define(position_of(string_append(str_lit("down-"), n), gs, 0i64), i_lit(v_prim(str_lit("%identity"), 1i64)))), kayak_rt::nil()))
+            kayak_rt::heap_cons(top_define(i_define(position_of(generative_seal(f), gs, 0i64), i_lit(v_prim(str_lit("%identity"), 1i64)))), kayak_rt::heap_cons(top_define(i_define(position_of(generative_unseal(f), gs, 0i64), i_lit(v_prim(str_lit("%identity"), 1i64)))), kayak_rt::nil()))
         } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("define-convention"))) {
             kayak_rt::heap_cons(top_none(), kayak_rt::nil())
         } else if (head_is_p(f, str_lit("define-syscall")) || head_is_p(f, str_lit("define-optional-syscall"))) {

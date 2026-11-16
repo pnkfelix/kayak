@@ -24,21 +24,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 1,
-"out": [
-"up-ty-id : (subr pure (int) ty-id) ! pure",
-"down-ty-id : (subr pure (ty-id) int) ! pure",
-""
-],
-"err": [
-"fixpt: <programs>/generative/opaque.fx:3:50: argument 1 is a ty-id, where a int is expected",
-""
-],
-"by": [
-"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
-]
 }
 ]
 }

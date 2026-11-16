@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"named.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"to-meters : (subr pure (int) meters) ! pure",
+"from-meters : (subr pure (meters) int) ! pure",
+"d : meters ! (read (globals to-meters))",
+""
+],
+"err": [
+"fixpt: <programs>/generative/named.fx:5:43: `twice` is declared a (subr pure (meters) meters): a (subr pure (meters) meters) is expected here, and this is a (subr (read (globals from-meters to-meters)) (meters) meters)",
+"  beyond what is expected, it has (read (globals from-meters to-meters))",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

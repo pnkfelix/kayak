@@ -341,9 +341,9 @@
  Fixpt's standard ones from their declarations (`check.rs`, `VSUBR` …
  `TYPEBOUND`, in `rp-standard-generatives`' order), read as kayak reads a
  type; a program's from its checker's own: its parameters, its marks
- (`%variance NAME`) and the representation `up-NAME` takes."
+ (`%variance NAME`) and the representation its `#:seal` takes (`%up NAME`, C428)."
 (define-datatype gdecl (gdecl strings strings strings ty))
-"fixpt-source: crates/fixpt-fx26/src/check.rs@196dd2a"
+"fixpt-source: crates/fixpt-fx26/src/check.rs@120b70e"
 (define rp-generative-decls strings
   (list "(vsubr (e effect +) (t type -) (r type +)) (subr e ((listof t acyclic)) r)"
         "(flatlayout (t type)) int"
@@ -387,7 +387,7 @@
 
 (define rp-program-gdecl (subr kfx (cv string) (listof gdecl acyclic))
   (lambda (v n)
-    (let ((f (rp-dt-named (rp-dts v) n)) (up (scope-bind (string-append "up-" n) v)))
+    (let ((f (rp-dt-named (rp-dts v) n)) (up (scope-bind (string-append "%up " n) v)))
       (if (or (null? f) (null? up) (tagcase (car f) (dt (m ps vs) (not (null? vs)))))
           nil
           (tagcase (car up)

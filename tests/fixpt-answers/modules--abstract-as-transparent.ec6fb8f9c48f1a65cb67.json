@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"abstract-as-transparent.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/abstract-as-transparent.fx:11:12: a known is expected here, and this is a (moduleof (abs t type) (val zero counter..t) (val inc (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

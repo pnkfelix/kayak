@@ -1,0 +1,53 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"desc-use-type-not-captured.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"; the FX-26 compiler:",
+"",
+"word program (8 cells, cellular):",
+"     0: lit 5",
+"     2: closure word lambda@1126899:906842650 over 0",
+"     5: tcall 1",
+"     7: exit",
+"",
+"word lambda@1126899:906842650 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; the Rust compiler:",
+"",
+"word program (8 cells, cellular):",
+"     0: lit 5",
+"     2: closure word lambda@282 over 0",
+"     5: tcall 1",
+"     7: exit",
+"",
+"word lambda@282 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; the compilers disagree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"infer-shown-union.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/infer-shown-union.fx:6:56: `my-let*` is refused: no signature is written, and the one inferred from its clauses does not fit them: `((rest ...) body)` is of none of the shapes this part may have",
+"  inferred: (macro (_ . (oneof (() expr) (((data data) data ...) data))) expr)",
+"  write one: (define-syntax my-let* SIGNATURE (syntax-rules …))",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

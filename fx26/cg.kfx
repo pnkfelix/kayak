@@ -17,13 +17,13 @@
  lifting. Bloblets and floats: C152. Register code, each lambda's word's
  twin, the `regs-*.kfx` files' (C248), from the twins noted here
  (`cg-twins`); the form loop and the listing in `cg-top.kfx`, after them.
- fixpt-source: crates/fixpt-fx26/src/compile.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/compile.fx@120b70e
  fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@196dd2a
- fixpt-source: crates/fixpt-fx26/src/compile-state.fx@0d933ff
+ fixpt-source: crates/fixpt-fx26/src/compile-state.fx@120b70e
  fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
  fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
- fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@eed406e
- fixpt-source: crates/fixpt-fx26/src/parser.fx@0d933ff"
+ fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@120b70e
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@120b70e"
 
 "The generator's data lives at `@g`."
 (define-effect gen (maxeff (read @globals) spin (read @g) (write @g) (alloc @g)))
@@ -592,14 +592,9 @@
                          (i64* 256 (digits-i64 (string-chars (car (cdr (cdr ws)))) 0))))))
             (else -1)))))
 
-"A generative type's conversions, `up-t` and `down-t`, each `(lambda (x)
- x)` where the form is, as Fixpt's parser's `identity-at` makes them."
-(define generative-name (subr kfx (sexp) string)
-  (lambda (e)
-    "A generative type's name: its own, or a family's head, `(t (a type +))`
-     (C217)."
-    (tagcase e (lst (ys f l p) (sym-name (car ys))) (else other (sym-name e)))))
-
+"A generative type's conversions, its `#:seal` and `#:unseal` (Fixpt
+ cb172689; C428), each `(lambda (x) x)` where the form is, as Fixpt's
+ parser's `identity-at` makes them."
 (define confirmed (subr kfx (sexp string string string bool) sexp)
   (lambda (e base test cert with-k)
     "`(confirm-nat x (n body) else)`, `(acyclic x (n body) else)`,
@@ -617,10 +612,10 @@
                                     (second arm)))
                           els)))))))
 
-(define generative-conversions (subr kfx (string i64) (listof ctop acyclic))
-  (lambda (t a)
-    (list (t-define (string-append "up-" t) #t (x-lambda (list "x") (x-var "x" a) a))
-          (t-define (string-append "down-" t) #t (x-lambda (list "x") (x-var "x" a) a)))))
+(define generative-conversions (subr kfx (sexp i64) (listof ctop acyclic))
+  (lambda (e a)
+    (list (t-define (generative-seal e) #t (x-lambda (list "x") (x-var "x" a) a))
+          (t-define (generative-unseal e) #t (x-lambda (list "x") (x-var "x" a) a)))))
 
 "The type of the module read last: its values' names, in order."
 (define cg-module-type (ref strings @g) (new nil))
@@ -1248,7 +1243,7 @@
               ((string=? h "define-rec") (parse-rec-members (cdr (items e)) kind))
               ((string=? h "define-generative")
                (map (lambda ((t ctop)) (tagcase t (t-define (n typed x) (cmem n x 0 #f (datum-pos e))) (else y (cmem "" (x-unit 0) 0 #f 0))))
-                    (generative-conversions (generative-name (second (items e))) (datum-pos e))))
+                    (generative-conversions e (datum-pos e))))
               ((string=? h "define-datatype")
                (map (lambda ((t ctop)) (tagcase t (t-define (n typed x) (cmem n x kind #t (datum-pos e))) (else y (cmem "" (x-unit 0) 0 #f 0))))
                     (dt-constructors (cdr (cdr (items e))) (datum-pos e))))
@@ -1456,7 +1451,7 @@
             ((string=? h "define-rec") (list (t-define-rec (parse-typed-binds (cdr (items e))))))
             ((or (string=? h "define-type") (string=? h "define-effect") (string=? h "define-convention")) nil)
             ((string=? h "define-datatype") (dt-constructors (cdr (cdr (items e))) (datum-pos e)))
-            ((string=? h "define-generative") (generative-conversions (generative-name (second (items e))) (datum-pos e)))
+            ((string=? h "define-generative") (generative-conversions e (datum-pos e)))
             ((string=? h "import") (imports e))
             ((string=? h "include") (begin (cg-fail (string-append "not yet: " h)) nil))
             ;; A syscall's declaration (C224): the two definitions it is, as

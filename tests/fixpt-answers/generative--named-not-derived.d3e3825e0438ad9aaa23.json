@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"named-not-derived.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"to-meters : (subr pure (int) meters) ! pure",
+"from-meters : (subr pure (meters) int) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/generative/named-not-derived.fx:3:2: unbound variable `up-meters`",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

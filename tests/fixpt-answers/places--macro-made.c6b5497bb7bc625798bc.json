@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"macro-made.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"f : (subr pure (int) int) ! pure",
+"g : (subr pure (int) int) ! pure",
+"20 : int ! (read (globals f g))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

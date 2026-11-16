@@ -1,0 +1,83 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"moduleof-label-with.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (42 cells, cellular):",
+"     0: closure word lambda@247 over 0",
+"     3: global! h",
+"     5: closure word mk@288 over 0",
+"     8: closure word un@288 over 0",
+"    11: lit 4",
+"    13: slot 0",
+"    15: tcall 1",
+"    17: slot 1",
+"    19: lit 37",
+"    21: slot 2",
+"    23: slot 3",
+"    25: prim %make-frozen 3",
+"    28: slot! 0",
+"    30: drop",
+"    31: drop",
+"    32: drop",
+"    33: global! m",
+"    35: global m",
+"    37: global h",
+"    39: tcall 1",
+"    41: exit",
+"",
+"word un@288 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"",
+"word mk@288 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"",
+"word lambda@247 (14 cells, cellular):",
+"     0: slot 0",
+"     2: field 2",
+"     4: slot 0",
+"     6: field 3",
+"     8: slot 1",
+"    10: slot 2",
+"    12: ttailcall 1",
+"  its register code (22 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: field 2",
+"       6: setreg 2",
+"       8: reg 1",
+"      10: field 3",
+"      12: setreg 3",
+"      14: movereg 2 1",
+"      17: reg 3",
+"      19: tailinvoke 1 1",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

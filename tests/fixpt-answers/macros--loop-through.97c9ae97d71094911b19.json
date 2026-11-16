@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"loop-through.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/loop-through.fx:5:30: this use of `ping` is one it was expanded from, unchanged, through `pong`: its expansion would never end",
+"  in the expansion of `pong` at <programs>/macros/loop-through.fx:4:30",
+"  in the expansion of `ping` at <programs>/macros/loop-through.fx:6:1",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

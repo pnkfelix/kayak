@@ -1,0 +1,32 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"contract-defn.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"%~1:v : int ! pure",
+"seven : int ! (read (globals %~1:v))",
+"%~3:v : int ! pure",
+"%x:1 : int ! (read (globals %~3:v))",
+"nine : int ! (read (globals %x:1))",
+"17 : int ! (read (globals nine seven))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

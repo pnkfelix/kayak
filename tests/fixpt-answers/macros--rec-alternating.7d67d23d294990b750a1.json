@@ -1,0 +1,44 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"rec-alternating.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (29 cells, cellular):",
+"     0: lit 1",
+"     2: slot 0",
+"     4: lit 0",
+"     6: int-add",
+"     7: drop",
+"     8: slot 0",
+"    10: lit 1",
+"    12: int-add",
+"    13: slot 1",
+"    15: lit 0",
+"    17: int-add",
+"    18: drop",
+"    19: slot 0",
+"    21: slot 1",
+"    23: int-add",
+"    24: slot! 1",
+"    26: slot! 0",
+"    28: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

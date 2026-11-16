@@ -621,7 +621,7 @@
                   (w (tagcase (unmarked (second (items form)))
                        (lst (xs f l p) (lst (list (sym "poly" "" 0) (lst (cdr xs) "" 0 0) no-form) "" 0 0))
                        (else other no-form))))
-             (list (generative-line v (string-append "up-" n) w) (generative-line v (string-append "down-" n) w))))
+             (list (generative-line v (generative-seal form) w) (generative-line v (generative-unseal form) w))))
           ((or (head-is? form "define-type") (head-is? form "define-effect") (head-is? form "define-convention"))
            nil)
           (else
@@ -800,8 +800,7 @@
           ((and (head-is? f "define-datatype") (i64>= (size (items f)) 2))
            (map (lambda ((vt sexp)) (label-of (car (items vt)))) (cdr (cdr (items f)))))
           ((and (head-is? f "define-generative") (i64>= (size (items f)) 2))
-           (let ((n (tagcase (second (items f)) (lst (xs a b c) (sym-name (car xs))) (else other (sym-name other)))))
-             (list (string-append "up-" n) (string-append "down-" n))))
+           (list (generative-seal f) (generative-unseal f)))
           (else (defined-names-of f)))))
 
 "`--reps FILE` (C301): each definition's type as a rep, as kayak's checker

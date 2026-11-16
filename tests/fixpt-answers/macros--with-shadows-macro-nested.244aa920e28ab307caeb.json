@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"with-shadows-macro-nested.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m : (moduleof (val clamp (subr pure (int) int))) ! pure",
+"n : (moduleof (val other int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/macros/with-shadows-macro-nested.fx:7:25: `clamp` is a macro here, and `m` gives a value of that name, which this `with` would seem to call",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

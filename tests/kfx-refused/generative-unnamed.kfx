@@ -1,0 +1,4 @@
+"Refused: a generative type names its conversions (Fixpt cb172689, C428),
+ `#:seal` and `#:unseal`; none made from its name."
+(define-generative meters i64)
+(define main (subr pure () string) (lambda () "no"))

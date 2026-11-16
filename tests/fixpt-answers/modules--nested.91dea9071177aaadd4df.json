@@ -20,21 +20,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
-"outer : (moduleof (val c (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))) (val get (subr pure () int))) ! (read (globals counter))",
-"2 : int ! (read (globals outer))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
-]
 }
 ]
 }

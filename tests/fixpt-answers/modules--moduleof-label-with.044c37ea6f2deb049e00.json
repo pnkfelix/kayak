@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"moduleof-label-with.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define h : (subr pure ((moduleof (abs t type) (val zero t) (val size (subr pure (t) int)))) int) ! pure",
+"define m : (moduleof (abs t type) (val zero t) (val size (subr pure (t) int))) ! pure",
+"int ! (read (globals h m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

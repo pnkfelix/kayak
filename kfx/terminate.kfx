@@ -106,16 +106,14 @@
 
       (define conversion? (subr kfx (wc sexp) bool)
         (lambda (c e)
-          "Whether `e` names a generative type's `up-` or `down-` conversion: no
+          "Whether `e` names a generative type's conversion (C428): no
            local or member hides it, and the type is generative."
           (tagcase e
             (sym (n at-file at-pos)
               (tagcase c
                 (wc (v ms cur sc gs nats inv)
                   (and (null? (bound-of n sc)) (not (string-member? n ms))
-                       (or (has-prefix? n "up-") (has-prefix? n "down-"))
-                       (not (null? (conversion-bind n (cv-binds v))))
-                       (generative? v (ty-data (if (has-prefix? n "up-") (after-prefix n "up-") (after-prefix n "down-")) nil))))))
+                       (let ((t (conversion-of v n))) (and (not (string=? t "")) (generative? v (ty-data t nil))))))))
             (else other #f))))
 
       (define std-op (subr kfx (wc sexp) string)

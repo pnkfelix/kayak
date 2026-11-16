@@ -3074,6 +3074,116 @@ pub fn conversion_bind(mut name: Str, mut bs: Binds) -> Binds {
     }
 }
 
+/// The generative type whose conversion the global or item `g` is, as its
+/// `%conversion g` says (C428: a conversion is named where its type is
+/// defined, not `up-t`); or the empty string.
+pub fn conversion_of(v: &'static Cv, g: Str) -> Str {
+    let c = conversion_bind(string_append(str_lit("%conversion "), g), cv_binds(v));
+    if (null_p(c) || null_p(conversion_bind(g, cv_binds(v)))) {
+        str_lit("")
+    } else {
+        let tagcase_ = car(c);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(ps, t) => {
+                        let tagcase_ = t;
+                        match *tagcase_ {
+                            Ty::TyData(d, args) => {
+                                d
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A `define-generative`'s usage, and its refusals' messages below, as Fixpt's
+// `parser-forms.fx` says them (`generative-conversions`, `gen-named`).
+// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@120b70e
+#[inline]
+pub fn generative_usage() -> Str {
+    str_lit("`(define-generative name type #:seal name #:unseal name)`, or `(define-generative (name (param kind) …) type …)`")
+}
+
+/// The names `rest`'s pairs give, `seal` and `unseal` so far (empty if
+/// not): both, or none (Fixpt's `gen-named`).
+pub fn generative_named_parts(mut v: &'static Cv, mut rest: Sexps, mut seal: Str, mut unseal: Str) -> Strings {
+    loop {
+        if null_p(rest) {
+            if (string_eq_p(seal, str_lit("")) && string_eq_p(unseal, str_lit(""))) {
+                return nil::<Str>();
+            } else if (string_eq_p(seal, str_lit("")) || string_eq_p(unseal, str_lit(""))) {
+                match refuse(v, str_lit("a generative type's conversions are named both, `#:seal` and `#:unseal`: one alone, not yet")) {};
+                return nil::<Str>();
+            } else {
+                return kayak_rt::heap_cons(seal, kayak_rt::heap_cons(unseal, kayak_rt::nil()));
+            }
+        } else if (null_p(cdr(rest)) || {
+            let tagcase_ = second(rest);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    keyword_name_p(n)
+                }
+                _ => {
+                    let other = tagcase_;
+                    true
+                }
+            }
+        }) {
+            match refuse(v, generative_usage()) {};
+            return nil::<Str>();
+        } else if (sym_is_p(car(rest), str_lit("#:seal")) && string_eq_p(seal, str_lit(""))) {
+            (rest, seal) = (cdr(cdr(rest)), sym_name(second(rest)));
+            continue;
+        } else if (sym_is_p(car(rest), str_lit("#:unseal")) && string_eq_p(unseal, str_lit(""))) {
+            (rest, unseal) = (cdr(cdr(rest)), sym_name(second(rest)));
+            continue;
+        } else {
+            match refuse(v, generative_usage()) {};
+            return nil::<Str>();
+        }
+    }
+}
+
+/// A `define-generative`'s conversions' names, `#:seal mk #:unseal get`
+/// after its type (Fixpt cb172689, `parser-forms.fx`'s
+/// `generative-conversions`; C428), which it must name: no names made
+/// from the type's. Refused as Fixpt refuses, its messages.
+pub fn generative_names(v: &'static Cv, f: &'static Sexp) -> Strings {
+    let xs = items(f);
+    let given = if i64_gt(size(xs), 3i64) {
+        generative_named_parts(v, cdr(cdr(cdr(xs))), str_lit(""), str_lit(""))
+    } else {
+        nil::<Str>()
+    };
+    if null_p(given) {
+        let t = {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Lst(hs, hf, hl, hp) => {
+                    name_of(v, car(hs))
+                }
+                _ => {
+                    let other = tagcase_;
+                    name_of(v, other)
+                }
+            }
+        };
+        match refuse(v, string_append(str_lit("a generative type names its conversions, `#:seal` and `#:unseal`: as they were, `(define-generative "), string_append(t, string_append(str_lit(" … #:seal up-"), string_append(t, string_append(str_lit(" #:unseal down-"), string_append(t, str_lit(")`")))))))) {};
+        nil::<Str>()
+    } else {
+        given
+    }
+}
+
 #[inline]
 pub fn char_lower_p(c: char) -> bool {
     has_char_in_p(str_lit("abcdefghijklmnopqrstuvwxyz"), c)
@@ -3314,7 +3424,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static (dyn Fn(Str) -> Str + Send 
                         match *tagcase_ {
                             Dt::Dt(n, ps, vs) => {
                                 if null_p(vs) {
-                                    let down = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                                    let down = conversion_bind(string_append(str_lit("%down "), d), cv_binds(v));
                                     return first_knot(v, res, onto(if null_p(down) {
                                         nil::<&'static Ty>()
                                     } else {
@@ -7153,7 +7263,7 @@ pub fn unguarded_p(mut v: &'static Cv, mut x: Str, mut t: &'static Ty) -> bool {
             let tagcase_ = t;
             match *tagcase_ {
                 Ty::TyData(d, args) => {
-                    let found = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                    let found = conversion_bind(string_append(str_lit("%down "), d), cv_binds(v));
                     if null_p(found) {
                         return false;
                     } else {
@@ -16348,7 +16458,7 @@ pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static
                             match *tagcase_ {
                                 Dt::Dt(n, ps, vs) => {
                                     if null_p(vs) {
-                                        let down = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                                        let down = conversion_bind(string_append(str_lit("%down "), d), cv_binds(v));
                                         if null_p(down) {
                                             return not(has_prefix_p(d, str_lit("%module ")));
                                         } else {

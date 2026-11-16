@@ -1,0 +1,27 @@
+"define-generative's conversions named as its form names them, `#:seal`
+ and `#:unseal` (Fixpt cb172689, C428): no `up-t` or `down-t` made from
+ the type's name. At the top level, in a family, and in a module, where
+ they are the module's own (Fixpt's `generative/named-module.fx`)."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-generative meters i64 #:seal to-meters #:unseal from-meters)
+
+(define-generative (stack (t type)) (listof t acyclic) #:unseal unstack #:seal stacked)
+
+(define m
+  (module
+    (define-generative counter i64 #:seal mk #:unseal get)
+    (define zero counter (mk 0))
+    (define inc (subr pure (counter) counter) (lambda (c) (mk (i64+ (get c) 1))))
+    (define value (subr pure (counter) i64) (lambda (c) (get c)))))
+
+(define push (poly ((t type)) (subr kfx (t (stack t)) (stack t)))
+  (lambda (x s) (stacked (cons x (unstack s)))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((s (push (the i64 2) (stacked (the (listof i64 acyclic) nil)))))
+      (string-append (i64->string (from-meters (to-meters 42)))
+        (string-append " " (string-append (i64->string (car (unstack s)))
+          (string-append " " (i64->string ((with m value) ((with m inc) (with m zero)))))))))))

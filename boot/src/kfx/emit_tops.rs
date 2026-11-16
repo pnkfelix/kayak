@@ -1038,8 +1038,9 @@ pub mod writing {
         }
     }
 
-    /// A generative type: a new type, a newtype in Rust, and its conversions.
-    pub fn put_generative(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
+    /// A generative type: a new type, a newtype in Rust, and its conversions,
+    /// `seal` and `unseal` as its form names them (C428).
+    pub fn put_generative(c: &'static Ctx, xs: Sexps, seal: Str, unseal: Str, acc: Chars) -> Chars {
         let t = type_head_name(car(xs));
         let params = head_type_params(car(xs));
         let inside = not(string_eq_p(module_here(c), str_lit("")));
@@ -1059,18 +1060,18 @@ pub mod writing {
         };
         let acc = put(if inside {
             if in_async_mode_p(c) {
-                str_lit(");\n\nasync fn up_")
+                str_lit(");\n\nasync fn ")
             } else {
-                str_lit(");\n\nfn up_")
+                str_lit(");\n\nfn ")
             }
         } else {
             if in_async_mode_p(c) {
-                str_lit(");\n\npub async fn up_")
+                str_lit(");\n\npub async fn ")
             } else {
-                str_lit(");\n\npub fn up_")
+                str_lit(");\n\npub fn ")
             }
         }, acc);
-        let acc = put(mangle(t), acc);
+        let acc = put(mangle(seal), acc);
         let acc = put_generics_of(params, true, acc);
         let acc = put(str_lit("(x: "), acc);
         let acc = put_type(c, second(xs), acc);
@@ -1086,30 +1087,30 @@ pub mod writing {
         }, acc);
         let acc = put(if (inside && null_p(params)) {
             if in_async_mode_p(c) {
-                str_lit("(x)\n}\n\nasync fn down_")
+                str_lit("(x)\n}\n\nasync fn ")
             } else {
-                str_lit("(x)\n}\n\nfn down_")
+                str_lit("(x)\n}\n\nfn ")
             }
         } else if inside {
             if in_async_mode_p(c) {
-                str_lit(")\n}\n\nasync fn down_")
+                str_lit(")\n}\n\nasync fn ")
             } else {
-                str_lit(")\n}\n\nfn down_")
+                str_lit(")\n}\n\nfn ")
             }
         } else if null_p(params) {
             if in_async_mode_p(c) {
-                str_lit("(x)\n}\n\npub async fn down_")
+                str_lit("(x)\n}\n\npub async fn ")
             } else {
-                str_lit("(x)\n}\n\npub fn down_")
+                str_lit("(x)\n}\n\npub fn ")
             }
         } else {
             if in_async_mode_p(c) {
-                str_lit(")\n}\n\npub async fn down_")
+                str_lit(")\n}\n\npub async fn ")
             } else {
-                str_lit(")\n}\n\npub fn down_")
+                str_lit(")\n}\n\npub fn ")
             }
         }, acc);
-        let acc = put(mangle(t), acc);
+        let acc = put(mangle(unseal), acc);
         let acc = put_generics_of(params, true, acc);
         let acc = put(str_lit("(x: "), acc);
         let acc = put(camel(t), acc);
@@ -1798,7 +1799,7 @@ pub mod writing {
         } else if string_eq_p(h, str_lit("define-datatype")) {
             put_datatype(c, cdr(xs), acc)
         } else if string_eq_p(h, str_lit("define-generative")) {
-            put_generative(c, cdr(xs), acc)
+            put_generative(c, cdr(xs), generative_seal(form), generative_unseal(form), acc)
         } else if module_def_p(form) {
             put_module(c, sym_name(second(xs)), module_noted(form), acc)
         } else if (string_eq_p(h, str_lit("define")) && i64_eq(size(xs), 3i64) && not(null_p(ctx_typed(c, sym_name(second(xs))))) && head_is_p(car(ctx_typed(c, sym_name(second(xs)))), str_lit("%reexport"))) {

@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"region-escape.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/generative/region-escape.fx:4:14: the value of `letregion l` would outlive its region: its type is (stack int l)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

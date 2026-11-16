@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"nested.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"up-nest : (poly ((a type)) (subr pure ((sumof (#:none unit) (#:more (productof (1 a) (2 (nest (productof (1 a) (2 a)))))))) (nest a))) ! pure",
+"down-nest : (poly ((a type)) (subr pure ((nest a)) (sumof (#:none unit) (#:more (productof (1 a) (2 (nest (productof (1 a) (2 a))))))))) ! pure",
+"n : (nest int) ! (read (globals up-nest))",
+""
+],
+"err": [
+"fixpt: <programs>/generative/nested.fx:7:1: calling `size` may read any global, `size` too, so `size` may reach itself through a global: its type must say `spin`",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

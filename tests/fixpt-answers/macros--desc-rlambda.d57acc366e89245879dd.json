@@ -1,0 +1,61 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"desc-rlambda.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"; the FX-26 compiler:",
+"",
+"word program (18 cells, cellular):",
+"     0: prim %region-enter 0",
+"     3: lit 9",
+"     5: slot 0",
+"     7: lit word lambda@1126899:906842643",
+"     9: prim %region-closure 2",
+"    12: tcall 1",
+"    14: prim %region-exit 2",
+"    17: exit",
+"",
+"word lambda@1126899:906842643 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; the Rust compiler:",
+"",
+"word program (18 cells, cellular):",
+"     0: prim %region-enter 0",
+"     3: lit 9",
+"     5: slot 0",
+"     7: lit word lambda@179",
+"     9: prim %region-closure 2",
+"    12: tcall 1",
+"    14: prim %region-exit 2",
+"    17: exit",
+"",
+"word lambda@179 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; the compilers disagree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

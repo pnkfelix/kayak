@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"and-then.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"half : (subr pure (int) maybe-int) ! pure",
+"halves : (subr (read (globals half)) (int) maybe-int) ! pure",
+"(5 #f) : (listof maybe-int acyclic) ! (read (globals half halves))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

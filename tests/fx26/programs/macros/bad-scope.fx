@@ -2,6 +2,6 @@
 ;; Herman's `bad`: the body said to be in `a`'s scope, placed where no `a`
 ;; is bound.
 (define-syntax bad
-  ((bvar expr) (import expr (rho (AA var))))
-  (syntax-rules ()
+  (macro (_ (a @ bvar expr) body @ expr) expr (bind a in body))
+  (syntax-rules
     ((_ (a e) body) body)))

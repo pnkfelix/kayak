@@ -1,5 +1,5 @@
 ;; ! is placed twice
 (define-syntax double
-  (expr)
-  (syntax-rules ()
+  (macro (_ expr) expr)
+  (syntax-rules
     ((_ e) (+ e e))))

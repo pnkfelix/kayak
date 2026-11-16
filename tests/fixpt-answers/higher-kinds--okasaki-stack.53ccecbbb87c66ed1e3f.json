@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"okasaki-stack.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define list-stack : stack-sig ! pure",
+"define s : (list-stack..stack int) ! (maxeff (alloc @heap) (read (globals list-stack)))",
+"(listof int acyclic) ! (maxeff (alloc @heap) (read (globals list-stack s)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

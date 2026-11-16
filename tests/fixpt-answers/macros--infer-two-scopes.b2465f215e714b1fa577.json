@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"infer-two-scopes.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/infer-two-scopes.fx:5:44: `m` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of other bindings than its signature says it is",
+"  inferred: (macro (_ x @ bvar expr body @ (many expr)) expr (bind x in body))",
+"  write one: (define-syntax m SIGNATURE (syntax-rules …))",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

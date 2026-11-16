@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"hide-escape.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/modules/hide-escape.fx:5:11: `v`'s type mentions `t`, which is hidden in this module: show `t`, or hide `v` as well",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

@@ -91,6 +91,8 @@ diverge/cyclic-reverse.fx
 diverge/resume.fx
 diverge/spin.fx
 generative/ids.fx
+generative/named-family.fx
+generative/named-module.fx
 generative/region.fx
 generative/tree-walk.fx
 globals/inferred.fx
@@ -128,6 +130,7 @@ kayak/made-code-x86_64/kept-across-collections.fx
 kayak/made-code-x86_64/stubs-escapes.fx
 kayak/modules/values-in-order.fx
 listof/acyclic-by-default.fx
+listof/append-nested-deep.fx
 made-code-x86_64/allocated.fx
 made-code-x86_64/declared.fx
 made-code-x86_64/frames.fx
@@ -164,6 +167,7 @@ modules/family-region-param.fx
 modules/forward.fx
 modules/functor-abstract.fx
 modules/functor-max.fx
+modules/generative-named.fx
 modules/hide-include-types.fx
 modules/hide-include.fx
 modules/hide-type-not-value.fx
@@ -316,6 +320,7 @@ processes/pselect-key.fx
 processes/pselect-main-deadline.fx
 processes/pselect-stop.fx
 processes/race-compute.fx
+processes/race-deadline.fx
 processes/race-stopped.fx
 processes/race.fx
 processes/reply.fx

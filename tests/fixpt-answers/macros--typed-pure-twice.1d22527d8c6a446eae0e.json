@@ -1,0 +1,54 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"typed-pure-twice.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (11 cells, cellular):",
+"     0: closure word lambda@187 over 0",
+"     3: global! %template:double:2",
+"     5: lit 21",
+"     7: lit 21",
+"     9: int-add",
+"    10: exit",
+"",
+"word lambda@187 (10 cells, cellular):",
+"     0: slot 0",
+"     2: tcall 0",
+"     4: slot 0",
+"     6: tcall 0",
+"     8: int-add",
+"     9: return",
+"  its register code (29 cells, not compiled):",
+"       0: args 1",
+"       2: save 2",
+"       4: store 1 0",
+"       7: stack 0",
+"       9: invoke 0 1",
+"      12: setstk 1",
+"      14: stack 0",
+"      16: invoke 0 1",
+"      19: setreg 1",
+"      21: stack 1",
+"      23: op2 int-add 1",
+"      26: pop 2",
+"      28: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

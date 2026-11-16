@@ -1,0 +1,4 @@
+"Refused: a generative type's conversions are named both, `#:seal` and
+ `#:unseal`, as Fixpt has it (C428): one alone, not yet."
+(define-generative meters i64 #:seal to-meters)
+(define main (subr pure () string) (lambda () "no"))

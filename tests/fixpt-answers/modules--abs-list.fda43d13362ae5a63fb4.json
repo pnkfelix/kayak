@@ -21,22 +21,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"define pair : (moduleof (abs a type) (abs b type) (desc both (productof (#:x a) (#:y b))) (val make both) (val total (subr pure (both) int))) ! pure",
-"define use : (subr pure (pairs) int) ! pure",
-"int ! (read (globals pair use))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
-]
 }
 ]
 }

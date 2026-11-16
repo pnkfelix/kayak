@@ -11151,7 +11151,7 @@ pub mod expressions {
             } else {
                 let f = car(fs);
                 let xs = {
-                    let tagcase_ = f;
+                    let tagcase_ = generative_core(f);
                     match *tagcase_ {
                         Sexp::Lst(ys, f1, l1, p1) => {
                             ys
@@ -11239,14 +11239,14 @@ pub mod expressions {
                     let r = substitute(ps, map(lambda1s(move |q: Str| {
                         ty_var(q)
                     }), bs), parse_type(v, onto(ps, tv), third(xs)));
-                    return more(with_binds(with_type_binds(v, kayak_rt::heap_cons(type_bind(name, r#ref), kayak_rt::nil()), nil::<&'static Effdef>()), kayak_rt::heap_cons(local(v, string_append(str_lit("up-"), name), ty_data(str_lit("%poly"), onto(map(lambda1s(move |q: Str| {
+                    return more(with_binds(with_type_binds(v, kayak_rt::heap_cons(type_bind(name, r#ref), kayak_rt::nil()), nil::<&'static Effdef>()), kayak_rt::heap_cons(local(v, car(generative_names(v, f)), ty_data(str_lit("%poly"), onto(map(lambda1s(move |q: Str| {
                         ty_var(q)
-                    }), bs), kayak_rt::heap_cons(ty_proc(nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()), app), kayak_rt::nil())))), kayak_rt::heap_cons(local(v, string_append(str_lit("down-"), name), ty_data(str_lit("%poly"), onto(map(lambda1s(move |q: Str| {
+                    }), bs), kayak_rt::heap_cons(ty_proc(nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()), app), kayak_rt::nil())))), kayak_rt::heap_cons(local(v, second_word(generative_names(v, f)), ty_data(str_lit("%poly"), onto(map(lambda1s(move |q: Str| {
                         ty_var(q)
                     }), bs), kayak_rt::heap_cons(ty_proc(nil::<Str>(), kayak_rt::heap_cons(app, kayak_rt::nil()), r), kayak_rt::nil())))), kayak_rt::nil()))), the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%abs "), name), kayak_rt::heap_cons(r#ref, kayak_rt::nil())), kayak_rt::nil())));
                 } else if (string_eq_p(hd, str_lit("define-generative")) && i64_eq(size(xs), 3i64) && not(string_eq_p(n, str_lit("")))) {
                     let (r#ref, r) = (ty_data(string_append(id, string_append(str_lit(".."), n)), nil::<&'static Ty>()), parse_type(v, tv, third(xs)));
-                    return more(with_binds(with_type_binds(v, kayak_rt::heap_cons(type_bind(n, r#ref), kayak_rt::nil()), nil::<&'static Effdef>()), kayak_rt::heap_cons(local(v, string_append(str_lit("up-"), n), ty_proc(nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()), r#ref)), kayak_rt::heap_cons(local(v, string_append(str_lit("down-"), n), ty_proc(nil::<Str>(), kayak_rt::heap_cons(r#ref, kayak_rt::nil()), r)), kayak_rt::nil()))), the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%abs "), n), kayak_rt::heap_cons(r#ref, kayak_rt::nil())), kayak_rt::nil())));
+                    return more(with_binds(with_type_binds(v, kayak_rt::heap_cons(type_bind(n, r#ref), kayak_rt::nil()), nil::<&'static Effdef>()), kayak_rt::heap_cons(local(v, car(generative_names(v, f)), ty_proc(nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()), r#ref)), kayak_rt::heap_cons(local(v, second_word(generative_names(v, f)), ty_proc(nil::<Str>(), kayak_rt::heap_cons(r#ref, kayak_rt::nil()), r)), kayak_rt::nil()))), the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%abs "), n), kayak_rt::heap_cons(r#ref, kayak_rt::nil())), kayak_rt::nil())));
                 } else if (string_eq_p(hd, str_lit("define-datatype")) && not(string_eq_p(n, str_lit("")))) {
                     let vs = map(&items, cdr(cdr(xs)));
                     let tags = map(lambda1s(move |x: Sexps| {

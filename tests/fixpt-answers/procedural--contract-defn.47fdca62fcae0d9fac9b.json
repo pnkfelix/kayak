@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"contract-defn.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define %~1:v : int ! pure",
+"define seven : int ! (read (globals %~1:v))",
+"define %~3:v : int ! pure",
+"define %x:1 : int ! (read (globals %~3:v))",
+"define nine : int ! (read (globals %x:1))",
+"int ! (read (globals nine seven))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

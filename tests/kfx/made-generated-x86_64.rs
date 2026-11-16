@@ -897,6 +897,8 @@ pub mod made__load__1__fx26_x86_64 {
         fn x86_cvtsi2sd() -> X86Op2;
         fn x86_cvttsd2si() -> X86Op2;
         fn x86_round() -> X86Op4;
+        fn x86_load8() -> X86Op3;
+        fn x86_stored(a__0: Int, a__1: Int, a__2: Int, a__3: Int, a__4: Int, a__5: Int, a__6: Int, a__7: Int, a__8: Int, a__9: Int, a__10: Int) -> X86Bytes;
     }
 }
 
@@ -1407,6 +1409,95 @@ pub mod x86 {
         } else {
             int_lit(10)
         }), d, s), x86_b1(mode))
+    }
+
+    #[inline]
+    pub fn x86_load8(d: Int, base: Int, disp: Int) -> List<Int> {
+        x86_op_rm(int_lit(0), x86_b2(int_lit(15), int_lit(182)), d, base, int_lit(-1), int_lit(1), disp)
+    }
+
+    pub fn x86_gen_of(t: Int, st: Int, gens: Int) -> List<Int> {
+        append(x86_shift_imm(int_lit(5), t, int_lit(30)), append(x86_alu_rm(int_lit(0), t, st, gens), append(x86_load8(t, t, int_lit(0)), x86_alu_imm(int_lit(4), t, int_lit(127)))))
+    }
+
+    #[inline]
+    pub fn x86_pushes(rs: X86Bytes) -> X86Bytes {
+        if null_p(rs) {
+            nil::<Int>()
+        } else {
+            append(x86_push(car(rs)), x86_pushes(cdr(rs)))
+        }
+    }
+
+    #[inline]
+    pub fn x86_pops(rs: X86Bytes) -> X86Bytes {
+        if null_p(rs) {
+            nil::<Int>()
+        } else {
+            append(x86_pops(cdr(rs)), x86_pop(car(rs)))
+        }
+    }
+
+    pub fn x86_caller_saved() -> X86Bytes {
+        kayak_rt::heap_cons(int_lit(0), kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::heap_cons(int_lit(6), kayak_rt::heap_cons(int_lit(7), kayak_rt::heap_cons(int_lit(8), kayak_rt::heap_cons(int_lit(9), kayak_rt::heap_cons(int_lit(10), kayak_rt::heap_cons(int_lit(11), nil::<Int>())))))))))
+    }
+
+    pub fn x86_barrier_call(obj: Int, disp: Int, v: Int, st: Int, barrier: Int, heap: Int, limit: Int, t1: Int) -> X86Bytes {
+        let saved = x86_caller_saved();
+        let o = x86_lea(t1, obj, disp);
+        let o = append(o, x86_pushes(saved));
+        let o = append(o, x86_push(int_lit(3)));
+        let o = append(o, x86_push(t1));
+        let o = append(o, x86_push(v));
+        let o = append(o, x86_pop(int_lit(2)));
+        let o = append(o, x86_pop(int_lit(6)));
+        let o = append(o, x86_load(int_lit(7), st, heap));
+        let o = append(o, x86_mov(int_lit(3), int_lit(4)));
+        let o = append(o, x86_alu_imm(int_lit(4), int_lit(4), int_lit(-16)));
+        let o = append(o, x86_call_m(st, barrier));
+        let o = append(o, x86_mov(int_lit(4), int_lit(3)));
+        let o = append(o, x86_store(st, limit, int_lit(0)));
+        let o = append(o, x86_pop(int_lit(3)));
+        append(o, x86_pops(saved))
+    }
+
+    pub fn x86_stored(obj: Int, disp: Int, v: Int, st: Int, gens: Int, cards: Int, barrier: Int, heap: Int, limit: Int, t1: Int, t2: Int) -> X86Bytes {
+        let a = append(x86_lea(t1, obj, disp), x86_gen_of(t1, st, gens));
+        let b = append(x86_mov(t2, v), append(x86_alu_imm(int_lit(4), t2, int_lit(7)), x86_alu_imm(int_lit(7), t2, int_lit(1))));
+        let c = x86_alu_imm(int_lit(7), t2, int_lit(4));
+        let d = x86_alu_imm(int_lit(7), t2, int_lit(2));
+        let e = append(x86_mov(t2, v), append(x86_gen_of(t2, st, gens), x86_alu(int_lit(7), t1, t2)));
+        let f = x86_test(t2, t2);
+        let g = append(append(x86_lea(t1, obj, disp), x86_shift_imm(int_lit(5), t1, int_lit(9))), append(x86_alu_rm(int_lit(0), t1, st, cards), append(x86_load8(t1, t1, int_lit(0)), x86_test(t1, t1))));
+        let h = x86_barrier_call(obj, disp, v, st, barrier, heap, limit, t1);
+        let s = x86_store(obj, disp, v);
+        let j1 = _plus(list_length(a), int_lit(6));
+        let j2 = _plus(j1, _plus(list_length(b), int_lit(6)));
+        let j3 = _plus(j2, _plus(list_length(c), int_lit(6)));
+        let j4 = _plus(j3, _plus(list_length(d), int_lit(6)));
+        let vg = _plus(j4, int_lit(5));
+        let j6 = _plus(vg, _plus(list_length(e), int_lit(6)));
+        let j7 = _plus(j6, _plus(list_length(f), int_lit(6)));
+        let slow = _plus(j7, _plus(list_length(g), int_lit(6)));
+        let fast = _plus(slow, _plus(list_length(h), int_lit(5)));
+        let done = _plus(fast, list_length(s));
+        let o = append(a, x86_jcc(int_lit(4), _minus(fast, j1)));
+        let o = append(o, b);
+        let o = append(o, x86_jcc(int_lit(4), _minus(vg, j2)));
+        let o = append(o, c);
+        let o = append(o, x86_jcc(int_lit(4), _minus(vg, j3)));
+        let o = append(o, d);
+        let o = append(o, x86_jcc(int_lit(4), _minus(slow, j4)));
+        let o = append(o, x86_jmp(_minus(fast, vg)));
+        let o = append(o, e);
+        let o = append(o, x86_jcc(int_lit(6), _minus(fast, j6)));
+        let o = append(o, f);
+        let o = append(o, x86_jcc(int_lit(5), _minus(slow, j7)));
+        let o = append(o, g);
+        let o = append(o, x86_jcc(int_lit(5), _minus(fast, slow)));
+        let o = append(o, h);
+        let o = append(o, x86_jmp(_minus(done, fast)));
+        append(o, s)
     }
 }
 

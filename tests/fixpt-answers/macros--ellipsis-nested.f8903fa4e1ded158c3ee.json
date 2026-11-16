@@ -1,0 +1,41 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"ellipsis-nested.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (31 cells, cellular):",
+"     0: lit 1",
+"     2: lit 2",
+"     4: prim list 2",
+"     7: lit 3",
+"     9: prim list 1",
+"    12: prim list 0",
+"    15: prim list 3",
+"    18: slot 0",
+"    20: prim length 1",
+"    23: slot 0",
+"    25: pair-car",
+"    26: pair-car",
+"    27: int-add",
+"    28: slot! 0",
+"    30: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

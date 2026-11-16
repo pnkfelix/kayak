@@ -231,7 +231,7 @@ pub mod termination {
         }
     }
 
-    /// Whether `e` names a generative type's `up-` or `down-` conversion: no
+    /// Whether `e` names a generative type's conversion (C428): no
     /// local or member hides it, and the type is generative.
     pub fn conversion_p(c: &'static Wc, e: &'static Sexp) -> bool {
         let tagcase_ = e;
@@ -240,11 +240,10 @@ pub mod termination {
                 let tagcase_ = c;
                 match *tagcase_ {
                     Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
-                        (null_p(bound_of(n, sc)) && not(string_member_p(n, ms)) && (has_prefix_p(n, str_lit("up-")) || has_prefix_p(n, str_lit("down-"))) && not(null_p(conversion_bind(n, cv_binds(v)))) && generative_p(v, ty_data(if has_prefix_p(n, str_lit("up-")) {
-                            after_prefix(n, str_lit("up-"))
-                        } else {
-                            after_prefix(n, str_lit("down-"))
-                        }, nil::<&'static Ty>())))
+                        (null_p(bound_of(n, sc)) && not(string_member_p(n, ms)) && {
+                            let t = conversion_of(v, n);
+                            (not(string_eq_p(t, str_lit(""))) && generative_p(v, ty_data(t, nil::<&'static Ty>())))
+                        })
                     }
                 }
             }

@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"toplevel-redefined.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"limit : int ! pure",
+"f : (subr (read (globals limit)) (int) int) ! pure",
+"; `limit` redefined: every use sees the new one",
+"limit : int ! pure",
+"13 : int ! (read (globals f limit))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

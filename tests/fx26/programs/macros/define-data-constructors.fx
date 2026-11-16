@@ -5,14 +5,14 @@
 ;; `begin` (each definition in the scope of those before it); each
 ;; constructs by its keyword, a pattern variable at a list's head.
 (define-syntax payload
-  (-> (type ...) type)
-  (syntax-rules ()
+  (macro (_ desc ...) desc)
+  (syntax-rules
     ((_) unit)
     ((_ f) f)
     ((_ f g ...) (tupleof f g ...))))
 (define-syntax define-data
-  (-> (dvar (bvar label type ...) ...) defn)
-  (syntax-rules ()
+  (macro (_ name @ dvar (c @ bvar label desc ...) ...) (defn name (c ...)))
+  (syntax-rules
     ((_ name (c t field ...) ...)
      (begin
        (define-type name (sumof (t (payload field ...)) ...))

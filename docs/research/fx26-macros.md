@@ -81,7 +81,14 @@ agreeing, and the passing lists only grow.
    an effect, a description's head, read and checked as Fixpt reads them,
    and compiled as the plain name where nothing shadows it
    (`modules/toplevel-qualified-*.fx`).
-1. **The expander's core** (Fixpt's 2026-11-07 state): the syntax types
+1. **The expander's core** (as the pin has it: Fixpt's 2026-11-07 state
+   was the plan's first, and by 120b70e (C428) a signature is written
+   `(macro SHAPE MADE FACT …)`, the shape as a `syntax-rules` pattern,
+   what a use makes said, `desc` for a description's part, `type`
+   refused; one signature a macro, `clauses` gone; an expansion's depth
+   and uses limited, `FIXPT_MACRO_DEPTH`, `FIXPT_MACRO_USES`; a
+   `define-syntax` a template makes defines a macro; trailmarks; facts
+   under an ellipsis. The port is of the pin's expander): the syntax types
    (`macros-types.fx`), the kernel's signatures (`macros-kernel.fx`),
    alignment and definition (`macros-align.fx`), `define-syntax` with a
    written signature, uses transcribed, fresh binders, free names through

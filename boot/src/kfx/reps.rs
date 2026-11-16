@@ -822,7 +822,7 @@ pub fn rp_datatype_sum(d: &'static Dt, args: Tys) -> &'static Ty {
 // Fixpt's standard ones from their declarations (`check.rs`, `VSUBR` …
 // `TYPEBOUND`, in `rp-standard-generatives`' order), read as kayak reads a
 // type; a program's from its checker's own: its parameters, its marks
-// (`%variance NAME`) and the representation `up-NAME` takes.
+// (`%variance NAME`) and the representation its `#:seal` takes (`%up NAME`, C428).
 pub enum Gdecl {
     Gdecl(Strings, Strings, Strings, &'static Ty),
 }
@@ -831,7 +831,7 @@ pub fn gdecl(f0: Strings, f1: Strings, f2: Strings, f3: &'static Ty) -> &'static
     kayak_rt::heap_alloc(Gdecl::Gdecl(f0, f1, f2, f3))
 }
 
-// fixpt-source: crates/fixpt-fx26/src/check.rs@196dd2a
+// fixpt-source: crates/fixpt-fx26/src/check.rs@120b70e
 #[inline]
 pub fn rp_generative_decls() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
@@ -887,7 +887,7 @@ pub fn rp_standard_gdecl(v: &'static Cv, n: Str) -> List<&'static Gdecl> {
 }
 
 pub fn rp_program_gdecl(v: &'static Cv, n: Str) -> List<&'static Gdecl> {
-    let (f, up) = (rp_dt_named(rp_dts(v), n), scope_bind(string_append(str_lit("up-"), n), v));
+    let (f, up) = (rp_dt_named(rp_dts(v), n), scope_bind(string_append(str_lit("%up "), n), v));
     if (null_p(f) || null_p(up) || {
         let tagcase_ = car(f);
         match *tagcase_ {

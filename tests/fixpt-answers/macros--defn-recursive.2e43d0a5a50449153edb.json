@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"defn-recursive.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"fact : (subr (maxeff spin (read (globals fact))) (int) int) ! pure",
+"fact2 : (subr (maxeff spin (read (globals fact2))) (int) int) ! pure",
+"120 : int ! (maxeff spin (read (globals fact fact2)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

@@ -1,6 +1,6 @@
 "built-in.kfx: the modules Fixpt builds in that KFX has (C107), each
  loaded by its name, `(load-module \"fx26:NAME\")`, its text Fixpt's at
- 196dd2a. Written by scripts/built-in.py: edit that, not this."
+ 120b70e. Written by scripts/built-in.py: edit that, not this."
 
 (define built-in-0 string
   ";; Conditions, design B (`docs/research/conditions.md`, `TODO.md` §89): a
@@ -586,7 +586,10 @@
             (val x86-ucomis x86-op3)
             (val x86-cvtsi2sd x86-op2)
             (val x86-cvttsd2si x86-op2)
-            (val x86-round x86-op4)))
+            (val x86-round x86-op4)
+            (val x86-load8 x86-op3)
+            (val x86-stored
+                 (subr x86-encodes (int int int int int int int int int int int) x86-bytes))))
 ")
 
 (define built-in-4 string
@@ -860,6 +863,90 @@
 (define x86-round x86-op4
   (lambda (double d s mode)
     (append (x86-sse 102 0 (x86-b2 58 (if (= double 1) 11 10)) d s) (x86-b1 mode))))
+
+;;; ------------------------------------------------------------ the write barrier
+
+;; `movzx d, byte [base + disp]`.
+(define x86-load8 x86-op3 (lambda (d base disp) (x86-op-rm 0 (x86-b2 15 182) d base -1 1 disp)))
+;; `t`, an address, made its generation, as the biased table at
+;; `[st + gens]` says, its low seven bits.
+(define x86-gen-of x86-op3
+  (lambda (t st gens)
+    (append (x86-shift-imm 5 t 30)
+            (append (x86-alu-rm 0 t st gens) (append (x86-load8 t t 0) (x86-alu-imm 4 t 127))))))
+;; The heap's store of `v` at `[obj + disp]`, every caller-saved register
+;; kept, `rbx` the stack pointer across the call, the allocation limit it
+;; gives written back (`x86_64::stored`'s slow path).
+(define x86-pushes (subr x86-encodes (x86-bytes) x86-bytes)
+  (lambda (rs) (if (null? rs) nil (append (x86-push (car rs)) (x86-pushes (cdr rs))))))
+(define x86-pops (subr x86-encodes (x86-bytes) x86-bytes)
+  (lambda (rs) (if (null? rs) nil (append (x86-pops (cdr rs)) (x86-pop (car rs))))))
+;; The caller-saved registers, in the order pushed.
+(define x86-caller-saved (subr x86-encodes () x86-bytes)
+  (lambda ()
+    ;; cons-chain: in `@k`, the encoders' region, which `list` would not be
+    (cons 0 (cons 1 (cons 2 (cons 6 (cons 7 (cons 8 (cons 9 (cons 10 (cons 11 nil)))))))))))
+;; Each appended in turn, in a flat `let*`: `append`s nested deep are
+;; checked in time exponential in the depth (TODO.md §277).
+(define x86-barrier-call (subr x86-encodes (int int int int int int int int) x86-bytes)
+  (lambda (obj disp v st barrier heap limit t1)
+    (let* ((saved (x86-caller-saved))
+           (o (x86-lea t1 obj disp))
+           (o (append o (x86-pushes saved)))
+           (o (append o (x86-push 3)))
+           (o (append o (x86-push t1)))
+           (o (append o (x86-push v)))
+           (o (append o (x86-pop 2)))
+           (o (append o (x86-pop 6)))
+           (o (append o (x86-load 7 st heap)))
+           (o (append o (x86-mov 3 4)))
+           (o (append o (x86-alu-imm 4 4 -16)))
+           (o (append o (x86-call-m st barrier)))
+           (o (append o (x86-mov 4 3)))
+           (o (append o (x86-store st limit 0)))
+           (o (append o (x86-pop 3))))
+      (append o (x86-pops saved)))))
+;; `v` stored at `[obj + disp]` with its write barrier, as
+;; `x86_64::stored` makes it (`TODO.md` §276): the store where the barrier
+;; needs nothing (the place young; `v` no reference, or no younger; `v`
+;; young and the place's card dirty), else the heap's store. The state's
+;; offsets of the generation table, the card table, the heap's store, its
+;; heap and the allocation limit; `t1`, `t2` scratch. Every jump 32-bit.
+(define x86-stored (subr x86-encodes (int int int int int int int int int int int) x86-bytes)
+  (lambda (obj disp v st gens cards barrier heap limit t1 t2)
+    (let* ((a (append (x86-lea t1 obj disp) (x86-gen-of t1 st gens)))
+           (b (append (x86-mov t2 v) (append (x86-alu-imm 4 t2 7) (x86-alu-imm 7 t2 1))))
+           (c (x86-alu-imm 7 t2 4))
+           (d (x86-alu-imm 7 t2 2))
+           (e (append (x86-mov t2 v) (append (x86-gen-of t2 st gens) (x86-alu 7 t1 t2))))
+           (f (x86-test t2 t2))
+           (g (append (append (x86-lea t1 obj disp) (x86-shift-imm 5 t1 9))
+                      (append (x86-alu-rm 0 t1 st cards)
+                              (append (x86-load8 t1 t1 0) (x86-test t1 t1)))))
+           (h (x86-barrier-call obj disp v st barrier heap limit t1))
+           (s (x86-store obj disp v))
+           (j1 (+ (list-length a) 6)) (j2 (+ j1 (+ (list-length b) 6)))
+           (j3 (+ j2 (+ (list-length c) 6))) (j4 (+ j3 (+ (list-length d) 6))) (vg (+ j4 5))
+           (j6 (+ vg (+ (list-length e) 6))) (j7 (+ j6 (+ (list-length f) 6)))
+           (slow (+ j7 (+ (list-length g) 6))) (fast (+ slow (+ (list-length h) 5)))
+           (done (+ fast (list-length s)))
+           (o (append a (x86-jcc 4 (- fast j1))))
+           (o (append o b))
+           (o (append o (x86-jcc 4 (- vg j2))))
+           (o (append o c))
+           (o (append o (x86-jcc 4 (- vg j3))))
+           (o (append o d))
+           (o (append o (x86-jcc 4 (- slow j4))))
+           (o (append o (x86-jmp (- fast vg))))
+           (o (append o e))
+           (o (append o (x86-jcc 6 (- fast j6))))
+           (o (append o f))
+           (o (append o (x86-jcc 5 (- slow j7))))
+           (o (append o g))
+           (o (append o (x86-jcc 5 (- fast slow))))
+           (o (append o h))
+           (o (append o (x86-jmp (- done fast)))))
+      (append o s))))
 ))
 ")
 
@@ -1937,6 +2024,9 @@
 (define n-st-words int 192)  ; a State field's offset
 (define n-st-regs int 776)  ; a State field's offset
 (define n-st-prim-call int 888)  ; a State field's offset
+(define n-st-gens int 896)  ; a State field's offset
+(define n-st-barrier int 904)  ; a State field's offset
+(define n-st-barrier-heap int 912)  ; a State field's offset
 (define n-false int 3)  ; a Value's bits
 (define n-true int 11)  ; a Value's bits
 (define n-prompt-mark int 51)  ; a Value's bits
@@ -2413,6 +2503,7 @@
          ((\"f32-infinite?\") \"%fx26-f32-infinite?\")
          ((\"flatarray-ref\") \"%fx26-flatarray-ref\")
          ((\"terminal-size\") \"%fx26-terminal-size\")
+         ((\"%macros:limit\") \"%fx26-macro-limit\")
          ((\"%reify-effect\") \"%fx26-reify-effect\")
          ((\"%reify-region\") \"%fx26-reify-region\")
          ((\"process-start\") \"%fx26-process-start\")
@@ -2488,6 +2579,7 @@
          ((\"%session-eval-make\") \"%fx26-make-session\")
          ((\"bytevector-u8-set!\") \"%fx26-bytevector-u8-set!\")
          ((\"datum-list->vector\") \"list->vector\")
+         ((\"datum-vector->list\") \"vector->list\")
          ((\"datum-proper-list?\") \"%fx26-list?\")
          (else \"\")))
       ((19)
@@ -2510,6 +2602,7 @@
          (else \"\")))
       ((23)
        (case n
+         ((\"%macros:call-procedural\") \"%fx26-call-procedural\")
          ((\"%session-eval-redefines\") \"%fx26-session-redefines\")
          ((\"datum-bytevector-length\") \"bytevector-length\")
          ((\"runtime-primitive-arity\") \"%runtime-primitive-arity\")
@@ -2517,6 +2610,7 @@
       ((24)
        (case n
          ((\"%session-eval-committed!\") \"%fx26-session-committed!\")
+         ((\"get-environment-variable\") \"%fx26-get-environment-variable\")
          (else \"\")))
       ((25)
        (case n

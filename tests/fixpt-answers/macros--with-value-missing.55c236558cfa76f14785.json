@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"with-value-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/macros/with-value-missing.fx:12:23: `int-order` gives no value `more`, which a template's `(with int-order more)` takes from it alone",
+"  in the expansion of `call-more` at <programs>/macros/with-value-missing.fx:13:1",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

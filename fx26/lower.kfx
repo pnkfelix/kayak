@@ -390,7 +390,7 @@
                         ;; A generative type's conversions, the module's own, not values it
                         ;; gives (Fixpt's, the cell generator's; C328).
                         ((head-is? f "define-generative")
-                         (if exported nil (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n)))))
+                         (if exported nil (list (generative-seal f) (generative-unseal f))))
                         ((and (head-is? f "include") (not (include-named? f)))
                          (if exported (include-names f gs) (cons (include-hidden f) (include-names f gs))))
                         ((head-is? f "include")
@@ -500,7 +500,7 @@
                         ((head-is? f "define-datatype")
                          (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
                         ((head-is? f "define-generative")
-                         (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n))))
+                         (list (generative-seal f) (generative-unseal f)))
                         ((or (head-is? f "define-syscall") (head-is? f "define-optional-syscall"))
                          (let ((n (sym-name (second (items f))))) (list (string-append "%syscall-available:" n) n)))
                         (else nil))
@@ -1018,9 +1018,8 @@
                               (cdr (cdr (items f)))))
                         ((head-is? f "define-generative")
                          "A generative type's conversions, both ways: the value itself."
-                         (let ((n (binder-name (second (items f)))))
-                           (list (top-define (i-define (position-of (string-append "up-" n) gs 0) (i-lit (v-prim "%identity" 1))))
-                                 (top-define (i-define (position-of (string-append "down-" n) gs 0) (i-lit (v-prim "%identity" 1)))))))
+                         (list (top-define (i-define (position-of (generative-seal f) gs 0) (i-lit (v-prim "%identity" 1))))
+                               (top-define (i-define (position-of (generative-unseal f) gs 0) (i-lit (v-prim "%identity" 1))))))
                         ((or (head-is? f "define-type") (head-is? f "define-effect") (head-is? f "define-convention"))
                          (list (top-none)))
                         ((or (head-is? f "define-syscall") (head-is? f "define-optional-syscall"))

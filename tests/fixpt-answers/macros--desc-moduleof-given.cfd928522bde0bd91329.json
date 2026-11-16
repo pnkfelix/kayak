@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"desc-moduleof-given.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (abs b type) (val get (subr pure (b) int)) (val make (subr pure (int) b))) ! pure",
+"define v : m..b ! (read (globals m))",
+"int ! (read (globals m v))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

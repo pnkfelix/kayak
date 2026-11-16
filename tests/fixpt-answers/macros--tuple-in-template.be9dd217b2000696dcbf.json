@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"tuple-in-template.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define area : (subr pure (p) int) ! pure",
+"int ! (read (globals area))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

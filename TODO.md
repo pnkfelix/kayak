@@ -1522,6 +1522,28 @@ Twobit-style optimizations in KFX.
 - The engine (`kayak-fx26`) runs no `#%toplevel` ("the engine: nothing is
   named #%toplevel"), which its checker takes (C427's test asks `,type`).
 
+## 53. Taken from Fixpt 120b70e in part (C428)
+
+- A `moduleof`'s label and binder written apart, `(abs #:t u type)`,
+  `(desc #:d u D)`, and a `val`'s label a keyword, `(val #:x T)` (Fixpt
+  687accf1): kayak's checker refuses them ("a module type's item KFX does
+  not have"), stricter, as yet (`modules/moduleof-*-apart.fx`,
+  `moduleof-label-with.fx`). Where the label is named nowhere free after,
+  the binder renamed to it is the old form; where it is (an outer `t`
+  beside the label `t`), module specs need a label and a binder apart.
+  Program text is read at many places (kfx, the engine, kc), so the
+  rewrite wants one pass they share, not the reader (quoted data).
+- `get-environment-variable`, `(subr (io env-read) (string) (sumof (value
+  string) (unset unit) (not-text unit)))`, and the I/O kind `env-read`
+  (Fixpt be3b4291): kayak's checker does not bind it (stricter); every
+  layer would take it as `read-symlink` was taken (C293): the checker's
+  standard list, the emitter's I/O names, kayak-rt, the engine's
+  primitives, tier 1's `cprims.kfx` (primitive 526).
+- Fixpt's macros since 2026-11-07 (typed tier, `(macro σ made)`
+  signatures, `desc`, trailmarks, `begin-for-syntax`, procedural macros in
+  a phase-1 namespace, expansion limits): none in kayak yet; stage 1 of
+  §51 ports the pin's expander (`docs/research/fx26-macros.md`).
+
 ## 52. kc (the user, 2026-11-12; `docs/research/kc.md`)
 
 The compiler from scratch, of FX-26 and KFX, its passes queries. K0 the

@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"contravariant.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/generative/contravariant.fx:5:52: `c` is declared a (sink (sumof (#:a int) (#:b bool) (#:c char))): a (sink (sumof (#:a int) (#:b bool) (#:c char))) is expected here, and this is a (sink (sumof (#:a int) (#:b bool)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

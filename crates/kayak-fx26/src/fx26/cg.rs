@@ -22,13 +22,13 @@ use super::*;
 // lifting. Bloblets and floats: C152. Register code, each lambda's word's
 // twin, the `regs-*.kfx` files' (C248), from the twins noted here
 // (`cg-twins`); the form loop and the listing in `cg-top.kfx`, after them.
-// fixpt-source: crates/fixpt-fx26/src/compile.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/compile.fx@120b70e
 // fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@196dd2a
-// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@120b70e
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@eed406e
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@0d933ff
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@120b70e
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@120b70e
 
 // The generator's data lives at `@g`.
 
@@ -1178,6 +1178,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("terminal-size")) => {
                         str_lit("%fx26-terminal-size")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%macros:limit")) => {
+                        str_lit("%fx26-macro-limit")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-effect")) => {
                         str_lit("%fx26-reify-effect")
                     }
@@ -1393,6 +1396,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("datum-list->vector")) => {
                         str_lit("list->vector")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-vector->list")) => {
+                        str_lit("vector->list")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("datum-proper-list?")) => {
                         str_lit("%fx26-list?")
                     }
@@ -1451,6 +1457,9 @@ pub mod made__load__0__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(23)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("%macros:call-procedural")) => {
+                        str_lit("%fx26-call-procedural")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-redefines")) => {
                         str_lit("%fx26-session-redefines")
                     }
@@ -1469,6 +1478,9 @@ pub mod made__load__0__cg {
                 match n {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-committed!")) => {
                         str_lit("%fx26-session-committed!")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("get-environment-variable")) => {
+                        str_lit("%fx26-get-environment-variable")
                     }
                     _ => {
                         str_lit("")
@@ -3063,24 +3075,9 @@ pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
     }
 }
 
-// A generative type's conversions, `up-t` and `down-t`, each `(lambda (x)
-// x)` where the form is, as Fixpt's parser's `identity-at` makes them.
-/// A generative type's name: its own, or a family's head, `(t (a type +))`
-/// (C217).
-#[inline]
-pub fn generative_name(e: &'static Sexp) -> Str {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(ys, f, l, p) => {
-            sym_name(car(ys))
-        }
-        _ => {
-            let other = tagcase_;
-            sym_name(e)
-        }
-    }
-}
-
+// A generative type's conversions, its `#:seal` and `#:unseal` (Fixpt
+// cb172689; C428), each `(lambda (x) x)` where the form is, as Fixpt's
+// parser's `identity-at` makes them.
 /// `(confirm-nat x (n body) else)`, `(acyclic x (n body) else)`,
 /// `(confirm-length x k (n body) else)` as Fixpt's parser makes them (C217):
 /// the value bound once, to a variable named for what the form does not
@@ -3106,8 +3103,8 @@ pub fn confirmed(e: &'static Sexp, base: Str, test: Str, cert: Str, with_k: bool
     sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(car(xs), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("if")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(test), kayak_rt::heap_cons(sy(t), k))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(arm), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(cert), kayak_rt::heap_cons(sy(t), k))), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(second(arm), kayak_rt::nil())))), kayak_rt::heap_cons(els, kayak_rt::nil()))))), kayak_rt::nil()))))
 }
 
-pub fn generative_conversions(t: Str, a: i64) -> List<&'static Ctop> {
-    kayak_rt::heap_cons(t_define(string_append(str_lit("up-"), t), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::heap_cons(t_define(string_append(str_lit("down-"), t), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::nil()))
+pub fn generative_conversions(e: &'static Sexp, a: i64) -> List<&'static Ctop> {
+    kayak_rt::heap_cons(t_define(generative_seal(e), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::heap_cons(t_define(generative_unseal(e), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::nil()))
 }
 
 // The type of the module read last: its values' names, in order.
@@ -4446,7 +4443,7 @@ pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
                     cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
                 }
             }
-        }), generative_conversions(generative_name(second(items(e))), datum_pos(e)))
+        }), generative_conversions(e, datum_pos(e)))
     } else if string_eq_p(h, str_lit("define-datatype")) {
         map(lambda1s(move |t: &'static Ctop| {
             let tagcase_ = t;
@@ -4906,7 +4903,7 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
     } else if string_eq_p(h, str_lit("define-datatype")) {
         dt_constructors(cdr(cdr(items(e))), datum_pos(e))
     } else if string_eq_p(h, str_lit("define-generative")) {
-        generative_conversions(generative_name(second(items(e))), datum_pos(e))
+        generative_conversions(e, datum_pos(e))
     } else if string_eq_p(h, str_lit("import")) {
         imports(e)
     } else if string_eq_p(h, str_lit("include")) {

@@ -521,6 +521,37 @@
 (define third (subr kfx (sexps) sexp) (lambda (xs) (car (cdr (cdr xs)))))
 (define fourth (subr kfx (sexps) sexp) (lambda (xs) (car (cdr (cdr (cdr xs))))))
 
+(define generative-core (subr kfx (sexp) sexp)
+  (lambda (f)
+    "A `define-generative`, `(define-generative t T #:seal mk #:unseal get)`,
+     as its type and representation alone, `(define-generative t T)`: its
+     conversions' names (Fixpt cb172689, C428) are `generative-seal`'s and
+     `generative-unseal`'s. Any other form as it is."
+    (tagcase f
+      (lst (xs fl l p) (if (and (head-is? f "define-generative") (i64> (size xs) 3)) (lst (list (car xs) (second xs) (third xs)) fl l p) f))
+      (else other f))))
+
+(define-rec
+  (keyed-name (subr kfx (sexps string) string)
+    (lambda (xs k)
+      "The name after the keyword `k` among `xs`, pairs of a keyword and a
+       name; or the empty string."
+      (cond ((or (null? xs) (null? (cdr xs))) "")
+            ((and (sym-is? (car xs) k) (tagcase (second xs) (sym (n f p) #t) (else other #f))) (sym-name (second xs)))
+            (else (keyed-name (cdr (cdr xs)) k))))))
+
+(define generative-named (subr kfx (sexp string) string)
+  (lambda (f k)
+    (tagcase f
+      (lst (xs fl l p) (if (i64> (size xs) 3) (keyed-name (cdr (cdr (cdr xs))) k) ""))
+      (else other ""))))
+
+(define generative-seal (subr kfx (sexp) string)
+  (lambda (f) "A `define-generative`'s conversion into its type, `#:seal`'s name." (generative-named f "#:seal")))
+
+(define generative-unseal (subr kfx (sexp) string)
+  (lambda (f) "Its conversion out of it, `#:unseal`'s." (generative-named f "#:unseal")))
+
 (define param-name (subr kfx (sexp) string)
   (lambda (param)
     "A lambda's parameter's name: it is `x` or `(x T)`."

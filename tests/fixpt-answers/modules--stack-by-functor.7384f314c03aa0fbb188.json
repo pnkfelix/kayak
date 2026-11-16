@@ -21,22 +21,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"make-stack : (subr pure (elt-sig) (moduleof (abs stack type) (val empty stack) (val is-empty (subr (read @heap) (stack) bool)) (val push (subr (alloc @heap) ((select $1 t) stack) stack)) (val top (subr (read @heap) (stack) (select $1 t))) (val pop (subr (read @heap) (stack) stack)))) ! pure",
-"int-elt : (moduleof (desc t int)) ! pure",
-"bool-elt : (moduleof (desc t bool)) ! pure",
-"(3 2 1) : (listof int acyclic) ! (maxeff (read @heap) (alloc @heap) (read (globals bool-elt int-elt make-stack)))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
-]
 }
 ]
 }

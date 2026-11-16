@@ -177,231 +177,238 @@ pub mod restrictions {
 
     /// `e`, whose nearest list began at `line` of `file`: refused if it is
     /// what KFX does not have, else each of its parts.
-    pub fn restricted(e: &'static Sexp, file: Str, line: i64) -> () {
-        let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                if (string_eq_p(n, str_lit("#%toplevel")) || has_prefix_p(n, str_lit("#%toplevel:"))) {
-                    match restriction_refused(file, line, string_append(n, str_lit(", the top level's names whatever binds them here, FX-26's, which KFX has not (C397)"))) {}
-                } else if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc")) || string_eq_p(n, str_lit("cwcc"))) {
-                    match restriction_refused(file, line, string_append(n, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {}
-                } else if string_member_p(n, mark_names()) {
-                    match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}
-                } else if (keyword_name_p(n) || string_member_p(n, keyword_names())) {
-                    match restriction_refused(file, line, string_append(n, str_lit(", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)"))) {}
-                } else if string_member_p(n, evidence_names()) {
-                    match restriction_refused(file, line, string_append(n, str_lit(", FX-26's evidence, which KFX has not yet (C308)"))) {}
-                } else if string_member_p(n, session_names()) {
-                    match restriction_refused(file, line, string_append(n, str_lit(", FX-26's sessions, which KFX has not yet (C309)"))) {}
-                } else if string_eq_p(n, str_lit("%stage")) {
-                    match restriction_refused(file, line, str_lit("`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)")) {}
-                } else if string_eq_p(n, str_lit("list")) {
-                    match restriction_refused(file, line, str_lit("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {}
-                } else if string_member_p(n, not_yet_names()) {
-                    match restriction_refused(file, line, string_append(n, str_lit(", FX-26's, which KFX has not yet (C156)"))) {}
-                } else if string_member_p(n, copied_names()) {
-                    match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {}
-                } else {
-                    ()
-                }
-            }
-            Sexp::Lst(xs, f, l, p) => {
-                if null_p(xs) {
-                    ()
-                } else if sym_is_p(car(xs), str_lit("list")) {
-                    restricted_all(cdr(xs), f, l)
-                } else if ((sym_is_p(car(xs), str_lit("poly")) || sym_is_p(car(xs), str_lit("plambda"))) && i64_gt_eq(size(xs), 2i64) && {
-                    let tagcase_ = second(xs);
-                    match *tagcase_ {
-                        Sexp::Lst(bs, f2, l2, p2) => {
-                            any_p(lambda1s(move |b: &'static Sexp| {
-                                let tagcase_ = b;
-                                match *tagcase_ {
-                                    Sexp::Lst(ys, f3, l3, p3) => {
-                                        (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit("conv")))
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        false
-                                    }
-                                }
-                            }), bs)
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                }) {
-                    match restriction_refused(f, l, str_lit("a convention binder, FX-26's, which KFX has not (C205)")) {}
-                } else if (i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("region")) && sym_is_p(third(xs), str_lit("distinct"))) {
-                    match restriction_refused(f, l, str_lit("a distinct region binder, FX-26's, which KFX has not yet (C204)")) {}
-                } else if (sym_is_p(car(xs), str_lit("bloblet")) && any_p(lambda1s(move |a: &'static Sexp| {
-                    head_is_p(a, str_lit("frozen"))
-                }), cdr(xs))) {
-                    match restriction_refused(f, l, str_lit("a frozen bloblet, FX-26's, which KFX has not yet (C201)")) {}
-                } else if ({
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(h, f2, p2) => {
-                            string_member_p(h, region_heads())
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                } && any_p(lambda1s(move |a: &'static Sexp| {
-                    ((head_is_p(a, str_lit("const")) || head_is_p(a, str_lit("acyclic"))) && not(sym_is_p(second(items(a)), str_lit("heap"))))
-                }), cdr(xs))) {
-                    match restriction_refused(f, l, str_lit("data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)")) {}
-                } else if ({
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(h, f2, p2) => {
-                            string_member_p(h, region_heads())
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                } && any_p(lambda1s(move |a: &'static Sexp| {
-                    sym_is_p(a, str_lit("heap"))
-                }), cdr(xs))) {
-                    match restriction_refused(f, l, str_lit("the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)")) {}
-                } else if (sym_is_p(car(xs), str_lit("confirm-nat")) || sym_is_p(car(xs), str_lit("confirm-length")) || (sym_is_p(car(xs), str_lit("acyclic")) && i64_eq(size(xs), 4i64))) {
-                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's, which KFX has not yet (C159)"))) {}
-                } else if (sym_is_p(car(xs), str_lit("nlist")) || (sym_is_p(car(xs), str_lit("nat")) && i64_eq(size(xs), 2i64)) || (sym_is_p(car(xs), str_lit("poly")) && not(null_p(cdr(xs))) && {
-                    let tagcase_ = second(xs);
-                    match *tagcase_ {
-                        Sexp::Lst(bs, f2, l2, p2) => {
-                            any_p(lambda1s(move |b: &'static Sexp| {
-                                let tagcase_ = b;
-                                match *tagcase_ {
-                                    Sexp::Lst(ys, f3, l3, p3) => {
-                                        (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit("size")))
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        false
-                                    }
-                                }
-                            }), bs)
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                })) {
-                    match restriction_refused(f, l, str_lit("sizes (nlist, (nat s), a size binder), FX-26's, which KFX has not yet (C158)")) {}
-                } else if (sym_is_p(car(xs), str_lit("vsubr")) || sym_is_p(car(xs), str_lit("vlambda")) || sym_is_p(car(xs), str_lit("apply"))) {
-                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {}
-                } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && (sym_is_p(third(xs), str_lit("finite")) || head_is_p(third(xs), str_lit("+")) || head_is_p(third(xs), str_lit("-")))) {
-                    match restriction_refused(f, l, str_lit("a flat array of a length not literal, FX-26's, which KFX has not yet (C175)")) {}
-                } else if {
-                    let binders = if ((sym_is_p(car(xs), str_lit("poly")) || sym_is_p(car(xs), str_lit("plambda"))) && i64_gt(size(xs), 1i64)) {
-                        items_of(second(xs))
-                    } else if ((sym_is_p(car(xs), str_lit("define-type")) || sym_is_p(car(xs), str_lit("define-generative"))) && i64_gt(size(xs), 1i64)) {
-                        cdr_items_of(second(xs))
+    pub fn restricted(mut e: &'static Sexp, mut file: Str, mut line: i64) -> () {
+        loop {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    if (string_eq_p(n, str_lit("#%toplevel")) || has_prefix_p(n, str_lit("#%toplevel:"))) {
+                        return match restriction_refused(file, line, string_append(n, str_lit(", the top level's names whatever binds them here, FX-26's, which KFX has not (C397)"))) {};
+                    } else if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc")) || string_eq_p(n, str_lit("cwcc"))) {
+                        return match restriction_refused(file, line, string_append(n, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {};
+                    } else if string_member_p(n, mark_names()) {
+                        return match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {};
+                    } else if (keyword_name_p(n) || string_member_p(n, keyword_names())) {
+                        return match restriction_refused(file, line, string_append(n, str_lit(", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)"))) {};
+                    } else if string_member_p(n, evidence_names()) {
+                        return match restriction_refused(file, line, string_append(n, str_lit(", FX-26's evidence, which KFX has not yet (C308)"))) {};
+                    } else if string_member_p(n, session_names()) {
+                        return match restriction_refused(file, line, string_append(n, str_lit(", FX-26's sessions, which KFX has not yet (C309)"))) {};
+                    } else if string_eq_p(n, str_lit("%stage")) {
+                        return match restriction_refused(file, line, str_lit("`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)")) {};
+                    } else if string_eq_p(n, str_lit("list")) {
+                        return match restriction_refused(file, line, str_lit("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {};
+                    } else if string_member_p(n, not_yet_names()) {
+                        return match restriction_refused(file, line, string_append(n, str_lit(", FX-26's, which KFX has not yet (C156)"))) {};
+                    } else if string_member_p(n, copied_names()) {
+                        return match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {};
                     } else {
-                        nil::<&'static Sexp>()
-                    };
-                    any_p(lambda1s(move |b: &'static Sexp| {
-                        let tagcase_ = b;
+                        return ();
+                    }
+                }
+                Sexp::Lst(xs, f, l, p) => {
+                    if null_p(xs) {
+                        return ();
+                    } else if (sym_is_p(car(xs), str_lit("define-generative")) && i64_gt(size(xs), 3i64)) {
+                        // Its conversions' names, `#:seal mk #:unseal get` (C428): keywords
+                        // KFX reads there, as names, not values.
+                        (e, file, line) = (generative_core(e), f, l);
+                        continue;
+                    } else if sym_is_p(car(xs), str_lit("list")) {
+                        return restricted_all(cdr(xs), f, l);
+                    } else if ((sym_is_p(car(xs), str_lit("poly")) || sym_is_p(car(xs), str_lit("plambda"))) && i64_gt_eq(size(xs), 2i64) && {
+                        let tagcase_ = second(xs);
                         match *tagcase_ {
-                            Sexp::Lst(ys, f2, l2, p2) => {
-                                (i64_eq(size(ys), 2i64) && {
-                                    let tagcase_ = second(ys);
+                            Sexp::Lst(bs, f2, l2, p2) => {
+                                any_p(lambda1s(move |b: &'static Sexp| {
+                                    let tagcase_ = b;
                                     match *tagcase_ {
-                                        Sexp::Sym(k, f3, p3) => {
-                                            string_member_p(k, kind_names())
+                                        Sexp::Lst(ys, f3, l3, p3) => {
+                                            (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit("conv")))
                                         }
                                         _ => {
                                             let other = tagcase_;
                                             false
                                         }
                                     }
-                                })
+                                }), bs)
                             }
                             _ => {
                                 let other = tagcase_;
                                 false
                             }
                         }
-                    }), binders)
-                } {
-                    match restriction_refused(f, l, str_lit("a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)")) {}
-                } else if (sym_is_p(car(xs), str_lit("define-generative")) && i64_gt(size(xs), 1i64) && any_p(lambda1s(move |b: &'static Sexp| {
-                    let tagcase_ = b;
-                    match *tagcase_ {
-                        Sexp::Lst(ys, f2, l2, p2) => {
-                            i64_eq(size(ys), 3i64)
+                    }) {
+                        return match restriction_refused(f, l, str_lit("a convention binder, FX-26's, which KFX has not (C205)")) {};
+                    } else if (i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("region")) && sym_is_p(third(xs), str_lit("distinct"))) {
+                        return match restriction_refused(f, l, str_lit("a distinct region binder, FX-26's, which KFX has not yet (C204)")) {};
+                    } else if (sym_is_p(car(xs), str_lit("bloblet")) && any_p(lambda1s(move |a: &'static Sexp| {
+                        head_is_p(a, str_lit("frozen"))
+                    }), cdr(xs))) {
+                        return match restriction_refused(f, l, str_lit("a frozen bloblet, FX-26's, which KFX has not yet (C201)")) {};
+                    } else if ({
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(h, f2, p2) => {
+                                string_member_p(h, region_heads())
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
                         }
-                        _ => {
-                            let other = tagcase_;
-                            false
+                    } && any_p(lambda1s(move |a: &'static Sexp| {
+                        ((head_is_p(a, str_lit("const")) || head_is_p(a, str_lit("acyclic"))) && not(sym_is_p(second(items(a)), str_lit("heap"))))
+                    }), cdr(xs))) {
+                        return match restriction_refused(f, l, str_lit("data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)")) {};
+                    } else if ({
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(h, f2, p2) => {
+                                string_member_p(h, region_heads())
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
                         }
+                    } && any_p(lambda1s(move |a: &'static Sexp| {
+                        sym_is_p(a, str_lit("heap"))
+                    }), cdr(xs))) {
+                        return match restriction_refused(f, l, str_lit("the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)")) {};
+                    } else if (sym_is_p(car(xs), str_lit("confirm-nat")) || sym_is_p(car(xs), str_lit("confirm-length")) || (sym_is_p(car(xs), str_lit("acyclic")) && i64_eq(size(xs), 4i64))) {
+                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's, which KFX has not yet (C159)"))) {};
+                    } else if (sym_is_p(car(xs), str_lit("nlist")) || (sym_is_p(car(xs), str_lit("nat")) && i64_eq(size(xs), 2i64)) || (sym_is_p(car(xs), str_lit("poly")) && not(null_p(cdr(xs))) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(bs, f2, l2, p2) => {
+                                any_p(lambda1s(move |b: &'static Sexp| {
+                                    let tagcase_ = b;
+                                    match *tagcase_ {
+                                        Sexp::Lst(ys, f3, l3, p3) => {
+                                            (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit("size")))
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                }), bs)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    })) {
+                        return match restriction_refused(f, l, str_lit("sizes (nlist, (nat s), a size binder), FX-26's, which KFX has not yet (C158)")) {};
+                    } else if (sym_is_p(car(xs), str_lit("vsubr")) || sym_is_p(car(xs), str_lit("vlambda")) || sym_is_p(car(xs), str_lit("apply"))) {
+                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {};
+                    } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && (sym_is_p(third(xs), str_lit("finite")) || head_is_p(third(xs), str_lit("+")) || head_is_p(third(xs), str_lit("-")))) {
+                        return match restriction_refused(f, l, str_lit("a flat array of a length not literal, FX-26's, which KFX has not yet (C175)")) {};
+                    } else if {
+                        let binders = if ((sym_is_p(car(xs), str_lit("poly")) || sym_is_p(car(xs), str_lit("plambda"))) && i64_gt(size(xs), 1i64)) {
+                            items_of(second(xs))
+                        } else if ((sym_is_p(car(xs), str_lit("define-type")) || sym_is_p(car(xs), str_lit("define-generative"))) && i64_gt(size(xs), 1i64)) {
+                            cdr_items_of(second(xs))
+                        } else {
+                            nil::<&'static Sexp>()
+                        };
+                        any_p(lambda1s(move |b: &'static Sexp| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Sexp::Lst(ys, f2, l2, p2) => {
+                                    (i64_eq(size(ys), 2i64) && {
+                                        let tagcase_ = second(ys);
+                                        match *tagcase_ {
+                                            Sexp::Sym(k, f3, p3) => {
+                                                string_member_p(k, kind_names())
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                false
+                                            }
+                                        }
+                                    })
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }), binders)
+                    } {
+                        return match restriction_refused(f, l, str_lit("a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)")) {};
+                    } else if (sym_is_p(car(xs), str_lit("define-generative")) && i64_gt(size(xs), 1i64) && any_p(lambda1s(move |b: &'static Sexp| {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                i64_eq(size(ys), 3i64)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }), cdr_items_of(second(xs)))) {
+                        return match restriction_refused(f, l, str_lit("a variance mark, FX-26's, which KFX does not have (its families are invariant; C188)")) {};
+                    } else if (sym_is_p(car(xs), str_lit("proves")) && i64_eq(size(xs), 2i64)) {
+                        return match restriction_refused(f, l, str_lit("a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)")) {};
+                    } else if (sym_is_p(car(xs), str_lit("flatarrayof")) && i64_eq(size(xs), 3i64) && not(sym_is_p(second(xs), str_lit("i64")))) {
+                        return match restriction_refused(f, l, str_lit("a flat array of other than i64, FX-26's, which KFX has not yet (C175)")) {};
+                    } else if (sym_is_p(car(xs), str_lit("=>")) || sym_is_p(car(xs), str_lit("dlambda"))) {
+                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)"))) {};
+                    } else if {
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                string_member_p(n, string_writer_names())
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } {
+                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's strings at a region, which KFX has not yet: kayak-rt's strings are immutable (C285)"))) {};
+                    } else if (sym_is_p(car(xs), str_lit("allof")) || sym_is_p(car(xs), str_lit("anyof"))) {
+                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's logical types, which KFX has not yet: its Rust's types have no intersections or overlapping unions (C354)"))) {};
+                    } else if sym_is_p(car(xs), str_lit("composable")) {
+                        return match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {};
+                    } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("poly"))) {
+                        return match restriction_refused(f, l, str_lit("a poly in a poly, which KFX's Rust writes as one: write it so (C70)")) {};
+                    } else if (head_is_p(car(xs), str_lit("proj")) && string_member_p(projected_control(car(xs)), prompt_names())) {
+                        // An abort or an escape through `proj`s, called: the emitter writes
+                        // it as the primitive's call (C105).
+                        return restricted_all(cdr(xs), f, l);
+                    } else if (sym_is_p(car(xs), str_lit("proj")) && not(null_p(cdr(xs))) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                control_primitive_p(n)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        return match restriction_refused(f, l, string_append(str_lit("a proj of "), string_append(sym_name(second(xs)), str_lit(", a control primitive KFX types by its own rule")))) {};
+                    } else {
+                        return restricted_all(xs, f, l);
                     }
-                }), cdr_items_of(second(xs)))) {
-                    match restriction_refused(f, l, str_lit("a variance mark, FX-26's, which KFX does not have (its families are invariant; C188)")) {}
-                } else if (sym_is_p(car(xs), str_lit("proves")) && i64_eq(size(xs), 2i64)) {
-                    match restriction_refused(f, l, str_lit("a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)")) {}
-                } else if (sym_is_p(car(xs), str_lit("flatarrayof")) && i64_eq(size(xs), 3i64) && not(sym_is_p(second(xs), str_lit("i64")))) {
-                    match restriction_refused(f, l, str_lit("a flat array of other than i64, FX-26's, which KFX has not yet (C175)")) {}
-                } else if (sym_is_p(car(xs), str_lit("=>")) || sym_is_p(car(xs), str_lit("dlambda"))) {
-                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)"))) {}
-                } else if {
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f2, p2) => {
-                            string_member_p(n, string_writer_names())
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                } {
-                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's strings at a region, which KFX has not yet: kayak-rt's strings are immutable (C285)"))) {}
-                } else if (sym_is_p(car(xs), str_lit("allof")) || sym_is_p(car(xs), str_lit("anyof"))) {
-                    match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's logical types, which KFX has not yet: its Rust's types have no intersections or overlapping unions (C354)"))) {}
-                } else if sym_is_p(car(xs), str_lit("composable")) {
-                    match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {}
-                } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("poly"))) {
-                    match restriction_refused(f, l, str_lit("a poly in a poly, which KFX's Rust writes as one: write it so (C70)")) {}
-                } else if (head_is_p(car(xs), str_lit("proj")) && string_member_p(projected_control(car(xs)), prompt_names())) {
-                    // An abort or an escape through `proj`s, called: the emitter writes
-                    // it as the primitive's call (C105).
-                    restricted_all(cdr(xs), f, l)
-                } else if (sym_is_p(car(xs), str_lit("proj")) && not(null_p(cdr(xs))) && {
-                    let tagcase_ = second(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f2, p2) => {
-                            control_primitive_p(n)
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                }) {
-                    match restriction_refused(f, l, string_append(str_lit("a proj of "), string_append(sym_name(second(xs)), str_lit(", a control primitive KFX types by its own rule")))) {}
-                } else {
-                    restricted_all(xs, f, l)
                 }
-            }
-            Sexp::Real(t, f, p) => {
-                if written_out_real_p(t) {
-                    ()
-                } else {
-                    match restriction_refused(file, line, string_append(str_lit("a number with an exponent, or its point first, which KFX reads not: write it out, "), t)) {}
+                Sexp::Real(t, f, p) => {
+                    if written_out_real_p(t) {
+                        return ();
+                    } else {
+                        return match restriction_refused(file, line, string_append(str_lit("a number with an exponent, or its point first, which KFX reads not: write it out, "), t)) {};
+                    }
                 }
-            }
-            _ => {
-                let other = tagcase_;
-                ()
+                _ => {
+                    let other = tagcase_;
+                    return ();
+                }
             }
         }
     }

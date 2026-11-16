@@ -1130,6 +1130,82 @@ pub fn fourth(xs: Sexps) -> &'static Sexp {
     car(cdr(cdr(cdr(xs))))
 }
 
+/// A `define-generative`, `(define-generative t T #:seal mk #:unseal get)`,
+/// as its type and representation alone, `(define-generative t T)`: its
+/// conversions' names (Fixpt cb172689, C428) are `generative-seal`'s and
+/// `generative-unseal`'s. Any other form as it is.
+pub fn generative_core(f: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Sexp::Lst(xs, fl, l, p) => {
+            if (head_is_p(f, str_lit("define-generative")) && i64_gt(size(xs), 3i64)) {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), fl, l, p)
+            } else {
+                f
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            f
+        }
+    }
+}
+
+/// The name after the keyword `k` among `xs`, pairs of a keyword and a
+/// name; or the empty string.
+pub fn keyed_name(mut xs: Sexps, mut k: Str) -> Str {
+    loop {
+        if (null_p(xs) || null_p(cdr(xs))) {
+            return str_lit("");
+        } else if (sym_is_p(car(xs), k) && {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            return sym_name(second(xs));
+        } else {
+            xs = cdr(cdr(xs));
+            continue;
+        }
+    }
+}
+
+pub fn generative_named(f: &'static Sexp, k: Str) -> Str {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Sexp::Lst(xs, fl, l, p) => {
+            if i64_gt(size(xs), 3i64) {
+                keyed_name(cdr(cdr(cdr(xs))), k)
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+/// A `define-generative`'s conversion into its type, `#:seal`'s name.
+#[inline]
+pub fn generative_seal(f: &'static Sexp) -> Str {
+    generative_named(f, str_lit("#:seal"))
+}
+
+/// Its conversion out of it, `#:unseal`'s.
+#[inline]
+pub fn generative_unseal(f: &'static Sexp) -> Str {
+    generative_named(f, str_lit("#:unseal"))
+}
+
 /// A lambda's parameter's name: it is `x` or `(x T)`.
 #[inline]
 pub fn param_name(param: &'static Sexp) -> Str {

@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"infer-shown-every.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/macros/infer-shown-every.fx:6:82: `m` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of other bindings than its signature says it is",
+"  inferred: (macro (_ p1 @ ((f @ bvar lambda) ...) body @ (many expr)) expr (bind (f ...) in p1) (bind (f ...) in body))",
+"  write one: (define-syntax m SIGNATURE (syntax-rules …))",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

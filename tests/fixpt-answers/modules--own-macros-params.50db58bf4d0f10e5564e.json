@@ -69,9 +69,9 @@
 "    24: slot 1",
 "    26: field 2",
 "    28: slot 2",
-"    30: closure word input/g@1002:472 over 1",
+"    30: closure word input/g@1002:469 over 1",
 "    33: slot 2",
-"    35: closure word input/h@1002:530 over 1",
+"    35: closure word input/h@1002:527 over 1",
 "    38: lit 37",
 "    40: slot 1",
 "    42: slot 3",
@@ -113,10 +113,10 @@
 "      45: field 2",
 "      47: setstk 4",
 "      49: load 1 4",
-"      52: lambda word input/g@1002:472 over 1",
+"      52: lambda word input/g@1002:469 over 1",
 "      56: setstk 2",
 "      58: load 1 4",
-"      61: lambda word input/h@1002:530 over 1",
+"      61: lambda word input/h@1002:527 over 1",
 "      65: setstk 3",
 "      67: const 37",
 "      69: setreg 1",
@@ -139,7 +139,7 @@
 "     110: pop 6",
 "     112: return",
 "",
-"word input/h@1002:530 (6 cells, cellular):",
+"word input/h@1002:527 (6 cells, cellular):",
 "     0: slot 0",
 "     2: free 0",
 "     4: int-add",
@@ -152,7 +152,7 @@
 "       8: op2 int-add 2",
 "      11: return",
 "",
-"word input/g@1002:472 (6 cells, cellular):",
+"word input/g@1002:469 (6 cells, cellular):",
 "     0: slot 0",
 "     2: free 0",
 "     4: int-add",
@@ -171,7 +171,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
 ]
 }
 ]

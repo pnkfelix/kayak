@@ -19,20 +19,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"stacks : stack-sig ! pure",
-"(3 2 1) : (listof int acyclic) ! (maxeff (read @heap) (alloc @heap) (read (globals stacks)))",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
-]
 }
 ]
 }

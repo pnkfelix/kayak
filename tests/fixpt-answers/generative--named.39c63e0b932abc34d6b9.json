@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"named.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"! <programs>/generative/named.fx:5:43: `twice` is declared a (subr pure (meters) meters): a (subr pure (meters) meters) is expected here, and this is a (subr (read (globals from-meters to-meters)) (meters) meters)",
+"  beyond what is expected, it has (read (globals from-meters to-meters))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

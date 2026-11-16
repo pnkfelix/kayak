@@ -1,0 +1,4 @@
+"Refused: its conversions named, it makes no `up-meters` (Fixpt's
+ `generative/named-not-derived.fx`; C428)."
+(define-generative meters i64 #:seal to-meters #:unseal from-meters)
+(define main (subr pure () string) (lambda () (i64->string (from-meters (up-meters 5)))))

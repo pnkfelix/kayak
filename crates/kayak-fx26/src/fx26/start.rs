@@ -1482,7 +1482,7 @@ pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
                 }
             }
         };
-        kayak_rt::heap_cons(generative_line(v, string_append(str_lit("up-"), n), w), kayak_rt::heap_cons(generative_line(v, string_append(str_lit("down-"), n), w), kayak_rt::nil()))
+        kayak_rt::heap_cons(generative_line(v, generative_seal(form), w), kayak_rt::heap_cons(generative_line(v, generative_unseal(form), w), kayak_rt::nil()))
     } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-effect")) || head_is_p(form, str_lit("define-convention"))) {
         nil::<Str>()
     } else {
@@ -1839,19 +1839,7 @@ pub fn rep_names_of(f: &'static Sexp) -> Strings {
             label_of(car(items(vt)))
         }), cdr(cdr(items(f))))
     } else if (head_is_p(f, str_lit("define-generative")) && i64_gt_eq(size(items(f)), 2i64)) {
-        let n = {
-            let tagcase_ = second(items(f));
-            match *tagcase_ {
-                Sexp::Lst(xs, a, b, c) => {
-                    sym_name(car(xs))
-                }
-                _ => {
-                    let other = tagcase_;
-                    sym_name(other)
-                }
-            }
-        };
-        kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
+        kayak_rt::heap_cons(generative_seal(f), kayak_rt::heap_cons(generative_unseal(f), kayak_rt::nil()))
     } else {
         defined_names_of(f)
     }

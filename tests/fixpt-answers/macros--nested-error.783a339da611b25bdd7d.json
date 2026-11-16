@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nested-error.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/nested-error.fx:7:17: argument 2 is a bool, where a int is expected",
+"  in the expansion of `add-one` at <programs>/macros/nested-error.fx:11:12",
+"  in the expansion of `twice-add` at <programs>/macros/nested-error.fx:12:1",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

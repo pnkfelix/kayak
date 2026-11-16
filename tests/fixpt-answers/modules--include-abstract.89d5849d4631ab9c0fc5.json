@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-abstract.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"m : (moduleof (abs t type) (val z t) (val get (subr pure (t) int)) (val one-more (subr pure (t) int))) ! pure",
+"6 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

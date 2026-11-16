@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"desc-moduleof-apart.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (abs t type) (val empty t) (val add (subr pure (int t) t)) (val size (subr pure (t) int))) ! pure",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

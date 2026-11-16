@@ -1346,6 +1346,55 @@
              (the binds (list (car bs))))
             (else (conversion-bind name (cdr bs)))))))
 
+(define conversion-of (subr kfx (cv string) string)
+  (lambda (v g)
+    "The generative type whose conversion the global or item `g` is, as its
+     `%conversion g` says (C428: a conversion is named where its type is
+     defined, not `up-t`); or the empty string."
+    (let ((c (conversion-bind (string-append "%conversion " g) (cv-binds v))))
+      (if (or (null? c) (null? (conversion-bind g (cv-binds v))))
+          ""
+          (tagcase (car c) (bind (n sc w) (tagcase sc (scheme (ps t) (tagcase t (ty-data (d args) d) (else other ""))))))))))
+
+"A `define-generative`'s usage, and its refusals' messages below, as Fixpt's
+ `parser-forms.fx` says them (`generative-conversions`, `gen-named`).
+ fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@120b70e"
+(define generative-usage string
+  "`(define-generative name type #:seal name #:unseal name)`, or `(define-generative (name (param kind) …) type …)`")
+
+(define-rec
+  (generative-named-parts (subr kfx (cv sexps string string) strings)
+    (lambda (v rest seal unseal)
+      "The names `rest`'s pairs give, `seal` and `unseal` so far (empty if
+       not): both, or none (Fixpt's `gen-named`)."
+      (cond ((null? rest)
+             (cond ((and (string=? seal "") (string=? unseal "")) nil)
+                   ((or (string=? seal "") (string=? unseal ""))
+                    (begin (refuse v "a generative type's conversions are named both, `#:seal` and `#:unseal`: one alone, not yet") nil))
+                   (else (list seal unseal))))
+            ((or (null? (cdr rest)) (tagcase (second rest) (sym (n f p) (keyword-name? n)) (else other #t)))
+             (begin (refuse v generative-usage) nil))
+            ((and (sym-is? (car rest) "#:seal") (string=? seal ""))
+             (generative-named-parts v (cdr (cdr rest)) (sym-name (second rest)) unseal))
+            ((and (sym-is? (car rest) "#:unseal") (string=? unseal ""))
+             (generative-named-parts v (cdr (cdr rest)) seal (sym-name (second rest))))
+            (else (begin (refuse v generative-usage) nil))))))
+
+(define generative-names (subr kfx (cv sexp) strings)
+  (lambda (v f)
+    "A `define-generative`'s conversions' names, `#:seal mk #:unseal get`
+     after its type (Fixpt cb172689, `parser-forms.fx`'s
+     `generative-conversions`; C428), which it must name: no names made
+     from the type's. Refused as Fixpt refuses, its messages."
+    (let* ((xs (items f))
+           (given (if (i64> (size xs) 3) (generative-named-parts v (cdr (cdr (cdr xs))) "" "") nil)))
+      (if (null? given)
+          (let ((t (tagcase (second xs) (lst (hs hf hl hp) (name-of v (car hs))) (else other (name-of v other)))))
+            (begin (refuse v (string-append "a generative type names its conversions, `#:seal` and `#:unseal`: as they were, `(define-generative "
+                                            (string-append t (string-append " … #:seal up-" (string-append t (string-append " #:unseal down-" (string-append t ")`")))))))
+                   nil))
+          given))))
+
 (define char-lower? (subr kfx (char) bool)
   (lambda (c) (has-char-in? "abcdefghijklmnopqrstuvwxyz" c)))
 
@@ -1505,7 +1554,7 @@
                     (tagcase found
                       (dt (n ps vs)
                         (if (null? vs)
-                            (let ((down (conversion-bind (string-append "down-" d) (cv-binds v))))
+                            (let ((down (conversion-bind (string-append "%down " d) (cv-binds v))))
                               (first-knot v res
                                           (onto (if (null? down) nil
                                                     (tagcase (car down)
@@ -2987,7 +3036,7 @@
       (or (poly-only? x t)
           (tagcase t
             (ty-data (d args)
-              (let ((found (conversion-bind (string-append "down-" d) (cv-binds v))))
+              (let ((found (conversion-bind (string-append "%down " d) (cv-binds v))))
                 (if (null? found)
                     #f
                     (tagcase (car found)
@@ -6570,7 +6619,7 @@
                          (tagcase found
                            (dt (n ps vs)
                              (if (null? vs)
-                                 (let ((down (conversion-bind (string-append "down-" d) (cv-binds v))))
+                                 (let ((down (conversion-bind (string-append "%down " d) (cv-binds v))))
                                    (if (null? down)
                                        (not (has-prefix? d "%module "))
                                        (tagcase (car down)

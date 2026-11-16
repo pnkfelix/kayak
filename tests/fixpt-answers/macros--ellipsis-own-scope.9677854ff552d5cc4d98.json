@@ -1,0 +1,38 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"ellipsis-own-scope.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (24 cells, cellular):",
+"     0: lit 10",
+"     2: slot 0",
+"     4: lit 1",
+"     6: int-add",
+"     7: slot! 0",
+"     9: lit 10",
+"    11: slot 1",
+"    13: lit 2",
+"    15: prim %fx26-mul 2",
+"    18: slot! 1",
+"    20: prim list 2",
+"    23: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

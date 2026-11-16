@@ -163,6 +163,11 @@ pub mod generative;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/generative-named.rs"]
+pub mod generative_named;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/hashes.rs"]
 pub mod hashes;
 
@@ -583,6 +588,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("fresh-list-region", fresh_list_region::main),
     ("frozen-shared", frozen_shared::main),
     ("generative", generative::main),
+    ("generative-named", generative_named::main),
     ("hashes", hashes::main),
     ("imports", imports::main),
     ("input-nested", input_nested::main),

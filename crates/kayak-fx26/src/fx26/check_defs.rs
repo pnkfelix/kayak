@@ -610,13 +610,24 @@ pub fn conversions_names() -> Strings {
     })
 }
 
-/// A `define-generative`'s conversions, `up-t` from what it is made of and
-/// `down-t` back: a new type, distinct from its representation, as
+/// A generative type `t`'s conversions, bound as `names` says, `#:seal`'s
+/// `up` and `#:unseal`'s `down` (C428); and as the checker finds them
+/// from the type, `%up t` and `%down t`, and the type from each,
+/// `%conversion NAME`.
+pub fn conversion_binds(t: Str, names: Strings, up: &'static Scheme, down: &'static Scheme, w: Str) -> Binds {
+    let (seal, unseal) = (car(names), second_word(names));
+    kayak_rt::heap_cons(bind(seal, up, w), kayak_rt::heap_cons(bind(unseal, down, w), kayak_rt::heap_cons(bind(string_append(str_lit("%up "), t), up, w), kayak_rt::heap_cons(bind(string_append(str_lit("%down "), t), down, w), kayak_rt::heap_cons(bind(string_append(str_lit("%conversion "), seal), scheme(nil::<Str>(), ty_data(t, nil::<&'static Ty>())), w), kayak_rt::heap_cons(bind(string_append(str_lit("%conversion "), unseal), scheme(nil::<Str>(), ty_data(t, nil::<&'static Ty>())), w), kayak_rt::nil()))))))
+}
+
+/// A `define-generative`'s conversions, its `#:seal` from what it is made
+/// of and its `#:unseal` back (C428; `up-t` and `down-t` before): a new
+/// type, distinct from its representation, as
 /// FX-26's top-level generative type is (not abstract: anyone may convert).
 /// A parameter marked `+` or `-` (C188; Fixpt's variance) its
 /// representation must bear out; its marks kept, `%variance NAME`, for
 /// subtyping.
 pub fn conversions(v: &'static Cv, xs: Sexps) -> Binds {
+    let names = generative_names(v, lst(xs, str_lit(""), 0i64, 0i64));
     let name = head_name(v, second(xs));
     let marks = variance_of(second(xs));
     let params = family_params(v, unmarked(second(xs)));
@@ -639,7 +650,7 @@ pub fn conversions(v: &'static Cv, xs: Sexps) -> Binds {
             ()
         }
     }), params, marks);
-    onto(kayak_rt::heap_cons(bind(string_append(str_lit("up-"), name), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(repr, kayak_rt::nil()), made)), str_lit("global")), kayak_rt::heap_cons(bind(string_append(str_lit("down-"), name), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(made, kayak_rt::nil()), repr)), str_lit("global")), kayak_rt::nil())), if any_p(lambda1s(move |m: Str| {
+    onto(conversion_binds(name, names, scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(repr, kayak_rt::nil()), made)), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(made, kayak_rt::nil()), repr)), str_lit("global")), if any_p(lambda1s(move |m: Str| {
         not(string_eq_p(m, str_lit("=")))
     }), marks) {
         the::<Binds>(kayak_rt::heap_cons(bind(string_append(str_lit("%variance "), name), scheme(nil::<Str>(), ty_data(str_lit("%variance"), map(lambda1s(move |m: Str| {
@@ -1771,11 +1782,8 @@ pub fn lemma_stripped(mut v: &'static Cv, mut e: &'static Sexp) -> &'static Sexp
 
 pub fn names_conversion_p(v: &'static Cv, f: &'static Sexp) -> bool {
     let g = operator_of(f);
-    ((has_prefix_p(g, str_lit("up-")) || has_prefix_p(g, str_lit("down-"))) && not(null_p(conversion_bind(g, cv_binds(v)))) && generative_p(v, ty_data(if has_prefix_p(g, str_lit("up-")) {
-        after_prefix(g, str_lit("up-"))
-    } else {
-        after_prefix(g, str_lit("down-"))
-    }, nil::<&'static Ty>())))
+    let t = conversion_of(v, g);
+    (not(string_eq_p(t, str_lit(""))) && generative_p(v, ty_data(t, nil::<&'static Ty>())))
 }
 
 pub fn operator_of(mut f: &'static Sexp) -> Str {
@@ -1834,7 +1842,7 @@ pub fn generative_rep(v: &'static Cv, t: &'static Ty) -> &'static Ty {
     match *tagcase_ {
         Ty::TyData(d, args) => {
             if generative_p(v, t) {
-                let found = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                let found = conversion_bind(string_append(str_lit("%down "), d), cv_binds(v));
                 if null_p(found) {
                     t
                 } else {
@@ -3494,16 +3502,17 @@ pub fn module_dts(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
     }), forms))
 }
 
-/// A module's generative types' conversions, `up-t` and `down-t`: its
+/// A module's generative types' conversions, as each names them (C428): its
 /// items', not in its type, so that outside `m..t` is abstract.
 pub fn module_conversions(v: &'static Cv, m: Str, forms: Sexps) -> Binds {
     concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("define-generative")) {
+            let names = generative_names(v, f);
             let xs = items(f);
             let t = sym_name(second(xs));
             let made = ty_data(string_append(m, string_append(str_lit(".."), t)), nil::<&'static Ty>());
             let repr = parse_type(v, nil::<Str>(), third(xs));
-            the::<Binds>(kayak_rt::heap_cons(bind(string_append(str_lit("up-"), t), scheme(nil::<Str>(), ty_proc(nil::<Str>(), kayak_rt::heap_cons(repr, kayak_rt::nil()), made)), str_lit("item")), kayak_rt::heap_cons(bind(string_append(str_lit("down-"), t), scheme(nil::<Str>(), ty_proc(nil::<Str>(), kayak_rt::heap_cons(made, kayak_rt::nil()), repr)), str_lit("item")), kayak_rt::nil())))
+            conversion_binds(t, names, scheme(nil::<Str>(), ty_proc(nil::<Str>(), kayak_rt::heap_cons(repr, kayak_rt::nil()), made)), scheme(nil::<Str>(), ty_proc(nil::<Str>(), kayak_rt::heap_cons(made, kayak_rt::nil()), repr)), str_lit("item"))
         } else {
             nil::<&'static Bind>()
         }

@@ -3,10 +3,10 @@
 
 (define-effect kfx (maxeff (read @globals) spin))
 
-(define-generative meters i64)
-(define-generative feet i64)
+(define-generative meters i64 #:seal up-meters #:unseal down-meters)
+(define-generative feet i64 #:seal up-feet #:unseal down-feet)
 
-(define-generative (stack (t type)) (listof t acyclic))
+(define-generative (stack (t type)) (listof t acyclic) #:seal up-stack #:unseal down-stack)
 
 (define add (subr kfx (meters meters) meters)
   (lambda (a b) (up-meters (i64+ (down-meters a) (down-meters b)))))

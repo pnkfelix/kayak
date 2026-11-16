@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"moduleof-label-with.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"h : (subr pure ((moduleof (abs t type) (val zero t) (val size (subr pure (t) int)))) int) ! pure",
+"m : (moduleof (abs t type) (val zero t) (val size (subr pure (t) int))) ! pure",
+"4 : int ! (read (globals h m))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

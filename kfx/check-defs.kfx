@@ -548,15 +548,29 @@
  made at each call."
 (define conversions-names strings (list "+" "-" "="))
 
+(define conversion-binds (subr kfx (string strings scheme scheme string) binds)
+  (lambda (t names up down w)
+    "A generative type `t`'s conversions, bound as `names` says, `#:seal`'s
+     `up` and `#:unseal`'s `down` (C428); and as the checker finds them
+     from the type, `%up t` and `%down t`, and the type from each,
+     `%conversion NAME`."
+    (let ((seal (car names)) (unseal (second-word names)))
+      (list (bind seal up w) (bind unseal down w)
+            (bind (string-append "%up " t) up w) (bind (string-append "%down " t) down w)
+            (bind (string-append "%conversion " seal) (scheme nil (ty-data t nil)) w)
+            (bind (string-append "%conversion " unseal) (scheme nil (ty-data t nil)) w)))))
+
 (define conversions (subr kfx (cv sexps) binds)
   (lambda (v xs)
-    "A `define-generative`'s conversions, `up-t` from what it is made of and
-     `down-t` back: a new type, distinct from its representation, as
+    "A `define-generative`'s conversions, its `#:seal` from what it is made
+     of and its `#:unseal` back (C428; `up-t` and `down-t` before): a new
+     type, distinct from its representation, as
      FX-26's top-level generative type is (not abstract: anyone may convert).
      A parameter marked `+` or `-` (C188; Fixpt's variance) its
      representation must bear out; its marks kept, `%variance NAME`, for
      subtyping."
-    (let* ((name (head-name v (second xs)))
+    (let* ((names (generative-names v (lst xs "" 0 0)))
+           (name (head-name v (second xs)))
            (marks (variance-of (second xs)))
            (params (family-params v (unmarked (second xs))))
            (made (ty-data name (map (lambda ((p string)) (ty-var p)) params)))
@@ -569,8 +583,7 @@
                                  ", and its representation does not bear that out"))))))
                       (else #u)))
               params marks)
-        (onto (list (bind (string-append "up-" name) (scheme params (ty-proc nil (list repr) made)) "global")
-                    (bind (string-append "down-" name) (scheme params (ty-proc nil (list made) repr)) "global"))
+        (onto (conversion-binds name names (scheme params (ty-proc nil (list repr) made)) (scheme params (ty-proc nil (list made) repr)) "global")
               (if (any? (lambda ((m string)) (not (string=? m "="))) marks)
                   (the binds (list (bind (string-append "%variance " name) (scheme nil (ty-data "%variance" (map (lambda ((m string)) (ty-rconst m)) marks))) "global")))
                   nil))))))
@@ -1168,9 +1181,7 @@
   (names-conversion? (subr kfx (cv sexp) bool)
     (lambda (v f)
       (let ((g (operator-of f)))
-        (and (or (has-prefix? g "up-") (has-prefix? g "down-"))
-             (not (null? (conversion-bind g (cv-binds v))))
-             (generative? v (ty-data (if (has-prefix? g "up-") (after-prefix g "up-") (after-prefix g "down-")) nil))))))
+        (let ((t (conversion-of v g))) (and (not (string=? t "")) (generative? v (ty-data t nil)))))))
   (operator-of (subr kfx (sexp) string)
     (lambda (f)
       (cond ((and (or (head-is? f "proj") (head-is? f "the")) (i64> (size (items f)) 1))
@@ -1196,7 +1207,7 @@
     (tagcase t
       (ty-data (d args)
         (if (generative? v t)
-            (let ((found (conversion-bind (string-append "down-" d) (cv-binds v))))
+            (let ((found (conversion-bind (string-append "%down " d) (cv-binds v))))
               (if (null? found) t
                   (tagcase (car found)
                     (bind (n sc w)
@@ -1987,17 +1998,17 @@
 
 (define module-conversions (subr kfx (cv string sexps) binds)
   (lambda (v m forms)
-    "A module's generative types' conversions, `up-t` and `down-t`: its
+    "A module's generative types' conversions, as each names them (C428): its
      items', not in its type, so that outside `m..t` is abstract."
     (concat
      (map (lambda ((f sexp))
             (if (head-is? f "define-generative")
-                (let* ((xs (items f))
+                (let* ((names (generative-names v f))
+                       (xs (items f))
                        (t (sym-name (second xs)))
                        (made (ty-data (string-append m (string-append ".." t)) nil))
                        (repr (parse-type v nil (third xs))))
-                  (the binds (list (bind (string-append "up-" t) (scheme nil (ty-proc nil (list repr) made)) "item")
-                                   (bind (string-append "down-" t) (scheme nil (ty-proc nil (list made) repr)) "item"))))
+                  (conversion-binds t names (scheme nil (ty-proc nil (list repr) made)) (scheme nil (ty-proc nil (list made) repr)) "item"))
                 nil))
           forms))))
 

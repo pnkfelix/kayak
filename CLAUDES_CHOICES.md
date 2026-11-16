@@ -12206,3 +12206,51 @@ What the check found:
   moved on to 196dd2a (that fix, and 196dd2a8's reader finding ASCII
   once); neither touches a source kayak ports, the marks moved with it,
   and the corpus agrees again.
+
+## C428. The pin moved to Fixpt 120b70e (2026-11-16)
+
+The user: "Pull Fixpt from github main. There's a lot of changes to
+adapt to". 196dd2a to 120b70e, 50 commits, most of them Fixpt's macros:
+signatures written `(macro σ made)`, `desc` for a description's part, one
+signature a macro, trailmarks, `begin-for-syntax`, a macro that defines a
+macro, procedural macros' transformers in a phase-1 namespace of the
+session's runtime, expansion limits; and under them a heap that tenures
+syntax and budgets its cards, x86_64's write barrier marking and counting
+as `Heap::set_slot` does. Kayak has no expander yet (§51's stage 1 is
+next; `docs/research/fx26-macros.md` now names the pin's notation as the
+port's), so those programs it refuses, as it did.
+
+Carried:
+- **A generative type's conversions named where it is defined**
+  (cb172689): `(define-generative t T #:seal mk #:unseal get)`, both
+  required, no `up-t`/`down-t` made from the type's name. Fixpt refuses
+  the old form, so KFX does too (KFX ⊂ FX-26), in Fixpt's words
+  (`generative-names`, from `parser-forms.fx`, now marked). The checker
+  binds the two names, and, for what it asks of the type itself, `%up t`,
+  `%down t` (a representation's lookups, `rp-program-gdecl`'s) and
+  `%conversion NAME` (which type a name converts, for `names-conversion?`
+  and the termination pass): no name read for its prefix. The emitter's
+  newtype functions, the engine's lowering, its REPL lines and `cg.kfx`'s
+  module members take the form's names; the restriction pass reads the
+  keywords there as names, not values. Every test's form was given the
+  names it had (`#:seal up-t #:unseal down-t`), so its Rust is the same;
+  new: `tests/kfx/generative-named.kfx` (Fixpt: `42 2 1`), and
+  `kfx-refused/generative-{unnamed,one-named,not-derived}.kfx`.
+- Naming a conversion reads its global, `(read (globals mk))`, as Fixpt
+  has it: `generative/named.fx` and `module-files/counter.fx` are refused
+  by both (a first reading of Fixpt's `push_global` had it otherwise; the
+  check's comparison with Fixpt said so).
+
+Not carried (TODO §53):
+- A `moduleof`'s label and binder written apart (687accf1): refused.
+- `get-environment-variable` and `(io env-read)` (be3b4291): unbound.
+
+Drift read and not carried: `heap.rs` (tenured syntax, the old space
+spilled into, the card budget, a card's byte saying who dirtied it) and
+the native `cellular.rs`, `x64.rs` (the barrier's mark and count): tier
+1's heap is a semispace with no generations, cards or barrier, and its
+x86_64 words store with none; `prim.rs`'s three primitives (the macro
+limit and procedural call are the expander's; the environment's, §53);
+`check.rs`'s checkers lent a runtime. `bc1f53a6`'s `vsubr` arguments
+looked at once: kayak's checker was never exponential there
+(`listof/append-nested-deep.fx`, 36 ms). Every mark at the pin.

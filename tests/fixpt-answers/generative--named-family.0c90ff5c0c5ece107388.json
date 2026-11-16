@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"named-family.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define box-of : (poly ((t type)) (subr pure ((productof (#:v t))) (box t))) ! pure",
+"define box-contents : (poly ((t type)) (subr pure ((box t)) (productof (#:v t)))) ! pure",
+"define a : (box int) ! (read (globals box-of))",
+"int ! (read (globals a box-contents))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

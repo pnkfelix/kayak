@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--machine",
+"fx-cells-rsinterp",
+"check",
+"--reps",
+"infer-do.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/macros/infer-do.fx:10:14: `my-do` is refused: no signature is written, and the one inferred from its clauses does not fit them: `init` is placed in the scope of other bindings than its signature says it is",
+"  inferred: (macro (_ p1 @ ((v @ bvar expr expr) ...) (test @ expr res @ expr) body @ expr) expr (bind (v ...) in p1) (bind (v ...) in test) (bind (v ...) in res) (bind (v ...) in body))",
+"  write one: (define-syntax my-do SIGNATURE (syntax-rules …))",
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

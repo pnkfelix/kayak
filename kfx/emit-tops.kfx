@@ -550,9 +550,10 @@
           "Type parameters, each as Rust names it, each followed by `,`."
           (if (null? ps) acc (put-generics-list (cdr ps) (put ", " (put (camel (car ps)) acc))))))
 
-      (define put-generative (subr kfx (ctx sexps chars) chars)
-        (lambda (c xs acc)
-          "A generative type: a new type, a newtype in Rust, and its conversions."
+      (define put-generative (subr kfx (ctx sexps string string chars) chars)
+        (lambda (c xs seal unseal acc)
+          "A generative type: a new type, a newtype in Rust, and its conversions,
+           `seal` and `unseal` as its form names them (C428)."
           (let* ((t (type-head-name (car xs)))
                  (params (head-type-params (car xs)))
                  (inside (not (string=? (module-here c) "")))
@@ -566,8 +567,8 @@
                  ;; none of the newtype's.
                  (acc (if (null? params) acc (put ")>" (put-generics-list params (put ", std::marker::PhantomData<(" acc)))))
                  ;; In the async mode (C373), as every procedure, `async`.
-                 (acc (put (if inside (if (in-async-mode? c) ");\n\nasync fn up_" ");\n\nfn up_") (if (in-async-mode? c) ");\n\npub async fn up_" ");\n\npub fn up_")) acc))
-                 (acc (put (mangle t) acc))
+                 (acc (put (if inside (if (in-async-mode? c) ");\n\nasync fn " ");\n\nfn ") (if (in-async-mode? c) ");\n\npub async fn " ");\n\npub fn ")) acc))
+                 (acc (put (mangle seal) acc))
                  (acc (put-generics-of params #t acc))
                  (acc (put "(x: " acc))
                  (acc (put-type c (second xs) acc))
@@ -577,12 +578,12 @@
                  (acc (put " {\n    " acc))
                  (acc (put (camel t) acc))
                  (acc (put (if (null? params) "" "(x, std::marker::PhantomData") acc))
-                 (acc (put (cond ((and inside (null? params)) (if (in-async-mode? c) "(x)\n}\n\nasync fn down_" "(x)\n}\n\nfn down_"))
-                                 (inside (if (in-async-mode? c) ")\n}\n\nasync fn down_" ")\n}\n\nfn down_"))
-                                 ((null? params) (if (in-async-mode? c) "(x)\n}\n\npub async fn down_" "(x)\n}\n\npub fn down_"))
-                                 (else (if (in-async-mode? c) ")\n}\n\npub async fn down_" ")\n}\n\npub fn down_")))
+                 (acc (put (cond ((and inside (null? params)) (if (in-async-mode? c) "(x)\n}\n\nasync fn " "(x)\n}\n\nfn "))
+                                 (inside (if (in-async-mode? c) ")\n}\n\nasync fn " ")\n}\n\nfn "))
+                                 ((null? params) (if (in-async-mode? c) "(x)\n}\n\npub async fn " "(x)\n}\n\npub fn "))
+                                 (else (if (in-async-mode? c) ")\n}\n\npub async fn " ")\n}\n\npub fn ")))
                            acc))
-                 (acc (put (mangle t) acc))
+                 (acc (put (mangle unseal) acc))
                  (acc (put-generics-of params #t acc))
                  (acc (put "(x: " acc))
                  (acc (put (camel t) acc))
@@ -991,7 +992,7 @@
                           (acc (put-type inner (third xs) acc)))
                      (put ";\n\n" acc)))
                   ((string=? h "define-datatype") (put-datatype c (cdr xs) acc))
-                  ((string=? h "define-generative") (put-generative c (cdr xs) acc))
+                  ((string=? h "define-generative") (put-generative c (cdr xs) (generative-seal form) (generative-unseal form) acc))
                   ((module-def? form) (put-module c (sym-name (second xs)) (module-noted form) acc))
                   ((and (string=? h "define") (i64= (size xs) 3)
                         (not (null? (ctx-typed c (sym-name (second xs)))))

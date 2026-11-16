@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"defn-define-effect.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"four : (subr pure () int) ! pure",
+"4 : int ! (read (globals four))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

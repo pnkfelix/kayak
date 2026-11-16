@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"contract-defn-scope.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define four : int ! pure",
+"define four-again : int ! (read (globals four))",
+"define five : int ! (read (globals four-again))",
+"int ! (read (globals five four-again))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

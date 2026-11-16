@@ -1,0 +1,40 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"desc-define-poly.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word ident over 0",
+"     3: global! ident",
+"     5: lit 3",
+"     7: global ident",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word ident (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

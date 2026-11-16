@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"defn-rec.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define ev? : (subr (maxeff (read (globals ev? od?)) spin) (int) bool) ! pure",
+"define od? : (subr (maxeff (read (globals ev? od?)) spin) (int) bool) ! pure",
+"(listof bool acyclic) ! (maxeff (read (globals ev? od?)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"toplevel-type.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define g : (poly ((idx type)) (subr pure (idx) int)) ! pure",
+"int ! (read (globals g))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+]
+}
+]
+}

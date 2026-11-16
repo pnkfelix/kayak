@@ -94,6 +94,10 @@
                       (else #u)))
               (lst (xs f l p)
                 (cond ((null? xs) #u)
+                      ((and (sym-is? (car xs) "define-generative") (i64> (size xs) 3))
+                       "Its conversions' names, `#:seal mk #:unseal get` (C428): keywords
+                        KFX reads there, as names, not values."
+                       (restricted (generative-core e) f l))
                       ((sym-is? (car xs) "list") (restricted-all (cdr xs) f l))
                       ((and (or (sym-is? (car xs) "poly") (sym-is? (car xs) "plambda")) (i64>= (size xs) 2)
                             (tagcase (second xs)

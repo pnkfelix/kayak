@@ -7,7 +7,7 @@
 
 (define counter
   (module
-    (define-generative t i64)
+    (define-generative t i64 #:seal up-t #:unseal down-t)
     (define zero t (up-t 0))
     (define inc (subr pure (t) t) (lambda (c) (up-t (i64+ (down-t c) 1))))
     (define value (subr pure (t) i64) (lambda (c) (down-t c)))))

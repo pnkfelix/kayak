@@ -22,23 +22,6 @@
 "by": [
 "aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
 ]
-},
-{
-"code": 0,
-"out": [
-"define id : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))) ! pure",
-"define up-gbox : (poly ((t type)) (subr pure ((productof (#:v t))) (gbox t))) ! pure",
-"define down-gbox : (poly ((t type)) (subr pure ((gbox t)) (productof (#:v t)))) ! pure",
-"int ! (read (globals down-gbox id up-gbox))",
-"; both checkers agree",
-""
-],
-"err": [
-""
-],
-"by": [
-"x86_64-linux@196dd2a8ef548d9e4a6207d049c1e9078465379e"
-]
 }
 ]
 }
