@@ -63,13 +63,60 @@ FX-26-written parser and compiler, decision for decision. The expander is
 one stage between the reader and both: datums in, datums out, so that the
 checker and `cg.kfx` both see the expansion, as Fixpt's both see its.
 
-**A port of Fixpt's FX-26-written expander, decision for decision**, as
-`cg.kfx` is of its compiler, marked `fixpt-source:` per file. Not the
+**Fixpt's FX-26-written expander itself, made KFX by a script** (C429,
+`scripts/macros-port.py`): KFX already reads nearly all the FX-26 the
+expander is written in (tuples, `->*`, symbols, `datum`), so its 25 files,
+and what they reach of Fixpt's parser's (its syntax, its failure), are
+taken as Fixpt writes them, each file's names made one module's
+(`fx26/macros/expander.kfx`), what KFX lacks given by a shim written by
+hand (`fx26/macros-shim.kfx`: keywords, `eq?` of booleans, `datum-dotted`,
+`parse-nat`, the procedural primitives as not yet). The pin's moving
+remakes it; `check.sh` holds it to the pin. This replaces the plan below
+of a port by hand, decision for decision, as `cg.kfx` is of its
+compiler: a port would be a second text of the expander to keep, which
+is what kayak means to end. Not the
 Rust one: the FX-26 one is a front end's, as kayak's is, and is the one
 Fixpt means to keep. Its names (`%tmp:3`), its places (a key past every
 text's for each part a template makes) and its `#%toplevel` forms are
 what make kayak's checker lines and words Fixpt's, so they are taken as
 they are.
+
+## Cacheable and incremental (the user, 2026-11-16: "Do your best to keep it cacheable and incremental")
+
+Fixpt's FX-26 expander keeps its state in globals each form updates
+(`macros.fx`'s `defined`, `loads`, `globals`, `fresh-count`, `marks`; the
+`mu` table; `by-state`, which snapshots them per form for a session). The
+port keeps every decision and makes the state a value:
+
+- **One form at a time, a function.** The port keeps Fixpt's state where
+  Fixpt keeps it, refs (at `@m`), so that each file reads as Fixpt's;
+  but `expand-form` takes the form and the state the forms before it
+  left as a value (`mstate`: the macros defined, the trailmarks, the
+  globals defined, the fresh names' count, the `mu` table's length),
+  sets the refs from it, and gives the expansion and the state after, as
+  Fixpt's `by-state` snapshots a form's state for a session. Nothing else
+  is read; the `mu` table only grows, so a state's length says which of
+  it is in force.
+- **Fresh names numbered from the form's start.** Fixpt numbers fresh
+  binders program-wide (`%x:7`, the seventh since the program began), so
+  each form's names depend on how many every form before made. The
+  expansion is made with its own count from 0 and a count of how many it
+  made; a renumbering step adds the count before it (Fixpt's names, as
+  `fixpt check` prints them). The expansion so made is a function of the
+  form and the macros it uses alone, and is what is cached; renumbering
+  is linear and runs again whenever an earlier form's count changes.
+- **Dependencies by name.** A use's expansion depends on the macros it
+  names (the use's head, and every macro its expansion's uses name, to a
+  fixed point), each by its definition, not on the whole environment: a
+  form whose expansion names no macro depends on no `define-syntax`. As a
+  query (`lib/db.kfx`, kc's step after 14), `expanded(form)` reads
+  `macro(name, before form)` for each name it meets, so editing one
+  macro re-expands only its users, and a form that defines no macro
+  leaves the state as it was (early cutoff).
+- **A macro's value is its own.** A `define-syntax`'s checked clauses,
+  signature and `mu`s are one value, compared by its text and the
+  macros it uses, so that defining it again the same way changes nothing
+  downstream.
 
 ## Stages (track A)
 

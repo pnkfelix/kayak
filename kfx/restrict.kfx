@@ -94,6 +94,10 @@
                       (else #u)))
               (lst (xs f l p)
                 (cond ((null? xs) #u)
+                      ((and (sym-is? (car xs) "quote") (i64= (size xs) 2))
+                       "Data: its names name nothing (C429: the macros' kernel's table quotes
+                        `oneshot`, a form's word)."
+                       #u)
                       ((and (sym-is? (car xs) "define-generative") (i64> (size xs) 3))
                        "Its conversions' names, `#:seal mk #:unseal get` (C428): keywords
                         KFX reads there, as names, not values."

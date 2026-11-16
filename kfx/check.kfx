@@ -6964,6 +6964,18 @@
   (names-all-onto (subr kfx (sexps strings) strings)
     (lambda (es acc) (if (null? es) acc (names-in-onto (car es) (names-all-onto (cdr es) acc))))))
 (define names-in (subr kfx (sexp) strings) (lambda (e) (names-in-onto e nil)))
+(define-rec
+  (names-named-onto (subr kfx (sexp strings) strings)
+    (lambda (e acc)
+      "`names-in-onto`, but a quoted datum's, which name nothing (C429: the
+       macros' kernel's table quotes the names of its own procedures)."
+      (tagcase e
+        (sym (n at-file at-pos) (cons n acc))
+        (lst (xs src-file src-line src-pos)
+          (if (and (not (null? xs)) (sym-is? (car xs) "quote")) acc (names-named-all xs acc)))
+        (else other acc))))
+  (names-named-all (subr kfx (sexps strings) strings)
+    (lambda (es acc) (if (null? es) acc (names-named-onto (car es) (names-named-all (cdr es) acc))))))
 (define names-in-all (subr kfx (sexps) strings) (lambda (es) (names-all-onto es nil)))
 
 (define-rec

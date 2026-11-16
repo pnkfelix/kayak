@@ -209,6 +209,10 @@ pub mod restrictions {
                 Sexp::Lst(xs, f, l, p) => {
                     if null_p(xs) {
                         return ();
+                    } else if (sym_is_p(car(xs), str_lit("quote")) && i64_eq(size(xs), 2i64)) {
+                        // Data: its names name nothing (C429: the macros' kernel's table quotes
+                        // `oneshot`, a form's word).
+                        return ();
                     } else if (sym_is_p(car(xs), str_lit("define-generative")) && i64_gt(size(xs), 3i64)) {
                         // Its conversions' names, `#:seal mk #:unseal get` (C428): keywords
                         // KFX reads there, as names, not values.

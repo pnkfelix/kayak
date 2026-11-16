@@ -1521,6 +1521,15 @@ Twobit-style optimizations in KFX.
   (C397): to read them in place.
 - The engine (`kayak-fx26`) runs no `#%toplevel` ("the engine: nothing is
   named #%toplevel"), which its checker takes (C427's test asks `,type`).
+- Stage 1, the expander (C429): Fixpt's, made KFX by
+  `scripts/macros-port.py` (`fx26/macros/expander.kfx`, 12,800 lines,
+  kfx checks it). Next: kfx's Rust of it builds (its emitter writes a
+  `->*` procedure's signature from the type written, not the effect found,
+  so a procedure that may abort, `pfail`, returns no `Result`, where its
+  callers' calls unwrap one: 1,866 errors, most of this kind); then the
+  unit lists it; then the engine's driver, as Fixpt's `parser-top.fx`'s
+  `top-made` and `expanded-tops` drive it (each form's state as a value,
+  `docs/research/fx26-macros.md`, "Cacheable and incremental"); then kc.
 
 ## 53. Taken from Fixpt 120b70e in part (C428)
 

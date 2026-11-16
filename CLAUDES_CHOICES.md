@@ -12254,3 +12254,72 @@ limit and procedural call are the expander's; the environment's, §53);
 `check.rs`'s checkers lent a runtime. `bc1f53a6`'s `vsubr` arguments
 looked at once: kayak's checker was never exponential there
 (`listof/append-nested-deep.fx`, 36 ms). Every mark at the pin.
+
+## C429. Macros, stage 1 begun: Fixpt's expander made KFX by a script (2026-11-16)
+
+The user: "Go ahead with the macro expander. Do your best to keep it
+cacheable and incremental". The plan was a port by hand, decision for
+decision (`docs/research/fx26-macros.md`), and it began so: the syntax
+types (`macros-types.fx`) written again in KFX. Then two findings
+changed it. Fixpt's expander is 25 files, 13,056 lines, each loading the
+next, so a first program needs most of them; and kfx already takes the
+FX-26 they are written in (anonymous tuples, `extract`, `->*`, symbols,
+`case` of symbols, `datum`). So `scripts/macros-port.py` takes Fixpt's
+text and makes it one KFX module, `fx26/macros/expander.kfx`:
+
+- the files from the two roots `parser-top.fx` loads (`macros-imports.fx`,
+  `macros-shapes.fx`), in load order; the expander's whole, of Fixpt's
+  parser's files (`parser.fx`, `parser-types.fx`, `eager-reader-types.fx`,
+  `syn.fx`, `parser-loads.fx`, `parser-forms.fx`) only what is reached,
+  name by name;
+- one module, so that its items are no globals, as Fixpt's module files'
+  are not: at the top level, naming each would read a global (`(read
+  (globals atom))`), which their types, Fixpt's, do not say;
+- loads, module aliases and imports gone; each name the definition it
+  resolves to, by namespace (a value's or a description's, apart, as
+  FX-26 has them: `def-envs` is both in `macros-procedural.fx`), written
+  as its global name, its own unless kayak's unit or another file has
+  it, or kfx refuses it (`region`, `marks-of`), then `mx-FILE-NAME`; a
+  `tagcase`'s tag found through its type; quoted data and `case` data as
+  written;
+- the module's region parameters, by position, `@ms @me @mm @mc @mp`,
+  where a type or effect is written (a value may be named `rs`);
+- forms ordered so that each follows what it names, each group that
+  names each other a `define-rec` (Tarjan), types that name each other
+  written out into their datatype;
+- `(op a b c)` of `string-append`, `append`, `+`, `*` nested; a local
+  `fail` (a name kayak-rt writes) and a local `list` renamed; two
+  procedures a module value calls as the module is made given their
+  effect (`mk-symbol`, `def-env-top`, `pure`); two identity tests of
+  syntax, `eq?`, a shortcut, made `#f` (the same syntax made again);
+- what KFX lacks, a shim written by hand (`fx26/macros-shim.kfx`):
+  keywords as names `#:x` (C291), `eq?` of booleans, `datum-int?`,
+  `datum-dotted`, `parse-nat`, `parse-number` of integers; the
+  procedural primitives as not yet (stage 5), the limits Fixpt's
+  defaults.
+
+kfx found the expander's text, as made, by refusals that were kayak's
+own, each now as Fixpt has it, tested by `tests/kfx/quoted-names.kfx`:
+the restriction pass read a quoted datum's names as uses (`oneshot`);
+the module checker's rule that a module value names no `->*` procedure
+of the module, and its rule of what is made before what, read them so
+too; and an `if`'s branches, `(cons a (cons b out))` and `out`, were not
+joined as a list (C284 had one pair, Fixpt joins any), nor, so joined,
+written a list's cells in Rust (`general-pair?`).
+
+The user, 2026-11-16: "If you encounter deltas that seem incidental (eg
+naming choice for freshly constructed names) but for some reason
+interfere with incrementality or cacheabilty or parallelizability, make
+a note of it in a file, call it INCR_IMPED.md". It has three so far:
+fresh names numbered program-wide, the expander's state in globals
+across its files (the `mu` table by number), and positions as offsets
+into one text of every file loaded.
+
+Where it stands: kfx checks the whole unit with the expander in it; the
+Rust it writes does not build (its emitter writes a `->*` procedure's
+signature from the type written, so `pfail`, which may abort, returns no
+`Result` while its callers unwrap one), so the unit does not list it
+yet. `check.sh` holds it to the pin (`macros-port.py --check`), and the
+pin's moving remakes it. Incremental by design, its state a value per
+form (`docs/research/fx26-macros.md`, "Cacheable and incremental"), when
+the driver is written.

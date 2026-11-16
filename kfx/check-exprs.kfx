@@ -788,11 +788,18 @@
 
       (define general-pair? (subr kfx (st ty) bool)
         (lambda (s t)
-          "A pair whose tail is no list: a union's pair, `Value`s in Rust (C77)."
+          "A pair whose tail is no list: a union's pair, `Value`s in Rust (C77).
+           A tail that is a pair of a list, of the same head's type, is a list
+           (C429: `(cons a (cons b out))`, a list's cells, as Fixpt joins it)."
           (tagcase (walk s t)
             (ty-data (d args)
               (and (string=? d "%pairof")
-                   (not (tagcase (walk s (car (cdr args))) (ty-list (e r) #t) (else other #f)))))
+                   (not (tagcase (walk s (car (cdr args)))
+                          (ty-list (e r) #t)
+                          (ty-data (d2 args2)
+                            (and (string=? d2 "%pairof") (not (general-pair? s (car (cdr args))))
+                                 (string=? (show-ty s (zonk s (car args))) (show-ty s (zonk s (car args2))))))
+                          (else other #f)))))
             (else other #f))))
 
       (define valued? (subr kfx (st ty) bool)
@@ -3579,11 +3586,13 @@
         (lambda (s t)
           "A pair whose tail is a list of its head's type at its own region, as
            that list, where branches are joined (C284; Fixpt's 5b0d032a): so
-           `(if b (cons x xs) xs)` is a list, as `(if b xs (cons x xs))` was."
+           `(if b (cons x xs) xs)` is a list, as `(if b xs (cons x xs))` was;
+           and a pair whose tail is such a pair, `(cons x (cons y xs))`, as
+           Fixpt joins it (C429: its expander's `write-parts`)."
           (tagcase (walk s t)
             (ty-data (d args)
               (if (and (string=? d "%pairof") (i64= (size args) 3))
-                  (tagcase (walk s (car (cdr args)))
+                  (tagcase (walk s (pair-as-list s (car (cdr args))))
                     (ty-list (y r)
                       (if (and (string=? (show-ty s (zonk s (car args))) (show-ty s (zonk s y)))
                                (string=? (show-ty s (zonk s (car (cdr (cdr args))))) (show-ty s (zonk s r))))

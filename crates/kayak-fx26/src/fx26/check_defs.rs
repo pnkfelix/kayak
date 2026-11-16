@@ -4265,7 +4265,10 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps, bs: Binds) 
                     refs_in(x, inner, forms, bs)
                 }), cdr(cdr(xs)))))
             } else {
-                if ((head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) && not(null_p(cdr(xs)))) {
+                if (head_is_p(e, str_lit("quote")) && i64_eq(size(xs), 2i64)) {
+                    // A quoted datum names nothing (C429).
+                    nil::<Str>()
+                } else if ((head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) && not(null_p(cdr(xs)))) {
                     // A module a local `let` binds (C288): known to a `with` of it in
                     // the body, as an item's is, so its names are its own.
                     let mods = concat(map(lambda1s(move |b: &'static Sexp| {
@@ -5474,7 +5477,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     if any_p(lambda1s(move |f: &'static Sexp| {
         (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(lambda_form_p(fourth(items(f)))) && any_p(lambda1s(move |n: Str| {
             string_member_p(n, stars)
-        }), names_in(fourth(items(f)))))
+        }), names_named_onto(fourth(items(f)), nil::<Str>())))
     }), prep_forms(p)) {
         match refuse(v, str_lit("a module's value names a `->*` procedure of the module, whose effect is found only after the module's values are made (Fixpt's)")) {}
     } else {

@@ -1,0 +1,26 @@
+"What a quoted datum and a joined list are, as Fixpt has them (C429): a
+ quoted name names nothing, so `oneshot` may be one, and a module's value
+ may quote a name of one of its `->*` procedures; and a pair whose tail is
+ a pair of a list, `(cons a (cons b out))`, joined with `out`, is a list."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define words datum (quote (oneshot lambda region)))
+
+(define m
+  (module
+    (define table datum (quote (step 1 2)))
+    (define step (->* (i64) i64) (lambda (n) (i64+ n 1)))))
+
+(define both (subr kfx (bool (listof string acyclic)) (listof string acyclic))
+  (lambda (c out) (let ((o2 (if c (cons "a" (cons "b" out)) out))) (reverse o2))))
+
+(define first-name (subr kfx (datum) string)
+  (lambda (d) (if (pair? d) (let ((a (car d))) (if (symbol? a) (symbol->string a) "?")) "?")))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (first-name words)
+      (string-append " " (string-append (first-name (with m table))
+        (string-append " " (string-append (i64->string ((with m step) 41))
+          (string-append " " (car (both #t (list "c")))))))))))

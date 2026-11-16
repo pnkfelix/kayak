@@ -70,6 +70,8 @@ clone=
 if scripts/fixpt.sh > /dev/null 2>&1; then
     clone=1
     step python3 -I scripts/built-in.py --check
+    # Fixpt's macro expander, made KFX (C429), the pin's.
+    step python3 -I scripts/macros-port.py --check
     # What kayak ported from Fixpt, each source at the pin (C121).
     step python3 -I scripts/fixpt-drift.py --check
     step python3 -I scripts/fx26-tests.py --check

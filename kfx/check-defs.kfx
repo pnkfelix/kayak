@@ -2358,6 +2358,7 @@
                 (onto (if (in-nset? m names) (the strings (list m)) nil)
                       (concat (map (lambda ((x sexp)) (refs-in x inner forms bs)) (cdr (cdr xs))))))
               (cond
+                ((and (head-is? e "quote") (i64= (size xs) 2)) "A quoted datum names nothing (C429)." nil)
                 ((and (or (head-is? e "let") (head-is? e "let*")) (not (null? (cdr xs))))
                  "A module a local `let` binds (C288): known to a `with` of it in
                   the body, as an item's is, so its names are its own."
@@ -2866,7 +2867,7 @@
              (stars (star-items (prep-forms p))))
         (if (any? (lambda ((f sexp))
                     (and (head-is? f "define") (i64= (size (items f)) 4) (not (lambda-form? (fourth (items f))))
-                         (any? (lambda ((n string)) (string-member? n stars)) (names-in (fourth (items f))))))
+                         (any? (lambda ((n string)) (string-member? n stars)) (names-named-onto (fourth (items f)) nil))))
                   (prep-forms p))
             (refuse v "a module's value names a `->*` procedure of the module, whose effect is found only after the module's values are made (Fixpt's)")
             (module-finish p (check-items (prep-inner p) (prep-name p) (module-order (prep-inner p) (prep-forms p)) nil)))))))

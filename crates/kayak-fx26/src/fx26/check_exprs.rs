@@ -1818,6 +1818,8 @@ pub mod expressions {
     // the emitter. `nil`, a list narrowed so, is a list still, of the element
     // type Rust finds.
     /// A pair whose tail is no list: a union's pair, `Value`s in Rust (C77).
+    /// A tail that is a pair of a list, of the same head's type, is a list
+    /// (C429: `(cons a (cons b out))`, a list's cells, as Fixpt joins it).
     pub fn general_pair_p(s: &'static St, t: &'static Ty) -> bool {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
@@ -1827,6 +1829,9 @@ pub mod expressions {
                     match *tagcase_ {
                         Ty::TyList(e, r) => {
                             true
+                        }
+                        Ty::TyData(d2, args2) => {
+                            (string_eq_p(d2, str_lit("%pairof")) && not(general_pair_p(s, car(cdr(args)))) && string_eq_p(show_ty(s, zonk(s, car(args))), show_ty(s, zonk(s, car(args2)))))
                         }
                         _ => {
                             let other = tagcase_;
@@ -7993,13 +7998,15 @@ pub mod expressions {
 
     /// A pair whose tail is a list of its head's type at its own region, as
     /// that list, where branches are joined (C284; Fixpt's 5b0d032a): so
-    /// `(if b (cons x xs) xs)` is a list, as `(if b xs (cons x xs))` was.
+    /// `(if b (cons x xs) xs)` is a list, as `(if b xs (cons x xs))` was;
+    /// and a pair whose tail is such a pair, `(cons x (cons y xs))`, as
+    /// Fixpt joins it (C429: its expander's `write-parts`).
     pub fn pair_as_list(s: &'static St, t: &'static Ty) -> &'static Ty {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
             Ty::TyData(d, args) => {
                 if (string_eq_p(d, str_lit("%pairof")) && i64_eq(size(args), 3i64)) {
-                    let tagcase_ = walk(s, car(cdr(args)));
+                    let tagcase_ = walk(s, pair_as_list(s, car(cdr(args))));
                     match *tagcase_ {
                         Ty::TyList(y, r) => {
                             if (string_eq_p(show_ty(s, zonk(s, car(args))), show_ty(s, zonk(s, y))) && string_eq_p(show_ty(s, zonk(s, car(cdr(cdr(args))))), show_ty(s, zonk(s, r)))) {

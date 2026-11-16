@@ -1,0 +1,63 @@
+"macros-shim.kfx: what Fixpt's expander, made KFX (fx26/macros/,
+ scripts/macros-port.py, C429), uses of FX-26 that KFX has not, written
+ by hand, and read into the expander's module first: keywords, which
+ kfx's reader reads as names, `#:seal` a symbol whose name begins `#:`
+ (C291); `datum-int?`; `eq?` of what the expander compares. Primitives
+ alone, so that naming one reads no global."
+
+(define mx-keyword-name? (subr pure (string) bool)
+  (lambda (n)
+    (and (> (string-length n) 2) (string=? (substring n 0 2) "#:") (not (char-numeric? (string-ref n 2))))))
+(define mx-keyword? (subr pure (datum) bool)
+  (lambda (d) (and (symbol? d) (mx-keyword-name? (symbol->string d)))))
+(define mx-keyword->symbol (subr pure (datum) symbol)
+  (lambda (d)
+    (if (symbol? d)
+        (let ((n (symbol->string d))) (string->symbol (substring n 2 (string-length n))))
+        (string->symbol ""))))
+(define mx-symbol->keyword (subr pure (symbol) symbol)
+  (lambda (n) (string->symbol (string-append "#:" (symbol->string n)))))
+(define mx-datum-int? (subr pure (datum) bool) (lambda (d) (int? d)))
+"`eq?` of two booleans, as the expander compares a binder's namespace, an
+ address's steps (KFX has no `eq?`: C75)."
+(define mx-eq? (subr pure (bool bool) bool) (lambda (a b) (if a b (not b))))
+"FX-26's `datum-dotted`: the list of `xs` ending in `tail`."
+(define mx-datum-dotted (->* ((listof datum acyclic) datum) datum)
+  (lambda (xs tail) (if (null? xs) tail (the datum (cons (car xs) (mx-datum-dotted (cdr xs) tail))))))
+"FX-26's `parse-nat`, as the expander calls it, of radix 10 or less: the
+ natural number `s`'s digits write, or -1 if they do not."
+(define mx-parse-nat-from (->* (string int int int) int)
+  (lambda (s radix i acc)
+    (if (= i (string-length s))
+        acc
+        (let ((d (- (char->integer (string-ref s i)) 48)))
+          (if (and (>= d 0) (< d radix)) (mx-parse-nat-from s radix (+ i 1) (+ (* acc radix) d)) -1)))))
+(define mx-parse-nat (->* (string int) int)
+  (lambda (s radix) (if (= (string-length s) 0) -1 (mx-parse-nat-from s radix 0 0))))
+"The runtime's for procedural macros (Fixpt's `standard.rs`, `TODO.md`
+ §228), which kayak's engine has not yet (`docs/research/fx26-macros.md`,
+ stage 5): no transformer runs, `!` and why; none is in a phase-1
+ namespace, `apart`. And a limit of expansion, Fixpt's default, the
+ environment not read (`syscall::macro_limit`'s `FIXPT_MACRO_*`)."
+(define mx-expand-procedural (subr spin (string) string)
+  (lambda (code) "!a procedural macro's transformer, run as the program is read: not yet in kayak"))
+(define mx-call-procedural (subr spin (int string datum int (listof string acyclic)) (sumof (ok datum) (failed string) (apart unit)))
+  (lambda (style code d x forms) (sum apart #u)))
+(define mx-limit (subr spin (string) string)
+  (lambda (name)
+    (cond ((string=? name "USES") "=10000") ((string=? name "DEPTH") "=1000")
+          ((string=? name "RECHECK") "=0") ((string=? name "CONTRACTS") "=1")
+          (else (string-append "!no limit of macro expansion is named `" (string-append name "`"))))))
+"FX-26's `parse-number`, as the expander's reading of a procedural
+ transformer's answer calls it: an integer of radix 10 or less, signed or
+ not, in a list of one; else none (a real, not yet: stage 5)."
+(define mx-parse-number (->* (string int) (listof datum acyclic))
+  (lambda (s radix)
+    (let* ((neg (and (> (string-length s) 1) (char=? (string-ref s 0) #\-)))
+           (digits (if (or neg (and (> (string-length s) 1) (char=? (string-ref s 0) #\+))) (substring s 1 (string-length s)) s))
+           (n (mx-parse-nat digits radix)))
+      (if (< n 0) nil (list (the datum (if neg (- 0 n) n)))))))
+"FX-26's `datum-vector->list`: a vector's elements. Called only where
+ `vector?` holds of a datum, which a procedural transformer's answer may
+ be (stage 5); none, here."
+(define mx-datum-vector->list (subr pure (datum) (listof datum acyclic)) (lambda (d) nil))

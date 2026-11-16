@@ -17250,6 +17250,37 @@ pub fn names_in(e: &'static Sexp) -> Strings {
     names_in_onto(e, nil::<Str>())
 }
 
+/// `names-in-onto`, but a quoted datum's, which name nothing (C429: the
+/// macros' kernel's table quotes the names of its own procedures).
+pub fn names_named_onto(e: &'static Sexp, acc: Strings) -> Strings {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, at_file, at_pos) => {
+            kayak_rt::heap_cons(n, acc)
+        }
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            if (not(null_p(xs)) && sym_is_p(car(xs), str_lit("quote"))) {
+                acc
+            } else {
+                names_named_all(xs, acc)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            acc
+        }
+    }
+}
+
+#[inline]
+pub fn names_named_all(es: Sexps, acc: Strings) -> Strings {
+    if null_p(es) {
+        acc
+    } else {
+        names_named_onto(car(es), names_named_all(cdr(es), acc))
+    }
+}
+
 #[inline]
 pub fn names_in_all(es: Sexps) -> Strings {
     names_all_onto(es, nil::<Str>())
