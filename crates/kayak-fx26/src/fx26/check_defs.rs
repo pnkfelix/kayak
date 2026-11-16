@@ -2710,6 +2710,147 @@ pub fn check_top_found(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     }
 }
 
+/// `xs` as a list where `e` is.
+pub fn relist(e: &'static Sexp, xs: Sexps) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(ys, f, l, p) => {
+            lst(xs, f, l, p)
+        }
+        _ => {
+            let other = tagcase_;
+            lst(xs, str_lit(""), 0i64, 0i64)
+        }
+    }
+}
+
+/// A module maker's module's items, each `->*` one's effect found, in
+/// order, each seeing the items before it as the maker's module does
+/// (FX-26's `letrec*`; a group of procedures that call each other is a
+/// `define-rec`); and the types found, for the emitter.
+pub fn maker_items_found(mut v: &'static Cv, mut its: Sexps, mut out: Sexps, mut fs: Facts) -> Product_11_12<Sexps, Facts> {
+    loop {
+        if null_p(its) {
+            return Product_11_12(reverse(out), fs);
+        } else {
+            let f = car(its);
+            let xs = {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Sexp::Lst(ys, f1, l1, p1) => {
+                        ys
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Sexp>()
+                    }
+                }
+            };
+            let named_p = (i64_gt_eq(size(xs), 3i64) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            });
+            if (head_is_p(f, str_lit("define")) && i64_eq(size(xs), 4i64) && named_p && arrow_star_p(third(xs))) {
+                let found = found_define(v, xs);
+                (v, its, out, fs) = (with_binds(v, kayak_rt::heap_cons(local(v, sym_name(second(xs)), parse_type(v, cv_tvars(v), third(found))), kayak_rt::nil())), cdr(its), kayak_rt::heap_cons(relist(f, found), out), onto(found_types(xs, found), fs));
+                continue;
+            } else if (head_is_p(f, str_lit("define")) && i64_eq(size(xs), 4i64) && named_p) {
+                (v, its, out) = (with_binds(v, kayak_rt::heap_cons(local(v, sym_name(second(xs)), parse_type(v, cv_tvars(v), third(xs))), kayak_rt::nil())), cdr(its), kayak_rt::heap_cons(f, out));
+                continue;
+            } else if head_is_p(f, str_lit("define-rec")) {
+                let found = if any_p(lambda1s(move |b: &'static Sexp| {
+                    (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b))))
+                }), cdr(xs)) {
+                    the::<Sexps>(kayak_rt::heap_cons(car(xs), found_rec(v, cdr(xs))))
+                } else {
+                    xs
+                };
+                (v, its, out, fs) = (with_binds(v, concat(map(lambda1s(move |b: &'static Sexp| {
+                    let ys = items(b);
+                    if i64_eq(size(ys), 3i64) {
+                        the::<Binds>(kayak_rt::heap_cons(local(v, sym_name(car(ys)), parse_type(v, cv_tvars(v), second(ys))), kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Bind>()
+                    }
+                }), cdr(found)))), cdr(its), kayak_rt::heap_cons(relist(f, found), out), onto(found_types(xs, found), fs));
+                continue;
+            } else {
+                (its, out) = (cdr(its), kayak_rt::heap_cons(f, out));
+                continue;
+            }
+        }
+    }
+}
+
+/// A module maker (C274), `(define m (poly ((p place)) T) (lambda (p)
+/// (module item ...)))`, its module's `->*` items' effects found
+/// (C435), as a top-level module's are, the place `p` among the type
+/// variables in scope; the maker as found, and the types found.
+pub fn maker_found(v: &'static Cv, form: &'static Sexp) -> Product_11_12<&'static Sexp, Facts> {
+    let xs = items(form);
+    let lam = items(fourth(xs));
+    let ps = map(lambda1s(move |q: &'static Sexp| {
+        let tagcase_ = q;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                n
+            }
+            Sexp::Lst(ys, f, l, p) => {
+                sym_name(car(ys))
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }), items(second(lam)));
+    let m = items(third(lam));
+    let r = maker_items_found(with_tvars({
+        let tagcase_ = form;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                near(v, f, l, p)
+            }
+            _ => {
+                let other = tagcase_;
+                v
+            }
+        }
+    }, concat(map(lambda1s(move |q: Str| {
+        the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("'"), q), kayak_rt::heap_cons(string_append(str_lit("%place "), q), kayak_rt::nil())))
+    }), ps))), cdr(m), nil::<&'static Sexp>(), nil::<&'static Fact>());
+    Product_11_12(relist(form, kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(relist(fourth(xs), kayak_rt::heap_cons(car(lam), kayak_rt::heap_cons(second(lam), kayak_rt::heap_cons(relist(third(lam), kayak_rt::heap_cons(car(m), r.0)), kayak_rt::nil())))), kayak_rt::nil()))))), r.1)
+}
+
+/// A module maker (C274) whose module has a `->*` item (C435): a procedure
+/// of places alone, `(poly ((p place) …) …)`, whose body is a module.
+pub fn maker_form_p(form: &'static Sexp) -> bool {
+    let tagcase_ = form;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            (head_is_p(form, str_lit("define")) && i64_eq(size(xs), 4i64) && head_is_p(fourth(xs), str_lit("lambda")) && i64_eq(size(items(fourth(xs))), 3i64) && head_is_p(third(items(fourth(xs))), str_lit("module")) && head_is_p(third(xs), str_lit("poly")) && i64_eq(size(items(third(xs))), 3i64) && all_p(lambda1s(move |b: &'static Sexp| {
+                (i64_eq(size(items_or_nil(b)), 2i64) && sym_is_p(second(items(b)), str_lit("place")))
+            }), items(second(items(third(xs))))) && any_p(lambda1s(move |g: &'static Sexp| {
+                ((head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64) && arrow_star_p(third(items(g)))) || (head_is_p(g, str_lit("define-rec")) && any_p(lambda1s(move |b: &'static Sexp| {
+                    (i64_eq(size(items_or_nil(b)), 3i64) && arrow_star_p(second(items(b))))
+                }), cdr(items(g)))))
+            }), cdr(items(third(items(fourth(xs)))))))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// One top-level form, which may add to what the forms after it see; a
 /// `->*` definition's type as found noted (`found-types`).
 pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
@@ -2733,7 +2874,11 @@ pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             let star = ((string_eq_p(h, str_lit("define")) && i64_eq(size(xs), 4i64) && arrow_star_p(third(xs))) || (string_eq_p(h, str_lit("define-rec")) && any_p(lambda1s(move |b: &'static Sexp| {
                 (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b))))
             }), cdr(xs))));
-            if star {
+            if maker_form_p(form) {
+                // A module maker, its module's `->*` items found (C435).
+                let r = maker_found(v, form);
+                with_facts(check_top_found(v, r.0), r.1)
+            } else if star {
                 let found = if string_eq_p(h, str_lit("define")) {
                     found_define(near(v, src_file, src_line, src_pos), xs)
                 } else {

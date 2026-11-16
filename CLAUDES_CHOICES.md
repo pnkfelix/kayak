@@ -12504,3 +12504,22 @@ emitter learns a program's datatypes and effects in a pass a maker's
 module is no part of). The expander's types are no state: its
 translator puts them outside the maker, or writes them out where they
 name the place. Next: the translator.
+
+## C435. A module maker's `->*` items, their effects found (2026-11-16)
+
+Route 1's third step: nearly every procedure of Fixpt's expander is
+`->*`, its effect found from its lambda (C191). A top-level module's
+items are found so (`check-top-plain`'s `found-define`, `found-rec`); a
+maker's module is checked as a module value, which reads every item's
+type first, and refused one. Now `check-top-plain` finds a maker's
+module's `->*` items first (`maker-found`, `maker-items-found`): in
+order, each seeing the items before it, as the module's `letrec*` has
+them (a group of procedures that call each other being a `define-rec`,
+as the translator writes them), in a scope as the maker's lambda's
+(each place a region variable, `'p` and `%place p`); the maker checked
+with the types found written in, and each noted for the emitter
+(`def-type`, C430), whose maker items' signatures come from them. Test:
+`tests/kfx/module-place-star.kfx` (Fixpt's answer, 2), in both modes.
+A maker for this is a procedure of places alone whose module has a
+`->*` item (`maker-form?`): the cells tests found a functor taken for
+one, its module's types unbound in the finding pass.

@@ -1605,6 +1605,73 @@
                     (res (t es s)
                       (with-facts v (with expressions (settle-facts (if (proc-type? s t) (note-fact s (datum-file form) (datum-pos form) "procedure") s))))))))))
 
+(define relist (subr kfx (sexp sexps) sexp)
+  (lambda (e xs) "`xs` as a list where `e` is." (tagcase e (lst (ys f l p) (lst xs f l p)) (else other (lst xs "" 0 0)))))
+
+(define-rec
+  (maker-items-found (subr kfx (cv sexps sexps facts) (tupleof sexps facts))
+    (lambda (v its out fs)
+      "A module maker's module's items, each `->*` one's effect found, in
+       order, each seeing the items before it as the maker's module does
+       (FX-26's `letrec*`; a group of procedures that call each other is a
+       `define-rec`); and the types found, for the emitter."
+      (if (null? its)
+          (tuple (reverse out) fs)
+          (let* ((f (car its))
+                 (xs (tagcase f (lst (ys f1 l1 p1) ys) (else other nil)))
+                 (named? (and (i64>= (size xs) 3) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))))
+            (cond ((and (head-is? f "define") (i64= (size xs) 4) named? (arrow-star? (third xs)))
+                   (let ((found (found-define v xs)))
+                     (maker-items-found (with-binds v (list (local v (sym-name (second xs)) (parse-type v (cv-tvars v) (third found)))))
+                                        (cdr its) (cons (relist f found) out) (onto (found-types xs found) fs))))
+                  ((and (head-is? f "define") (i64= (size xs) 4) named?)
+                   (maker-items-found (with-binds v (list (local v (sym-name (second xs)) (parse-type v (cv-tvars v) (third xs)))))
+                                      (cdr its) (cons f out) fs))
+                  ((head-is? f "define-rec")
+                   (let ((found (if (any? (lambda ((b sexp)) (and (i64= (size (items b)) 3) (arrow-star? (second (items b))))) (cdr xs))
+                                    (the sexps (cons (car xs) (found-rec v (cdr xs))))
+                                    xs)))
+                     (maker-items-found (with-binds v (concat (map (lambda ((b sexp))
+                                                                     (let ((ys (items b)))
+                                                                       (if (i64= (size ys) 3) (the binds (list (local v (sym-name (car ys)) (parse-type v (cv-tvars v) (second ys))))) nil)))
+                                                                   (cdr found))))
+                                        (cdr its) (cons (relist f found) out) (onto (found-types xs found) fs))))
+                  (else (maker-items-found v (cdr its) (cons f out) fs))))))))
+
+(define maker-found (subr kfx (cv sexp) (tupleof sexp facts))
+  (lambda (v form)
+    "A module maker (C274), `(define m (poly ((p place)) T) (lambda (p)
+     (module item ...)))`, its module's `->*` items' effects found
+     (C435), as a top-level module's are, the place `p` among the type
+     variables in scope; the maker as found, and the types found."
+    (let* ((xs (items form)) (lam (items (fourth xs)))
+           (ps (map (lambda ((q sexp)) (tagcase q (sym (n f p) n) (lst (ys f l p) (sym-name (car ys))) (else other ""))) (items (second lam))))
+           (m (items (third lam)))
+           ;; Each place a region variable, as a `poly`'s place binder is:
+           ;; `'NAME` and `%place NAME`.
+           (r (maker-items-found (with-tvars (tagcase form (lst (ys f l p) (near v f l p)) (else other v))
+                                             (concat (map (lambda ((q string)) (the strings (list (string-append "'" q) (string-append "%place " q)))) ps)))
+                                 (cdr m) nil nil)))
+      (tuple (relist form (list (car xs) (second xs) (third xs)
+                                (relist (fourth xs) (list (car lam) (second lam) (relist (third lam) (cons (car m) (extract r 1)))))))
+             (extract r 2)))))
+
+(define maker-form? (subr kfx (sexp) bool)
+  (lambda (form)
+    "A module maker (C274) whose module has a `->*` item (C435): a procedure
+     of places alone, `(poly ((p place) …) …)`, whose body is a module."
+    (tagcase form
+      (lst (xs f l p)
+        (and (head-is? form "define") (i64= (size xs) 4) (head-is? (fourth xs) "lambda")
+             (i64= (size (items (fourth xs))) 3) (head-is? (third (items (fourth xs))) "module")
+             (head-is? (third xs) "poly") (i64= (size (items (third xs))) 3)
+             (all? (lambda ((b sexp)) (and (i64= (size (items-or-nil b)) 2) (sym-is? (second (items b)) "place"))) (items (second (items (third xs)))))
+             (any? (lambda ((g sexp))
+                     (or (and (head-is? g "define") (i64= (size (items g)) 4) (arrow-star? (third (items g))))
+                         (and (head-is? g "define-rec") (any? (lambda ((b sexp)) (and (i64= (size (items-or-nil b)) 3) (arrow-star? (second (items b))))) (cdr (items g))))))
+                   (cdr (items (third (items (fourth xs))))))))
+      (else other #f))))
+
 (define check-top-plain (subr kfx (cv sexp) cv)
   (lambda (v form)
     "One top-level form, which may add to what the forms after it see; a
@@ -1614,11 +1681,16 @@
         (let* ((h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other ""))))
                (star (or (and (string=? h "define") (i64= (size xs) 4) (arrow-star? (third xs)))
                          (and (string=? h "define-rec") (any? (lambda ((b sexp)) (and (i64= (size (items b)) 3) (arrow-star? (second (items b))))) (cdr xs))))))
-          (if star
+          (cond
+            ((maker-form? form)
+             "A module maker, its module's `->*` items found (C435)."
+             (let ((r (maker-found v form)))
+               (with-facts (check-top-found v (extract r 1)) (extract r 2))))
+            (star
               (let ((found (cond ((string=? h "define") (found-define (near v src-file src-line src-pos) xs))
                                  (else (the sexps (cons (car xs) (found-rec (near v src-file src-line src-pos) (cdr xs))))))))
-                (with-facts (check-top-found v (lst found src-file src-line src-pos)) (found-types xs found)))
-              (check-top-found v form))))
+                (with-facts (check-top-found v (lst found src-file src-line src-pos)) (found-types xs found))))
+            (else (check-top-found v form)))))
       (else other (check-top-found v form)))))
 
 "Whether a top-level form defines a module maker (C274): a procedure of
