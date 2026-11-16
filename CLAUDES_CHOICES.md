@@ -12593,3 +12593,42 @@ refuses (its `->*` effects are found only after a module's values are
 made; the expander's `WRITTEN` exists for it). KFX ⊂ FX-26: kfx refuses
 it too (`maker-found`), in Fixpt's words, as `check-module` does a
 top-level module's. Test: `tests/kfx-refused/maker-value-star.kfx`.
+
+## C439. The expander's session written; a process may make no instance (2026-11-16)
+
+The REPL's step of TODO §51, begun and parked. The driver gives an
+instance's session what Fixpt's `parse-program` gives its REPL: each
+entry read from the reading state the one before left (`macros-at!`,
+`shapes-at!`), its state after kept by a number of its own
+(`macros-after!`, `shapes-after!`) for the entry after it.
+- **The driver** (`macros-driver.kfx`):
+  - `drive-entry`: an entry's forms, from state `s`, give the forms and
+    the state they leave, or, refused, why, said as the checker says its
+    own, and `s` again. `drive-draft` does the same for a draft's,
+    `,type`'s or a hint's, and leaves no state. `drive-macros?` says
+    whether a state has a macro, so an entry read in it is expanded though
+    it names none.
+  - The places met are the session's, so a macro is placed where it was
+    written when a later entry uses it. A draft's are let go of after it.
+  - `mx-face` gives all three beside `drive-program`.
+- **Tests:**
+  - `tests/kfx/module-place-held.kfx`: an instance's item held as a
+    closure in a product of refs, as the front's state was to hold its
+    expander's. Fixpt answers 7, and so does kfx's Rust.
+  - `tests/kfx-refused/process-maker.kfx`: a process making an instance
+    in its own place, refused by both.
+- **Why parked:** the front, a process, was to own an instance in its
+  place (C437's plan). Fixpt refuses that: a process's body may hold only
+  what is transmissible, globals too, and Fixpt's `untransmissible_in`
+  takes no place, though the maker's own `poly` binds it ("its body holds
+  `counter-in`: a (place p)"). The machine's thread could hold one, but
+  the user chose to ask Fixpt first, for a place at a region the
+  procedure's own `poly` binds to be transmissible, as a mailbox at one is
+  (`INCR_IMPED.md` §4, `docs/to-discuss.md` 11).
+- **The front's side**, written and set aside: an `f-expanded` that
+  submit, `,type`, drafts and holes read through, refusals said as the
+  checker's; the instance's items as closures in the front's state; the
+  session's state made the front's only when the worker accepts the
+  entry; `(goto r)` on the front's procedures that may expand.
+- **Records:** `INCR_IMPED.md` §2 also gets what C437 meant to add, which
+  was never written: parallelism, and kayak's way round.

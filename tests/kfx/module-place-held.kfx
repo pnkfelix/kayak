@@ -1,0 +1,19 @@
+"A module maker's instance, its item held as a closure in a product of refs, as the REPL's front holds its expander's (C439)."
+
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type (cnt (p place)) (moduleof (val bump (subr (maxeff kfx (read p) (write p)) (i64) i64))))
+(define counter-in (poly ((p place)) (subr (maxeff kfx (alloc p)) ((place p)) (cnt p)))
+  (lambda (p)
+    (module
+      (define n (ref i64 p) (new 0))
+      (define bump (subr (maxeff kfx (read p) (write p)) (i64) i64) (lambda (k) (begin (set n (i64+ k (get n))) (get n)))))))
+(define-type (st (r region)) (productof (seen (ref i64 r)) (bumper (subr (maxeff kfx (read r) (write r)) (i64) i64))))
+(define st-new (poly ((r place)) (subr (maxeff kfx (alloc r)) ((place r)) (st r)))
+  (lambda (r)
+    (let ((x (counter-in r)))
+      (product (seen (new 0)) (bumper (lambda ((k i64)) (with x (bump k))))))))
+(define main (subr kfx () string)
+  (lambda ()
+    (letrena a
+      (let ((s (st-new a)))
+        (begin ((extract s bumper) 3) (set (extract s seen) ((extract s bumper) 4)) (i64->string (get (extract s seen))))))))

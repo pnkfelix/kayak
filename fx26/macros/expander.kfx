@@ -751,9 +751,14 @@
 
 ;;; ============================================================ the maker
 
-"What an instance of the expander gives: a program's forms expanded."
+"What an instance of the expander gives: a program's forms expanded;
+ a REPL's entries, each from the reading state the one before left,
+ and its drafts (C439)."
 (define-type (mx-face (mxp place))
-  (moduleof (val drive-program (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (sexps) sexps))))
+  (moduleof (val drive-program (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (sexps) sexps))
+            (val drive-entry (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (sexps int) (tupleof sexps string int)))
+            (val drive-draft (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (sexps int) (tupleof sexps string)))
+            (val drive-macros? (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (int) bool))))
 
 "An instance of the expander, its state made in place `mxp`."
 (define mx-in (poly ((mxp place)) (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp)) ((place mxp)) (mx-face mxp)))
@@ -13267,4 +13272,56 @@
       (shapes-at! 0 nil)
       (let ((xs (drive-syns forms)))
         (begin (drive-lines!) (drive-each xs))))))
+
+;;; ------------------------------------------------------------ a session's entries
+
+"A REPL's session (C439), as Fixpt's reads its entries (`parse-program`):
+ each entry from the reading state the entry before it left, its state
+ after kept by a number of its own (`macros-after!`, `shapes-after!`),
+ which the session gives the entry after it. The places met so far are
+ the session's, each entry's file its own, so that a macro an entry
+ defines is placed where it was written when a later one uses it; a
+ draft's are let go of after it."
+(define drive-states (ref int mxp) (new 0))
+"Each form's expansion, or the first refusal, said as the checker says its
+ own: `(forms \"\")`, or `(nil why)`."
+(define drive-each-said (->* (syns-a sexps) (tupleof sexps string))
+  (lambda (xs out)
+    (if (null? xs)
+        (tuple (reverse out) "")
+        (let ((r (prompt parse-tag (begin (set drive-out (drive-form (car xs))) (p-ok nil)) (lambda (r) r))))
+          (tagcase r
+            (p-err (m a b)
+              (let ((w (drive-placed a)))
+                (tuple nil (string-append "kfx: " (string-append (extract w 1) (string-append ":" (string-append (i64->string (extract w 2)) (string-append ": " m))))))))
+            (p-ok (ts) (drive-each-said (cdr xs) (onto (reverse (drive-sexps (get drive-out))) out))))))))
+"Forms `forms` expanded from reading state `s`."
+(define drive-from (->* (sexps int) (tupleof sexps string))
+  (lambda (forms s)
+    (begin
+      (macros-at! s)
+      (shapes-at! s nil)
+      (let ((xs (drive-syns forms)))
+        (begin (drive-lines!) (drive-each-said xs nil))))))
+"A REPL's entry, expanded from the state `s` the entries before it left:
+ its forms, and the state it leaves, or, refused, why, and `s` again."
+(define drive-entry (->* (sexps int) (tupleof sexps string int))
+  (lambda (forms s)
+    (let ((r (drive-from forms s)))
+      (if (string=? (extract r 2) "")
+          (let ((k (begin (set drive-states (+ (get drive-states) 1)) (get drive-states))))
+            (begin (macros-after! k) (shapes-after! k) (tuple (extract r 1) "" k)))
+          (tuple nil (extract r 2) s)))))
+"A draft's, `,type`'s or a hint's forms, expanded from state `s`, which
+ they leave as it was."
+(define drive-draft (->* (sexps int) (tupleof sexps string))
+  (lambda (forms s)
+    (let* ((met (get drive-met)) (r (drive-from forms s)))
+      (begin (set drive-met met) r))))
+"Whether state `s` has a macro: an entry read in it is expanded, as
+ every one is once a macro is defined, though it names none."
+(define drive-macros? (->* (int) bool)
+  (lambda (s)
+    (let ((at (state-at s (get by-state))))
+      (and (not (null? at)) (not (null? (extract (car at) 2)))))))
 )))

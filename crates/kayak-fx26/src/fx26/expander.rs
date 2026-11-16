@@ -1064,7 +1064,9 @@ pub mod mx_types {
     pub type Captors = List<Product_11_12<Int, Symbol>>;
 }
 
-// What an instance of the expander gives: a program's forms expanded.
+// What an instance of the expander gives: a program's forms expanded;
+// a REPL's entries, each from the reading state the one before left,
+// and its drafts (C439).
 // An instance of the expander, its state made in place `mxp`.
 pub struct MxFace<'mxp, Place_Mxp>(pub &'mxp Place_Mxp, pub &'mxp mx_in::MxFaceState<'mxp, Place_Mxp>);
 
@@ -1238,6 +1240,7 @@ pub mod mx_in {
         pub drive_line: std::cell::Cell<Option<RefAt<'mxp, FlatArray<i64>>>>,
         pub drive_count: std::cell::Cell<Option<RefAt<'mxp, i64>>>,
         pub drive_out: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
+        pub drive_states: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub phantom_: std::marker::PhantomData<&'mxp Place_Mxp>,
     }
 
@@ -24188,6 +24191,75 @@ pub mod mx_in {
         Ok(drive_each(mxp, maker_st, xs)?)
     }
 
+    pub fn drive_each_said<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut xs: SynsA, mut out: Sexps) -> Result<Product_11_12<Sexps, Str>, Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(Product_11_12(reverse(out), str_lit("")));
+            } else {
+                let r = {
+                    let prompt_tag__ = maker_st.parse_tag.get().unwrap();
+                    match (move || -> Result<_, Unwind> {
+                        set(maker_st.drive_out.get().unwrap(), drive_form(mxp, maker_st, car(xs))?);
+                        Ok(p_ok(nil::<&'static mx_types::MxParserTypesTop>()))
+                    })() {
+                        Ok(v_) => v_,
+                        Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                            r
+                        }))(prompt_tag__.payload(u_)),
+                        Err(u_) => return Err(u_),
+                    }
+                };
+                let tagcase_ = r;
+                match *tagcase_ {
+                    mx_types::Presult::PErr(m, a, b) => {
+                        let w = drive_placed(mxp, maker_st, a);
+                        return Ok(Product_11_12(nil::<&'static Sexp>(), string_append(str_lit("kfx: "), string_append(w.0, string_append(str_lit(":"), string_append(i64_to_string(w.1), string_append(str_lit(": "), m)))))));
+                    }
+                    mx_types::Presult::POk(ts) => {
+                        (xs, out) = (cdr(xs), onto(reverse(drive_sexps(mxp, maker_st, get(maker_st.drive_out.get().unwrap()))), out));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn drive_from<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, forms: Sexps, s: Int) -> Result<Product_11_12<Sexps, Str>, Unwind> {
+        macros_at_x(mxp, maker_st, s);
+        shapes_at_x(mxp, maker_st, s, nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<&'static mx_types::Syn>, Str, Str, bool>>());
+        let xs = drive_syns(mxp, maker_st, forms);
+        drive_lines_x(mxp, maker_st);
+        Ok(drive_each_said(mxp, maker_st, xs, nil::<&'static Sexp>())?)
+    }
+
+    pub fn drive_entry<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, forms: Sexps, s: Int) -> Result<Product_11_12_13<Sexps, Str, Int>, Unwind> {
+        let r = drive_from(mxp, maker_st, forms, s)?;
+        if string_eq_p(r.1, str_lit("")) {
+            let k = {
+                set(maker_st.drive_states.get().unwrap(), _plus(get(maker_st.drive_states.get().unwrap()), int_lit(1)));
+                get(maker_st.drive_states.get().unwrap())
+            };
+            macros_after_x(mxp, maker_st, k);
+            shapes_after_x(mxp, maker_st, k);
+            Ok(Product_11_12_13(r.0, str_lit(""), k))
+        } else {
+            Ok(Product_11_12_13(nil::<&'static Sexp>(), r.1, s))
+        }
+    }
+
+    #[inline]
+    pub fn drive_draft<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, forms: Sexps, s: Int) -> Result<Product_11_12<Sexps, Str>, Unwind> {
+        let met = get(maker_st.drive_met.get().unwrap());
+        let r = drive_from(mxp, maker_st, forms, s)?;
+        set(maker_st.drive_met.get().unwrap(), met);
+        Ok(r)
+    }
+
+    pub fn drive_macros_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: Int) -> bool {
+        let at = state_at(s, get(maker_st.by_state.get().unwrap()));
+        (not(null_p(at)) && not(null_p(car(at).1)))
+    }
+
 
 
     pub fn maker_state<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp) -> &'mxp MxFaceState<'mxp, Place_Mxp> {
@@ -24346,6 +24418,7 @@ pub mod mx_in {
             drive_line: std::cell::Cell::new(None),
             drive_count: std::cell::Cell::new(None),
             drive_out: std::cell::Cell::new(None),
+            drive_states: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
         });
         maker_st.load_base.set(Some(int_lit(1000000000)));
@@ -24502,6 +24575,7 @@ pub mod mx_in {
         maker_st.drive_line.set(Some(new(make_flatarray_i64(1i64, 0i64))));
         maker_st.drive_count.set(Some(new(0i64)));
         maker_st.drive_out.set(Some(new(nil::<&'static mx_types::Syn>())));
+        maker_st.drive_states.set(Some(new(int_lit(0))));
         maker_st
     }
 }
@@ -24509,6 +24583,18 @@ pub mod mx_in {
 impl<'mxp, Place_Mxp> MxFace<'mxp, Place_Mxp> {
     pub fn drive_program(self, forms: Sexps) -> Result<Sexps, Unwind> {
         mx_in::drive_program(self.0, self.1, forms)
+    }
+
+    pub fn drive_entry(self, forms: Sexps, s: Int) -> Result<Product_11_12_13<Sexps, Str, Int>, Unwind> {
+        mx_in::drive_entry(self.0, self.1, forms, s)
+    }
+
+    pub fn drive_draft(self, forms: Sexps, s: Int) -> Result<Product_11_12<Sexps, Str>, Unwind> {
+        mx_in::drive_draft(self.0, self.1, forms, s)
+    }
+
+    pub fn drive_macros_p(self, s: Int) -> bool {
+        mx_in::drive_macros_p(self.0, self.1, s)
     }
 }
 

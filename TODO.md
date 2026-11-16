@@ -1526,8 +1526,15 @@ Twobit-style optimizations in KFX.
   Next: the driver's not-yets (a file's macros, `import-with-syntax`, in
   a top-level `include`, which the engine has not either; `begin-for-syntax`,
   procedural macros'; a shape's definition); the REPL (`,type`
-  and entries read through it; the expander a maker since C437, the
-  front's instance its own); the `expands` effect, which C437's
+  and entries read through it), parked (C439): the driver's session is
+  written (`drive-entry`, `drive-draft`, `drive-macros?`, Fixpt's reading
+  states), but the front, a process, may make no instance of a maker
+  under Fixpt's `untransmissible`; asked of Fixpt (`docs/to-discuss.md`
+  11, INCR_IMPED.md §4); the front's side tried once, to redo then
+  (an `f-expanded` the front's submit, `,type`, drafts and holes read
+  through, its state's closures over the instance; `goto r` on the
+  front's procedures); the legacy `rust-repl` (live-repl.kfx) not yet
+  either; the `expands` effect, which C437's
   instance, made in a `letrena`, masks (still carried by `engine-main`
   and start.kfx's `main`); each form's state as a value, cached
   (`docs/research/fx26-macros.md`, "Cacheable and incremental"); kc;

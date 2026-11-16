@@ -83,3 +83,13 @@ where it was seen and what it would take.
    (`conditions`, `made-*-x86_64`, `fx26:convention-types.fx`), KFX's
    prelude being their 61 lines first. **Fixed** in Fixpt 95f92e6f;
    the pin is past it (196dd2a, C427).
+11. **For Fixpt: a place a procedure's own `poly` binds, transmissible
+    (INCR_IMPED.md §4, C439).** A process's body may hold only what is
+    transmissible, globals too, and `untransmissible_in` takes no place,
+    so a process may call no module maker, even to make an instance in its
+    own place: `tests/kfx-refused/process-maker.kfx`, refused by Fixpt
+    ("its body holds `counter-in`: a (place p)"). This parks the REPL's
+    macros: its front, a process, was to own an expander instance (C437's
+    plan). The proposal: a place at a region the procedure's `poly` binds
+    is transmissible, as a mailbox at one already is. The user, 2026-11-16:
+    ask Fixpt first, the REPL parked till then.

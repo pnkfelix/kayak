@@ -75,7 +75,14 @@ Each entry has the same parts:
     declared to be.
   - A macro's `mu` bodies kept with the macro, rather than in a
     program-wide table.
-- **Seen:** 2026-11-16, C429.
+- **Parallelism too:** forms can't be expanded on several threads while
+  each reads and writes refs the one before it wrote.
+- **kayak's way round (C437):** the expander is a module maker, so each
+  program, and each REPL session, has an instance of its own, in a place
+  of its own. That separates programs, not forms: within a program, the
+  forms still meet in the instance's refs. And a process may make no
+  instance, as §4 says.
+- **Seen:** 2026-11-16, C429; C437.
 
 ## 3. Positions are offsets into one program-wide text
 
@@ -95,3 +102,30 @@ Each entry has the same parts:
   counter.
 - **Seen:** 2026-11-16, C429. Not yet felt in kayak, since the driver isn't
   written; to confirm when it is.
+
+## 4. A procedure of a place may not be held by a process
+
+- **Where:** `processes.rs`, `untransmissible_in`: a `Ty::Named` place
+  falls to the last arm ("a place"), though a `poly` around it binds its
+  region, which the arm before allows for a mailbox.
+- **What:** a process's body may hold, from outside it, only what is
+  transmissible, globals too. A procedure is transmissible only if its
+  parameters are, and a place never is. So a process may call no global
+  procedure that takes a place, and no module maker, `(poly ((p place))
+  (subr E ((place p)) (i p)))`, even to make an instance in its own place.
+- **Cost:**
+  - kayak's REPL front, a process, can't own an expander instance. Neither
+    can a worker, so expansion can't move to the workers, one instance
+    each, to run in parallel.
+  - The one party that may hold an instance is the machine's thread, which
+    isn't a process. As FX-26 stands, the front would have to ask it to
+    expand each entry and draft, and wait for the answer.
+  - Test: `tests/kfx-refused/process-maker.kfx`, refused by both: "its body
+    holds `counter-in`: a (place p)".
+- **Alternative:** a place at a region the procedure's own `poly` binds is
+  transmissible, as Fixpt already allows a mailbox at one ("A procedure's
+  parameter, at a region it binds, the caller's"). The caller gives the
+  place, so nothing outside the process's own place can be written through
+  it. The procedure's latent effect is already checked by
+  `crossing_effect`, where an atom on a bound binder is the caller's.
+- **Seen:** 2026-11-16, C439.
