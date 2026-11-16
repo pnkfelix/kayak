@@ -1499,18 +1499,35 @@
                (with-facts (with-binds v (list (global v name sc) (global v (string-append "%syscall-available:" name) (scheme nil (ty-bool)))))
                            (list (fact src-file src-pos (string-append "syscall " (string-append (i64->string n) (string-append " " text))))))))))))
 
-(define check-top-plain (subr kfx (cv sexp) cv)
+(define-rec
+  (unpolied (subr kfx (sexp) sexp)
+    (lambda (t) (if (and (head-is? t "poly") (i64= (size (items t)) 3)) (unpolied (third (items t))) t))))
+
+(define found-types (subr kfx (sexps sexps) facts)
+  (lambda (old new)
+    "Each `->*` definition's type as found, at its lambda, for the emitter,
+     which writes a procedure's signature from it (C429: one that may abort
+     returns a `Result`): `old` a form's parts as written, `new` as found;
+     of a `define-rec`, its members."
+    (cond ((and (head-is? (lst old "" 0 0) "define") (i64= (size old) 4) (arrow-star? (third old)))
+           (list (fact (datum-file (fourth new)) (datum-pos (fourth new)) (string-append "def-type " (show-sexp (unpolied (third new)))))))
+          ((head-is? (lst old "" 0 0) "define-rec")
+           (concat (map2 (lambda ((b sexp) (c sexp))
+                           (if (and (i64= (size (items b)) 3) (arrow-star? (second (items b))))
+                               (list (fact (datum-file (third (items c))) (datum-pos (third (items c)))
+                                           (string-append "def-type " (show-sexp (unpolied (second (items c)))))))
+                               nil))
+                         (cdr old) (cdr new))))
+          (else nil))))
+
+(define check-top-found (subr kfx (cv sexp) cv)
   (lambda (v form)
-    "One top-level form, which may add to what the forms after it see."
+    "One top-level form, a `->*`'s effect found already."
     (tagcase form
       (str (x at-file at-pos) v)
       (lst (xs src-file src-line src-pos)
         (let* ((v (near v src-file src-line src-pos))
-               (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other ""))))
-               (xs (cond ((and (string=? h "define") (i64= (size xs) 4) (arrow-star? (third xs))) (found-define v xs))
-                         ((and (string=? h "define-rec") (any? (lambda ((b sexp)) (and (i64= (size (items b)) 3) (arrow-star? (second (items b))))) (cdr xs)))
-                          (the sexps (cons (car xs) (found-rec v (cdr xs)))))
-                         (else xs))))
+               (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
           (cond ((string=? h "define-effect") (with-effdef v xs))
                 ((string=? h "define-convention") v)
                 ((or (string=? h "define-syscall") (string=? h "define-optional-syscall")) (check-syscall v xs src-file src-pos))
@@ -1587,6 +1604,22 @@
       (else other (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
                     (res (t es s)
                       (with-facts v (with expressions (settle-facts (if (proc-type? s t) (note-fact s (datum-file form) (datum-pos form) "procedure") s))))))))))
+
+(define check-top-plain (subr kfx (cv sexp) cv)
+  (lambda (v form)
+    "One top-level form, which may add to what the forms after it see; a
+     `->*` definition's type as found noted (`found-types`)."
+    (tagcase form
+      (lst (xs src-file src-line src-pos)
+        (let* ((h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other ""))))
+               (star (or (and (string=? h "define") (i64= (size xs) 4) (arrow-star? (third xs)))
+                         (and (string=? h "define-rec") (any? (lambda ((b sexp)) (and (i64= (size (items b)) 3) (arrow-star? (second (items b))))) (cdr xs))))))
+          (if star
+              (let ((found (cond ((string=? h "define") (found-define (near v src-file src-line src-pos) xs))
+                                 (else (the sexps (cons (car xs) (found-rec (near v src-file src-line src-pos) (cdr xs))))))))
+                (with-facts (check-top-found v (lst found src-file src-line src-pos)) (found-types xs found)))
+              (check-top-found v form))))
+      (else other (check-top-found v form)))))
 
 "Whether a top-level form defines a module maker (C274): a procedure of
  places whose body is a module, `(define NAME T (lambda (p ...) (module

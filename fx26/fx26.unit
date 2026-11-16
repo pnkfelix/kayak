@@ -12,7 +12,7 @@
 ../kfx/built-in.kfx
 ../kfx/check-defs.kfx
 ; The macro expander (C429; docs/research/fx26-macros.md), between the reader and the checker:
-; macros/expander.kfx, made by scripts/macros-port.py, listed here once kfx's Rust of it builds.
+macros/expander.kfx
 ../kfx/regs-isa.kfx
 ir.kfx
 prims.kfx

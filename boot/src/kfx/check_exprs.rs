@@ -4053,8 +4053,10 @@ pub mod expressions {
                     }), es));
                 }
                 Ty::TyData(d, args) => {
-                    if null_p(args) {
-                        return not((string_eq_p(d, str_lit("datum")) || has_prefix_p(d, str_lit("%module"))));
+                    if (null_p(args) && (string_eq_p(d, str_lit("datum")) || has_prefix_p(d, str_lit("%module")))) {
+                        return false;
+                    } else if (null_p(args) && not((dt_named_p(d, cv_dts(v)) && not(generative_p(v, walk(s, t)))))) {
+                        return true;
                     } else if string_eq_p(d, str_lit("%eqtable")) {
                         // A table, a `RefCell` in Rust (C194): no thread shares it.
                         return false;

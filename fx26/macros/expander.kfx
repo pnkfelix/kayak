@@ -2145,7 +2145,7 @@
 ;; at each of its parts (`macros.rs`'s `FITS_DEPTH`).
 (define fits-depth int 8)
 (define-rec
-(fits-within? (->* (sty syn int (subr pure (symbol) int) int) bool)
+(fits-within? (->* (sty syn int (subr (read @ms) (symbol) int) int) bool)
   (lambda (t s mode pvar? depth)
     (let ((u (unfold t)) (x (if (>= mode 2) (the syns-a nil) (ellipsis-of s)))
           (program? (= mode 3)))
@@ -2190,11 +2190,11 @@
             (s-lambda () (lambda-shaped? s))
             (s-defn () (not (null? (split s))))
             (else y #t))))))))
-(any-fits? (->* (stys syn int (subr pure (symbol) int) int) bool)
+(any-fits? (->* (stys syn int (subr (read @ms) (symbol) int) int) bool)
   (lambda (ms s mode pvar? depth)
     (and (not (null? ms))
          (or (fits-within? (car ms) s mode pvar? depth) (any-fits? (cdr ms) s mode pvar? depth))))))
-(define mx-nodes-fits? (->* (sty syn int (subr pure (symbol) int)) bool)
+(define mx-nodes-fits? (->* (sty syn int (subr (read @ms) (symbol) int)) bool)
   (lambda (t s mode pvar?) (fits-within? t s mode pvar? fits-depth)))
 ;; Those of `ms` that `s` fits.
 (define mx-nodes-fitting (->* (stys syn int pvars) stys)
@@ -2788,7 +2788,7 @@
   (lambda (mx-fail mode ps at t s root)
     (let ((said (lambda ((why string)) (fail-at mx-fail why s)))
           ;; Written only if refused: `s` may be large.
-          (shown (lambda () (string-append "`" (string-append (show-syn s) "`")))))
+          (shown (the (subr (read @ms) () string) (lambda () (string-append "`" (string-append (show-syn s) "`"))))))
       (tagcase t
         (s-mu (id) (fill mx-fail mode ps at (mu-body id) s at))
         (s-union (ms)

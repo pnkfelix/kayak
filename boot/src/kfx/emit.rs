@@ -4199,9 +4199,21 @@ pub mod emitter {
             } else {
                 str_lit(")")
             }, acc)
-        } else if string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit("nil")) {
+        } else if (string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit("nil")) || (string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit("list")) && head_is_p(e, str_lit("quote")) && i64_eq(size(items(e)), 2i64) && {
+            let tagcase_ = second(items(e));
+            match *tagcase_ {
+                Sexp::Lst(ys, f2, l2, p2) => {
+                    null_p(ys)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })) {
             // `nil` given for a union's `nil` member (C84): the empty value,
-            // which no expression of type `nil` computes otherwise.
+            // which no expression of type `nil` computes otherwise; and `'()`
+            // given for a datum (C429: Fixpt's expander's `(atom '() a b x)`).
             put(str_lit("kayak_rt::value::Value::Nil"), acc)
         } else if (not(string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%boxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
             // A member given for its union (C75): boxed, a scalar as it is, a

@@ -2499,8 +2499,39 @@ pub fn check_syscall(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64) -> 
     }
 }
 
-/// One top-level form, which may add to what the forms after it see.
-pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+pub fn unpolied(mut t: &'static Sexp) -> &'static Sexp {
+    loop {
+        if (head_is_p(t, str_lit("poly")) && i64_eq(size(items(t)), 3i64)) {
+            t = third(items(t));
+            continue;
+        } else {
+            return t;
+        }
+    }
+}
+
+/// Each `->*` definition's type as found, at its lambda, for the emitter,
+/// which writes a procedure's signature from it (C429: one that may abort
+/// returns a `Result`): `old` a form's parts as written, `new` as found;
+/// of a `define-rec`, its members.
+pub fn found_types(old: Sexps, new: Sexps) -> Facts {
+    if (head_is_p(lst(old, str_lit(""), 0i64, 0i64), str_lit("define")) && i64_eq(size(old), 4i64) && arrow_star_p(third(old))) {
+        kayak_rt::heap_cons(fact(datum_file(fourth(new)), datum_pos(fourth(new)), string_append(str_lit("def-type "), show_sexp(unpolied(third(new))))), kayak_rt::nil())
+    } else if head_is_p(lst(old, str_lit(""), 0i64, 0i64), str_lit("define-rec")) {
+        concat(map2(lambda2s(move |b: &'static Sexp, c: &'static Sexp| {
+            if (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b)))) {
+                kayak_rt::heap_cons(fact(datum_file(third(items(c))), datum_pos(third(items(c))), string_append(str_lit("def-type "), show_sexp(unpolied(second(items(c)))))), kayak_rt::nil())
+            } else {
+                nil::<&'static Fact>()
+            }
+        }), cdr(old), cdr(new)))
+    } else {
+        nil::<&'static Fact>()
+    }
+}
+
+/// One top-level form, a `->*`'s effect found already.
+pub fn check_top_found(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
     match *tagcase_ {
         Sexp::Str(x, at_file, at_pos) => {
@@ -2521,15 +2552,6 @@ pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                         str_lit("")
                     }
                 }
-            };
-            let xs = if (string_eq_p(h, str_lit("define")) && i64_eq(size(xs), 4i64) && arrow_star_p(third(xs))) {
-                found_define(v, xs)
-            } else if (string_eq_p(h, str_lit("define-rec")) && any_p(lambda1s(move |b: &'static Sexp| {
-                (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b))))
-            }), cdr(xs))) {
-                the::<Sexps>(kayak_rt::heap_cons(car(xs), found_rec(v, cdr(xs))))
-            } else {
-                xs
             };
             if string_eq_p(h, str_lit("define-effect")) {
                 with_effdef(v, xs)
@@ -2684,6 +2706,47 @@ pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     }))
                 }
             }
+        }
+    }
+}
+
+/// One top-level form, which may add to what the forms after it see; a
+/// `->*` definition's type as found noted (`found-types`).
+pub fn check_top_plain(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+    let tagcase_ = form;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            let h = if null_p(xs) {
+                str_lit("")
+            } else {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, at_file, at_pos) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            };
+            let star = ((string_eq_p(h, str_lit("define")) && i64_eq(size(xs), 4i64) && arrow_star_p(third(xs))) || (string_eq_p(h, str_lit("define-rec")) && any_p(lambda1s(move |b: &'static Sexp| {
+                (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b))))
+            }), cdr(xs))));
+            if star {
+                let found = if string_eq_p(h, str_lit("define")) {
+                    found_define(near(v, src_file, src_line, src_pos), xs)
+                } else {
+                    the::<Sexps>(kayak_rt::heap_cons(car(xs), found_rec(near(v, src_file, src_line, src_pos), cdr(xs))))
+                };
+                with_facts(check_top_found(v, lst(found, src_file, src_line, src_pos)), found_types(xs, found))
+            } else {
+                check_top_found(v, form)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            check_top_found(v, form)
         }
     }
 }

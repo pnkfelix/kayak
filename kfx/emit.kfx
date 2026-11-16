@@ -2226,9 +2226,12 @@
                         (acc (put (if (async-mode? c) ").await" ")") acc))
                         (acc (put-box-close (last hows) acc)))
                    (put (if (async-mode? c) " }))" ")") acc)))
-                ((string=? (fact-in fs e "box ") "nil")
+                ((or (string=? (fact-in fs e "box ") "nil")
+                     (and (string=? (fact-in fs e "box ") "list") (head-is? e "quote") (i64= (size (items e)) 2)
+                          (tagcase (second (items e)) (lst (ys f2 l2 p2) (null? ys)) (else other #f))))
                  "`nil` given for a union's `nil` member (C84): the empty value,
-                  which no expression of type `nil` computes otherwise."
+                  which no expression of type `nil` computes otherwise; and `'()`
+                  given for a datum (C429: Fixpt's expander's `(atom '() a b x)`)."
                  (put "kayak_rt::value::Value::Nil" acc))
                 ((and (not (string=? (fact-in fs e "box ") ""))
                       (not (string-member? (string-append "%boxed " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))

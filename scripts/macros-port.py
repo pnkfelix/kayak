@@ -80,6 +80,18 @@ PATCHES = {
         ("(else (and (eq? (car xs) (car ys)) (same-items? (cdr xs) (cdr ys))))",
          "(else (and #f (same-items? (cdr xs) (cdr ys))))"),
     ],
+    # Procedures that hold syntax, which holds `datum`s, `Value`s in Rust,
+    # which no other thread may share: of an effect a process may have
+    # (`pure`), kfx writes them `Send + Sync` (C102) and so refuses them.
+    # Given an effect no process has, `(read rs)`, which they may well
+    # have, they are not (C429; TODO §51: a datum shared, in Rust).
+    "macros-nodes.fx": [
+        ("(subr pure (symbol) int)", "(subr (read rs) (symbol) int)", 3),
+    ],
+    "macros-align.fx": [
+        ('(shown (lambda () (string-append "`" (show-syn s) "`"))))',
+         '(shown (the (subr (read rs) () string) (lambda () (string-append "`" (show-syn s) "`")))))'),
+    ],
 }
 # Names a local may have that shadow what KFX takes only as itself (the
 # primitive `list`): renamed where a `lambda` or `let` binds them, there.
@@ -165,9 +177,10 @@ class File:
     def __init__(self, name):
         self.name = name
         self.text = open(os.path.join(CLONE, SRC, name), encoding="utf-8").read()
-        for old, new in PATCHES.get(name, []):
-            if self.text.count(old) != 1:
-                raise SystemExit("macros-port: %s: a patch's text is not there once: %s" % (name, old))
+        for patch in PATCHES.get(name, []):
+            old, new, times = patch if len(patch) == 3 else patch + (1,)
+            if self.text.count(old) != times:
+                raise SystemExit("macros-port: %s: a patch's text is not there %d time(s): %s" % (name, times, old))
             self.text = self.text.replace(old, new)
         self.toks = tokens(self.text)
         self.forms = []     # (node, wrapped-in-hide)

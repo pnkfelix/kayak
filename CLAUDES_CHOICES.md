@@ -12323,3 +12323,33 @@ yet. `check.sh` holds it to the pin (`macros-port.py --check`), and the
 pin's moving remakes it. Incremental by design, its state a value per
 form (`docs/research/fx26-macros.md`, "Cacheable and incremental"), when
 the driver is written.
+
+## C430. Fixpt's expander, made KFX, builds (2026-11-16)
+
+C429's `fx26/macros/expander.kfx` checked, but kfx's Rust of it did not
+build (1,866 errors). Three causes, each kfx's:
+
+- **A `->*` procedure's signature.** The checker reads `(->* (T …) R)`
+  as `(subr %found …)` and finds the effect (`found-define`,
+  `found-rec`), but in its own copy of the form; the emitter wrote the
+  signature from the form as written, so `%found`, no effect: `pfail`,
+  which may abort, returned no `Result`, while its callers, which saw
+  the effect found, unwrapped one. Now the checker notes each `->*`
+  definition's type as found at its lambda (`def-type`,
+  `found-types`), as it notes a type written as a name, and the emitter
+  writes the signature from that (1,866 errors to 8).
+- **`'()` given for a datum** was boxed as a list,
+  `value::list(Value::Nil)`; a quoted datum is a `Value` already.
+- **Shared procedures that hold syntax.** A procedure of an effect a
+  process may have is `Send + Sync` in Rust (C102), and the checker
+  refuses one that holds what is not. It took a datatype of no
+  parameters as shared without reading its variants, so Fixpt's `syn`,
+  which holds `datum`s (`Value`s, not `Sync`), passed, and rustc refused.
+  Now such a datatype is read by its variants, as one of some is: so the
+  checker refuses three of the expander's procedures. Making `Value`
+  `Sync` would bar a union's procedures; kayak-rt has no unsafe code. So
+  `macros-port.py` patches their types, `pure` to `(read rs)`, an effect
+  no process has (TODO §51: a `Datum` of its own, `Sync`, ends this).
+
+The expander is in the engine's unit, built, run by nothing yet: the
+driver is next.

@@ -1749,7 +1749,10 @@
             (ty-shape (p ls ts) (all-sync? v s ts seen))
             (ty-proc (es ps r) (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)))
             (ty-data (d args)
-              (cond ((null? args) (not (or (string=? d "datum") (has-prefix? d "%module"))))
+              (cond ((and (null? args) (or (string=? d "datum") (has-prefix? d "%module"))) #f)
+                    ;; A datatype of no parameters, by its variants, as one of some
+                    ;; (C429: Fixpt's `syn` holds `datum`s, `Value`s in Rust).
+                    ((and (null? args) (not (and (dt-named? d (cv-dts v)) (not (generative? v (walk s t)))))) #t)
                     ((string=? d "%eqtable") "A table, a `RefCell` in Rust (C194): no thread shares it." #f)
                     ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell") (string=? d "%identity")) (sync-type? v s (car args) seen))
                     ((string=? d "%pairof")
