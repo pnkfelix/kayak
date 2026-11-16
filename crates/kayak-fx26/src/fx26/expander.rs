@@ -24641,8 +24641,8 @@ pub mod mx {
     // its index the order it is met in (`drive-files`); a part a template made,
     // its key's place in the template (`source-of`). A list's line, kayak's
     // checker's place, kept by its position (`drive-lines`). Not yet: a file's
-    // macros (`import-with-syntax`), `hide`, `begin-for-syntax`, a shape's
-    // definition; each refused, saying so.
+    // macros (`import-with-syntax`), `begin-for-syntax` (procedural macros'),
+    // a shape's definition; each refused, saying so.
     #[inline]
     pub fn drive_files() -> Ref<List<Str>> {
         kayak_rt::kept_constant!(ONCE: Ref<List<Str>>);
@@ -25016,8 +25016,42 @@ pub mod mx {
             Ok(kayak_rt::heap_cons(syn_symbol(nth(xs, int_lit(1)))?, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("define-rec")) {
             Ok(drive_rec_names(cdr(xs))?)
+        } else if (string_eq_p(h, str_lit("import")) && _gt_eq(len(xs), int_lit(2))) {
+            Ok(drive_bare_names(cdr(cdr(xs)))?)
+        } else if (string_eq_p(h, str_lit("define-datatype")) && _gt_eq(len(xs), int_lit(3))) {
+            Ok(drive_heads(cdr(cdr(xs)))?)
+        } else if (string_eq_p(h, str_lit("define-generative")) && _gt(len(xs), int_lit(3))) {
+            Ok(drive_bare_names(cdr(cdr(cdr(xs))))?)
+        } else if ((string_eq_p(h, str_lit("define-syscall")) || string_eq_p(h, str_lit("define-optional-syscall"))) && _gt_eq(len(xs), int_lit(2)) && syn_symbol_p(nth(xs, int_lit(1)))) {
+            Ok(kayak_rt::heap_cons(syn_symbol(nth(xs, int_lit(1)))?, kayak_rt::nil()))
         } else {
             Ok(nil::<Symbol>())
+        }
+    }
+
+    pub fn drive_bare_names(mut xs: SynsA) -> Result<MxParserTypesNames, Unwind> {
+        loop {
+            if null_p(xs) {
+                return Ok(nil::<Symbol>());
+            } else if syn_symbol_p(car(xs)) {
+                return Ok(kayak_rt::heap_cons(syn_symbol(car(xs))?, drive_bare_names(cdr(xs))?));
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_heads(mut vs: SynsA) -> Result<MxParserTypesNames, Unwind> {
+        loop {
+            if null_p(vs) {
+                return Ok(nil::<Symbol>());
+            } else if (not(null_p(proper_items(car(vs)))) && syn_symbol_p(car(proper_items(car(vs))))) {
+                return Ok(kayak_rt::heap_cons(syn_symbol(car(proper_items(car(vs))))?, drive_heads(cdr(vs))?));
+            } else {
+                vs = cdr(vs);
+                continue;
+            }
         }
     }
 
@@ -25132,7 +25166,7 @@ pub mod mx {
         } else if imports_syntax_p(s) {
             Ok(drive_not_yet(s, str_lit("a file's macros, `import-with-syntax`"))?)
         } else if string_eq_p(drive_head(s), str_lit("hide")) {
-            Ok(drive_not_yet(s, str_lit("`hide` at the top level, with macros"))?)
+            Ok(drive_forms(cdr(proper_items(s)))?)
         } else {
             let xs = expand_top(&pfail_at, s)?;
             let ms = made_syntax_taken_x();
@@ -25140,6 +25174,16 @@ pub mod mx {
             drive_taken(ms, s)?;
             drive_guard(ws)?;
             Ok(append(ws, drive_checks(ms)?))
+        }
+    }
+
+    #[inline]
+    pub fn drive_forms(xs: SynsA) -> Result<SynsA, Unwind> {
+        if null_p(xs) {
+            Ok(nil::<&'static mx::Syn>())
+        } else {
+            let made = drive_form(car(xs))?;
+            Ok(append(made, drive_forms(cdr(xs))?))
         }
     }
 

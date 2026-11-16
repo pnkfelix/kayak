@@ -165,6 +165,29 @@ pub fn expanded(forms: Sexps) -> Result<Sexps, Unwind> {
     }
 }
 
+/// `read-files`, each file's forms expanded as read (C431), before what
+/// kayak's reading makes of them (`with-loads`: imports, `tupleof`,
+/// keywords' labels), as Fixpt's expander sees a program before its
+/// parser does.
+pub fn read_files_expanded(paths: Strings) -> Result<Sexps, Unwind> {
+    if null_p(paths) {
+        Ok(nil::<&'static Sexp>())
+    } else {
+        let forms = expanded(read_all(read_text(car(paths)), car(paths), 1i64))?;
+        let loaded = loads_read(load_paths_all(forms, directory_of(car(paths))), nil::<&'static Filed>());
+        Ok(onto(with_loads(forms, car(paths), loaded), read_files_expanded(cdr(paths))?))
+    }
+}
+
+/// Each file's forms, expanded, as written then (`--expanded`).
+pub fn files_expanded(paths: Strings) -> Result<Sexps, Unwind> {
+    if null_p(paths) {
+        Ok(nil::<&'static Sexp>())
+    } else {
+        Ok(onto(expanded(read_all(read_text(car(paths)), car(paths), 1i64))?, files_expanded(cdr(paths))?))
+    }
+}
+
 /// A program of processes, `%processes` defined first, the scheduler's
 /// module file built in (C219): what its forms are made calls of, as
 /// Fixpt's parser makes them (`process-expanded`).
@@ -332,13 +355,13 @@ pub fn engine_main() -> Result<Int, Unwind> {
     } else if string_eq_p(car(r#as), str_lit("--expanded")) {
         say_each(map(lambda1s(move |f: &'static Sexp| {
             string_append(show_sexp(f), str_lit("\n"))
-        }), expanded(read_files(cdr(r#as)))?));
+        }), files_expanded(cdr(r#as))?));
         Ok(int_lit(0))
     } else if (string_eq_p(car(r#as), str_lit("--cells")) || string_eq_p(car(r#as), str_lit("--cells-run"))) {
         // `--cells-run`: the words with `(main)` after the program's forms, if it
         // has a `main`, for `kayak-cells --main` to run as `fixpt run` runs it,
         // its value the exit status (C337).
-        let read = with_processes(expanded(read_files(cdr(r#as)))?);
+        let read = with_processes(read_files_expanded(cdr(r#as))?);
         let forms = if (string_eq_p(car(r#as), str_lit("--cells-run")) && string_member_p(str_lit("main"), global_names(read))) {
             onto(read, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("main")), kayak_rt::nil())), kayak_rt::nil()))
         } else {
@@ -354,7 +377,7 @@ pub fn engine_main() -> Result<Int, Unwind> {
             }
         }
     } else {
-        let forms = with_processes(expanded(read_files(paths))?);
+        let forms = with_processes(read_files_expanded(paths)?);
         let checked = check_program_as(forms, sys);
         let gs = onto(global_names(forms), onto(module_entries(forms), with_entries(verdict_facts(checked))));
         load_x(gs);

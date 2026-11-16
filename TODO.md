@@ -1523,12 +1523,24 @@ Twobit-style optimizations in KFX.
   `scripts/macros-port.py` (`fx26/macros/expander.kfx`), driven by the
   engine (`fx26/macros-driver.kfx`): 379 of Fixpt's programs beyond KFX
   agree (296 before), the engine refuses each macro program Fixpt does.
-  Next: the driver's not-yets (a file's macros, `import-with-syntax`;
-  `hide`; `begin-for-syntax`; a shape's definition); the REPL (`,type`
+  Next: the driver's not-yets (a file's macros, `import-with-syntax`, in
+  a top-level `include`, which the engine has not either; `begin-for-syntax`,
+  procedural macros'; a shape's definition); the REPL (`,type`
   and entries read through it); each form's state as a value, cached
   (`docs/research/fx26-macros.md`, "Cacheable and incremental"); kc;
   procedural macros (stage 5, a phase-1 namespace); the driver's lines
   (each list's, met; an atom's, the last list's before it).
+- Found by macros' expansions, the checker's (C432): a keyword's
+  construction, `(#:circle 2)` (`macros/define-data*.fx`, and
+  `run/keyword-construct.fx` with none); a `moduleof` a template makes,
+  its labels keywords (`macros/desc-moduleof-given.fx`), which fails, "car
+  or cdr of a non-pair", where it should refuse (TODO §53); `->*` where a
+  definition's type is not (`macros/defn-rec.fx`); a definition of no type
+  whose type is not known (`macros/defn-hidden.fx`); mutable data at no
+  region (`macros/swap.fx`, `many.fx`).
+- `kfx --cache` on the engine's unit fails, "substring range out of
+  bounds", with or without the expander (C432, found measuring): the
+  memos are used for kfx's own unit alone, so far.
 - A `datum` shared, in Rust: it is data made and never written, but it is
   a `Value`, which holds a union's procedures and cells too, so no
   procedure another thread may run holds one (C102). Three of Fixpt's

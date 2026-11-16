@@ -58,7 +58,8 @@ fn run(args: Vec<String>) -> i64 {
 
 /// A batch run's failure said as the engine's (C273): its message alone,
 /// `kayak-fx26: …`, where the checker and reader it shares with kfx say
-/// `kfx: …`, and Rust's own hook says the thread and where it panicked.
+/// `kfx: …`, and Rust's own hook says the thread and where it panicked;
+/// with `KAYAK_FX26_BACKTRACE` set, the backtrace too.
 /// The REPL catches its own and says them in its entries.
 fn say_failures() {
     std::panic::set_hook(Box::new(|info| {
@@ -69,6 +70,11 @@ fn say_failures() {
             .or_else(|| p.downcast_ref::<&str>().copied())
             .unwrap_or("a failure");
         eprintln!("kayak-fx26: {}", m.strip_prefix("kfx: ").unwrap_or(m));
+        // Where, for whoever debugs the engine (C431): its KFX's procedures,
+        // by their Rust names.
+        if std::env::var_os("KAYAK_FX26_BACKTRACE").is_some() {
+            eprintln!("{}", std::backtrace::Backtrace::force_capture());
+        }
     }));
 }
 

@@ -12399,3 +12399,35 @@ What it took besides:
 
 Fixpt's programs beyond KFX the engine agrees on: 296 before, 379 now;
 it differs on none but `native/crossing-overflow.fx`, as before.
+
+## C432. Expanded as written: before kayak's own rewrites (2026-11-16)
+
+The user asked how bootstrap and test times look and whether
+incrementality holds: kfx on the engine's unit 4.3 s to 11.0 s with the
+expander (2.2 to 5.2 GB); kfx's own bootstrap, kc and its incremental
+steps untouched (neither's unit has it); a run of a macro program 0.02 s;
+a program with no macros not expanded. Macros' expansion itself is not
+yet incremental (TODO §51); `kfx --cache` on the engine's unit fails, as
+it did before the expander (TODO).
+
+Then the order of TODO §51, the driver's not-yets first. Nine programs
+failed, "car or cdr of a non-pair": the engine's reading had rewritten
+the program before the expander saw it (`with-loads`: imports, `(tupleof
+T …)` as `(productof (1 T) …)`, keywords' labels, staging), so a
+template's `(tupleof f g ...)` reached it as a `productof` of fields. Now
+each file is expanded as read, then rewritten (`read-files-expanded`), as
+Fixpt's expander sees a program before its parser does; `--expanded`
+writes the expansion before the rewrites. A top-level `hide` with macros
+is its forms, as if written there (`tops-made`). `KAYAK_FX26_BACKTRACE`
+set, the engine's failure says its backtrace (by Rust's names; a build
+with line tables, `CARGO_PROFILE_RELEASE_DEBUG=line-tables-only`, says
+where), which found both.
+
+`refused-fixpt-programs.py` found what the move cost: a macro's name an
+`import` defines again (`macros/import-macro-name.fx`), which the guard
+had met as the rewrite's `define`s. The guard now reads what each form
+defines as Fixpt's parser does, written: an `import`'s values, a
+datatype's constructors, a generative type's conversions, a syscall.
+
+Fixpt's programs beyond KFX the engine agrees on: 379 to 386. What the
+rest found is the checker's (TODO §51's list).

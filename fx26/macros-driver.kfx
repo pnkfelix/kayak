@@ -12,8 +12,8 @@
  its index the order it is met in (`drive-files`); a part a template made,
  its key's place in the template (`source-of`). A list's line, kayak's
  checker's place, kept by its position (`drive-lines`). Not yet: a file's
- macros (`import-with-syntax`), `hide`, `begin-for-syntax`, a shape's
- definition; each refused, saying so."
+ macros (`import-with-syntax`), `begin-for-syntax` (procedural macros'),
+ a shape's definition; each refused, saying so."
 
 ;;; ------------------------------------------------------------ places
 
@@ -176,7 +176,27 @@
       (cond ((and (or (string=? h "define") (string=? h "define*")) (>= (len xs) 3) (syn-symbol? (nth xs 1)))
              (list (syn-symbol (nth xs 1))))
             ((string=? h "define-rec") (drive-rec-names (cdr xs)))
+            ;; `(import m n … (type t …) (effect e …))`: its values, each a
+            ;; definition (the parser's `expand-import`).
+            ((and (string=? h "import") (>= (len xs) 2)) (drive-bare-names (cdr (cdr xs))))
+            ;; A datatype's constructors (`expand-datatype`'s definitions).
+            ((and (string=? h "define-datatype") (>= (len xs) 3)) (drive-heads (cdr (cdr xs))))
+            ;; A generative type's conversions, `#:seal mk #:unseal get`.
+            ((and (string=? h "define-generative") (> (len xs) 3)) (drive-bare-names (cdr (cdr (cdr xs)))))
+            ((and (or (string=? h "define-syscall") (string=? h "define-optional-syscall")) (>= (len xs) 2) (syn-symbol? (nth xs 1)))
+             (list (syn-symbol (nth xs 1))))
             (else nil)))))
+(define drive-bare-names (->* (syns-a) mx-parser-types-names)
+  (lambda (xs)
+    (cond ((null? xs) nil)
+          ((syn-symbol? (car xs)) (cons (syn-symbol (car xs)) (drive-bare-names (cdr xs))))
+          (else (drive-bare-names (cdr xs))))))
+(define drive-heads (->* (syns-a) mx-parser-types-names)
+  (lambda (vs)
+    (cond ((null? vs) nil)
+          ((and (not (null? (proper-items (car vs)))) (syn-symbol? (car (proper-items (car vs)))))
+           (cons (syn-symbol (car (proper-items (car vs)))) (drive-heads (cdr vs))))
+          (else (drive-heads (cdr vs))))))
 (define drive-rec-names (->* (syns-a) mx-parser-types-names)
   (lambda (bs)
     (cond ((null? bs) nil)
@@ -237,10 +257,15 @@
                   (drive-checks (define-macro pfail-at s nil))))
           ((for-syntax? s) (drive-not-yet s "`begin-for-syntax`"))
           ((imports-syntax? s) (drive-not-yet s "a file's macros, `import-with-syntax`"))
-          ((string=? (drive-head s) "hide") (drive-not-yet s "`hide` at the top level, with macros"))
+          ;; A `hide`: its forms', as if written there, a program exporting
+          ;; nothing to hide them from (`tops-made`).
+          ((string=? (drive-head s) "hide") (drive-forms (cdr (proper-items s))))
           (else
            (let* ((xs (expand-top pfail-at s)) (ms (made-syntax-taken!)) (ws (drive-written-each xs)))
              (begin (drive-taken ms s) (drive-guard ws) (append ws (drive-checks ms))))))))
+
+(define drive-forms (->* (syns-a) syns-a)
+  (lambda (xs) (if (null? xs) nil (let ((made (drive-form (car xs)))) (append made (drive-forms (cdr xs)))))))
 
 (define drive-out (ref syns-a @ms) (new nil))
 "A refusal where Fixpt's parse is refused, as kayak's checker says one."

@@ -82,6 +82,27 @@
 (define expanded (subr (maxeff driving expands) (sexps) sexps)
   (lambda (forms) (if (forms-mention? forms macro-heads) ((with mx drive-program) forms) forms)))
 
+(define-rec
+  (read-files-expanded (subr (maxeff driving expands) (strings) sexps)
+    (lambda (paths)
+      "`read-files`, each file's forms expanded as read (C431), before what
+       kayak's reading makes of them (`with-loads`: imports, `tupleof`,
+       keywords' labels), as Fixpt's expander sees a program before its
+       parser does."
+      (if (null? paths)
+          nil
+          (let* ((forms (expanded (read-all (read-text (car paths)) (car paths) 1)))
+                 (loaded (loads-read (load-paths-all forms (directory-of (car paths))) nil)))
+            (onto (with-loads forms (car paths) loaded) (read-files-expanded (cdr paths))))))))
+
+(define-rec
+  (files-expanded (subr (maxeff driving expands) (strings) sexps)
+    (lambda (paths)
+      "Each file's forms, expanded, as written then (`--expanded`)."
+      (if (null? paths)
+          nil
+          (onto (expanded (read-all (read-text (car paths)) (car paths) 1)) (files-expanded (cdr paths)))))))
+
 (define with-processes (subr kfx (sexps) sexps)
   (lambda (forms)
     "A program of processes, `%processes` defined first, the scheduler's
@@ -212,13 +233,13 @@ and where the time went.
         ;; a line, read by nothing but what asks (scripts/run-fixpt-programs.py
         ;; counts the values a program's forms give by them).
         ((string=? (car as) "--expanded")
-         (begin (say-each (map (lambda ((f sexp)) (string-append (show-sexp f) "\n")) (expanded (read-files (cdr as))))) 0))
+         (begin (say-each (map (lambda ((f sexp)) (string-append (show-sexp f) "\n")) (files-expanded (cdr as)))) 0))
         ;; The program's cellular words, as Fixpt lists its (C133).
         ((or (string=? (car as) "--cells") (string=? (car as) "--cells-run"))
          "`--cells-run`: the words with `(main)` after the program's forms, if it
           has a `main`, for `kayak-cells --main` to run as `fixpt run` runs it,
           its value the exit status (C337)."
-         (let* ((read (with-processes (expanded (read-files (cdr as)))))
+         (let* ((read (with-processes (read-files-expanded (cdr as))))
                 (forms (if (and (string=? (car as) "--cells-run") (string-member? "main" (global-names read)))
                            (onto read (list (sx (list (sy "main")))))
                            read))
@@ -226,7 +247,7 @@ and where the time went.
            (tagcase checked
              (verdict (found fs) (begin (compile-cells forms fs) (say-each (cells-listing)) 0)))))
         (else
-          (let* ((forms (with-processes (expanded (read-files paths))))
+          (let* ((forms (with-processes (read-files-expanded paths)))
                  (checked (check-program-as forms sys))
                  (gs (onto (global-names forms) (onto (module-entries forms) (with-entries (verdict-facts checked))))))
             (begin
