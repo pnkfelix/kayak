@@ -166,6 +166,23 @@
 
 ;;; ------------------------------------------------------------ forms
 
+(define drive-bare-names (->* (syns-a) mx-parser-types-names)
+  (lambda (xs)
+    (cond ((null? xs) nil)
+          ((syn-symbol? (car xs)) (cons (syn-symbol (car xs)) (drive-bare-names (cdr xs))))
+          (else (drive-bare-names (cdr xs))))))
+(define drive-heads (->* (syns-a) mx-parser-types-names)
+  (lambda (vs)
+    (cond ((null? vs) nil)
+          ((and (not (null? (proper-items (car vs)))) (syn-symbol? (car (proper-items (car vs)))))
+           (cons (syn-symbol (car (proper-items (car vs)))) (drive-heads (cdr vs))))
+          (else (drive-heads (cdr vs))))))
+(define drive-rec-names (->* (syns-a) mx-parser-types-names)
+  (lambda (bs)
+    (cond ((null? bs) nil)
+          ((and (not (null? (proper-items (car bs)))) (syn-symbol? (car (proper-items (car bs)))))
+           (cons (syn-symbol (car (proper-items (car bs)))) (drive-rec-names (cdr bs))))
+          (else (drive-rec-names (cdr bs))))))
 "The names a form the checker reads defines as values: as Fixpt's parser's
  `top-names` finds them, of the forms an expansion makes."
 (define drive-head (->* (syn) string)
@@ -186,30 +203,8 @@
             ((and (or (string=? h "define-syscall") (string=? h "define-optional-syscall")) (>= (len xs) 2) (syn-symbol? (nth xs 1)))
              (list (syn-symbol (nth xs 1))))
             (else nil)))))
-(define drive-bare-names (->* (syns-a) mx-parser-types-names)
-  (lambda (xs)
-    (cond ((null? xs) nil)
-          ((syn-symbol? (car xs)) (cons (syn-symbol (car xs)) (drive-bare-names (cdr xs))))
-          (else (drive-bare-names (cdr xs))))))
-(define drive-heads (->* (syns-a) mx-parser-types-names)
-  (lambda (vs)
-    (cond ((null? vs) nil)
-          ((and (not (null? (proper-items (car vs)))) (syn-symbol? (car (proper-items (car vs)))))
-           (cons (syn-symbol (car (proper-items (car vs)))) (drive-heads (cdr vs))))
-          (else (drive-heads (cdr vs))))))
-(define drive-rec-names (->* (syns-a) mx-parser-types-names)
-  (lambda (bs)
-    (cond ((null? bs) nil)
-          ((and (not (null? (proper-items (car bs)))) (syn-symbol? (car (proper-items (car bs)))))
-           (cons (syn-symbol (car (proper-items (car bs)))) (drive-rec-names (cdr bs))))
-          (else (drive-rec-names (cdr bs))))))
 "Each name a form defines: a macro's, refused (`guard-defs`); else a
  global from now on."
-(define drive-guard (->* (syns-a) unit)
-  (lambda (xs)
-    (if (null? xs)
-        #u
-        (begin (drive-guard-names (drive-names (car xs)) (car xs)) (drive-guard (cdr xs))))))
 (define drive-guard-names (->* (mx-parser-types-names syn) unit)
   (lambda (ns s)
     (cond ((null? ns) #u)
@@ -217,6 +212,11 @@
            (pfail-at (string-append "`" (string-append (symbol->string (car ns)) "` is a macro's name, which is not defined again"))
                      (syn-start s) (syn-end s)))
           (else (begin (globals! (list (car ns))) (drive-guard-names (cdr ns) s))))))
+(define drive-guard (->* (syns-a) unit)
+  (lambda (xs)
+    (if (null? xs)
+        #u
+        (begin (drive-guard-names (drive-names (car xs)) (car xs)) (drive-guard (cdr xs))))))
 "Macros `ns`, of a name defined as a global already: refused at `s`."
 (define drive-taken (->* (mx-parser-types-names syn) unit)
   (lambda (ns s)
@@ -235,37 +235,37 @@
 (define drive-written-each (->* (syns-a) syns-a)
   (lambda (xs) (if (null? xs) nil (cons (drive-written (car xs)) (drive-written-each (cdr xs))))))
 "Each check of macros `ns`' templates, expanded (`parse-checks`)."
-(define drive-checks (->* (mx-parser-types-names) syns-a)
-  (lambda (ns)
-    (if (null? ns)
-        nil
-        (append (drive-checked (template-checks pfail-at (car ns))) (drive-checks (cdr ns))))))
 (define drive-checked (->* (syns-a) syns-a)
   (lambda (cs)
     (if (null? cs)
         nil
         (cons (aliases-resolved pfail-at (expand pfail-at (car cs)) (def-envs-given)) (drive-checked (cdr cs))))))
+(define drive-checks (->* (mx-parser-types-names) syns-a)
+  (lambda (ns)
+    (if (null? ns)
+        nil
+        (append (drive-checked (template-checks pfail-at (car ns))) (drive-checks (cdr ns))))))
 (define drive-not-yet (->* (syn string) syns-a)
   (lambda (s what)
     (begin (pfail-at (string-append what ": not yet in kayak's expander") (syn-start s) (syn-end s)) nil)))
 "What top-level form `s` makes, the forms the checker reads (`top-made`)."
-(define drive-form (->* (syn) syns-a)
-  (lambda (s)
-    (cond ((shape-definition? s) (drive-not-yet s "a shape's definition"))
-          ((defines-syntax? s)
-           (begin (drive-taken (syntax-names s) s)
-                  (drive-checks (define-macro pfail-at s nil))))
-          ((for-syntax? s) (drive-not-yet s "`begin-for-syntax`"))
-          ((imports-syntax? s) (drive-not-yet s "a file's macros, `import-with-syntax`"))
-          ;; A `hide`: its forms', as if written there, a program exporting
-          ;; nothing to hide them from (`tops-made`).
-          ((string=? (drive-head s) "hide") (drive-forms (cdr (proper-items s))))
-          (else
-           (let* ((xs (expand-top pfail-at s)) (ms (made-syntax-taken!)) (ws (drive-written-each xs)))
-             (begin (drive-taken ms s) (drive-guard ws) (append ws (drive-checks ms))))))))
-
-(define drive-forms (->* (syns-a) syns-a)
-  (lambda (xs) (if (null? xs) nil (let ((made (drive-form (car xs)))) (append made (drive-forms (cdr xs)))))))
+(define-rec
+  (drive-form (->* (syn) syns-a)
+    (lambda (s)
+      (cond ((shape-definition? s) (drive-not-yet s "a shape's definition"))
+            ((defines-syntax? s)
+             (begin (drive-taken (syntax-names s) s)
+                    (drive-checks (define-macro pfail-at s nil))))
+            ((for-syntax? s) (drive-not-yet s "`begin-for-syntax`"))
+            ((imports-syntax? s) (drive-not-yet s "a file's macros, `import-with-syntax`"))
+            ;; A `hide`: its forms', as if written there, a program exporting
+            ;; nothing to hide them from (`tops-made`).
+            ((string=? (drive-head s) "hide") (drive-forms (cdr (proper-items s))))
+            (else
+             (let* ((xs (expand-top pfail-at s)) (ms (made-syntax-taken!)) (ws (drive-written-each xs)))
+               (begin (drive-taken ms s) (drive-guard ws) (append ws (drive-checks ms))))))))
+  (drive-forms (->* (syns-a) syns-a)
+    (lambda (xs) (if (null? xs) nil (let ((made (drive-form (car xs)))) (append made (drive-forms (cdr xs))))))))
 
 (define drive-out (ref syns-a @ms) (new nil))
 "A refusal where Fixpt's parse is refused, as kayak's checker says one."

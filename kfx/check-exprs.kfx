@@ -1834,6 +1834,20 @@
              (not (any? (lambda ((b bind)) (tagcase b (bind (n sc w) (not (sync-type? v s (tagcase sc (scheme (tv t) t)) nil))))) bound))
              (held-sync? v s es))))
 
+    (define maker-fn-key (subr kfx (sexp) string)
+      (lambda (body)
+        "The mark of a module maker's item's own lambda, by its body's first
+         form's place (C437)."
+        (string-append "%maker-fn " (string-append (datum-file body) (string-append ":" (i64->string (datum-pos body)))))))
+
+    (define maker-fn (subr kfx (cv sexp) cv)
+      (lambda (v e)
+        "`v`, where `e` is a module maker's item's value: if a lambda, its
+         mark bound (`synced-lambda`)."
+        (if (and (not (null? (scope-bind "%module-maker" v))) (head-is? e "lambda") (i64> (size (items e)) 2))
+            (with-binds v (list (bind (maker-fn-key (third (items e))) (scheme nil (ty-unit)) "local")))
+            v)))
+
     (define synced-lambda (subr kfx (cv st strings sexps sexps) st)
       (lambda (v s es params forms)
         "A lambda whose latent effect `es` a process may have: its closure, in
@@ -1842,7 +1856,10 @@
          must be `Sync` too, which rustc checks of the Rust and KFX here, said
          in KFX's words. A local named by the body but bound in it too is
          taken as held: KFX refuses more than it must, then, never less."
-        (if (not (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)))
+        (if (or (not (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)))
+                ;; A module maker's item's own lambda (C437): a Rust function,
+                ;; given the instance, no closure held anywhere.
+                (and (not (null? forms)) (not (null? (scope-bind (maker-fn-key (car forms)) v)))))
             s
             (let* ((own (map (lambda ((p sexp)) (tagcase p (lst (ys f l q) (sym-name (car ys))) (else other (sym-name other)))) params))
                    (unshared (filter (lambda ((n string))
@@ -2272,7 +2289,11 @@
                                   "A module defined at the top level, as a value (C170): of the
                                    type its items give. FX-26's; KFX's modules are Rust's."
                                   (res (module-type-of v name) (list (string-append "g:" name))
-                                       (kfx-restricted v s (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))))
+                                       ;; A module maker's module's `include` of it (C437): its
+                                       ;; Rust a `use`, no value made.
+                                       (if (null? (scope-bind "%maker-include" v))
+                                           (kfx-restricted v s (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))
+                                           s)))
                                  (else
                                (tagcase (named-instance v (held v (if (or (not (null? (module-spec v (tagcase sc (scheme (tv t) t)))))
                                                                          (tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f)))))
@@ -4815,6 +4836,15 @@
                     (else (refuse v "a lambda where no procedure is expected"))))
             (else other (refuse v "a lambda where no procedure is expected"))))))
 
+      (include-opened (subr kfx (cv st sexp) cv)
+        (lambda (v s0 e)
+          "A module maker's module's `(include m)`, for the finding of its
+           `->*` items' effects (C437): `m`'s items in scope, as a module
+           value's `include` has them (`mod-types`)."
+          (tagcase (synth v s0 e)
+            (res (t es s)
+              (if (mtype? (walk s t)) (mtype-opened v (walk s t)) (refuse v "an include of no module"))))))
+
       (lambda-effects (subr kfx (cv st sexps sexps ty) res)
         (lambda (v s params forms t)
           "A lambda's body's effect, the body checked against the type `t`'s
@@ -5044,7 +5074,10 @@
                        (let ((atoms (parse-effect v tv (third xs))))
                          (more (with-type-binds v nil (list (effdef n atoms))) (the tys (list (ty-data (string-append "%edesc " n) (list (ty-proc atoms nil (ty-unit)))))))))
                       ((and (string=? hd "include") (i64= (size xs) 2))
-                       (tagcase (synth v s (second xs))
+                       (tagcase (synth (if (or (null? (scope-bind "%module-maker" v)) (tagcase (second xs) (sym (n f p) #f) (else other #t)))
+                                           v
+                                           (with-binds v (list (bind "%maker-include" (scheme nil (ty-unit)) "local"))))
+                                       s (second xs))
                          (res (t ies s2)
                            (if (not (mtype? (walk s2 t)))
                                (refuse v (string-append "an include of no module: a " (show-ty s2 t)))
@@ -5096,7 +5129,7 @@
                      (n (if (and (i64> (size xs) 1) (tagcase (second xs) (sym (m f2 p2) #t) (else other #f))) (sym-name (second xs)) "")))
                 (cond ((and (or (string=? hd "define") (string=? hd "define*")) (i64= (size xs) 4) (not (string=? n "")))
                        (let ((t (bound-type v n)) (written (parse-type v (cv-tvars v) (third xs))))
-                         (tagcase (check v s (fourth xs) t)
+                         (tagcase (check (maker-fn v (fourth xs)) s (fourth xs) t)
                            (res (u ves s2)
                              (mod-values v s2 (cdr fs) export (if export (cons (ty-data (string-append "%val " n) (list written)) got) got) (effs-union ves es))))))
                       ((and (string=? hd "define") (i64= (size xs) 3) (not (string=? n "")))
@@ -5124,7 +5157,7 @@
               (let ((g (items (car gs))))
                 (if (not (i64= (size g) 3))
                     (refuse v "a module value's define-rec member is (name type value)")
-                    (tagcase (check v s (third g) (bound-type v (sym-name (car g))))
+                    (tagcase (check (maker-fn v (third g)) s (third g) (bound-type v (sym-name (car g))))
                       (res (u es s2) (mod-rec-checked v s2 (cdr gs)))))))))
 
       (place-named (subr kfx (cv st ty) string)
@@ -6200,7 +6233,12 @@
                                            (else (refuse v "a plambda where a poly type is expected binds regions, types and sizes (C107)"))))
                                    (refuse v "a plambda where a poly type is expected binds regions, types and sizes (C107)")))
                              (items (car xs))))
-                 (s (if (all-regions? names) s (kfx-restricted v s "a plambda of types or sizes where a poly type is expected, which KFX has not yet: its Rust erases regions alone (C107)"))))
+                 (s (if (or (all-regions? names)
+                            ;; A module maker's item (C437, as C434's lambda): a Rust
+                            ;; function of its module, generic.
+                            (not (null? (scope-bind "%module-maker" v))))
+                        s
+                        (kfx-restricted v s "a plambda of types or sizes where a poly type is expected, which KFX has not yet: its Rust erases regions alone (C107)"))))
             (cond ((not (i64= (size names) (size (poly-binders-of args))))
                    (refuse v "a plambda of as many regions as the poly type expected"))
                   ((and (any? (lambda ((n string)) (string-member? n (cv-tvars v))) names) (all-regions? names))

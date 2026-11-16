@@ -915,6 +915,10 @@ pub mod termination {
                     };
                     if null_p(xs) {
                         return st;
+                    } else if string_eq_p(h, str_lit("quote")) {
+                        // A datum: no call, nor a member named (C437; the expander's
+                        // `reserved-words`, `(quote (lambda plambda …))`).
+                        return st;
                     } else if string_eq_p(h, str_lit("module")) {
                         // A module made as a value (C170): its items' values walked as a
                         // `let*`'s would be, its types not.

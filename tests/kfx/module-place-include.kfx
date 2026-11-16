@@ -1,0 +1,44 @@
+"A module maker as Fixpt's expander is made one (C437): its datatypes a
+ top-level module's, which its module includes, their constructors no
+ globals; a `->*` item's recursion that ends, read as no `spin`; an
+ abbreviation of a procedure's type naming its place, given a closure over
+ the instance, and a plain item of that type; a quoted datum; a `plambda`."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define shapes
+  (module
+    (define-datatype shape (sq i64) (rect i64 i64))))
+
+(define-type (tally (p place))
+  (moduleof (val add (subr (maxeff (read p) (write p)) (i64 i64) unit))
+            (val total (subr (maxeff (read p)) () i64))))
+
+(define tally-in (poly ((p place)) (subr (maxeff kfx (alloc p)) ((place p)) (tally p)))
+  (lambda (p)
+    (module
+      (include shapes)
+      (define-type reader (subr (read p) (i64) i64))
+      (define kept (ref (listof shape acyclic) p) (new nil))
+      (define bonus (ref i64 p) (new 0))
+      (define words datum (quote (lambda plambda sq)))
+      (define area (subr pure (shape) i64)
+        (lambda (s) (tagcase s (sq (k) (i64* k k)) (rect (w h) (i64* w h)))))
+      (define total-of (->* ((listof shape acyclic)) i64)
+        (lambda (xs) (if (null? xs) 0 (i64+ (area (car xs)) (total-of (cdr xs))))))
+      (define with-bonus (->* (i64) i64) (lambda (n) (i64+ n (get bonus))))
+      (define applied (subr (read p) (reader i64) i64) (lambda (f n) (f n)))
+      (define twice (poly ((a type)) (subr pure ((subr pure (a) a) a) a))
+        (plambda ((a type)) (lambda ((f (subr pure (a) a)) (x a)) (f (f x)))))
+      (define add (subr (maxeff (read p) (write p)) (i64 i64) unit)
+        (lambda (w h)
+          (begin (set bonus (twice (lambda ((k i64)) (i64+ k 1)) (get bonus)))
+                 (set kept (cons (if (i64= w h) (sq w) (rect w h)) (get kept))))))
+      (define total (subr (maxeff (read p)) () i64)
+        (lambda () (applied (lambda ((n i64)) (with-bonus n)) (total-of (get kept))))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (letrena a
+      (let ((x (tally-in a)))
+        (begin (with x (add 3 3)) (with x (add 2 5)) (i64->string (with x (total))))))))

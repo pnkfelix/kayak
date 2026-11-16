@@ -1526,7 +1526,10 @@ Twobit-style optimizations in KFX.
   Next: the driver's not-yets (a file's macros, `import-with-syntax`, in
   a top-level `include`, which the engine has not either; `begin-for-syntax`,
   procedural macros'; a shape's definition); the REPL (`,type`
-  and entries read through it); each form's state as a value, cached
+  and entries read through it; the expander a maker since C437, the
+  front's instance its own); the `expands` effect, which C437's
+  instance, made in a `letrena`, masks (still carried by `engine-main`
+  and start.kfx's `main`); each form's state as a value, cached
   (`docs/research/fx26-macros.md`, "Cacheable and incremental"); kc;
   procedural macros (stage 5, a phase-1 namespace); the driver's lines
   (each list's, met; an atom's, the last list's before it).

@@ -1648,11 +1648,21 @@ pub mod emitter {
             let args = words_of_sep(map(lambda1s(move |i: i64| {
                 string_append(str_lit("a"), i64_to_string(i))
             }), counting(0i64, k)), str_lit(", "));
-            let call = concat_strings(kayak_rt::heap_cons(mangle(s), kayak_rt::heap_cons(str_lit("(p, maker_st"), kayak_rt::heap_cons(if i64_eq(k, 0i64) {
+            let place = {
+                let ps = filter(lambda1s(move |x: Str| {
+                    has_prefix_p(x, str_lit("%maker-place "))
+                }), ctx_locals(c));
+                if null_p(ps) {
+                    str_lit("p")
+                } else {
+                    mangle(after_prefix(car(ps), str_lit("%maker-place ")))
+                }
+            };
+            let call = concat_strings(kayak_rt::heap_cons(mangle(s), kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(place, kayak_rt::heap_cons(str_lit(", maker_st"), kayak_rt::heap_cons(if i64_eq(k, 0i64) {
                 str_lit("")
             } else {
                 str_lit(", ")
-            }, kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))));
+            }, kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))));
             put(concat_strings(kayak_rt::heap_cons(str_lit("kayak_rt::lambda"), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit("(move |"), kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit("| "), kayak_rt::heap_cons(if not(async_mode_p(c)) {
                 call
             } else if string_eq_p(car(cdr(ws)), str_lit("1")) {
@@ -3190,6 +3200,16 @@ pub mod emitter {
                         return put(str_lit("Str"), acc);
                     } else if (string_eq_p(s, str_lit("io-error")) && string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit("")) && null_p(desc_type(c, s, ctx_locals(c))) && not(string_member_p(s, ctx_datatypes(c)))) {
                         t = car(read_all(io_error_text(), str_lit(""), 1i64));
+                        continue;
+                    } else if any_p(lambda1s(move |x: Str| {
+                        has_prefix_p(x, string_append(str_lit("%maker-abbrev "), string_append(s, str_lit(" "))))
+                    }), ctx_locals(c)) {
+                        // A module maker's type abbreviation (C437), written out where it is
+                        // named, so that a procedure's type in it is at the place's
+                        // lifetime, as one written in place is.
+                        t = car(read_all(after_prefix(car(filter(lambda1s(move |x: Str| {
+                            has_prefix_p(x, string_append(str_lit("%maker-abbrev "), string_append(s, str_lit(" "))))
+                        }), ctx_locals(c))), string_append(str_lit("%maker-abbrev "), string_append(s, str_lit(" ")))), str_lit(""), 1i64));
                         continue;
                     } else if not(null_p(dotted(s))) {
                         return put(type_path(c, car(dotted(s)), car(cdr(dotted(s)))), acc);

@@ -398,6 +398,10 @@
               (lst (xs src-file src-line src-pos)
                 (let ((h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
                   (cond ((null? xs) st)
+                        ((string=? h "quote")
+                         "A datum: no call, nor a member named (C437; the expander's
+                          `reserved-words`, `(quote (lambda plambda …))`)."
+                         st)
                         ((string=? h "module")
                          "A module made as a value (C170): its items' values walked as a
                           `let*`'s would be, its types not."

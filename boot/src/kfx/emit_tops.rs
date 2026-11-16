@@ -1508,8 +1508,11 @@ pub mod writing {
             } else if maker_type_p(car(forms)) {
                 forms = cdr(forms);
                 continue;
+            } else if head_is_p(car(forms), str_lit("include")) {
+                forms = cdr(forms);
+                continue;
             } else {
-                return error(str_lit("kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433)"));
+                return error(string_append(str_lit("kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433): "), show_sexp(car(forms))));
             }
         }
     }
@@ -1517,12 +1520,11 @@ pub mod writing {
     /// A module maker's type abbreviation or effect (C436), one naming its
     /// place: written in its module, as a module's are. Not a datatype,
     /// which the checker reads as a structural sum in a module value.
-    #[inline]
     pub fn maker_type_p(f: &'static Sexp) -> bool {
         if head_is_p(f, str_lit("define-datatype")) {
             error(str_lit("kfx: a datatype in a module maker's module, which the checker reads as a structural sum: define it outside (C436)"))
         } else {
-            (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect")))
+            (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("include")))
         }
     }
 
@@ -1554,7 +1556,9 @@ pub mod writing {
             let more = concat(map(lambda1s(move |d: &'static Sexp| {
                 let ys = items(d);
                 let n = sym_name(car(ys));
-                if (not(string_member_p(n, needy)) && (string_member_p(p, names_in(second(ys))) || any_p(lambda1s(move |m: Str| {
+                if (not(string_member_p(n, needy)) && (any_p(lambda1s(move |m: Str| {
+                    (string_eq_p(m, p) || string_member_p(m, states))
+                }), names_in(second(ys))) || any_p(lambda1s(move |m: Str| {
                     (string_eq_p(m, p) || string_member_p(m, states) || string_member_p(m, needy))
                 }), names_named_onto(third(ys), nil::<Str>())))) {
                     the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
@@ -1566,6 +1570,40 @@ pub mod writing {
                 return needy;
             } else {
                 needy = onto(more, needy);
+                continue;
+            }
+        }
+    }
+
+    /// The names of a module maker's abbreviations and effects that name
+    /// its place `p`, or one of these (C437); found to a fixed point.
+    pub fn maker_placed(mut p: Str, mut forms: Sexps, mut got: Strings) -> Strings {
+        loop {
+            let more = concat(map(lambda1s(move |f: &'static Sexp| {
+                let n = {
+                    let tagcase_ = second(items(f));
+                    match *tagcase_ {
+                        Sexp::Sym(m, f2, p2) => {
+                            m
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                };
+                if (not(string_eq_p(n, str_lit(""))) && not(string_member_p(n, got)) && any_p(lambda1s(move |m: Str| {
+                    (string_eq_p(m, p) || string_member_p(m, got))
+                }), names_in(third(items(f))))) {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }), forms));
+            if null_p(more) {
+                return got;
+            } else {
+                got = onto(more, got);
                 continue;
             }
         }
@@ -1584,28 +1622,194 @@ pub mod writing {
         lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(binder, bs), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(s), kayak_rt::heap_cons(second(s), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(sym(str_lit("%maker-state"), str_lit(""), 0i64), items(third(s)))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(fourth(s), kayak_rt::nil())))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
     }
 
+    /// The name a parameter or binding binds: `x`, `(x T)`.
+    pub fn pg_bound(mut b: &'static Sexp) -> Str {
+        loop {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    return n;
+                }
+                Sexp::Lst(ys, f, l, p) => {
+                    if null_p(ys) {
+                        return str_lit("");
+                    } else {
+                        b = car(ys);
+                        continue;
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return str_lit("");
+                }
+            }
+        }
+    }
+
+    pub fn pg_relist(e: &'static Sexp, xs: Sexps) -> &'static Sexp {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                lst(xs, f, l, p)
+            }
+            _ => {
+                let other = tagcase_;
+                lst(xs, str_lit(""), 0i64, 0i64)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn pg_without(names: Strings, bound: Strings) -> Strings {
+        filter(lambda1s(move |n: Str| {
+            not(string_member_p(n, bound))
+        }), names)
+    }
+
+    pub fn pg_take(xs: Sexps, k: i64) -> Sexps {
+        if (null_p(xs) || i64_lt_eq(k, 0i64)) {
+            nil::<&'static Sexp>()
+        } else {
+            kayak_rt::heap_cons(car(xs), pg_take(cdr(xs), i64_minus(k, 1i64)))
+        }
+    }
+
+    pub fn pg_drop(mut xs: Sexps, mut k: i64) -> Sexps {
+        loop {
+            if (null_p(xs) || i64_lt_eq(k, 0i64)) {
+                return xs;
+            } else {
+                (xs, k) = (cdr(xs), i64_minus(k, 1i64));
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn pg_nth(xs: Sexps, k: i64) -> &'static Sexp {
+        car(pg_drop(xs, k))
+    }
+
     /// `e`, its calls of `names` given the place `p` first (C274), then the
-    /// instance's state (C433).
+    /// instance's state (C433); a name a binding form binds there not one
+    /// of them, nor a binding, nor a `cond`'s test, a call (C437).
     pub fn place_given(p: Str, names: Strings, e: &'static Sexp) -> &'static Sexp {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, q) => {
-                if null_p(xs) {
-                    e
-                } else if sym_is_p(car(xs), str_lit("quote")) {
-                    e
-                } else if {
-                    let tagcase_ = car(xs);
+                let h = {
+                    let tagcase_ = if null_p(xs) {
+                        e
+                    } else {
+                        car(xs)
+                    };
                     match *tagcase_ {
                         Sexp::Sym(n, f2, p2) => {
-                            string_member_p(n, names)
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                };
+                if null_p(xs) {
+                    e
+                } else if string_eq_p(h, str_lit("quote")) {
+                    e
+                } else if ((string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("rlambda"))) && i64_gt_eq(size(xs), 3i64)) {
+                    let at = if string_eq_p(h, str_lit("rlambda")) {
+                        the::<i64>(2i64)
+                    } else {
+                        the::<i64>(1i64)
+                    };
+                    let ps = pg_nth(xs, at);
+                    let inner = pg_without(names, map(&pg_bound, items(ps)));
+                    lst(onto(pg_take(xs, i64_plus(at, 1i64)), map(lambda1s(move |x: &'static Sexp| {
+                        place_given(p, inner, x)
+                    }), pg_drop(xs, i64_plus(at, 1i64)))), f, l, q)
+                } else if ((string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("letrec"))) && i64_gt_eq(size(xs), 3i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Lst(bs, f3, l3, p3) => {
+                            true
                         }
                         _ => {
                             let other = tagcase_;
                             false
                         }
                     }
-                } {
+                }) {
+                    let bs = items(second(xs));
+                    let bound = map(lambda1s(move |b: &'static Sexp| {
+                        pg_bound(car(items(b)))
+                    }), bs);
+                    let inner = pg_without(names, bound);
+                    let init_names = if string_eq_p(h, str_lit("let")) {
+                        names
+                    } else {
+                        inner
+                    };
+                    lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(pg_relist(second(xs), map(lambda1s(move |b: &'static Sexp| {
+                        let ys = items(b);
+                        pg_relist(b, kayak_rt::heap_cons(car(ys), onto(if i64_eq(size(ys), 3i64) {
+                            the::<Sexps>(kayak_rt::heap_cons(second(ys), kayak_rt::nil()))
+                        } else {
+                            nil::<&'static Sexp>()
+                        }, the::<Sexps>(kayak_rt::heap_cons(place_given(p, init_names, last(ys)), kayak_rt::nil())))))
+                    }), bs)), map(lambda1s(move |x: &'static Sexp| {
+                        place_given(p, inner, x)
+                    }), cdr(cdr(xs))))), f, l, q)
+                } else if (string_eq_p(h, str_lit("tagcase")) && i64_gt_eq(size(xs), 2i64)) {
+                    lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(place_given(p, names, second(xs)), map(lambda1s(move |arm: &'static Sexp| {
+                        let tagcase_ = arm;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f4, l4, p4) => {
+                                if i64_lt(size(ys), 2i64) {
+                                    arm
+                                } else {
+                                    let vs = {
+                                        let tagcase_ = second(ys);
+                                        match *tagcase_ {
+                                            Sexp::Lst(zs, f5, l5, p5) => {
+                                                map(&pg_bound, zs)
+                                            }
+                                            Sexp::Sym(n, f5, p5) => {
+                                                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                nil::<Str>()
+                                            }
+                                        }
+                                    };
+                                    pg_relist(arm, kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), map(lambda1s(move |x: &'static Sexp| {
+                                        place_given(p, pg_without(names, vs), x)
+                                    }), cdr(cdr(ys))))))
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                arm
+                            }
+                        }
+                    }), cdr(cdr(xs))))), f, l, q)
+                } else if string_eq_p(h, str_lit("cond")) {
+                    lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |cl: &'static Sexp| {
+                        let tagcase_ = cl;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f4, l4, p4) => {
+                                pg_relist(cl, map(lambda1s(move |x: &'static Sexp| {
+                                    place_given(p, names, x)
+                                }), ys))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                cl
+                            }
+                        }
+                    }), cdr(xs))), f, l, q)
+                } else if string_member_p(h, names) {
                     lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(sym(p, str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("maker-st"), str_lit(""), 0i64), map(lambda1s(move |x: &'static Sexp| {
                         place_given(p, names, x)
                     }), cdr(xs))))), f, l, q)
@@ -1930,26 +2134,66 @@ pub mod writing {
             }
         }));
         let written = cdr(items(third(items(lam))));
-        let types = filter(&maker_type_p, written);
+        let abbrevs = filter(lambda1s(move |f: &'static Sexp| {
+            (head_is_p(f, str_lit("define-type")) && i64_eq(size(items(f)), 3i64) && {
+                let tagcase_ = second(items(f));
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            })
+        }), written);
+        let types = filter(lambda1s(move |f: &'static Sexp| {
+            (maker_type_p(f) && not(string_member_p(show_sexp(f), map(&show_sexp, abbrevs))))
+        }), written);
         let parts = module_parts(c, name, types);
-        let c = {
+        let c = with_locals({
             let tagcase_ = parts;
             match *tagcase_ {
                 Mparts::Mparts(inner, forms) => {
                     inner
                 }
             }
-        };
-        let defs = maker_defs(written);
+        }, map(lambda1s(move |f: &'static Sexp| {
+            string_append(str_lit("%maker-abbrev "), string_append(sym_name(second(items(f))), string_append(str_lit(" "), show_sexp(third(items(f))))))
+        }), abbrevs));
+        let defs = map(lambda1s(move |d: &'static Sexp| {
+            let ys = items(d);
+            let found = fact_said(c, third(ys), str_lit("def-type "));
+            let d = if head_is_p(third(ys), str_lit("plambda")) {
+                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(items(third(ys))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+            } else {
+                d
+            };
+            let ys = items(d);
+            if string_eq_p(found, str_lit("")) {
+                d
+            } else {
+                let t = car(read_all(found, str_lit(""), 1i64));
+                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(if head_is_p(second(ys), str_lit("poly")) {
+                    lst(kayak_rt::heap_cons(car(items(second(ys))), kayak_rt::heap_cons(second(items(second(ys))), kayak_rt::heap_cons(t, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+                } else {
+                    t
+                }, kayak_rt::heap_cons(third(ys), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+            }
+        }), maker_defs(written));
         let states = maker_states(written);
-        let siblings = maker_needy(p, map(lambda1s(move |d: &'static Sexp| {
+        let placed = maker_placed(p, filter(lambda1s(move |f: &'static Sexp| {
+            (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect")))
+        }), written), nil::<Str>());
+        let siblings = maker_needy(p, onto(placed, map(lambda1s(move |d: &'static Sexp| {
             sym_name(car(items(d)))
-        }), states), defs, nil::<Str>());
+        }), states)), defs, nil::<Str>());
         let pt = string_append(str_lit("Place_"), camel(p));
         let named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
         let state_named = concat_strings(kayak_rt::heap_cons(iface, kayak_rt::heap_cons(str_lit("State<"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(", "), kayak_rt::heap_cons(pt, kayak_rt::heap_cons(str_lit(">"), kayak_rt::nil())))))));
         let state_path = concat_strings(kayak_rt::heap_cons(mangle(name), kayak_rt::heap_cons(str_lit("::"), kayak_rt::heap_cons(state_named, kayak_rt::nil()))));
-        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::heap_cons(concat_strings(kayak_rt::heap_cons(str_lit("%maker-state-type &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(state_named, kayak_rt::nil()))))), onto(map(lambda1s(move |d: &'static Sexp| {
+        let c = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%maker-needs "), name), kayak_rt::heap_cons(string_append(str_lit("%maker-place "), p), kayak_rt::heap_cons(concat_strings(kayak_rt::heap_cons(str_lit("%maker-state-type &"), kayak_rt::heap_cons(lifetime(p), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(state_named, kayak_rt::nil()))))), onto(map(lambda1s(move |d: &'static Sexp| {
             string_append(str_lit("%maker-state "), sym_name(car(items(d))))
         }), states), map(lambda1s(move |d: &'static Sexp| {
             let ys = items(d);
@@ -1963,7 +2207,7 @@ pub mod writing {
             } else {
                 str_lit(" 0")
             }, kayak_rt::nil()))))))
-        }), defs)))));
+        }), defs))))));
         let cp = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())));
         let body = put_sep(lambda2s(move |d: &'static Sexp, acc: Chars| {
             let ys = items(d);

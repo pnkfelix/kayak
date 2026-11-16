@@ -80,7 +80,12 @@
  expands them (C431: Fixpt's expander, `fx26/macros/expander.kfx`); one
  that defines none, as it is."
 (define expanded (subr (maxeff driving expands) (sexps) sexps)
-  (lambda (forms) (if (forms-mention? forms macro-heads) ((with mx drive-program) forms) forms)))
+  (lambda (forms)
+    (if (forms-mention? forms macro-heads)
+        ;; An instance of the expander for the program, its state its own,
+        ;; made in a place of its own (C437).
+        (letrena p (let ((x (mx-in p))) (with x (drive-program forms))))
+        forms)))
 
 (define-rec
   (read-files-expanded (subr (maxeff driving expands) (strings) sexps)

@@ -159,7 +159,16 @@ pub fn macro_heads() -> Strings {
 #[inline]
 pub fn expanded(forms: Sexps) -> Result<Sexps, Unwind> {
     if forms_mention_p(forms, macro_heads()) {
-        Ok((&mx::drive_program)(forms)?)
+        Ok({
+            struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
+            impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+            fn letrena__p<'p>(p: &'p Region_P<'p>, forms: List<&'static Sexp>) -> Result<List<&'static Sexp>, Unwind> {
+                let x = mx_in(p);
+                Ok(x.drive_program(forms)?)
+            }
+            let p__arena = Region_P::default();
+            letrena__p(&p__arena, forms)?
+        })
     } else {
         Ok(forms)
     }

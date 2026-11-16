@@ -4258,6 +4258,23 @@ pub mod expressions {
         }), bound)) && held_sync_p(v, s, es))
     }
 
+    /// The mark of a module maker's item's own lambda, by its body's first
+    /// form's place (C437).
+    #[inline]
+    pub fn maker_fn_key(body: &'static Sexp) -> Str {
+        string_append(str_lit("%maker-fn "), string_append(datum_file(body), string_append(str_lit(":"), i64_to_string(datum_pos(body)))))
+    }
+
+    /// `v`, where `e` is a module maker's item's value: if a lambda, its
+    /// mark bound (`synced-lambda`).
+    pub fn maker_fn(v: &'static Cv, e: &'static Sexp) -> &'static Cv {
+        if (not(null_p(scope_bind(str_lit("%module-maker"), v))) && head_is_p(e, str_lit("lambda")) && i64_gt(size(items(e)), 2i64)) {
+            with_binds(v, kayak_rt::heap_cons(bind(maker_fn_key(third(items(e))), scheme(nil::<Str>(), ty_unit()), str_lit("local")), kayak_rt::nil()))
+        } else {
+            v
+        }
+    }
+
     /// A lambda whose latent effect `es` a process may have: its closure, in
     /// Rust, `Send + Sync` (C102), noted for the emitter, so that it may be
     /// held on another thread, as FX-26 lets it be; so each local it holds
@@ -4265,9 +4282,9 @@ pub mod expressions {
     /// in KFX's words. A local named by the body but bound in it too is
     /// taken as held: KFX refuses more than it must, then, never less.
     pub fn synced_lambda(v: &'static Cv, s: &'static St, es: Strings, params: Sexps, forms: Sexps) -> &'static St {
-        if not(crossing_p(map(lambda1s(move |a: Str| {
+        if (not(crossing_p(map(lambda1s(move |a: Str| {
             resolve_atom(s, a)
-        }), es))) {
+        }), es))) || (not(null_p(forms)) && not(null_p(scope_bind(maker_fn_key(car(forms)), v))))) {
             s
         } else {
             let own = map(lambda1s(move |p: &'static Sexp| {
@@ -5071,7 +5088,11 @@ pub mod expressions {
                         } else if string_eq_p(wher, str_lit("module")) {
                             // A module defined at the top level, as a value (C170): of the
                             // type its items give. FX-26's; KFX's modules are Rust's.
-                            res(module_type_of(v, name), kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()), kfx_restricted(v, s, string_append(str_lit("a module as a value: KFX's modules are Rust's, opened by with: "), name)))
+                            res(module_type_of(v, name), kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()), if null_p(scope_bind(str_lit("%maker-include"), v)) {
+                                kfx_restricted(v, s, string_append(str_lit("a module as a value: KFX's modules are Rust's, opened by with: "), name))
+                            } else {
+                                s
+                            })
                         } else {
                             let tagcase_ = named_instance(v, held(v, if (not(null_p(module_spec(v, {
                                 let tagcase_ = sc;
@@ -10819,6 +10840,22 @@ pub mod expressions {
         }
     }
 
+    /// A module maker's module's `(include m)`, for the finding of its
+    /// `->*` items' effects (C437): `m`'s items in scope, as a module
+    /// value's `include` has them (`mod-types`).
+    pub fn include_opened(v: &'static Cv, s0: &'static St, e: &'static Sexp) -> &'static Cv {
+        let tagcase_ = synth(v, s0, e);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                if mtype_p(walk(s, t)) {
+                    mtype_opened(v, walk(s, t))
+                } else {
+                    match refuse(v, str_lit("an include of no module")) {}
+                }
+            }
+        }
+    }
+
     /// A lambda's body's effect, the body checked against the type `t`'s
     /// parameters and result, but not its effect: what `define*` finds.
     pub fn lambda_effects(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps, t: &'static Ty) -> &'static Res {
@@ -11286,7 +11323,22 @@ pub mod expressions {
                     let atoms = parse_effect(v, tv, third(xs));
                     return more(with_type_binds(v, nil::<&'static Bind>(), kayak_rt::heap_cons(effdef(n, atoms), kayak_rt::nil())), the::<Tys>(kayak_rt::heap_cons(ty_data(string_append(str_lit("%edesc "), n), kayak_rt::heap_cons(ty_proc(atoms, nil::<&'static Ty>(), ty_unit()), kayak_rt::nil())), kayak_rt::nil())));
                 } else if (string_eq_p(hd, str_lit("include")) && i64_eq(size(xs), 2i64)) {
-                    let tagcase_ = synth(v, s, second(xs));
+                    let tagcase_ = synth(if (null_p(scope_bind(str_lit("%module-maker"), v)) || {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                false
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                true
+                            }
+                        }
+                    }) {
+                        v
+                    } else {
+                        with_binds(v, kayak_rt::heap_cons(bind(str_lit("%maker-include"), scheme(nil::<Str>(), ty_unit()), str_lit("local")), kayak_rt::nil()))
+                    }, s, second(xs));
                     match *tagcase_ {
                         Res::Res(t, ies, s2) => {
                             if not(mtype_p(walk(s2, t))) {
@@ -11438,7 +11490,7 @@ pub mod expressions {
                 };
                 if ((string_eq_p(hd, str_lit("define")) || string_eq_p(hd, str_lit("define*"))) && i64_eq(size(xs), 4i64) && not(string_eq_p(n, str_lit("")))) {
                     let (t, written) = (bound_type(v, n), parse_type(v, cv_tvars(v), third(xs)));
-                    let tagcase_ = check(v, s, fourth(xs), t);
+                    let tagcase_ = check(maker_fn(v, fourth(xs)), s, fourth(xs), t);
                     match *tagcase_ {
                         Res::Res(u, ves, s2) => {
                             (s, fs, got, es) = (s2, cdr(fs), if export {
@@ -11497,7 +11549,7 @@ pub mod expressions {
                 if not(i64_eq(size(g), 3i64)) {
                     return match refuse(v, str_lit("a module value's define-rec member is (name type value)")) {};
                 } else {
-                    let tagcase_ = check(v, s, third(g), bound_type(v, sym_name(car(g))));
+                    let tagcase_ = check(maker_fn(v, third(g)), s, third(g), bound_type(v, sym_name(car(g))));
                     match *tagcase_ {
                         Res::Res(u, es, s2) => {
                             (s, gs) = (s2, cdr(gs));
@@ -13915,7 +13967,7 @@ pub mod expressions {
                 match refuse(v, str_lit("a plambda where a poly type is expected binds regions, types and sizes (C107)")) {}
             }
         }), items(car(xs)));
-        let s = if all_regions_p(names) {
+        let s = if (all_regions_p(names) || not(null_p(scope_bind(str_lit("%module-maker"), v)))) {
             s
         } else {
             kfx_restricted(v, s, str_lit("a plambda of types or sizes where a poly type is expected, which KFX has not yet: its Rust erases regions alone (C107)"))

@@ -4153,7 +4153,9 @@
       ;; Its place binders' marks kept with its binders (C349), as `distinct`'s
       ;; are: Fixpt's kind `place`, which its rep and its printing say.
       (scheme (onto tvars (filter (lambda ((m string)) (has-prefix? m "%place ")) (place-marks t)))
-              (parse-type v (onto (place-marks t) tvars) (if (head-is? t "poly") (third (items t)) t))))))
+              ;; The type variables in scope too, as a module maker's place is
+              ;; to its items' types (C437); at the top level, none.
+              (parse-type v (onto (place-marks t) (onto tvars (cv-tvars v))) (if (head-is? t "poly") (third (items t)) t))))))
 
 (define parse-scheme (subr kfx (cv sexp) scheme)
   (lambda (v t) (parse-scheme-of v t #t)))

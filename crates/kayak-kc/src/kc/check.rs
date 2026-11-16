@@ -9769,7 +9769,7 @@ pub fn parse_scheme_of(v: &'static Cv, t0: &'static Sexp, own: bool) -> &'static
     let tvars = poly_binders(v, t, own);
     scheme(onto(tvars, filter(lambda1s(move |m: Str| {
         has_prefix_p(m, str_lit("%place "))
-    }), place_marks(t))), parse_type(v, onto(place_marks(t), tvars), if head_is_p(t, str_lit("poly")) {
+    }), place_marks(t))), parse_type(v, onto(place_marks(t), onto(tvars, cv_tvars(v))), if head_is_p(t, str_lit("poly")) {
         third(items(t))
     } else {
         t

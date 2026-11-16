@@ -44,6 +44,14 @@ SRC = "crates/fixpt-fx26/src"
 ROOTS = ["macros-imports.fx", "macros-shapes.fx"]
 WHOLE = re.compile(r"^macros.*\.fx$")
 REGIONS = ["@ms", "@me", "@mm", "@mc", "@mp"]
+# What an instance's making, and its expanding, may do: in its place, and
+# fail to its prompt there (C437).
+MX_EFFECT = "(maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp))"
+# What making an instance does: its state made, which fails to no prompt.
+MX_MAKES = "(maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp))"
+# The place's name, which no local of the expander's has (Rust's
+# parameters are one namespace).
+PLACE = "mxp"
 # What KFX has not, the shim's in its place.
 PRIMS = {"keyword?": "mx-keyword?", "keyword->symbol": "mx-keyword->symbol",
          "symbol->keyword": "mx-symbol->keyword", "datum-int?": "mx-datum-int?", "eq?": "mx-eq?",
@@ -532,15 +540,54 @@ def translate(prog, fname, keep, names):
     pieces = []
     for group in ordered(prog, fname, keep):
         texts = [form_text(prog, fname, form, names, regions) for form in group]
+        kind = "type" if all(head(t, form) in TYPE_HEADS for form in group) else "item"
         if len(group) == 1 and not recursive_group(prog, fname, group):
-            pieces.append(texts[0][0] + texts[0][1])
-        elif all(head(t, form) in ("define-type", "define-datatype") for form in group):
-            pieces.append(type_group(prog, fname, group, texts, names))
+            pieces.append((texts[0][0] + texts[0][1], kind))
+        elif kind == "type":
+            pieces.append((type_group(prog, fname, group, texts, names), kind))
         else:
-            pieces.append("(define-rec\n" + "\n".join(rec_member(prog, fname, form, x) for form, x in zip(group, texts)) + ")")
+            pieces.append(("(define-rec\n" + "\n".join(rec_member(prog, fname, form, x) for form, x in zip(group, texts)) + ")", kind))
     whole = "whole" if WHOLE.match(fname) else "the definitions the expander reaches"
     return (";;; ============================================================ %s (%s)\n\n"
-            % (fname, whole)) + "\n".join(pieces) + "\n"
+            % (fname, whole)), pieces
+
+
+# The forms that define types: a maker's module may define only those
+# that name its place (C436); the rest are defined before it.
+TYPE_HEADS = ("define-type", "define-datatype", "define-generative")
+REGION_NAMED = re.compile(r"@m[sempc]\b")
+TYPE_NAMED = re.compile(r"\(define-(?:type|datatype|generative)\s+\(?([^\s()]+)")
+
+
+def hoisted(files):
+    """The files' pieces parted (C437): the types defined before the maker,
+    each that names no region of the expander's, nor a type or effect that
+    does; and,
+    per file, what its module keeps."""
+    # The effects that name a region, which the maker's module defines.
+    inside = {m.group(1) for header, pieces in files for text, kind in pieces
+              for m in [re.match(r"\s*(?:;[^\n]*\n\s*)*\(define-effect\s+([^\s()]+)", text)]
+              if m and REGION_NAMED.search(text)}
+    for header, pieces in files:
+        for text, kind in pieces:
+            if kind == "type":
+                mentioned = {tok for k, tok in tokens(text) if k == "atom"}
+                if REGION_NAMED.search(text) or mentioned & inside:
+                    inside.update(TYPE_NAMED.findall(text))
+    outside, kept_in = [], []
+    for header, pieces in files:
+        out = [x for x, k in pieces if k == "type" and not (set(TYPE_NAMED.findall(x)) & inside)]
+        keep = [x for x, k in pieces if not (k == "type" and not (set(TYPE_NAMED.findall(x)) & inside))]
+        if out:
+            outside.append(header + "\n".join(out) + "\n")
+        kept_in.append(header + "\n".join(keep) + "\n")
+    return outside, kept_in
+
+
+def placed(text):
+    """The expander's regions, Fixpt's module parameters, the maker's one
+    place (C437): what Fixpt shares among its modules, made one instance's."""
+    return REGION_NAMED.sub(PLACE, text)
 
 
 def ordered(prog, fname, keep):
@@ -762,15 +809,29 @@ def made():
     rev = open(os.path.join(ROOT, "FIXPT_REV")).read().strip()[:7]
     marks = "\n".join(" fixpt-source: %s/%s@%s" % (SRC, n, rev) for n in files)
     shim = open(SHIM, encoding="utf-8").read()
-    body = "\n".join(translate(prog, n, keep, names) for n in files)
+    outside, inside = hoisted([translate(prog, n, keep, names) for n in files])
+    body = "\n".join(inside)
     text = ('"expander.kfx: Fixpt\'s macro expander written in FX-26, its files made one\n'
             ' KFX module by scripts/macros-port.py (C429): edit that, not this. Its\n'
             ' files are modules in Fixpt, their items no globals; here they are one\n'
             ' module\'s items, so that naming one reads no global either, as there.\n'
             ' The shim (fx26/macros-shim.kfx) first; then each file, in the order\n'
             ' its loads need, the expander\'s whole, the parser\'s files\' what it\n'
-            ' reaches.\n' + marks + '"\n\n'
-            '(define mx\n  (module\n' + shim + "\n" + body + "\n" + open(DRIVER, encoding="utf-8").read() + "))\n")
+            ' reaches. Made a module maker (C437), each instance its own state,\n'
+            ' Fixpt\'s five regions its one place: its types first, but those\n'
+            ' that name the place, which the maker\'s module defines.\n' + marks + '"\n\n'
+            '"The expander\'s types that name no region of its, a module of its own,\n'
+            ' which the maker includes: its constructors are no globals, as in Fixpt,\n'
+            ' where each is another file\'s item (C437)."\n'
+            '(define mx-types\n  (module\n' + "\n".join(outside) + "))\n\n"
+            ';;; ============================================================ the maker\n\n'
+            '"What an instance of the expander gives: a program\'s forms expanded."\n'
+            '(define-type (mx-face (mxp place))\n'
+            '  (moduleof (val drive-program (subr ' + MX_EFFECT + ' (sexps) sexps))))\n\n'
+            '"An instance of the expander, its state made in place `mxp`."\n'
+            '(define mx-in (poly ((mxp place)) (subr ' + MX_MAKES + ' ((place mxp)) (mx-face mxp)))\n'
+            '  (lambda (mxp)\n'
+            '    (module\n      (include mx-types)\n' + placed(shim + "\n" + body + "\n" + open(DRIVER, encoding="utf-8").read()) + ")))\n")
     return files, {"expander.kfx": text}
 
 

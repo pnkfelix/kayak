@@ -853,7 +853,10 @@
                                                        (string-append "%maker-item " (string-append s " ")))))
                         (k (digits-number (car ws)))
                         (args (words-of-sep (map (lambda ((i i64)) (string-append "a" (i64->string i))) (counting 0 k)) ", "))
-                        (call (concat-strings (list (mangle s) "(p, maker_st" (if (i64= k 0) "" ", ") args ")"))))
+                        ;; The maker's place, by its name (C437).
+                        (place (let ((ps (filter (lambda ((x string)) (has-prefix? x "%maker-place ")) (ctx-locals c))))
+                                 (if (null? ps) "p" (mangle (after-prefix (car ps) "%maker-place ")))))
+                        (call (concat-strings (list (mangle s) "(" place ", maker_st" (if (i64= k 0) "" ", ") args ")"))))
                    (put (concat-strings (list "kayak_rt::lambda" (i64->string k) "(move |" args "| "
                                               (cond ((not (async-mode? c)) call)
                                                     ((string=? (car (cdr ws)) "1") (string-append "kayak_rt::suspend::body(" (string-append call ")")))
@@ -1688,6 +1691,14 @@
                     ((and (string=? s "io-error") (string=? (opener (string-append "%type " s) (ctx-locals c)) "")
                           (null? (desc-type c s (ctx-locals c))) (not (string-member? s (ctx-datatypes c))))
                      (put-type c (car (read-all io-error-text "" 1)) acc))
+                    ((any? (lambda ((x string)) (has-prefix? x (string-append "%maker-abbrev " (string-append s " ")))) (ctx-locals c))
+                     "A module maker's type abbreviation (C437), written out where it is
+                      named, so that a procedure's type in it is at the place's
+                      lifetime, as one written in place is."
+                     (put-type c (car (read-all (after-prefix (car (filter (lambda ((x string)) (has-prefix? x (string-append "%maker-abbrev " (string-append s " ")))) (ctx-locals c)))
+                                                              (string-append "%maker-abbrev " (string-append s " ")))
+                                                "" 1))
+                               acc))
                     ((not (null? (dotted s))) (put (type-path c (car (dotted s)) (car (cdr (dotted s)))) acc))
                     ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
                     ((not (null? (desc-type c s (ctx-locals c)))) (put-type c (car (desc-type c s (ctx-locals c))) acc))

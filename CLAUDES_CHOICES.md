@@ -12539,3 +12539,48 @@ they are named. A datatype in a maker's module is refused: the checker
 reads a module value's as a structural sum, recursive ones not at all.
 Test: `tests/kfx/module-place-types.kfx` (Fixpt's answer, 19), in both
 modes.
+
+## C437. The expander, a module maker: each program its own instance (2026-11-16)
+
+Route 1's last step (C433-C436 its parts): `scripts/macros-port.py`
+writes Fixpt's expander as a maker, `mx-in`, over one place, `mxp`
+(no local of the expander's is so named; Rust's parameters are one
+namespace), Fixpt's five regions (`@ms` … `@mp`) all that place; the
+engine makes an instance per program (`expanded`, fx26/main.kfx, in a
+`letrena`), so that nothing writable is shared, and a REPL, or a
+process, may hold one of its own. Its interface, `mx-face`, gives
+`drive-program`.
+
+- Its types: those that name no region of its, nor a type or effect that
+  does, in a top-level module, `mx-types`, which the maker's module
+  includes, so that its constructors are no globals, as in Fixpt, where
+  each is another file's item (as globals, a constructor's call read
+  one, which Fixpt's `pure` types do not say). What names the place
+  stays in the maker: one abbreviation, `namer`, and those through it,
+  `fails`; two effects. `WRITTEN` stays: kfx finds a maker's `->*`
+  items before its values are made, but Fixpt refuses a module value's
+  value that names one (`fixpt-accepts.py` found it), and kayak may
+  accept nothing Fixpt refuses.
+- The checker: a maker's `->*` item found as a group of one
+  (`found-rec`), so that a recursion that ends reads nothing, an item
+  being no global (`found-define`'s reading of its global, and so
+  `spin`, is a top-level definition's: Fixpt's `arrow_star_spins`); the
+  finding sees the module's `%module`, its includes (`include-opened`),
+  effects and abbreviations, each item at its place; `parse-scheme` sees
+  the type variables in scope; a maker's `include` of a top-level module
+  names it as no value (`%maker-include`); a maker's item's own lambda is
+  a Rust function, no closure held on another thread (`maker-fn`); a
+  `plambda` of types in a maker, as C434's lambda; the termination walk
+  skips a `quote` (the expander's `reserved-words`).
+- The emitter: a maker's `include`, a `use`; each item at its type as
+  found; a `plambda` item its lambda; an abbreviation written out where
+  named (`%maker-abbrev`), so that a procedure's type in it is at the
+  place's lifetime; an item whose type names an abbreviation or effect
+  that names the place takes the place (`maker-placed`); calls given the
+  place by scope (`place-given`: no binding, no shadowed name, no
+  `cond` test is a call).
+- The driver's forms ordered callees first (`drive-form`, `drive-forms`
+  a `define-rec`), as a module value's `letrec*` needs.
+
+Test: `tests/kfx/module-place-include.kfx` (Fixpt's answer, 23), in both
+modes. kfx on fx26.unit: 15.6 s, 7.5 GB (11.0 s, 5.2 GB at C431).

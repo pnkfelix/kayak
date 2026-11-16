@@ -855,7 +855,9 @@
                 ((head-is? (car forms) "define-rec") (onto (cdr (items (car forms))) (maker-defs (cdr forms))))
                 ((maker-state? (car forms)) (maker-defs (cdr forms)))
                 ((maker-type? (car forms)) (maker-defs (cdr forms)))
-                (else (error "kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433)"))))))
+                ((head-is? (car forms) "include") (maker-defs (cdr forms)))
+                (else (error (string-append "kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433): "
+                                            (show-sexp (car forms)))))))))
 
     (define maker-type? (subr kfx (sexp) bool)
       (lambda (f)
@@ -864,7 +866,8 @@
          which the checker reads as a structural sum in a module value."
         (cond ((head-is? f "define-datatype")
                (error "kfx: a datatype in a module maker's module, which the checker reads as a structural sum: define it outside (C436)"))
-              (else (or (head-is? f "define-type") (head-is? f "define-effect"))))))
+              ;; A module it includes, a `use` of its Rust module (C437).
+              (else (or (head-is? f "define-type") (head-is? f "define-effect") (head-is? f "include"))))))
 
     (define maker-state? (subr kfx (sexp) bool)
       (lambda (f)
@@ -888,13 +891,27 @@
           (let ((more (concat (map (lambda ((d sexp))
                                      (let* ((ys (items d)) (n (sym-name (car ys))))
                                        (if (and (not (string-member? n needy))
-                                                (or (string-member? p (names-in (second ys)))
+                                                (or (any? (lambda ((m string)) (or (string=? m p) (string-member? m states))) (names-in (second ys)))
                                                     (any? (lambda ((m string)) (or (string=? m p) (string-member? m states) (string-member? m needy)))
                                                           (names-named-onto (third ys) nil))))
                                            (the strings (list n))
                                            nil)))
                                    defs))))
             (if (null? more) needy (maker-needy p states defs (onto more needy)))))))
+
+    (define-rec
+      (maker-placed (subr kfx (string sexps strings) strings)
+        (lambda (p forms got)
+          "The names of a module maker's abbreviations and effects that name
+           its place `p`, or one of these (C437); found to a fixed point."
+          (let ((more (concat (map (lambda ((f sexp))
+                                     (let ((n (tagcase (second (items f)) (sym (m f2 p2) m) (else other ""))))
+                                       (if (and (not (string=? n "")) (not (string-member? n got))
+                                                (any? (lambda ((m string)) (or (string=? m p) (string-member? m got))) (names-in (third (items f)))))
+                                           (the strings (list n))
+                                           nil)))
+                                   forms))))
+            (if (null? more) got (maker-placed p forms (onto more got)))))))
 
     (define maker-item-type (subr kfx (string sexp) sexp)
       (lambda (p t)
@@ -910,17 +927,82 @@
                "" 0 0))))
 
     (define-rec
+      (pg-bound (subr kfx (sexp) string)
+        (lambda (b)
+          "The name a parameter or binding binds: `x`, `(x T)`."
+          (tagcase b (sym (n f p) n) (lst (ys f l p) (if (null? ys) "" (pg-bound (car ys)))) (else other "")))))
+
+    (define pg-relist (subr kfx (sexp sexps) sexp)
+      (lambda (e xs) (tagcase e (lst (ys f l p) (lst xs f l p)) (else other (lst xs "" 0 0)))))
+
+    (define pg-without (subr kfx (strings strings) strings)
+      (lambda (names bound) (filter (lambda ((n string)) (not (string-member? n bound))) names)))
+
+    (define-rec
+      (pg-take (subr kfx (sexps i64) sexps)
+        (lambda (xs k) (if (or (null? xs) (i64<= k 0)) nil (cons (car xs) (pg-take (cdr xs) (i64- k 1)))))))
+
+    (define-rec
+      (pg-drop (subr kfx (sexps i64) sexps)
+        (lambda (xs k) (if (or (null? xs) (i64<= k 0)) xs (pg-drop (cdr xs) (i64- k 1))))))
+
+    (define pg-nth (subr kfx (sexps i64) sexp)
+      (lambda (xs k) (car (pg-drop xs k))))
+
+    (define-rec
       (place-given (subr kfx (string strings sexp) sexp)
         (lambda (p names e)
           "`e`, its calls of `names` given the place `p` first (C274), then the
-           instance's state (C433)."
+           instance's state (C433); a name a binding form binds there not one
+           of them, nor a binding, nor a `cond`'s test, a call (C437)."
           (tagcase e
             (lst (xs f l q)
-              (cond ((null? xs) e)
-                    ((sym-is? (car xs) "quote") e)
-                    ((tagcase (car xs) (sym (n f2 p2) (string-member? n names)) (else other #f))
-                     (lst (cons (car xs) (cons (sym p "" 0) (cons (sym "maker-st" "" 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr xs))))) f l q))
-                    (else (lst (map (lambda ((x sexp)) (place-given p names x)) xs) f l q))))
+              (let ((h (tagcase (if (null? xs) e (car xs)) (sym (n f2 p2) n) (else other ""))))
+                (cond ((null? xs) e)
+                      ((string=? h "quote") e)
+                      ((and (or (string=? h "lambda") (string=? h "rlambda")) (i64>= (size xs) 3))
+                       (let* ((at (if (string=? h "rlambda") (the i64 2) (the i64 1)))
+                              (ps (pg-nth xs at))
+                              (inner (pg-without names (map pg-bound (items ps)))))
+                         (lst (onto (pg-take xs (i64+ at 1)) (map (lambda ((x sexp)) (place-given p inner x)) (pg-drop xs (i64+ at 1)))) f l q)))
+                      ((and (or (string=? h "let") (string=? h "let*") (string=? h "letrec")) (i64>= (size xs) 3)
+                            (tagcase (second xs) (lst (bs f3 l3 p3) #t) (else other #f)))
+                       (let* ((bs (items (second xs)))
+                              (bound (map (lambda ((b sexp)) (pg-bound (car (items b)))) bs))
+                              (inner (pg-without names bound))
+                              (init-names (if (string=? h "let") names inner)))
+                         (lst (cons (car xs)
+                                    (cons (pg-relist (second xs)
+                                                  (map (lambda ((b sexp))
+                                                         (let ((ys (items b)))
+                                                           (pg-relist b (cons (car ys) (onto (if (i64= (size ys) 3) (the sexps (list (second ys))) nil)
+                                                                                         (the sexps (list (place-given p init-names (last ys)))))))))
+                                                       bs))
+                                          (map (lambda ((x sexp)) (place-given p inner x)) (cdr (cdr xs)))))
+                              f l q)))
+                      ((and (string=? h "tagcase") (i64>= (size xs) 2))
+                       (lst (cons (car xs)
+                                  (cons (place-given p names (second xs))
+                                        (map (lambda ((arm sexp))
+                                               (tagcase arm
+                                                 (lst (ys f4 l4 p4)
+                                                   (if (i64< (size ys) 2)
+                                                       arm
+                                                       (let ((vs (tagcase (second ys) (lst (zs f5 l5 p5) (map pg-bound zs)) (sym (n f5 p5) (the strings (list n))) (else other nil))))
+                                                         (pg-relist arm (cons (car ys) (cons (second ys) (map (lambda ((x sexp)) (place-given p (pg-without names vs) x)) (cdr (cdr ys)))))))))
+                                                 (else other arm)))
+                                             (cdr (cdr xs)))))
+                            f l q))
+                      ((string=? h "cond")
+                       (lst (cons (car xs) (map (lambda ((cl sexp))
+                                                  (tagcase cl
+                                                    (lst (ys f4 l4 p4) (pg-relist cl (map (lambda ((x sexp)) (place-given p names x)) ys)))
+                                                    (else other cl)))
+                                                (cdr xs)))
+                            f l q))
+                      ((string-member? h names)
+                       (lst (cons (car xs) (cons (sym p "" 0) (cons (sym "maker-st" "" 0) (map (lambda ((x sexp)) (place-given p names x)) (cdr xs))))) f l q))
+                      (else (lst (map (lambda ((x sexp)) (place-given p names x)) xs) f l q)))))
             (else other e)))))
 
     (define maker-item-lambda (subr kfx (string strings sexp) sexp)
@@ -1082,21 +1164,46 @@
                  (shown (concat (map (lambda ((it sexp)) (if (head-is? it "val") (the strings (list (sym-name (second (items it))))) nil))
                                      (let ((found (module-body c (string-append "%maker-iface " iface-name)))) (if (null? found) nil (cdr (items (car found))))))))
                  (written (cdr (items (third (items lam)))))
-                 (types (filter maker-type? written))
+                 ;; Its abbreviations written out where named (C437), not Rust aliases.
+                 (abbrevs (filter (lambda ((f sexp)) (and (head-is? f "define-type") (i64= (size (items f)) 3)
+                                                          (tagcase (second (items f)) (sym (n f2 p2) #t) (else other #f))))
+                                  written))
+                 (types (filter (lambda ((f sexp)) (and (maker-type? f) (not (string-member? (show-sexp f) (map show-sexp abbrevs))))) written))
                  ;; Its types, abbreviations and effects (C436), as a top-level module's:
                  ;; its items written where they are known, as `m`'s.
                  (parts (module-parts c name types))
-                 (c (tagcase parts (mparts (inner forms) inner)))
-                 (defs (maker-defs written))
+                 (c (with-locals (tagcase parts (mparts (inner forms) inner))
+                                 (map (lambda ((f sexp)) (string-append "%maker-abbrev " (string-append (sym-name (second (items f))) (string-append " " (show-sexp (third (items f)))))))
+                                      abbrevs)))
+                 ;; Each `->*` item at its type as found (C437), which its signature,
+                 ;; whether it may fail, and whether it needs the instance, are
+                 ;; read from: noted at its lambda, which is rewritten below.
+                 (defs (map (lambda ((d sexp))
+                              (let* ((ys (items d)) (found (fact-said c (third ys) "def-type "))
+                                     ;; A `plambda` of types, its lambda (C437): its Rust a generic
+                                     ;; function, its type's binders.
+                                     (d (if (head-is? (third ys) "plambda") (lst (list (car ys) (second ys) (third (items (third ys)))) "" 0 0) d))
+                                     (ys (items d)))
+                                (if (string=? found "")
+                                    d
+                                    (let ((t (car (read-all found "" 1))))
+                                      (lst (list (car ys)
+                                                 (if (head-is? (second ys) "poly") (lst (list (car (items (second ys))) (second (items (second ys))) t) "" 0 0) t)
+                                                 (third ys))
+                                           "" 0 0)))))
+                            (maker-defs written)))
                  (states (maker-states written))
-                 (siblings (maker-needy p (map (lambda ((d sexp)) (sym-name (car (items d)))) states) defs nil))
+                 ;; Its abbreviations and effects that name the place, or another
+                 ;; that does (C437): an item whose type names one takes the place.
+                 (placed (maker-placed p (filter (lambda ((f sexp)) (or (head-is? f "define-type") (head-is? f "define-effect"))) written) nil))
+                 (siblings (maker-needy p (onto placed (map (lambda ((d sexp)) (sym-name (car (items d)))) states)) defs nil))
                  (pt (string-append "Place_" (camel p)))
                  (named (concat-strings (list iface "<" (lifetime p) ", " pt ">")))
                  (state-named (concat-strings (list iface "State<" (lifetime p) ", " pt ">")))
                  ;; The state's struct is in the module, where the types its fields
                  ;; name are (C436).
                  (state-path (concat-strings (list (mangle name) "::" state-named)))
-                 (c (with-locals c (cons (string-append "%maker-needs " name)
+                 (c (with-locals c (cons (string-append "%maker-needs " name) (cons (string-append "%maker-place " p)
                                          (cons (concat-strings (list "%maker-state-type &" (lifetime p) " " state-named))
                                                (onto (map (lambda ((d sexp)) (string-append "%maker-state " (sym-name (car (items d))))) states)
                                                      ;; An item that takes the instance, given as a value: a
@@ -1108,7 +1215,7 @@
                                                                                     (sym-name (car ys)) " "
                                                                                     (i64->string (size (items (second (items (unpoly (third ys)))))))
                                                                                     (if (and (head-is? t "subr") (i64= (size (items t)) 4) (fallible-effect? c (second (items t)))) " 1" " 0")))))
-                                                          defs))))))
+                                                          defs)))))))
                  (cp (with-locals c (list (string-append "%letrena " p) (string-append "%placeparam " p))))
                  (body (put-sep (lambda ((d sexp) (acc chars))
                                   (let ((ys (items d)))

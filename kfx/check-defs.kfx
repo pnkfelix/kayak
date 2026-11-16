@@ -1020,6 +1020,7 @@
                               (list (bind name sc (if (null? (scope-bind "%module" v)) "global" "item"))))))
       (list (car xs) (second xs) (effect-put (third xs) (effect-sexp (found-latent named name (third xs) (fourth xs)))) (fourth xs)))))
 
+
 (define poly-type? (subr kfx (sexp) bool) (lambda (t) (head-is? t "poly")))
 
 (define-rec
@@ -1621,7 +1622,14 @@
                  (xs (tagcase f (lst (ys f1 l1 p1) ys) (else other nil)))
                  (named? (and (i64>= (size xs) 3) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))))
             (cond ((and (head-is? f "define") (i64= (size xs) 4) named? (arrow-star? (third xs)))
-                   (let ((found (found-define v xs)))
+                   ;; As a group of one (`found-rec`), as a top-level module's are:
+                   ;; an item is no global, so that its calls of itself, if they
+                   ;; end, read nothing (C437), where a top-level definition's
+                   ;; read its global, and so spin (`found-define`).
+                   (let ((found (tagcase (car (found-rec (tagcase f (lst (ys f1 l1 p1) (near v f1 l1 p1)) (else other v))
+                                                         (list (relist f (cdr xs)))))
+                                  (lst (bs bf bl bp) (the sexps (cons (car xs) bs)))
+                                  (else other xs))))
                      (maker-items-found (with-binds v (list (local v (sym-name (second xs)) (parse-type v (cv-tvars v) (third found)))))
                                         (cdr its) (cons (relist f found) out) (onto (found-types xs found) fs))))
                   ((and (head-is? f "define") (i64= (size xs) 4) named?)
@@ -1629,13 +1637,24 @@
                                       (cdr its) (cons f out) fs))
                   ((head-is? f "define-rec")
                    (let ((found (if (any? (lambda ((b sexp)) (and (i64= (size (items b)) 3) (arrow-star? (second (items b))))) (cdr xs))
-                                    (the sexps (cons (car xs) (found-rec v (cdr xs))))
+                                    (the sexps (cons (car xs) (found-rec (tagcase f (lst (ys f1 l1 p1) (near v f1 l1 p1)) (else other v)) (cdr xs))))
                                     xs)))
                      (maker-items-found (with-binds v (concat (map (lambda ((b sexp))
                                                                      (let ((ys (items b)))
                                                                        (if (i64= (size ys) 3) (the binds (list (local v (sym-name (car ys)) (parse-type v (cv-tvars v) (second ys))))) nil)))
                                                                    (cdr found))))
                                         (cdr its) (cons (relist f found) out) (onto (found-types xs found) fs))))
+                  ;; A module it includes, its items in scope (C437).
+                  ((and (head-is? f "include") (i64= (size xs) 2))
+                   (maker-items-found (with expressions (include-opened v (new-state) (second xs))) (cdr its) (cons f out) fs))
+                  ;; Its effects and abbreviations, which name its place (C436),
+                  ;; bound for the items after them, as `mod-types` binds them.
+                  ((and (head-is? f "define-effect") (i64= (size xs) 3) named?)
+                   (maker-items-found (with-type-binds v nil (list (effdef (sym-name (second xs)) (parse-effect v (cv-tvars v) (third xs)))))
+                                      (cdr its) (cons f out) fs))
+                  ((and (head-is? f "define-type") (i64= (size xs) 3) named?)
+                   (maker-items-found (with-type-binds v (list (type-bind (sym-name (second xs)) (parse-type v (cv-tvars v) (third xs)))) nil)
+                                      (cdr its) (cons f out) fs))
                   (else (maker-items-found v (cdr its) (cons f out) fs))))))))
 
 (define maker-found (subr kfx (cv sexp) (tupleof sexp facts))
@@ -1649,7 +1668,10 @@
            (m (items (third lam)))
            ;; Each place a region variable, as a `poly`'s place binder is:
            ;; `'NAME` and `%place NAME`.
-           (r (maker-items-found (with-tvars (tagcase form (lst (ys f l p) (near v f l p)) (else other v))
+           ;; In a module, so that its items, named, read no global, as a
+           ;; top-level module's do not (C437).
+           (r (maker-items-found (with-tvars (with-binds (tagcase form (lst (ys f l p) (near v f l p)) (else other v))
+                                                         (list (bind "%module" (scheme nil (ty-unit)) (sym-name (second xs)))))
                                              (concat (map (lambda ((q string)) (the strings (list (string-append "'" q) (string-append "%place " q)))) ps)))
                                  (cdr m) nil nil)))
       (tuple (relist form (list (car xs) (second xs) (third xs)

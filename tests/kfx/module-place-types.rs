@@ -32,12 +32,10 @@ impl<'p, Place_P> Copy for Shapes<'p, Place_P> {}
 pub mod shapes_in {
     use super::*;
 
-    pub type ShapeCell = Ref<List<&'static Shape>>;
-
     /// What shapes-in makes (C274): its module's items, the place given, and its
     /// values, made as it is made (C433).
     pub struct ShapesState<'p, Place_P> {
-        pub kept: std::cell::Cell<Option<ShapeCell>>,
+        pub kept: std::cell::Cell<Option<RefAt<'p, List<&'static Shape>>>>,
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
     }
 

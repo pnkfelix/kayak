@@ -2759,7 +2759,29 @@ pub fn maker_items_found(mut v: &'static Cv, mut its: Sexps, mut out: Sexps, mut
                 }
             });
             if (head_is_p(f, str_lit("define")) && i64_eq(size(xs), 4i64) && named_p && arrow_star_p(third(xs))) {
-                let found = found_define(v, xs);
+                let found = {
+                    let tagcase_ = car(found_rec({
+                        let tagcase_ = f;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f1, l1, p1) => {
+                                near(v, f1, l1, p1)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                v
+                            }
+                        }
+                    }, kayak_rt::heap_cons(relist(f, cdr(xs)), kayak_rt::nil())));
+                    match *tagcase_ {
+                        Sexp::Lst(bs, bf, bl, bp) => {
+                            the::<Sexps>(kayak_rt::heap_cons(car(xs), bs))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            xs
+                        }
+                    }
+                };
                 (v, its, out, fs) = (with_binds(v, kayak_rt::heap_cons(local(v, sym_name(second(xs)), parse_type(v, cv_tvars(v), third(found))), kayak_rt::nil())), cdr(its), kayak_rt::heap_cons(relist(f, found), out), onto(found_types(xs, found), fs));
                 continue;
             } else if (head_is_p(f, str_lit("define")) && i64_eq(size(xs), 4i64) && named_p) {
@@ -2769,7 +2791,18 @@ pub fn maker_items_found(mut v: &'static Cv, mut its: Sexps, mut out: Sexps, mut
                 let found = if any_p(lambda1s(move |b: &'static Sexp| {
                     (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b))))
                 }), cdr(xs)) {
-                    the::<Sexps>(kayak_rt::heap_cons(car(xs), found_rec(v, cdr(xs))))
+                    the::<Sexps>(kayak_rt::heap_cons(car(xs), found_rec({
+                        let tagcase_ = f;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f1, l1, p1) => {
+                                near(v, f1, l1, p1)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                v
+                            }
+                        }
+                    }, cdr(xs))))
                 } else {
                     xs
                 };
@@ -2781,6 +2814,15 @@ pub fn maker_items_found(mut v: &'static Cv, mut its: Sexps, mut out: Sexps, mut
                         nil::<&'static Bind>()
                     }
                 }), cdr(found)))), cdr(its), kayak_rt::heap_cons(relist(f, found), out), onto(found_types(xs, found), fs));
+                continue;
+            } else if (head_is_p(f, str_lit("include")) && i64_eq(size(xs), 2i64)) {
+                (v, its, out) = (expressions::include_opened(v, new_state(), second(xs)), cdr(its), kayak_rt::heap_cons(f, out));
+                continue;
+            } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(xs), 3i64) && named_p) {
+                (v, its, out) = (with_type_binds(v, nil::<&'static Bind>(), kayak_rt::heap_cons(effdef(sym_name(second(xs)), parse_effect(v, cv_tvars(v), third(xs))), kayak_rt::nil())), cdr(its), kayak_rt::heap_cons(f, out));
+                continue;
+            } else if (head_is_p(f, str_lit("define-type")) && i64_eq(size(xs), 3i64) && named_p) {
+                (v, its, out) = (with_type_binds(v, kayak_rt::heap_cons(type_bind(sym_name(second(xs)), parse_type(v, cv_tvars(v), third(xs))), kayak_rt::nil()), nil::<&'static Effdef>()), cdr(its), kayak_rt::heap_cons(f, out));
                 continue;
             } else {
                 (its, out) = (cdr(its), kayak_rt::heap_cons(f, out));
@@ -2813,7 +2855,7 @@ pub fn maker_found(v: &'static Cv, form: &'static Sexp) -> Product_11_12<&'stati
         }
     }), items(second(lam)));
     let m = items(third(lam));
-    let r = maker_items_found(with_tvars({
+    let r = maker_items_found(with_tvars(with_binds({
         let tagcase_ = form;
         match *tagcase_ {
             Sexp::Lst(ys, f, l, p) => {
@@ -2824,7 +2866,7 @@ pub fn maker_found(v: &'static Cv, form: &'static Sexp) -> Product_11_12<&'stati
                 v
             }
         }
-    }, concat(map(lambda1s(move |q: Str| {
+    }, kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), sym_name(second(xs))), kayak_rt::nil())), concat(map(lambda1s(move |q: Str| {
         the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("'"), q), kayak_rt::heap_cons(string_append(str_lit("%place "), q), kayak_rt::nil())))
     }), ps))), cdr(m), nil::<&'static Sexp>(), nil::<&'static Fact>());
     Product_11_12(relist(form, kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(relist(fourth(xs), kayak_rt::heap_cons(car(lam), kayak_rt::heap_cons(second(lam), kayak_rt::heap_cons(relist(third(lam), kayak_rt::heap_cons(car(m), r.0)), kayak_rt::nil())))), kayak_rt::nil()))))), r.1)
