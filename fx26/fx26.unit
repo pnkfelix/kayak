@@ -11,8 +11,8 @@
 ../kfx/check-exprs.kfx
 ../kfx/built-in.kfx
 ../kfx/check-defs.kfx
-; The macro expander (C429; docs/research/fx26-macros.md), between the reader and the checker:
-macros/expander.kfx
+; The macro expander's bridge (C443: the expander, macros/expander.fx, a file of a place, loaded where it is used; C429, docs/research/fx26-macros.md), between the reader and the checker:
+macros-bridge.kfx
 ../kfx/regs-isa.kfx
 ir.kfx
 prims.kfx

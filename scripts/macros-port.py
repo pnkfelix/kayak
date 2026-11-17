@@ -332,7 +332,7 @@ def unit_names():
     names = set()
     for line in open(os.path.join(ROOT, "fx26", "fx26.unit")):
         line = line.strip()
-        if not line or line.startswith((";", "--")) or line.startswith("macros/") or line == "macros-shim.kfx":
+        if not line or line.startswith((";", "--")) or line.startswith("macros/") or line in ("macros-shim.kfx", "macros-bridge.kfx"):
             continue
         s = open(os.path.join(ROOT, "fx26", line), encoding="utf-8").read()
         names |= defined_in(s)
@@ -816,33 +816,26 @@ def made():
     shim = open(SHIM, encoding="utf-8").read()
     outside, inside = hoisted([translate(prog, n, keep, names) for n in files])
     body = "\n".join(inside)
-    text = ('"expander.kfx: Fixpt\'s macro expander written in FX-26, its files made one\n'
-            ' KFX module by scripts/macros-port.py (C429): edit that, not this. Its\n'
-            ' files are modules in Fixpt, their items no globals; here they are one\n'
-            ' module\'s items, so that naming one reads no global either, as there.\n'
-            ' The shim (fx26/macros-shim.kfx) first; then each file, in the order\n'
-            ' its loads need, the expander\'s whole, the parser\'s files\' what it\n'
-            ' reaches. Made a module maker (C437), each instance its own state,\n'
-            ' Fixpt\'s five regions its one place: its types first, but those\n'
-            ' that name the place, which the maker\'s module defines.\n' + marks + '"\n\n'
-            '"The expander\'s types that name no region of its, a module of its own,\n'
-            ' which the maker includes: its constructors are no globals, as in Fixpt,\n'
-            ' where each is another file\'s item (C437)."\n'
-            '(define mx-types\n  (module\n' + "\n".join(outside) + "))\n\n"
-            ';;; ============================================================ the maker\n\n'
-            '"What an instance of the expander gives: a program\'s forms expanded;\n'
-            ' a REPL\'s entries, each from the reading state the one before left,\n'
-            ' and its drafts (C439)."\n'
-            '(define-type (mx-face (mxp place))\n'
-            '  (moduleof (val drive-program (subr ' + MX_EFFECT + ' (sexps) sexps))\n'
-            '            (val drive-entry (subr ' + MX_EFFECT + ' (sexps int) (tupleof sexps string int)))\n'
-            '            (val drive-draft (subr ' + MX_EFFECT + ' (sexps int) (tupleof sexps string)))\n'
-            '            (val drive-macros? (subr ' + MX_EFFECT + ' (int) bool))))\n\n'
-            '"An instance of the expander, its state made in place `mxp`."\n'
-            '(define mx-in (poly ((mxp place)) (subr ' + MX_MAKES + ' ((place mxp)) (mx-face mxp)))\n'
-            '  (lambda (mxp)\n'
-            '    (module\n      (include mx-types)\n' + placed(shim + "\n" + body + "\n" + open(DRIVER, encoding="utf-8").read()) + ")))\n")
-    return files, {"expander.kfx": text}
+    header = ('"expander.fx: Fixpt\'s macro expander written in FX-26, its files made one\n'
+              ' KFX module file by scripts/macros-port.py (C429): edit that, not this.\n'
+              ' Its files are modules in Fixpt, their items no globals; here they are\n'
+              ' one file\'s items, so that naming one reads no global either, as there.\n'
+              ' The shim (fx26/macros-shim.kfx) first; then each file, in the order\n'
+              ' its loads need, the expander\'s whole, the parser\'s files\' what it\n'
+              ' reaches; then the driver (fx26/macros-driver.kfx). A file of a place\n'
+              ' (C442, C443), Fixpt\'s five regions its one, each load an instance in\n'
+              ' the place given, its state its own: a process may load one, as a\n'
+              ' load sees the standard environment alone. Its types, but those that\n'
+              ' name the place, are expander-types.fx\'s, loaded once for all.\n' + marks + '"\n')
+    text = ("(module-parameters ((mxp place)))\n" + header +
+            "(include (load-module \"expander-types.fx\"))\n\n" +
+            placed(shim + "\n" + body + "\n" + open(DRIVER, encoding="utf-8").read()))
+    types = (';; expander-types.fx: the types of Fixpt\'s macro expander that name no\n'
+             ';; region of its, written by scripts/macros-port.py (C429, C443): edit\n'
+             ';; that, not this. A file of no parameters, loaded once for every\n'
+             ';; instance of expander.fx: its constructors are no globals, as in Fixpt,\n'
+             ';; where each is another file\'s item.\n' + "\n".join(outside))
+    return files, {"expander.fx": text, "expander-types.fx": types}
 
 
 def main():
@@ -859,7 +852,7 @@ def main():
         return
     os.makedirs(OUT, exist_ok=True)
     for old in os.listdir(OUT):
-        if old.endswith(".kfx") and old not in texts:
+        if old.endswith((".kfx", ".fx")) and old not in texts:
             os.remove(os.path.join(OUT, old))
     for n, s in texts.items():
         with open(os.path.join(OUT, n), "w", encoding="utf-8") as f:
@@ -877,7 +870,9 @@ def unit_listed(order):
     j = i + 1
     while j < len(lines) and (lines[j].startswith("macros/") or lines[j] == "macros-shim.kfx"):
         j += 1
-    lines[i + 1:j] = ["macros/expander.kfx"]
+    # The expander is loaded where it is used (C443); the unit has the
+    # bridge to it.
+    lines[i + 1:j] = ["macros-bridge.kfx"]
     with open(UNIT, "w") as f:
         f.write("\n".join(lines))
 

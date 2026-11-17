@@ -3485,22 +3485,42 @@
                    as)))))
 
 (define-rec
-  (place-vals (subr kfx (sexps (listof place-def acyclic) (listof place-def acyclic)) sexps)
-    (lambda (its effs types)
-      "The interface of a file of a place: each of its procedures whose type
-       is written, a `subr` (not `->*`'s, found), `(val n T)`, `T` spelt out."
+  (type-names-in (subr kfx (sexps) strings)
+    (lambda (its)
+      "The types `its` define, a module's among them (the loads' a file of a
+       place loads, C443)."
       (concat (map (lambda ((g sexp))
-                     (cond ((head-is? g "hide") (place-vals (cdr (items g)) effs types))
+                     (cond ((or (head-is? g "hide") (head-is? g "module")) (type-names-in (cdr (items g))))
+                           ((and (head-is? g "define") (i64= (size (items g)) 3)) (type-names-in (list (third (items g)))))
+                           ((and (or (head-is? g "define-type") (head-is? g "define-datatype") (head-is? g "define-generative"))
+                                 (i64> (size (items g)) 1))
+                            (tagcase (second (items g))
+                              (sym (n f p) (the strings (list n)))
+                              (lst (xs f l p) (if (null? xs) nil (tagcase (car xs) (sym (n f2 p2) (the strings (list n))) (else other nil))))
+                              (else other nil)))
+                           (else nil)))
+                   its)))))
+
+(define-rec
+  (place-vals (subr kfx (sexps (listof place-def acyclic) (listof place-def acyclic) strings) sexps)
+    (lambda (its effs types foreign)
+      "The interface of a file of a place: each of its procedures whose type
+       is written, a `subr` (not `->*`'s, found), `(val n T)`, `T` spelt out;
+       not one whose type names a type of a file it loads (`foreign`), which
+       the top level cannot name (C443): kfx refuses a `with` that names one."
+      (concat (map (lambda ((g sexp))
+                     (cond ((head-is? g "hide") (place-vals (cdr (items g)) effs types foreign))
                            ((and (head-is? g "define") (i64= (size (items g)) 4) (head-is? (third (items g)) "subr")
-                                 (not (sym-is? (second (items (third (items g)))) "%found")))
+                                 (not (sym-is? (second (items (third (items g)))) "%found"))
+                                 (not (any? (lambda ((n string)) (string-member? n foreign)) (names-in (place-spelt (third (items g)) effs types 0)))))
                             (tagcase (second (items g))
                               (sym (n f p) (the sexps (list (lst (list (sym "val" f p) (second (items g)) (place-spelt (third (items g)) effs types 0)) f 0 p))))
                               (else other nil)))
                            (else nil)))
                    its)))))
 
-(define place-made (subr kfx (string string sexps string string i64 i64) sexps)
-  (lambda (name pn its file f l p)
+(define place-made (subr kfx (string string sexps strings string string i64 i64) sexps)
+  (lambda (name pn its foreign file f l p)
     "The maker of a file of place `pn`, `name`, its items `its`: its
      interface's type, `name--face`, and its definition."
     (let* ((effs (place-names-of its "define-effect"))
@@ -3512,7 +3532,7 @@
                                 (lst (list (sym "alloc" f p) (sym pn f p)) f l p))
                           f l p)))
       (list (lst (list (sym "define-type" f p) (lst (list (sym face f p) pb) f l p)
-                       (lst (cons (sym "moduleof" f p) (place-vals its effs types)) f l p))
+                       (lst (cons (sym "moduleof" f p) (place-vals its effs types foreign)) f l p))
                  f l p)
             (lst (list (sym "define" f p) (sym name f p)
                        (lst (list (sym "poly" f p) (lst (list pb) f l p)
@@ -3604,7 +3624,7 @@
                                       (pn (place-parameter forms))
                                       (inner (spliced-each (run-items (cdr forms)) (directory-of path) loaded (cons path chain) known nil nil f l p))
                                       (name (string-append "made--load--" (string-append (i64->string (size (spliced-known inner))) (string-append "--" (file-tag f)))))
-                                      (made (place-made name pn (items (spliced-form inner)) path f l p)))
+                                      (made (place-made name pn (items (spliced-form inner)) (type-names-in (spliced-defs inner)) path f l p)))
                                  (spliced-to (lst (list (sym name f p) (car args)) f l p)
                                              (onto (spliced-defs inner) made)
                                              (cons (keyed (string-append "%place " path) name) (spliced-known inner)))))

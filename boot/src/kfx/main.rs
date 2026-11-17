@@ -138,6 +138,33 @@ pub fn line_trimmed(s: Str) -> Str {
     rev_to_string(drop_space(rev_onto(drop_space(string_chars(s)), nil::<char>())))
 }
 
+/// `loads-read`, of a unit's file: each path from the manifest's
+/// directory `dir`, read there (C443).
+pub async fn unit_loads_read(mut rt: Drt, mut dir: Str, mut todo: Strings, mut done: Fileds) -> Result<Fileds, Unwind> {
+    loop {
+        if null_p(todo) {
+            return Ok(done);
+        } else if any_p(lambda1s(move |s: &'static Filed| {
+            let tagcase_ = s;
+            match *tagcase_ {
+                Filed::Filed(n, t) => {
+                    string_eq_p(n, car(todo))
+                }
+            }
+        }), done) {
+            todo = cdr(todo);
+            continue;
+        } else if has_prefix_p(car(todo), str_lit("fx26:")) {
+            todo = cdr(todo);
+            continue;
+        } else {
+            let text = kayak_rt::suspend::body(read_text(rt, path_joined(dir, car(todo)))).await?;
+            (todo, done) = (onto(load_paths_all(read_all(text, car(todo), 1i64), directory_of(car(todo))), cdr(todo)), kayak_rt::heap_cons(filed(car(todo), text), done));
+            continue;
+        }
+    }
+}
+
 /// A manifest's files, in order: a line each, relative to the manifest;
 /// blank lines and `;` comments skipped.
 pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result<Sources, Unwind> {
@@ -152,7 +179,14 @@ pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result
             } else {
                 let path = path_joined(dir, line);
                 let text = kayak_rt::suspend::body(read_text(rt, path)).await?;
-                return Ok(kayak_rt::heap_cons(source(stem(path), text), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?));
+                return Ok(kayak_rt::heap_cons(source(stem(path), text), onto(map(lambda1s(move |x: &'static Filed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Filed::Filed(n, t) => {
+                            source(string_append(str_lit("%load:"), n), t)
+                        }
+                    }
+                }), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit("")), nil::<&'static Filed>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
             }
         }
     }

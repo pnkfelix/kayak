@@ -1554,6 +1554,8 @@ Twobit-style optimizations in KFX.
   C442): kfx took it and its synchronous Rust built, the async mode's not
   (a call of the function then a future no one awaits). To refuse it, as a
   name defined twice.
+- A unit's loads (C443) are in no memo's key: `kfx --cache` would keep
+  a form's Rust though a file it loads changed.
 - `kfx --cache` on the engine's unit fails, "substring range out of
   bounds", with or without the expander (C432, found measuring): the
   memos are used for kfx's own unit alone, so far.

@@ -136,15 +136,46 @@ pub fn compile(src: Str) -> Str {
 
 // A file's name, without `.kfx`, and its text; a Rust file's name, and its
 // text.
-/// A file's forms, the modules made in place defined before theirs (C90).
+/// A file's forms, the modules made in place defined before theirs (C90),
+/// the files it loads `loaded`'s (C443).
 #[inline]
-pub fn source_forms(s: &'static Source) -> Sexps {
+pub fn source_forms(s: &'static Source, loaded: Fileds) -> Sexps {
     let tagcase_ = s;
     match *tagcase_ {
         Source::Source(name, text) => {
-            with_loads(read_all(text, string_append(name, str_lit(".kfx")), 1i64), string_append(name, str_lit(".kfx")), nil::<&'static Filed>())
+            with_loads(read_all(text, string_append(name, str_lit(".kfx")), 1i64), string_append(name, str_lit(".kfx")), loaded)
         }
     }
+}
+
+// The files a unit's files load (C443): among its sources, each named
+// `%load:PATH`, its path from the manifest's directory, as its files' are;
+// and the unit's own files, the rest.
+pub fn unit_loaded(ss: Sources) -> Fileds {
+    concat(map(lambda1s(move |s: &'static Source| {
+        let tagcase_ = s;
+        match *tagcase_ {
+            Source::Source(n, t) => {
+                if has_prefix_p(n, str_lit("%load:")) {
+                    the::<Fileds>(kayak_rt::heap_cons(filed(after_prefix(n, str_lit("%load:")), t), kayak_rt::nil()))
+                } else {
+                    nil::<&'static Filed>()
+                }
+            }
+        }
+    }), ss))
+}
+
+#[inline]
+pub fn unit_files(ss: Sources) -> Sources {
+    filter(lambda1s(move |s: &'static Source| {
+        let tagcase_ = s;
+        match *tagcase_ {
+            Source::Source(n, t) => {
+                not(has_prefix_p(n, str_lit("%load:")))
+            }
+        }
+    }), ss)
 }
 
 #[inline]
@@ -193,7 +224,11 @@ pub fn modules_put(c: &'static Ctx, ss: Sources, fss: SourcesForms) -> Outputs {
 /// `runtime`'s own may declare syscalls (C225: its manifest says
 /// `--syscalls`). `async`: every procedure an `async fn` (C371).
 pub fn compile_units_as(ss: Sources, runtime: bool, r#async: bool) -> Outputs {
-    let fss = map(&source_forms, ss);
+    let loaded = unit_loaded(ss);
+    let ss = unit_files(ss);
+    let fss = map(lambda1s(move |s: &'static Source| {
+        source_forms(s, loaded)
+    }), ss);
     let forms = concat(fss);
     let checked = restrict_checked(check_program_as(forms, runtime), forms);
     let fs = moded_facts(verdict_facts(checked), r#async);
@@ -272,8 +307,12 @@ pub fn sources_texts(ss: Sources, fss: SourcesForms) -> Strings {
     }
 }
 
-pub fn compile_units_memo(ss: Sources, old: Memos, runtime: bool) -> &'static Compiled {
-    let fss = map(&source_forms, ss);
+pub fn compile_units_memo(ss0: Sources, old: Memos, runtime: bool) -> &'static Compiled {
+    let loaded = unit_loaded(ss0);
+    let ss = unit_files(ss0);
+    let fss = map(lambda1s(move |s: &'static Source| {
+        source_forms(s, loaded)
+    }), ss);
     let forms = concat(fss);
     let texts = sources_texts(ss, fss);
     let tagcase_ = {

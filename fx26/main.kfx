@@ -83,8 +83,10 @@
   (lambda (forms)
     (if (forms-mention? forms macro-heads)
         ;; An instance of the expander for the program, its state its own,
-        ;; made in a place of its own (C437).
-        (letrena p (let ((x (mx-in p))) (with x (drive-program forms))))
+        ;; made in a place of its own (C437): a file of a place, loaded
+        ;; (C443), given the forms as located datums (`macros-bridge.kfx`).
+        (letrena p (let ((x ((proj (load-module "macros/expander.fx") p))))
+                     (located-sexps (with x (drive-program (sexps-located forms))))))
         forms)))
 
 (define-rec

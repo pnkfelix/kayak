@@ -21,8 +21,10 @@
 "Each list's position and line, as met, the last first; then, sorted,
  the positions and the lines."
 (define drive-met (ref (listof (tupleof int int) acyclic) @ms) (new nil))
-(define drive-at (ref (flatarrayof i64 @ms) @ms) (new (make-flatarray-i64 1 0)))
-(define drive-line (ref (flatarrayof i64 @ms) @ms) (new (make-flatarray-i64 1 0)))
+;; Arrays of the standard environment, not the prelude's flat arrays, which
+;; a file loaded does not see (C443).
+(define drive-at (ref (arrayof i64 @ms) @ms) (new (make-array 1 (the i64 0))))
+(define drive-line (ref (arrayof i64 @ms) @ms) (new (make-array 1 (the i64 0))))
 (define drive-count (ref i64 @ms) (new 0))
 
 (define drive-length (->* ((listof string acyclic)) int)
@@ -63,24 +65,24 @@
   (lambda (xs i)
     (if (null? xs)
         #u
-        (begin (flatarray-set-i64! (get drive-at) i (int->i64 (extract (car xs) 1)))
-               (flatarray-set-i64! (get drive-line) i (int->i64 (extract (car xs) 2)))
+        (begin (array-set! (get drive-at) (i64->int i) (int->i64 (extract (car xs) 1)))
+               (array-set! (get drive-line) (i64->int i) (int->i64 (extract (car xs) 2)))
                (drive-fill! (cdr xs) (i64+ i 1))))))
 "The lines met, made a table to search."
 (define drive-lines! (->* () unit)
   (lambda ()
     (let* ((xs (drive-sorted (get drive-met))) (n (i64+ 1 (drive-count-of xs 0))))
-      (begin (set drive-at (make-flatarray-i64 n 0))
-             (set drive-line (make-flatarray-i64 n 1))
+      (begin (set drive-at (make-array (i64->int n) (the i64 0)))
+             (set drive-line (make-array (i64->int n) (the i64 1)))
              (set drive-count (i64- n 1))
              (drive-fill! xs 0)))))
 "The line of the last list met at or before place `a`, by halving."
 (define drive-search (->* (i64 i64 i64) i64)
   (lambda (a lo hi)
     (if (i64>= lo hi)
-        (if (i64= lo 0) 1 (flatarray-ref-i64 (get drive-line) (i64- lo 1)))
+        (if (i64= lo 0) 1 (array-ref (get drive-line) (i64->int (i64- lo 1))))
         (let ((mid (i64-quotient (i64+ lo hi) 2)))
-          (if (i64<= (flatarray-ref-i64 (get drive-at) mid) a)
+          (if (i64<= (array-ref (get drive-at) (i64->int mid)) a)
               (drive-search a (i64+ mid 1) hi)
               (drive-search a lo mid))))))
 "Place `a`, a text's or a key a template's part has, as the file, the
@@ -94,92 +96,94 @@
           (tuple "" 0 0)
           (tuple (drive-nth fs i) (drive-search (int->i64 a) 0 (get drive-count)) (int->i64 (remainder a load-base)))))))
 
-;;; ------------------------------------------------------------ datums and syntax
+;;; ------------------------------------------------------------ located datums and syntax
 
-(define drive-unsupported (->* (sexp) void)
-  (lambda (e) (error (string-append "kfx: a number KFX's reader read that the expander takes not yet: " (show-sexp e)))))
-(define drive-atom (->* (sexp) datum)
-  (lambda (e)
-    (tagcase e
-      ;; `#t` and `#f` as Fixpt's reader reads them, booleans (kfx's, names).
-      (sym (n f p) (cond ((string=? n "#t") (the datum #t)) ((string=? n "#f") (the datum #f)) (else (the datum (string->symbol n)))))
-      (num (i f p) (the datum (i64->int i)))
-      (str (x f p) (the datum x))
-      (chr (c f p) (the datum c))
-      (else other (begin (drive-unsupported e) (the datum nil))))))
-"Whether a list's items are dotted: `.` its next to last."
-(define drive-dotted? (->* (sexps) bool)
+"The forms given and made, as located datums (C443), which the engine's
+ reading makes of its own and reads back (`macros-bridge.kfx`): a node an
+ atom, `(0 file line pos d)`, or a list, `(1 file line pos node ...)`; a
+ dotted list's `.` and a vector's `#vector` among its nodes, as kayak's
+ reader reads them. Standard data, so that this file, an instance made in
+ a place of its own, sees nothing of the program that loads it."
+(define loc-nth (->* (datum int) datum)
+  (lambda (d i) (if (pair? d) (if (= i 0) (car d) (loc-nth (cdr d) (- i 1))) (the datum nil))))
+(define loc-after (->* (datum int) datum)
+  (lambda (d i) (if (and (pair? d) (> i 0)) (loc-after (cdr d) (- i 1)) d)))
+(define loc-int (->* (datum) int) (lambda (d) (if (int? d) d 0)))
+(define loc-string (->* (datum) string) (lambda (d) (if (string? d) d "")))
+(define loc-nodes (->* (datum) (listof datum acyclic))
+  (lambda (d) (if (pair? d) (cons (car d) (loc-nodes (cdr d))) nil)))
+"Whether node `n` is the atom `name`, a symbol."
+(define loc-is? (->* (datum string) bool)
+  (lambda (n name)
+    (and (= (loc-int (loc-nth n 0)) 0)
+         (let ((d (loc-nth n 4))) (and (symbol? d) (string=? (symbol->string d) name))))))
+"Whether a list's nodes are dotted: `.` its next to last."
+(define drive-dotted? (->* ((listof datum acyclic)) bool)
   (lambda (xs)
     (cond ((or (null? xs) (null? (cdr xs)) (null? (cdr (cdr xs)))) #f)
-          ((null? (cdr (cdr (cdr xs)))) (and (sym-is? (car (cdr xs)) ".") (not (sym-is? (car xs) "."))))
+          ((null? (cdr (cdr (cdr xs)))) (and (loc-is? (car (cdr xs)) ".") (not (loc-is? (car xs) "."))))
           (else (drive-dotted? (cdr xs))))))
-(define drive-before-dot (->* (sexps) sexps)
-  (lambda (xs) (if (sym-is? (car xs) ".") nil (cons (car xs) (drive-before-dot (cdr xs))))))
+(define drive-before-dot (->* ((listof datum acyclic)) (listof datum acyclic))
+  (lambda (xs) (if (loc-is? (car xs) ".") nil (cons (car xs) (drive-before-dot (cdr xs))))))
+(define drive-last (->* ((listof datum acyclic)) datum)
+  (lambda (xs) (if (null? (cdr xs)) (car xs) (drive-last (cdr xs)))))
 (define-rec
-  (drive-syn (->* (sexp) syn)
+  (drive-syn (->* (datum) syn)
     (lambda (e)
-      "The reader's datum as Fixpt's syntax, its list's line kept."
-      (tagcase e
-        (lst (xs f l p)
-          (let ((a (drive-place f p)))
-            (begin
-              (set drive-met (cons (tuple a (i64->int l)) (get drive-met)))
-              (cond ((and (not (null? xs)) (sym-is? (car xs) "#vector"))
-                     (let ((items (drive-syns (cdr xs)))) (vec items (mx-datum-list (syn-datums items)) a a 0)))
-                    ((drive-dotted? xs)
-                     (let ((items (drive-syns (drive-before-dot xs))) (tail (drive-syn (last xs))))
-                       (dotted items tail (mx-datum-dotted (syn-datums items) (syn->datum tail)) a a 0)))
-                    (else (let ((items (drive-syns xs))) (mk-list items a a)))))))
-        (else other (let ((a (drive-place (datum-file e) (datum-pos e)))) (atom (drive-atom e) a a 0))))))
-  (drive-syns (->* (sexps) syns-a)
+      "A located datum as Fixpt's syntax, its list's line kept."
+      (let ((a (drive-place (loc-string (loc-nth e 1)) (int->i64 (loc-int (loc-nth e 3))))))
+        (if (= (loc-int (loc-nth e 0)) 1)
+            (let ((xs (loc-nodes (loc-after e 4))))
+              (begin
+                (set drive-met (cons (tuple a (loc-int (loc-nth e 2))) (get drive-met)))
+                (cond ((and (not (null? xs)) (loc-is? (car xs) "#vector"))
+                       (let ((items (drive-syns (cdr xs)))) (vec items (mx-datum-list (syn-datums items)) a a 0)))
+                      ((drive-dotted? xs)
+                       (let ((items (drive-syns (drive-before-dot xs))) (tail (drive-syn (drive-last xs))))
+                         (dotted items tail (mx-datum-dotted (syn-datums items) (syn->datum tail)) a a 0)))
+                      (else (let ((items (drive-syns xs))) (mk-list items a a))))))
+            (atom (loc-nth e 4) a a 0)))))
+  (drive-syns (->* ((listof datum acyclic)) syns-a)
     (lambda (xs) (if (null? xs) nil (cons (drive-syn (car xs)) (drive-syns (cdr xs)))))))
 
-(define-rec
-  (drive-datum (->* (datum string i64 i64) sexp)
-    (lambda (d f l p)
-      "A datum, as the reader would have read it, at `f`, `l`, `p`."
-      (cond ((null? d) (lst nil f l p))
-            ((symbol? d) (sym (symbol->string d) f p))
-            ((int? d) (num (int->i64 d) f p))
-            ((string? d) (str d f p))
-            ((char? d) (chr d f p))
-            ((bool? d) (sym (if d "#t" "#f") f p))
-            ((pair? d) (lst (drive-datums d f l p) f l p))
-            (else (sym "#u" f p)))))
-  (drive-datums (->* (datum string i64 i64) sexps)
-    (lambda (d f l p)
-      (cond ((null? d) nil)
-            ((pair? d) (let ((x (car d))) (cons (drive-datum x f l p) (drive-datums (cdr d) f l p))))
-            (else (list (sym "." f p) (drive-datum d f l p)))))))
+"Node of kind `k` at `f`, `l`, `p`: an atom of `d`, or a list of nodes `d`."
+(define loc-dotted (->* ((listof datum acyclic) datum) datum)
+  (lambda (xs tail) (if (null? xs) tail (the datum (cons (car xs) (loc-dotted (cdr xs) tail))))))
+(define loc-node (->* (int string i64 i64 datum) datum)
+  (lambda (k f l p d)
+    (loc-dotted (list (the datum k) (the datum f) (the datum (i64->int l)) (the datum (i64->int p)))
+               (if (= k 0) (loc-dotted (list d) (the datum nil)) d))))
 "What the expander noted of the `with` at `a`..`b` (`with-uses`), for the
  checker (Fixpt's `with_as`; C440): each macro its body uses by a name,
  and each name a template's `(with m name)` projects (`#t`), as `(name
  projection?)`, in the order met."
-(define drive-uses-in (->* (uses int int string i64 i64) sexps)
+(define drive-uses-in (->* (uses int int string i64 i64) (listof datum acyclic))
   (lambda (us a b f l p)
     (cond ((null? us) nil)
           ((and (= (extract (car us) 1) a) (= (extract (car us) 2) b))
-           (cons (lst (list (sym (symbol->string (extract (car us) 3)) f p) (sym (if (extract (car us) 6) "#t" "#f") f p)) f l p)
+           (cons (loc-node 1 f l p (mx-datum-list (list (loc-node 0 f l p (the datum (extract (car us) 3)))
+                                                        (loc-node 0 f l p (the datum (extract (car us) 6))))))
                  (drive-uses-in (cdr us) a b f l p)))
           (else (drive-uses-in (cdr us) a b f l p)))))
 (define-rec
-  (drive-sexp (->* (syn) sexp)
+  (drive-loc (->* (syn) datum)
     (lambda (s)
-      "Syntax as the reader's datum, where its place says."
+      "Syntax as a located datum, where its place says."
       (let* ((w (drive-placed (syn-start s))) (f (extract w 1)) (l (extract w 2)) (p (extract w 3)))
         (tagcase s
-          (atom (d a b x) (drive-datum d f l p))
+          (atom (d a b x) (loc-node 0 f l p d))
           (mx-eager-reader-types-lst (items d a b x)
-            (let* ((xs (drive-sexps items))
+            (let* ((xs (drive-locs items))
                    ;; A `with`'s uses noted, written after its module (C440).
                    (us (if (and (>= (len items) 3) (syn-symbol? (car items)) (string=? (syn-name (car items)) "with"))
                            (drive-uses-in (with-uses-given) a b f l p)
                            nil)))
-              (lst (if (null? us) xs (cons (car xs) (cons (car (cdr xs)) (cons (sym "#:uses" f p) (cons (lst us f l p) (cdr (cdr xs))))))) f l p)))
-          (dotted (items tail d a b x) (lst (append (drive-sexps items) (list (sym "." f p) (drive-sexp tail))) f l p))
-          (vec (items d a b x) (lst (cons (sym "#vector" f p) (drive-sexps items)) f l p))))))
-  (drive-sexps (->* (syns-a) sexps)
-    (lambda (xs) (if (null? xs) nil (cons (drive-sexp (car xs)) (drive-sexps (cdr xs)))))))
+              (loc-node 1 f l p (mx-datum-list (if (null? us) xs (cons (car xs) (cons (car (cdr xs)) (cons (loc-node 0 f l p (the datum (string->symbol "#:uses"))) (cons (loc-node 1 f l p (mx-datum-list us)) (cdr (cdr xs)))))))))))
+          (dotted (items tail d a b x)
+            (loc-node 1 f l p (mx-datum-list (append (drive-locs items) (list (loc-node 0 f l p (the datum (string->symbol "."))) (drive-loc tail))))))
+          (vec (items d a b x) (loc-node 1 f l p (mx-datum-list (cons (loc-node 0 f l p (the datum (string->symbol "#vector"))) (drive-locs items)))))))))
+  (drive-locs (->* (syns-a) (listof datum acyclic))
+    (lambda (xs) (if (null? xs) nil (cons (drive-loc (car xs)) (drive-locs (cdr xs)))))))
 
 ;;; ------------------------------------------------------------ forms
 
@@ -300,18 +304,18 @@
 (define drive-refused (->* (string int) void)
   (lambda (m a)
     (let ((w (drive-placed a)))
-      (error (string-append "kfx: " (string-append (extract w 1) (string-append ":" (string-append (i64->string (extract w 2))
+      (error (string-append "kfx: " (string-append (extract w 1) (string-append ":" (string-append (int->string (i64->int (extract w 2)))
                (string-append ": " m)))))))))
-(define drive-each (->* (syns-a) sexps)
+(define drive-each (->* (syns-a) (listof datum acyclic))
   (lambda (xs)
     (if (null? xs)
         nil
         (let ((r (prompt parse-tag (begin (set drive-out (drive-form (car xs))) (p-ok nil)) (lambda (r) r))))
           (tagcase r
             (p-err (m a b) (begin (drive-refused m a) nil))
-            (p-ok (ts) (let ((made (drive-sexps (get drive-out)))) (append made (drive-each (cdr xs))))))))))
+            (p-ok (ts) (let ((made (drive-locs (get drive-out)))) (append made (drive-each (cdr xs))))))))))
 "A program's forms, each expanded as Fixpt's parser expands it."
-(define drive-program (->* (sexps) sexps)
+(define drive-program* (->* ((listof datum acyclic)) (listof datum acyclic))
   (lambda (forms)
     (begin
       (set drive-files nil)
@@ -331,9 +335,11 @@
  defines is placed where it was written when a later one uses it; a
  draft's are let go of after it."
 (define drive-states (ref int @ms) (new 0))
+(define drive-rev-onto (->* ((listof datum acyclic) (listof datum acyclic)) (listof datum acyclic))
+  (lambda (xs out) (if (null? xs) out (drive-rev-onto (cdr xs) (cons (car xs) out)))))
 "Each form's expansion, or the first refusal, said as the checker says its
- own: `(forms \"\")`, or `(nil why)`."
-(define drive-each-said (->* (syns-a sexps) (tupleof sexps string))
+ own: the nodes and the empty string, or none and why."
+(define drive-each-said (->* (syns-a (listof datum acyclic)) (tupleof (listof datum acyclic) string))
   (lambda (xs out)
     (if (null? xs)
         (tuple (reverse out) "")
@@ -341,10 +347,10 @@
           (tagcase r
             (p-err (m a b)
               (let ((w (drive-placed a)))
-                (tuple nil (string-append "kfx: " (string-append (extract w 1) (string-append ":" (string-append (i64->string (extract w 2)) (string-append ": " m))))))))
-            (p-ok (ts) (drive-each-said (cdr xs) (onto (reverse (drive-sexps (get drive-out))) out))))))))
+                (tuple nil (string-append "kfx: " (string-append (extract w 1) (string-append ":" (string-append (int->string (i64->int (extract w 2))) (string-append ": " m))))))))
+            (p-ok (ts) (drive-each-said (cdr xs) (drive-rev-onto (drive-locs (get drive-out)) out))))))))
 "Forms `forms` expanded from reading state `s`."
-(define drive-from (->* (sexps int) (tupleof sexps string))
+(define drive-from (->* ((listof datum acyclic) int) (tupleof (listof datum acyclic) string))
   (lambda (forms s)
     (begin
       (macros-at! s)
@@ -353,7 +359,7 @@
         (begin (drive-lines!) (drive-each-said xs nil))))))
 "A REPL's entry, expanded from the state `s` the entries before it left:
  its forms, and the state it leaves, or, refused, why, and `s` again."
-(define drive-entry (->* (sexps int) (tupleof sexps string int))
+(define drive-entry* (->* ((listof datum acyclic) int) (tupleof (listof datum acyclic) string int))
   (lambda (forms s)
     (let ((r (drive-from forms s)))
       (if (string=? (extract r 2) "")
@@ -362,13 +368,31 @@
           (tuple nil (extract r 2) s)))))
 "A draft's, `,type`'s or a hint's forms, expanded from state `s`, which
  they leave as it was."
-(define drive-draft (->* (sexps int) (tupleof sexps string))
+(define drive-draft* (->* ((listof datum acyclic) int) (tupleof (listof datum acyclic) string))
   (lambda (forms s)
     (let* ((met (get drive-met)) (r (drive-from forms s)))
       (begin (set drive-met met) r))))
 "Whether state `s` has a macro: an entry read in it is expanded, as
  every one is once a macro is defined, though it names none."
-(define drive-macros? (->* (int) bool)
+(define drive-macros?* (->* (int) bool)
   (lambda (s)
     (let ((at (state-at s (get by-state))))
       (and (not (null? at)) (not (null? (extract (car at) 2)))))))
+
+;;; ------------------------------------------------------------ what an instance gives
+
+"What the file gives (C443), each of a written type, so its loader's
+ interface (C442): the forms, each a located datum, and what is made of
+ them, a list of them, as a datum."
+(define drive-program (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum) datum)
+  (lambda (forms) (mx-datum-list (drive-program* (loc-nodes forms)))))
+(define drive-entry (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum int) (tupleof datum string int))
+  (lambda (forms s)
+    (let ((r (drive-entry* (loc-nodes forms) s)))
+      (tuple (mx-datum-list (extract r 1)) (extract r 2) (extract r 3)))))
+(define drive-draft (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum int) (tupleof datum string))
+  (lambda (forms s)
+    (let ((r (drive-draft* (loc-nodes forms) s)))
+      (tuple (mx-datum-list (extract r 1)) (extract r 2)))))
+(define drive-macros? (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (int) bool)
+  (lambda (s) (drive-macros?* s)))

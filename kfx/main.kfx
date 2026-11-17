@@ -84,6 +84,19 @@
   (lambda (s) (rev->string (drop-space (rev-onto (drop-space (string-chars s)) nil)))))
 
 (define-rec
+  (unit-loads-read (subr driver (drt string strings fileds) fileds)
+    (lambda (rt dir todo done)
+      "`loads-read`, of a unit's file: each path from the manifest's
+       directory `dir`, read there (C443)."
+      (cond ((null? todo) done)
+            ((any? (lambda ((s filed)) (tagcase s (filed (n t) (string=? n (car todo))))) done) (unit-loads-read rt dir (cdr todo) done))
+            ((has-prefix? (car todo) "fx26:") (unit-loads-read rt dir (cdr todo) done))
+            (else
+             (let ((text (read-text rt (path-joined dir (car todo)))))
+               (unit-loads-read rt dir (onto (load-paths-all (read-all text (car todo) 1) (directory-of (car todo))) (cdr todo))
+                                (cons (filed (car todo) text) done))))))))
+
+(define-rec
   (sources-of (subr driver (drt string strings) sources)
     (lambda (rt dir lines)
       "A manifest's files, in order: a line each, relative to the manifest;
@@ -95,7 +108,13 @@
                 (sources-of rt dir (cdr lines))
                 (let* ((path (path-joined dir line))
                        (text (read-text rt path)))
-                  (cons (source (stem path) text) (sources-of rt dir (cdr lines))))))))))
+                  (cons (source (stem path) text)
+                        ;; The files it loads (C443), from the manifest's directory,
+                        ;; as the checker joins them to its name, `stem`'s, of none.
+                        (onto (map (lambda ((x filed)) (tagcase x (filed (n t) (source (string-append "%load:" n) t))))
+                                   (unit-loads-read rt dir (load-paths-all (read-all text (stem path) 1) "") nil))
+                              (sources-of rt dir (cdr lines)))))))))))
+
 
 (define-rec
   (write-outputs (subr driver (drt string outputs) unit)

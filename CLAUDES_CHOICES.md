@@ -12737,3 +12737,41 @@ route"). Its first step, kfx's side.
 
 Next (C443): the expander written as such a file, so that the REPL's
 front and the engine each load an instance in a place of their own.
+
+## C443. The expander a file of a place, loaded where it is used (2026-11-16)
+
+The load route's second step: the expander is no longer `mx-in`, a maker
+in the unit, but a file of `(module-parameters ((mxp place)))`, which the
+engine loads in a place of its own (C442), as the REPL's front, a process,
+will.
+- **The translator** (`macros-port.py`) writes two files:
+  - `fx26/macros/expander.fx`: the shim, Fixpt's files, and the driver,
+    the items of one file of a place. Fixpt's five region parameters
+    become its one place, as in C437.
+  - `fx26/macros/expander-types.fx`: the types that name no region of its
+    (C437's `mx-types`), a file of no parameters. `expander.fx` includes
+    it, `(include (load-module "expander-types.fx"))`. Being a load, it is
+    made once for every instance, so they all share its Rust enums.
+- **The boundary**: a loaded file sees the standard environment alone,
+  not kayak's reader's `sexp`, nor its prelude (the `i64` helpers). So
+  the expander is given and gives standard data, located datums: a node
+  is an atom, `(0 file line pos d)`, or a list, `(1 file line pos node
+  ...)`. `fx26/macros-bridge.kfx`, in the unit where the expander was,
+  converts the engine's forms to them and back, and keeps no state. The
+  driver (`macros-driver.kfx`, read into the file last) reads and writes
+  them in place of `sexp`s. Its line table uses the standard arrays in
+  place of the prelude's flat arrays.
+- **The interface**: the driver's `drive-program`, `drive-entry`,
+  `drive-draft` and `drive-macros?`, each of a written type over
+  `datum`. Of a file's procedures, those whose types name a type of a
+  file it loads (`syn`, …) are left out of a load's interface (C442's,
+  `type-names-in`), since the top level can't name those types.
+- **kfx's units read their files' loads** (`sources-of`, `unit-loads-read`):
+  each file's loads, from the manifest's directory, are given to its
+  reading, as a single file's are. A unit's file had none before. A
+  load's text is in no memo's key yet (`kfx --cache`; TODO).
+- **`fixpt-accepts.py`** gives Fixpt the unit's loads beside it. Fixpt
+  accepts the engine's unit with the expander loaded so.
+
+The engine: 391 of Fixpt's programs beyond KFX agree, as before; Fixpt's
+596 refused programs are all refused.

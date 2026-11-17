@@ -1,0 +1,69 @@
+"macros-bridge.kfx: the engine's forms to the expander's located datums,
+ and back (C443). The expander is a file of a place (`macros/expander.fx`),
+ loaded where it is used, an instance in a place of its own (C442), and a
+ file loaded sees the standard environment alone, not kayak's reader's
+ `sexp`. So it is given and gives standard data: a node an atom, `(0 file
+ line pos d)`, or a list, `(1 file line pos node ...)`, each where it is
+ written, which is all of its place the reader keeps. The conversions keep
+ no state: the expander keeps the places it meets in its own."
+
+(define bridge-unsupported (subr kfx (sexp) void)
+  (lambda (e) (error (string-append "kfx: a number KFX's reader read that the expander takes not yet: " (show-sexp e)))))
+
+(define bridge-dotted (subr kfx ((listof datum acyclic) datum) datum)
+  (lambda (xs tail) (if (null? xs) tail (the datum (cons (car xs) (bridge-dotted (cdr xs) tail))))))
+(define bridge-node (subr kfx (int string i64 i64 datum) datum)
+  (lambda (k f l p d)
+    (bridge-dotted (list (the datum k) (the datum f) (the datum (i64->int l)) (the datum (i64->int p)))
+               (if (= k 0) (bridge-dotted (list d) (the datum nil)) d))))
+
+(define-rec
+  (sexp-located (subr kfx (sexp) datum)
+    (lambda (e)
+      "The reader's datum as a located one; `#t` and `#f`, as Fixpt's reader
+       reads them, booleans (kfx's, names)."
+      (tagcase e
+        (lst (xs f l p) (bridge-node 1 f l p (sexps-located xs)))
+        (sym (n f p) (bridge-node 0 f 0 p (cond ((string=? n "#t") (the datum #t)) ((string=? n "#f") (the datum #f)) (else (the datum (string->symbol n))))))
+        (num (i f p) (bridge-node 0 f 0 p (the datum (i64->int i))))
+        (str (x f p) (bridge-node 0 f 0 p (the datum x)))
+        (chr (c f p) (bridge-node 0 f 0 p (the datum c)))
+        (else other (begin (bridge-unsupported e) (the datum nil))))))
+  (sexps-located (subr kfx (sexps) datum)
+    (lambda (xs) (if (null? xs) (the datum nil) (the datum (cons (sexp-located (car xs)) (sexps-located (cdr xs))))))))
+
+(define bridge-nth (subr kfx (datum int) datum)
+  (lambda (d i) (if (pair? d) (if (= i 0) (car d) (bridge-nth (cdr d) (- i 1))) (the datum nil))))
+(define bridge-after (subr kfx (datum int) datum)
+  (lambda (d i) (if (and (pair? d) (> i 0)) (bridge-after (cdr d) (- i 1)) d)))
+(define bridge-int (subr kfx (datum) i64) (lambda (d) (if (int? d) (int->i64 d) 0)))
+(define bridge-string (subr kfx (datum) string) (lambda (d) (if (string? d) d "")))
+
+(define-rec
+  (datum-sexp (subr kfx (datum string i64 i64) sexp)
+    (lambda (d f l p)
+      "A datum, as the reader would have read it, at `f`, `l`, `p`."
+      (cond ((null? d) (lst nil f l p))
+            ((symbol? d) (sym (symbol->string d) f p))
+            ((int? d) (num (int->i64 d) f p))
+            ((string? d) (str d f p))
+            ((char? d) (chr d f p))
+            ((bool? d) (sym (if d "#t" "#f") f p))
+            ((pair? d) (lst (datum-sexps d f l p) f l p))
+            (else (sym "#u" f p)))))
+  (datum-sexps (subr kfx (datum string i64 i64) sexps)
+    (lambda (d f l p)
+      (cond ((null? d) nil)
+            ((pair? d) (let ((x (car d))) (cons (datum-sexp x f l p) (datum-sexps (cdr d) f l p))))
+            (else (list (sym "." f p) (datum-sexp d f l p)))))))
+
+(define-rec
+  (located-sexp (subr kfx (datum) sexp)
+    (lambda (n)
+      "A located datum as the reader's, where it says."
+      (let ((f (bridge-string (bridge-nth n 1))) (l (bridge-int (bridge-nth n 2))) (p (bridge-int (bridge-nth n 3))))
+        (if (i64= (bridge-int (bridge-nth n 0)) 1)
+            (lst (located-sexps (bridge-after n 4)) f l p)
+            (datum-sexp (bridge-nth n 4) f l p)))))
+  (located-sexps (subr kfx (datum) sexps)
+    (lambda (d) (if (pair? d) (cons (located-sexp (car d)) (located-sexps (cdr d))) nil))))

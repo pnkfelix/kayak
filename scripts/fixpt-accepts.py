@@ -46,6 +46,28 @@ def unit_files(unit):
     return files, syscalls
 
 
+LOAD = re.compile(r'\((?:load-module|load-input|load-moduleof) "([^"]+)"')
+
+
+def unit_loads(files):
+    """The files `files` load, and those load, not Fixpt's own (`fx26:`):
+    each as its source, and its path as the program reads it, from where
+    the loading file is."""
+    found, todo = [], [(f, "") for f in files]
+    while todo:
+        src, rel_dir = todo.pop()
+        for m in LOAD.finditer(open(src, encoding="utf-8").read()):
+            if m.group(1).startswith("fx26:"):
+                continue
+            path = os.path.normpath(os.path.join(os.path.dirname(src), m.group(1)))
+            rel = os.path.normpath(os.path.join(rel_dir, m.group(1)))
+            # A docstring's example names no file.
+            if os.path.isfile(path) and (path, rel) not in found:
+                found.append((path, rel))
+                todo.append((path, os.path.dirname(rel)))
+    return found
+
+
 def check(binary, unit):
     files, syscalls = unit_files(unit)
     parts = [os.path.join(ROOT, "kfx", "prelude.fx")] + files
@@ -57,14 +79,18 @@ def check(binary, unit):
         starts.append((line, p))
         text += body
         line += body.count("\n")
-    with tempfile.NamedTemporaryFile("w", suffix=".fx", delete=False) as f:
-        f.write(text)
-        whole = f.name
-    try:
+    with tempfile.TemporaryDirectory() as d:
+        whole = os.path.join(d, "unit.fx")
+        with open(whole, "w") as f:
+            f.write(text)
+        # The files the unit's files load (C443), beside it at the paths
+        # they are loaded by, each from its loading file's directory.
+        for src, rel in unit_loads(files):
+            os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
+            with open(src, encoding="utf-8") as g, open(os.path.join(d, rel), "w", encoding="utf-8") as h:
+                h.write(g.read())
         run = subprocess.run([binary] + (["--syscalls"] if syscalls else []) + ["check", whole],
                              capture_output=True, text=True, timeout=1800)
-    finally:
-        os.unlink(whole)
     if run.returncode == 0:
         return None
     said = run.stdout + run.stderr
