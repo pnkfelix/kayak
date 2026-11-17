@@ -1527,16 +1527,10 @@ Twobit-style optimizations in KFX.
   a top-level `include`, which the engine has not either; `begin-for-syntax`,
   procedural macros', with stage 5; a shape's definition done, C440, and
   `modnames` and `#:relied` with it: a `modnames` inside one not yet; the
-  `#:relied` check's names all the body's symbols, stricter than Fixpt's); the REPL (`,type`
-  and entries read through it), parked (C439): the driver's session is
-  written (`drive-entry`, `drive-draft`, `drive-macros?`, Fixpt's reading
-  states), but the front, a process, may make no instance of a maker
-  under Fixpt's `untransmissible`; asked of Fixpt (`docs/to-discuss.md`
-  11, INCR_IMPED.md §4); the front's side tried once, to redo then
-  (an `f-expanded` the front's submit, `,type`, drafts and holes read
-  through, its state's closures over the instance; `goto r` on the
-  front's procedures); the legacy `rust-repl` (live-repl.kfx) not yet
-  either; the `expands` effect, which C437's
+  `#:relied` check's names all the body's symbols, stricter than Fixpt's); the REPL: done (C444), its front loading an instance of
+  the expander, a file of a place (C442, C443, Fixpt's `closed-code.md`);
+  the legacy `rust-repl` (live-repl.kfx) not yet; a live session's drafts
+  and hints with macros untested; the `expands` effect, which C437's
   instance, made in a `letrena`, masks (still carried by `engine-main`
   and start.kfx's `main`); each form's state as a value, cached
   (`docs/research/fx26-macros.md`, "Cacheable and incremental"); kc;
@@ -1554,6 +1548,8 @@ Twobit-style optimizations in KFX.
   C442): kfx took it and its synchronous Rust built, the async mode's not
   (a call of the function then a future no one awaits). To refuse it, as a
   name defined twice.
+- `(with #%toplevel get)`, as an expansion writes it (C444): the effect
+  says the region unsolved, `(read ?0)`, where `get` says `(read @g)`.
 - A unit's loads (C443) are in no memo's key: `kfx --cache` would keep
   a form's Rust though a file it loads changed.
 - `kfx --cache` on the engine's unit fails, "substring range out of

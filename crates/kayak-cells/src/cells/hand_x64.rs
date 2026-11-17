@@ -32,7 +32,7 @@ use super::*;
 // - Tier 6 (`--direct`): register code as native procedures beside tier
 // 5's, leaving for it where it would give back (C138).
 // fixpt-source: crates/fixpt-native/src/cellular/x64.rs@120b70e
-pub mod made__load__0__fx26_x86_64 {
+pub mod made__load__3__fx26_x86_64 {
     use super::*;
 
     pub type X86Bytes = List<Int>;
@@ -120,7 +120,7 @@ pub mod made__load__0__fx26_x86_64 {
 pub mod made__input__1889__x86_64_types {
     use super::*;
 
-    pub use super::made__load__0__fx26_x86_64::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
+    pub use super::made__load__3__fx26_x86_64::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
 }
 
 pub mod x86 {

@@ -7447,6 +7447,24 @@ pub fn input_expanded(f: &'static Sexp, dir: Str, loaded: Fileds) -> Sexps {
     }
 }
 
+/// `spliced-tops`, and what is loaded after them (C444): the forms, as a
+/// list, `done` the forms so far, reversed.
+pub fn spliced_tops_known(mut forms: Sexps, mut dir: Str, mut loaded: Fileds, mut known: Keyeds, mut done: Sexps) -> &'static SplicedTo {
+    loop {
+        if null_p(forms) {
+            return spliced_to(lst(reverse(done), str_lit(""), 0i64, 0i64), nil::<&'static Sexp>(), known);
+        } else {
+            let tagcase_ = spliced(car(forms), dir, loaded, nil::<Str>(), known);
+            match *tagcase_ {
+                SplicedTo::SplicedTo(x, defs, known2) => {
+                    (forms, known, done) = (cdr(forms), known2, kayak_rt::heap_cons(x, onto(reverse(defs), done)));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
 /// The program's forms, each load shared, the modules each first makes
 /// defined before it.
 pub fn spliced_tops(forms: Sexps, dir: Str, loaded: Fileds, known: Keyeds) -> Sexps {
@@ -7690,6 +7708,29 @@ pub fn program_read(text: Str, file: Str, line: i64) -> Sexps {
     map(lambda1s(move |f: &'static Sexp| {
         stage_expanded(labels_unkeyworded(f))
     }), read_all(text, file, line))
+}
+
+// `with-loads`, of a unit's file (C444): the loads of the files before it,
+// `known`, shared with it, as one program's are, so that two files loading
+// one path make one module; the forms, and what is loaded after them.
+pub fn with_loads_known(forms: Sexps, file: Str, loaded: Fileds, known: Keyeds) -> &'static SplicedTo {
+    let forms = map(&as_module_value, concat(map(lambda1s(move |f: &'static Sexp| {
+        input_expanded(f, directory_of(file), loaded)
+    }), import_items(forms))));
+    if (null_p(loaded) && not(any_p(&loads_p, forms))) {
+        spliced_to(lst(map(lambda1s(move |f: &'static Sexp| {
+            stage_expanded(labels_unkeyworded(syscall_asked(flat_definition(f))))
+        }), concat(map(&hoisted, forms))), str_lit(""), 0i64, 0i64), nil::<&'static Sexp>(), known)
+    } else {
+        let tagcase_ = spliced_tops_known(forms, directory_of(file), loaded, known, nil::<&'static Sexp>());
+        match *tagcase_ {
+            SplicedTo::SplicedTo(x, d, k) => {
+                spliced_to(lst(map(lambda1s(move |f: &'static Sexp| {
+                    stage_expanded(labels_unkeyworded(syscall_asked(flat_definition(f))))
+                }), concat(map(&hoisted, items(x)))), str_lit(""), 0i64, 0i64), nil::<&'static Sexp>(), k)
+            }
+        }
+    }
 }
 
 /// A program's forms: what it loads spliced in (C88), and what its modules

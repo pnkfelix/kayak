@@ -148,6 +148,26 @@ pub fn source_forms(s: &'static Source, loaded: Fileds) -> Sexps {
     }
 }
 
+// Each of a unit's files' forms (C444), the loads of those before it shared
+// with it (`with-loads-known`).
+pub fn units_forms(ss: Sources, loaded: Fileds, known: Keyeds) -> List<List<&'static Sexp>> {
+    if null_p(ss) {
+        nil::<List<&'static Sexp>>()
+    } else {
+        let tagcase_ = car(ss);
+        match *tagcase_ {
+            Source::Source(name, text) => {
+                let tagcase_ = with_loads_known(read_all(text, string_append(name, str_lit(".kfx")), 1i64), string_append(name, str_lit(".kfx")), loaded, known);
+                match *tagcase_ {
+                    SplicedTo::SplicedTo(x, d, k) => {
+                        kayak_rt::heap_cons(items(x), units_forms(cdr(ss), loaded, k))
+                    }
+                }
+            }
+        }
+    }
+}
+
 // The files a unit's files load (C443): among its sources, each named
 // `%load:PATH`, its path from the manifest's directory, as its files' are;
 // and the unit's own files, the rest.
@@ -226,9 +246,7 @@ pub fn modules_put(c: &'static Ctx, ss: Sources, fss: SourcesForms) -> Outputs {
 pub fn compile_units_as(ss: Sources, runtime: bool, r#async: bool) -> Outputs {
     let loaded = unit_loaded(ss);
     let ss = unit_files(ss);
-    let fss = map(lambda1s(move |s: &'static Source| {
-        source_forms(s, loaded)
-    }), ss);
+    let fss = units_forms(ss, loaded, nil::<&'static Keyed>());
     let forms = concat(fss);
     let checked = restrict_checked(check_program_as(forms, runtime), forms);
     let fs = moded_facts(verdict_facts(checked), r#async);
@@ -310,9 +328,7 @@ pub fn sources_texts(ss: Sources, fss: SourcesForms) -> Strings {
 pub fn compile_units_memo(ss0: Sources, old: Memos, runtime: bool) -> &'static Compiled {
     let loaded = unit_loaded(ss0);
     let ss = unit_files(ss0);
-    let fss = map(lambda1s(move |s: &'static Source| {
-        source_forms(s, loaded)
-    }), ss);
+    let fss = units_forms(ss, loaded, nil::<&'static Keyed>());
     let forms = concat(fss);
     let texts = sources_texts(ss, fss);
     let tagcase_ = {

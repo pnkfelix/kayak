@@ -33,7 +33,7 @@ use super::*;
 // The generator's data lives at `@g`.
 
 // Fixpt's table of the runtime primitive each standard operation runs as.
-pub mod made__load__0__cg {
+pub mod made__load__1__cg {
     use super::*;
 
     pub fn standard_primitive(n: Str) -> Str {
@@ -1507,7 +1507,7 @@ pub mod made__load__0__cg {
 pub mod standard {
     use super::*;
 
-    pub use super::made__load__0__cg::{standard_primitive};
+    pub use super::made__load__1__cg::{standard_primitive};
 }
 
 // Fixpt's `exp`, each node with where it starts (its `a`): a variable, the

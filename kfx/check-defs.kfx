@@ -3817,6 +3817,17 @@
       (else other (list f)))))
 
 (define-rec
+  (spliced-tops-known (subr kfx (sexps string fileds keyeds sexps) spliced-to)
+    (lambda (forms dir loaded known done)
+      "`spliced-tops`, and what is loaded after them (C444): the forms, as a
+       list, `done` the forms so far, reversed."
+      (if (null? forms)
+          (spliced-to (lst (reverse done) "" 0 0) nil known)
+          (tagcase (spliced (car forms) dir loaded nil known)
+            (spliced-to (x defs known2)
+              (spliced-tops-known (cdr forms) dir loaded known2 (cons x (onto (reverse defs) done)))))))))
+
+(define-rec
   (spliced-tops (subr kfx (sexps string fileds keyeds) sexps)
     (lambda (forms dir loaded known)
       "The program's forms, each load shared, the modules each first makes
@@ -3956,6 +3967,18 @@
     "Forms as `read-all` reads them, their labels unkeyworded (C291), for
      what reads a program but `with-loads`: the REPL's entries."
     (map (lambda ((f sexp)) (stage-expanded (labels-unkeyworded f))) (read-all text file line))))
+
+"`with-loads`, of a unit's file (C444): the loads of the files before it,
+ `known`, shared with it, as one program's are, so that two files loading
+ one path make one module; the forms, and what is loaded after them."
+(define with-loads-known (subr kfx (sexps string fileds keyeds) spliced-to)
+  (lambda (forms file loaded known)
+    (let ((forms (map as-module-value (concat (map (lambda ((f sexp)) (input-expanded f (directory-of file) loaded)) (import-items forms))))))
+      (if (and (null? loaded) (not (any? loads? forms)))
+          (spliced-to (lst (map (lambda ((f sexp)) (stage-expanded (labels-unkeyworded (syscall-asked (flat-definition f))))) (concat (map hoisted forms))) "" 0 0) nil known)
+          (tagcase (spliced-tops-known forms (directory-of file) loaded known nil)
+            (spliced-to (x d k)
+              (spliced-to (lst (map (lambda ((f sexp)) (stage-expanded (labels-unkeyworded (syscall-asked (flat-definition f))))) (concat (map hoisted (items x)))) "" 0 0) nil k)))))))
 
 (define with-loads (subr kfx (sexps string fileds) sexps)
   (lambda (forms file loaded)

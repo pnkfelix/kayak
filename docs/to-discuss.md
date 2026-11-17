@@ -92,4 +92,6 @@ where it was seen and what it would take.
     macros: its front, a process, was to own an expander instance (C437's
     plan). The proposal: a place at a region the procedure's `poly` binds
     is transmissible, as a mailbox at one already is. The user, 2026-11-16:
-    ask Fixpt first, the REPL parked till then.
+    ask Fixpt first, the REPL parked till then. **Answered**: Fixpt's
+    `docs/research/closed-code.md` declined it and showed the load route,
+    which the user chose; done (C442-C444).

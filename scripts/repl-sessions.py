@@ -18,6 +18,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR = os.path.join(ROOT, "tests", "repl")
 
 
+MACROS = {"macros.in"}
+
+
 def main():
     flags = sys.argv[1:]
     bless = "--bless" in flags
@@ -31,6 +34,9 @@ def main():
         sys.exit("repl-sessions: the engine does not build")
     engine = os.path.join(target, "release", "kayak-fx26")
     names = sorted(f for f in os.listdir(DIR) if f.endswith(".keys") or f.endswith(".in"))
+    # C103's REPL expands no macros (C444): its sessions are those without.
+    if rust:
+        names = [f for f in names if f not in MACROS]
     failed = []
     for f in names:
         path = os.path.join(DIR, f)

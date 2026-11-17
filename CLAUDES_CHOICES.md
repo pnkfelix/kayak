@@ -12775,3 +12775,33 @@ will.
 
 The engine: 391 of Fixpt's programs beyond KFX agree, as before; Fixpt's
 596 refused programs are all refused.
+
+## C444. The REPL expands: its front loads an instance of its own (2026-11-16)
+
+The load route's last step, and TODO §51's REPL, parked since C439. The
+front, a process, loads the expander (C443) in its own place, `((proj
+(load-module "macros/expander.fx") p))`, in its spawn's body, which Fixpt
+allows (C442). It gives the instance's procedures to `f-new` as closures,
+so `f-new` itself takes no place.
+- **The front's side** is C439's, set aside then and redone now over the
+  instance's located datums (`macros-bridge.kfx`). `f-expanded` reads an
+  entry's, a draft's, `,type`'s or a hole's text and expands it from the
+  session's reading state, if the text defines a macro or that state has
+  one. It writes the expansion out for the worker that checks it and the
+  machine that runs it. An entry's state becomes the session's once the
+  worker accepts the entry. A refusal is said as the checker's are. A
+  hole the expander refuses is not tried. The front's procedures that may
+  expand have `(goto r)`, the instance's prompt tags.
+- **kfx: a unit's loads shared across its files** (`with-loads-known`,
+  `units-forms`). Two of the engine's files load the expander now, so its
+  types' file, which each loads in turn, must be one module, as in one
+  program.
+- **Test**: `tests/repl/macros.in`. A macro an entry defines, used by a
+  later one; and two refusals, a template placing an expression twice and
+  a use that fits no pattern. The values and refusals are Fixpt's REPL's,
+  in its words. The effects differ: kayak's checker shows a `(with
+  #%toplevel get)`'s region unsolved (`(read ?0)`), as it does for one
+  written by hand (TODO).
+- **Not yet**: the legacy `rust-repl` (live-repl.kfx, C103), which
+  `repl-sessions.py --rust-repl` runs on the sessions without macros; a live session's drafts and hints with macros,
+  untested.

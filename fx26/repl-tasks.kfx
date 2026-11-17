@@ -1132,7 +1132,10 @@ an entry naming one that has not ended waits for it.")
        session had it; the screen, the draft and its editing, the history,
        the commands; the requests not yet sent; the checker's environment,
        the globals' names and the entries' count, as the machine will have
-       them; whether the input has ended; and the relay's address."
+       them; whether the input has ended; and the relay's address. And the
+       front's own instance of the expander (C439), made in its place, as
+       its items: the reading state the entries so far left, an entry
+       expanded from it, a draft, and whether a state has a macro."
       (define-type (fstate (r region))
         (productof (note (ref string r)) (note-error (ref bool r)) (speculated (ref bool r)) (spec-kept (ref i64 r))
                    (spec-open (ref (listof i64 acyclic) r)) (spec-finished (ref bool r)) (spec-type (ref string r))
@@ -1147,7 +1150,11 @@ an entry naming one that has not ended waits for it.")
                    (history (ref strings r)) (history-at (ref i64 r)) (stash (ref string r)) (history-path (ref string r))
                    (step-limit (ref i64 r)) (commands (ref i64 r)) (quitting (ref bool r))
                    (requests (ref (listof asked acyclic) r)) (cv (ref cv r)) (globals (ref strings r)) (count (ref i64 r))
-                   (input-ended (ref bool r)) (relay (addr relayed @m))))
+                   (input-ended (ref bool r)) (relay (addr relayed @m))
+                   (mx-state (ref int r))
+                   (mx-entry (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (datum int) (tupleof datum string int)))
+                   (mx-draft (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (datum int) (tupleof datum string)))
+                   (mx-macros? (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (int) bool))))
 
 
       "Entries, by number and state."
@@ -1213,7 +1220,7 @@ an entry naming one that has not ended waits for it.")
         (plambda ((r region))
           (lambda (f q) (set (extract f requests) (cons q (get (extract f requests)))))))
 
-      (define* f-requests-sent! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r)) unit))
+      (define* f-requests-sent! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r)) unit))
         (plambda ((r region))
           (lambda (f)
             "The requests not yet sent, the oldest first, to the relay."
@@ -1584,7 +1591,45 @@ an entry naming one that has not ended waits for it.")
                     (set (extract (car es) shown) (engine-said message))
                     (set (extract (car es) ended) now)))))))
 
-      (define* f-submit! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) string string bool i64) unit))
+      "`text`'s forms, if it reads: a draft may not, and a refused entry is
+       then the worker's to say, as any it cannot read."
+      (define* f-read-tried (subr (maxeff (read @globals) spin nondet) (string string) (sumof (read sexps) (unread unit)))
+        (lambda (text file)
+          (attempt (the (sumof (read sexps) (unread unit)) (sum read (read-all text file 1)))
+                   (lambda ((m string)) (the (sumof (read sexps) (unread unit)) (sum unread #u))))))
+
+      (define-rec
+        (f-written-forms (subr (maxeff (read @globals) spin) (sexps) string)
+          (lambda (xs) (if (null? xs) "" (string-append (show-sexp (car xs)) (string-append "\n" (f-written-forms (cdr xs))))))))
+
+      "Text `text`, read as from `file`, expanded by the front's expander
+       (C439), as Fixpt's session reads each entry: from the reading state
+       the entries so far left, if it defines a macro or that state has one;
+       as it is, if neither. Written out, for the worker that checks it and
+       the machine that runs it to read as they read any text; with the
+       state it leaves, which an entry's acceptance makes the session's. An
+       entry (`entry`) leaves its state; a draft, `,type`'s or a hole's,
+       none: theirs is the session's still."
+      (define* f-expanded (poly ((r region)) (subr (maxeff (read @globals) spin nondet (read r) (write r) (alloc r) (goto r)) ((fstate r) string string bool) (sumof (text (tupleof string int)) (refused string))))
+        (plambda ((r region))
+          (lambda (f text file entry)
+            (let ((s (get (extract f mx-state))))
+              (tagcase (f-read-tried text file)
+                (unread u (sum text (tuple text s)))
+                (read forms
+                  (cond ((not (or (forms-mention? forms macro-heads) ((extract f mx-macros?) s))) (sum text (tuple text s)))
+                        (entry
+                         (let ((x ((extract f mx-entry) (sexps-located forms) s)))
+                           (if (string=? (extract x 2) "")
+                               (sum text (tuple (f-written-forms (located-sexps (extract x 1))) (extract x 3)))
+                               (sum refused (extract x 2)))))
+                        (else
+                         (let ((x ((extract f mx-draft) (sexps-located forms) s)))
+                           (if (string=? (extract x 2) "")
+                               (sum text (tuple (f-written-forms (located-sexps (extract x 1))) s))
+                               (sum refused (extract x 2))))))))))))
+
+      (define* f-submit! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) string string bool i64) unit))
         (plambda ((r region))
           (lambda (f text label timed now)
             "An entry of `text`, its forms read as from `label` (`<fx26:k>`, or a
@@ -1595,17 +1640,24 @@ an entry naming one that has not ended waits for it.")
                 (set (extract f count) k)
                 (f-speculation-dropped! f)
                 (set (extract f entries) (cons (f-made k text "" "" #t nil st-checking "" timed now) (get (extract f entries))))
-                (tagcase (worked (check-entry (get (extract f cv)) (get (extract f globals)) k text label))
-                  (entry-done (v gs typed defined quiet needs facts)
-                    (begin
-                      (set (extract f cv) v)
-                      (set (extract f globals) gs)
-                      (set (extract f entries) (cons (f-made k text typed defined quiet needs st-waiting "" timed now) (cdr (get (extract f entries)))))
-                      (f-asked! f (entry-asked k text label timed typed defined quiet needs facts))))
-                  (refused-done (m) (f-refused! f m now))
-                  (else other #u)))))))
+                ;; Its macros expanded here, in the order entries come (C439):
+                ;; the worker and the machine read the expansion.
+                (tagcase (f-expanded f text (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label) #t)
+                  (refused m (f-refused! f m now))
+                  (text xs
+                    (let ((x (extract xs 1)))
+                      (tagcase (worked (check-entry (get (extract f cv)) (get (extract f globals)) k x label))
+                        (entry-done (v gs typed defined quiet needs facts)
+                          (begin
+                            (set (extract f cv) v)
+                            (set (extract f globals) gs)
+                            (set (extract f mx-state) (extract xs 2))
+                            (set (extract f entries) (cons (f-made k text typed defined quiet needs st-waiting "" timed now) (cdr (get (extract f entries)))))
+                            (f-asked! f (entry-asked k x label timed typed defined quiet needs facts))))
+                        (refused-done (m) (f-refused! f m now))
+                        (else other #u))))))))))
 
-      (define* f-given! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) string i64) unit))
+      (define* f-given! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) string i64) unit))
         (plambda ((r region))
           (lambda (f d now)
             "The draft left on the screen, kept in the history, and emptied."
@@ -1617,7 +1669,7 @@ an entry naming one that has not ended waits for it.")
               (set (extract f stash) "")
               (f-draft-set! f "" 0)))))
 
-      (define* f-typed-only! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) string i64) unit))
+      (define* f-typed-only! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) string i64) unit))
         (plambda ((r region))
           (lambda (f text now)
             "`,type E`: E checked by a worker, its type and effect said, not run.
@@ -1625,15 +1677,18 @@ an entry naming one that has not ended waits for it.")
             (begin
               (set (extract f commands) (i64+ (get (extract f commands)) 1))
               (set (extract f entries) (cons (f-made (i64- 0 (get (extract f commands))) text "" "" #t nil st-checking "" #f now) (get (extract f entries))))
-              (tagcase (worked (type-of (get (extract f cv)) text))
-                (shown-done (shown)
-                  (let ((e (car (get (extract f entries)))))
-                    (begin
-                      (set (extract e shown) (string-append text shown))
-                      (set (extract e state) st-done)
-                      (set (extract e ended) now))))
-                (refused-done (m) (f-refused! f m now))
-                (else other #u))))))
+              (tagcase (f-expanded f text "<,type>" #f)
+                (refused m (f-refused! f m now))
+                (text xs
+                  (tagcase (worked (type-of (get (extract f cv)) (extract xs 1)))
+                    (shown-done (shown)
+                      (let ((e (car (get (extract f entries)))))
+                        (begin
+                          (set (extract e shown) (string-append text shown))
+                          (set (extract e state) st-done)
+                          (set (extract e ended) now))))
+                    (refused-done (m) (f-refused! f m now))
+                    (else other #u))))))))
 
       (define* f-described (poly ((r region)) (subr (maxeff (read @globals) spin (read r) (read @globals) spin) ((fstate r) string) string))
         (plambda ((r region))
@@ -1648,7 +1703,7 @@ an entry naming one that has not ended waits for it.")
                         (scheme (tvars t)
                           (string-append n (string-append " : " (string-append (show-ty (new-state) t) (if (string=? w "prim") ", a primitive" "")))))))))))))
 
-      (define* f-loaded! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) string i64) unit))
+      (define* f-loaded! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) string i64) unit))
         (plambda ((r region))
           (lambda (f path now)
             "`,load FILE`: the file's forms, one entry."
@@ -1674,7 +1729,7 @@ an entry naming one that has not ended waits for it.")
                 (cons (string-append "[" (string-append (i64->string (extract (car es) num)) (string-append "] " (first-line (extract (car es) text)))))
                       (f-pending-lines (cdr es)))))))
 
-      (define* f-command! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) string i64) unit))
+      (define* f-command! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) string i64) unit))
         (plambda ((r region))
           (lambda (f line now)
             (let* ((w (command-word line)) (rest (trimmed-end (command-rest line))))
@@ -1715,7 +1770,7 @@ an entry naming one that has not ended waits for it.")
                       (set (extract f leaving) #f)
                       (f-asked! f (cancel-asked (extract (car running) num)))))))))
 
-      (define* f-entered! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) i64) unit))
+      (define* f-entered! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) i64) unit))
         (plambda ((r region))
           (lambda (f now)
             "Enter: the draft given, if whole (a command's line, or forms); else a
@@ -1728,7 +1783,7 @@ an entry naming one that has not ended waits for it.")
                     ((null? trimmed) (f-draft-set! f "" 0))
                     (else (f-inserted! f "\n")))))))
 
-      (define* f-key! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) i64 i64) unit))
+      (define* f-key! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) i64 i64) unit))
         (plambda ((r region))
           (lambda (f c now)
             "One key: typed, an editing key, or part of an escape sequence (ESC
@@ -1767,7 +1822,7 @@ an entry naming one that has not ended waits for it.")
       "Speculation (C96, C97): the draft checked as it is typed, each try a
        worker's, as C103's session did it."
 
-      (define* f-holes-set! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) string i64 (listof i64 acyclic)) unit))
+      (define* f-holes-set! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) string i64 (listof i64 acyclic)) unit))
         (plambda ((r region))
           (lambda (f text kept open)
             "The draft with a hole where the next item of its innermost open list
@@ -1875,7 +1930,7 @@ an entry naming one that has not ended waits for it.")
                        (begin (set (extract f around) words) (set (extract f around-at) at)))
                       (else #u)))))))
 
-      (define* f-draft-tried! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) i64) unit))
+      (define* f-draft-tried! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) i64) unit))
         (plambda ((r region))
           (lambda (f now)
             (let* ((d (get (extract f draft)))
@@ -1904,13 +1959,16 @@ an entry naming one that has not ended waits for it.")
                           ;; Checked after what the entries before it defined; if
                           ;; finished, an expression's type said, and run if it may be;
                           ;; definitions' types said.
-                          (tagcase (worked (try (get (extract f cv)) (get (extract f globals)) closed finished))
-                            (refused-done (m) (f-speculation-refused! f m now))
-                            (tried-expression (type effects named facts) (f-expression-speculated! f type effects named facts))
-                            (tried-definitions (lines) (f-noted! f lines #f))
-                            (else other #u)))))))))))
+                          (tagcase (f-expanded f closed "<draft>" #f)
+                            (refused m (f-speculation-refused! f m now))
+                            (text xs
+                              (tagcase (worked (try (get (extract f cv)) (get (extract f globals)) (extract xs 1) finished))
+                                (refused-done (m) (f-speculation-refused! f m now))
+                                (tried-expression (type effects named facts) (f-expression-speculated! f type effects named facts))
+                                (tried-definitions (lines) (f-noted! f lines #f))
+                                (else other #u)))))))))))))
 
-      (define* f-speculate! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) i64) bool))
+      (define* f-speculate! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) i64) bool))
         (plambda ((r region))
           (lambda (f now)
             "The draft checked as it is typed, a try at a time, while this says
@@ -1927,16 +1985,20 @@ an entry naming one that has not ended waits for it.")
                        (set (extract f spec-phase) 2)
                        (set (extract f hole-texts) (cdr (get (extract f hole-texts))))
                        (set (extract f trying-holes) #t)
-                       (tagcase (worked (try (get (extract f cv)) (get (extract f globals)) text #f))
-                         (refused-done (m) (f-speculation-refused! f m now))
-                         (else other #u))
+                       ;; A hole's text the expander refuses: none tried.
+                       (tagcase (f-expanded f text "<draft>" #f)
+                         (refused m #u)
+                         (text xs
+                           (tagcase (worked (try (get (extract f cv)) (get (extract f globals)) (extract xs 1) #f))
+                             (refused-done (m) (f-speculation-refused! f m now))
+                             (else other #u))))
                        (set (extract f trying-holes) #f)
                        #t)))
                   ((i64< (get (extract f spec-phase)) 4) (begin (f-hints-said! f) #f))
                   (else #f)))))
 
       (define-rec
-        (f-speculating! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) i64) unit))
+        (f-speculating! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) i64) unit))
           (lambda (f now) (if (f-speculate! f now) (f-speculating! f now) #u))))
 
       "What the machine tells."
@@ -1989,7 +2051,7 @@ an entry naming one that has not ended waits for it.")
         (plambda ((r region))
           (lambda (f now) (tagcase (write-out (f-screen! f now)) (done u #u) (failed e #u)))))
 
-      (define* f-started! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) bool i64 i64 string) string))
+      (define* f-started! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) bool i64 i64 string) string))
         (plambda ((r region))
           (lambda (f is-live height width path)
             "The session begun: the checker's environment, the history, the
@@ -2006,10 +2068,18 @@ an entry naming one that has not ended waits for it.")
                     (string-append (repl-banner) "\r\n(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)\r\n")
                     ""))))))
 
-      "The front's state, made in its place."
-      (define* f-new (poly ((r region)) (subr (maxeff (alloc r) (read @globals) spin) ((addr relayed @m)) (fstate r)))
+      "The front's state, made in its place; the expander's instance its
+       process loaded, given as its items (C444): a process may load one, a
+       load seeing the standard environment alone, where it may hold no
+       procedure of a place (Fixpt's `closed-code.md`)."
+      (define* f-new (poly ((r region)) (subr (maxeff (alloc r) (read @globals) spin) ((addr relayed @m)
+                                                                                     (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (datum int) (tupleof datum string int))
+                                                                                     (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (datum int) (tupleof datum string))
+                                                                                     (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (int) bool))
+                                                     (fstate r)))
         (plambda ((r region))
-          (lambda (relay)
+          (lambda (relay entry draft macros?)
+           (begin
             (product (note (new "")) (note-error (new #f)) (speculated (new #f)) (spec-kept (new 0))
                      (spec-open (new nil)) (spec-finished (new #f)) (spec-type (new ""))
                      (spec-state (new 0)) (spec-key (new "")) (spec-waits (new #f)) (spec-serial (new 0))
@@ -2023,13 +2093,15 @@ an entry naming one that has not ended waits for it.")
                      (history (new nil)) (history-at (new -1)) (stash (new "")) (history-path (new ""))
                      (step-limit (new -1)) (commands (new 0)) (quitting (new #f))
                      (requests (new nil)) (cv (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0 (bempty) nil))) (globals (new nil)) (count (new 0))
-                     (input-ended (new #f)) (relay relay)))))
+                     (input-ended (new #f)) (relay relay)
+                     (mx-state (new 0))
+                     (mx-entry entry) (mx-draft draft) (mx-macros? macros?))))))
 
       "A key read, as the key's code, or -1 at the input's end (which asks to
        leave, as ^D does)."
       (define-type byte-read (sumof (byte u8) (eof unit) (failed io-error)))
 
-      (define* f-byte! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) byte-read) unit))
+      (define* f-byte! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) byte-read) unit))
         (plambda ((r region))
           (lambda (f b)
             (tagcase b
@@ -2106,11 +2178,11 @@ an entry naming one that has not ended waits for it.")
                       (cons (arrival (digits-value (before-space l) 0) (unescaped-bytes (after-space l))) (arrivals-of (cdr ls)))))))))
 
       (define-rec
-        (f-keys! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) (listof i64 acyclic) i64) unit))
+        (f-keys! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) (listof i64 acyclic) i64) unit))
           (lambda (f bs clock) (if (null? bs) #u (begin (f-key! f (car bs) clock) (f-keys! f (cdr bs) clock))))))
 
       (define-rec
-        (f-arrived! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r)) ((fstate r) (listof arrival acyclic) i64) (listof arrival acyclic)))
+        (f-arrived! (poly ((r region)) (subr (maxeff (read @globals) spin fronting (read r) (write r) (alloc r) (goto r)) ((fstate r) (listof arrival acyclic) i64) (listof arrival acyclic)))
           (lambda (f as clock)
             "The keys arriving by `clock`, given; those after, left."
             (if (null? as)
@@ -2151,19 +2223,23 @@ an entry naming one that has not ended waits for it.")
                    (front
                     (the (addr told @f)
                          (spawn-monitored relay front-failure (box told p)
-                           (let ((f (the (fstate p) (f-new relay))))
+                           (let* ((x ((proj (load-module "macros/expander.fx") p)))
+                                  (f (the (fstate p) (f-new relay
+                                                            (lambda ((forms datum) (k int)) (with x (drive-entry forms k)))
+                                                            (lambda ((forms datum) (k int)) (with x (drive-draft forms k)))
+                                                            (lambda ((k int)) (with x (drive-macros? k)))))))
                              (begin
                                (write-out (f-started! f live height width path))
                                ;; The prompt, before the first key.
                                (f-written! f 0)
-                               (letrec ((drained (subr (maxeff front-loop (receive p) (read p) (write p) (alloc p)) (bool) bool)
+                               (letrec ((drained (subr (maxeff front-loop (receive p) (read p) (write p) (alloc p) (goto p)) (bool) bool)
                                           (lambda (typed)
                                             "Keys that have come, and news, each taken, until none waits."
                                             (if (and (not (get (extract f input-ended))) (stdin-ready?))
                                                 (begin (f-byte! f (read-byte)) (drained #t))
                                                 (pselect ((receive box) n (begin (f-news! f n (now-ms)) (drained typed)))
                                                          ((sleep-until (int->i64 0)) u typed)))))
-                                        (go (subr (maxeff front-loop (receive p) (read p) (write p) (alloc p)) () unit)
+                                        (go (subr (maxeff front-loop (receive p) (read p) (write p) (alloc p) (goto p)) () unit)
                                           (lambda ()
                                             "A key, news, or a spinner's frame waited for; all that came
                                              taken; the requests sent; what was typed drawn, before the
@@ -2217,10 +2293,14 @@ an entry naming one that has not ended waits for it.")
                        (front
                         (the (addr told @f)
                              (spawn-monitored relay front-failure (box told p)
-                               (let ((f (the (fstate p) (f-new relay))))
+                               (let* ((x ((proj (load-module "macros/expander.fx") p)))
+                                  (f (the (fstate p) (f-new relay
+                                                            (lambda ((forms datum) (k int)) (with x (drive-entry forms k)))
+                                                            (lambda ((forms datum) (k int)) (with x (drive-draft forms k)))
+                                                            (lambda ((k int)) (with x (drive-macros? k)))))))
                                  (begin
                                    (write-out (f-started! f #t 24 80 ""))
-                                   (letrec ((go (subr (maxeff front-loop (receive p) (read p) (write p) (alloc p)) ((listof arrival acyclic) i64 bool) unit)
+                                   (letrec ((go (subr (maxeff front-loop (receive p) (read p) (write p) (alloc p) (goto p)) ((listof arrival acyclic) i64 bool) unit)
                                               (lambda (as clock ended)
                                                 (let* ((left (f-arrived! f as clock))
                                                        (now-ended (if (and (null? left) (not ended)) (begin (set (extract f leaving) #t) #t) ended))

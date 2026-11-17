@@ -20,7 +20,7 @@ use super::*;
 // (an address), `clo`, the fuel, and the cell being run (for giving back).
 // Unlike Fixpt's, the stacks grow up, as tier 1's do.
 // fixpt-source: crates/fixpt-native/src/cellular.rs@120b70e
-pub mod made__load__0__fx26_arm64 {
+pub mod made__load__2__fx26_arm64 {
     use super::*;
 
     pub type ArmOp2 = &'static (dyn Fn(Int, Int) -> Int + Send + Sync);
@@ -185,7 +185,7 @@ pub mod made__load__0__fx26_arm64 {
 pub mod made__input__1089__arm64_types {
     use super::*;
 
-    pub use super::made__load__0__fx26_arm64::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig, Arm64DirectSig};
+    pub use super::made__load__2__fx26_arm64::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig, Arm64DirectSig};
 }
 
 pub mod a64 {

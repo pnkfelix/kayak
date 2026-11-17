@@ -96,6 +96,18 @@
      the files it loads `loaded`'s (C443)."
     (tagcase s (source (name text) (with-loads (read-all text (string-append name ".kfx") 1) (string-append name ".kfx") loaded)))))
 
+"Each of a unit's files' forms (C444), the loads of those before it shared
+ with it (`with-loads-known`)."
+(define-rec
+  (units-forms (subr kfx (sources fileds keyeds) (listof (listof sexp acyclic) acyclic))
+    (lambda (ss loaded known)
+      (if (null? ss)
+          nil
+          (tagcase (car ss)
+            (source (name text)
+              (tagcase (with-loads-known (read-all text (string-append name ".kfx") 1) (string-append name ".kfx") loaded known)
+                (spliced-to (x d k) (cons (items x) (units-forms (cdr ss) loaded k))))))))))
+
 "The files a unit's files load (C443): among its sources, each named
  `%load:PATH`, its path from the manifest's directory, as its files' are;
  and the unit's own files, the rest."
@@ -145,7 +157,7 @@
      `--syscalls`). `async`: every procedure an `async fn` (C371)."
     (let* ((loaded (unit-loaded ss))
            (ss (unit-files ss))
-           (fss (map (lambda ((s source)) (source-forms s loaded)) ss))
+           (fss (units-forms ss loaded nil))
            (forms (concat fss))
            (checked (restrict-checked (check-program-as forms runtime) forms))
            (fs (moded-facts (verdict-facts checked) async))
@@ -199,7 +211,7 @@
     ;; A load's text is in no memo's key, yet (C443).
     (let* ((loaded (unit-loaded ss0))
            (ss (unit-files ss0))
-           (fss (map (lambda ((s source)) (source-forms s loaded)) ss))
+           (fss (units-forms ss loaded nil))
            (forms (concat fss))
            (texts (sources-texts ss fss)))
       (tagcase (let ((c (with incremental (check-program-memo forms texts old runtime)))) (begin (with restrictions (restrict forms (tagcase c (checked-memo (done found checks) (cv-facts done))))) c))

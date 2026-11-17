@@ -167,3 +167,6 @@ Each entry has the same parts:
   - On the second: FX-26 defines a top-level global again
     (`redefine/rerun-chain.fx`, `knot*.fx`; kayak's C202), so the premise
     needs checking against redefinition, not only against assignment.
+- **Taken (C442-C444):** the expander is a file of a place, loaded by
+  the engine and by the REPL's front, each an instance of its own. Each
+  worker could load one too, for expansion in parallel.
