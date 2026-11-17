@@ -23936,6 +23936,23 @@ pub mod mx_in {
         }
     }
 
+    pub fn drive_uses_in(mut us: Uses, mut a: Int, mut b: Int, mut f: Str, mut l: i64, mut p: i64) -> Sexps {
+        loop {
+            if null_p(us) {
+                return nil::<&'static Sexp>();
+            } else if (_eq(car(us).0, a) && _eq(car(us).1, b)) {
+                return kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(symbol_to_string(car(us).2), f, p), kayak_rt::heap_cons(sym(if car(us).5 {
+                    str_lit("#t")
+                } else {
+                    str_lit("#f")
+                }, f, p), kayak_rt::nil())), f, l, p), drive_uses_in(cdr(us), a, b, f, l, p));
+            } else {
+                us = cdr(us);
+                continue;
+            }
+        }
+    }
+
     /// Syntax as the reader's datum, where its place says.
     pub fn drive_sexp<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> &'static Sexp {
         let w = drive_placed(mxp, maker_st, syn_start(s));
@@ -23948,7 +23965,17 @@ pub mod mx_in {
                 drive_datum(d, f, l, p)
             }
             mx_types::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
-                lst(drive_sexps(mxp, maker_st, items), f, l, p)
+                let xs = drive_sexps(mxp, maker_st, items);
+                let us = if (_gt_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("with"))) {
+                    drive_uses_in(with_uses_given(mxp, maker_st), a, b, f, l, p)
+                } else {
+                    nil::<&'static Sexp>()
+                };
+                lst(if null_p(us) {
+                    xs
+                } else {
+                    cons(car(xs), cons(car(cdr(xs)), cons(sym(str_lit("#:uses"), f, p), cons(lst(us, f, l, p), cdr(cdr(xs))))))
+                }, f, l, p)
             }
             mx_types::Syn::Dotted(items, tail, d, a, b, x) => {
                 lst(append(drive_sexps(mxp, maker_st, items), kayak_rt::cons(sym(str_lit("."), f, p), kayak_rt::cons(drive_sexp(mxp, maker_st, tail), kayak_rt::nil()))), f, l, p)
@@ -24116,7 +24143,9 @@ pub mod mx_in {
 
     pub fn drive_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> Result<SynsA, Unwind> {
         if shape_definition_p(s) {
-            Ok(drive_not_yet(mxp, maker_st, s, str_lit("a shape's definition"))?)
+            drive_taken(mxp, maker_st, syntax_names(mxp, maker_st, s)?, s)?;
+            shape_defined_x(mxp, maker_st, s)?;
+            Ok(nil::<&'static mx_types::Syn>())
         } else if defines_syntax_p(s) {
             drive_taken(mxp, maker_st, syntax_names(mxp, maker_st, s)?, s)?;
             Ok(drive_checks(mxp, maker_st, define_macro(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s, nil::<Product_11_12_13_14_15<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>>>())?)?)

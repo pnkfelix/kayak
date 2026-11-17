@@ -817,7 +817,8 @@
             ;; Kept as a node, as Fixpt's `e-the` (C253): no code, but what
             ;; register code asks of an expression sees it, as Fixpt's does
             ;; (not simple; a node counted).
-            ((string=? h "the") (x-proj (parse-x (car (cdr (cdr xs)))) a))
+            ;; A module sealed to names, reshaped as an argument is (C440).
+            ((string=? h "the") (x-proj (parse-arg (car (cdr (cdr xs)))) a))
             ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
             ((and (or (string=? h "reify-effect") (string=? h "reify-type") (string=? h "reify-region")) (i64>= (size xs) 2))
              "Evidence (C339): a call of tier 1's `%kayak-reify` with the evidence
@@ -893,6 +894,9 @@
             ;; `(with #%toplevel n)`: the top level's `n` (C397).
             ((and (string=? h "with") (i64= (size xs) 3) (sym-is? (second xs) "#%toplevel") (tagcase (third xs) (sym (n f2 p2) #t) (else other #f)))
              (toplevel-x (sym-name (third xs)) f a))
+            ;; What the expander read the module to give (C440), the checker's alone.
+            ((and (string=? h "with") (i64>= (size xs) 4) (or (sym-is? (third xs) "#:relied") (sym-is? (third xs) "#:uses")))
+             (parse-form h (cons (car xs) (cons (second xs) (cdr (cdr (cdr (cdr xs)))))) e f a))
             ((string=? h "with") (parse-with (second xs) (parse-body (cdr (cdr xs)) a) f a))
             ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap") (string=? h "letfreeze"))
              ;; What it makes besides the region: nothing, an arena, a reap,

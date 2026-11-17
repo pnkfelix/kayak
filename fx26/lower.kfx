@@ -814,6 +814,10 @@
             ((and (string=? h "with") (sym-is? (car xs) "#%fx"))
              "`(with #%fx n)`: the standard `n`, whatever names it here (C199)."
              (lower-name (sym-name (second xs)) nil nil))
+            ((and (string=? h "with") (i64>= (size xs) 3) (or (sym-is? (second xs) "#:relied") (sym-is? (second xs) "#:uses")))
+             "What the expander read the module to give, and noted of the `with`
+              (C440): the checker's alone."
+             (lower-form h (cons (car xs) (cdr (cdr (cdr xs)))) e sc gs))
             ((string=? h "with")
              (let* ((m (car xs))
                     (statics (tagcase m (sym (n f p) (exports-of n gs)) (else other nil)))

@@ -12632,3 +12632,47 @@ entry read from the reading state the one before left (`macros-at!`,
   entry; `(goto r)` on the front's procedures that may expand.
 - **Records:** `INCR_IMPED.md` §2 also gets what C437 meant to add, which
   was never written: parallelism, and kayak's way round.
+
+## C440. A shape's definition; `with`s held to what the expander read (2026-11-16)
+
+The first of the driver's not-yets (TODO §51). Of Fixpt's programs, two
+met one: `modules/modnames-sealed.fx`, a shape's definition, and
+`procedural/for-syntax-helper.fx`, `begin-for-syntax`, which is stage 5's.
+`import-with-syntax` is met by none, since the engine has no top-level
+`include` for it to come through.
+- **The driver**: a shape's definition, `(define-syntax s (modnames …))`,
+  is held to the globals and defined (`shape-defined!`), as Fixpt's
+  `top-made` has it. It makes nothing.
+- **The checker**, what the expansion then asks of it:
+  - `(the (modnames member …) e)` (Fixpt's `the_sealed`): `e`'s module
+    type sealed to the names (`sealed-to`, over C286's `restricted`).
+    Each member's kind is checked as Fixpt's `sealed` checks it, in its
+    words. The values kept are noted (`module-arg`) so the engine
+    reshapes the module, as `check` notes any module value where a module
+    type is wanted. A `modnames` inside a `modnames` is refused, as kayak
+    doesn't take it yet.
+  - `(with m #:relied ((value …) (type …)) body …)` (Fixpt's
+    `shape_held`): what the shape names, `m` gives; a name in the body
+    that `m` gives, the shape names. The body's names are all the symbols
+    it holds, so this is stricter than Fixpt's, which takes the values the
+    body uses of the module.
+  - Fixpt's `with_as` reads the expander's `with-uses` table by each
+    `with`'s place. kayak's checker sees datums, so the driver writes a
+    `with`'s uses into it: `(with m #:uses ((name projection?) …) …)`,
+    after the module. That keyword is kayak's, written by the driver and
+    read by the checker. The checker refuses, in Fixpt's words, a macro
+    the body uses by a name `m` gives a value of, and a template's `(with
+    m name)` where `m` gives no `name`.
+  - The engine's lowerings, `lower.kfx` and `cg.kfx`, drop both keywords.
+    The cells' `cg.kfx` reshapes a `the`'s module as it reshapes an
+    argument's (`parse-arg`), which the check's cells tier found.
+- **What the `with` rules found**: before this, any `with` carrying
+  `#:relied` failed the checker for its arity, so three of Fixpt's refused
+  programs (`macros/with-shadows-macro*.fx`, `with-value-missing.fx`)
+  were refused by accident. Taking `#:relied` alone made the engine
+  accept them. `refused-fixpt-programs.py` found that, and `#:uses` puts
+  the refusals back.
+
+Fixpt's programs beyond KFX the engine agrees on: 386 to 390
+(`modnames-sealed`, `modnames-the`, `macros/with-value`,
+`with-macro-not-given`). Fixpt's 594 refused programs are all refused.

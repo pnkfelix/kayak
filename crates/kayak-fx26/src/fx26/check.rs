@@ -10526,6 +10526,100 @@ pub fn walk_mu(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
     }
 }
 
+/// A `modnames` member, `x` or `(val x)`, `(abs t)`, `(desc u)`, `(eff e)`:
+/// its name and the kind of item module type `t` must give of it, refused
+/// as Fixpt's `sealed` refuses one the module gives not, or not so.
+pub fn sealed_name(v: &'static Cv, z: &'static St, t: &'static Ty, m: &'static Sexp) -> Product_11_12<Str, Str> {
+    let kn = {
+        let tagcase_ = m;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                Product_11_12(str_lit("%val"), n)
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if (i64_eq(size(xs), 2i64) && {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(w, f2, p2) => {
+                            string_member_p(w, kayak_rt::heap_cons(str_lit("val"), kayak_rt::heap_cons(str_lit("abs"), kayak_rt::heap_cons(str_lit("desc"), kayak_rt::heap_cons(str_lit("eff"), kayak_rt::nil())))))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    let w = sym_name(car(xs));
+                    Product_11_12(if string_eq_p(w, str_lit("val")) {
+                        str_lit("%val")
+                    } else if string_eq_p(w, str_lit("abs")) {
+                        str_lit("%abs")
+                    } else if string_eq_p(w, str_lit("desc")) {
+                        str_lit("%desc")
+                    } else {
+                        str_lit("%edesc")
+                    }, sym_name(second(xs)))
+                } else if head_is_p(m, str_lit("modnames")) {
+                    match refuse(v, str_lit("a `modnames` inside a `modnames`, which kayak's checker does not take yet")) {};
+                    Product_11_12(str_lit(""), str_lit(""))
+                } else {
+                    match refuse(v, str_lit("a `modnames` member is `x`, `(val x)`, `(abs t)`, `(desc u)`, `(eff e)` or `(modnames m member …)`")) {};
+                    Product_11_12(str_lit(""), str_lit(""))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                match refuse(v, str_lit("a `modnames` member is `x`, `(val x)`, `(abs t)`, `(desc u)`, `(eff e)` or `(modnames m member …)`")) {};
+                Product_11_12(str_lit(""), str_lit(""))
+            }
+        }
+    };
+    let kind = kn.0;
+    let n = kn.1;
+    let has = lambda1s(move |k: Str| {
+        not(null_p(mtype_find(t, k, n)))
+    });
+    let said = lambda2s(move |w: Str, k: Str| {
+        match refuse(v, string_append(str_lit("`"), string_append(n, string_append(str_lit("` is "), string_append(w, string_append(str_lit(" of "), string_append(show_ty(z, t), string_append(str_lit(": `("), string_append(k, string_append(str_lit(" "), string_append(n, str_lit(")`")))))))))))) {}
+    });
+    if has(kind) {
+        kn
+    } else if has(str_lit("%abs")) {
+        match said(str_lit("an abstract type"), str_lit("abs")) {};
+        kn
+    } else if has(str_lit("%desc")) {
+        match said(str_lit("a transparent type"), str_lit("desc")) {};
+        kn
+    } else if has(str_lit("%edesc")) {
+        match said(str_lit("an effect"), str_lit("eff")) {};
+        kn
+    } else {
+        match refuse(v, string_append(str_lit("the module gives no `"), string_append(n, str_lit("`")))) {};
+        kn
+    }
+}
+
+/// Module type `t` sealed to the names of `members` (`(the (modnames
+/// member …) e)`, Fixpt's `sealed`, `binding-shapes.md`; C440): each as `t`
+/// has it, its kind as written; an abstract type left out, hidden, as
+/// `restrict` hides it.
+pub fn sealed_to(v: &'static Cv, z: &'static St, t: &'static Ty, members: Sexps) -> &'static Ty {
+    restricted(v, t, map(lambda1s(move |m: &'static Sexp| {
+        sealed_name(v, z, t, m).1
+    }), members), lst(nil::<&'static Sexp>(), str_lit(""), 0i64, 0i64))
+}
+
 pub fn frozen_region_p(s: &'static St, r: &'static Ty) -> bool {
     let tagcase_ = walk(s, r);
     match *tagcase_ {
@@ -17570,6 +17664,135 @@ pub fn well_formed_p(h: Str, xs: Sexps) -> bool {
         i64_gt(size(xs), 1i64)
     } else {
         true
+    }
+}
+
+pub fn relied_joined(xs: Strings, sep: Str) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else if null_p(cdr(xs)) {
+        car(xs)
+    } else {
+        string_append(car(xs), string_append(sep, relied_joined(cdr(xs), sep)))
+    }
+}
+
+pub fn relied_distinct(mut xs: Strings, mut seen: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return reverse(seen);
+        } else if string_member_p(car(xs), seen) {
+            xs = cdr(xs);
+            continue;
+        } else {
+            (xs, seen) = (cdr(xs), kayak_rt::heap_cons(car(xs), seen));
+            continue;
+        }
+    }
+}
+
+/// Why module type `t`, opened by a `with` of `body`, is not the shape the
+/// expander read it as, `#:relied ((value …) (type …))`, or the empty string (Fixpt's
+/// `shape_held`, `binding-shapes.md`; C440): what the shape names, it
+/// gives; a name of the body's it gives, the shape names. The body's
+/// names are all it holds, bound there or not, quoted not: stricter than
+/// Fixpt's, which takes those the body uses of the module.
+pub fn relied_wrong(t: &'static Ty, shape: &'static Sexp, body: Sexps, shown: Str) -> Str {
+    let parts = items(shape);
+    let vals = if null_p(parts) {
+        nil::<Str>()
+    } else {
+        map(&sym_name, filter(lambda1s(move |x: &'static Sexp| {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }), items(car(parts))))
+    };
+    let descs = if (null_p(parts) || null_p(cdr(parts))) {
+        nil::<Str>()
+    } else {
+        map(&sym_name, filter(lambda1s(move |x: &'static Sexp| {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }), items(second(parts))))
+    };
+    let gives_val = lambda1s(move |n: Str| {
+        not(null_p(mtype_find(t, str_lit("%val"), n)))
+    });
+    let gives_desc = lambda1s(move |n: Str| {
+        (not(null_p(mtype_find(t, str_lit("%abs"), n))) || not(null_p(mtype_find(t, str_lit("%desc"), n))))
+    });
+    let named = relied_distinct(names_named_all(body, nil::<Str>()), nil::<Str>());
+    let fewer = onto(filter(lambda1s(move |n: Str| {
+        not(gives_val(n))
+    }), vals), filter(lambda1s(move |n: Str| {
+        not(gives_desc(n))
+    }), descs));
+    let more = onto(filter(lambda1s(move |n: Str| {
+        (gives_val(n) && not(string_member_p(n, vals)))
+    }), named), filter(lambda1s(move |n: Str| {
+        (gives_desc(n) && not(string_member_p(n, descs)))
+    }), named));
+    let listed = lambda1s(move |ns: Strings| {
+        relied_joined(map(lambda1s(move |n: Str| {
+            string_append(str_lit("`"), string_append(n, str_lit("`")))
+        }), ns), str_lit(", "))
+    });
+    let said = onto(if null_p(more) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(string_append(str_lit("its type gives "), string_append(listed(more), str_lit(", which the program took to be bound outside it"))), kayak_rt::nil())
+    }, if null_p(fewer) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(string_append(str_lit("its type has no "), listed(fewer)), kayak_rt::nil())
+    });
+    if null_p(said) {
+        str_lit("")
+    } else {
+        string_append(shown, string_append(str_lit(" gives other names than were read from the program before it was checked: "), relied_joined(said, str_lit(", and "))))
+    }
+}
+
+/// Why module type `t`, of `m`, opened by a `with` the expander noted
+/// `uses` of, `((name projection?) …)`, is refused, or the empty string (Fixpt's
+/// `with_as`, `k-macro-clash`; C440).
+pub fn uses_wrong(t: &'static Ty, uses: &'static Sexp, m: Str) -> Str {
+    let gives = lambda1s(move |n: Str| {
+        not(null_p(mtype_find(t, str_lit("%val"), n)))
+    });
+    let bad = filter(lambda1s(move |u: &'static Sexp| {
+        let (n, proj) = (sym_name(car(items(u))), sym_is_p(second(items(u)), str_lit("#t")));
+        if proj {
+            not(gives(n))
+        } else {
+            gives(n)
+        }
+    }), items(uses));
+    if null_p(bad) {
+        str_lit("")
+    } else {
+        let n = sym_name(car(items(car(bad))));
+        if sym_is_p(second(items(car(bad))), str_lit("#t")) {
+            string_append(str_lit("`"), string_append(m, string_append(str_lit("` gives no value `"), string_append(n, string_append(str_lit("`, which a template's `(with "), string_append(m, string_append(str_lit(" "), string_append(n, str_lit(")` takes from it alone")))))))))
+        } else {
+            string_append(str_lit("`"), string_append(n, string_append(str_lit("` is a macro here, and `"), string_append(m, str_lit("` gives a value of that name, which this `with` would seem to call")))))
+        }
     }
 }
 

@@ -12,8 +12,8 @@
  its index the order it is met in (`drive-files`); a part a template made,
  its key's place in the template (`source-of`). A list's line, kayak's
  checker's place, kept by its position (`drive-lines`). Not yet: a file's
- macros (`import-with-syntax`), `begin-for-syntax` (procedural macros'),
- a shape's definition; each refused, saying so."
+ macros (`import-with-syntax`), `begin-for-syntax` (procedural macros');
+ each refused, saying so."
 
 ;;; ------------------------------------------------------------ places
 
@@ -151,6 +151,17 @@
       (cond ((null? d) nil)
             ((pair? d) (let ((x (car d))) (cons (drive-datum x f l p) (drive-datums (cdr d) f l p))))
             (else (list (sym "." f p) (drive-datum d f l p)))))))
+"What the expander noted of the `with` at `a`..`b` (`with-uses`), for the
+ checker (Fixpt's `with_as`; C440): each macro its body uses by a name,
+ and each name a template's `(with m name)` projects (`#t`), as `(name
+ projection?)`, in the order met."
+(define drive-uses-in (->* (uses int int string i64 i64) sexps)
+  (lambda (us a b f l p)
+    (cond ((null? us) nil)
+          ((and (= (extract (car us) 1) a) (= (extract (car us) 2) b))
+           (cons (lst (list (sym (symbol->string (extract (car us) 3)) f p) (sym (if (extract (car us) 6) "#t" "#f") f p)) f l p)
+                 (drive-uses-in (cdr us) a b f l p)))
+          (else (drive-uses-in (cdr us) a b f l p)))))
 (define-rec
   (drive-sexp (->* (syn) sexp)
     (lambda (s)
@@ -158,7 +169,13 @@
       (let* ((w (drive-placed (syn-start s))) (f (extract w 1)) (l (extract w 2)) (p (extract w 3)))
         (tagcase s
           (atom (d a b x) (drive-datum d f l p))
-          (mx-eager-reader-types-lst (items d a b x) (lst (drive-sexps items) f l p))
+          (mx-eager-reader-types-lst (items d a b x)
+            (let* ((xs (drive-sexps items))
+                   ;; A `with`'s uses noted, written after its module (C440).
+                   (us (if (and (>= (len items) 3) (syn-symbol? (car items)) (string=? (syn-name (car items)) "with"))
+                           (drive-uses-in (with-uses-given) a b f l p)
+                           nil)))
+              (lst (if (null? us) xs (cons (car xs) (cons (car (cdr xs)) (cons (sym "#:uses" f p) (cons (lst us f l p) (cdr (cdr xs))))))) f l p)))
           (dotted (items tail d a b x) (lst (append (drive-sexps items) (list (sym "." f p) (drive-sexp tail))) f l p))
           (vec (items d a b x) (lst (cons (sym "#vector" f p) (drive-sexps items)) f l p))))))
   (drive-sexps (->* (syns-a) sexps)
@@ -252,7 +269,9 @@
 (define-rec
   (drive-form (->* (syn) syns-a)
     (lambda (s)
-      (cond ((shape-definition? s) (drive-not-yet s "a shape's definition"))
+      (cond ;; A shape named (`binding-shapes.md`): held to the globals, as a
+            ;; macro is, and defined; it makes nothing (C440).
+            ((shape-definition? s) (begin (drive-taken (syntax-names s) s) (shape-defined! s) nil))
             ((defines-syntax? s)
              (begin (drive-taken (syntax-names s) s)
                     (drive-checks (define-macro pfail-at s nil))))

@@ -1525,7 +1525,9 @@ Twobit-style optimizations in KFX.
   agree (296 before), the engine refuses each macro program Fixpt does.
   Next: the driver's not-yets (a file's macros, `import-with-syntax`, in
   a top-level `include`, which the engine has not either; `begin-for-syntax`,
-  procedural macros'; a shape's definition); the REPL (`,type`
+  procedural macros', with stage 5; a shape's definition done, C440, and
+  `modnames` and `#:relied` with it: a `modnames` inside one not yet; the
+  `#:relied` check's names all the body's symbols, stricter than Fixpt's); the REPL (`,type`
   and entries read through it), parked (C439): the driver's session is
   written (`drive-entry`, `drive-draft`, `drive-macros?`, Fixpt's reading
   states), but the front, a process, may make no instance of a maker

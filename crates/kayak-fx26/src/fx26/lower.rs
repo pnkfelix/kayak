@@ -1476,6 +1476,11 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if (string_eq_p(h, str_lit("with")) && sym_is_p(car(xs), str_lit("#%fx"))) {
             // `(with #%fx n)`: the standard `n`, whatever names it here (C199).
             return lower_name(sym_name(second(xs)), nil::<List<Str>>(), nil::<Str>());
+        } else if (string_eq_p(h, str_lit("with")) && i64_gt_eq(size(xs), 3i64) && (sym_is_p(second(xs), str_lit("#:relied")) || sym_is_p(second(xs), str_lit("#:uses")))) {
+            // What the expander read the module to give, and noted of the `with`
+            // (C440): the checker's alone.
+            xs = kayak_rt::heap_cons(car(xs), cdr(cdr(cdr(xs))));
+            continue;
         } else if string_eq_p(h, str_lit("with")) {
             let m = car(xs);
             let statics = {

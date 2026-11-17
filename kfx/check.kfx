@@ -4436,6 +4436,41 @@
       "`t` walked, and a recursive type unfolded, where its shape is asked (C174)."
       (let ((w (walk s t))) (if (mu? w) (walk-mu s (unfold-mu w)) w)))))
 
+(define sealed-name (subr kfx (cv st ty sexp) (tupleof string string))
+  (lambda (v z t m)
+    "A `modnames` member, `x` or `(val x)`, `(abs t)`, `(desc u)`, `(eff e)`:
+     its name and the kind of item module type `t` must give of it, refused
+     as Fixpt's `sealed` refuses one the module gives not, or not so."
+    (let* ((kn (tagcase m
+                 (sym (n f p) (tuple "%val" n))
+                 (lst (xs f l p)
+                   (cond ((and (i64= (size xs) 2) (tagcase (car xs) (sym (w f2 p2) (string-member? w (list "val" "abs" "desc" "eff"))) (else other #f))
+                               (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
+                          (let ((w (sym-name (car xs))))
+                            (tuple (cond ((string=? w "val") "%val") ((string=? w "abs") "%abs") ((string=? w "desc") "%desc") (else "%edesc"))
+                                   (sym-name (second xs)))))
+                         ((head-is? m "modnames")
+                          (begin (refuse v "a `modnames` inside a `modnames`, which kayak's checker does not take yet") (tuple "" "")))
+                         (else (begin (refuse v "a `modnames` member is `x`, `(val x)`, `(abs t)`, `(desc u)`, `(eff e)` or `(modnames m member …)`") (tuple "" "")))))
+                 (else other (begin (refuse v "a `modnames` member is `x`, `(val x)`, `(abs t)`, `(desc u)`, `(eff e)` or `(modnames m member …)`") (tuple "" "")))))
+           (kind (extract kn 1)) (n (extract kn 2))
+           (has (lambda ((k string)) (not (null? (mtype-find t k n)))))
+           (said (lambda ((w string) (k string))
+                   (refuse v (string-append "`" (string-append n (string-append "` is " (string-append w (string-append " of " (string-append (show-ty z t) (string-append ": `(" (string-append k (string-append " " (string-append n ")`"))))))))))))))
+      (cond ((has kind) kn)
+            ((has "%abs") (begin (said "an abstract type" "abs") kn))
+            ((has "%desc") (begin (said "a transparent type" "desc") kn))
+            ((has "%edesc") (begin (said "an effect" "eff") kn))
+            (else (begin (refuse v (string-append "the module gives no `" (string-append n "`"))) kn))))))
+
+(define sealed-to (subr kfx (cv st ty sexps) ty)
+  (lambda (v z t members)
+    "Module type `t` sealed to the names of `members` (`(the (modnames
+     member …) e)`, Fixpt's `sealed`, `binding-shapes.md`; C440): each as `t`
+     has it, its kind as written; an abstract type left out, hidden, as
+     `restrict` hides it."
+    (restricted v t (map (lambda ((m sexp)) (extract (sealed-name v z t m) 2)) members) (lst nil "" 0 0))))
+
 (define frozen-region? (subr kfx (st ty) bool)
   (lambda (s r) (tagcase (walk s r) (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const"))) (ty-data (d args) (string=? d "%frozen")) (else other #f))))
 
@@ -7100,3 +7135,55 @@
              (and (i64> (size xs) 1) (not (any? (lambda ((c sexp)) (not (lists? c 2 #f))) (cdr xs)))))
             ((or (string=? h "with") (string=? h "letregion")) (i64> (size xs) 1))
             (else #t)))))
+
+(define-rec
+  (relied-joined (subr kfx (strings string) string)
+    (lambda (xs sep)
+      (cond ((null? xs) "") ((null? (cdr xs)) (car xs)) (else (string-append (car xs) (string-append sep (relied-joined (cdr xs) sep))))))))
+(define-rec
+  (relied-distinct (subr kfx (strings strings) strings)
+    (lambda (xs seen)
+      (cond ((null? xs) (reverse seen))
+            ((string-member? (car xs) seen) (relied-distinct (cdr xs) seen))
+            (else (relied-distinct (cdr xs) (cons (car xs) seen)))))))
+
+(define relied-wrong (subr kfx (ty sexp sexps string) string)
+  (lambda (t shape body shown)
+    "Why module type `t`, opened by a `with` of `body`, is not the shape the
+     expander read it as, `#:relied ((value …) (type …))`, or the empty string (Fixpt's
+     `shape_held`, `binding-shapes.md`; C440): what the shape names, it
+     gives; a name of the body's it gives, the shape names. The body's
+     names are all it holds, bound there or not, quoted not: stricter than
+     Fixpt's, which takes those the body uses of the module."
+    (let* ((parts (items shape))
+           (vals (if (null? parts) nil (map sym-name (filter (lambda ((x sexp)) (tagcase x (sym (n f p) #t) (else other #f))) (items (car parts))))))
+           (descs (if (or (null? parts) (null? (cdr parts))) nil (map sym-name (filter (lambda ((x sexp)) (tagcase x (sym (n f p) #t) (else other #f))) (items (second parts))))))
+           (gives-val (lambda ((n string)) (not (null? (mtype-find t "%val" n)))))
+           (gives-desc (lambda ((n string)) (or (not (null? (mtype-find t "%abs" n))) (not (null? (mtype-find t "%desc" n))))))
+           (named (relied-distinct (names-named-all body nil) nil))
+           (fewer (onto (filter (lambda ((n string)) (not (gives-val n))) vals) (filter (lambda ((n string)) (not (gives-desc n))) descs)))
+           (more (onto (filter (lambda ((n string)) (and (gives-val n) (not (string-member? n vals)))) named)
+                       (filter (lambda ((n string)) (and (gives-desc n) (not (string-member? n descs)))) named)))
+           (listed (lambda ((ns strings)) (relied-joined (map (lambda ((n string)) (string-append "`" (string-append n "`"))) ns) ", ")))
+           (said (onto (if (null? more) nil (list (string-append "its type gives " (string-append (listed more) ", which the program took to be bound outside it"))))
+                       (if (null? fewer) nil (list (string-append "its type has no " (listed fewer)))))))
+      (if (null? said)
+          ""
+          (string-append shown (string-append " gives other names than were read from the program before it was checked: " (relied-joined said ", and ")))))))
+
+(define uses-wrong (subr kfx (ty sexp string) string)
+  (lambda (t uses m)
+    "Why module type `t`, of `m`, opened by a `with` the expander noted
+     `uses` of, `((name projection?) …)`, is refused, or the empty string (Fixpt's
+     `with_as`, `k-macro-clash`; C440)."
+    (let* ((gives (lambda ((n string)) (not (null? (mtype-find t "%val" n)))))
+           (bad (filter (lambda ((u sexp))
+                          (let ((n (sym-name (car (items u)))) (proj (sym-is? (second (items u)) "#t")))
+                            (if proj (not (gives n)) (gives n))))
+                        (items uses))))
+      (if (null? bad)
+          ""
+          (let ((n (sym-name (car (items (car bad))))))
+            (if (sym-is? (second (items (car bad))) "#t")
+                (string-append "`" (string-append m (string-append "` gives no value `" (string-append n (string-append "`, which a template's `(with " (string-append m (string-append " " (string-append n ")` takes from it alone"))))))))
+                (string-append "`" (string-append n (string-append "` is a macro here, and `" (string-append m "` gives a value of that name, which this `with` would seem to call"))))))))))

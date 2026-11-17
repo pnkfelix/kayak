@@ -758,6 +758,40 @@ pub mod expressions {
         }
     }
 
+    /// The module type of `m`, a `with`'s, a module at the top level or a
+    /// module value named; unit, of any other (C440).
+    pub fn with_module_type(v: &'static Cv, s: &'static St, m: Str) -> &'static Ty {
+        let found = if string_eq_p(m, str_lit("")) {
+            nil::<&'static Bind>()
+        } else {
+            scope_bind(m, v)
+        };
+        if null_p(found) {
+            ty_unit()
+        } else if {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, wher) => {
+                    string_eq_p(wher, str_lit("module"))
+                }
+            }
+        } {
+            module_type_of(v, m)
+        } else {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, wher) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            load_mtype(v, walk(s, t))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// The moduleof a module type names, as a list of one; or none.
     pub fn module_spec(v: &'static Cv, t: &'static Ty) -> Sexps {
         let tagcase_ = t;
@@ -6943,6 +6977,32 @@ pub mod expressions {
                         }
                     }
                 }
+            } else if (string_eq_p(h, str_lit("the")) && i64_eq(size(xs), 2i64) && head_is_p(car(xs), str_lit("modnames"))) {
+                // `(the (modnames member …) e)` (Fixpt's `the_sealed`; C440): `e`'s
+                // module type sealed to the names, `e` held to it.
+                let tagcase_ = synth(v, s, second(xs));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let mt = as_mtype(v, walk(s, t));
+                        if not(mtype_p(mt)) {
+                            return match refuse(v, string_append(str_lit("`modnames` names a module's members, and this is a "), show_ty(s, t))) {};
+                        } else {
+                            let want = sealed_to(v, s, mt, cdr(items(car(xs))));
+                            let e2 = second(xs);
+                            let order = if string_eq_p(datum_file(e2), str_lit("")) {
+                                nil::<Str>()
+                            } else {
+                                module_value_order(v, s, want)
+                            };
+                            let s = if null_p(order) {
+                                s
+                            } else {
+                                note_fact(s, datum_file(e2), datum_pos(e2), string_append(str_lit("module-arg "), words_of(order)))
+                            };
+                            return res(want, es, fits(v, s, t, want));
+                        }
+                    }
+                }
             } else if string_eq_p(h, str_lit("the")) {
                 let want = parse_type(v, cv_tvars(v), car(xs));
                 let tagcase_ = check(v, s, second(xs), want);
@@ -7448,190 +7508,236 @@ pub mod expressions {
 
     /// `if`, `cond`, `case`, `tagcase`, `let`, `let*` and `begin`: forms
     /// whose last parts give the value; `expected` is the type, if known.
-    pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Tys) -> &'static Res {
-        if not(well_formed_p(h, xs)) {
-            match refuse(v, string_append(str_lit("a ("), string_append(h, str_lit(" ...) not of the form FX-26 has")))) {}
-        } else if (string_eq_p(h, str_lit("confirm-nat")) || string_eq_p(h, str_lit("confirm-length")) || string_eq_p(h, str_lit("acyclic"))) {
-            confirm_form(v, s, h, xs, expected)
-        } else if string_eq_p(h, str_lit("if")) {
-            let ns = narrowings(v, s, car(xs));
-            let tagcase_ = check(v, s, car(xs), ty_bool());
-            match *tagcase_ {
-                Res::Res(t, es, s) => {
-                    if null_p(ns) {
-                        with_effs(arms(v, s, cdr(xs), expected), es)
-                    } else {
-                        let tagcase_ = car(ns);
-                        match *tagcase_ {
-                            Narrowing::Narrowing(yes, no) => {
-                                with_effs(narrowed_arms(yes, no, s, second(xs), third(xs), expected), es)
-                            }
-                        }
-                    }
-                }
-            }
-        } else if string_eq_p(h, str_lit("typecase")) {
-            if null_p(union_local(v, s, car(xs))) {
-                match refuse(v, str_lit("a typecase of a local of a union (C62)")) {}
-            } else {
-                typecase_arms(v, {
-                    let origin = bind_origin(sym_name(car(xs)), cv_binds(v));
-                    if (not(null_p(origin)) && valued_p(s, car(origin))) {
-                        note_fact(s, cv_file(v), cv_pos(v), str_lit("typecase-valued"))
-                    } else {
-                        s
-                    }
-                }, car(xs), cdr(xs), expected)
-            }
-        } else if string_eq_p(h, str_lit("begin")) {
-            body(v, s, xs, expected)
-        } else if string_eq_p(h, str_lit("let")) {
-            let_values(v, s, items(car(xs)), cdr(xs), expected, nil::<&'static Bind>(), false)
-        } else if string_eq_p(h, str_lit("let*")) {
-            let_values(v, s, items(car(xs)), cdr(xs), expected, nil::<&'static Bind>(), true)
-        } else if string_eq_p(h, str_lit("letrec")) {
-            letrec_form(v, s, items(car(xs)), cdr(xs), expected)
-        } else if string_eq_p(h, str_lit("letregion")) {
-            letregion_form(v, s, name_of(v, car(xs)), cdr(xs), expected)
-        } else if string_eq_p(h, str_lit("letfreeze")) {
-            letfreeze_form(v, s, xs, expected)
-        } else if string_eq_p(h, str_lit("with")) {
-            // `(with m body ...)`: `m`'s values and types in scope in the body,
-            // shadowing what is outside, locals too, as FX-26 has it; `m` a
-            // module defined at the top level, reading which is reading a
-            // global.
-            let m = {
-                let tagcase_ = car(xs);
+    pub fn body_form(mut v: &'static Cv, mut s: &'static St, mut h: Str, mut xs: Sexps, mut expected: Tys) -> &'static Res {
+        loop {
+            if not(well_formed_p(h, xs)) {
+                return match refuse(v, string_append(str_lit("a ("), string_append(h, str_lit(" ...) not of the form FX-26 has")))) {};
+            } else if (string_eq_p(h, str_lit("confirm-nat")) || string_eq_p(h, str_lit("confirm-length")) || string_eq_p(h, str_lit("acyclic"))) {
+                return confirm_form(v, s, h, xs, expected);
+            } else if string_eq_p(h, str_lit("if")) {
+                let ns = narrowings(v, s, car(xs));
+                let tagcase_ = check(v, s, car(xs), ty_bool());
                 match *tagcase_ {
-                    Sexp::Sym(n, f, p) => {
-                        n
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit("")
-                    }
-                }
-            };
-            let found = if string_eq_p(m, str_lit("")) {
-                nil::<&'static Bind>()
-            } else {
-                scope_bind(m, v)
-            };
-            if string_eq_p(m, str_lit("#%toplevel")) {
-                // `(with #%toplevel n)`, the top level's `n` wherever it is
-                // (`toplevel-value`).
-                if (i64_eq(size(xs), 2i64) && {
-                    let tagcase_ = second(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f, p) => {
-                            true
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                }) {
-                    found_then_fitted(v, toplevel_value(v, s, sym_name(second(xs)), cv_pos(v)), expected)
-                } else {
-                    match refuse(v, str_lit("(with #%toplevel name) names one name")) {}
-                }
-            } else if string_eq_p(m, str_lit("#%fx")) {
-                // `(with #%fx n)`, the standard `n` wherever it is (C199; Fixpt's
-                // TODO §46), whatever names it here: its type, as named where
-                // nothing shadows it. FX-26's; KFX's standard names are not shadowed.
-                let std = if (i64_eq(size(xs), 2i64) && {
-                    let tagcase_ = second(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f, p) => {
-                            true
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                }) {
-                    filter(lambda1s(move |b: &'static Bind| {
-                        let tagcase_ = b;
-                        match *tagcase_ {
-                            Bind::Bind(n, sc, w) => {
-                                (string_eq_p(w, str_lit("prim")) && string_eq_p(n, sym_name(second(xs))))
-                            }
-                        }
-                    }), cv_binds(v))
-                } else {
-                    nil::<&'static Bind>()
-                };
-                if null_p(std) {
-                    match refuse(v, str_lit("(with #%fx name) names one standard binding")) {}
-                } else {
-                    found_then_fitted(v, body(with_binds(v, kayak_rt::heap_cons(car(std), kayak_rt::nil())), kfx_restricted(v, s, str_lit("(with #%fx name), FX-26's standard names through their module, which KFX has not (C199)")), cdr(xs), nil::<&'static Ty>()), expected)
-                }
-            } else if (string_eq_p(m, str_lit("")) || (not(null_p(found)) && {
-                let tagcase_ = car(found);
-                match *tagcase_ {
-                    Bind::Bind(n, sc, wher) => {
-                        (not(string_eq_p(wher, str_lit("module"))) && {
-                            let tagcase_ = sc;
-                            match *tagcase_ {
-                                Scheme::Scheme(tv, t) => {
-                                    mtype_p(load_mtype(v, walk(s, t)))
-                                }
-                            }
-                        })
-                    }
-                }
-            })) {
-                // A module value's (C170): the value a variable names, or one an
-                // expression makes; FX-26's, not KFX's.
-                let tagcase_ = synth(v, s, car(xs));
-                match *tagcase_ {
-                    Res::Res(t0, es, s) => {
-                        let t = load_mtype(v, walk(s, t0));
-                        if not(mtype_p(walk(s, t))) {
-                            match refuse(v, string_append(str_lit("a with of no module: a "), show_ty(s, t))) {}
+                    Res::Res(t, es, s) => {
+                        if null_p(ns) {
+                            return with_effs(arms(v, s, cdr(xs), expected), es);
                         } else {
-                            with_effs(found_then_fitted(v, body(mtype_opened(v, zonk(s, t)), {
-                                let s = note_fact(note_fact(s, cv_file(v), cv_pos(v), str_lit("with-value")), cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), words_of(mtype_value_names(walk(s, t)))));
-                                if (not(string_eq_p(m, str_lit(""))) && not(null_p(scope_bind(string_append(str_lit("%maker-value "), m), v)))) {
-                                    note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("with-maker "), string_append(m, string_append(str_lit(" "), {
-                                        let tagcase_ = car(scope_bind(string_append(str_lit("%maker-value "), m), v));
-                                        match *tagcase_ {
-                                            Bind::Bind(n, sc, wher) => {
-                                                wher
-                                            }
-                                        }
-                                    }))))
-                                } else {
-                                    kfx_restricted(v, s, str_lit("a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)"))
+                            let tagcase_ = car(ns);
+                            match *tagcase_ {
+                                Narrowing::Narrowing(yes, no) => {
+                                    return with_effs(narrowed_arms(yes, no, s, second(xs), third(xs), expected), es);
                                 }
-                            }, cdr(xs), expected), expected), es)
-                        }
-                    }
-                }
-            } else if (not(null_p(found)) && {
-                let tagcase_ = car(found);
-                match *tagcase_ {
-                    Bind::Bind(n, sc, wher) => {
-                        string_eq_p(wher, str_lit("local"))
-                    }
-                }
-            } && not(null_p(module_spec(v, {
-                let tagcase_ = car(found);
-                match *tagcase_ {
-                    Bind::Bind(n, sc, wher) => {
-                        let tagcase_ = sc;
-                        match *tagcase_ {
-                            Scheme::Scheme(tv, t) => {
-                                t
                             }
                         }
                     }
                 }
-            })))) {
-                // A module parameter's values, of its abstract types `m..t`.
-                let spec = car(module_spec(v, {
+            } else if string_eq_p(h, str_lit("typecase")) {
+                if null_p(union_local(v, s, car(xs))) {
+                    return match refuse(v, str_lit("a typecase of a local of a union (C62)")) {};
+                } else {
+                    return typecase_arms(v, {
+                        let origin = bind_origin(sym_name(car(xs)), cv_binds(v));
+                        if (not(null_p(origin)) && valued_p(s, car(origin))) {
+                            note_fact(s, cv_file(v), cv_pos(v), str_lit("typecase-valued"))
+                        } else {
+                            s
+                        }
+                    }, car(xs), cdr(xs), expected);
+                }
+            } else if string_eq_p(h, str_lit("begin")) {
+                return body(v, s, xs, expected);
+            } else if string_eq_p(h, str_lit("let")) {
+                return let_values(v, s, items(car(xs)), cdr(xs), expected, nil::<&'static Bind>(), false);
+            } else if string_eq_p(h, str_lit("let*")) {
+                return let_values(v, s, items(car(xs)), cdr(xs), expected, nil::<&'static Bind>(), true);
+            } else if string_eq_p(h, str_lit("letrec")) {
+                return letrec_form(v, s, items(car(xs)), cdr(xs), expected);
+            } else if string_eq_p(h, str_lit("letregion")) {
+                return letregion_form(v, s, name_of(v, car(xs)), cdr(xs), expected);
+            } else if string_eq_p(h, str_lit("letfreeze")) {
+                return letfreeze_form(v, s, xs, expected);
+            } else if (string_eq_p(h, str_lit("with")) && i64_gt_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#:uses"))) {
+                // `(with m #:uses ((name projection?) …) …)`: what the expander noted
+                // of the `with` (C440; Fixpt's `with_as`): a macro its body uses by
+                // a name `m` gives a value of, refused, as the program would seem
+                // to call the value; a template's `(with m name)`, refused if `m`
+                // gives no `name`. Then as any `with`.
+                let m = {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                };
+                let t = with_module_type(v, s, m);
+                let why = if mtype_p(t) {
+                    uses_wrong(t, third(xs), m)
+                } else {
+                    str_lit("")
+                };
+                if string_eq_p(why, str_lit("")) {
+                    (h, xs) = (str_lit("with"), kayak_rt::heap_cons(car(xs), cdr(cdr(cdr(xs)))));
+                    continue;
+                } else {
+                    return match refuse(v, why) {};
+                }
+            } else if (string_eq_p(h, str_lit("with")) && i64_gt_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#:relied"))) {
+                // `(with m #:relied ((value …) (type …)) body …)`: what the expander
+                // read `m` to give (C440; Fixpt's `shape_held`), held to what it
+                // gives; then as any `with`. A module named here, at the top level
+                // or a value.
+                let m = {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                };
+                let t = with_module_type(v, s, m);
+                let why = if mtype_p(t) {
+                    relied_wrong(t, third(xs), cdr(cdr(cdr(xs))), string_append(str_lit("`"), string_append(m, str_lit("`"))))
+                } else {
+                    str_lit("")
+                };
+                if string_eq_p(why, str_lit("")) {
+                    (h, xs) = (str_lit("with"), kayak_rt::heap_cons(car(xs), cdr(cdr(cdr(xs)))));
+                    continue;
+                } else {
+                    return match refuse(v, why) {};
+                }
+            } else if string_eq_p(h, str_lit("with")) {
+                // `(with m body ...)`: `m`'s values and types in scope in the body,
+                // shadowing what is outside, locals too, as FX-26 has it; `m` a
+                // module defined at the top level, reading which is reading a
+                // global.
+                let m = {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                };
+                let found = if string_eq_p(m, str_lit("")) {
+                    nil::<&'static Bind>()
+                } else {
+                    scope_bind(m, v)
+                };
+                if string_eq_p(m, str_lit("#%toplevel")) {
+                    // `(with #%toplevel n)`, the top level's `n` wherever it is
+                    // (`toplevel-value`).
+                    if (i64_eq(size(xs), 2i64) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        return found_then_fitted(v, toplevel_value(v, s, sym_name(second(xs)), cv_pos(v)), expected);
+                    } else {
+                        return match refuse(v, str_lit("(with #%toplevel name) names one name")) {};
+                    }
+                } else if string_eq_p(m, str_lit("#%fx")) {
+                    // `(with #%fx n)`, the standard `n` wherever it is (C199; Fixpt's
+                    // TODO §46), whatever names it here: its type, as named where
+                    // nothing shadows it. FX-26's; KFX's standard names are not shadowed.
+                    let std = if (i64_eq(size(xs), 2i64) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        filter(lambda1s(move |b: &'static Bind| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Bind::Bind(n, sc, w) => {
+                                    (string_eq_p(w, str_lit("prim")) && string_eq_p(n, sym_name(second(xs))))
+                                }
+                            }
+                        }), cv_binds(v))
+                    } else {
+                        nil::<&'static Bind>()
+                    };
+                    if null_p(std) {
+                        return match refuse(v, str_lit("(with #%fx name) names one standard binding")) {};
+                    } else {
+                        return found_then_fitted(v, body(with_binds(v, kayak_rt::heap_cons(car(std), kayak_rt::nil())), kfx_restricted(v, s, str_lit("(with #%fx name), FX-26's standard names through their module, which KFX has not (C199)")), cdr(xs), nil::<&'static Ty>()), expected);
+                    }
+                } else if (string_eq_p(m, str_lit("")) || (not(null_p(found)) && {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, wher) => {
+                            (not(string_eq_p(wher, str_lit("module"))) && {
+                                let tagcase_ = sc;
+                                match *tagcase_ {
+                                    Scheme::Scheme(tv, t) => {
+                                        mtype_p(load_mtype(v, walk(s, t)))
+                                    }
+                                }
+                            })
+                        }
+                    }
+                })) {
+                    // A module value's (C170): the value a variable names, or one an
+                    // expression makes; FX-26's, not KFX's.
+                    let tagcase_ = synth(v, s, car(xs));
+                    match *tagcase_ {
+                        Res::Res(t0, es, s) => {
+                            let t = load_mtype(v, walk(s, t0));
+                            if not(mtype_p(walk(s, t))) {
+                                return match refuse(v, string_append(str_lit("a with of no module: a "), show_ty(s, t))) {};
+                            } else {
+                                return with_effs(found_then_fitted(v, body(mtype_opened(v, zonk(s, t)), {
+                                    let s = note_fact(note_fact(s, cv_file(v), cv_pos(v), str_lit("with-value")), cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), words_of(mtype_value_names(walk(s, t)))));
+                                    if (not(string_eq_p(m, str_lit(""))) && not(null_p(scope_bind(string_append(str_lit("%maker-value "), m), v)))) {
+                                        note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("with-maker "), string_append(m, string_append(str_lit(" "), {
+                                            let tagcase_ = car(scope_bind(string_append(str_lit("%maker-value "), m), v));
+                                            match *tagcase_ {
+                                                Bind::Bind(n, sc, wher) => {
+                                                    wher
+                                                }
+                                            }
+                                        }))))
+                                    } else {
+                                        kfx_restricted(v, s, str_lit("a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)"))
+                                    }
+                                }, cdr(xs), expected), expected), es);
+                            }
+                        }
+                    }
+                } else if (not(null_p(found)) && {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, wher) => {
+                            string_eq_p(wher, str_lit("local"))
+                        }
+                    }
+                } && not(null_p(module_spec(v, {
                     let tagcase_ = car(found);
                     match *tagcase_ {
                         Bind::Bind(n, sc, wher) => {
@@ -7643,141 +7749,156 @@ pub mod expressions {
                             }
                         }
                     }
-                }));
-                let w = module_scope(v, spec, m, str_lit(""));
-                let s = note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), spec_value_words(spec)));
-                found_then_fitted(v, body(with_binds(w, module_type_values(w, spec)), s, cdr(xs), nil::<&'static Ty>()), expected)
-            } else if (null_p(found) || not({
-                let tagcase_ = car(found);
+                })))) {
+                    // A module parameter's values, of its abstract types `m..t`.
+                    let spec = car(module_spec(v, {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Bind::Bind(n, sc, wher) => {
+                                let tagcase_ = sc;
+                                match *tagcase_ {
+                                    Scheme::Scheme(tv, t) => {
+                                        t
+                                    }
+                                }
+                            }
+                        }
+                    }));
+                    let w = module_scope(v, spec, m, str_lit(""));
+                    let s = note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), spec_value_words(spec)));
+                    return found_then_fitted(v, body(with_binds(w, module_type_values(w, spec)), s, cdr(xs), nil::<&'static Ty>()), expected);
+                } else if (null_p(found) || not({
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, wher) => {
+                            string_eq_p(wher, str_lit("module"))
+                        }
+                    }
+                })) {
+                    return match refuse(v, string_append(str_lit("KFX's with opens a module defined at the top level, or a module parameter, by its name: "), m)) {};
+                } else {
+                    return with_effs(found_then_fitted(v, body(opened(v, m), s, cdr(xs), nil::<&'static Ty>()), expected), if has_prefix_p(m, str_lit("made--load--")) {
+                        nil::<Str>()
+                    } else {
+                        session_effs(v, kayak_rt::heap_cons(string_append(str_lit("g:"), m), kayak_rt::nil()))
+                    });
+                }
+            } else if string_eq_p(h, str_lit("cond")) {
+                return cond_clauses(v, s, xs, expected);
+            } else if string_eq_p(h, str_lit("case")) {
+                // On a character, an integer, a string or a boolean, the data
+                // literals of its type; the kind told the emitter.
+                let tagcase_ = synth(v, s, car(xs));
                 match *tagcase_ {
-                    Bind::Bind(n, sc, wher) => {
-                        string_eq_p(wher, str_lit("module"))
+                    Res::Res(t, es, s) => {
+                        let kind = {
+                            let tagcase_ = walk(s, t);
+                            match *tagcase_ {
+                                Ty::TyChar() => {
+                                    str_lit("char")
+                                }
+                                Ty::TyInt() => {
+                                    str_lit("int")
+                                }
+                                Ty::TyNat() => {
+                                    str_lit("int")
+                                }
+                                Ty::TyString() => {
+                                    str_lit("string")
+                                }
+                                Ty::TyBool() => {
+                                    str_lit("bool")
+                                }
+                                Ty::TyData(d, args) => {
+                                    if string_eq_p(d, str_lit("symbol")) {
+                                        str_lit("symbol")
+                                    } else {
+                                        match refuse(v, string_append(str_lit("KFX's case is on characters, ints, strings, booleans and symbols, and this is a "), show_ty(s, t))) {}
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    match refuse(v, string_append(str_lit("KFX's case is on characters, ints, strings and booleans, and this is a "), show_ty(s, t))) {}
+                                }
+                            }
+                        };
+                        return with_effs(case_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("case "), kind)), kind, cdr(xs), expected), es);
                     }
                 }
-            })) {
-                match refuse(v, string_append(str_lit("KFX's with opens a module defined at the top level, or a module parameter, by its name: "), m)) {}
             } else {
-                with_effs(found_then_fitted(v, body(opened(v, m), s, cdr(xs), nil::<&'static Ty>()), expected), if has_prefix_p(m, str_lit("made--load--")) {
-                    nil::<Str>()
-                } else {
-                    session_effs(v, kayak_rt::heap_cons(string_append(str_lit("g:"), m), kayak_rt::nil()))
-                })
-            }
-        } else if string_eq_p(h, str_lit("cond")) {
-            cond_clauses(v, s, xs, expected)
-        } else if string_eq_p(h, str_lit("case")) {
-            // On a character, an integer, a string or a boolean, the data
-            // literals of its type; the kind told the emitter.
-            let tagcase_ = synth(v, s, car(xs));
-            match *tagcase_ {
-                Res::Res(t, es, s) => {
-                    let kind = {
-                        let tagcase_ = walk(s, t);
+                let tagcase_ = synth(v, s, car(xs));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let tagcase_ = union_as_sum(walk_mu(s, t));
                         match *tagcase_ {
-                            Ty::TyChar() => {
-                                str_lit("char")
-                            }
-                            Ty::TyInt() => {
-                                str_lit("int")
-                            }
-                            Ty::TyNat() => {
-                                str_lit("int")
-                            }
-                            Ty::TyString() => {
-                                str_lit("string")
-                            }
-                            Ty::TyBool() => {
-                                str_lit("bool")
-                            }
                             Ty::TyData(d, args) => {
-                                if string_eq_p(d, str_lit("symbol")) {
-                                    str_lit("symbol")
+                                if string_eq_p(d, str_lit("%blobref")) {
+                                    let (flat, owner) = (walk(s, car(cdr(args))), walk(s, car(args)));
+                                    let tagcase_ = flat;
+                                    match *tagcase_ {
+                                        Ty::TyData(d2, a2) => {
+                                            if not(string_eq_p(d2, str_lit("%flat-sum"))) {
+                                                return match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {};
+                                            } else {
+                                                return with_effs(flat_tag_arms(v, note_fact(if unkeyed_p(a2) {
+                                                    kfx_restricted(v, s, str_lit("a flat sum with no key, FX-26's, its tag an index of the owner's fields, which KFX has not yet (C175)"))
+                                                } else {
+                                                    s
+                                                }, cv_file(v), cv_pos(v), string_append(str_lit("blob-tagcase "), string_append(i64_to_string(key_width(car(a2))), string_append(str_lit(" "), string_append(i64_to_string(variant_offset(a2)), if unkeyed_p(a2) {
+                                                    str_lit(" fields")
+                                                } else {
+                                                    str_lit("")
+                                                }))))), t, owner, flat_sum_variants(a2), cdr(xs), expected), effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, {
+                                                    let tagcase_ = owner;
+                                                    match *tagcase_ {
+                                                        Ty::TyData(d3, a3) => {
+                                                            car(a3)
+                                                        }
+                                                        _ => {
+                                                            let other = tagcase_;
+                                                            ty_unit()
+                                                        }
+                                                    }
+                                                })), kayak_rt::nil()), es));
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            return match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {};
+                                        }
+                                    }
                                 } else {
-                                    match refuse(v, string_append(str_lit("KFX's case is on characters, ints, strings, booleans and symbols, and this is a "), show_ty(s, t))) {}
+                                    if null_p(variants_of(v, d)) {
+                                        return match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {};
+                                    } else {
+                                        return with_effs(tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-datatype "), d)), walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es);
+                                    }
+                                }
+                            }
+                            Ty::TyShape(p, ls, ts) => {
+                                if p {
+                                    return match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {};
+                                } else {
+                                    let in_allof = not(null_p(scope_bind(str_lit("%allof"), v)));
+                                    let arms = if in_allof {
+                                        filter(lambda1s(move |a: &'static Sexp| {
+                                            arm_live_p(v, ls, a)
+                                        }), cdr(xs))
+                                    } else {
+                                        cdr(xs)
+                                    };
+                                    let s = if in_allof {
+                                        arms_noted(v, s, ls, cdr(xs), show_ty(s, t))
+                                    } else {
+                                        s
+                                    };
+                                    return with_effs(tag_arms(v, note_fact(note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum "), words_of(ls))), cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum-type "), show_sexp(ty_sexp(v, s, zonk(s, t))))), walk(s, t), map(&sum_arm, arms), sum_variants(v, ls, ts, unholed(arms)), expected), es);
                                 }
                             }
                             _ => {
                                 let other = tagcase_;
-                                match refuse(v, string_append(str_lit("KFX's case is on characters, ints, strings and booleans, and this is a "), show_ty(s, t))) {}
+                                return match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no datatype")))) {};
                             }
-                        }
-                    };
-                    with_effs(case_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("case "), kind)), kind, cdr(xs), expected), es)
-                }
-            }
-        } else {
-            let tagcase_ = synth(v, s, car(xs));
-            match *tagcase_ {
-                Res::Res(t, es, s) => {
-                    let tagcase_ = union_as_sum(walk_mu(s, t));
-                    match *tagcase_ {
-                        Ty::TyData(d, args) => {
-                            if string_eq_p(d, str_lit("%blobref")) {
-                                let (flat, owner) = (walk(s, car(cdr(args))), walk(s, car(args)));
-                                let tagcase_ = flat;
-                                match *tagcase_ {
-                                    Ty::TyData(d2, a2) => {
-                                        if not(string_eq_p(d2, str_lit("%flat-sum"))) {
-                                            match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
-                                        } else {
-                                            with_effs(flat_tag_arms(v, note_fact(if unkeyed_p(a2) {
-                                                kfx_restricted(v, s, str_lit("a flat sum with no key, FX-26's, its tag an index of the owner's fields, which KFX has not yet (C175)"))
-                                            } else {
-                                                s
-                                            }, cv_file(v), cv_pos(v), string_append(str_lit("blob-tagcase "), string_append(i64_to_string(key_width(car(a2))), string_append(str_lit(" "), string_append(i64_to_string(variant_offset(a2)), if unkeyed_p(a2) {
-                                                str_lit(" fields")
-                                            } else {
-                                                str_lit("")
-                                            }))))), t, owner, flat_sum_variants(a2), cdr(xs), expected), effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, {
-                                                let tagcase_ = owner;
-                                                match *tagcase_ {
-                                                    Ty::TyData(d3, a3) => {
-                                                        car(a3)
-                                                    }
-                                                    _ => {
-                                                        let other = tagcase_;
-                                                        ty_unit()
-                                                    }
-                                                }
-                                            })), kayak_rt::nil()), es))
-                                        }
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
-                                    }
-                                }
-                            } else {
-                                if null_p(variants_of(v, d)) {
-                                    match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
-                                } else {
-                                    with_effs(tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-datatype "), d)), walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
-                                }
-                            }
-                        }
-                        Ty::TyShape(p, ls, ts) => {
-                            if p {
-                                match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
-                            } else {
-                                let in_allof = not(null_p(scope_bind(str_lit("%allof"), v)));
-                                let arms = if in_allof {
-                                    filter(lambda1s(move |a: &'static Sexp| {
-                                        arm_live_p(v, ls, a)
-                                    }), cdr(xs))
-                                } else {
-                                    cdr(xs)
-                                };
-                                let s = if in_allof {
-                                    arms_noted(v, s, ls, cdr(xs), show_ty(s, t))
-                                } else {
-                                    s
-                                };
-                                with_effs(tag_arms(v, note_fact(note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum "), words_of(ls))), cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum-type "), show_sexp(ty_sexp(v, s, zonk(s, t))))), walk(s, t), map(&sum_arm, arms), sum_variants(v, ls, ts, unholed(arms)), expected), es)
-                            }
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no datatype")))) {}
                         }
                     }
                 }

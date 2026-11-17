@@ -342,6 +342,15 @@
             (ty-data (d args) (if (has-prefix? d "%module made--load--") (as-mtype v t) t))
             (else other t))))
 
+      (define with-module-type (subr kfx (cv st string) ty)
+        (lambda (v s m)
+          "The module type of `m`, a `with`'s, a module at the top level or a
+           module value named; unit, of any other (C440)."
+          (let ((found (if (string=? m "") nil (scope-bind m v))))
+            (cond ((null? found) (ty-unit))
+                  ((tagcase (car found) (bind (n sc wher) (string=? wher "module"))) (module-type-of v m))
+                  (else (tagcase (car found) (bind (n sc wher) (tagcase sc (scheme (tv t) (load-mtype v (walk s t)))))))))))
+
       (define module-spec (subr kfx (cv ty) sexps)
         (lambda (v t)
           "The moduleof a module type names, as a list of one; or none."
@@ -3145,6 +3154,21 @@
                                ((head-is? (car xs) "unquote") (check v s (second ys) (ty-data "datum" nil)))
                                (else (tagcase (quasi-items v s ys 1) (res (t es s) (res (ty-data "datum" nil) es s))))))
                        (else other (synth-form v s e "quote" xs)))))
+                ((and (string=? h "the") (i64= (size xs) 2) (head-is? (car xs) "modnames"))
+                 "`(the (modnames member …) e)` (Fixpt's `the_sealed`; C440): `e`'s
+                  module type sealed to the names, `e` held to it."
+                 (tagcase (synth v s (second xs))
+                   (res (t es s)
+                     (let ((mt (as-mtype v (walk s t))))
+                       (if (not (mtype? mt))
+                           (refuse v (string-append "`modnames` names a module's members, and this is a " (show-ty s t)))
+                           (let* ((want (sealed-to v s mt (cdr (items (car xs)))))
+                                  (e2 (second xs))
+                                  (order (if (string=? (datum-file e2) "") nil (module-value-order v s want)))
+                                  ;; Its values those the names keep, in their order, for
+                                  ;; the generator to reshape it (`module-arg`, as `check`'s).
+                                  (s (if (null? order) s (note-fact s (datum-file e2) (datum-pos e2) (string-append "module-arg " (words-of order))))))
+                             (res want es (fits v s t want))))))))
                 ((string=? h "the")
                  (let ((want (parse-type v (cv-tvars v) (car xs))))
                    (tagcase (check v s (second xs) want)
@@ -3386,6 +3410,29 @@
                 ((string=? h "letrec") (letrec-form v s (items (car xs)) (cdr xs) expected))
                 ((string=? h "letregion") (letregion-form v s (name-of v (car xs)) (cdr xs) expected))
                 ((string=? h "letfreeze") (letfreeze-form v s xs expected))
+                ((and (string=? h "with") (i64>= (size xs) 3) (sym-is? (second xs) "#:uses"))
+                 "`(with m #:uses ((name projection?) …) …)`: what the expander noted
+                  of the `with` (C440; Fixpt's `with_as`): a macro its body uses by
+                  a name `m` gives a value of, refused, as the program would seem
+                  to call the value; a template's `(with m name)`, refused if `m`
+                  gives no `name`. Then as any `with`."
+                 (let* ((m (tagcase (car xs) (sym (n f p) n) (else other "")))
+                        (t (with-module-type v s m))
+                        (why (if (mtype? t) (uses-wrong t (third xs) m) "")))
+                   (if (string=? why "")
+                       (body-form v s "with" (cons (car xs) (cdr (cdr (cdr xs)))) expected)
+                       (refuse v why))))
+                ((and (string=? h "with") (i64>= (size xs) 3) (sym-is? (second xs) "#:relied"))
+                 "`(with m #:relied ((value …) (type …)) body …)`: what the expander
+                  read `m` to give (C440; Fixpt's `shape_held`), held to what it
+                  gives; then as any `with`. A module named here, at the top level
+                  or a value."
+                 (let* ((m (tagcase (car xs) (sym (n f p) n) (else other "")))
+                        (t (with-module-type v s m))
+                        (why (if (mtype? t) (relied-wrong t (third xs) (cdr (cdr (cdr xs))) (string-append "`" (string-append m "`"))) "")))
+                   (if (string=? why "")
+                       (body-form v s "with" (cons (car xs) (cdr (cdr (cdr xs)))) expected)
+                       (refuse v why))))
                 ((string=? h "with")
                  "`(with m body ...)`: `m`'s values and types in scope in the body,
                   shadowing what is outside, locals too, as FX-26 has it; `m` a

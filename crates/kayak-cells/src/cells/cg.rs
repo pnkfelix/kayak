@@ -3595,225 +3595,230 @@ pub fn parse_body(forms: Sexps, a: i64) -> &'static Cx {
     }
 }
 
-pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'static Cx {
-    if string_eq_p(h, str_lit("lambda")) {
-        x_lambda(map(&binder_name, items(second(xs))), parse_body(cdr(cdr(xs)), a), a)
-    } else if string_eq_p(h, str_lit("if")) {
-        x_if(parse_x(second(xs)), parse_x(car(cdr(cdr(xs)))), parse_x(car(cdr(cdr(cdr(xs))))), a)
-    } else if string_eq_p(h, str_lit("let")) {
-        x_let(parse_binds(items(second(xs))), parse_body(cdr(cdr(xs)), a), a)
-    } else if string_eq_p(h, str_lit("let*")) {
-        parse_let_star(items(second(xs)), parse_body(cdr(cdr(xs)), a))
-    } else if string_eq_p(h, str_lit("letrec")) {
-        x_letrec(parse_typed_binds(items(second(xs))), parse_body(cdr(cdr(xs)), a), a)
-    } else if string_eq_p(h, str_lit("begin")) {
-        parse_body(cdr(xs), a)
-    } else if string_eq_p(h, str_lit("cond")) {
-        parse_cond(cdr(xs), a)
-    } else if string_eq_p(h, str_lit("and")) {
-        parse_and(cdr(xs), a)
-    } else if string_eq_p(h, str_lit("or")) {
-        parse_or(cdr(xs), a)
-    } else if string_eq_p(h, str_lit("convention")) {
-        // A conversion written (C230): as Fixpt's, `%fx26-convert` where the
-        // procedure is of another convention, an adapter.
-        converted_x(fact_text(get(cg_convert_facts()), f, a, str_lit("convention ")), parse_x(car(cdr(cdr(xs)))), a)
-    } else if string_eq_p(h, str_lit("the")) {
-        x_proj(parse_x(car(cdr(cdr(xs)))), a)
-    } else if string_eq_p(h, str_lit("plambda")) {
-        parse_body(cdr(cdr(xs)), a)
-    } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && i64_gt_eq(size(xs), 2i64)) {
-        // Evidence (C339): a call of tier 1's `%kayak-reify` with the evidence
-        // given, a product of them in order, and what the checker noted, its
-        // rep's text and the evidence's names, as the engine's lowering writes
-        // `%reify` (C307).
-        let given = if i64_gt_eq(size(xs), 3i64) {
-            cdr(items(third(xs)))
-        } else {
-            nil::<&'static Sexp>()
-        };
-        let prod = lst(kayak_rt::heap_cons(sym(str_lit("product"), f, a), map2(lambda2s(move |x: &'static Sexp, k: i64| {
-            lst(kayak_rt::heap_cons(num(k, i64_to_string(k), a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, 1i64, a)
-        }), given, counting(1i64, i64_plus(size(given), 1i64)))), f, 1i64, a);
-        x_app(x_var(str_lit("%kayak-reify"), a), kayak_rt::heap_cons(parse_x(prod), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-given ")), a), kayak_rt::nil()))), a)
-    } else if (string_eq_p(h, str_lit("%kayak-global-set")) && i64_eq(size(xs), 3i64)) {
-        // A session's commit (C340): global `NAME`, written in full, given the
-        // value, unit after; a form kayak's own, not a program's.
-        x_bloblet(string_append(str_lit("%global-set:"), {
-            let tagcase_ = second(xs);
-            match *tagcase_ {
-                Sexp::Str(t, f2, p2) => {
-                    t
+pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut f: Str, mut a: i64) -> &'static Cx {
+    loop {
+        if string_eq_p(h, str_lit("lambda")) {
+            return x_lambda(map(&binder_name, items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
+        } else if string_eq_p(h, str_lit("if")) {
+            return x_if(parse_x(second(xs)), parse_x(car(cdr(cdr(xs)))), parse_x(car(cdr(cdr(cdr(xs))))), a);
+        } else if string_eq_p(h, str_lit("let")) {
+            return x_let(parse_binds(items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
+        } else if string_eq_p(h, str_lit("let*")) {
+            return parse_let_star(items(second(xs)), parse_body(cdr(cdr(xs)), a));
+        } else if string_eq_p(h, str_lit("letrec")) {
+            return x_letrec(parse_typed_binds(items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
+        } else if string_eq_p(h, str_lit("begin")) {
+            return parse_body(cdr(xs), a);
+        } else if string_eq_p(h, str_lit("cond")) {
+            return parse_cond(cdr(xs), a);
+        } else if string_eq_p(h, str_lit("and")) {
+            return parse_and(cdr(xs), a);
+        } else if string_eq_p(h, str_lit("or")) {
+            return parse_or(cdr(xs), a);
+        } else if string_eq_p(h, str_lit("convention")) {
+            // A conversion written (C230): as Fixpt's, `%fx26-convert` where the
+            // procedure is of another convention, an adapter.
+            return converted_x(fact_text(get(cg_convert_facts()), f, a, str_lit("convention ")), parse_x(car(cdr(cdr(xs)))), a);
+        } else if string_eq_p(h, str_lit("the")) {
+            return x_proj(parse_arg(car(cdr(cdr(xs)))), a);
+        } else if string_eq_p(h, str_lit("plambda")) {
+            return parse_body(cdr(cdr(xs)), a);
+        } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && i64_gt_eq(size(xs), 2i64)) {
+            // Evidence (C339): a call of tier 1's `%kayak-reify` with the evidence
+            // given, a product of them in order, and what the checker noted, its
+            // rep's text and the evidence's names, as the engine's lowering writes
+            // `%reify` (C307).
+            let given = if i64_gt_eq(size(xs), 3i64) {
+                cdr(items(third(xs)))
+            } else {
+                nil::<&'static Sexp>()
+            };
+            let prod = lst(kayak_rt::heap_cons(sym(str_lit("product"), f, a), map2(lambda2s(move |x: &'static Sexp, k: i64| {
+                lst(kayak_rt::heap_cons(num(k, i64_to_string(k), a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, 1i64, a)
+            }), given, counting(1i64, i64_plus(size(given), 1i64)))), f, 1i64, a);
+            return x_app(x_var(str_lit("%kayak-reify"), a), kayak_rt::heap_cons(parse_x(prod), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-given ")), a), kayak_rt::nil()))), a);
+        } else if (string_eq_p(h, str_lit("%kayak-global-set")) && i64_eq(size(xs), 3i64)) {
+            // A session's commit (C340): global `NAME`, written in full, given the
+            // value, unit after; a form kayak's own, not a program's.
+            return x_bloblet(string_append(str_lit("%global-set:"), {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Str(t, f2, p2) => {
+                        t
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
                 }
-                _ => {
-                    let other = tagcase_;
-                    str_lit("")
+            }), 0i64, kayak_rt::heap_cons(parse_x(third(xs)), kayak_rt::nil()), a);
+        } else if (string_eq_p(h, str_lit("%session-check")) && i64_eq(size(xs), 6i64)) {
+            // `session-check` (C340): as `%stage`, tier 1's `%kayak-session-run`.
+            let rest = cdr(cdr(cdr(xs)));
+            return x_app(x_var(str_lit("%kayak-session-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-given ")), a), kayak_rt::nil()))))), a);
+        } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 6i64)) {
+            // `stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
+            // the code, the evidence given, and what the checker noted, its rep's
+            // text and the evidence's names, as the engine's lowering writes it.
+            let rest = cdr(cdr(cdr(xs)));
+            return x_app(x_var(str_lit("%kayak-stage-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-given ")), a), kayak_rt::nil()))))), a);
+        } else if member_of_p(h, process_heads()) {
+            // A form of processes, a call of the scheduler's (C219), as Fixpt's
+            // parser makes it.
+            return parse_x(process_expanded(e));
+        } else if (string_eq_p(h, str_lit("acyclic")) && i64_eq(size(xs), 4i64)) {
+            return parse_x(confirmed(e, str_lit("%acyclic-value"), str_lit("acyclic?"), str_lit("certify-acyclic"), false));
+        } else if (string_eq_p(h, str_lit("confirm-nat")) && i64_eq(size(xs), 4i64)) {
+            return parse_x(confirmed(e, str_lit("%nat-value"), str_lit("nat?"), str_lit("certify-nat"), false));
+        } else if (string_eq_p(h, str_lit("confirm-length")) && i64_eq(size(xs), 5i64)) {
+            return parse_x(confirmed(e, str_lit("%confirm-value"), str_lit("length-is?"), str_lit("certify-length"), true));
+        } else if string_eq_p(h, str_lit("proj")) {
+            return x_proj(parse_x(second(xs)), a);
+        } else if string_eq_p(h, str_lit("quote")) {
+            return parse_quoted(second(xs), a);
+        } else if string_eq_p(h, str_lit("product")) {
+            return x_product(parse_fields(cdr(xs)), a);
+        } else if string_eq_p(h, str_lit("extract")) {
+            let (k, o) = (fact_text(get(cg_facts()), f, a, str_lit("extract-index ")), fact_text(get(cg_facts()), f, a, str_lit("blob-offset ")));
+            if not(string_eq_p(k, str_lit(""))) {
+                return x_extract(parse_x(second(xs)), digits_i64(string_chars(k), 0i64), a);
+            } else if not(string_eq_p(o, str_lit(""))) {
+                return x_bloblet(str_lit("%blobref-field"), digits_i64(string_chars(o), 0i64), kayak_rt::heap_cons(parse_x(second(xs)), kayak_rt::nil()), a);
+            } else if {
+                let tagcase_ = third(xs);
+                match *tagcase_ {
+                    Sexp::Num(k, f2, p2) => {
+                        (i64_gt_eq(k, 1i64) && i64_lt_eq(k, 2i64))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
                 }
+            } {
+                return x_extract(parse_x(second(xs)), i64_minus({
+                    let tagcase_ = third(xs);
+                    match *tagcase_ {
+                        Sexp::Num(k, f2, p2) => {
+                            k
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            1i64
+                        }
+                    }
+                }, 1i64), a);
+            } else {
+                match cg_fail(str_lit("an extract the checker did not see")) {};
+                return x_unit(a);
             }
-        }), 0i64, kayak_rt::heap_cons(parse_x(third(xs)), kayak_rt::nil()), a)
-    } else if (string_eq_p(h, str_lit("%session-check")) && i64_eq(size(xs), 6i64)) {
-        // `session-check` (C340): as `%stage`, tier 1's `%kayak-session-run`.
-        let rest = cdr(cdr(cdr(xs)));
-        x_app(x_var(str_lit("%kayak-session-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-given ")), a), kayak_rt::nil()))))), a)
-    } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 6i64)) {
-        // `stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
-        // the code, the evidence given, and what the checker noted, its rep's
-        // text and the evidence's names, as the engine's lowering writes it.
-        let rest = cdr(cdr(cdr(xs)));
-        x_app(x_var(str_lit("%kayak-stage-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-given ")), a), kayak_rt::nil()))))), a)
-    } else if member_of_p(h, process_heads()) {
-        // A form of processes, a call of the scheduler's (C219), as Fixpt's
-        // parser makes it.
-        parse_x(process_expanded(e))
-    } else if (string_eq_p(h, str_lit("acyclic")) && i64_eq(size(xs), 4i64)) {
-        parse_x(confirmed(e, str_lit("%acyclic-value"), str_lit("acyclic?"), str_lit("certify-acyclic"), false))
-    } else if (string_eq_p(h, str_lit("confirm-nat")) && i64_eq(size(xs), 4i64)) {
-        parse_x(confirmed(e, str_lit("%nat-value"), str_lit("nat?"), str_lit("certify-nat"), false))
-    } else if (string_eq_p(h, str_lit("confirm-length")) && i64_eq(size(xs), 5i64)) {
-        parse_x(confirmed(e, str_lit("%confirm-value"), str_lit("length-is?"), str_lit("certify-length"), true))
-    } else if string_eq_p(h, str_lit("proj")) {
-        x_proj(parse_x(second(xs)), a)
-    } else if string_eq_p(h, str_lit("quote")) {
-        parse_quoted(second(xs), a)
-    } else if string_eq_p(h, str_lit("product")) {
-        x_product(parse_fields(cdr(xs)), a)
-    } else if string_eq_p(h, str_lit("extract")) {
-        let (k, o) = (fact_text(get(cg_facts()), f, a, str_lit("extract-index ")), fact_text(get(cg_facts()), f, a, str_lit("blob-offset ")));
-        if not(string_eq_p(k, str_lit(""))) {
-            x_extract(parse_x(second(xs)), digits_i64(string_chars(k), 0i64), a)
-        } else if not(string_eq_p(o, str_lit(""))) {
-            x_bloblet(str_lit("%blobref-field"), digits_i64(string_chars(o), 0i64), kayak_rt::heap_cons(parse_x(second(xs)), kayak_rt::nil()), a)
-        } else if {
+        } else if bloblet_form_p(h) {
+            return parse_bloblet(h, cdr(xs), f, a);
+        } else if string_eq_p(h, str_lit("sum")) {
+            return x_sum(label_of(second(xs)), parse_x(car(cdr(cdr(xs)))), a);
+        } else if string_eq_p(h, str_lit("tagcase")) {
+            // Of a blobref to a flat sum (C33, C175), its layout's code from
+            // the checker's fact: the key's width, whether it is numeric (it
+            // is, but where the tag names an owner's field), the variant's
+            // offset (C221).
+            let flat = spaced_words(fact_text(get(cg_facts()), f, a, str_lit("blob-tagcase ")));
+            return x_tagcase(parse_x(second(xs)), parse_arms(cdr(cdr(xs))), parse_else(cdr(cdr(xs))), if null_p(flat) {
+                -1i64
+            } else {
+                i64_plus(digits_i64(string_chars(car(flat)), 0i64), i64_plus(if i64_eq(size(flat), 3i64) {
+                    the::<i64>(0i64)
+                } else {
+                    the::<i64>(8i64)
+                }, i64_star(256i64, digits_i64(string_chars(car(cdr(flat))), 0i64))))
+            }, a);
+        } else if (string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value"))) {
+            return module_narrowed(parse_module(cdr(xs), a), f, a);
+        } else if string_eq_p(h, str_lit("extend")) {
+            return module_narrowed(parse_extend(second(xs), third(xs), a), f, a);
+        } else if (string_eq_p(h, str_lit("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%fx")) && {
             let tagcase_ = third(xs);
             match *tagcase_ {
-                Sexp::Num(k, f2, p2) => {
-                    (i64_gt_eq(k, 1i64) && i64_lt_eq(k, 2i64))
+                Sexp::Sym(n, f2, p2) => {
+                    true
                 }
                 _ => {
                     let other = tagcase_;
                     false
                 }
             }
-        } {
-            x_extract(parse_x(second(xs)), i64_minus({
-                let tagcase_ = third(xs);
-                match *tagcase_ {
-                    Sexp::Num(k, f2, p2) => {
-                        k
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        1i64
-                    }
-                }
-            }, 1i64), a)
-        } else {
-            match cg_fail(str_lit("an extract the checker did not see")) {};
-            x_unit(a)
-        }
-    } else if bloblet_form_p(h) {
-        parse_bloblet(h, cdr(xs), f, a)
-    } else if string_eq_p(h, str_lit("sum")) {
-        x_sum(label_of(second(xs)), parse_x(car(cdr(cdr(xs)))), a)
-    } else if string_eq_p(h, str_lit("tagcase")) {
-        // Of a blobref to a flat sum (C33, C175), its layout's code from
-        // the checker's fact: the key's width, whether it is numeric (it
-        // is, but where the tag names an owner's field), the variant's
-        // offset (C221).
-        let flat = spaced_words(fact_text(get(cg_facts()), f, a, str_lit("blob-tagcase ")));
-        x_tagcase(parse_x(second(xs)), parse_arms(cdr(cdr(xs))), parse_else(cdr(cdr(xs))), if null_p(flat) {
-            -1i64
-        } else {
-            i64_plus(digits_i64(string_chars(car(flat)), 0i64), i64_plus(if i64_eq(size(flat), 3i64) {
-                the::<i64>(0i64)
-            } else {
-                the::<i64>(8i64)
-            }, i64_star(256i64, digits_i64(string_chars(car(cdr(flat))), 0i64))))
-        }, a)
-    } else if (string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value"))) {
-        module_narrowed(parse_module(cdr(xs), a), f, a)
-    } else if string_eq_p(h, str_lit("extend")) {
-        module_narrowed(parse_extend(second(xs), third(xs), a), f, a)
-    } else if (string_eq_p(h, str_lit("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%fx")) && {
-        let tagcase_ = third(xs);
-        match *tagcase_ {
-            Sexp::Sym(n, f2, p2) => {
-                true
-            }
-            _ => {
-                let other = tagcase_;
-                false
-            }
-        }
-    }) {
-        std_written_var(sym_name(third(xs)), a)
-    } else if (string_eq_p(h, str_lit("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%toplevel")) && {
-        let tagcase_ = third(xs);
-        match *tagcase_ {
-            Sexp::Sym(n, f2, p2) => {
-                true
-            }
-            _ => {
-                let other = tagcase_;
-                false
-            }
-        }
-    }) {
-        toplevel_x(sym_name(third(xs)), f, a)
-    } else if string_eq_p(h, str_lit("with")) {
-        parse_with(second(xs), parse_body(cdr(cdr(xs)), a), f, a)
-    } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("letfreeze"))) {
-        x_region(if string_eq_p(h, str_lit("letregion")) {
-            0i64
-        } else if string_eq_p(h, str_lit("letrena")) {
-            1i64
-        } else if string_eq_p(h, str_lit("letreap")) {
-            2i64
-        } else {
-            3i64
-        }, {
-            let tagcase_ = second(xs);
+        }) {
+            return std_written_var(sym_name(third(xs)), a);
+        } else if (string_eq_p(h, str_lit("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%toplevel")) && {
+            let tagcase_ = third(xs);
             match *tagcase_ {
-                Sexp::Lst(ns, f2, l2, p2) => {
-                    sym_name(car(ns))
+                Sexp::Sym(n, f2, p2) => {
+                    true
                 }
                 _ => {
                     let other = tagcase_;
-                    sym_name(second(xs))
+                    false
                 }
             }
-        }, parse_body(cdr(cdr(xs)), a), a)
-    } else if string_eq_p(h, str_lit("rlambda")) {
-        x_rlambda(parse_x(second(xs)), x_lambda(map(&binder_name, items(third(xs))), parse_body(cdr(cdr(cdr(xs))), a), a), a)
-    } else if string_eq_p(h, str_lit("prompt")) {
-        x_prompt(parse_x(second(xs)), parse_x(third(xs)), parse_x(fourth(xs)), a)
-    } else if string_eq_p(h, str_lit("case")) {
-        parse_case(cdr(xs), a)
-    } else if string_eq_p(h, str_lit("typecase")) {
-        parse_typecase(cdr(xs), a)
-    } else if string_eq_p(h, str_lit("vlambda")) {
-        x_app(x_var(str_lit("%vlambda"), a), kayak_rt::heap_cons(x_lambda(kayak_rt::heap_cons(binder_name(second(xs)), kayak_rt::nil()), parse_body(cdr(cdr(xs)), a), a), kayak_rt::nil()), a)
-    } else if string_eq_p(h, str_lit("quasiquote")) {
-        quasi_in(second(xs), 1i64)
-    } else if string_eq_p(h, str_lit("load-module")) {
-        match cg_fail(string_append(str_lit("not yet: "), h)) {};
-        x_unit(a)
-    } else {
-        if fact_noted_p(get(cg_call_facts()), f, a, str_lit("call-fx")) {
-            set(cg_fx_calls(), kayak_rt::heap_cons(a, get(cg_fx_calls())))
+        }) {
+            return toplevel_x(sym_name(third(xs)), f, a);
+        } else if (string_eq_p(h, str_lit("with")) && i64_gt_eq(size(xs), 4i64) && (sym_is_p(third(xs), str_lit("#:relied")) || sym_is_p(third(xs), str_lit("#:uses")))) {
+            xs = kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), cdr(cdr(cdr(cdr(xs))))));
+            continue;
+        } else if string_eq_p(h, str_lit("with")) {
+            return parse_with(second(xs), parse_body(cdr(cdr(xs)), a), f, a);
+        } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("letfreeze"))) {
+            return x_region(if string_eq_p(h, str_lit("letregion")) {
+                0i64
+            } else if string_eq_p(h, str_lit("letrena")) {
+                1i64
+            } else if string_eq_p(h, str_lit("letreap")) {
+                2i64
+            } else {
+                3i64
+            }, {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Lst(ns, f2, l2, p2) => {
+                        sym_name(car(ns))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        sym_name(second(xs))
+                    }
+                }
+            }, parse_body(cdr(cdr(xs)), a), a);
+        } else if string_eq_p(h, str_lit("rlambda")) {
+            return x_rlambda(parse_x(second(xs)), x_lambda(map(&binder_name, items(third(xs))), parse_body(cdr(cdr(cdr(xs))), a), a), a);
+        } else if string_eq_p(h, str_lit("prompt")) {
+            return x_prompt(parse_x(second(xs)), parse_x(third(xs)), parse_x(fourth(xs)), a);
+        } else if string_eq_p(h, str_lit("case")) {
+            return parse_case(cdr(xs), a);
+        } else if string_eq_p(h, str_lit("typecase")) {
+            return parse_typecase(cdr(xs), a);
+        } else if string_eq_p(h, str_lit("vlambda")) {
+            return x_app(x_var(str_lit("%vlambda"), a), kayak_rt::heap_cons(x_lambda(kayak_rt::heap_cons(binder_name(second(xs)), kayak_rt::nil()), parse_body(cdr(cdr(xs)), a), a), kayak_rt::nil()), a);
+        } else if string_eq_p(h, str_lit("quasiquote")) {
+            return quasi_in(second(xs), 1i64);
+        } else if string_eq_p(h, str_lit("load-module")) {
+            match cg_fail(string_append(str_lit("not yet: "), h)) {};
+            return x_unit(a);
         } else {
-            ()
-        };
-        if fact_noted_p(get(cg_call_facts()), f, a, str_lit("call-native")) {
-            set(cg_native_calls(), kayak_rt::heap_cons(a, get(cg_native_calls())))
-        } else {
-            ()
-        };
-        x_app(if string_eq_p(toplevel_named(h), str_lit("")) {
-            parse_x(car(xs))
-        } else {
-            toplevel_x(toplevel_named(h), f, a)
-        }, parse_args(cdr(xs)), a)
+            if fact_noted_p(get(cg_call_facts()), f, a, str_lit("call-fx")) {
+                set(cg_fx_calls(), kayak_rt::heap_cons(a, get(cg_fx_calls())))
+            } else {
+                ()
+            };
+            if fact_noted_p(get(cg_call_facts()), f, a, str_lit("call-native")) {
+                set(cg_native_calls(), kayak_rt::heap_cons(a, get(cg_native_calls())))
+            } else {
+                ()
+            };
+            return x_app(if string_eq_p(toplevel_named(h), str_lit("")) {
+                parse_x(car(xs))
+            } else {
+                toplevel_x(toplevel_named(h), f, a)
+            }, parse_args(cdr(xs)), a);
+        }
     }
 }
 
