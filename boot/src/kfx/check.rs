@@ -897,14 +897,48 @@ pub fn tag_of(v: &'static Cv, e: &'static Sexp) -> Str {
     }
 }
 
+pub fn alias_tag_end(mut s: Str, mut i: i64) -> i64 {
+    loop {
+        if (i64_lt(i, string_length_i64(s)) && {
+            let c = string_ref_i64(s, i);
+            (char_numeric_p(c) || char_eq_p(c, '.') || char_eq_p(c, '-') || char_eq_p(c, 'm'))
+        }) {
+            i = i64_plus(i, 1i64);
+            continue;
+        } else {
+            return i;
+        }
+    }
+}
+
+/// Name `n`, a procedural macro's alias `%~K.N:x` its name `x` (C446;
+/// Fixpt's `label-name`, parser.fx): a label binds nothing.
+pub fn label_name(mut n: Str) -> Str {
+    loop {
+        let c = if (i64_gt(string_length_i64(n), 2i64) && string_eq_p(substring(n, int_lit(0), int_lit(2)), str_lit("%~"))) {
+            alias_tag_end(n, 2i64)
+        } else {
+            the::<i64>(-1i64)
+        };
+        if (i64_gt(c, 2i64) && i64_lt(c, string_length_i64(n)) && char_eq_p(string_ref_i64(n, c), ':')) {
+            n = substring(n, i64_to_int(i64_plus(c, 1i64)), string_length(n));
+            continue;
+        } else {
+            return n;
+        }
+    }
+}
+
 /// A product's label or a sum's tag, as written: a name, a keyword
 /// (C291), whose label is its name, or a number. A label is never a
 /// module's name for a type, `m..x` (C288): one so qualified with the
-/// module's types, as a type is, is `x`.
+/// module's types, as a type is, is `x`; nor a procedural macro's alias,
+/// `%~K.N:x`, which is `x` (C446).
 pub fn label_of(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(n, at_file, at_pos) => {
+        Sexp::Sym(n0, at_file, at_pos) => {
+            let n = label_name(n0);
             if keyword_name_p(n) {
                 after_prefix(n, str_lit("#:"))
             } else {

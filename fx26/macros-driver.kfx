@@ -12,8 +12,9 @@
  its index the order it is met in (`drive-files`); a part a template made,
  its key's place in the template (`source-of`). A list's line, kayak's
  checker's place, kept by its position (`drive-lines`). Not yet: a file's
- macros (`import-with-syntax`), `begin-for-syntax` (procedural macros');
- each refused, saying so."
+ macros (`import-with-syntax`), refused, saying so. A procedural macro's
+ transformer, and `begin-for-syntax`, run by the host (C446,
+ `drive-answers!`)."
 
 ;;; ------------------------------------------------------------ places
 
@@ -288,7 +289,10 @@
             ((defines-syntax? s)
              (begin (drive-taken (syntax-names s) s)
                     (drive-checks (define-macro pfail-at s nil))))
-            ((for-syntax? s) (drive-not-yet s "`begin-for-syntax`"))
+            ;; Phase 1's forms, in force for the transformers defined after
+            ;; (C446): checked and run in their namespace, as the host
+            ;; answers `%forms`; nothing of the program's.
+            ((for-syntax? s) (begin (for-syntax! pfail-at s) nil))
             ((imports-syntax? s) (drive-not-yet s "a file's macros, `import-with-syntax`"))
             ;; A `hide`: its forms', as if written there, a program exporting
             ;; nothing to hide them from (`tops-made`).
@@ -617,6 +621,18 @@
       (tuple (mx-datum-list (extract r 1)) (extract r 2)))))
 (define drive-macros? (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (int) bool)
   (lambda (s) (drive-macros?* s)))
+"A procedural macro's transformers' answers (C446): those its host has,
+ `((REQUEST . ANSWER) ...)`, the newest first, given before the instance
+ expands; and, after, the first request it was not given, or ``, for the
+ host to answer and expand again (`mx-expand-procedural`)."
+(define drive-rev-datum (->* (datum datum) datum)
+  (lambda (xs out) (if (pair? xs) (drive-rev-datum (cdr xs) (the datum (cons (car xs) out))) out)))
+(define drive-answers! (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum) unit)
+  (lambda (xs)
+    (let ((given (drive-rev-datum xs (the datum nil))))
+      (begin (set mx-phase1-given given) (set mx-phase1-next-given given) (set mx-phase1-needed "")))))
+(define drive-needed (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) () string)
+  (lambda () (get mx-phase1-needed)))
 (define drive-written-facts (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum) datum)
   (lambda (forms)
     (begin (set drive-files nil) (set drive-met nil) (mx-datum-list (drive-facts (drive-syns (loc-nodes forms)))))))

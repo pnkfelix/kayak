@@ -117,7 +117,7 @@ pub mod kc_driver {
     }
 
     #[inline]
-    pub fn kc_load_file_x() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> () {
+    pub fn kc_load_file_x() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
         &kc_expand::kc_load_file_x
     }
 
@@ -184,6 +184,16 @@ pub mod kc_driver {
     #[inline]
     pub fn q_wnames() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
         &kc_expand::q_wnames
+    }
+
+    #[inline]
+    pub fn q_wforsyntax() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+        &kc_expand::q_wforsyntax
+    }
+
+    #[inline]
+    pub fn q_phase1() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+        &kc_expand::q_phase1
     }
 
     #[inline]
@@ -335,6 +345,10 @@ pub mod kc_driver {
             q_defines_at()(d, &kc_run, a, b)
         } else if string_eq_p(q, str_lit("wnames")) {
             q_wnames()(d, &kc_run, a, b)
+        } else if string_eq_p(q, str_lit("wforsyntax")) {
+            q_wforsyntax()(d, &kc_run, a, b)
+        } else if string_eq_p(q, str_lit("phase1")) {
+            q_phase1()(d, &kc_run, a, b)
         } else {
             error(string_append(str_lit("kc: no query "), key_text(k)));
             str_lit("")
@@ -466,6 +480,71 @@ pub mod kc_driver {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
             string_append(str_lit("cannot run "), string_append(car(argv), string_append(str_lit(": "), e.1)))
         } else { unreachable!() }
+    }
+
+    // A procedural macro's transformer's request (C446), answered by the
+    // engine beside kc (`kayak-fx26 --phase1`, fx26/main.kfx), which checks
+    // and runs FX-26 as Fixpt's runtime does: its answer, `=` and what it
+    // gave, or `!` and why. Of the request's text alone, so kept as the
+    // input `phase1 REQUEST`, and asked once.
+    pub fn phase1_asked(request: Str) -> Str {
+        let engine = {
+            let tagcase_ = read_symlink(str_lit("/proc/self/exe"));
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("target") } {
+                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                string_append(directory_of(t), str_lit("/kayak-fx26"))
+            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                str_lit("kayak-fx26")
+            } else { unreachable!() }
+        };
+        let tagcase_ = process_start(strings_at_io(kayak_rt::heap_cons(engine, kayak_rt::heap_cons(str_lit("--phase1"), kayak_rt::heap_cons(request, kayak_rt::nil())))), str_lit(""));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("started") } {
+            let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            let how = process_exit(p);
+            let out = process_output(p);
+            let n = string_length(out);
+            let said = if (_gt(n, int_lit(0)) && char_eq_p(string_ref(out, _minus(n, int_lit(1))), '\n')) {
+                substring(out, int_lit(0), _minus(n, int_lit(1)))
+            } else {
+                out
+            };
+            let tagcase_ = how;
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("exited") } {
+                let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                if (_eq(c, int_lit(0)) && _gt(string_length(said), int_lit(0))) {
+                    said
+                } else {
+                    string_append(str_lit("!the transformers' run: "), said)
+                }
+            } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
+                let g: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                str_lit("!the transformers' run was signalled")
+            } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
+                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                str_lit("!the transformers' run ended, how is not known")
+            } else { unreachable!() }
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            string_append(str_lit("!the transformers' run: cannot run "), string_append(engine, string_append(str_lit(": "), e.1)))
+        } else { unreachable!() }
+    }
+
+    // `kc-load-file!`, each transformer's request it needs answered and set
+    // (C446), until it needs none.
+    pub fn load_answered_x(mut d: Db, mut file: Str, mut text: Str) -> () {
+        loop {
+            let need = kc_load_file_x()(d, &kc_run, file, text);
+            if string_eq_p(need, str_lit("")) {
+                return ();
+            } else {
+                db_set_x(d, key1(str_lit("phase1"), need), phase1_asked(need), 0i64);
+                continue;
+            }
+        }
     }
 
     /// Each object's name, `oFP` (`o_FP` of a negative), in order.
@@ -618,7 +697,7 @@ pub mod kc_driver {
     /// it passes, its code asked for, or built (on the runtime `rt`).
     pub fn request(d: Db, what: Str, file: Str, out: Str, rt: Str) -> &'static Answer {
         let before = db_runs(d);
-        kc_load_file_x()(d, &kc_run, file, read_text(file));
+        load_answered_x(d, file, read_text(file));
         let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), file)));
         if (string_eq_p(refused, str_lit("")) && not(string_eq_p(what, str_lit("check"))) && not(string_eq_p(what, str_lit("build")))) {
             let key = key1(if string_eq_p(what, str_lit("rust")) {
@@ -744,7 +823,7 @@ pub mod kc_driver {
                     serve(d, dbp, stats, rt)
                 } else if (string_eq_p(car(rest), str_lit("--expanded-located")) && not(null_p(cdr(rest)))) {
                     let file = car(cdr(rest));
-                    kc_load_file_x()(d, &kc_run, file, read_text(file));
+                    load_answered_x(d, file, read_text(file));
                     {
                         let tagcase_ = write_out(string_list_append(kc_expanded_lines()(d, &kc_run, file)));
                         let tag_ = kayak_rt::sum_tag(tagcase_);

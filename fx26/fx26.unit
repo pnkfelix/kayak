@@ -42,6 +42,8 @@ vstage.kfx
 vprims.kfx
 vm.kfx
 vshow.kfx
+; Fixpt's prelude of a procedural macro's transformer (C446), the engine's `--phase1`'s:
+macros/phase1-prelude.kfx
 main.kfx
 repl.kfx
 live-repl.kfx

@@ -128,6 +128,13 @@ each instance that needs it, cheap; its value is the definition's text.
 What a form needs that no written definition gives (a macro or a shaped
 global a use makes) is refused, not yet.
 
+**Procedural macros (C446), in kc**: a form's expansion reads each
+transformer's answer it needs as an input, `phase1 REQUEST`; one not
+set yet, the query says `(needs REQUEST)`, the driver answers it (the
+engine's `--phase1`) and asks again. A procedural macro's definition
+needs the `begin-for-syntax` forms before it too (`wforsyntax`), which
+its replay replays first.
+
 ## Stages (track A)
 
 Each stage ends with the full check; each moves programs from refused to
@@ -160,7 +167,19 @@ agreeing, and the passing lists only grow.
    `macros-shaper.fx`, `macros-scopes.fx`, `modnames`), macro provenance.
 5. **Procedural macros** (`macros-procedural.fx`): a transformer is FX-26
    code run while reading, so kayak's front end must run FX-26 code it
-   has just checked. Decided when reached (on what runtime it runs).
+   has just checked. Done (C446). Fixpt's expander asks its runtime by
+   text (`%forms`, `%define`, `%apply`: Fixpt's `procedural::asked`) and
+   is answered by text, `=` and what was given or `!` and why: a
+   function of the request's text alone. kayak's shim answers from what
+   the instance was given and keeps the first request it was not; the
+   host answers that and expands again. The answer is the engine's
+   (`kayak-fx26 --phase1`): Fixpt's prelude, the `begin-for-syntax` forms,
+   the transformer at its style's type, the call, checked and run as a
+   program, in a process of its own (the engine's heap and machine are
+   one, the program's). kc keeps each answer as an input, `phase1
+   REQUEST`, so a request is run once per database. Later, kc's own
+   native code in the engine's place (when kc compiles what transformers
+   use), a transformer then a compiled item like any other.
 6. **The rest of the refusals**: `include`, `module-parameters`, `hide`,
    keyword constructors, `type-at`, `allof` by conversion, the tail; then
    the 105 differing lines.

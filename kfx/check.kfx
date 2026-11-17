@@ -388,17 +388,35 @@
      keyword (C291), whose tag is its name."
     (let ((n (name-of v e))) (if (keyword-name? n) (after-prefix n "#:") n))))
 
+(define-rec
+  (alias-tag-end (subr kfx (string i64) i64)
+    (lambda (s i)
+      (if (and (i64< i (string-length-i64 s))
+               (let ((c (string-ref-i64 s i))) (or (char-numeric? c) (char=? c #\.) (char=? c #\-) (char=? c #\m))))
+          (alias-tag-end s (i64+ i 1))
+          i))))
+(define-rec
+  (label-name (subr kfx (string) string)
+    (lambda (n)
+      "Name `n`, a procedural macro's alias `%~K.N:x` its name `x` (C446;
+       Fixpt's `label-name`, parser.fx): a label binds nothing."
+      (let ((c (if (and (i64> (string-length-i64 n) 2) (string=? (substring n 0 2) "%~")) (alias-tag-end n 2) (the i64 -1))))
+        (if (and (i64> c 2) (i64< c (string-length-i64 n)) (char=? (string-ref-i64 n c) #\:))
+            (label-name (substring n (i64->int (i64+ c 1)) (string-length n)))
+            n)))))
 (define label-of (subr kfx (sexp) string)
   (lambda (e)
     "A product's label or a sum's tag, as written: a name, a keyword
      (C291), whose label is its name, or a number. A label is never a
      module's name for a type, `m..x` (C288): one so qualified with the
-     module's types, as a type is, is `x`."
+     module's types, as a type is, is `x`; nor a procedural macro's alias,
+     `%~K.N:x`, which is `x` (C446)."
     (tagcase e
-      (sym (n at-file at-pos)
-        (if (keyword-name? n)
-            (after-prefix n "#:")
-            (let ((after (after-dots n))) (if (string=? after "") n after))))
+      (sym (n0 at-file at-pos)
+        (let ((n (label-name n0)))
+          (if (keyword-name? n)
+              (after-prefix n "#:")
+              (let ((after (after-dots n))) (if (string=? after "") n after)))))
       (num (k f p) (i64->string k))
       (else other ""))))
 

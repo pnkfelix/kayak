@@ -107,3 +107,21 @@ where it was seen and what it would take.
     share a form key's count, and a form put before them renames the later
     ones' fresh names (§5). Hashing every atom would keep that to forms
     written alike.
+
+13. **Where a procedural macro's transformer runs, and whether kc should
+    compile it (C446).** The user expected the port of Fixpt's expander
+    to get in the way here. It does not, at the level of what is cached:
+    Fixpt's expander asks its runtime by text, and kc keeps each request's
+    answer as an input. Two choices are left open, though:
+    - For now the engine checks and runs a transformer, one process per
+      request. kc's own native code could take its place once kc compiles
+      `datum`, `typecase` and the prelude, and then a transformer is one
+      more of kc's compiled items. Is that worth doing before step 14?
+    - An expansion that needs an answer is run again from the form's start
+      once it has it. Fixpt's expander calls its runtime and goes on.
+      Suspending instead would need the expander's instance resumable, a
+      continuation kayak's Rust does not have. Quadratic only in a form's
+      own procedural uses, but an explicit renaming chain that is a
+      thousand uses deep would be slow.
+    And for Fixpt (INCR_IMPED.md §6): a syntactic closure's `%apply` need
+    not carry the expansion's tag.

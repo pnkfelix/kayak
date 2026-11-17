@@ -24,6 +24,11 @@ use super::*;
 // syntax-at PATH NAME   the keys of the `define-syntax`es of macro NAME
 // defines-at PATH NAME  the keys of the forms written to define NAME
 // wnames PATH           the names either is set of
+// wforsyntax PATH       the keys of the `begin-for-syntax`es (C446)
+// phase1 REQUEST        a procedural macro's transformer's request's
+// answer (C446; `%forms`, `%define`, `%apply`, as
+// Fixpt's expander asks its runtime), `` until the
+// driver sets it: of the request's text alone
 //
 // The queries:
 //
@@ -36,7 +41,8 @@ use super::*;
 // expansion PATH KEY        form KEY expanded: `(ok (NODE ...) (ENTRY
 // ...))`, what it makes, located (`kc-unlocated`),
 // and what it defines; or `(refused FILE LINE
-// MESSAGE)`
+// MESSAGE)`; or `(needs REQUEST)`, a
+// transformer's request with no answer yet
 //
 // A form's expansion reads its own text, the macros it names, to a fixed
 // point through their definitions, each by `macro-in` and `written`, and of
@@ -52,9 +58,11 @@ use super::*;
 // expansion would meet it, and refuses: not yet, or as Fixpt does.
 
 // An instance of the expander for each call (C442, C443): a form's
-// expansion (`drive-given`), and what is read of a file's written forms
-// (`drive-written-facts`). Top-level definitions, the load's maker made
-// beside them, as the engine's `expanded` has it.
+// expansion (`drive-given`), given the transformers' answers `answers`
+// (C446, `drive-answers!`), and the first request it was not given, or
+// ``; and what is read of a file's written forms (`drive-written-facts`).
+// Top-level definitions, the load's maker made beside them, as the
+// engine's `expanded` has it.
 pub mod made__load__0__expander {
     use super::*;
 
@@ -1102,6 +1110,9 @@ pub mod made__load__1__expand {
     /// What made--load--1--expand makes (C274): its module's items, the place given, and its
     /// values, made as it is made (C433).
     pub struct MadeLoad1ExpandFaceState<'mxp, Place_Mxp> {
+        pub mx_phase1_given: std::cell::Cell<Option<RefAt<'mxp, kayak_rt::value::Value>>>,
+        pub mx_phase1_next_given: std::cell::Cell<Option<RefAt<'mxp, kayak_rt::value::Value>>>,
+        pub mx_phase1_needed: std::cell::Cell<Option<RefAt<'mxp, Str>>>,
         pub load_base: std::cell::Cell<Option<Int>>,
         pub parse_tag: std::cell::Cell<Option<Tag<&'static Presult, &'static Presult>>>,
         pub dt_type_forms: std::cell::Cell<Option<List<Symbol>>>,
@@ -1340,9 +1351,109 @@ pub mod made__load__1__expand {
         }
     }
 
-    #[inline]
-    pub fn mx_expand_procedural(code: Str) -> Str {
-        str_lit("!a procedural macro's transformer, run as the program is read: not yet in kayak")
+    pub fn mx_phase1_tag_end(mut r: Str, mut i: Int) -> Int {
+        loop {
+            if _gt_eq(i, string_length(r)) {
+                return i;
+            } else if char_eq_p(string_ref(r, i), ' ') {
+                return i;
+            } else {
+                i = _plus(i, int_lit(1));
+                continue;
+            }
+        }
+    }
+
+    pub fn mx_phase1_key(r: Str) -> Str {
+        if (_gt(string_length(r), int_lit(9)) && (string_eq_p(substring(r, int_lit(0), int_lit(9)), str_lit("%apply 1 ")) || string_eq_p(substring(r, int_lit(0), int_lit(9)), str_lit("%apply 2 ")))) {
+            string_append(substring(r, int_lit(0), int_lit(9)), string_append(str_lit("0"), substring(r, mx_phase1_tag_end(r, int_lit(9)), string_length(r))))
+        } else {
+            r
+        }
+    }
+
+    pub fn mx_phase1_in(mut request: Str, mut xs: kayak_rt::value::Value) -> Str {
+        loop {
+            if kayak_rt::value::pair_p(xs) {
+                let x = kayak_rt::value::car(xs);
+                let k = if kayak_rt::value::pair_p(x) {
+                    kayak_rt::value::car(x)
+                } else {
+                    the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
+                };
+                let v = if kayak_rt::value::pair_p(x) {
+                    kayak_rt::value::cdr(x)
+                } else {
+                    the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
+                };
+                if string_p(k) {
+                    if string_p(v) {
+                        if string_eq_p(kayak_rt::value::unbox::<Str>(k), request) {
+                            return kayak_rt::value::unbox::<Str>(v);
+                        } else {
+                            xs = kayak_rt::value::cdr(xs);
+                            continue;
+                        }
+                    } else {
+                        xs = kayak_rt::value::cdr(xs);
+                        continue;
+                    }
+                } else {
+                    xs = kayak_rt::value::cdr(xs);
+                    continue;
+                }
+            } else {
+                return str_lit("");
+            }
+        }
+    }
+
+    pub fn mx_phase1_next<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, request: Str) -> Str {
+        let xs = get(maker_st.mx_phase1_next_given.get().unwrap());
+        let x = if kayak_rt::value::pair_p(xs) {
+            kayak_rt::value::car(xs)
+        } else {
+            the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
+        };
+        let k = if kayak_rt::value::pair_p(x) {
+            kayak_rt::value::car(x)
+        } else {
+            the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
+        };
+        let v = if kayak_rt::value::pair_p(x) {
+            kayak_rt::value::cdr(x)
+        } else {
+            the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
+        };
+        if string_p(k) {
+            if string_p(v) {
+                if string_eq_p(kayak_rt::value::unbox::<Str>(k), request) {
+                    set(maker_st.mx_phase1_next_given.get().unwrap(), kayak_rt::value::cdr(xs));
+                    kayak_rt::value::unbox::<Str>(v)
+                } else {
+                    mx_phase1_in(request, get(maker_st.mx_phase1_given.get().unwrap()))
+                }
+            } else {
+                mx_phase1_in(request, get(maker_st.mx_phase1_given.get().unwrap()))
+            }
+        } else {
+            mx_phase1_in(request, get(maker_st.mx_phase1_given.get().unwrap()))
+        }
+    }
+
+    pub fn mx_expand_procedural<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, asked: Str) -> Str {
+        let request = mx_phase1_key(asked);
+        let a = mx_phase1_next(mxp, maker_st, request);
+        if string_eq_p(a, str_lit("")) {
+            if string_eq_p(get(maker_st.mx_phase1_needed.get().unwrap()), str_lit("")) {
+                set(maker_st.mx_phase1_needed.get().unwrap(), request)
+            } else {
+                ()
+            };
+            str_lit("!a procedural macro's transformer, run as the program is read: not yet here")
+        } else {
+            a
+        }
     }
 
     #[inline]
@@ -16838,8 +16949,8 @@ pub mod made__load__1__expand {
         string_append(str_lit("%apply "), string_append(int_to_string(s), string_append(str_lit(" "), string_append(mx_fresh_tag_of(mxp, maker_st, made), string_append(str_lit(" "), string_append(int_to_string(string_length(code)), string_append(str_lit(" "), string_append(int_to_string(length(fs)), string_append(str_lit("\n"), string_append(forms_given(fs), string_append(code, form)))))))))))
     }
 
-    pub fn mx_procedural_run(code: Str) -> kayak_rt::Sum {
-        let a = mx_expand_procedural(code);
+    pub fn mx_procedural_run<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, code: Str) -> kayak_rt::Sum {
+        let a = mx_expand_procedural(mxp, maker_st, code);
         if (_gt(string_length(a), int_lit(0)) && char_eq_p(string_ref(a, int_lit(0)), '=')) {
             kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("ok") }, "ok", substring(a, int_lit(1), string_length(a)))
         } else {
@@ -17536,7 +17647,7 @@ pub mod made__load__1__expand {
             Ok(s)
         } else if tag_ == const { kayak_rt::tag_hash("apart") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            let tagcase_ = mx_procedural_run(applied_text(mxp, maker_st, style, p.1, syn_text(s), made, p.4));
+            let tagcase_ = mx_procedural_run(mxp, maker_st, applied_text(mxp, maker_st, style, p.1, syn_text(s), made, p.4));
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -17800,7 +17911,7 @@ pub mod made__load__1__expand {
                 }
             }
         }));
-        let tagcase_ = mx_procedural_run(forms_text(fs));
+        let tagcase_ = mx_procedural_run(mxp, maker_st, forms_text(fs));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("ok") } {
             let v: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -17873,7 +17984,7 @@ pub mod made__load__1__expand {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(name), string_append(str_lit("`'s contract: a procedural "), string_append(str_lit("macro's is an expression's or definitions', of "), str_lit("untyped parts, not yet another"))))), car(p.3))? {};
             Ok(nil::<Symbol>())
         } else {
-            let tagcase_ = mx_procedural_run(checked_text(p.1, text, get(maker_st.phase1_forms.get().unwrap())));
+            let tagcase_ = mx_procedural_run(mxp, maker_st, checked_text(p.1, text, get(maker_st.phase1_forms.get().unwrap())));
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("ok") } {
                 let v: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -24608,7 +24719,8 @@ pub mod made__load__1__expand {
             drive_taken(mxp, maker_st, syntax_names(mxp, maker_st, s)?, s)?;
             Ok(drive_checks(mxp, maker_st, define_macro(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s, nil::<Product_11_12_13_14_15<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>>>())?)?)
         } else if for_syntax_p(s) {
-            Ok(drive_not_yet(mxp, maker_st, s, str_lit("`begin-for-syntax`"))?)
+            for_syntax_x(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?;
+            Ok(nil::<&'static made__load__0__expander::Syn>())
         } else if imports_syntax_p(s) {
             Ok(drive_not_yet(mxp, maker_st, s, str_lit("a file's macros, `import-with-syntax`"))?)
         } else if string_eq_p(drive_head(s), str_lit("hide")) {
@@ -25169,6 +25281,29 @@ pub mod made__load__1__expand {
         Ok(drive_macros_p_star(mxp, maker_st, s))
     }
 
+    pub fn drive_rev_datum(mut xs: kayak_rt::value::Value, mut out: kayak_rt::value::Value) -> kayak_rt::value::Value {
+        loop {
+            if kayak_rt::value::pair_p(xs) {
+                (xs, out) = (kayak_rt::value::cdr(xs), the::<kayak_rt::value::Value>(kayak_rt::value::cons(kayak_rt::value::car(xs), out)));
+                continue;
+            } else {
+                return out;
+            }
+        }
+    }
+
+    pub fn drive_answers_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, xs: kayak_rt::value::Value) -> Result<(), Unwind> {
+        let given = drive_rev_datum(xs, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil));
+        set(maker_st.mx_phase1_given.get().unwrap(), given);
+        set(maker_st.mx_phase1_next_given.get().unwrap(), given);
+        Ok(set(maker_st.mx_phase1_needed.get().unwrap(), str_lit("")))
+    }
+
+    #[inline]
+    pub fn drive_needed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>) -> Result<Str, Unwind> {
+        Ok(get(maker_st.mx_phase1_needed.get().unwrap()))
+    }
+
     #[inline]
     pub fn drive_written_facts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, forms: kayak_rt::value::Value) -> Result<kayak_rt::value::Value, Unwind> {
         set(maker_st.drive_files.get().unwrap(), nil::<Str>());
@@ -25185,6 +25320,9 @@ pub mod made__load__1__expand {
 
     pub fn maker_state<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp) -> &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp> {
         let maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp> = kayak_rt::alloc(MadeLoad1ExpandFaceState {
+            mx_phase1_given: std::cell::Cell::new(None),
+            mx_phase1_next_given: std::cell::Cell::new(None),
+            mx_phase1_needed: std::cell::Cell::new(None),
             load_base: std::cell::Cell::new(None),
             parse_tag: std::cell::Cell::new(None),
             dt_type_forms: std::cell::Cell::new(None),
@@ -25350,6 +25488,9 @@ pub mod made__load__1__expand {
             drive_states: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
         });
+        maker_st.mx_phase1_given.set(Some(new(the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))));
+        maker_st.mx_phase1_next_given.set(Some(new(the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))));
+        maker_st.mx_phase1_needed.set(Some(new(str_lit(""))));
         maker_st.load_base.set(Some(int_lit(1000000000)));
         maker_st.parse_tag.set(Some(make_continuation_prompt_tag()));
         maker_st.dt_type_forms.set(Some(kayak_rt::cons(symbol_lit(str_lit("arrayof")), kayak_rt::cons(symbol_lit(str_lit("narrayof")), kayak_rt::cons(symbol_lit(str_lit("bloblet")), kayak_rt::cons(symbol_lit(str_lit("composable")), kayak_rt::cons(symbol_lit(str_lit("dletrec")), kayak_rt::cons(symbol_lit(str_lit("icell")), kayak_rt::cons(symbol_lit(str_lit("listof")), kayak_rt::cons(symbol_lit(str_lit("mark-key")), kayak_rt::cons(symbol_lit(str_lit("moduleof")), kayak_rt::cons(symbol_lit(str_lit("mu")), kayak_rt::cons(symbol_lit(str_lit("nat")), kayak_rt::cons(symbol_lit(str_lit("nlist")), kayak_rt::cons(symbol_lit(str_lit("oneshot")), kayak_rt::cons(symbol_lit(str_lit("pairof")), kayak_rt::cons(symbol_lit(str_lit("place")), kayak_rt::cons(symbol_lit(str_lit("poly")), kayak_rt::cons(symbol_lit(str_lit("productof")), kayak_rt::cons(symbol_lit(str_lit("prompt-tag")), kayak_rt::cons(symbol_lit(str_lit("proves")), kayak_rt::cons(symbol_lit(str_lit("ref")), kayak_rt::cons(symbol_lit(str_lit("select")), kayak_rt::cons(symbol_lit(str_lit("subr")), kayak_rt::cons(symbol_lit(str_lit("sumof")), kayak_rt::cons(symbol_lit(str_lit("tupleof")), kayak_rt::cons(symbol_lit(str_lit("bool")), kayak_rt::cons(symbol_lit(str_lit("oneof")), kayak_rt::cons(symbol_lit(str_lit("union")), kayak_rt::cons(symbol_lit(str_lit("anyof")), kayak_rt::cons(symbol_lit(str_lit("allof")), kayak_rt::cons(symbol_lit(str_lit("->")), kayak_rt::cons(symbol_lit(str_lit("->*")), kayak_rt::cons(symbol_lit(str_lit("restrict")), kayak_rt::cons(symbol_lit(str_lit("modnames")), kayak_rt::nil())))))))))))))))))))))))))))))))))));
@@ -25542,10 +25683,6 @@ impl<'mxp, Place_Mxp> MadeLoad1ExpandFace<'mxp, Place_Mxp> {
         made__load__1__expand::mx_eq_p(a, b)
     }
 
-    pub fn mx_expand_procedural(self, code: Str) -> Str {
-        made__load__1__expand::mx_expand_procedural(code)
-    }
-
     pub fn mx_call_procedural(self, style: Int, code: Str, d: kayak_rt::value::Value, x: Str, forms: List<Str>) -> kayak_rt::Sum {
         made__load__1__expand::mx_call_procedural(style, code, d, x, forms)
     }
@@ -25574,6 +25711,14 @@ impl<'mxp, Place_Mxp> MadeLoad1ExpandFace<'mxp, Place_Mxp> {
         made__load__1__expand::drive_macros_p(self.0, self.1, s)
     }
 
+    pub fn drive_answers_x(self, xs: kayak_rt::value::Value) -> Result<(), Unwind> {
+        made__load__1__expand::drive_answers_x(self.0, self.1, xs)
+    }
+
+    pub fn drive_needed(self) -> Result<Str, Unwind> {
+        made__load__1__expand::drive_needed(self.0, self.1)
+    }
+
     pub fn drive_written_facts(self, forms: kayak_rt::value::Value) -> Result<kayak_rt::value::Value, Unwind> {
         made__load__1__expand::drive_written_facts(self.0, self.1, forms)
     }
@@ -25587,31 +25732,33 @@ pub fn made__load__1__expand<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp) -> MadeLoad1
     MadeLoad1ExpandFace(mxp, made__load__1__expand::maker_state(mxp))
 }
 
-pub fn kc_instance(facts_p: bool, defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target: kayak_rt::value::Value) -> Product_11_12_13<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value> {
+pub fn kc_instance(facts_p: bool, defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target: kayak_rt::value::Value, answers: kayak_rt::value::Value) -> Product_11_12_13_14<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value, Str> {
     {
         struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
         impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
-        fn letrena__p<'p>(p: &'p Region_P<'p>, facts_p: bool, defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target: kayak_rt::value::Value) -> Result<Product_11_12_13<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value>, Unwind> {
+        fn letrena__p<'p>(p: &'p Region_P<'p>, facts_p: bool, answers: kayak_rt::value::Value, defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target: kayak_rt::value::Value) -> Result<Product_11_12_13_14<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value, Str>, Unwind> {
             let x = made__load__1__expand(p);
             if facts_p {
-                Ok(Product_11_12_13(x.drive_written_facts(defs)?, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)))
+                Ok(Product_11_12_13_14(x.drive_written_facts(defs)?, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), str_lit("")))
             } else {
-                Ok(x.drive_given(defs, es, target)?)
+                x.drive_answers_x(answers)?;
+                let r = x.drive_given(defs, es, target)?;
+                Ok(Product_11_12_13_14(r.0, r.1, r.2, x.drive_needed()?))
             }
         }
         let p__arena = Region_P::default();
-        letrena__p(&p__arena, facts_p, defs, es, target).unwrap_or_else(|u| unreachable_unwind(u))
+        letrena__p(&p__arena, facts_p, answers, defs, es, target).unwrap_or_else(|u| unreachable_unwind(u))
     }
 }
 
 #[inline]
-pub fn kc_given(defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target: kayak_rt::value::Value) -> Product_11_12_13<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value> {
-    kc_instance(false, defs, es, target)
+pub fn kc_given(defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target: kayak_rt::value::Value, answers: kayak_rt::value::Value) -> Product_11_12_13_14<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value, Str> {
+    kc_instance(false, defs, es, target, answers)
 }
 
 #[inline]
 pub fn kc_written_facts(forms: kayak_rt::value::Value) -> kayak_rt::value::Value {
-    kc_instance(true, forms, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)).0
+    kc_instance(true, forms, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)).0
 }
 
 pub mod kc_expand {
@@ -25654,7 +25801,7 @@ pub mod kc_expand {
     pub fn macro_heads() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("define-syntax"), kayak_rt::heap_cons(str_lit("define-syntax-rec"), kayak_rt::nil()))
+            kayak_rt::heap_cons(str_lit("define-syntax"), kayak_rt::heap_cons(str_lit("define-syntax-rec"), kayak_rt::heap_cons(str_lit("begin-for-syntax"), kayak_rt::nil())))
         })
     }
 
@@ -25910,6 +26057,17 @@ pub mod kc_expand {
         str_lit("()")
     }
 
+    #[inline]
+    pub fn q_wforsyntax(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+        str_lit("()")
+    }
+
+    // `phase1 REQUEST` the driver set none of (C446): no answer yet.
+    #[inline]
+    pub fn q_phase1(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_request: Str, a_key: Str) -> Str {
+        str_lit("")
+    }
+
     // Of keys `ks`, the last whose position is before `at`, or ``.
     pub fn last_before(mut d: Db, mut run: Runner, mut path: Str, mut ks: Strings, mut at: i64, mut best: Str, mut best_at: i64) -> Str {
         loop {
@@ -25991,10 +26149,46 @@ pub mod kc_expand {
                             Product_11_12(m, x)
                         }), ns), onto(map(lambda1s(move |x: Str| {
                             Product_11_12(key, x)
-                        }), ns), cdr(todo))), kayak_rt::heap_cons(ask, asked), kayak_rt::heap_cons(m, defs), names);
+                        }), ns), cdr(todo))), kayak_rt::heap_cons(ask, asked), for_syntax_onto(d, run, path, m, ns, kayak_rt::heap_cons(m, defs)), names);
                     }
                 }
             }
+        }
+    }
+
+    #[inline]
+    pub fn transformer_heads() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("er-macro-transformer"), kayak_rt::heap_cons(str_lit("sc-macro-transformer"), kayak_rt::heap_cons(str_lit("rsc-macro-transformer"), kayak_rt::nil())))
+        })
+    }
+
+    // Of a procedural macro's definition `m` (one that names a transformer's
+    // style, of names `ns`), the `begin-for-syntax`es before it, onto
+    // `defs`, each once: its transformer runs where they are in force
+    // (C446), so its replay replays them first.
+    pub fn before_onto(mut d: Db, mut run: Runner, mut path: Str, mut ks: Strings, mut at: i64, mut defs: Strings) -> Strings {
+        loop {
+            if null_p(ks) {
+                return defs;
+            } else if (not(string_member_p(car(ks), defs)) && i64_lt(wpos(d, run, path, car(ks)), at)) {
+                (ks, defs) = (cdr(ks), kayak_rt::heap_cons(car(ks), defs));
+                continue;
+            } else {
+                ks = cdr(ks);
+                continue;
+            }
+        }
+    }
+
+    pub fn for_syntax_onto(d: Db, run: Runner, path: Str, m: Str, ns: Strings, defs: Strings) -> Strings {
+        if any_p(lambda1s(move |n: Str| {
+            string_member_p(n, transformer_heads())
+        }), ns) {
+            before_onto(d, run, path, keys_in(d, run, key1(str_lit("wforsyntax"), path)), wpos(d, run, path, m), defs)
+        } else {
+            defs
         }
     }
 
@@ -26057,9 +26251,12 @@ pub mod kc_expand {
     // it and they hold: a query of its own, so that its value, not the
     // expansion, changes when a form is put before another.
     pub fn q_macros_for(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, key: Str) -> Str {
-        let tagcase_ = needed(d, run, path, key, map(lambda1s(move |x: Str| {
-            Product_11_12(key, x)
-        }), symbols_of(written_form(d, run, path, key), nil::<Str>())), nil::<Str>(), nil::<Str>(), nil::<Str>());
+        let tagcase_ = {
+            let ns = symbols_of(written_form(d, run, path, key), nil::<Str>());
+            needed(d, run, path, key, map(lambda1s(move |x: Str| {
+                Product_11_12(key, x)
+            }), ns), nil::<Str>(), for_syntax_onto(d, run, path, key, ns, nil::<Str>()), nil::<Str>())
+        };
         match *tagcase_ {
             KxNeeds::KxNeeds(defs, names) => {
                 string_list_append(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(lambda1s(move |k: Str| {
@@ -26067,6 +26264,28 @@ pub mod kc_expand {
                 }), by_place(d, run, path, defs, nil::<Product_11_12<Str, i64>>()))), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(lambda1s(move |n: Str| {
                     kc_datum()(str(n, str_lit(""), 0i64))
                 }), names)), kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))))
+            }
+        }
+    }
+
+    // Form `target` expanded, given `ds` and `es`, each request of a
+    // transformer's it makes answered by its `phase1` input (C446), the
+    // expander, deterministic, asking again what it asked before, then
+    // more: what the last instance gave, its request not answered yet, if
+    // one is not.
+    pub fn given_answered(mut d: Db, mut run: Runner, mut ds: kayak_rt::value::Value, mut es: kayak_rt::value::Value, mut target: kayak_rt::value::Value, mut answers: kayak_rt::value::Value) -> Product_11_12_13_14<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value, Str> {
+        loop {
+            let r = kc_given(ds, es, target, answers);
+            if string_eq_p(r.3, str_lit("")) {
+                return r;
+            } else {
+                let a = db_get(d, run, key1(str_lit("phase1"), r.3));
+                if string_eq_p(a, str_lit("")) {
+                    return r;
+                } else {
+                    answers = the::<kayak_rt::value::Value>(kayak_rt::value::cons(the::<kayak_rt::value::Value>(kayak_rt::value::cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(r.3)), the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(a)))), answers));
+                    continue;
+                }
             }
         }
     }
@@ -26093,8 +26312,10 @@ pub mod kc_expand {
         let es = sexps_datum(entries_of(d, run, path, key, names));
         let target = given(d, run, path, key);
         let ds = given_each(d, run, path, defs);
-        let r = kc_given(ds, es, target);
-        if pair_p(r.1) {
+        let r = given_answered(d, run, ds, es, target, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil));
+        if not(string_eq_p(r.3, str_lit(""))) {
+            string_append(str_lit("(needs "), string_append(kc_datum()(str(r.3, str_lit(""), 0i64)), str_lit(")")))
+        } else if pair_p(r.1) {
             string_append(str_lit("(refused "), string_append(kc_data()(items(datum_sexp(r.1, str_lit(""), 0i64, 0i64))), str_lit(")")))
         } else {
             string_list_append(kayak_rt::heap_cons(str_lit("(ok ("), kayak_rt::heap_cons(words_of(map(&located, located_sexps(r.0))), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kc_datum(), map(lambda1s(move |e: kayak_rt::value::Value| {
@@ -26639,6 +26860,7 @@ pub mod kc_expand {
     pub enum KxExpanded {
         ExpandedForms(Sexps),
         ExpandedRefused(Str),
+        ExpandedNeeds(Str),
     }
 
     pub fn expanded_forms(f0: Sexps) -> &'static KxExpanded {
@@ -26647,6 +26869,10 @@ pub mod kc_expand {
 
     pub fn expanded_refused(f0: Str) -> &'static KxExpanded {
         kayak_rt::heap_alloc(KxExpanded::ExpandedRefused(f0))
+    }
+
+    pub fn expanded_needs(f0: Str) -> &'static KxExpanded {
+        kayak_rt::heap_alloc(KxExpanded::ExpandedNeeds(f0))
     }
 
     // Each form's expansion, in order: what they make, moved where they are,
@@ -26672,7 +26898,20 @@ pub mod kc_expand {
                             return expanded_refused(string_list_append(kayak_rt::heap_cons(str_lit("kfx: "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(":"), kayak_rt::heap_cons(i64_to_string(here), kayak_rt::heap_cons(str_lit(": "), kayak_rt::heap_cons(why, kayak_rt::nil()))))))));
                         } else {
                             let v = car(read_all(db_get(d, run, key2(str_lit("expansion"), path, car(ks))), str_lit("expansion"), 1i64));
-                            if sym_is_p(car(items(v)), str_lit("refused")) {
+                            if sym_is_p(car(items(v)), str_lit("needs")) {
+                                return expanded_needs({
+                                    let tagcase_ = second(items(v));
+                                    match *tagcase_ {
+                                        Sexp::Str(t, f2, p2) => {
+                                            t
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            str_lit("")
+                                        }
+                                    }
+                                });
+                            } else if sym_is_p(car(items(v)), str_lit("refused")) {
                                 let xs = cdr(items(v));
                                 let f = {
                                     let tagcase_ = car(xs);
@@ -26767,14 +27006,17 @@ pub mod kc_expand {
     // `kc-load-file! PATH TEXT`: the file `PATH`'s text read once, and its
     // inputs made, as `kc-load!` makes them; of a file that defines a macro,
     // each form expanded first, a query of its own, and the inputs made of
-    // what they make (C445).
-    pub fn kc_load_file_x(d: Db, run: Runner, path: Str, text: Str) -> () {
+    // what they make (C445). ``, or, of an expansion that needs a
+    // transformer's answer, its request (C446), the file not loaded yet: the
+    // driver answers it (`phase1 REQUEST`) and loads it again.
+    pub fn kc_load_file_x(d: Db, run: Runner, path: Str, text: Str) -> Str {
         if kc_text_as_was_p()(d, path, text) {
-            ()
+            str_lit("")
         } else {
             let forms = read_all(text, path, 1i64);
             if not(mentions_p(forms, macro_heads())) {
-                kc_load_forms_x()(d, path, text, forms, str_lit(""))
+                kc_load_forms_x()(d, path, text, forms, str_lit(""));
+                str_lit("")
             } else {
                 let fs = facts_of(forms);
                 let ks = keys_of(fs, 0i64, nil::<Str>());
@@ -26820,13 +27062,25 @@ pub mod kc_expand {
                 }), names)));
                 db_set_x(d, key1(str_lit("wkeys"), path), named_text(ks), 0i64);
                 db_set_x(d, key1(str_lit("wnames"), path), named_text(names), 0i64);
+                db_set_x(d, key1(str_lit("wforsyntax"), path), named_text(map(lambda1s(move |x: Product_11_12<Str, &'static Sexp>| {
+                    x.0
+                }), filter(lambda1s(move |x: Product_11_12<Str, &'static Sexp>| {
+                    mentions_p(kayak_rt::heap_cons(x.1, kayak_rt::nil()), kayak_rt::heap_cons(str_lit("begin-for-syntax"), kayak_rt::nil()))
+                }), map2(lambda2s(move |k: Str, f: &'static Sexp| {
+                    Product_11_12(k, f)
+                }), ks, forms)))), 0i64);
                 let tagcase_ = expand_each(d, run, path, ks, fs, forms, ps, 0i64, nil::<&'static kc_expand::KxDefd>(), nil::<&'static Sexp>());
                 match *tagcase_ {
                     KxExpanded::ExpandedForms(xs) => {
-                        kc_load_forms_x()(d, path, text, xs, words_of(map(&located, xs)))
+                        kc_load_forms_x()(d, path, text, xs, words_of(map(&located, xs)));
+                        str_lit("")
                     }
                     KxExpanded::ExpandedRefused(m) => {
-                        kc_load_forms_x()(d, path, text, nil::<&'static Sexp>(), string_append(str_lit("(refused "), string_append(kc_datum()(str(m, str_lit(""), 0i64)), str_lit(")"))))
+                        kc_load_forms_x()(d, path, text, nil::<&'static Sexp>(), string_append(str_lit("(refused "), string_append(kc_datum()(str(m, str_lit(""), 0i64)), str_lit(")"))));
+                        str_lit("")
+                    }
+                    KxExpanded::ExpandedNeeds(r) => {
+                        r
                     }
                 }
             }

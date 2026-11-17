@@ -74,6 +74,8 @@ pub mod vm;
 pub use vm::*;
 pub mod vshow;
 pub use vshow::*;
+pub mod phase1_prelude;
+pub use phase1_prelude::*;
 pub mod main;
 pub use main::*;
 pub mod repl;
@@ -116,5 +118,5 @@ pub struct Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5
 #[derive(Clone, Copy)]
 pub struct Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27, A28, A29, A30, A31, A32, A33, A34, A35, A36, A37, A38, A39, A40, A41, A42, A43, A44, A45, A46, A47, A48, A49, A50, A51, A52>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11, pub A12, pub A13, pub A14, pub A15, pub A16, pub A17, pub A18, pub A19, pub A20, pub A21, pub A22, pub A23, pub A24, pub A25, pub A26, pub A27, pub A28, pub A29, pub A30, pub A31, pub A32, pub A33, pub A34, pub A35, pub A36, pub A37, pub A38, pub A39, pub A40, pub A41, pub A42, pub A43, pub A44, pub A45, pub A46, pub A47, pub A48, pub A49, pub A50, pub A51, pub A52);
 
-const _: () = kayak_rt::tags_apart_from_runtime(&["apart", "failed", "ok", "unread", "read", "refused", "text"]);
+const _: () = kayak_rt::tags_apart_from_runtime(&["apart", "failed", "ok", "refused", "unread", "read", "text"]);
 

@@ -42,7 +42,7 @@
       (import kc-rust q-rust-item q-rust)
       (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text)
       (import kc-expand kc-load-file! kc-expanded-lines q-expansion q-macros-for q-macro-in q-global-in q-entry
-              q-written q-wseen q-wpos q-wkeys q-syntax-at q-defines-at q-wnames)
+              q-written q-wseen q-wpos q-wkeys q-syntax-at q-defines-at q-wnames q-wforsyntax q-phase1)
       (import kc-front q-expanded))
 
     (define-effect driving (maxeff qe (io args) (io stdin) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (io process) (alloc @io) (read @io)))
@@ -116,6 +116,9 @@
                     ((string=? q "syntax-at") (q-syntax-at d kc-run a b))
                     ((string=? q "defines-at") (q-defines-at d kc-run a b))
                     ((string=? q "wnames") (q-wnames d kc-run a b))
+                    ((string=? q "wforsyntax") (q-wforsyntax d kc-run a b))
+                    ;; A transformer's answer (C446), an input.
+                    ((string=? q "phase1") (q-phase1 d kc-run a b))
                     (else (begin (error (string-append "kc: no query " (key-text k))) "")))))))
 
       (define-rec
@@ -176,6 +179,38 @@
                 (signalled g (string-append (car argv) " was signalled"))
                 (unknown u (string-append (car argv) " ended, how is not known"))))
             (failed e (string-append "cannot run " (string-append (car argv) (string-append ": " (extract e detail))))))))
+
+      "A procedural macro's transformer's request (C446), answered by the
+       engine beside kc (`kayak-fx26 --phase1`, fx26/main.kfx), which checks
+       and runs FX-26 as Fixpt's runtime does: its answer, `=` and what it
+       gave, or `!` and why. Of the request's text alone, so kept as the
+       input `phase1 REQUEST`, and asked once."
+      (define phase1-asked (subr driving (string) string)
+        (lambda (request)
+          (let ((engine (tagcase (read-symlink "/proc/self/exe")
+                          (target t (string-append (directory-of t) "/kayak-fx26"))
+                          (failed e "kayak-fx26"))))
+            (tagcase (process-start (strings-at-io (list engine "--phase1" request)) "")
+              (started p
+                (let* ((how (process-exit p)) (out (process-output p))
+                       (n (string-length out))
+                       (said (if (and (> n 0) (char=? (string-ref out (- n 1)) #\newline)) (substring out 0 (- n 1)) out)))
+                  (tagcase how
+                    (exited c (if (and (= c 0) (> (string-length said) 0)) said (string-append "!the transformers' run: " said)))
+                    (signalled g "!the transformers' run was signalled")
+                    (unknown u "!the transformers' run ended, how is not known"))))
+              (failed e (string-append "!the transformers' run: cannot run " (string-append engine (string-append ": " (extract e detail)))))))))
+
+      "`kc-load-file!`, each transformer's request it needs answered and set
+       (C446), until it needs none."
+      (define-rec
+        (load-answered! (subr driving (db string string) unit)
+          (lambda (d file text)
+            (let ((need (kc-load-file! d kc-run file text)))
+              (if (string=? need "")
+                  #u
+                  (begin (db-set! d (key1 "phase1" need) (phase1-asked need) 0)
+                         (load-answered! d file text)))))))
 
       (define-rec
         (object-names (subr kfx (sexps (listof string acyclic)) (listof string acyclic))
@@ -260,7 +295,7 @@
            it passes, its code asked for, or built (on the runtime `rt`)."
           (let ((before (db-runs d)))
             (begin
-              (kc-load-file! d kc-run file (read-text file))
+              (load-answered! d file (read-text file))
               (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" file)))))
                 (begin
                   ;; Written only if it is new (C417): an output as it was is left as
@@ -321,7 +356,7 @@
                     ((and (string=? (car rest) "--expanded-located") (not (null? (cdr rest))))
                      (let ((file (car (cdr rest))))
                        (begin
-                         (kc-load-file! d kc-run file (read-text file))
+                         (load-answered! d file (read-text file))
                          (tagcase (write-out (string-list-append (kc-expanded-lines d kc-run file))) (done u #u) (failed e #u))
                          (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
                          0)))

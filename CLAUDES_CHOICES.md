@@ -12868,3 +12868,75 @@ it (`kc/expand.kfx`; making one costs nothing measurable).
   and source keys: neither. Each form is expanded in an instance of its
   own, whose numbers start over, and the driver writes places, not keys
   (`drive-placed`). What a form needs of the forms before it is by name.
+
+## C446. Procedural macros: a transformer's request, answered by the engine, kc's input (2026-11-17)
+
+TODO §51's next, stage 5 (`fx26-macros.md`). The user, on asking for it:
+"I suspect this is the case where we will maybe regret the implementation
+strategy you have chosen (of translating Fixpt's expander directly), since
+I imagine we could hypothetically wire the compilation of procedural
+macros into the demand driven model quite directly".
+- **The seam is Fixpt's own**: its expander asks its runtime by text
+  (`%forms` for `begin-for-syntax`, `%define` where a macro is defined,
+  `%apply` at a use: `procedural::asked`), and reads the answer back as
+  text, `=` and what the transformer gave, or `!` and why. That is a
+  function of the request's text alone, the transformer deterministic (its
+  type allows reading phase 1's globals and nothing else). So the port
+  does not stand in the way of the demand-driven model: what it asks is a
+  query's key, and its answer the query's value. kc keeps each as an
+  input, `phase1 REQUEST`, set by its driver, kept in the database, so a
+  request runs once per database, and a form's expansion depends on the
+  answers it read. Where the translation costs something is below.
+- **The shim** (`macros-shim.kfx`) answers from what the instance was given
+  (`drive-answers!`, in the order asked, so each is found at once) and
+  keeps the first request it was not given (`drive-needed`), saying not
+  yet. The host answers it and expands again: the expander, deterministic,
+  asks what it asked before, then more. A host that does not answer (the
+  REPL, whose heap is live) says not yet, as before.
+- **The answer is the engine's** (`kayak-fx26 --phase1 REQUEST`): Fixpt's
+  prelude (`procedural-prelude.fx`, made a KFX string by
+  `macros-port.py`, so drift-checked), the phase-1 forms, the transformer
+  at its style's type with `procedural::helpers` around it, and of
+  `%apply` the call (`call_transformer`'s arguments), checked and run as a
+  program; its value written. In a process of its own: the engine's heap,
+  machine and node tables are one, the program's (the engine runs itself,
+  `/proc/self/exe`; kc runs the `kayak-fx26` beside it). Fixpt's
+  checker's and runtime's messages are kayak's (`car of nil` where Fixpt
+  says `car or cdr of a non-pair`); refusals are counted, not compared.
+- **kc's own code for transformers, later**: kc compiles neither `datum`
+  nor `typecase` yet, nor the prelude's `letrec`s. Once it does, a
+  transformer is one more definition kc checks and compiles as a query, and
+  a request's answer kc's run of it: the engine's process is the one part
+  to replace, behind the same input.
+- **What the restart costs**: an expansion runs again for each request
+  not answered yet (a form of k procedural uses, k+1 runs, each from the
+  form's start), where Fixpt's expander calls its runtime and goes on.
+  Measured on `returns-its-input.fx` (a transformer that returns its use,
+  refused at the depth limit, a thousand uses): 35 s, all restarts and
+  processes. A syntactic closure's transformer is never given the
+  expansion's tag (`call_transformer`), so the shim keys its `%apply` with
+  tag `0`: one answer for all thousand, 65 ms (INCR_IMPED.md §6). An
+  explicit renaming one's chain would still be quadratic.
+- **`begin-for-syntax`** in the driver (`for-syntax!`, as Fixpt's
+  `parse-top` has it), and among the heads that make a program expanded.
+  In kc a procedural macro's definition needs the `begin-for-syntax` forms
+  before it (`wforsyntax`, an input), replayed before it.
+- **A label is never an alias** (`label-of`, kfx/check.kfx): `%~K.N:x` is
+  `x`, as Fixpt's parser's `label-name` has it
+  (`procedural/renamed-type-label-quote.fx`).
+- **Found**: kc's identity did not cover the expander it loads (a file of
+  a place, in no unit), so a database kept memos an older expander made;
+  `compiler-identity.py` now hashes `fx26/macros/expander.fx` and its
+  types too (C445's gap).
+- **Checks**: the engine on Fixpt's 41 procedural programs (40 in
+  `procedural/`, one in `macros/`): each gives Fixpt's value, or is
+  refused where Fixpt refuses, but `split-er.fx`, whose `f` (an `allof`
+  with a `typecase`) kayak's checker refuses before any macro.
+  `kc-expanded.py`: 259 of 269 as the engine; 2 more KNOWN, a procedural
+  macro that makes a macro (MADE, as C445's 6). `tests/kc/step15/`: three
+  more (explicit renaming, syntactic closures, `begin-for-syntax`), run by
+  kc's native code. `kc-steps.py` measures a procedural file's edits:
+  cold, 6 expansions (two of them asking again); the same, none; a use's
+  operand edited, 2.
+- **The full check**: beyond KFX, the engine agrees with Fixpt on 411 of
+  its programs (391 before), its checker refusing 62 (82).

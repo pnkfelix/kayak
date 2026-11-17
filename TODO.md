@@ -1497,7 +1497,7 @@ keys' `letrena`, and `pair-identity` until allowed.
 ## 50. Taken from Fixpt 0d933ff in part (C393)
 
 - Procedural macros (`%fx26-expand-procedural`, Fixpt's TODO §228) and
-  hygiene, binding shapes: kayak's FX-26 front end has neither.
+  hygiene, binding shapes: done (C431-C446, §51).
 - A quoted list or vector compiled as one constant (Fixpt's TODO §229), in
   `fx26/cg.kfx`'s port: an optimization, not taken yet.
 - Bounded effect variables, `(e effect (within E))` (TODO §226), in Fixpt's
@@ -1540,8 +1540,16 @@ Twobit-style optimizations in KFX.
   programs); a global a use defines, its shape known (2): kc refuses
   them, not yet (each wants a form's query to read what an earlier
   form's expansion made, by name); two `define-syntax`es of one name
-  each given, untested beyond a trailmark's; procedural macros (stage 5,
-  a phase-1 namespace); the driver's lines (each list's, met; an atom's,
+  each given, untested beyond a trailmark's; procedural macros (stage 5):
+  done, C446, each transformer's request (Fixpt's `%forms`, `%define`,
+  `%apply`) answered by the engine's `--phase1` (prelude, phase-1 forms,
+  the transformer checked at its style's type and run, a process of its
+  own), in kc an input `phase1 REQUEST`, the expansion asking again; not
+  yet in the REPL (its heap is live: a request there is said not yet), nor
+  a transformer's answer a vector; kc's own native code for transformers,
+  when kc compiles `datum`, `typecase` and the prelude's forms, in place of
+  the engine's; an expansion run again for each new request (a form of k
+  procedural uses, k+1 runs: Fixpt's would suspend instead); the driver's lines (each list's, met; an atom's,
   the last list's before it).
 - A loaded file's type named as one of the program's (the expander's
   `part`, lib/db.kfx's datatype `part`, C445): one type in the Rust kfx
@@ -1593,8 +1601,8 @@ Twobit-style optimizations in KFX.
   primitives, tier 1's `cprims.kfx` (primitive 526).
 - Fixpt's macros since 2026-11-07 (typed tier, `(macro σ made)`
   signatures, `desc`, trailmarks, `begin-for-syntax`, procedural macros in
-  a phase-1 namespace, expansion limits): none in kayak yet; stage 1 of
-  §51 ports the pin's expander (`docs/research/fx26-macros.md`).
+  a phase-1 namespace, expansion limits): §51 ported the pin's expander
+  (C429-C446, `docs/research/fx26-macros.md`).
 
 ## 52. kc (the user, 2026-11-12; `docs/research/kc.md`)
 
@@ -1614,7 +1622,11 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
 - kc's step 15, macros (C445): each form's expansion a query, by the
   names it reads (TODO §51); a macro's checks (a typed one's hidden
   definitions) checked with the program; a file's macros
-  (`import-with-syntax`), loads, `begin-for-syntax`, not yet. Step 14
+  (`import-with-syntax`), loads, not yet; procedural macros and
+  `begin-for-syntax` (C446), their transformers run by the engine, in a
+  process each request: by kc's own native code once it compiles them, a
+  transformer then a query's compiled item (its check, its code), and a
+  request's answer kc's run of it. Step 14
   (the effects that need the runtime) not done before it: the macro
   programs kc takes are those its back ends take.
 - Models (`docs/research/models.md`): exhaustive checking (Java 17+ for

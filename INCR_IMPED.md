@@ -199,3 +199,24 @@ Each entry has the same parts:
   same. Forms that are the same text would still count each other, which
   seems unavoidable if two of them must get different names.
 - **Seen:** 2026-11-16, C445.
+
+## 6. A syntactic closure's request carries a tag its transformer never sees
+
+- **Where:** `macros-procedural.fx`, `applied-text`: `%apply STYLE TAG
+  LENGTH N`, its expansion's tag (`K.N`) in every request; and
+  `phase1.rs`'s `call_transformer`, which passes the tag to an explicit
+  renaming transformer alone (`%er-renamer`), never to a syntactic
+  closure's (style 1 or 2), which is given `%env:use` or `%env:macro`.
+- **What:** two uses of one `sc-` or `rsc-macro-transformer` on the same
+  datum get the same answer, but their requests differ by the tag, so a
+  cache keyed by the request's text sees two.
+- **Cost:** in kayak, where a request's answer is cached by its text (an
+  input of kc's, `phase1 REQUEST`) and an expansion is run again for each
+  request not answered yet, a transformer that returns its use
+  (`procedural/returns-its-input.fx`) made a request for each of the
+  thousand uses before the depth limit: 35 s, against 65 ms once kayak
+  keys such a request with the tag `0`.
+- **Alternative:** leave the tag out of a style 1 or 2 request (or write
+  `0`), as the transformer never reads it; kayak does so already, which
+  changes nothing Fixpt's runtime would answer.
+- **Seen:** 2026-11-17, C446.

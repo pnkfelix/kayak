@@ -81,12 +81,59 @@
 (define mx-parse-nat (->* (string int) int)
   (lambda (s radix) (if (= (string-length s) 0) -1 (mx-parse-nat-from s radix 0 0))))
 "The runtime's for procedural macros (Fixpt's `standard.rs`, `TODO.md`
- §228), which kayak's engine has not yet (`docs/research/fx26-macros.md`,
- stage 5): no transformer runs, `!` and why; none is in a phase-1
- namespace, `apart`. And a limit of expansion, Fixpt's default, the
- environment not read (`syscall::macro_limit`'s `FIXPT_MACRO_*`)."
-(define mx-expand-procedural (subr spin (string) string)
-  (lambda (code) "!a procedural macro's transformer, run as the program is read: not yet in kayak"))
+ §228; C446): a request of the expander's (`%forms`, `%define`, `%apply`,
+ Fixpt's `procedural::asked`) answered by what the instance was given,
+ the answers its host has (`drive-answers!`): a request's answer is of its
+ text alone, as a transformer is deterministic, so the host may answer it
+ anywhere, once, and keep it. A request not given is kept, the first
+ (`drive-needed`), for the host to answer and expand again, and said not
+ yet. None is in a phase-1 namespace, `apart`. And a limit of expansion,
+ Fixpt's default, the environment not read (`syscall::macro_limit`'s
+ `FIXPT_MACRO_*`)."
+(define mx-phase1-given (ref datum mxp) (new (the datum nil)))
+(define mx-phase1-next-given (ref datum mxp) (new (the datum nil)))
+(define mx-phase1-needed (ref string mxp) (new ""))
+"Request `r` as it is asked and answered: of a syntactic-closure
+ transformer's `%apply` (style 1 or 2), its expansion's tag `0`, which its
+ transformer is not given (Fixpt's `call_transformer`), so its answer is
+ the same for every tag, and one asked again on what it gave (a use it
+ returns, expanded again) is answered at once."
+(define mx-phase1-tag-end (->* (string int) int)
+  (lambda (r i) (cond ((>= i (string-length r)) i) ((char=? (string-ref r i) #\space) i) (else (mx-phase1-tag-end r (+ i 1))))))
+(define mx-phase1-key (->* (string) string)
+  (lambda (r)
+    (if (and (> (string-length r) 9) (or (string=? (substring r 0 9) "%apply 1 ") (string=? (substring r 0 9) "%apply 2 ")))
+        (string-append (substring r 0 9) (string-append "0" (substring r (mx-phase1-tag-end r 9) (string-length r))))
+        r)))
+(define mx-phase1-in (->* (string datum) string)
+  (lambda (request xs)
+    (if (pair? xs)
+        (let* ((x (car xs)) (k (if (pair? x) (car x) (the datum nil))) (v (if (pair? x) (cdr x) (the datum nil))))
+          (if (string? k)
+              (if (string? v)
+                  (if (string=? k request) v (mx-phase1-in request (cdr xs)))
+                  (mx-phase1-in request (cdr xs)))
+              (mx-phase1-in request (cdr xs))))
+        "")))
+"The answer to `request`: the next given, as the expander asks again in
+ the order it asked before, so each is found at once; else any given."
+(define mx-phase1-next (->* (string) string)
+  (lambda (request)
+    (let* ((xs (get mx-phase1-next-given)) (x (if (pair? xs) (car xs) (the datum nil)))
+           (k (if (pair? x) (car x) (the datum nil))) (v (if (pair? x) (cdr x) (the datum nil))))
+      (if (string? k)
+          (if (string? v)
+              (if (string=? k request) (begin (set mx-phase1-next-given (cdr xs)) v) (mx-phase1-in request (get mx-phase1-given)))
+              (mx-phase1-in request (get mx-phase1-given)))
+          (mx-phase1-in request (get mx-phase1-given))))))
+(define mx-expand-procedural (->* (string) string)
+  (lambda (asked)
+    (let* ((request (mx-phase1-key asked)) (a (mx-phase1-next request)))
+      (if (string=? a "")
+          (begin
+            (if (string=? (get mx-phase1-needed) "") (set mx-phase1-needed request) #u)
+            "!a procedural macro's transformer, run as the program is read: not yet here")
+          a))))
 (define mx-call-procedural (subr spin (int string datum string (listof string acyclic)) (sumof (ok datum) (failed string) (apart unit)))
   (lambda (style code d x forms) (sum apart #u)))
 (define mx-limit (subr spin (string) string)
@@ -12438,8 +12485,9 @@
  its index the order it is met in (`drive-files`); a part a template made,
  its key's place in the template (`source-of`). A list's line, kayak's
  checker's place, kept by its position (`drive-lines`). Not yet: a file's
- macros (`import-with-syntax`), `begin-for-syntax` (procedural macros');
- each refused, saying so."
+ macros (`import-with-syntax`), refused, saying so. A procedural macro's
+ transformer, and `begin-for-syntax`, run by the host (C446,
+ `drive-answers!`)."
 
 ;;; ------------------------------------------------------------ places
 
@@ -12714,7 +12762,10 @@
             ((defines-syntax? s)
              (begin (drive-taken (syntax-names s) s)
                     (drive-checks (define-macro pfail-at s nil))))
-            ((for-syntax? s) (drive-not-yet s "`begin-for-syntax`"))
+            ;; Phase 1's forms, in force for the transformers defined after
+            ;; (C446): checked and run in their namespace, as the host
+            ;; answers `%forms`; nothing of the program's.
+            ((for-syntax? s) (begin (for-syntax! pfail-at s) nil))
             ((imports-syntax? s) (drive-not-yet s "a file's macros, `import-with-syntax`"))
             ;; A `hide`: its forms', as if written there, a program exporting
             ;; nothing to hide them from (`tops-made`).
@@ -13043,6 +13094,18 @@
       (tuple (mx-datum-list (extract r 1)) (extract r 2)))))
 (define drive-macros? (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (int) bool)
   (lambda (s) (drive-macros?* s)))
+"A procedural macro's transformers' answers (C446): those its host has,
+ `((REQUEST . ANSWER) ...)`, the newest first, given before the instance
+ expands; and, after, the first request it was not given, or ``, for the
+ host to answer and expand again (`mx-expand-procedural`)."
+(define drive-rev-datum (->* (datum datum) datum)
+  (lambda (xs out) (if (pair? xs) (drive-rev-datum (cdr xs) (the datum (cons (car xs) out))) out)))
+(define drive-answers! (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum) unit)
+  (lambda (xs)
+    (let ((given (drive-rev-datum xs (the datum nil))))
+      (begin (set mx-phase1-given given) (set mx-phase1-next-given given) (set mx-phase1-needed "")))))
+(define drive-needed (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) () string)
+  (lambda () (get mx-phase1-needed)))
 (define drive-written-facts (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum) datum)
   (lambda (forms)
     (begin (set drive-files nil) (set drive-met nil) (mx-datum-list (drive-facts (drive-syns (loc-nodes forms)))))))

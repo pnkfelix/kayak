@@ -18,7 +18,7 @@
 (define-effect expands (maxeff (read @ms) (write @ms) (alloc @ms) (read @me) (write @me) (alloc @me)
                                (read @mm) (write @mm) (alloc @mm) (read @mc) (write @mc) (alloc @mc)
                                (read @mp) (write @mp) (alloc @mp) (goto @mp)))
-(define-effect driving (maxeff eng gen (io args) (io fs-read) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
+(define-effect driving (maxeff eng gen (io args) (io fs-read) (io stdout) (io stderr) (io exit) (io process) (alloc @io) (read @io)))
 
 (define fail-with (subr (maxeff (io stderr) (io exit)) (string int) void)
   (lambda (message status)
@@ -74,29 +74,65 @@
                 (else other #f)))
             es))))
 
-(define macro-heads strings (list "define-syntax" "define-syntax-rec"))
+(define macro-heads strings (list "define-syntax" "define-syntax-rec" "begin-for-syntax"))
+
+"A procedural macro's transformer's request (C446: `%forms`, `%define`,
+ `%apply`, Fixpt's `procedural::asked`), answered by this program run
+ again (`--phase1`, `phase1-answer`): a process of its own, its heap and
+ machine apart from the program's, which a transformer's run would
+ otherwise share. Its answer, `=` and what it gave, or `!` and why."
+(define phase1-asked (subr driving (string) string)
+  (lambda (request)
+    (tagcase (process-start (the (listof string @io) (cons "/proc/self/exe" (the (listof string @io) (cons "--phase1" (the (listof string @io) (cons request (the (listof string @io) nil))))))) "")
+      (started p
+        (let* ((how (process-exit p)) (out (process-output p))
+               (n (string-length out))
+               (said (if (and (> n 0) (char=? (string-ref out (- n 1)) #\newline)) (substring out 0 (- n 1)) out)))
+          (tagcase how
+            (exited c (if (and (= c 0) (> (string-length said) 0)) said (string-append "!the transformers' run: " said)))
+            (signalled g "!the transformers' run was signalled")
+            (unknown u "!the transformers' run ended, how is not known"))))
+      (failed e (string-append "!the transformers' run: " (extract e detail))))))
+
+"A program's forms expanded as a REPL's first entry (`drive-entry`, from
+ no state): its forms, and why it is refused, or ``. Each request of a
+ procedural macro's transformer the instance was not given answered
+ (`phase1-asked`), and the forms expanded again with it (C446): the
+ expander, deterministic, asks what it asked before, then more."
+(define-rec
+  (entry-answered (subr (maxeff driving expands) (sexps datum) (tupleof datum string))
+    (lambda (forms answers)
+      ;; An instance of the expander for the program, its state its own,
+      ;; made in a place of its own (C437): a file of a place, loaded
+      ;; (C443), given the forms as located datums (`macros-bridge.kfx`).
+      (let ((r (letrena p (let ((x ((proj (load-module "macros/expander.fx") p))))
+                            (begin
+                              (with x (drive-answers! answers))
+                              (let ((e (with x (drive-entry (sexps-located forms) 0))))
+                                (tuple (extract e 1) (extract e 2) (with x (drive-needed)))))))))
+        (if (string=? (extract r 3) "")
+            (tuple (extract r 1) (extract r 2))
+            (let ((asked (extract r 3)))
+              (entry-answered forms (the datum (cons (the datum (cons (the datum asked) (the datum (phase1-asked asked)))) answers)))))))))
 
 "A program's forms, expanded, if it defines a macro, as Fixpt's parser
  expands them (C431: Fixpt's expander, `fx26/macros/expander.kfx`); one
- that defines none, as it is."
+ that defines none, as it is. Refused, the refusal raised, as the
+ checker raises its own."
 (define expanded (subr (maxeff driving expands) (sexps) sexps)
   (lambda (forms)
     (if (forms-mention? forms macro-heads)
-        ;; An instance of the expander for the program, its state its own,
-        ;; made in a place of its own (C437): a file of a place, loaded
-        ;; (C443), given the forms as located datums (`macros-bridge.kfx`).
-        (letrena p (let ((x ((proj (load-module "macros/expander.fx") p))))
-                     (located-sexps (with x (drive-program (sexps-located forms))))))
+        (let ((r (entry-answered forms (the datum nil))))
+          (if (string=? (extract r 2) "")
+              (located-sexps (extract r 1))
+              (begin (error (extract r 2)) (the sexps nil))))
         forms)))
 
 "A program's expansion as located text, a node a line (C445); a refusal,
  its message, a line."
 (define located-expanded (subr (maxeff driving expands) (sexps) (listof string acyclic))
   (lambda (forms)
-    ;; As a REPL's first entry (`drive-entry`, from no state): the program's
-    ;; expansion, `drive-program`'s, but a refusal said, not an error.
-    (let ((r (letrena p (let ((x ((proj (load-module "macros/expander.fx") p))))
-                          (with x (drive-entry (sexps-located forms) 0))))))
+    (let ((r (entry-answered forms (the datum nil))))
       (if (string=? (extract r 2) "")
           ;; As the reader's data, which keep no atom's line, so that kc's,
           ;; read back, write the same (`kc --expanded-located`).
@@ -232,6 +268,127 @@ stderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,
 and where the time went.
 ")
 
+"A procedural macro's transformer's request answered (C446; Fixpt's
+ `procedural::asked`, `phase1.rs`): its phase-1 namespace a program of
+ its own, Fixpt's prelude (`phase1-prelude`) and the `begin-for-syntax`
+ forms in force, in the standard environment alone; the transformer, of
+ `%define` and `%apply`, defined at its style's type, Fixpt's
+ `procedural::helpers` around it; and, of `%apply`, called on the use's
+ datum, as `phase1::call_transformer` calls it. Checked and run as any
+ program: `=` and the call's value as `write` writes it (`#u`, of the
+ others), or `!` and why its check refused it or its run failed."
+(define-rec
+  (phase1-line-end (subr kfx (string i64) i64)
+    (lambda (s i)
+      (cond ((i64>= i (string-length-i64 s)) i)
+            ((char=? (string-ref-i64 s i) #\newline) i)
+            (else (phase1-line-end s (i64+ i 1)))))))
+(define-rec
+  (phase1-words (subr kfx ((listof char acyclic) (listof char acyclic) strings) strings)
+    (lambda (cs w out)
+      (cond ((null? cs) (reverse (if (null? w) out (cons (list->string (reverse w)) out))))
+            ((char=? (car cs) #\space) (phase1-words (cdr cs) nil (if (null? w) out (cons (list->string (reverse w)) out))))
+            (else (phase1-words (cdr cs) (cons (car cs) w) out))))))
+"A request's `n` forms from `i`, each its length on a line and its text:
+ them, and where the rest begins."
+(define-rec
+  (phase1-forms-from (subr kfx (string i64 i64 strings) (tupleof strings i64))
+    (lambda (s i n out)
+      (if (i64<= n 0)
+          (tuple (reverse out) i)
+          (let* ((nl (phase1-line-end s i))
+                 (len (string->i64 (substring s (i64->int i) (i64->int nl))))
+                 (from (i64+ nl 1))
+                 (to (let ((t (i64+ from len))) (if (i64> t (string-length-i64 s)) (string-length-i64 s) t))))
+            (phase1-forms-from s to (i64- n 1) (cons (substring s (i64->int from) (i64->int to)) out)))))))
+(define phase1-type (subr kfx (string) string)
+  (lambda (style)
+    (if (string=? style "0")
+        "(subr (maxeff (read @globals) spin) (datum (subr pure (symbol) symbol) (subr spin (symbol symbol) bool)) datum)"
+        "(subr (maxeff (read @globals) spin) (datum symbol) datum)")))
+(define phase1-defined (subr kfx (string string) string)
+  (lambda (style code)
+    (string-list-append
+      (list "(define %transformer " (phase1-type style) "\n"
+            "(let ((make-syntactic-closure %make-syntactic-closure) (identifier? %identifier?) (identifier=? %identifier=?)) "
+            code "))\n"))))
+(define phase1-called (subr kfx (string string string) string)
+  (lambda (style tag form)
+    (string-list-append
+      (list "(%transformer (quote " form ") "
+            (cond ((string=? style "0") (string-append "(%er-renamer (string->symbol " (string-append (string-append "\"" (string-append tag "\"")) ")) %er-compare")))
+                  ((string=? style "1") "(quote %env:use)")
+                  (else "(quote %env:macro)"))
+            ")\n"))))
+"The phase-1 program of a request, or `` of one malformed."
+(define phase1-program (subr kfx (string) string)
+  (lambda (request)
+    (let* ((nl (phase1-line-end request 0))
+           (head (phase1-words (string-chars (substring request 0 (i64->int nl))) nil nil))
+           (kind (if (null? head) "" (car head)))
+           (n (cond ((and (string=? kind "%forms") (i64= (size head) 2)) (string->i64 (car (cdr head))))
+                    ((and (string=? kind "%define") (i64= (size head) 3)) (string->i64 (car (cdr (cdr head)))))
+                    ((and (string=? kind "%apply") (i64= (size head) 5)) (string->i64 (car (cdr (cdr (cdr (cdr head)))))))
+                    (else (the i64 -1)))))
+      (if (i64< n 0)
+          ""
+          (let* ((fs (phase1-forms-from request (i64+ nl 1) n nil))
+                 (rest (substring request (i64->int (extract fs 2)) (string-length request)))
+                 (base (string-append phase1-prelude (string-append "\n" (string-list-append (map (lambda ((f string)) (string-append f "\n")) (extract fs 1)))))))
+            (cond ((string=? kind "%forms") base)
+                  ((string=? kind "%define") (string-append base (phase1-defined (car (cdr head)) rest)))
+                  (else
+                   (let* ((len (string->i64 (car (cdr (cdr (cdr head))))))
+                          (cut (if (i64> len (string-length-i64 rest)) (string-length-i64 rest) len)))
+                     (string-list-append
+                       (list base (phase1-defined (car (cdr head)) (substring rest 0 (i64->int cut)))
+                             (phase1-called (car (cdr head)) (car (cdr (cdr head))) (substring rest (i64->int cut) (string-length rest)))))))))))))
+(define-rec
+  (phase1-colon (subr kfx (string i64) i64)
+    (lambda (s i)
+      (cond ((i64>= (i64+ i 1) (string-length-i64 s)) (the i64 -1))
+            ((and (char=? (string-ref-i64 s i) #\:) (char=? (string-ref-i64 s (i64+ i 1)) #\space)) i)
+            (else (phase1-colon s (i64+ i 1)))))))
+"A refusal's message, its place in the phase-1 program, which no one
+ wrote, taken off."
+(define phase1-why (subr kfx (string) string)
+  (lambda (m)
+    (let ((m (engine-said m)))
+      (if (has-prefix? m "%phase1:")
+          (let ((at (phase1-colon m 8)))
+            (if (i64< at 0) m (substring m (i64->int (i64+ at 2)) (string-length m))))
+          m))))
+(define-rec
+  (phase1-run (subr running ((listof i64 acyclic) string) string)
+    (lambda (ns last)
+      (cond ((null? ns) last)
+            ((i64= (car ns) -1) (phase1-run (cdr ns) last))
+            ((i64< (car ns) 0)
+             (begin (run 0 (i64- (i64- 0 (car ns)) 2) 0 w-nil 0 0 0)
+                    (if (get engine-failed) (string-append "!" (failure-taken!)) (phase1-run (cdr ns) last))))
+            (else
+             (let ((w (run 0 (car ns) 0 w-nil 0 0 0)))
+               (if (get engine-failed) (string-append "!" (failure-taken!)) (phase1-run (cdr ns) (string-append "=" (show-word w))))))))))
+(define phase1-answer (subr running (string) string)
+  (lambda (request)
+    (let ((text (phase1-program request)))
+      (if (string=? text "")
+          "!a malformed transformer request"
+          (tagcase (attempt (the (sumof (ok (tupleof sexps verdict)) (refused string))
+                                 (let ((forms (with-loads (read-all text "%phase1" 1) "%phase1" nil)))
+                                   (sum ok (tuple forms (check-program-as forms #f)))))
+                            (lambda ((m string)) (the (sumof (ok (tupleof sexps verdict)) (refused string)) (sum refused m))))
+            (refused m (string-append "!" (phase1-why m)))
+            (ok fc
+              (let* ((forms (extract fc 1))
+                     (gs (onto (global-names forms) (onto (module-entries forms) (with-entries (verdict-facts (extract fc 2)))))))
+                (begin
+                  (load! gs)
+                  (let ((ns (number-tops! (lower-tops forms gs))))
+                    (if (get engine-failed)
+                        (string-append "!" (failure-taken!))
+                        (phase1-run ns "=#u")))))))))))
+
 "The engine run on files (`kayak-fx26 FILE ...`), as `main` (start.kfx) runs
  it for whatever is not the REPL."
 (define engine-main (subr (maxeff running expands) () int)
@@ -247,6 +404,10 @@ and where the time went.
       (cond
         ((and (not (null? as)) (or (string=? (car as) "--help") (string=? (car as) "-h")))
          (begin (say usage) 0))
+        ;; A procedural macro's transformer's request answered (C446), for
+        ;; an expansion's, this program's own or kc's.
+        ((and (string=? (car as) "--phase1") (not (null? (cdr as))))
+         (begin (say (string-append (phase1-answer (car (cdr as))) "\n")) 0))
         ((null? paths)
          (begin (write-err usage) (exit 2) 2))
         ;; The program as the expander made it (C431), each top-level form

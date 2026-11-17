@@ -39,6 +39,8 @@ KNOWN = {
     "macros/defn-defines-macro.fx": MADE,
     "macros/defn-heads-scoped.fx": MADE,
     "macros/top-level-hide.fx": MADE,
+    "procedural/contract-defn-macro.fx": MADE,
+    "procedural/defines-macro.fx": MADE,
     "cost/diamond-found-last.fx": SHAPED,
     "macros/desc-subr-named.fx": SHAPED,
 }

@@ -150,7 +150,34 @@ def expansions():
             wrong.append("expansions: %s: kc --check: %s" % (why, r.stderr.strip()))
         elif n != want:
             wrong.append("expansions: %s: ran %d expansions and %d macros-for, not %d and %d" % (why, n[0], n[1], want[0], want[1]))
+    # A procedural macro (C446): its transformer's answers inputs, kept in
+    # the database; a use's expansion again only when its form is edited.
+    # An expansion that makes a request not answered yet runs once more
+    # when it is: cold, the `define-syntax`'s (`%define`) and `f`'s
+    # (`%apply`) each twice; a use's operand edited, a new `%apply`.
+    if os.path.exists(db):
+        os.remove(db)
+    for text, want, why in [(PROCEDURAL % "n", (6, 4), "procedural, cold"),
+                            (PROCEDURAL % "n", (0, 0), "procedural, the same"),
+                            (PROCEDURAL % "(+ n 1)", (2, 1), "procedural, a use's operand edited")]:
+        open(p, "w").write(text)
+        r = run([KC, "--db", db, "--stats", "--check", p])
+        got = ran(r.stderr) or []
+        n = (got.count("expansion"), got.count("macros-for"))
+        if r.returncode != 0:
+            wrong.append("expansions: %s: kc --check: %s" % (why, r.stderr.strip()))
+        elif n != want:
+            wrong.append("expansions: %s: ran %d expansions and %d macros-for, not %d and %d" % (why, n[0], n[1], want[0], want[1]))
     return wrong
+
+
+PROCEDURAL = """(define-syntax twice
+  (er-macro-transformer
+    (lambda (form rename compare) `(,(rename '+) ,(car (cdr form)) ,(car (cdr form))))))
+(define f (subr pure (int) int) (lambda (n) (twice %s)))
+(define g (subr pure (int) int) (lambda (n) (* n 2)))
+(+ (f 3) (g 1))
+"""
 
 
 def main():

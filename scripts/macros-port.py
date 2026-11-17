@@ -845,7 +845,15 @@ def made():
              ';; that, not this. A file of no parameters, loaded once for every\n'
              ';; instance of expander.fx: its constructors are no globals, as in Fixpt,\n'
              ';; where each is another file\'s item.\n' + "\n".join(outside))
-    return files, {"expander.fx": text, "expander-types.fx": types}
+    prelude = open(os.path.join(CLONE, SRC, "macros", "procedural-prelude.fx"), encoding="utf-8").read()
+    escaped = prelude.replace("\\", "\\\\").replace('"', '\\"')
+    phase1 = ('"phase1-prelude.kfx: what a procedural macro\'s transformer sees besides\n'
+              ' the standard environment, Fixpt\'s prelude as its text, written by\n'
+              ' scripts/macros-port.py (C446): edit that, not this. The engine\'s\n'
+              ' `--phase1` defines it before a transformer (main.kfx).\n'
+              ' fixpt-source: %s/macros/procedural-prelude.fx@%s"\n'
+              '(define phase1-prelude string "%s")\n' % (SRC, rev, escaped))
+    return files, {"expander.fx": text, "expander-types.fx": types, "phase1-prelude.kfx": phase1}
 
 
 def main():
