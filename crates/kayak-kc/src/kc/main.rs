@@ -14,6 +14,10 @@ use super::*;
 // once; linked only if its objects are
 // new; RT the runtime's library
 // (libkayak_kcrt.a beside kc)
+// kc [--db DB] run FILE             its program run in process (C451):
+// its code sealed in the code area and
+// called (FX-26's seal-code and
+// native-procedure), its runtime KFX's
 // kc [--db DB] serve                requests, a line each, on the
 // standard input (C415)
 // kc [--db DB] --expanded-located FILE
@@ -117,8 +121,23 @@ pub mod kc_driver {
     }
 
     #[inline]
+    pub fn x64_run_support() -> &'static (dyn Fn() -> Str + Send + Sync) {
+        &kc_x64::x64_run_support
+    }
+
+    #[inline]
     pub fn asm_object() -> &'static (dyn Fn(Str) -> List<i64> + Send + Sync) {
         &kc_asm::asm_object
+    }
+
+    #[inline]
+    pub fn asm_image() -> &'static (dyn Fn(Str) -> List<i64> + Send + Sync) {
+        &kc_asm::asm_image
+    }
+
+    #[inline]
+    pub fn native_run() -> &'static dyn Fn(List<i64>, i64) -> Str {
+        &kc_native::native_run
     }
 
     #[inline]
@@ -1105,7 +1124,7 @@ pub mod kc_driver {
                 });
                 let sided = phase1_sides_x(d, at);
                 let status = if null_p(rest) {
-                    match fail_with(str_lit("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | serve)"), int_lit(2)) {}
+                    match fail_with(str_lit("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run FILE | serve)"), int_lit(2)) {}
                 } else if string_eq_p(car(rest), str_lit("serve")) {
                     serve(d, dbp, stats, at)
                 } else if (string_eq_p(car(rest), str_lit("--object")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
@@ -1115,6 +1134,61 @@ pub mod kc_driver {
                     } else {
                         match fail_with(m, int_lit(1)) {};
                         int_lit(1)
+                    }
+                } else if (string_eq_p(car(rest), str_lit("--image")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
+                    let m = bytes_written(car(cdr(cdr(rest))), asm_image()(string_append(x64_run_support()(), read_text(car(cdr(rest))))));
+                    if string_eq_p(m, str_lit("")) {
+                        int_lit(0)
+                    } else {
+                        match fail_with(m, int_lit(1)) {};
+                        int_lit(1)
+                    }
+                } else if (string_eq_p(car(rest), str_lit("run")) && not(null_p(cdr(rest)))) {
+                    let file = car(cdr(rest));
+                    kc_load_file_x()(d, &kc_run, file, read_text(file));
+                    let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), file)));
+                    if not(string_eq_p(refused, str_lit(""))) {
+                        if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                            ()
+                        } else {
+                            save_db(d, dbp)
+                        };
+                        {
+                            let tagcase_ = write_err(string_append(refused, str_lit("\n")));
+                            let tag_ = kayak_rt::sum_tag(tagcase_);
+                            if tag_ == const { kayak_rt::tag_hash("done") } {
+                                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                                ()
+                            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                                ()
+                            } else { unreachable!() }
+                        };
+                        int_lit(1)
+                    } else {
+                        let image = asm_image()(string_append(x64_run_support()(), db_get(d, &kc_run, key1(str_lit("asm"), file))));
+                        if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                            ()
+                        } else {
+                            save_db(d, dbp)
+                        };
+                        let m = native_run()(image, 8388608i64);
+                        if string_eq_p(m, str_lit("")) {
+                            int_lit(0)
+                        } else {
+                            {
+                                let tagcase_ = write_err(string_append(str_lit("evaluation failed: "), string_append(m, str_lit("\n"))));
+                                let tag_ = kayak_rt::sum_tag(tagcase_);
+                                if tag_ == const { kayak_rt::tag_hash("done") } {
+                                    let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                                    ()
+                                } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                                    let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                                    ()
+                                } else { unreachable!() }
+                            };
+                            int_lit(1)
+                        }
                     }
                 } else if (string_eq_p(car(rest), str_lit("--expanded-located")) && not(null_p(cdr(rest)))) {
                     let file = car(cdr(rest));

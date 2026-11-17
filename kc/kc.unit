@@ -26,6 +26,8 @@ rust.kfx
 x64.kfx
 ; kc's assembler (C450): x64.kfx's text an ELF object, as `as` makes it.
 asm.kfx
+; kc's code run in process (C451): sealed, called, its runtime in KFX.
+native.kfx
 ; A procedural macro's transformer's request as its phase-1 program (C447),
 ; which kc compiles and runs as any program (main.kfx):
 ../fx26/macros/phase1-prelude.kfx

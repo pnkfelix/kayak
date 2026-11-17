@@ -129,3 +129,33 @@ where it was seen and what it would take.
       asked as the expansion goes, by a call; done, C449.
     And for Fixpt (INCR_IMPED.md §6): a syntactic closure's `%apply` need
     not carry the expansion's tag.
+
+14. **kc's runtime is written twice (C451).** A built program links
+    kayak-kcrt (Rust: the printer, `intern`, the string operations); in
+    process (`kc run`) the same procedures are a KFX service
+    (kc/native.kfx), as only FX-26's `seal-code` and `native-procedure`
+    reach the code area. kc-steps holds the two to the same output, but
+    each new runtime procedure must be written in both. Two ways to one:
+    - The built program uses the service's protocol too, kcrt answering
+      it (a stub of each number, as in process): one shape of call, the
+      runtime still twice.
+    - The runtime written once, in the language kc compiles, compiled by
+      kc into each program (its `typecase` on Fixpt's kinds, C448, is
+      most of what the printer needs): kcrt is then `main`, the heap and
+      the system calls. This is kayak's single-source goal applied to
+      kc's own runtime.
+    Which, and when: before step 4's collector (which must find what the
+    runtime holds), or after?
+    The user (2026-11-17): a third way, the runtime in KFX compiled once
+    into a library of its own, not into each program; "My goal here
+    indeed is to avoid writing code twice or maintaining two copies in
+    distinct languages (but maintaining one copy plus a translator to
+    other languages is fine). But I can justify maintaining two copies if
+    there is a marked performance tradeoff." Measured (C451): the
+    crossing costs about 30 ns a call; the KFX service's slowness
+    (`string=?` 630 ns) is how it is written; `string=?` written in FX and
+    compiled by kc, 49 ns, against kcrt's Rust, 65 ns. No marked
+    tradeoff, so proposed: the runtime in KFX, compiled once by kc, linked
+    into each built program and placed beside the program in process;
+    output and exit in a small kcrt and service. Awaiting the user's word.
+

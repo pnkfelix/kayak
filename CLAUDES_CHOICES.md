@@ -13163,3 +13163,83 @@ thing that's most likely to expose bugs").
   kc's objects; kc-objects 441 objects, 0 differ; kc-expanded as before.
 - **The full check**: all passed; kc-objects 459 objects (the check's
   kc-steps builds), 0 differ, in 1.5 s; the engine's comparisons as before.
+
+## C451. kc's code run in process, under kc's own convention (2026-11-17)
+
+The user: "Go ahead" (TODO §52's step 3, kc's own convention: "a stack
+limit, a failure that returns to the trampoline, a state register kept
+for fuel; linked into kayak-jit's code area, `kc run` in process, each
+step program as its executable answers"). Asked before starting, as the
+plan's "linked into kayak-jit's code area" assumed a way in that KFX has
+not: only FX-26's `seal-code` and `native-procedure` place and call code,
+and C116 lets only some values cross. The user chose "Widen the boundary"
+over a runtime of scalars alone or a kayak-only primitive. What crosses
+already sufficed (C116's note was older than what kayak-rt's `Native`
+does): an `i64` flat array, shared (C126), and a procedure of KFX's in a
+code bloblet's field, called by `foreign`. So nothing of FX-26 or kayak-rt
+changed.
+- **kc's convention**: Fixpt's data and Fixpt's state, its calls its own.
+  The state in `%r15`, as Fixpt's native convention keeps it; the heap
+  moved to `%r12` and `%r13` (was `%r15`, `%r14`). Each function's entry,
+  after its frame is made, compares the stack pointer with the state's
+  limit (failure 8, `stack overflow`) and takes a unit of fuel, calling
+  the state's `poll` when none is left (kayak-jit's gives the next slice).
+  A cell (a global, a symbol's cache, `kc_heap_next`) is written through
+  the state's code distance (Fixpt's `delta`), as code in the code area
+  runs from its executable view. So **the same bytes** run as a built
+  program, whose state (kayak-kcrt's, new) says a distance of no pages,
+  a limit 1 MB above the end of the program's stack (now a thread of 64
+  MB), and fuel with a `poll` of kcrt's; and in process.
+- **`kc run FILE`**: the `asm` query's text after `x64-run-support`,
+  assembled into one image by kc's assembler (`asm-image`: `.text`, then
+  `.rodata`, `.data`, `.bss` and its commons, every relocation resolved),
+  sealed (`seal-code`) with two fields, the heap (a flat array of 2^23
+  words) and the service, and called (`native-procedure`, the native
+  convention): `kc_native_entry` takes the array, writes its own and the
+  image's addresses to its first words, and calls `kc_entry`.
+- **The runtime in KFX** (`kc/native.kfx`): each of kcrt's procedures that
+  kc's code calls is a stub of its number, which calls the service by
+  `foreign`, the heap's next word and the arguments in the array's
+  words, the answer back from one. The service is kcrt's runtime again,
+  in KFX on Fixpt's layout: the printer, `intern`, the string
+  operations, `append`, the predicates, the failures. It reads a word
+  from the heap or from kc's own copy of the image (constants; it reads
+  no cell), and makes objects on the heap from the array's next word.
+- **A failure returns to the trampoline**, by kc's convention, not by a
+  trap: the service keeps its words and answers 1; the stub goes back to
+  `kc_native_entry`'s frame (its stack pointer kept in the array) and
+  returns 1 through the trampoline. A KFX `error` would have reached the
+  trampoline too (`foreign` carries a panic past the native frames), but
+  then nothing catches it: an `attempt`'s body may not write output
+  (KFX's), and the program writes as it goes. kayak-jit's own traps end in
+  a KFX error, which is why kc does not use them.
+- **Found on the way**: the first kc-steps sweep had 160 programs
+  failing in process, all of them deterministic per run and none
+  reproducible by hand. The step database held `asm-item`s made by the
+  kc before the registers moved, as the kc's identity (kc/identity.kfx)
+  had not been made again after the edit. This is the standing rule:
+  `scripts/compiler-identity.py` after each kfx edit. Once it was run,
+  0 programs failed.
+- **Checks**: kc-steps 336 programs, every one run in process too, its
+  output, its failure and its status the executable's (336 of 336); and a
+  convention check, a recursion past the stack's limit and a loop of
+  3,000,000 calls (`poll` called twice), built and in process. A warm
+  `kc run` of a step program: 0.01 s. `kc --image FILE OUT` writes the image
+  of an assembly file, for looking at it.
+- **The full check**: all passed in 373 s (the first try stopped at its
+  start: `cargo fmt` changed kcrt's `lib.rs`, one of kc's identity's
+  sources, after the identity was made; identity, regen, fmt, in that
+  order, and the identity checked after). kc-steps 336 of 336 in process;
+  kc-objects 463 objects, 0 differ.
+- **Measured** (best of three, after the commit, for to-discuss item
+  14): startup 3 ms built, 24 ms `kc run`; kc's code alike in both (an
+  arithmetic loop of 20M calls, 77 and 65 ms); a near-empty runtime call
+  (`string?`) about 4 ns built and 32 ns through `foreign`; `string=?` of
+  8 characters 65 ns in kcrt's Rust, 630 ns in the KFX service (its
+  strings made lists of characters), and 49 ns written in FX and compiled
+  by kc.
+- **Left** (TODO §52): a transformer's program in process (step 5) needs
+  `kc_apply_entry`'s absolute address, which `asm-image` refuses; the heap
+  is a flat array never collected (step 4); kcrt's runtime is written
+  twice, in Rust and in KFX (docs/to-discuss.md item 14); `poll` only
+  gives fuel, no scheduler takes the slice.

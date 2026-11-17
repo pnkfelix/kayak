@@ -1543,6 +1543,196 @@ pub mod kc_asm {
         }
     }
 
+    // Where a symbol is in the image (C451): its section's place there and
+    // its offset in it, or a common's place; none, if neither.
+    pub fn image_at(n: Str, syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, commons: List<Product_11_12<Str, i64>>, bases: List<i64>) -> List<i64> {
+        if string_member_p(n, section_names()) {
+            kayak_rt::heap_cons(car(sexps_after_i64s(bases, index_of_symbol(n, section_names(), 0i64))), kayak_rt::nil())
+        } else {
+            let w = where_of(n, syms);
+            if null_p(w) {
+                label_at(n, commons)
+            } else {
+                let tagcase_ = car(w);
+                match *tagcase_ {
+                    Where::Where(ws, wo, g) => {
+                        kayak_rt::heap_cons(i64_plus(car(sexps_after_i64s(bases, ws)), wo), kayak_rt::nil())
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn sexps_after_i64s(mut xs: List<i64>, mut k: i64) -> List<i64> {
+        loop {
+            if i64_lt_eq(k, 0i64) {
+                return xs;
+            } else {
+                (xs, k) = (cdr(xs), i64_minus(k, 1i64));
+                continue;
+            }
+        }
+    }
+
+    // Each of a section's relocations resolved, as a 32-bit field at its
+    // offset: `S + A - P`, the image's places; an absolute one or a symbol
+    // the image lacks, not yet.
+    pub fn image_fixes(mut rs: List<&'static Reloc>, mut base: i64, mut syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut commons: List<Product_11_12<Str, i64>>, mut bases: List<i64>, mut acc: List<Product_11_12<i64, i64>>) -> List<Product_11_12<i64, i64>> {
+        loop {
+            if null_p(rs) {
+                return reverse(acc);
+            } else {
+                let tagcase_ = car(rs);
+                match *tagcase_ {
+                    Reloc::Reloc(off, r#type, s, a) => {
+                        let at = image_at(s, syms, commons, bases);
+                        if i64_eq(r#type, 1i64) {
+                            not_yet(string_append(str_lit("an absolute address in process, of "), s));
+                            return acc;
+                        } else if null_p(at) {
+                            not_yet(string_append(str_lit("a symbol the image has not, "), s));
+                            return acc;
+                        } else {
+                            (rs, acc) = (cdr(rs), kayak_rt::heap_cons(Product_11_12(off, i64_minus(i64_plus(car(at), a), i64_plus(base, off))), acc));
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Bytes `bs` from offset `at`, each fix's four bytes in place.
+    pub fn patched(mut bs: Bytes, mut at: i64, mut fixes: List<Product_11_12<i64, i64>>, mut acc: Bytes) -> Bytes {
+        loop {
+            if null_p(bs) {
+                return reverse(acc);
+            } else if (not(null_p(fixes)) && i64_eq(car(fixes).0, at)) {
+                (bs, at, fixes, acc) = (sexps_after_i64s(bs, 4i64), i64_plus(at, 4i64), cdr(fixes), rev_onto_bytes(le_bytes(car(fixes).1, 4i64), acc));
+                continue;
+            } else {
+                (bs, at, acc) = (cdr(bs), i64_plus(at, 1i64), kayak_rt::heap_cons(car(bs), acc));
+                continue;
+            }
+        }
+    }
+
+    // Each common's place, after `at`, aligned as it asks; and the end.
+    pub fn commons_placed(mut cs: List<Product_11_12_13<Str, i64, i64>>, mut at: i64, mut acc: List<Product_11_12<Str, i64>>) -> Product_11_12<List<Product_11_12<Str, i64>>, i64> {
+        loop {
+            if null_p(cs) {
+                return Product_11_12(reverse(acc), at);
+            } else {
+                let here = i64_plus(at, padding(at, if i64_gt_eq(car(cs).2, 16i64) {
+                    4i64
+                } else {
+                    3i64
+                }));
+                (cs, at, acc) = (cdr(cs), i64_plus(here, car(cs).1), kayak_rt::heap_cons(Product_11_12(car(cs).0, here), acc));
+                continue;
+            }
+        }
+    }
+
+    // `asm-image TEXT` (C451): assembly `TEXT` made one image to run in
+    // process (`kc run`), as `asm-object` makes its sections: `.text` from
+    // 0, then `.rodata`, `.data` and `.bss` (its commons after), each from a
+    // multiple of 16, every relocation resolved in it, so that it runs
+    // wherever it is put whole; its bytes.
+    pub fn asm_image(text: Str) -> List<i64> {
+        let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
+        match *tagcase_ {
+            Reading::Reading(ss0, cur, gs, commons, sets, labels) => {
+                let ss = map(lambda1s(move |ps: Pieces| {
+                    rev_onto_pieces(ps, nil::<&'static kc_asm::Piece>())
+                }), ss0);
+                let longs = map(lambda1s(move |ps: Pieces| {
+                    settled(ps, branches_of(ps, nil::<bool>()))
+                }), ss);
+                let syms = concat(map(lambda1s(move |k: i64| {
+                    map(lambda1s(move |x: Product_11_12<Str, i64>| {
+                        Product_11_12_13_14(x.0, k, x.1, string_member_p(x.0, gs))
+                    }), offsets(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), 0i64, nil::<Product_11_12<Str, i64>>()).0)
+                }), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil())))))));
+                let mades = map(lambda1s(move |k: i64| {
+                    emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(lambda1s(move |c: Product_11_12_13<Str, i64, i64>| {
+                        c.0
+                    }), commons), sets, nil::<i64>(), nil::<&'static kc_asm::Reloc>())
+                }), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
+                let text_m = car(mades);
+                let data_m = car(cdr(mades));
+                let bss_m = car(cdr(cdr(mades)));
+                let ro_m = car(cdr(cdr(cdr(mades))));
+                let code = {
+                    let tagcase_ = text_m;
+                    match *tagcase_ {
+                        Made::Made(b, r) => {
+                            b
+                        }
+                    }
+                };
+                let text_rs = {
+                    let tagcase_ = text_m;
+                    match *tagcase_ {
+                        Made::Made(b, r) => {
+                            r
+                        }
+                    }
+                };
+                let data = {
+                    let tagcase_ = data_m;
+                    match *tagcase_ {
+                        Made::Made(b, r) => {
+                            b
+                        }
+                    }
+                };
+                let data_rs = {
+                    let tagcase_ = data_m;
+                    match *tagcase_ {
+                        Made::Made(b, r) => {
+                            r
+                        }
+                    }
+                };
+                let bss_size = {
+                    let tagcase_ = bss_m;
+                    match *tagcase_ {
+                        Made::Made(b, r) => {
+                            size(b)
+                        }
+                    }
+                };
+                let ro = {
+                    let tagcase_ = ro_m;
+                    match *tagcase_ {
+                        Made::Made(b, r) => {
+                            b
+                        }
+                    }
+                };
+                let ro_rs = {
+                    let tagcase_ = ro_m;
+                    match *tagcase_ {
+                        Made::Made(b, r) => {
+                            r
+                        }
+                    }
+                };
+                let t0 = the::<i64>(0i64);
+                let r0 = aligned(size(code), 16i64);
+                let d0 = aligned(i64_plus(r0, size(ro)), 16i64);
+                let b0 = aligned(i64_plus(d0, size(data)), 16i64);
+                let cs = commons_placed(the::<List<Product_11_12_13<Str, i64, i64>>>(commons), i64_plus(b0, bss_size), nil::<Product_11_12<Str, i64>>());
+                let bases = the::<List<i64>>(kayak_rt::heap_cons(t0, kayak_rt::heap_cons(d0, kayak_rt::heap_cons(b0, kayak_rt::heap_cons(r0, kayak_rt::nil())))));
+                let fix = lambda3s(move |rs: List<&'static Reloc>, base: i64, bs: Bytes| {
+                    patched(bs, 0i64, image_fixes(rs, base, syms, cs.0, bases, nil::<Product_11_12<i64, i64>>()), nil::<i64>())
+                });
+                concat(kayak_rt::heap_cons(fix(text_rs, t0, code), kayak_rt::heap_cons(zeros(i64_minus(r0, size(code)), nil::<i64>()), kayak_rt::heap_cons(fix(ro_rs, r0, ro), kayak_rt::heap_cons(zeros(i64_minus(d0, i64_plus(r0, size(ro))), nil::<i64>()), kayak_rt::heap_cons(fix(data_rs, d0, data), kayak_rt::heap_cons(zeros(i64_minus(cs.1, i64_plus(d0, size(data))), nil::<i64>()), kayak_rt::nil())))))))
+            }
+        }
+    }
+
     // `asm-object TEXT`: the ELF relocatable object of assembly `TEXT`, its
     // bytes, as `as` makes it (this file's head).
     pub fn asm_object(text: Str) -> List<i64> {

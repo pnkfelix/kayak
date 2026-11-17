@@ -670,6 +670,95 @@
                    (undefined-names (cdr ns) syms commons acc))
                   (else (undefined-names (cdr ns) syms commons (cons (car ns) acc))))))))
 
+    (hide
+      ;;; ------------------------------------------------------------ the image
+
+      "Where a symbol is in the image (C451): its section's place there and
+       its offset in it, or a common's place; none, if neither."
+      (define-rec
+        (image-at (subr kfx (string (listof (tupleof string i64 i64 bool) acyclic) (listof (tupleof string i64) acyclic) (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (n syms commons bases)
+            (cond ((string-member? n section-names)
+                   (list (car (sexps-after-i64s bases (index-of-symbol n section-names 0)))))
+                  (else
+                   (let ((w (where-of n syms)))
+                     (if (null? w)
+                         (label-at n commons)
+                         (tagcase (car w) (where (ws wo g) (list (i64+ (car (sexps-after-i64s bases ws)) wo)))))))))))
+
+      (define-rec
+        (sexps-after-i64s (subr kfx ((listof i64 acyclic) i64) (listof i64 acyclic))
+          (lambda (xs k) (if (i64<= k 0) xs (sexps-after-i64s (cdr xs) (i64- k 1))))))
+
+      "Each of a section's relocations resolved, as a 32-bit field at its
+       offset: `S + A - P`, the image's places; an absolute one or a symbol
+       the image lacks, not yet."
+      (define-rec
+        (image-fixes (subr kfx ((listof reloc acyclic) i64 (listof (tupleof string i64 i64 bool) acyclic) (listof (tupleof string i64) acyclic) (listof i64 acyclic) (listof (tupleof i64 i64) acyclic)) (listof (tupleof i64 i64) acyclic))
+          (lambda (rs base syms commons bases acc)
+            (if (null? rs)
+                (reverse acc)
+                (tagcase (car rs)
+                  (reloc (off type s a)
+                    (let ((at (image-at s syms commons bases)))
+                      (cond ((i64= type 1) (begin (not-yet (string-append "an absolute address in process, of " s)) acc))
+                            ((null? at) (begin (not-yet (string-append "a symbol the image has not, " s)) acc))
+                            (else (image-fixes (cdr rs) base syms commons bases
+                                               (cons (tuple off (i64- (i64+ (car at) a) (i64+ base off))) acc)))))))))))
+
+      "Bytes `bs` from offset `at`, each fix's four bytes in place."
+      (define-rec
+        (patched (subr kfx (bytes i64 (listof (tupleof i64 i64) acyclic) bytes) bytes)
+          (lambda (bs at fixes acc)
+            (cond ((null? bs) (reverse acc))
+                  ((and (not (null? fixes)) (i64= (extract (car fixes) 1) at))
+                   (patched (sexps-after-i64s bs 4) (i64+ at 4) (cdr fixes) (rev-onto-bytes (le-bytes (extract (car fixes) 2) 4) acc)))
+                  (else (patched (cdr bs) (i64+ at 1) fixes (cons (car bs) acc)))))))
+
+      "Each common's place, after `at`, aligned as it asks; and the end."
+      (define-rec
+        (commons-placed (subr kfx ((listof (tupleof string i64 i64) acyclic) i64 (listof (tupleof string i64) acyclic)) (tupleof (listof (tupleof string i64) acyclic) i64))
+          (lambda (cs at acc)
+            (if (null? cs)
+                (tuple (reverse acc) at)
+                (let ((here (i64+ at (padding at (if (i64>= (extract (car cs) 3) 16) 4 3)))))
+                  (commons-placed (cdr cs) (i64+ here (extract (car cs) 2)) (cons (tuple (extract (car cs) 1) here) acc))))))))
+
+    "`asm-image TEXT` (C451): assembly `TEXT` made one image to run in
+     process (`kc run`), as `asm-object` makes its sections: `.text` from
+     0, then `.rodata`, `.data` and `.bss` (its commons after), each from a
+     multiple of 16, every relocation resolved in it, so that it runs
+     wherever it is put whole; its bytes."
+    (define asm-image (subr kfx (string) (listof i64 acyclic))
+      (lambda (text)
+        (tagcase (lines-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) (lines-of (string-chars text) nil nil))
+          (reading (ss0 cur gs commons sets labels)
+            (let* ((ss (map (lambda ((ps pieces)) (rev-onto-pieces ps nil)) ss0))
+                   (longs (map (lambda ((ps pieces)) (settled ps (branches-of ps nil))) ss))
+                   (syms (concat (map (lambda ((k i64))
+                                        (map (lambda ((x (tupleof string i64)))
+                                               (tuple (extract x 1) k (extract x 2) (string-member? (extract x 1) gs)))
+                                             (extract (offsets (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) 0 nil) 1)))
+                                      (the (listof i64 acyclic) (list 0 1 2 3)))))
+                   (mades (map (lambda ((k i64)) (emitted (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) k 0 syms (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) sets nil nil))
+                               (the (listof i64 acyclic) (list 0 1 2 3))))
+                   (text-m (car mades)) (data-m (car (cdr mades))) (bss-m (car (cdr (cdr mades)))) (ro-m (car (cdr (cdr (cdr mades)))))
+                   (code (tagcase text-m (made (b r) b))) (text-rs (tagcase text-m (made (b r) r)))
+                   (data (tagcase data-m (made (b r) b))) (data-rs (tagcase data-m (made (b r) r)))
+                   (bss-size (tagcase bss-m (made (b r) (size b))))
+                   (ro (tagcase ro-m (made (b r) b))) (ro-rs (tagcase ro-m (made (b r) r)))
+                   (t0 (the i64 0))
+                   (r0 (aligned (size code) 16))
+                   (d0 (aligned (i64+ r0 (size ro)) 16))
+                   (b0 (aligned (i64+ d0 (size data)) 16))
+                   (cs (commons-placed (the (listof (tupleof string i64 i64) acyclic) commons) (i64+ b0 bss-size) nil))
+                   (bases (the (listof i64 acyclic) (list t0 d0 b0 r0)))
+                   (fix (lambda ((rs (listof reloc acyclic)) (base i64) (bs bytes))
+                          (patched bs 0 (image-fixes rs base syms (extract cs 1) bases nil) nil))))
+              (concat (list (fix text-rs t0 code) (zeros (i64- r0 (size code)) nil)
+                            (fix ro-rs r0 ro) (zeros (i64- d0 (i64+ r0 (size ro))) nil)
+                            (fix data-rs d0 data) (zeros (i64- (extract cs 2) (i64+ d0 (size data))) nil))))))))
+
     "`asm-object TEXT`: the ELF relocatable object of assembly `TEXT`, its
      bytes, as `as` makes it (this file's head)."
     (define asm-object (subr kfx (string) (listof i64 acyclic))

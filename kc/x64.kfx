@@ -8,8 +8,16 @@
  cell of two words, car and cdr, tag 1.
 
  `kc_entry` is given the heap, its first free word and its end, kept in
- `%r15` and `%r14` (callee-saved, so saved and put back): a `cons` takes
- two words from it, no collector yet (C406).
+ `%r12` and `%r13` (callee-saved, so saved and put back): a `cons` takes
+ two words from it, no collector yet (C406). And a state, kept in `%r15`,
+ as Fixpt's native convention keeps one (C451): kc's own convention is
+ Fixpt's data and Fixpt's state, its calls its own. Each function's entry
+ checks the stack against the state's limit and takes a unit of its fuel,
+ calling its `poll` when none is left; a cell is written through the
+ state's code distance, so that the same code runs as a built program
+ (kayak-kcrt's state, a distance of no pages) and in process, from the
+ code area's executable view (`kc run`, kc/native.kfx; its runtime the
+ stubs of `x64-run-support`).
 
  Each term is compiled to code that leaves its value in `%rax` (Ghuloum's
  `emit-expr`, C402); a primitive's first arguments are kept in the frame's
@@ -65,6 +73,8 @@
 
       (define x64-fail-heap i64 5)
 
+      (define x64-fail-stack i64 8)
+
       (define x64-constant-of (subr kfx (sexp) i64)
         (lambda (t)
           "A constant term's value, as a word of Fixpt's format."
@@ -83,6 +93,36 @@
 
       (define x64-emit (subr kfx (x64-code string) x64-code)
         (lambda (c line) (tagcase c (x64-code (ls n k fs px) (x64-code (cons (string-append "    " (string-append line "\n")) ls) n k fs px)))))
+
+      "A cell's store (C451): through the code area's writable view, the
+       address `%rcx` made less the state's code distance (Fixpt's `delta`,
+       the state in `%r15`), as kc's code runs from the area's executable
+       view in process; a built program's state says a distance of no
+       pages, so the same bytes store to the cell itself there."
+      (define x64-cell-stored (subr kfx (string string) string)
+        (lambda (r cell)
+          (string-list-append (list "    leaq " cell "(%rip), %rcx\n    subq 208(%r15), %rcx\n    movq " r ", -4(%rcx)\n"))))
+
+      "A function's entry's checks (C451, kc's own convention, the state in
+       `%r15` as Fixpt's native convention keeps it), after its frame is
+       made: the stack pointer below the state's limit (Fixpt's
+       `stack-limit`, 16) a failure, `stack overflow`; then a unit of the
+       state's fuel (24) taken, and none left (a borrow) the state's `poll`
+       routine (560) called, which gives the next slice, as Fixpt's code
+       does on entry. Each call out of the line (`x64-entry-calls`), after
+       the function's code."
+      (define x64-entry-checks (subr kfx (string) string)
+        (lambda (sym)
+          (string-list-append (list "    cmpq 16(%r15), %rsp\n    jb .Lck_" sym "_deep\n    subq $1, 24(%r15)\n    jb .Lck_" sym "_poll\n.Lck_" sym "_go:\n"))))
+
+      (define x64-entry-calls (subr kfx (string) string)
+        (lambda (sym)
+          (string-list-append (list ".Lck_" sym "_deep:\n    movl $" (i64->string x64-fail-stack) ", %edi\n    call kc_fail\n"
+                                    ".Lck_" sym "_poll:\n    call *560(%r15)\n    jmp .Lck_" sym "_go\n"))))
+
+      "Lines already made, as they are, after the code so far."
+      (define x64-emit-lines (subr kfx (x64-code string) x64-code)
+        (lambda (c text) (tagcase c (x64-code (ls n k fs px) (x64-code (cons text ls) n k fs px)))))
 
       (define x64-emit-label (subr kfx (x64-code string) x64-code)
         (lambda (c l) (tagcase c (x64-code (ls n k fs px) (x64-code (cons (string-append l ":\n") ls) n k fs px)))))
@@ -191,25 +231,25 @@
             (if (null? slots)
                 c
                 (x64-stored-free (x64-emit (x64-emit c (string-append "movq " (string-append (x64-slot (car slots)) ", %rcx")))
-                                           (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64- m j))) "(%r15)")))
+                                           (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64- m j))) "(%r12)")))
                                  (cdr slots) m (i64+ j 1))))))
 
       (define x64-emit-closure (subr kfx (x64-code string (listof i64 acyclic)) x64-code)
         (lambda (c code slots)
           "A closure of `code` over the values in `slots`, in `%rax`."
           (let* ((m (size slots)) (bytes (i64* 8 (i64+ m 4)))
-                 (c (x64-emit c (string-append "leaq " (string-append (i64->string bytes) "(%r15), %rdx"))))
-                 (c (x64-emit c "cmpq %r14, %rdx"))
+                 (c (x64-emit c (string-append "leaq " (string-append (i64->string bytes) "(%r12), %rdx"))))
+                 (c (x64-emit c "cmpq %r13, %rdx"))
                  (c (x64-failing-if c "a" x64-fail-heap))
                  (c (x64-emit c (string-append "movabsq $" (string-append (i64->string (x64-closure-header m)) ", %rcx"))))
-                 (c (x64-emit c "movq %rcx, 0(%r15)"))
+                 (c (x64-emit c "movq %rcx, 0(%r12)"))
                  (c (x64-stored-free c slots m 0))
                  (c (x64-emit c (string-append "leaq " (string-append code "(%rip), %rcx"))))
-                 (c (x64-emit c (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64+ m 1))) "(%r15)"))))
-                 (c (x64-emit c (string-append "movq $0, " (string-append (i64->string (i64* 8 (i64+ m 2))) "(%r15)"))))
-                 (c (x64-emit c (string-append "movq $" (string-append (i64->string (x64-closure-trailer m)) (string-append ", " (string-append (i64->string (i64* 8 (i64+ m 3))) "(%r15)"))))))
-                 (c (x64-emit c (string-append "leaq " (string-append (i64->string (i64+ bytes 4)) "(%r15), %rax")))))
-            (x64-emit c "movq %rdx, %r15"))))
+                 (c (x64-emit c (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64+ m 1))) "(%r12)"))))
+                 (c (x64-emit c (string-append "movq $0, " (string-append (i64->string (i64* 8 (i64+ m 2))) "(%r12)"))))
+                 (c (x64-emit c (string-append "movq $" (string-append (i64->string (x64-closure-trailer m)) (string-append ", " (string-append (i64->string (i64* 8 (i64+ m 3))) "(%r12)"))))))
+                 (c (x64-emit c (string-append "leaq " (string-append (i64->string (i64+ bytes 4)) "(%r12), %rax")))))
+            (x64-emit c "movq %rdx, %r12"))))
 
       (define-rec
         (x64-loaded-free (subr kfx (x64-code i64 i64 i64) x64-code)
@@ -289,7 +329,7 @@
                  (c (x64-emit c (string-append "jne " done)))
                  (c (x64-emit c (string-append "leaq " (string-append l "+4(%rip), %rdi"))))
                  (c (x64-emit c "call kc_intern"))
-                 (c (x64-emit c (string-append "movq %rax, " (string-append cell "(%rip)")))))
+                 (c (x64-emit-lines c (x64-cell-stored "%rax" cell))))
             (x64-emit-label c done))))
 
       "A bloblet of kind `kind` of the `n` values in the slots from `si`, in
@@ -303,21 +343,21 @@
             (if (i64>= i n)
                 c
                 (x64-stored-values (x64-emit (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si i)) ", %rcx")))
-                                             (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64- n i))) "(%r15)")))
+                                             (string-append "movq %rcx, " (string-append (i64->string (i64* 8 (i64- n i))) "(%r12)")))
                                    si (i64+ i 1) n)))))
 
       (define x64-emit-bloblet (subr kfx (x64-code i64 i64 i64) x64-code)
         (lambda (c kind si n)
           (let* ((bytes (i64* 8 (i64+ n 2)))
-                 (c (x64-emit c (string-append "leaq " (string-append (i64->string bytes) "(%r15), %rdx"))))
-                 (c (x64-emit c "cmpq %r14, %rdx"))
+                 (c (x64-emit c (string-append "leaq " (string-append (i64->string bytes) "(%r12), %rdx"))))
+                 (c (x64-emit c "cmpq %r13, %rdx"))
                  (c (x64-failing-if c "a" x64-fail-heap))
                  (c (x64-emit c (string-append "movabsq $" (string-append (i64->string (i64+ (i64+ 6 (i64* kind 8)) (i64* (i64+ n 1) 16384))) ", %rcx"))))
-                 (c (x64-emit c "movq %rcx, 0(%r15)"))
+                 (c (x64-emit c "movq %rcx, 0(%r12)"))
                  (c (x64-stored-values c si 0 n))
-                 (c (x64-emit c (string-append "movq $" (string-append (i64->string (i64+ 5 (i64* (i64+ n 1) 8))) (string-append ", " (string-append (i64->string (i64* 8 (i64+ n 1))) "(%r15)"))))))
-                 (c (x64-emit c (string-append "leaq " (string-append (i64->string (i64+ bytes 4)) "(%r15), %rax")))))
-            (x64-emit c "movq %rdx, %r15"))))
+                 (c (x64-emit c (string-append "movq $" (string-append (i64->string (i64+ 5 (i64* (i64+ n 1) 8))) (string-append ", " (string-append (i64->string (i64* 8 (i64+ n 1))) "(%r12)"))))))
+                 (c (x64-emit c (string-append "leaq " (string-append (i64->string (i64+ bytes 4)) "(%r12), %rax")))))
+            (x64-emit c "movq %rdx, %r12"))))
 
       "Where each variable is: its binder's number and its slot."
       (define-datatype x64-at (x64-at i64 i64))
@@ -523,10 +563,10 @@
                               (x64-emit-closure
                                 (x64-code ls k2 slots
                                           (cons (string-list-append
-                                                  (append (list "    .p2align 4\n" sym ":\n    subq $" fr ", %rsp\n")
+                                                  (append (list "    .p2align 4\n" sym ":\n    subq $" fr ", %rsp\n" (x64-entry-checks sym))
                                                           (append (reverse ls2)
                                                                   (append (reverse fs2)
-                                                                          (list "    .set " fr ", " (i64->string frame) "\n")))))
+                                                                          (list (x64-entry-calls sym) "    .set " fr ", " (i64->string frame) "\n")))))
                                                 fs)
                                           px)
                                 sym
@@ -735,16 +775,16 @@
                   ((string=? n "+") (x64-failing-if (x64-emit c "addq %rcx, %rax") "o" x64-fail-past-fixnum))
                   ((string=? n "-") (x64-failing-if (x64-emit c "subq %rcx, %rax") "o" x64-fail-past-fixnum))
                   ((string=? n "*") (x64-failing-if (x64-emit (x64-emit c "sarq $3, %rax") "imulq %rcx, %rax") "o" x64-fail-past-fixnum))
-                  ;; Two words from the heap, `%r15` its next free one and `%r14` its
+                  ;; Two words from the heap, `%r12` its next free one and `%r13` its
                   ;; end: no collector yet, so a heap used up fails (C406).
                   ((string=? n "cons")
-                   (let* ((c (x64-emit c "leaq 16(%r15), %rdx"))
-                          (c (x64-emit c "cmpq %r14, %rdx"))
+                   (let* ((c (x64-emit c "leaq 16(%r12), %rdx"))
+                          (c (x64-emit c "cmpq %r13, %rdx"))
                           (c (x64-failing-if c "a" x64-fail-heap))
-                          (c (x64-emit c "movq %rax, 0(%r15)"))
-                          (c (x64-emit c "movq %rcx, 8(%r15)"))
-                          (c (x64-emit c "leaq 1(%r15), %rax")))
-                     (x64-emit c "movq %rdx, %r15")))
+                          (c (x64-emit c "movq %rax, 0(%r12)"))
+                          (c (x64-emit c "movq %rcx, 8(%r12)"))
+                          (c (x64-emit c "leaq 1(%r12), %rax")))
+                     (x64-emit c "movq %rdx, %r12")))
                   ((string=? n "string-ref")
                    ;; The index checked against the length, unsigned, so that one
                    ;; below 0 is past it too; then the word of its code point, the
@@ -781,27 +821,27 @@
                           (c (x64-emit c (string-append "js " bad)))
                           (c (tagcase c (x64-code (ls n2 slots fs px)
                                           (x64-code ls n2 slots (cons (string-list-append (list bad ":\n    call kc_make_array_fail\n")) fs) px))))
-                          (c (x64-emit c "leaq 16(%r15,%rax,8), %rdx"))
-                          (c (x64-emit c "cmpq %r14, %rdx"))
+                          (c (x64-emit c "leaq 16(%r12,%rax,8), %rdx"))
+                          (c (x64-emit c "cmpq %r13, %rdx"))
                           (c (x64-failing-if c "a" x64-fail-heap))
                           (c (x64-emit c "leaq 1(%rax), %rsi"))
                           (c (x64-emit c "shlq $14, %rsi"))
                           (c (x64-emit c "orq $262, %rsi"))
-                          (c (x64-emit c "movq %rsi, 0(%r15)"))
+                          (c (x64-emit c "movq %rsi, 0(%r12)"))
                           (c (x64-emit c "movq $1, %rdi"))
                           (c (x64-emit-label c loop))
                           (c (x64-emit c "cmpq %rax, %rdi"))
                           (c (x64-emit c (string-append "ja " done)))
-                          (c (x64-emit c "movq %rcx, 0(%r15,%rdi,8)"))
+                          (c (x64-emit c "movq %rcx, 0(%r12,%rdi,8)"))
                           (c (x64-emit c "incq %rdi"))
                           (c (x64-emit c (string-append "jmp " loop)))
                           (c (x64-emit-label c done))
                           (c (x64-emit c "leaq 1(%rax), %rsi"))
                           (c (x64-emit c "shlq $3, %rsi"))
                           (c (x64-emit c "orq $5, %rsi"))
-                          (c (x64-emit c "movq %rsi, 8(%r15,%rax,8)"))
+                          (c (x64-emit c "movq %rsi, 8(%r12,%rax,8)"))
                           (c (x64-emit c "leaq 4(%rdx), %rax")))
-                     (x64-emit c "movq %rdx, %r15")))
+                     (x64-emit c "movq %rdx, %r12")))
                   ((string=? n "set") (x64-emit (x64-emit c "movq %rcx, -20(%rax)") "movq $27, %rax"))
                   ((string=? n "string=?") (x64-calling c "kc_string_eq"))
                   ((string=? n "string<?") (x64-calling c "kc_string_lt"))
@@ -878,13 +918,14 @@
                                                  (item-body i) n (x64-params-at ps 0 nil) fr)
                            (x64-code (ls m slots fails px2)
                              (x64-asm-item-text 0
-                               (append ls (list (string-list-append (list "    .globl " (x64-proc-symbol (item-name i)) "\n" (x64-proc-symbol (item-name i)) ":\n    subq $" fr ", %rsp\n"))))
+                               (append ls (list (string-list-append (list "    .globl " (x64-proc-symbol (item-name i)) "\n" (x64-proc-symbol (item-name i)) ":\n    subq $" fr ", %rsp\n"
+                                                                          (x64-entry-checks (x64-proc-symbol (item-name i)))))))
                                ;; Its frame made first, its code after (`ls` is newest first).
-                               (cons (string-list-append (list "    .set " fr ", " (i64->string (x64-frame-of-call slots)) "\n")) fails))))))))
+                               (cons (string-list-append (list (x64-entry-calls (x64-proc-symbol (item-name i))) "    .set " fr ", " (i64->string (x64-frame-of-call slots)) "\n")) fails))))))))
                 ((string=? k "global")
                  (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
                    (x64-code (ls m slots fails px2)
-                     (x64-asm-item-text slots (cons (string-list-append (list "    movq %rax, " (x64-global-symbol (item-name i)) "(%rip)\n")) ls) fails))))
+                     (x64-asm-item-text slots (cons (x64-cell-stored "%rax" (x64-global-symbol (item-name i))) ls) fails))))
                 (else
                  (tagcase (x64-emit-expr (x64-code nil 0 0 nil px) (item-body i) 0 nil)
                    (x64-code (ls m slots fails px2)
@@ -916,7 +957,7 @@
       "What `kc_entry`'s object gives the runtime besides (C448): the heap's
        next free word, kept there when `kc_entry` returns (`kc_heap_next`);
        `kc_call2`, which calls a procedure of kc's code on two arguments, the
-       heap in `%r15` and `%r14` as kc's code has it, and keeps the heap's
+       heap in `%r12` and `%r13` as kc's code has it, and keeps the heap's
        next word after; and `kc_apply_entry`, `%phase1-apply`'s address if the
        program defines it (a transformer's, kayak-kcrt's `--apply`), else 0."
       (define x64-entry-support (subr kfx (bool) string)
@@ -925,9 +966,64 @@
             (list "    .bss\n    .p2align 3\n    .globl kc_heap_next\nkc_heap_next:\n    .quad 0\n"
                   "    .data\n    .p2align 3\n    .globl kc_apply_entry\nkc_apply_entry:\n    .quad "
                   (if applies (x64-proc-symbol "%phase1-apply") "0") "\n"
-                  "    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r14\n    subq $8, %rsp\n"
-                  "    movq kc_heap_next(%rip), %r15\n    movq %rcx, %r14\n    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"
-                  "    call *%rax\n    movq %r15, kc_heap_next(%rip)\n    addq $8, %rsp\n    popq %r14\n    popq %r15\n    ret\n")))))
+                  "    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"
+                  "    movq kc_heap_next(%rip), %r12\n    movq %rcx, %r13\n    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"
+                  "    call *%rax\n" (x64-cell-stored "%r12" "kc_heap_next") "    popq %r12\n    popq %r13\n    popq %r15\n    ret\n")))))
+
+    "The runtime's procedures kc's code calls, in order: each a number, the
+     service's (`kc/native.kfx`), in process (C451)."
+    (define x64-services strings
+      (list "kc_show" "kc_fail" "kc_intern" "kc_string_eq" "kc_string_lt" "kc_string_append"
+            "kc_substring" "kc_symbol_to_string" "kc_is_string" "kc_is_symbol" "kc_is_procedure"
+            "kc_is_kind" "kc_append" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail"))
+
+    (hide
+      (define-rec
+        (x64-service-stubs (subr kfx (strings i64 (listof string acyclic)) string)
+          (lambda (ns k acc)
+            (if (null? ns)
+                (string-list-append (reverse acc))
+                (x64-service-stubs (cdr ns) (i64+ k 1)
+                                   (cons (string-list-append (list (car ns) ":\n    movl $" (i64->string k) ", %eax\n    jmp kc_service\n")) acc)))))))
+
+    "What kc's code runs on in process (C451, `kc run`), before the program
+     (`asm`), so that its first byte is the code bloblet's: the code's
+     fields before it, as Fixpt's, field 0 (16 bytes back) the heap, an
+     `i64` flat array shared with KFX, field 1 (24 back) the service, a
+     procedure of KFX's that native code calls by `foreign`.
+
+     `kc_native_entry`, as Fixpt's native convention enters code (the state
+     in `%r15`, the heap's array in `%rdi`, its first element's address
+     less the tag 4): the array's words 0 and 1 made its own address and
+     the code's, so that the service reads both; the heap from word 16 to
+     the length KFX put in word 3; its stack pointer to word 4; then
+     `kc_entry`, and 0 back.
+
+     Each runtime procedure a stub of its number, in `%eax`, and
+     `kc_service`, which keeps what C's convention keeps and `foreign` does
+     not: the heap's next word to the array's word 2 and back (the service
+     allocates there too), the arguments to its words 5 to 7, the answer
+     from word 8. A failure is the service's answer 1 (its words kept by
+     KFX): `kc_failed` goes back past kc's frames to the entry's, the stack
+     pointer word 4 kept, and so to the trampoline, 1 back (kc's own
+     convention's failure; kayak-jit's traps end the program a KFX error,
+     which nothing of `kc run`'s could catch, an `attempt` doing no output)."
+    (define x64-run-support (subr kfx () string)
+      (lambda ()
+        (string-list-append
+          (list "    .text\nkc_native_entry:\n    pushq %rbp\n    leaq -4(%rdi), %rax\n    movq %rax, 0(%rax)\n"
+                "    leaq kc_native_entry(%rip), %rcx\n    movq %rcx, 8(%rax)\n    movq 24(%rax), %rsi\n    shlq $3, %rsi\n"
+                "    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %r15, %rdx\n    movq %rsp, 32(%rax)\n    call kc_entry\n"
+                "    movl $0, %eax\n    popq %rbp\n    ret\n"
+                "kc_failed:\n    movq kc_native_entry-16(%rip), %rcx\n    movq 28(%rcx), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"
+                "kc_service:\n    pushq %rbx\n    pushq %rbp\n    pushq %r13\n    pushq %r14\n"
+                "    movq kc_native_entry-16(%rip), %rcx\n    movq %r12, 12(%rcx)\n    movq %rdi, 36(%rcx)\n"
+                "    movq %rsi, 44(%rcx)\n    movq %rdx, 52(%rcx)\n    movq %rax, %rdi\n    shlq $3, %rdi\n"
+                "    movq kc_native_entry-24(%rip), %rbx\n    movl $1, %r10d\n    call *288(%r15)\n"
+                "    testq %rax, %rax\n    jne kc_failed\n"
+                "    movq kc_native_entry-16(%rip), %rcx\n    movq 12(%rcx), %r12\n    movq 60(%rcx), %rax\n"
+                "    popq %r14\n    popq %r13\n    popq %rbp\n    popq %rbx\n    ret\n"
+                (x64-service-stubs x64-services 0 nil)))))
 
     "A global's cell: in `.bss`, `.globl`, so that a procedure in an object of
      its own (`kc build`, C419) reads it."
@@ -935,7 +1031,7 @@
       (lambda (n) (string-list-append (list "    .globl " (x64-global-symbol n) "\n" (x64-global-symbol n) ":\n    .quad 0\n"))))
 
     "`asm PATH`: the program: each global's cell; each procedure; then
-     `kc_entry`, which keeps the heap in `%r15` and `%r14` and makes the
+     `kc_entry`, which keeps the heap in `%r12` and `%r13` and makes the
      value definitions and expressions in order."
     (define q-asm qbody
       (lambda (d run path a-key)
@@ -950,15 +1046,15 @@
              (append (map2 (lambda ((k string) (n string)) (if (string=? k "global") (x64-cell n) "")) kinds names)
               (append (list "    .text\n")
                (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") (string-append (x64-part x 2) (x64-part x 3)) "")) kinds its)
-                (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
+                (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"
                               "    subq $" (i64->string frame) ", %rsp\n")
                  (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 2))) kinds its)
-                  (append (list "    movq %r15, kc_heap_next(%rip)\n    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
+                  (append (list (x64-cell-stored "%r12" "kc_heap_next") "    addq $" (i64->string frame) ", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n")
                    (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 3))) kinds its)
                            (list (x64-entry-support (x64-applies? kinds names)) "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))
 
     "`asm-entry PATH` (C419): the object of what is no procedure's: each
-     global's cell; `kc_entry`, which keeps the heap in `%r15` and `%r14` and
+     global's cell; `kc_entry`, which keeps the heap in `%r12` and `%r13` and
      makes the value definitions and expressions in order; their failures'
      calls. With each procedure's object (`x64-object-text`), what `asm`
      writes as one file, `kc build` assembles apart."
@@ -974,10 +1070,10 @@
           (string-list-append
             (append (list "# Made by kc (docs/research/kc.md) from " path ".\n    .bss\n    .p2align 3\n")
              (append (map2 (lambda ((k string) (n string)) (if (string=? k "value") (x64-cell n) "")) kinds names)
-              (append (list "    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
+              (append (list "    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"
                             "    subq $" (i64->string frame) ", %rsp\n")
                (append (map (lambda ((x sexp)) (x64-part x 2)) its)
-                (append (list "    movq %r15, kc_heap_next(%rip)\n    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
+                (append (list (x64-cell-stored "%r12" "kc_heap_next") "    addq $" (i64->string frame) ", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n")
                  (append (map (lambda ((x sexp)) (x64-part x 3)) its)
                          (list (x64-entry-support (x64-applies? kinds names)) "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))
 

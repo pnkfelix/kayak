@@ -1,0 +1,342 @@
+"native.kfx: kc's code run in process (C451, `kc run`): the program's
+ image (kc/asm.kfx's `asm-image` of x64.kfx's `asm`, after
+ `x64-run-support`) sealed as code (FX-26's `seal-code`) and called as a
+ native procedure (`native-procedure`, Fixpt's native convention), as
+ Fixpt runs the code it makes.
+
+ What crosses is FX-26's alone (C116): the code bloblet's fields are the
+ heap, an `i64` flat array that KFX and the code share, and the service,
+ a procedure of KFX's that the code calls by the `foreign` routine. The
+ array's first words say where things are, the rest is the heap:
+
+   0  the array's own address    (the code's, at entry)
+   1  the image's address        (the code's, at entry)
+   2  the heap's next free word  (the code's, at each service)
+   3  the array's length         (KFX's)
+   4  the entry's stack pointer  (the code's, for a failure)
+   5 to 7  a service's arguments, 8 its answer
+   16 on   the heap
+
+ The service is kayak-kcrt's runtime, what a built program links
+ (`kc_show`, `kc_intern`, ...), by number (x64.kfx's `x64-services`),
+ written here in KFX on Fixpt's layout: a word read from the heap, or
+ from the image as kc made it (its constants; a cell the code writes is
+ never read here); what it makes, made on the heap from word 2. A
+ failure is the service's answer 1, its words kept here: the code goes
+ back past its frames to its entry's and returns 1 to the trampoline
+ (x64.kfx's `kc_failed`), and `kc run` says it as a built program says
+ it."
+
+(define kc-native
+  (module
+    (define-effect nrt (maxeff (read @globals) spin (read @io) (write @io) (alloc @io) (io stdout)))
+
+    (hide
+      (define-type heap (flatarrayof i64 @io))
+      (define-type symtab (ref (listof (tupleof string i64) acyclic) @io))
+
+      (define word-false i64 3)
+      (define word-true i64 11)
+      (define word-null i64 19)
+
+      (define boolean (subr kfx (bool) i64) (lambda (b) (if b word-true word-false)))
+
+      "The word at address `a`: of the heap, or of the image (`img`, its
+       words as kc made them)."
+      (define mem (subr nrt (heap heap i64) i64)
+        (lambda (h img a)
+          (let ((hb (flatarray-ref-i64 h 0)) (ib (flatarray-ref-i64 h 1)))
+            (cond ((and (i64>= a hb) (i64< a (i64+ hb (i64* 8 (flatarray-length-i64 h)))))
+                   (flatarray-ref-i64 h (i64-shr (i64- a hb) 3)))
+                  ((and (i64>= a ib) (i64< a (i64+ ib (i64* 8 (flatarray-length-i64 img)))))
+                   (flatarray-ref-i64 img (i64-shr (i64- a ib) 3)))
+                  (else (begin (error (string-append "kc run: a word neither the heap's nor the code's, at " (i64->string a))) (the i64 0)))))))
+
+      (define put! (subr nrt (heap i64 i64) unit)
+        (lambda (h a w) (flatarray-set-i64! h (i64-shr (i64- a (flatarray-ref-i64 h 0)) 3) w)))
+
+      "`n` words of the heap, from its next free one; its end, a failure as
+       kc's code's (`kc_fail` 5)."
+      (define heap-taken (subr nrt (heap i64) i64)
+        (lambda (h n)
+          (let ((at (flatarray-ref-i64 h 2)))
+            (if (i64> (i64+ at (i64* 8 n)) (i64+ (flatarray-ref-i64 h 0) (i64* 8 (flatarray-length-i64 h))))
+                (begin (error "kc: not yet: the heap used up (no collector yet)") (the i64 0))
+                (begin (flatarray-set-i64! h 2 (i64+ at (i64* 8 n))) at)))))
+
+      (define-rec
+        (put-all! (subr nrt (heap i64 (listof i64 acyclic)) unit)
+          (lambda (h a ws) (if (null? ws) #u (begin (put! h a (car ws)) (put-all! h (i64+ a 8) (cdr ws)))))))
+
+      ;;; ------------------------------------------------------------ objects
+
+      "A bloblet's header (its suffix at `v - 4`): the word before it, or,
+       before that, a trailer saying how far back the header is."
+      (define header (subr nrt (heap heap i64) i64)
+        (lambda (h img v)
+          (let* ((p (i64- v 4)) (w (mem h img (i64- p 8))))
+            (if (i64= (i64-and w 7) 5) (mem h img (i64- (i64- p 8) (i64* 8 (i64-shr w 3)))) w))))
+
+      (define kind (subr nrt (heap heap i64) i64)
+        (lambda (h img v) (i64-and (i64-shr (header h img v) 3) 255)))
+
+      (define bloblet-of? (subr nrt (heap heap i64 i64) bool)
+        (lambda (h img v k) (and (i64= (i64-and v 7) 4) (i64= (kind h img v) k))))
+
+      (define-rec
+        (points (subr nrt (heap heap i64 i64 i64 (listof char acyclic)) (listof char acyclic))
+          (lambda (h img p i n acc)
+            (if (i64>= i n)
+                (reverse acc)
+                (let* ((w (mem h img (i64+ p (i64+ 8 (i64* 8 (i64-shr i 1))))))
+                       (c (if (i64= (i64-and i 1) 0) (i64-and w 4294967295) (i64-and (i64-shr w 32) 4294967295))))
+                  (points h img p (i64+ i 1) n (cons (i64->char c) acc)))))))
+
+      "A string's text: its length, then its code points two a word."
+      (define string-text (subr nrt (heap heap i64) string)
+        (lambda (h img v)
+          (let ((p (i64- v 4))) (list->string (points h img p 0 (mem h img p) nil)))))
+
+      (define-rec
+        (pairs-of (subr kfx ((listof i64 acyclic) (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (cs acc)
+            (cond ((null? cs) (reverse acc))
+                  ((null? (cdr cs)) (reverse (cons (car cs) acc)))
+                  (else (pairs-of (cdr (cdr cs)) (cons (i64+ (car cs) (i64-shl (car (cdr cs)) 32)) acc)))))))
+
+      "A string of `s` on the heap, as Fixpt lays one out (kind 1, its words
+       all suffix: its length, its code points two a word)."
+      (define string-made (subr nrt (heap string) i64)
+        (lambda (h s)
+          (let* ((cs (map char->i64 (string->list s))) (n (size cs))
+                 (words (i64+ 1 (i64-shr (i64+ n 1) 1)))
+                 (at (heap-taken h (i64+ 1 words))))
+            (begin
+              (put-all! h at (cons (i64+ 14 (i64-shl (i64* 8 words) 32)) (cons n (pairs-of cs nil))))
+              (i64+ at 12)))))
+
+      (define symbol-name (subr nrt (heap heap i64) i64)
+        (lambda (h img v) (mem h img (i64- v 36))))
+
+      ;;; ------------------------------------------------------------ symbols
+
+      "A code point's UTF-8 bytes, onto `acc` reversed."
+      (define utf8-onto (subr kfx (i64 (listof i64 acyclic)) (listof i64 acyclic))
+        (lambda (c acc)
+          (cond ((i64< c 128) (cons c acc))
+                ((i64< c 2048) (cons (i64+ 128 (i64-and c 63)) (cons (i64+ 192 (i64-shr c 6)) acc)))
+                ((i64< c 65536) (cons (i64+ 128 (i64-and c 63)) (cons (i64+ 128 (i64-and (i64-shr c 6) 63)) (cons (i64+ 224 (i64-shr c 12)) acc))))
+                (else (cons (i64+ 128 (i64-and c 63)) (cons (i64+ 128 (i64-and (i64-shr c 6) 63)) (cons (i64+ 128 (i64-and (i64-shr c 12) 63)) (cons (i64+ 240 (i64-shr c 18)) acc))))))))
+
+      (define-rec
+        (fnv (subr kfx ((listof i64 acyclic) i64) i64)
+          (lambda (bs h) (if (null? bs) h (fnv (cdr bs) (i64* (i64-xor h (car bs)) 1099511628211))))))
+
+      (define-rec
+        (utf8 (subr kfx ((listof char acyclic) (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (cs acc) (if (null? cs) (reverse acc) (utf8 (cdr cs) (utf8-onto (char->i64 (car cs)) acc))))))
+
+      (define-rec
+        (symbol-at (subr kfx (string (listof (tupleof string i64) acyclic)) (listof i64 acyclic))
+          (lambda (n xs)
+            (cond ((null? xs) nil)
+                  ((string=? (extract (car xs) 1) n) (list (extract (car xs) 2)))
+                  (else (symbol-at n (cdr xs)))))))
+
+      "The symbol of the name string `s`, the one of that name: as kayak-kcrt's
+       `kc_intern` makes one (Fixpt's `intern`): its fields its name, its
+       hash (FNV-1a of the name's UTF-8, a fixnum) and a global slot (none,
+       -1), and a trailer."
+      (define intern (subr nrt (heap heap symtab i64) i64)
+        (lambda (h img t s)
+          (let* ((name (string-text h img s)) (had (symbol-at name (get t))))
+            (if (not (null? had))
+                (car had)
+                (let* ((hash (i64-shl (i64-and (fnv (utf8 (string->list name) nil) -3750763034362895579) 9223372036854775807) 3))
+                       (nv (string-made h name))
+                       (at (heap-taken h 5))
+                       (v (i64+ at 44)))
+                  (begin
+                    (put-all! h at (list 65558 nv hash -8 37))
+                    (set t (cons (tuple name v) (get t)))
+                    v))))))
+
+      ;;; ------------------------------------------------------------ writing
+
+      (define-rec
+        (hex (subr kfx (i64 (listof char acyclic)) (listof char acyclic))
+          (lambda (n acc)
+            (let* ((d (i64-and n 15)) (c (i64->char (if (i64< d 10) (i64+ 48 d) (i64+ 87 d)))) (rest (i64-and (i64-shr n 4) 1152921504606846975)))
+              (if (i64= rest 0) (cons c acc) (hex rest (cons c acc)))))))
+
+      (define hex-of (subr kfx (i64) string) (lambda (n) (list->string (hex n nil))))
+
+      "A character as Fixpt writes it (kayak-kcrt's `put_char`)."
+      (define char-written (subr kfx (i64) string)
+        (lambda (c)
+          (string-append "#\\"
+            (cond ((i64= c 32) "space") ((i64= c 10) "newline") ((i64= c 9) "tab") ((i64= c 13) "return")
+                  ((i64= c 0) "null") ((i64= c 7) "alarm") ((i64= c 8) "backspace") ((i64= c 127) "delete")
+                  ((i64= c 27) "escape") ((i64< c 32) (string-append "x" (hex-of c)))
+                  (else (list->string (list (i64->char c))))))))
+
+      (define-rec
+        (string-written (subr kfx ((listof char acyclic) (listof string acyclic)) string)
+          (lambda (cs acc)
+            "A string as Fixpt writes one (`put_string`)."
+            (if (null? cs)
+                (string-list-append (reverse (cons "\"" acc)))
+                (let ((c (car cs)) (k (char->i64 (car cs))))
+                  (string-written (cdr cs)
+                                  (cons (cond ((char=? c #\") "\\\"") ((char=? c #\\) "\\\\") ((i64= k 10) "\\n") ((i64= k 9) "\\t") ((i64= k 13) "\\r")
+                                              ((i64< k 32) (string-append "\\x" (string-append (hex-of k) ";")))
+                                              (else (list->string (list c))))
+                                        acc)))))))
+
+      (define-rec
+        (written (subr nrt (heap heap i64) string)
+          (lambda (h img v)
+            "A value as Fixpt writes it (kayak-kcrt's `put`): a list's elements,
+             a tail that is not a list after ` . `."
+            (if (not (i64= (i64-and v 7) 1))
+                (atom h img v)
+                (string-append "(" (string-append (written h img (mem h img (i64- v 1))) (rest-written h img (mem h img (i64+ v 7)) nil))))))
+        (rest-written (subr nrt (heap heap i64 (listof string acyclic)) string)
+          (lambda (h img v acc)
+            (cond ((i64= v word-null) (string-list-append (reverse (cons ")" acc))))
+                  ((i64= (i64-and v 7) 1)
+                   (rest-written h img (mem h img (i64+ v 7)) (cons (written h img (mem h img (i64- v 1))) (cons " " acc))))
+                  (else (string-list-append (reverse (cons ")" (cons (written h img v) (cons " . " acc)))))))))
+        (atom (subr nrt (heap heap i64) string)
+          (lambda (h img v)
+            "A value other than a pair as Fixpt writes it (`atom`)."
+            (let ((tag (i64-and v 7)))
+              (cond
+                ((i64= tag 0) (i64->string (i64-shr v 3)))
+                ((i64= tag 3)
+                 (let ((k (i64-and (i64-shr v 3) 31)) (payload (i64-and (i64-shr v 8) 72057594037927935)))
+                   (cond ((i64= k 0) "#f") ((i64= k 1) "#t") ((i64= k 2) "()") ((i64= k 3) "#u")
+                         ((i64= k 8) (char-written payload))
+                         (else (string-append "#<immediate " (string-append (i64->string k) ">"))))))
+                ((i64= tag 4)
+                 (let ((k (kind h img v)))
+                   (cond ((i64= k 1) (string-written (string->list (string-text h img v)) (list "\"")))
+                         ((i64= k 2) (string-text h img (symbol-name h img v)))
+                         ((i64= k 8) "#<procedure>")
+                         ((i64= k 10) (string-append "#<box " (string-append (written h img (mem h img (i64- v 20))) ">")))
+                         ((i64= k 36) (string-append "#<sum " (string-append (string-text h img (symbol-name h img (mem h img (i64- v 20)))) ">")))
+                         ((i64= k 37) (string-append "#<product of " (string-append (i64->string (i64- (i64-shr (mem h img (i64- v 12)) 3) 1)) ">")))
+                         ((i64= k 32) (string-append "#<bloblet " (string-append (i64->string (i64-shr (mem h img (i64- v 12)) 3)) " fields 0 bytes>")))
+                         (else (string-append "#<object of kind " (string-append (i64->string k) ">"))))))
+                (else (string-append "#<value 0x" (string-append (hex-of v) ">"))))))))
+
+      ;;; ------------------------------------------------------------ the rest
+
+      "A failure of kc's code, by number, in Fixpt's words (kayak-kcrt's
+       `kc_fail`)."
+      (define failure (subr kfx (i64) string)
+        (lambda (what)
+          (cond ((i64= what 1) "not a Unicode scalar value")
+                ((i64= what 4) "car or cdr of a non-pair")
+                ((i64= what 5) "kc: not yet: the heap used up (no collector yet)")
+                ((i64= what 2) "kc: not yet: an integer past a fixnum")
+                ((i64= what 3) "division by zero")
+                ((i64= what 7) "kc: a sum no arm of its tagcase is for")
+                ((i64= what 8) "stack overflow")
+                (else "a failure kc's runtime has no words for"))))
+
+      (define-rec
+        (cars (subr nrt (heap heap i64 (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (h img v acc)
+            (if (i64= (i64-and v 7) 1) (cars h img (mem h img (i64+ v 7)) (cons (mem h img (i64- v 1)) acc)) acc))))
+
+      (define-rec
+        (list-end (subr nrt (heap heap i64) i64)
+          (lambda (h img v) (if (i64= (i64-and v 7) 1) (list-end h img (mem h img (i64+ v 7))) v))))
+
+      (define-rec
+        (consed (subr nrt (heap (listof i64 acyclic) i64) i64)
+          (lambda (h rev-cars tail)
+            (if (null? rev-cars)
+                tail
+                (let ((at (heap-taken h 2)))
+                  (begin (put-all! h at (list (car rev-cars) tail)) (consed h (cdr rev-cars) (i64+ at 1))))))))
+
+      (define arg (subr nrt (heap i64) i64) (lambda (h k) (flatarray-ref-i64 h (i64+ 5 k))))
+
+      "Service `op` on the arguments in the heap's words 5 to 7, its answer
+       to word 8 (x64.kfx's `x64-services`, in order); 0, or 1 if it failed,
+       its words kept in `why` for `native-run` to give."
+      (define served (subr nrt (heap heap symtab (ref string @io) i64) i64)
+        (lambda (h img t why op)
+          (let* ((a (arg h 0)) (b (arg h 1)) (c (arg h 2))
+                 (failed (lambda ((m string)) (begin (set why m) (the i64 1))))
+                 (answered (lambda ((w i64)) (begin (flatarray-set-i64! h 8 w) (the i64 0)))))
+            (cond
+              ((i64= op 0) (begin (tagcase (write-out (string-append (written h img a) "\n")) (done u #u) (failed e #u)) (answered 0)))
+              ((i64= op 1) (failed (failure a)))
+              ((i64= op 2) (answered (intern h img t a)))
+              ((i64= op 3) (answered (boolean (string=? (string-text h img a) (string-text h img b)))))
+              ((i64= op 4) (answered (boolean (string<? (string-text h img a) (string-text h img b)))))
+              ((i64= op 5) (answered (string-made h (string-append (string-text h img a) (string-text h img b)))))
+              ((i64= op 6)
+               (let* ((s (string-text h img a)) (i (i64-shr b 3)) (j (i64-shr c 3)))
+                 (if (or (i64< i 0) (i64< j i) (i64> j (string-length-i64 s)))
+                     (failed "substring range out of bounds")
+                     (answered (string-made h (substring s (i64->int i) (i64->int j)))))))
+              ((i64= op 7) (answered (symbol-name h img a)))
+              ((i64= op 8) (answered (boolean (bloblet-of? h img a 1))))
+              ((i64= op 9) (answered (boolean (bloblet-of? h img a 2))))
+              ((i64= op 10) (answered (boolean (bloblet-of? h img a 8))))
+              ((i64= op 11) (answered (boolean (bloblet-of? h img a b))))
+              ((i64= op 12)
+               (if (i64= (list-end h img a) word-null)
+                   (answered (consed h (cars h img a nil) b))
+                   (failed (failure 4))))
+              ((i64= op 13) (failed (string-append "array index out of range (length " (string-append (i64->string a) ")"))))
+              ((i64= op 14) (failed "a bloblet's field count must be non-negative"))
+              ((i64= op 15) (failed (string-append "string index out of range (length " (string-append (i64->string a) ")"))))
+              (else (failed (string-append "kc run: no service " (i64->string op))))))))
+
+      (define-rec
+        (words-of (subr kfx ((listof i64 acyclic) (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (bs acc)
+            "Bytes as little-endian words, the last one's bytes past the end 0."
+            (if (null? bs)
+                (reverse acc)
+                (words-of (drop-bytes bs 8) (cons (word-le bs 0 0) acc)))))
+        (word-le (subr kfx ((listof i64 acyclic) i64 i64) i64)
+          (lambda (bs k w)
+            (if (or (null? bs) (i64>= k 8)) w (word-le (cdr bs) (i64+ k 1) (i64+ w (i64-shl (car bs) (i64->int (i64* 8 k))))))))
+        (drop-bytes (subr kfx ((listof i64 acyclic) i64) (listof i64 acyclic))
+          (lambda (bs k) (if (or (null? bs) (i64<= k 0)) bs (drop-bytes (cdr bs) (i64- k 1))))))
+
+      (define-rec
+        (words-put! (subr nrt (heap (listof i64 acyclic) i64) unit)
+          (lambda (h ws i) (if (null? ws) #u (begin (flatarray-set-i64! h i (car ws)) (words-put! h (cdr ws) (i64+ i 1)))))))
+
+      (define-type service (subr nrt (i64) i64))
+      (define-type code (bloblet (fields heap service) @io))
+
+      (define-rec
+        (bytes-put! (subr nrt (code int (listof i64 acyclic)) unit)
+          (lambda (b at bs) (if (null? bs) #u (begin (bloblet-set-byte! b at (i64->int (car bs))) (bytes-put! b (+ at 1) (cdr bs))))))))
+
+    "`native-run IMAGE WORDS` (C451): the image run in process, its heap
+     `WORDS` words; each value it shows written as it is shown. ``, or the
+     words of the failure it ended in."
+    (define native-run (subr (maxeff nrt (io native)) ((listof i64 acyclic) i64) string)
+      (lambda (image words)
+        (let* ((h (the heap (make-flatarray-i64 words 0)))
+               (ws (words-of image nil))
+               (img (the heap (make-flatarray-i64 (size ws) 0)))
+               (t (the symtab (new nil)))
+               (why (the (ref string @io) (new "")))
+               (b (the code (make-bloblet (i64->int (size image)) h (lambda ((op i64)) (served h img t why op))))))
+          (begin
+            (words-put! img ws 0)
+            (flatarray-set-i64! h 3 words)
+            (bytes-put! b 0 image)
+            (if (i64= ((the (subr (conv native) nrt (heap) i64) (native-procedure (seal-code b))) h) 0)
+                ""
+                (get why))))))))

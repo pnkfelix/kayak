@@ -7,6 +7,8 @@ usage: python3 -I scripts/kc-steps.py
 
   native  every program: `kc build` (C419), its objects assembled and
           linked by kc with the system's cc against crates/kayak-kcrt, run;
+          and `kc run` (C451), the same code in process, its output and
+          status the executable's;
   rust    the KFX programs (`.kfx`): `kc --rust`, each a module of one
           crate (target/kc-rust), built once and run.
 
@@ -21,6 +23,10 @@ end runs too.
 
 And a file's macros (C445): each form's expansion a query of its own, an
 edit expands again only the forms that name what it changed.
+
+And kc's own convention (C451): a recursion past the stack's limit fails
+as kc says it, and a loop past a slice of fuel runs on, built and in
+process alike.
 """
 
 import os
@@ -184,13 +190,45 @@ PROCEDURAL = """(define-syntax twice
 """
 
 
+CONVENTION = {
+    # Past the stack's limit (C451): a failure, as kc says it, by both.
+    "deep": ("(define down (subr (maxeff spin (read (globals down))) (int) int) (lambda (n) (if (zero? n) 0 (+ 1 (down (- n 1))))))\n"
+             "(down 1000)\n(down 100000000)\n",
+             "1000\n", "evaluation failed: stack overflow\n", 1),
+    # Fuel spent and given again by `poll`, a slice at a time (2^20 calls).
+    "fuel": ("(define loop (subr (maxeff spin (read (globals loop))) (int int) int) (lambda (n acc) (if (zero? n) acc (loop (- n 1) (+ acc 1)))))\n"
+             "(loop 3000000 0)\n",
+             "3000000\n", "", 0),
+}
+
+
+def convention():
+    """kc's own convention (C451), in a built program and in process: a
+    stack's limit checked at each entry, and fuel."""
+    wrong = []
+    for name, (text, out, err, status) in CONVENTION.items():
+        src = os.path.join(WORK, "convention-%s.kfx" % name)
+        open(src, "w").write(text)
+        exe = src[:-4]
+        r = run([KC, "--rt", RT, "build", src, exe])
+        if r.returncode != 0:
+            wrong.append("convention %s: kc build: %s" % (name, r.stderr.strip()))
+            continue
+        for how, args in (("built", [exe]), ("kc run", [KC, "run", src])):
+            r = run(args)
+            if (r.stdout, r.stderr, r.returncode) != (out, err, status):
+                wrong.append("convention %s: %s gives %r %r %d, not %r %r %d"
+                             % (name, how, r.stdout, r.stderr, r.returncode, out, err, status))
+    return wrong
+
+
 def main():
     if sys.argv[1:]:
         sys.exit(__doc__)
     os.makedirs(WORK, exist_ok=True)
     db = os.path.join(ROOT, "target", "kc-steps.db")
     fx = fixpt()
-    wrong, ran = [], 0
+    wrong, ran, in_process = [], 0, 0
     ps = programs()
     for p in ps:
         name = os.path.relpath(p, TESTS)
@@ -218,6 +256,15 @@ def main():
             got = "! " + r.stderr.strip().split("evaluation failed: ")[-1]
         if got != want:
             wrong.append("%s: native gives %s, not %s" % (name, got, want))
+        # `kc run` (C451): the same code in process, sealed in the code area
+        # and called, its runtime KFX's: what it writes, and its status, the
+        # executable's own.
+        q = run([KC, "--db", db, "run", p])
+        if (q.stdout, q.stderr, q.returncode) != (r.stdout, r.stderr, r.returncode):
+            wrong.append("%s: kc run gives %r %r %d, the executable %r %r %d"
+                         % (name, q.stdout[-300:], q.stderr[-300:], q.returncode, r.stdout[-300:], r.stderr[-300:], r.returncode))
+        else:
+            in_process += 1
     kfx = [p for p in ps if p.endswith(".kfx")]
     crate = os.path.join(ROOT, "target", "kc-rust")
     os.makedirs(os.path.join(crate, "src"), exist_ok=True)
@@ -259,10 +306,11 @@ def main():
                 wrong.append("%s: rust gives %s, not %s" % (name, got, want))
     wrong += cutoff()
     wrong += expansions()
+    wrong += convention()
     for w in wrong:
         print("kc-steps: " + w)
-    print("kc-steps: %d programs, %d by native code, %d by Rust; %d wrong; %d query bodies ran%s"
-          % (len(ps), len(ps), len(kfx), len(wrong), ran, "" if fx else "; Fixpt not here, its answers unchecked"))
+    print("kc-steps: %d programs, %d by native code (%d of them in process as their executables), %d by Rust; %d wrong; %d query bodies ran%s"
+          % (len(ps), len(ps), in_process, len(kfx), len(wrong), ran, "" if fx else "; Fixpt not here, its answers unchecked"))
     sys.exit(1 if wrong else 0)
 
 
