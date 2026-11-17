@@ -12,36 +12,38 @@ use super::*;
 // reaches. Made a module maker (C437), each instance its own state,
 // Fixpt's five regions its one place: its types first, but those
 // that name the place, which the maker's module defines.
-// fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/syn.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/parser-types.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/parser-loads.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/parser.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-kernel.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-types.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-env-types.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-env-indexed.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-nodes.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-align.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-scopes.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-match.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-exports.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-facts.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-files.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-infer.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-show.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-shown.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-solve.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-contracts.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-procedural.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-templates.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-imports.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-walk.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-tree.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-shaper.fx@120b70e
-// fixpt-source: crates/fixpt-fx26/src/macros-shapes.fx@120b70e
+// fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/syn.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/parser-types.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/parser-loads.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-kernel.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-syntax.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-types.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-env-types.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-env-indexed.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-nodes.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-align.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-scopes.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-match.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-exports.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-facts.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-files.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-infer.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-show.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-shown.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-solve.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-fresh.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-contracts.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-procedural.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-templates.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-imports.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-walk.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-tree.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-shaper.fx@0585488
+// fixpt-source: crates/fixpt-fx26/src/macros-shapes.fx@0585488
 
 // The expander's types that name no region of its, a module of its own,
 // which the maker includes: its constructors are no globals, as in Fixpt,
@@ -436,7 +438,8 @@ pub mod mx_types {
         SImport(&'static Sty, &'static MxTypesBind),
         SExport(&'static Sty, &'static MxTypesBind),
         SMark(Symbol, Int),
-        SMu(Int),
+        SMu(&'static Sty, Int, Int),
+        SVar(Int),
         SMany(&'static Sty),
         SUnion(List<&'static Sty>),
         STyped(&'static Sty, Hole),
@@ -496,8 +499,12 @@ pub mod mx_types {
         kayak_rt::heap_alloc(Sty::SMark(f0, f1))
     }
 
-    pub fn s_mu(f0: Int) -> &'static Sty {
-        kayak_rt::heap_alloc(Sty::SMu(f0))
+    pub fn s_mu(f0: &'static Sty, f1: Int, f2: Int) -> &'static Sty {
+        kayak_rt::heap_alloc(Sty::SMu(f0, f1, f2))
+    }
+
+    pub fn s_var(f0: Int) -> &'static Sty {
+        kayak_rt::heap_alloc(Sty::SVar(f0))
     }
 
     pub fn s_many(f0: &'static Sty) -> &'static Sty {
@@ -542,7 +549,7 @@ pub mod mx_types {
 
     pub type MxTypesNamed = List<Product_11_12<Symbol, &'static Sty>>;
 
-    pub type MuScope = List<Product_11_12<Symbol, Int>>;
+    pub type MuScope = List<Product_11_12<Symbol, bool>>;
 
     pub type Assumed = List<Product_11_12<&'static Sty, &'static Sty>>;
 
@@ -646,7 +653,7 @@ pub mod mx_types {
 
     pub type DefEnv = Product_11_12_13<Int, Symbol, MxParserTypesNames>;
 
-    pub type MxNodesDefEnvs = List<Product_11_12<Int, DefEnv>>;
+    pub type MxNodesDefEnvs = List<Product_11_12<Str, DefEnv>>;
 
     pub type MxNodesContracts = List<Product_11_12<Symbol, &'static Syn>>;
 
@@ -895,8 +902,6 @@ pub mod mx_types {
 
     pub type Sol = Product_11_12_13_14_15_16_17<Kinds, Pkinds, MxInferInts, BindsAt, BindsAt, BindsAt, Spans>;
 
-    pub type MuParts = List<Product_11_12<Int, Int>>;
-
     pub type Placement = Product_11_12_13_14_15<Symbol, &'static Sty, Levels, bool, Int>;
 
     pub type Placements = List<Placement>;
@@ -984,6 +989,12 @@ pub mod mx_types {
 
     pub type MxSolveStrings = List<Str>;
 
+    pub type Tags = List<Product_11_12<Int, Str>>;
+
+    pub type SeenKeys = List<Product_11_12<Int, Int>>;
+
+    pub type FreshSaved = Product_11_12_13_14_15_16_17<Str, Int, Int, SeenKeys, bool, Int, Tags>;
+
     pub type MxContractsRenames = List<Product_11_12<Symbol, Symbol>>;
 
     pub type MxContractsPlaces = List<Product_11_12<Int, Int>>;
@@ -1006,13 +1017,15 @@ pub mod mx_types {
 
     pub type MxProceduralReadOne = List<Product_11_12<&'static Syn, Int>>;
 
+    pub type Phase1State = Product_11_12<List<Str>, List<Procedural>>;
+
     pub type ScopeSaved = Product_11_12_13_14_15<MacroEnv, List<Procedural>, DefEnv, Marked, List<Str>>;
 
     pub type Link = Product_11_12_13<Symbol, &'static Syn, Int>;
 
     pub type MxTopSaid = Product_11_12<SignedOpt, List<Str>>;
 
-    pub type ByStates = List<Product_11_12_13_14_15_16_17<Int, MacroEnv, LoadDefs, MxParserTypesNames, Int, Marked, List<Str>>>;
+    pub type ByStates = List<Product_11_12_13_14_15_16_17<Int, MacroEnv, LoadDefs, MxParserTypesNames, SeenKeys, Marked, Phase1State>>;
 
     pub type ExpansionsMade = List<Product_11_12_13_14_15<Int, Symbol, Int, Int, bool>>;
 
@@ -1081,7 +1094,7 @@ impl<'mxp, Place_Mxp> Copy for MxFace<'mxp, Place_Mxp> {}
 pub mod mx_in {
     use super::*;
 
-    pub use super::mx_types::{atom, mx_eager_reader_types_lst, dotted, vec, rl_none, rl_unknown, rl_names, sh_module, sh_fun, datum_field, datum_blobref_field, datum_layout, datum_array, datum_fits, e_var, e_int, e_bool, e_str, e_char, e_float, e_sym, e_quote, e_unit, e_lambda, e_app, e_plambda, e_proj, e_if, e_letrec, e_let, e_begin, e_prompt, e_letregion, e_rlambda, e_the, e_convention, e_bloblet, e_product, e_extract, e_sum, e_tagcase, e_module, e_with, mx_parser_types_t_define, mx_parser_types_t_define_rec, t_define_type, t_define_effect, t_define_convention, t_define_syscall, t_define_generative, mx_parser_types_t_exp, p_ok, p_err, ring_rib, ring_at, ring_shape, atm_var, atm_rib_of, atm_lit, bind_rib, bind_cage, bind_direct, bind_earlier, bind_shape, s_expr, s_bvar, s_id, s_data, s_type, s_label, s_nil, s_literal, s_pair, s_import, s_export, s_mark, s_mu, s_many, s_union, s_typed, s_lambda, s_defn, s_dvar, s_kind, s_item, s_rules, lv_rib, lv_cage, lv_earlier, lv_shape, ix_leaf, ix_node, gr_names, gr_shape, env_of, act_rename, act_alias, act_module_type, act_standard_type, act_macro_head, act_mark, k_pair, k_nil, k_pvar, k_binder, k_ref, k_form, k_desc, mx_nodes_k_seq, k_other, sh_nil, sh_pair, sh_seq, sh_lit, sh_leaf, sh_union, cl_seq, cl_wild, cl_lit, cl_var, cl_nil, cl_pair, kd_ty, kd_ref, iv_rib, iv_cage, rd_at, rd_rib, dm_rib, dm_cage, nm_leaf, nm_node, Syn, SynsA, MxParserTypesNames, Relied, MxParserTypesShape, MxParserTypesShapes, MxParserTypesMembers, KDatum, KDatums, Exp, MxParserTypesTop, Presult, LoadedFile, LoadedFiles, Addr, Entries, Ring, Rings, Atm, Atms, MxTypesBind, Hole, Sty, Stys, Marked, MxTypesNamed, MuScope, Assumed, Level, Levels, Looked, Index, Group, MxEnvIndexedGroups, MxEnvIndexedEnv, Action, Actions, DefEnv, MxNodesDefEnvs, MxNodesContracts, Holes, Pinfo, Pvars, Clause, Clauses, Macro, MacroEnv, MxNodesScope, Scopes, MxNodesStrings, MxNodesKids, Rooted, MxNodesNode, MxNodesFound, Dparts, HeadReading, HeadReadings, SyntaxBinder, MxMatchBinds, MxExportsExported, Nested, MxExportsPlaces, Uses, Depths, MxFactsSteps, MxFactsLabel, MxFactsLabels, Adds, Eaches, LoadDefs, MxFilesPlaces, Files, Mades, MxFilesFilter, FileMacro, MxFilesWritten, Writtens, Signed, SignedOpt, MxInferShape, MxInferInts, Part, MxInferItem, MxInferItems, Class, Classes, Vars, LitsOf, Spans, Kd, Pkinds, MxInferCx, MxInferGroups, Took, Kds, Kinds, Unsigned, Unsigneds, Rule, Rules, MakesKnown, BindsAt, Sol, MuParts, Placement, Placements, MxInferPlaced, Zone, Spot, Spots, MxShownLabel, MxShownLabels, MxShownImports, Givens, Nstate, Pents, Gents, Lv, Lvs, Rd, Rds, Demand, Site, Sites, Thru, SiteRings, ByClause, NamedKds, SiteList, GotDemands, MxSolveStrings, MxContractsRenames, MxContractsPlaces, MxContractsNumbered, Renamings, PartVar, PlacedRenames, Anode, Anodes, NamedNs, Procedural, MxProceduralReadOne, ScopeSaved, Link, MxTopSaid, ByStates, ExpansionsMade, Freshes, MxTopCounts, Params, ScopeVars, Pairs, MxWalkRenames, MxTreeInts, NameTree, FileShape, Asked, Source, Writing, MxShapesNamed, ShapesState, MxShapesInts, MxShapesParts, MxShapesWrittenOf, Captors};
+    pub use super::mx_types::{atom, mx_eager_reader_types_lst, dotted, vec, rl_none, rl_unknown, rl_names, sh_module, sh_fun, datum_field, datum_blobref_field, datum_layout, datum_array, datum_fits, e_var, e_int, e_bool, e_str, e_char, e_float, e_sym, e_quote, e_unit, e_lambda, e_app, e_plambda, e_proj, e_if, e_letrec, e_let, e_begin, e_prompt, e_letregion, e_rlambda, e_the, e_convention, e_bloblet, e_product, e_extract, e_sum, e_tagcase, e_module, e_with, mx_parser_types_t_define, mx_parser_types_t_define_rec, t_define_type, t_define_effect, t_define_convention, t_define_syscall, t_define_generative, mx_parser_types_t_exp, p_ok, p_err, ring_rib, ring_at, ring_shape, atm_var, atm_rib_of, atm_lit, bind_rib, bind_cage, bind_direct, bind_earlier, bind_shape, s_expr, s_bvar, s_id, s_data, s_type, s_label, s_nil, s_literal, s_pair, s_import, s_export, s_mark, s_mu, s_var, s_many, s_union, s_typed, s_lambda, s_defn, s_dvar, s_kind, s_item, s_rules, lv_rib, lv_cage, lv_earlier, lv_shape, ix_leaf, ix_node, gr_names, gr_shape, env_of, act_rename, act_alias, act_module_type, act_standard_type, act_macro_head, act_mark, k_pair, k_nil, k_pvar, k_binder, k_ref, k_form, k_desc, mx_nodes_k_seq, k_other, sh_nil, sh_pair, sh_seq, sh_lit, sh_leaf, sh_union, cl_seq, cl_wild, cl_lit, cl_var, cl_nil, cl_pair, kd_ty, kd_ref, iv_rib, iv_cage, rd_at, rd_rib, dm_rib, dm_cage, nm_leaf, nm_node, Syn, SynsA, MxParserTypesNames, Relied, MxParserTypesShape, MxParserTypesShapes, MxParserTypesMembers, KDatum, KDatums, Exp, MxParserTypesTop, Presult, LoadedFile, LoadedFiles, Addr, Entries, Ring, Rings, Atm, Atms, MxTypesBind, Hole, Sty, Stys, Marked, MxTypesNamed, MuScope, Assumed, Level, Levels, Looked, Index, Group, MxEnvIndexedGroups, MxEnvIndexedEnv, Action, Actions, DefEnv, MxNodesDefEnvs, MxNodesContracts, Holes, Pinfo, Pvars, Clause, Clauses, Macro, MacroEnv, MxNodesScope, Scopes, MxNodesStrings, MxNodesKids, Rooted, MxNodesNode, MxNodesFound, Dparts, HeadReading, HeadReadings, SyntaxBinder, MxMatchBinds, MxExportsExported, Nested, MxExportsPlaces, Uses, Depths, MxFactsSteps, MxFactsLabel, MxFactsLabels, Adds, Eaches, LoadDefs, MxFilesPlaces, Files, Mades, MxFilesFilter, FileMacro, MxFilesWritten, Writtens, Signed, SignedOpt, MxInferShape, MxInferInts, Part, MxInferItem, MxInferItems, Class, Classes, Vars, LitsOf, Spans, Kd, Pkinds, MxInferCx, MxInferGroups, Took, Kds, Kinds, Unsigned, Unsigneds, Rule, Rules, MakesKnown, BindsAt, Sol, Placement, Placements, MxInferPlaced, Zone, Spot, Spots, MxShownLabel, MxShownLabels, MxShownImports, Givens, Nstate, Pents, Gents, Lv, Lvs, Rd, Rds, Demand, Site, Sites, Thru, SiteRings, ByClause, NamedKds, SiteList, GotDemands, MxSolveStrings, Tags, SeenKeys, FreshSaved, MxContractsRenames, MxContractsPlaces, MxContractsNumbered, Renamings, PartVar, PlacedRenames, Anode, Anodes, NamedNs, Procedural, MxProceduralReadOne, Phase1State, ScopeSaved, Link, MxTopSaid, ByStates, ExpansionsMade, Freshes, MxTopCounts, Params, ScopeVars, Pairs, MxWalkRenames, MxTreeInts, NameTree, FileShape, Asked, Source, Writing, MxShapesNamed, ShapesState, MxShapesInts, MxShapesParts, MxShapesWrittenOf, Captors};
 
     /// What mx-in makes (C274): its module's items, the place given, and its
     /// values, made as it is made (C433).
@@ -1095,10 +1108,9 @@ pub mod mx_in {
         pub description_heads: std::cell::Cell<Option<kayak_rt::value::Value>>,
         pub type_forms: std::cell::Cell<Option<kayak_rt::value::Value>>,
         pub description_words: std::cell::Cell<Option<kayak_rt::value::Value>>,
-        pub mus: std::cell::Cell<Option<RefAt<'mxp, Array<&'static Sty>>>>,
-        pub nmus: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub marks: std::cell::Cell<Option<RefAt<'mxp, Marked>>>,
         pub mark_count: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
+        pub oneof_apart: std::cell::Cell<Option<Str>>,
         pub bind_usage: std::cell::Cell<Option<Str>>,
         pub syntax_sigs: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
         pub path_usage: std::cell::Cell<Option<Str>>,
@@ -1149,9 +1161,9 @@ pub mod mx_in {
         pub mx_infer_members: std::cell::Cell<Option<RefAt<'mxp, List<Product_11_12<Int, MxInferInts>>>>>,
         pub mx_infer_absorbed: std::cell::Cell<Option<RefAt<'mxp, List<Product_11_12_13<Int, Int, Int>>>>>,
         pub mx_infer_roots: std::cell::Cell<Option<RefAt<'mxp, MxInferInts>>>,
-        pub built_mus: std::cell::Cell<Option<RefAt<'mxp, MuParts>>>,
+        pub built_round: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub mx_infer_got: std::cell::Cell<Option<RefAt<'mxp, List<MxInferPlaced>>>>,
-        pub shown: std::cell::Cell<Option<RefAt<'mxp, List<Product_11_12_13<Int, Str, bool>>>>>,
+        pub shown: std::cell::Cell<Option<RefAt<'mxp, List<Product_11_12<Str, bool>>>>>,
         pub mx_shown_regions: std::cell::Cell<Option<RefAt<'mxp, List<Zone>>>>,
         pub mx_shown_imported: std::cell::Cell<Option<RefAt<'mxp, MxShownImports>>>,
         pub wanted: std::cell::Cell<Option<RefAt<'mxp, Spots>>>,
@@ -1164,6 +1176,14 @@ pub mod mx_in {
         pub demands: std::cell::Cell<Option<RefAt<'mxp, List<Product_11_12<Int, &'static Demand>>>>>,
         pub mx_solve_clause_usage: std::cell::Cell<Option<Str>>,
         pub caught_sigs: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
+        pub form_key: std::cell::Cell<Option<RefAt<'mxp, Str>>>,
+        pub fresh_count: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
+        pub captors_made: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
+        pub mx_fresh_expanded: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
+        pub form_tags: std::cell::Cell<Option<RefAt<'mxp, Tags>>>,
+        pub keys_seen: std::cell::Cell<Option<RefAt<'mxp, SeenKeys>>>,
+        pub in_module: std::cell::Cell<Option<RefAt<'mxp, bool>>>,
+        pub hash_p: std::cell::Cell<Option<Int>>,
         pub pseudo_parts: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
         pub made_syntax: std::cell::Cell<Option<RefAt<'mxp, MxParserTypesNames>>>,
         pub source_base: std::cell::Cell<Option<Int>>,
@@ -1184,7 +1204,6 @@ pub mod mx_in {
         pub tried_sigs: std::cell::Cell<Option<RefAt<'mxp, List<Signed>>>>,
         pub tried_checks: std::cell::Cell<Option<RefAt<'mxp, List<Clauses>>>>,
         pub loads: std::cell::Cell<Option<RefAt<'mxp, LoadDefs>>>,
-        pub fresh_count: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub by_state: std::cell::Cell<Option<RefAt<'mxp, ByStates>>>,
         pub mx_top_globals: std::cell::Cell<Option<RefAt<'mxp, MxParserTypesNames>>>,
         pub globals_before: std::cell::Cell<Option<RefAt<'mxp, MxParserTypesNames>>>,
@@ -1233,7 +1252,6 @@ pub mod mx_in {
         pub sealed_out: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
         pub shapes_by_state: std::cell::Cell<Option<RefAt<'mxp, List<ShapesState>>>>,
         pub aliases_defined: std::cell::Cell<Option<RefAt<'mxp, List<Product_11_12<Symbol, bool>>>>>,
-        pub captors_made: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub drive_files: std::cell::Cell<Option<RefAt<'mxp, List<Str>>>>,
         pub drive_met: std::cell::Cell<Option<RefAt<'mxp, List<Product_11_12<Int, Int>>>>>,
         pub drive_at: std::cell::Cell<Option<RefAt<'mxp, FlatArray<i64>>>>,
@@ -1322,7 +1340,7 @@ pub mod mx_in {
     }
 
     #[inline]
-    pub fn mx_call_procedural(style: Int, code: Str, d: kayak_rt::value::Value, x: Int, forms: List<Str>) -> kayak_rt::Sum {
+    pub fn mx_call_procedural(style: Int, code: Str, d: kayak_rt::value::Value, x: Str, forms: List<Str>) -> kayak_rt::Sum {
         kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("apart") }, "apart", ())
     }
 
@@ -1858,210 +1876,6 @@ pub mod mx_in {
         }
     }
 
-    #[inline]
-    pub fn fail_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, message: Str, s: &'static Syn) -> Result<Void, Unwind> {
-        Ok(match mx_fail(message, syn_start(s), syn_end(s))? {})
-    }
-
-    #[inline]
-    pub fn mu_body<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, i: Int) -> &'static Sty {
-        array_ref(get(maker_st.mus.get().unwrap()), i)
-    }
-
-    pub fn copy_stys<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut from: Array<&'static Sty>, mut to: Array<&'static Sty>, mut i: Int) -> () {
-        loop {
-            if _eq(i, array_length(from)) {
-                return ();
-            } else {
-                array_set_x(to, i, array_ref(from, i));
-                i = _plus(i, int_lit(1));
-                continue;
-            }
-        }
-    }
-
-    pub fn mu_new<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>) -> Int {
-        let n = get(maker_st.nmus.get().unwrap());
-        if _eq(n, array_length(get(maker_st.mus.get().unwrap()))) {
-            let bigger = the::<Array<&'static Sty>>(make_array(_star(int_lit(2), n), s_nil()));
-            copy_stys(mxp, maker_st, get(maker_st.mus.get().unwrap()), bigger, int_lit(0));
-            set(maker_st.mus.get().unwrap(), bigger)
-        } else {
-            ()
-        };
-        set(maker_st.nmus.get().unwrap(), _plus(n, int_lit(1)));
-        n
-    }
-
-    #[inline]
-    pub fn mu_set_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, i: Int, t: &'static Sty) -> () {
-        array_set_x(get(maker_st.mus.get().unwrap()), i, t)
-    }
-
-    #[inline]
-    pub fn no_trailmark(n: Str) -> Str {
-        string_append(str_lit("`"), string_append(n, string_append(str_lit("` names no trailmark here: `(define-syntax "), string_append(n, str_lit(" (trailmark))`")))))
-    }
-
-    pub fn mark_in(mut n: Symbol, mut ms: Marked) -> Int {
-        loop {
-            if null_p(ms) {
-                if symbol_eq_p(n, symbol_lit(str_lit("else"))) {
-                    return int_lit(1);
-                } else if symbol_eq_p(n, symbol_lit(str_lit("=>"))) {
-                    return int_lit(2);
-                } else {
-                    return int_lit(0);
-                }
-            } else if symbol_eq_p(n, car(ms).0) {
-                return car(ms).1;
-            } else {
-                ms = cdr(ms);
-                continue;
-            }
-        }
-    }
-
-    pub fn words_have_p(mut n: Symbol, mut ws: kayak_rt::value::Value) -> bool {
-        loop {
-            if kayak_rt::value::pair_p(ws) {
-                if (symbol_p(kayak_rt::value::car(ws)) && symbol_eq_p(n, kayak_rt::value::unbox::<Symbol>(kayak_rt::value::car(ws)))) {
-                    return true;
-                } else {
-                    ws = kayak_rt::value::cdr(ws);
-                    continue;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-
-    pub fn reserved_sym_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, n: Symbol) -> bool {
-        (symbol_eq_p(n, string_to_symbol(str_lit("#%fx"))) || symbol_eq_p(n, string_to_symbol(str_lit("#%toplevel"))) || symbol_eq_p(n, symbol_lit(str_lit("define-syntax"))) || symbol_eq_p(n, symbol_lit(str_lit("define-syntax-rec"))) || words_have_p(n, maker_st.reserved_words.get().unwrap()))
-    }
-
-    #[inline]
-    pub fn reserved_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, name: Str) -> bool {
-        reserved_sym_p(mxp, maker_st, string_to_symbol(name))
-    }
-
-    #[inline]
-    pub fn word_in_p(name: Str, ws: kayak_rt::value::Value) -> bool {
-        words_have_p(string_to_symbol(name), ws)
-    }
-
-    pub fn desc_word_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, name: Str, head: bool) -> bool {
-        ((_gt(string_length(name), int_lit(0)) && char_eq_p(string_ref(name, int_lit(0)), '@')) || (_gt(string_length(name), int_lit(1)) && string_eq_p(substring(name, int_lit(0), int_lit(2)), str_lit("#%"))) || word_in_p(name, maker_st.description_words.get().unwrap()) || (head && word_in_p(name, maker_st.description_heads.get().unwrap())))
-    }
-
-    #[inline]
-    pub fn type_form_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, name: Str) -> bool {
-        word_in_p(name, maker_st.type_forms.get().unwrap())
-    }
-
-    #[inline]
-    pub fn reserved_syn_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> Result<bool, Unwind> {
-        Ok((syn_symbol_p(s) && reserved_sym_p(mxp, maker_st, syn_symbol(mxp, maker_st, s)?)))
-    }
-
-    pub fn mx_types_name_in_p(mut n: Symbol, mut ns: MxParserTypesNames) -> bool {
-        loop {
-            if not(null_p(ns)) {
-                if symbol_eq_p(n, car(ns)) {
-                    return true;
-                } else {
-                    ns = cdr(ns);
-                    continue;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-
-    pub fn pure_hole_p(h: List<Hole>) -> bool {
-        (not(null_p(h)) && not(null_p(car(h).1)) && syn_symbol_p(car(car(h).1)) && string_eq_p(syn_name(car(car(h).1)), str_lit("pure")))
-    }
-
-    pub fn mx_types_kind_of(t: &'static Sty) -> Int {
-        let tagcase_ = t;
-        match *tagcase_ {
-            mx_types::Sty::SExpr() => {
-                int_lit(0)
-            }
-            mx_types::Sty::SBvar() => {
-                int_lit(1)
-            }
-            mx_types::Sty::SId() => {
-                int_lit(2)
-            }
-            mx_types::Sty::SData() => {
-                int_lit(3)
-            }
-            mx_types::Sty::SType() => {
-                int_lit(4)
-            }
-            mx_types::Sty::SLabel() => {
-                int_lit(5)
-            }
-            mx_types::Sty::SNil() => {
-                int_lit(6)
-            }
-            mx_types::Sty::SLiteral(n) => {
-                int_lit(7)
-            }
-            mx_types::Sty::SPair(a, d) => {
-                int_lit(8)
-            }
-            mx_types::Sty::SLambda() => {
-                int_lit(10)
-            }
-            mx_types::Sty::SDefn() => {
-                int_lit(11)
-            }
-            mx_types::Sty::SDvar() => {
-                int_lit(12)
-            }
-            mx_types::Sty::SKind() => {
-                int_lit(13)
-            }
-            mx_types::Sty::SItem() => {
-                int_lit(14)
-            }
-            mx_types::Sty::SMark(n, i) => {
-                int_lit(15)
-            }
-            mx_types::Sty::SRules() => {
-                int_lit(16)
-            }
-            _ => {
-                let y = tagcase_;
-                int_lit(9)
-            }
-        }
-    }
-
-    pub fn affine_kind_p(t: &'static Sty) -> bool {
-        let k = mx_types_kind_of(t);
-        not((_eq(k, int_lit(1)) || _eq(k, int_lit(2)) || _eq(k, int_lit(5)) || _eq(k, int_lit(3)) || _eq(k, int_lit(4)) || _eq(k, int_lit(12)) || _eq(k, int_lit(13))))
-    }
-
-    pub fn mx_types_int_in_p(mut i: Int, mut is: List<Int>) -> bool {
-        loop {
-            if not(null_p(is)) {
-                if _eq(i, car(is)) {
-                    return true;
-                } else {
-                    is = cdr(is);
-                    continue;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-
     pub fn syn_nil_p(s: &'static Syn) -> bool {
         let tagcase_ = s;
         match *tagcase_ {
@@ -2218,14 +2032,14 @@ pub mod mx_in {
                 if null_p(items) {
                     str_lit("()")
                 } else {
-                    string_append(str_lit("("), string_append(mx_types_show_each(items), str_lit(")")))
+                    string_append(str_lit("("), string_append(mx_syntax_show_each(items), str_lit(")")))
                 }
             }
             mx_types::Syn::Dotted(items, tail, d, a, b, x) => {
-                string_append(str_lit("("), string_append(mx_types_show_each(items), string_append(str_lit(" . "), string_append(show_syn(tail), str_lit(")")))))
+                string_append(str_lit("("), string_append(mx_syntax_show_each(items), string_append(str_lit(" . "), string_append(show_syn(tail), str_lit(")")))))
             }
             mx_types::Syn::Vec(items, d, a, b, x) => {
-                string_append(str_lit("#("), string_append(mx_types_show_each(items), str_lit(")")))
+                string_append(str_lit("#("), string_append(mx_syntax_show_each(items), str_lit(")")))
             }
             mx_types::Syn::Atom(d, a, b, x) => {
                 show_datum(d)
@@ -2233,14 +2047,637 @@ pub mod mx_in {
         }
     }
 
-    pub fn mx_types_show_each(xs: SynsA) -> Str {
+    pub fn mx_syntax_show_each(xs: SynsA) -> Str {
         if null_p(xs) {
             str_lit("")
         } else if null_p(cdr(xs)) {
             show_syn(car(xs))
         } else {
-            string_append(show_syn(car(xs)), string_append(str_lit(" "), mx_types_show_each(cdr(xs))))
+            string_append(show_syn(car(xs)), string_append(str_lit(" "), mx_syntax_show_each(cdr(xs))))
         }
+    }
+
+    pub fn words_have_p(mut n: Symbol, mut ws: kayak_rt::value::Value) -> bool {
+        loop {
+            if kayak_rt::value::pair_p(ws) {
+                if (symbol_p(kayak_rt::value::car(ws)) && symbol_eq_p(n, kayak_rt::value::unbox::<Symbol>(kayak_rt::value::car(ws)))) {
+                    return true;
+                } else {
+                    ws = kayak_rt::value::cdr(ws);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    pub fn reserved_sym_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, n: Symbol) -> bool {
+        (symbol_eq_p(n, string_to_symbol(str_lit("#%fx"))) || symbol_eq_p(n, string_to_symbol(str_lit("#%toplevel"))) || symbol_eq_p(n, symbol_lit(str_lit("define-syntax"))) || symbol_eq_p(n, symbol_lit(str_lit("define-syntax-rec"))) || words_have_p(n, maker_st.reserved_words.get().unwrap()))
+    }
+
+    #[inline]
+    pub fn reserved_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, name: Str) -> bool {
+        reserved_sym_p(mxp, maker_st, string_to_symbol(name))
+    }
+
+    #[inline]
+    pub fn word_in_p(name: Str, ws: kayak_rt::value::Value) -> bool {
+        words_have_p(string_to_symbol(name), ws)
+    }
+
+    pub fn desc_word_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, name: Str, head: bool) -> bool {
+        ((_gt(string_length(name), int_lit(0)) && char_eq_p(string_ref(name, int_lit(0)), '@')) || (_gt(string_length(name), int_lit(1)) && string_eq_p(substring(name, int_lit(0), int_lit(2)), str_lit("#%"))) || word_in_p(name, maker_st.description_words.get().unwrap()) || (head && word_in_p(name, maker_st.description_heads.get().unwrap())))
+    }
+
+    #[inline]
+    pub fn type_form_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, name: Str) -> bool {
+        word_in_p(name, maker_st.type_forms.get().unwrap())
+    }
+
+    #[inline]
+    pub fn reserved_syn_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> Result<bool, Unwind> {
+        Ok((syn_symbol_p(s) && reserved_sym_p(mxp, maker_st, syn_symbol(mxp, maker_st, s)?)))
+    }
+
+    pub fn mx_syntax_name_in_p(mut n: Symbol, mut ns: MxParserTypesNames) -> bool {
+        loop {
+            if not(null_p(ns)) {
+                if symbol_eq_p(n, car(ns)) {
+                    return true;
+                } else {
+                    ns = cdr(ns);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    pub fn mx_syntax_int_in_p(mut i: Int, mut is: List<Int>) -> bool {
+        loop {
+            if not(null_p(is)) {
+                if _eq(i, car(is)) {
+                    return true;
+                } else {
+                    is = cdr(is);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn fail_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, message: Str, s: &'static Syn) -> Result<Void, Unwind> {
+        Ok(match mx_fail(message, syn_start(s), syn_end(s))? {})
+    }
+
+    #[inline]
+    pub fn one_var<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, c: Stys, f: &'mxp dyn Fn(&'static Sty) -> &'static Sty) -> Stys {
+        if null_p(c) {
+            nil::<&'static mx_types::Sty>()
+        } else {
+            kayak_rt::cons(f(car(c)), kayak_rt::nil())
+        }
+    }
+
+    #[inline]
+    pub fn or_same(c: Stys, t: &'static Sty) -> &'static Sty {
+        if null_p(c) {
+            t
+        } else {
+            car(c)
+        }
+    }
+
+    pub fn nth_sty(mut xs: Stys, mut i: Int) -> &'static Sty {
+        loop {
+            if _eq(i, int_lit(0)) {
+                return car(xs);
+            } else {
+                (xs, i) = (cdr(xs), _minus(i, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    pub fn vars_map<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty, k: Int, op: Int, d: Int, x: &'static Sty, env: Stys) -> Stys {
+        let tagcase_ = t;
+        match *tagcase_ {
+            mx_types::Sty::SVar(j) => {
+                if _lt(j, k) {
+                    nil::<&'static mx_types::Sty>()
+                } else if _eq(op, int_lit(0)) {
+                    kayak_rt::cons(s_var(_plus(j, d)), kayak_rt::nil())
+                } else if _eq(op, int_lit(2)) {
+                    kayak_rt::cons(nth_sty(env, _minus(j, k)), kayak_rt::nil())
+                } else if _eq(op, int_lit(3)) {
+                    if _eq(j, k) {
+                        kayak_rt::cons(t, kayak_rt::nil())
+                    } else {
+                        nil::<&'static mx_types::Sty>()
+                    }
+                } else if _gt(j, k) {
+                    kayak_rt::cons(s_var(_minus(j, int_lit(1))), kayak_rt::nil())
+                } else if _eq(k, int_lit(0)) {
+                    kayak_rt::cons(x, kayak_rt::nil())
+                } else {
+                    kayak_rt::cons(shift(mxp, maker_st, x, k, int_lit(0)), kayak_rt::nil())
+                }
+            }
+            mx_types::Sty::SMu(b, r, p) => {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, _plus(k, int_lit(1)), op, d, x, env), lambda1(move |c: &'static Sty| {
+                    s_mu(c, r, p)
+                }))
+            }
+            mx_types::Sty::SPair(a, b) => {
+                let (a2, b2) = (vars_map(mxp, maker_st, a, k, op, d, x, env), vars_map(mxp, maker_st, b, k, op, d, x, env));
+                if (null_p(a2) && null_p(b2)) {
+                    nil::<&'static mx_types::Sty>()
+                } else {
+                    kayak_rt::cons(s_pair(or_same(a2, a), or_same(b2, b)), kayak_rt::nil())
+                }
+            }
+            mx_types::Sty::SImport(b, y) => {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), lambda1(move |c: &'static Sty| {
+                    s_import(c, y)
+                }))
+            }
+            mx_types::Sty::SExport(b, y) => {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), lambda1(move |c: &'static Sty| {
+                    s_export(c, y)
+                }))
+            }
+            mx_types::Sty::SMany(b) => {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), lambda1(move |c: &'static Sty| {
+                    s_many(c)
+                }))
+            }
+            mx_types::Sty::STyped(b, h) => {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), lambda1(move |c: &'static Sty| {
+                    s_typed(c, h)
+                }))
+            }
+            mx_types::Sty::SUnion(ms) => {
+                let c = vars_map_each(mxp, maker_st, ms, k, op, d, x, env);
+                if null_p(c) {
+                    nil::<&'static mx_types::Sty>()
+                } else {
+                    kayak_rt::cons(s_union(car(c)), kayak_rt::nil())
+                }
+            }
+            _ => {
+                let y = tagcase_;
+                nil::<&'static mx_types::Sty>()
+            }
+        }
+    }
+
+    pub fn vars_map_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, ms: Stys, k: Int, op: Int, d: Int, x: &'static Sty, env: Stys) -> List<Stys> {
+        if null_p(ms) {
+            nil::<List<&'static mx_types::Sty>>()
+        } else {
+            let (m, r) = (vars_map(mxp, maker_st, car(ms), k, op, d, x, env), vars_map_each(mxp, maker_st, cdr(ms), k, op, d, x, env));
+            if (null_p(m) && null_p(r)) {
+                nil::<List<&'static mx_types::Sty>>()
+            } else {
+                kayak_rt::cons(cons(or_same(m, car(ms)), if null_p(r) {
+                    cdr(ms)
+                } else {
+                    car(r)
+                }), kayak_rt::nil())
+            }
+        }
+    }
+
+    #[inline]
+    pub fn shift<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty, d: Int, k: Int) -> &'static Sty {
+        or_same(vars_map(mxp, maker_st, t, k, int_lit(0), d, t, nil::<&'static mx_types::Sty>()), t)
+    }
+
+    #[inline]
+    pub fn subst<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty, k: Int, x: &'static Sty) -> &'static Sty {
+        or_same(vars_map(mxp, maker_st, t, k, int_lit(1), int_lit(0), x, nil::<&'static mx_types::Sty>()), t)
+    }
+
+    #[inline]
+    pub fn mx_types_unfold_mu<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty) -> &'static Sty {
+        let tagcase_ = t;
+        match *tagcase_ {
+            mx_types::Sty::SMu(b, r, p) => {
+                subst(mxp, maker_st, b, int_lit(0), t)
+            }
+            _ => {
+                let y = tagcase_;
+                t
+            }
+        }
+    }
+
+    #[inline]
+    pub fn closed_by<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty, env: Stys) -> &'static Sty {
+        or_same(vars_map(mxp, maker_st, t, int_lit(0), int_lit(2), int_lit(0), t, env), t)
+    }
+
+    #[inline]
+    pub fn free_at_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty, k: Int) -> bool {
+        not(null_p(vars_map(mxp, maker_st, t, k, int_lit(0), int_lit(1), t, nil::<&'static mx_types::Sty>())))
+    }
+
+    #[inline]
+    pub fn refers_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty, k: Int) -> bool {
+        not(null_p(vars_map(mxp, maker_st, t, k, int_lit(3), int_lit(0), t, nil::<&'static mx_types::Sty>())))
+    }
+
+    #[inline]
+    pub fn lowered<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty) -> Stys {
+        if refers_p(mxp, maker_st, t, int_lit(0)) {
+            nil::<&'static mx_types::Sty>()
+        } else {
+            kayak_rt::cons(subst(mxp, maker_st, t, int_lit(0), s_nil()), kayak_rt::nil())
+        }
+    }
+
+    #[inline]
+    pub fn no_trailmark(n: Str) -> Str {
+        string_append(str_lit("`"), string_append(n, string_append(str_lit("` names no trailmark here: `(define-syntax "), string_append(n, str_lit(" (trailmark))`")))))
+    }
+
+    pub fn mark_in(mut n: Symbol, mut ms: Marked) -> Int {
+        loop {
+            if null_p(ms) {
+                if symbol_eq_p(n, symbol_lit(str_lit("else"))) {
+                    return int_lit(1);
+                } else if symbol_eq_p(n, symbol_lit(str_lit("=>"))) {
+                    return int_lit(2);
+                } else {
+                    return int_lit(0);
+                }
+            } else if symbol_eq_p(n, car(ms).0) {
+                return car(ms).1;
+            } else {
+                ms = cdr(ms);
+                continue;
+            }
+        }
+    }
+
+    pub fn pure_hole_p(h: List<Hole>) -> bool {
+        (not(null_p(h)) && not(null_p(car(h).1)) && syn_symbol_p(car(car(h).1)) && string_eq_p(syn_name(car(car(h).1)), str_lit("pure")))
+    }
+
+    pub fn mx_types_kind_of(t: &'static Sty) -> Int {
+        let tagcase_ = t;
+        match *tagcase_ {
+            mx_types::Sty::SExpr() => {
+                int_lit(0)
+            }
+            mx_types::Sty::SBvar() => {
+                int_lit(1)
+            }
+            mx_types::Sty::SId() => {
+                int_lit(2)
+            }
+            mx_types::Sty::SData() => {
+                int_lit(3)
+            }
+            mx_types::Sty::SType() => {
+                int_lit(4)
+            }
+            mx_types::Sty::SLabel() => {
+                int_lit(5)
+            }
+            mx_types::Sty::SNil() => {
+                int_lit(6)
+            }
+            mx_types::Sty::SLiteral(n) => {
+                int_lit(7)
+            }
+            mx_types::Sty::SPair(a, d) => {
+                int_lit(8)
+            }
+            mx_types::Sty::SLambda() => {
+                int_lit(10)
+            }
+            mx_types::Sty::SDefn() => {
+                int_lit(11)
+            }
+            mx_types::Sty::SDvar() => {
+                int_lit(12)
+            }
+            mx_types::Sty::SKind() => {
+                int_lit(13)
+            }
+            mx_types::Sty::SItem() => {
+                int_lit(14)
+            }
+            mx_types::Sty::SMark(n, i) => {
+                int_lit(15)
+            }
+            mx_types::Sty::SRules() => {
+                int_lit(16)
+            }
+            _ => {
+                let y = tagcase_;
+                int_lit(9)
+            }
+        }
+    }
+
+    pub fn affine_kind_p(t: &'static Sty) -> bool {
+        let k = mx_types_kind_of(t);
+        not((_eq(k, int_lit(1)) || _eq(k, int_lit(2)) || _eq(k, int_lit(5)) || _eq(k, int_lit(3)) || _eq(k, int_lit(4)) || _eq(k, int_lit(12)) || _eq(k, int_lit(13))))
+    }
+
+    pub fn any_free_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys) -> bool {
+        loop {
+            if not(null_p(ms)) {
+                if free_at_p(mxp, maker_st, car(ms), int_lit(0)) {
+                    return true;
+                } else {
+                    ms = cdr(ms);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn mx_types_closed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, ms: Stys, env: Stys) -> Stys {
+        if null_p(ms) {
+            nil::<&'static mx_types::Sty>()
+        } else {
+            cons(closed_by(mxp, maker_st, car(ms), env), mx_types_closed_each(mxp, maker_st, cdr(ms), env))
+        }
+    }
+
+    pub fn unfold<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut t: &'static Sty) -> &'static Sty {
+        loop {
+            let tagcase_ = t;
+            match *tagcase_ {
+                mx_types::Sty::SImport(b, x) => {
+                    t = b;
+                    continue;
+                }
+                mx_types::Sty::SExport(b, x) => {
+                    t = b;
+                    continue;
+                }
+                mx_types::Sty::SMany(b) => {
+                    t = b;
+                    continue;
+                }
+                mx_types::Sty::STyped(b, h) => {
+                    t = b;
+                    continue;
+                }
+                mx_types::Sty::SMu(b, r, p) => {
+                    t = mx_types_unfold_mu(mxp, maker_st, t);
+                    continue;
+                }
+                _ => {
+                    let y = tagcase_;
+                    return t;
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn literal_of(t: &'static Sty) -> Symbol {
+        let tagcase_ = t;
+        match *tagcase_ {
+            mx_types::Sty::SLiteral(n) => {
+                n
+            }
+            _ => {
+                let y = tagcase_;
+                string_to_symbol(str_lit(""))
+            }
+        }
+    }
+
+    #[inline]
+    pub fn mark_of(t: &'static Sty) -> Int {
+        let tagcase_ = t;
+        match *tagcase_ {
+            mx_types::Sty::SMark(n, i) => {
+                i
+            }
+            _ => {
+                let y = tagcase_;
+                int_lit(0)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn mx_types_binder_kind_p(k: Int) -> bool {
+        (_eq(k, int_lit(1)) || _eq(k, int_lit(12)))
+    }
+
+    pub fn any_kind_p(k: Int) -> bool {
+        (_eq(k, int_lit(0)) || _eq(k, int_lit(3)) || _eq(k, int_lit(4)) || _eq(k, int_lit(11)) || _eq(k, int_lit(13)) || _eq(k, int_lit(14)))
+    }
+
+    pub fn overlap_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, a0: &'static Sty, b0: &'static Sty, depth: Int) -> bool {
+        let (a, b) = (unfold(mxp, maker_st, a0), unfold(mxp, maker_st, b0));
+        let tagcase_ = a;
+        match *tagcase_ {
+            mx_types::Sty::SUnion(ms) => {
+                any_overlaps_p(mxp, maker_st, ms, b, depth)
+            }
+            _ => {
+                let y = tagcase_;
+                let tagcase_ = b;
+                match *tagcase_ {
+                    mx_types::Sty::SUnion(ms) => {
+                        any_overlaps_of_p(mxp, maker_st, a, ms, depth)
+                    }
+                    _ => {
+                        let z = tagcase_;
+                        overlap_base_p(mxp, maker_st, a, b, depth)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn any_overlaps_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut b: &'static Sty, mut depth: Int) -> bool {
+        loop {
+            if not(null_p(ms)) {
+                if overlap_p(mxp, maker_st, car(ms), b, depth) {
+                    return true;
+                } else {
+                    ms = cdr(ms);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    pub fn any_overlaps_of_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut a: &'static Sty, mut ms: Stys, mut depth: Int) -> bool {
+        loop {
+            if not(null_p(ms)) {
+                if overlap_p(mxp, maker_st, a, car(ms), depth) {
+                    return true;
+                } else {
+                    ms = cdr(ms);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    pub fn overlap_base_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, a: &'static Sty, b: &'static Sty, depth: Int) -> bool {
+        let (ka, kb) = (mx_types_kind_of(a), mx_types_kind_of(b));
+        if (_eq(ka, int_lit(15)) && _eq(kb, int_lit(15))) {
+            _eq(mark_of(a), mark_of(b))
+        } else if ((_eq(ka, int_lit(15)) && _eq(kb, int_lit(2))) || (_eq(ka, int_lit(2)) && _eq(kb, int_lit(15)))) {
+            true
+        } else if (_eq(ka, int_lit(15)) || _eq(kb, int_lit(15))) {
+            false
+        } else if (_eq(ka, int_lit(7)) && (_eq(kb, int_lit(0)) || mx_types_binder_kind_p(kb))) {
+            false
+        } else if (_eq(kb, int_lit(7)) && (_eq(ka, int_lit(0)) || mx_types_binder_kind_p(ka))) {
+            false
+        } else if (_eq(ka, int_lit(10)) || _eq(kb, int_lit(10))) {
+            let other = if _eq(ka, int_lit(10)) {
+                kb
+            } else {
+                ka
+            };
+            not((_eq(other, int_lit(7)) || mx_types_binder_kind_p(other) || _eq(other, int_lit(2)) || _eq(other, int_lit(6)) || _eq(other, int_lit(5))))
+        } else if (_eq(ka, int_lit(7)) && _eq(kb, int_lit(7))) {
+            symbol_eq_p(literal_of(a), literal_of(b))
+        } else if ((_eq(ka, int_lit(7)) && _eq(kb, int_lit(2))) || (_eq(ka, int_lit(2)) && _eq(kb, int_lit(7)))) {
+            true
+        } else if (any_kind_p(ka) || any_kind_p(kb)) {
+            true
+        } else if (_eq(ka, int_lit(8)) && _eq(kb, int_lit(8))) {
+            (_eq(depth, int_lit(0)) || {
+                let tagcase_ = a;
+                match *tagcase_ {
+                    mx_types::Sty::SPair(a1, d1) => {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            mx_types::Sty::SPair(a2, d2) => {
+                                (overlap_p(mxp, maker_st, a1, a2, _minus(depth, int_lit(1))) && overlap_p(mxp, maker_st, d1, d2, _minus(depth, int_lit(1))))
+                            }
+                            _ => {
+                                let y = tagcase_;
+                                false
+                            }
+                        }
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        false
+                    }
+                }
+            })
+        } else if (_eq(ka, int_lit(6)) && _eq(kb, int_lit(6))) {
+            true
+        } else if (_eq(ka, int_lit(5)) && _eq(kb, int_lit(5))) {
+            true
+        } else if (_eq(ka, int_lit(5)) || _eq(kb, int_lit(5))) {
+            false
+        } else if ((mx_types_binder_kind_p(ka) || _eq(ka, int_lit(2))) && (mx_types_binder_kind_p(kb) || _eq(kb, int_lit(2)))) {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn any_overlap_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys) -> bool {
+        loop {
+            if not(null_p(ms)) {
+                if any_overlaps_of_p(mxp, maker_st, car(ms), cdr(ms), int_lit(6)) {
+                    return true;
+                } else {
+                    ms = cdr(ms);
+                    continue;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    pub fn oneofs_apart_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut t: &'static Sty, mut env: Stys) -> bool {
+        loop {
+            let tagcase_ = t;
+            match *tagcase_ {
+                mx_types::Sty::SMu(b, r, p) => {
+                    (t, env) = (b, cons(closed_by(mxp, maker_st, t, env), env));
+                    continue;
+                }
+                mx_types::Sty::SUnion(ms) => {
+                    return ((not(any_free_p(mxp, maker_st, ms)) || not(any_overlap_p(mxp, maker_st, mx_types_closed_each(mxp, maker_st, ms, env)))) && all_apart_p(mxp, maker_st, ms, env));
+                }
+                mx_types::Sty::SPair(a, d) => {
+                    if oneofs_apart_p(mxp, maker_st, a, env) {
+                        t = d;
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+                mx_types::Sty::SImport(b, x) => {
+                    t = b;
+                    continue;
+                }
+                mx_types::Sty::SExport(b, x) => {
+                    t = b;
+                    continue;
+                }
+                mx_types::Sty::SMany(b) => {
+                    t = b;
+                    continue;
+                }
+                mx_types::Sty::STyped(b, h) => {
+                    t = b;
+                    continue;
+                }
+                _ => {
+                    let y = tagcase_;
+                    return true;
+                }
+            }
+        }
+    }
+
+    pub fn all_apart_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut env: Stys) -> bool {
+        loop {
+            if null_p(ms) {
+                return true;
+            } else {
+                if oneofs_apart_p(mxp, maker_st, car(ms), env) {
+                    ms = cdr(ms);
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+        }
+    }
+
+    pub fn mu_read<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, t: &'static Sty, s: &'static Syn, scope: MuScope) -> Result<&'static Sty, Unwind> {
+        if (null_p(scope) && not(oneofs_apart_p(mxp, maker_st, t, nil::<&'static mx_types::Sty>()))) {
+            match fail_at(mxp, maker_st, mx_fail, maker_st.oneof_apart.get().unwrap(), s)? {}
+        } else {
+            ()
+        };
+        Ok(t)
     }
 
     pub fn cars_at(es: Entries, d: Product_11_12<Addr, Int>) -> Entries {
@@ -2251,7 +2688,7 @@ pub mod mx_in {
         }
     }
 
-    pub fn seq_body<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, elem: &'static Sty, id: Int) -> Stys {
+    pub fn seq_body<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, elem: &'static Sty) -> Stys {
         let (none, d) = (s_export(s_nil(), bind_rib(nil::<Product_11_12<List<bool>, Int>>())), Product_11_12(the::<Addr>(kayak_rt::cons(false, kayak_rt::nil())), int_lit(2)));
         let tagcase_ = elem;
         match *tagcase_ {
@@ -2259,17 +2696,17 @@ pub mod mx_in {
                 let tagcase_ = bd;
                 match *tagcase_ {
                     mx_types::MxTypesBind::BindRib(es) => {
-                        kayak_rt::cons(none, kayak_rt::cons(s_export(s_pair(e, s_mu(id)), bind_rib(cars_at(es, d))), kayak_rt::nil()))
+                        kayak_rt::cons(none, kayak_rt::cons(s_export(s_pair(e, s_var(int_lit(0))), bind_rib(cars_at(es, d))), kayak_rt::nil()))
                     }
                     _ => {
                         let y = tagcase_;
-                        kayak_rt::cons(none, kayak_rt::cons(s_export(s_pair(elem, s_mu(id)), bind_rib(kayak_rt::cons(Product_11_12(the::<Addr>(kayak_rt::cons(true, kayak_rt::nil())), int_lit(2)), kayak_rt::cons(d, kayak_rt::nil())))), kayak_rt::nil()))
+                        kayak_rt::cons(none, kayak_rt::cons(s_export(s_pair(elem, s_var(int_lit(0))), bind_rib(kayak_rt::cons(Product_11_12(the::<Addr>(kayak_rt::cons(true, kayak_rt::nil())), int_lit(2)), kayak_rt::cons(d, kayak_rt::nil())))), kayak_rt::nil()))
                     }
                 }
             }
             _ => {
                 let y = tagcase_;
-                kayak_rt::cons(s_nil(), kayak_rt::cons(s_pair(elem, s_mu(id)), kayak_rt::nil()))
+                kayak_rt::cons(s_nil(), kayak_rt::cons(s_pair(elem, s_var(int_lit(0))), kayak_rt::nil()))
             }
         }
     }
@@ -2290,9 +2727,7 @@ pub mod mx_in {
                 }
             }
         };
-        let id = mu_new(mxp, maker_st);
-        mu_set_x(mxp, maker_st, id, s_union(seq_body(mxp, maker_st, elem, id)));
-        s_mu(id)
+        s_mu(s_union(seq_body(mxp, maker_st, elem)), int_lit(-1), int_lit(-1))
     }
 
     #[inline]
@@ -2300,15 +2735,17 @@ pub mod mx_in {
         (syn_symbol_p(s) && string_eq_p(syn_name(s), str_lit("...")))
     }
 
-    pub fn scope_of(mut n: Symbol, mut scope: MuScope) -> Int {
-        loop {
-            if null_p(scope) {
-                return int_lit(-1);
-            } else if symbol_eq_p(n, car(scope).0) {
-                return car(scope).1;
+    pub fn scope_of(n: Symbol, scope: MuScope) -> Int {
+        if null_p(scope) {
+            int_lit(-1)
+        } else if (car(scope).1 && symbol_eq_p(n, car(scope).0)) {
+            int_lit(0)
+        } else {
+            let i = scope_of(n, cdr(scope));
+            if _lt(i, int_lit(0)) {
+                i
             } else {
-                scope = cdr(scope);
-                continue;
+                _plus(i, int_lit(1))
             }
         }
     }
@@ -2330,7 +2767,7 @@ pub mod mx_in {
         let n = syn_symbol(mxp, maker_st, s)?;
         let mu = scope_of(n, scope);
         if _gt_eq(mu, int_lit(0)) {
-            Ok(s_mu(mu))
+            Ok(s_var(mu))
         } else {
             let t = mx_types_named_of(n, mx_types_named);
             if null_p(t) {
@@ -2398,8 +2835,12 @@ pub mod mx_in {
         loop {
             let tagcase_ = t;
             match *tagcase_ {
-                mx_types::Sty::SMu(j) => {
+                mx_types::Sty::SVar(j) => {
                     return not(_eq(j, id));
+                }
+                mx_types::Sty::SMu(b, r, p) => {
+                    (t, id) = (b, _plus(id, int_lit(1)));
+                    continue;
                 }
                 mx_types::Sty::SImport(b, x) => {
                     t = b;
@@ -2677,203 +3118,6 @@ pub mod mx_in {
         }
     }
 
-    pub fn unfold<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut t: &'static Sty) -> &'static Sty {
-        loop {
-            let tagcase_ = t;
-            match *tagcase_ {
-                mx_types::Sty::SImport(b, x) => {
-                    t = b;
-                    continue;
-                }
-                mx_types::Sty::SExport(b, x) => {
-                    t = b;
-                    continue;
-                }
-                mx_types::Sty::SMany(b) => {
-                    t = b;
-                    continue;
-                }
-                mx_types::Sty::STyped(b, h) => {
-                    t = b;
-                    continue;
-                }
-                mx_types::Sty::SMu(id) => {
-                    t = mu_body(mxp, maker_st, id);
-                    continue;
-                }
-                _ => {
-                    let y = tagcase_;
-                    return t;
-                }
-            }
-        }
-    }
-
-    #[inline]
-    pub fn literal_of(t: &'static Sty) -> Symbol {
-        let tagcase_ = t;
-        match *tagcase_ {
-            mx_types::Sty::SLiteral(n) => {
-                n
-            }
-            _ => {
-                let y = tagcase_;
-                string_to_symbol(str_lit(""))
-            }
-        }
-    }
-
-    #[inline]
-    pub fn mark_of(t: &'static Sty) -> Int {
-        let tagcase_ = t;
-        match *tagcase_ {
-            mx_types::Sty::SMark(n, i) => {
-                i
-            }
-            _ => {
-                let y = tagcase_;
-                int_lit(0)
-            }
-        }
-    }
-
-    #[inline]
-    pub fn mx_types_binder_kind_p(k: Int) -> bool {
-        (_eq(k, int_lit(1)) || _eq(k, int_lit(12)))
-    }
-
-    pub fn any_kind_p(k: Int) -> bool {
-        (_eq(k, int_lit(0)) || _eq(k, int_lit(3)) || _eq(k, int_lit(4)) || _eq(k, int_lit(11)) || _eq(k, int_lit(13)) || _eq(k, int_lit(14)))
-    }
-
-    pub fn overlap_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, a0: &'static Sty, b0: &'static Sty, depth: Int) -> bool {
-        let (a, b) = (unfold(mxp, maker_st, a0), unfold(mxp, maker_st, b0));
-        let tagcase_ = a;
-        match *tagcase_ {
-            mx_types::Sty::SUnion(ms) => {
-                any_overlaps_p(mxp, maker_st, ms, b, depth)
-            }
-            _ => {
-                let y = tagcase_;
-                let tagcase_ = b;
-                match *tagcase_ {
-                    mx_types::Sty::SUnion(ms) => {
-                        any_overlaps_of_p(mxp, maker_st, a, ms, depth)
-                    }
-                    _ => {
-                        let z = tagcase_;
-                        overlap_base_p(mxp, maker_st, a, b, depth)
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn any_overlaps_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut b: &'static Sty, mut depth: Int) -> bool {
-        loop {
-            if not(null_p(ms)) {
-                if overlap_p(mxp, maker_st, car(ms), b, depth) {
-                    return true;
-                } else {
-                    ms = cdr(ms);
-                    continue;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-
-    pub fn any_overlaps_of_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut a: &'static Sty, mut ms: Stys, mut depth: Int) -> bool {
-        loop {
-            if not(null_p(ms)) {
-                if overlap_p(mxp, maker_st, a, car(ms), depth) {
-                    return true;
-                } else {
-                    ms = cdr(ms);
-                    continue;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-
-    pub fn overlap_base_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, a: &'static Sty, b: &'static Sty, depth: Int) -> bool {
-        let (ka, kb) = (mx_types_kind_of(a), mx_types_kind_of(b));
-        if (_eq(ka, int_lit(15)) && _eq(kb, int_lit(15))) {
-            _eq(mark_of(a), mark_of(b))
-        } else if ((_eq(ka, int_lit(15)) && _eq(kb, int_lit(2))) || (_eq(ka, int_lit(2)) && _eq(kb, int_lit(15)))) {
-            true
-        } else if (_eq(ka, int_lit(15)) || _eq(kb, int_lit(15))) {
-            false
-        } else if (_eq(ka, int_lit(7)) && (_eq(kb, int_lit(0)) || mx_types_binder_kind_p(kb))) {
-            false
-        } else if (_eq(kb, int_lit(7)) && (_eq(ka, int_lit(0)) || mx_types_binder_kind_p(ka))) {
-            false
-        } else if (_eq(ka, int_lit(10)) || _eq(kb, int_lit(10))) {
-            let other = if _eq(ka, int_lit(10)) {
-                kb
-            } else {
-                ka
-            };
-            not((_eq(other, int_lit(7)) || mx_types_binder_kind_p(other) || _eq(other, int_lit(2)) || _eq(other, int_lit(6)) || _eq(other, int_lit(5))))
-        } else if (_eq(ka, int_lit(7)) && _eq(kb, int_lit(7))) {
-            symbol_eq_p(literal_of(a), literal_of(b))
-        } else if ((_eq(ka, int_lit(7)) && _eq(kb, int_lit(2))) || (_eq(ka, int_lit(2)) && _eq(kb, int_lit(7)))) {
-            true
-        } else if (any_kind_p(ka) || any_kind_p(kb)) {
-            true
-        } else if (_eq(ka, int_lit(8)) && _eq(kb, int_lit(8))) {
-            (_eq(depth, int_lit(0)) || {
-                let tagcase_ = a;
-                match *tagcase_ {
-                    mx_types::Sty::SPair(a1, d1) => {
-                        let tagcase_ = b;
-                        match *tagcase_ {
-                            mx_types::Sty::SPair(a2, d2) => {
-                                (overlap_p(mxp, maker_st, a1, a2, _minus(depth, int_lit(1))) && overlap_p(mxp, maker_st, d1, d2, _minus(depth, int_lit(1))))
-                            }
-                            _ => {
-                                let y = tagcase_;
-                                false
-                            }
-                        }
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        false
-                    }
-                }
-            })
-        } else if (_eq(ka, int_lit(6)) && _eq(kb, int_lit(6))) {
-            true
-        } else if (_eq(ka, int_lit(5)) && _eq(kb, int_lit(5))) {
-            true
-        } else if (_eq(ka, int_lit(5)) || _eq(kb, int_lit(5))) {
-            false
-        } else if ((mx_types_binder_kind_p(ka) || _eq(ka, int_lit(2))) && (mx_types_binder_kind_p(kb) || _eq(kb, int_lit(2)))) {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn any_overlap_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys) -> bool {
-        loop {
-            if not(null_p(ms)) {
-                if any_overlaps_of_p(mxp, maker_st, car(ms), cdr(ms), int_lit(6)) {
-                    return true;
-                } else {
-                    ms = cdr(ms);
-                    continue;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-
     pub fn read_sty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: &'static Syn, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<&'static Sty, Unwind> {
         if syn_nil_p(s) {
             Ok(s_nil())
@@ -2898,7 +3142,7 @@ pub mod mx_in {
                 let items = proper_items(s);
                 (_gt_eq(len(items), int_lit(2)) && ellipsis_p(nth(items, _minus(len(items), int_lit(1)))))
             } {
-                Ok(read_seq_list(mxp, maker_st, mx_fail, proper_items(s), mx_types_named, scope)?)
+                Ok(read_seq_list(mxp, maker_st, mx_fail, s, proper_items(s), mx_types_named, scope)?)
             } else if (string_eq_p(head, str_lit("import")) || string_eq_p(head, str_lit("export"))) {
                 let args = proper_items(s);
                 if _eq(len(args), int_lit(3)) {
@@ -2929,8 +3173,8 @@ pub mod mx_in {
                 Ok(read_mu(mxp, maker_st, mx_fail, s, mx_types_named, scope)?)
             } else if (string_eq_p(head, str_lit("union")) || string_eq_p(head, str_lit("oneof"))) {
                 let ms = read_each(mxp, maker_st, mx_fail, cdr(proper_items(s)), mx_types_named, scope)?;
-                if any_overlap_p(mxp, maker_st, ms) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a syntax type: a `oneof`'s members must be "), string_append(str_lit("told apart by their shapes in the source "), str_lit("(an `expr` may be anything)"))), s)? {}
+                if (not(any_free_p(mxp, maker_st, ms)) && any_overlap_p(mxp, maker_st, ms)) {
+                    match fail_at(mxp, maker_st, mx_fail, maker_st.oneof_apart.get().unwrap(), s)? {}
                 } else {
                     ()
                 };
@@ -2973,12 +3217,12 @@ pub mod mx_in {
         }
     }
 
-    pub fn read_seq_list<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, items: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<&'static Sty, Unwind> {
+    pub fn read_seq_list<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: &'static Syn, items: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<&'static Sty, Unwind> {
         if null_p(cdr(cdr(items))) {
-            Ok(seq_type(mxp, maker_st, read_sty(mxp, maker_st, mx_fail, car(items), mx_types_named, scope)?))
+            Ok(mu_read(mxp, maker_st, mx_fail, seq_type(mxp, maker_st, read_sty(mxp, maker_st, mx_fail, car(items), mx_types_named, cons(Product_11_12(string_to_symbol(str_lit("")), false), scope))?), s, scope)?)
         } else {
             let first = read_sty(mxp, maker_st, mx_fail, car(items), mx_types_named, scope)?;
-            Ok(s_pair(first, read_seq_list(mxp, maker_st, mx_fail, cdr(items), mx_types_named, scope)?))
+            Ok(s_pair(first, read_seq_list(mxp, maker_st, mx_fail, s, cdr(items), mx_types_named, scope)?))
         }
     }
 
@@ -2998,18 +3242,39 @@ pub mod mx_in {
     pub fn read_mu<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: &'static Syn, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<&'static Sty, Unwind> {
         let args = proper_items(s);
         if (_eq(len(args), int_lit(3)) && syn_symbol_p(nth(args, int_lit(1)))) {
-            let id = mu_new(mxp, maker_st);
-            let body = read_sty(mxp, maker_st, mx_fail, nth(args, int_lit(2)), mx_types_named, cons(Product_11_12(syn_symbol(mxp, maker_st, nth(args, int_lit(1)))?, id), scope))?;
-            if guarded_p(body, id) {
+            let body = read_sty(mxp, maker_st, mx_fail, nth(args, int_lit(2)), mx_types_named, cons(Product_11_12(syn_symbol(mxp, maker_st, nth(args, int_lit(1)))?, true), scope))?;
+            if guarded_p(body, int_lit(0)) {
                 ()
             } else {
                 match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a syntax type: a `mu`'s variable is used where no "), string_append(str_lit("pair is around it (Herman's types are "), str_lit("contractive)"))), s)? {}
             };
-            mu_set_x(mxp, maker_st, id, body);
-            Ok(s_mu(id))
+            Ok(mu_read(mxp, maker_st, mx_fail, s_mu(body, int_lit(-1), int_lit(-1)), s, scope)?)
         } else {
             match fail_at(mxp, maker_st, mx_fail, str_lit("a syntax type: `(mu variable type)`"), s)? {};
             Ok(s_nil())
+        }
+    }
+
+    #[inline]
+    pub fn out_of_mu<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, es: Stys, t: &'static Sty) -> Stys {
+        if null_p(es) {
+            nil::<&'static mx_types::Sty>()
+        } else {
+            kayak_rt::cons(subst(mxp, maker_st, car(es), int_lit(0), t), kayak_rt::nil())
+        }
+    }
+
+    #[inline]
+    pub fn itself_p(r: &'static Sty) -> bool {
+        let tagcase_ = r;
+        match *tagcase_ {
+            mx_types::Sty::SVar(j) => {
+                _eq(j, int_lit(0))
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
         }
     }
 
@@ -3184,25 +3449,14 @@ pub mod mx_in {
         }
     }
 
-    pub fn cage_pair<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, core: &'static Sty, rings: Rings, id: Int) -> Stys {
+    pub fn cage_pair<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, core: &'static Sty, rings: Rings) -> Stys {
         let tagcase_ = core;
         match *tagcase_ {
             mx_types::Sty::SPair(a, d) => {
                 let tagcase_ = d;
                 match *tagcase_ {
                     mx_types::Sty::SImport(r, inner) => {
-                        if ({
-                            let tagcase_ = r;
-                            match *tagcase_ {
-                                mx_types::Sty::SMu(j) => {
-                                    _eq(j, id)
-                                }
-                                _ => {
-                                    let y = tagcase_;
-                                    false
-                                }
-                            }
-                        } && not(null_p(cdr(rings))) && null_p(cdr(cdr(rings))) && {
+                        if (itself_p(r) && not(null_p(cdr(rings))) && null_p(cdr(cdr(rings))) && {
                             let tagcase_ = car(rings);
                             match *tagcase_ {
                                 mx_types::Ring::RingAt(x) => {
@@ -3253,7 +3507,7 @@ pub mod mx_in {
         }
     }
 
-    pub fn cage_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut id: Int, mut es: Stys, mut none: bool) -> Stys {
+    pub fn cage_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut es: Stys, mut none: bool) -> Stys {
         loop {
             if null_p(ms) {
                 if (none && not(null_p(es)) && null_p(cdr(es))) {
@@ -3274,7 +3528,7 @@ pub mod mx_in {
                                 } else if null_p(rings) {
                                     return nil::<&'static mx_types::Sty>();
                                 } else {
-                                    let e = cage_pair(mxp, maker_st, core, rings, id);
+                                    let e = cage_pair(mxp, maker_st, core, rings);
                                     if null_p(e) {
                                         return nil::<&'static mx_types::Sty>();
                                     } else {
@@ -3301,11 +3555,11 @@ pub mod mx_in {
     pub fn cage_seq_elem<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty) -> Stys {
         let tagcase_ = t;
         match *tagcase_ {
-            mx_types::Sty::SMu(id) => {
-                let tagcase_ = mu_body(mxp, maker_st, id);
+            mx_types::Sty::SMu(b, r, p) => {
+                let tagcase_ = b;
                 match *tagcase_ {
                     mx_types::Sty::SUnion(ms) => {
-                        cage_members(mxp, maker_st, ms, id, nil::<&'static mx_types::Sty>(), false)
+                        out_of_mu(mxp, maker_st, cage_members(mxp, maker_st, ms, nil::<&'static mx_types::Sty>(), false), t)
                     }
                     _ => {
                         let y = tagcase_;
@@ -3333,25 +3587,14 @@ pub mod mx_in {
         }
     }
 
-    pub fn seq_rest_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, m: &'static Sty, d: &'static Sty, id: Int) -> bool {
+    pub fn seq_rest_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, m: &'static Sty, d: &'static Sty) -> bool {
         let tagcase_ = d;
         match *tagcase_ {
-            mx_types::Sty::SMu(j) => {
-                _eq(j, id)
+            mx_types::Sty::SVar(j) => {
+                _eq(j, int_lit(0))
             }
             mx_types::Sty::SImport(r, b) => {
-                ({
-                    let tagcase_ = r;
-                    match *tagcase_ {
-                        mx_types::Sty::SMu(j) => {
-                            _eq(j, id)
-                        }
-                        _ => {
-                            let y = tagcase_;
-                            false
-                        }
-                    }
-                } && {
+                (itself_p(r) && {
                     let tagcase_ = b;
                     match *tagcase_ {
                         mx_types::MxTypesBind::BindRib(fs) => {
@@ -3429,7 +3672,7 @@ pub mod mx_in {
         }
     }
 
-    pub fn seq_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut id: Int, mut es: Stys, mut none: bool) -> Stys {
+    pub fn seq_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut es: Stys, mut none: bool) -> Stys {
         loop {
             if null_p(ms) {
                 if (null_p(es) || not(none)) {
@@ -3486,7 +3729,7 @@ pub mod mx_in {
                     let tagcase_ = core;
                     match *tagcase_ {
                         mx_types::Sty::SPair(a, d) => {
-                            if seq_rest_p(mxp, maker_st, m, d, id) {
+                            if seq_rest_p(mxp, maker_st, m, d) {
                                 (ms, es) = (cdr(ms), cons(with_own(a, car(own)), es));
                                 continue;
                             } else {
@@ -3508,11 +3751,11 @@ pub mod mx_in {
         if null_p(caged) {
             let tagcase_ = t;
             match *tagcase_ {
-                mx_types::Sty::SMu(id) => {
-                    let tagcase_ = mu_body(mxp, maker_st, id);
+                mx_types::Sty::SMu(b, r, p) => {
+                    let tagcase_ = b;
                     match *tagcase_ {
                         mx_types::Sty::SUnion(ms) => {
-                            seq_members(mxp, maker_st, ms, id, nil::<&'static mx_types::Sty>(), false)
+                            out_of_mu(mxp, maker_st, seq_members(mxp, maker_st, ms, nil::<&'static mx_types::Sty>(), false), t)
                         }
                         _ => {
                             let y = tagcase_;
@@ -3579,11 +3822,11 @@ pub mod mx_in {
         }
     }
 
-    pub fn seq_scoped_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty) -> bool {
+    pub fn seq_scoped_p(t: &'static Sty) -> bool {
         let tagcase_ = t;
         match *tagcase_ {
-            mx_types::Sty::SMu(id) => {
-                let tagcase_ = mu_body(mxp, maker_st, id);
+            mx_types::Sty::SMu(b, r, p) => {
+                let tagcase_ = b;
                 match *tagcase_ {
                     mx_types::Sty::SUnion(ms) => {
                         rest_imported_p(ms)
@@ -3602,7 +3845,7 @@ pub mod mx_in {
     }
 
     pub fn seq_cage_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty) -> bool {
-        (not(null_p(cage_seq_elem(mxp, maker_st, t))) || (seq_scoped_p(mxp, maker_st, t) && not(null_p(seq_elem(mxp, maker_st, t)))))
+        (not(null_p(cage_seq_elem(mxp, maker_st, t))) || (seq_scoped_p(t) && not(null_p(seq_elem(mxp, maker_st, t)))))
     }
 
     pub fn peel(mut t: &'static Sty) -> &'static Sty {
@@ -3667,7 +3910,7 @@ pub mod mx_in {
                 return Ok(Product_11_12_13(out, defs, mx_types_named));
             } else {
                 let items = proper_items(car(fs));
-                let t = read_sty(mxp, maker_st, mx_fail, nth(items, int_lit(2)), mx_types_named, nil::<Product_11_12<Symbol, Int>>())?;
+                let t = read_sty(mxp, maker_st, mx_fail, nth(items, int_lit(2)), mx_types_named, nil::<Product_11_12<Symbol, bool>>())?;
                 let n = syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?;
                 let what = syn_name(car(items));
                 if string_eq_p(what, str_lit("define")) {
@@ -3787,10 +4030,31 @@ pub mod mx_in {
                         }
                     }
                 }
-                mx_types::Sty::SMu(i) => {
+                mx_types::Sty::SMu(x, r, p) => {
                     let tagcase_ = b;
                     match *tagcase_ {
-                        mx_types::Sty::SMu(j) => {
+                        mx_types::Sty::SMu(y, q, o) => {
+                            if _eq(r, q) {
+                                if _eq(p, o) {
+                                    (a, b) = (x, y);
+                                    continue;
+                                } else {
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        }
+                        _ => {
+                            let z = tagcase_;
+                            return false;
+                        }
+                    }
+                }
+                mx_types::Sty::SVar(i) => {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        mx_types::Sty::SVar(j) => {
                             return _eq(i, j);
                         }
                         _ => {
@@ -3864,6 +4128,20 @@ pub mod mx_in {
         }
     }
 
+    #[inline]
+    pub fn mx_types_mu_p(t: &'static Sty) -> bool {
+        let tagcase_ = t;
+        match *tagcase_ {
+            mx_types::Sty::SMu(b, r, p) => {
+                true
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
+        }
+    }
+
     pub fn assumed_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut a: &'static Sty, mut b: &'static Sty, mut xs: Assumed) -> bool {
         loop {
             if not(null_p(xs)) {
@@ -3881,10 +4159,14 @@ pub mod mx_in {
 
     pub fn sub_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut a: &'static Sty, mut b: &'static Sty, mut assumed: Assumed) -> bool {
         loop {
-            if (sty_eq_p(mxp, maker_st, a, b) || assumed_p(mxp, maker_st, a, b, assumed)) {
+            if (sty_eq_p(mxp, maker_st, a, b) || ((mx_types_mu_p(a) || mx_types_mu_p(b)) && assumed_p(mxp, maker_st, a, b, assumed))) {
                 return true;
             } else {
-                let more = the::<Assumed>(cons(Product_11_12(a, b), assumed));
+                let more = if (mx_types_mu_p(a) || mx_types_mu_p(b)) {
+                    the::<Assumed>(cons(Product_11_12(a, b), assumed))
+                } else {
+                    assumed
+                };
                 let tagcase_ = a;
                 match *tagcase_ {
                     mx_types::Sty::SMany(x) => {
@@ -3895,8 +4177,8 @@ pub mod mx_in {
                         (a, assumed) = (x, more);
                         continue;
                     }
-                    mx_types::Sty::SMu(i) => {
-                        (a, assumed) = (mu_body(mxp, maker_st, i), more);
+                    mx_types::Sty::SMu(x, r, p) => {
+                        (a, assumed) = (mx_types_unfold_mu(mxp, maker_st, a), more);
                         continue;
                     }
                     mx_types::Sty::SUnion(ms) => {
@@ -3914,8 +4196,8 @@ pub mod mx_in {
                                 (b, assumed) = (x, more);
                                 continue;
                             }
-                            mx_types::Sty::SMu(j) => {
-                                (b, assumed) = (mu_body(mxp, maker_st, j), more);
+                            mx_types::Sty::SMu(x, r, p) => {
+                                (b, assumed) = (mx_types_unfold_mu(mxp, maker_st, b), more);
                                 continue;
                             }
                             mx_types::Sty::SUnion(ms) => {
@@ -4486,7 +4768,7 @@ pub mod mx_in {
         int_member_p(i, get(maker_st.cage_seqs.get().unwrap()))
     }
 
-    pub fn binds_nothing_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut t: &'static Sty, mut seen: List<Int>) -> bool {
+    pub fn binds_nothing_p(mut t: &'static Sty) -> bool {
         loop {
             let tagcase_ = t;
             match *tagcase_ {
@@ -4500,7 +4782,7 @@ pub mod mx_in {
                     return false;
                 }
                 mx_types::Sty::SPair(a, d) => {
-                    if binds_nothing_p(mxp, maker_st, a, seen) {
+                    if binds_nothing_p(a) {
                         t = d;
                         continue;
                     } else {
@@ -4516,15 +4798,11 @@ pub mod mx_in {
                     continue;
                 }
                 mx_types::Sty::SUnion(ms) => {
-                    return all_bind_nothing_p(mxp, maker_st, ms, seen);
+                    return all_bind_nothing_p(ms);
                 }
-                mx_types::Sty::SMu(id) => {
-                    if int_member_p(id, seen) {
-                        return true;
-                    } else {
-                        (t, seen) = (mu_body(mxp, maker_st, id), cons(id, seen));
-                        continue;
-                    }
+                mx_types::Sty::SMu(b, r, p) => {
+                    t = b;
+                    continue;
                 }
                 _ => {
                     let y = tagcase_;
@@ -4534,12 +4812,12 @@ pub mod mx_in {
         }
     }
 
-    pub fn all_bind_nothing_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut seen: List<Int>) -> bool {
+    pub fn all_bind_nothing_p(mut ms: Stys) -> bool {
         loop {
             if null_p(ms) {
                 return true;
             } else {
-                if binds_nothing_p(mxp, maker_st, car(ms), seen) {
+                if binds_nothing_p(car(ms)) {
                     ms = cdr(ms);
                     continue;
                 } else {
@@ -4855,7 +5133,7 @@ pub mod mx_in {
         if not(null_p(parts)) {
             Ok((syn_symbol_p(car(parts)) && string_eq_p(syn_name(car(parts)), str_lit("=>"))))
         } else {
-            Ok((syn_symbol_p(k) && mx_types_name_in_p(syn_symbol(mxp, maker_st, k)?, kayak_rt::cons(symbol_lit(str_lit("region")), kayak_rt::cons(symbol_lit(str_lit("place")), kayak_rt::cons(symbol_lit(str_lit("effect")), kayak_rt::cons(symbol_lit(str_lit("type")), kayak_rt::cons(symbol_lit(str_lit("data")), kayak_rt::cons(symbol_lit(str_lit("sendable")), kayak_rt::cons(symbol_lit(str_lit("flat")), kayak_rt::cons(symbol_lit(str_lit("size")), kayak_rt::cons(symbol_lit(str_lit("conv")), kayak_rt::nil()))))))))))))
+            Ok((syn_symbol_p(k) && mx_syntax_name_in_p(syn_symbol(mxp, maker_st, k)?, kayak_rt::cons(symbol_lit(str_lit("region")), kayak_rt::cons(symbol_lit(str_lit("place")), kayak_rt::cons(symbol_lit(str_lit("effect")), kayak_rt::cons(symbol_lit(str_lit("type")), kayak_rt::cons(symbol_lit(str_lit("data")), kayak_rt::cons(symbol_lit(str_lit("sendable")), kayak_rt::cons(symbol_lit(str_lit("flat")), kayak_rt::cons(symbol_lit(str_lit("size")), kayak_rt::cons(symbol_lit(str_lit("conv")), kayak_rt::nil()))))))))))))
         }
     }
 
@@ -4923,7 +5201,7 @@ pub mod mx_in {
 
     pub fn rules_word_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol) -> Result<bool, Unwind> {
         let name = symbol_to_string(n);
-        Ok((string_eq_p(name, str_lit("_")) || reserved_p(mxp, maker_st, name) || not(null_p(sig_of_name(n, kernel_sigs(mxp, maker_st, mx_fail)?))) || not(null_p(sig_of_name(n, kernel_definitions(mxp, maker_st, mx_fail)?))) || desc_word_p(mxp, maker_st, name, true) || type_form_p(mxp, maker_st, name) || mx_types_name_in_p(n, kayak_rt::cons(symbol_lit(str_lit("else")), kayak_rt::cons(symbol_lit(str_lit("=>")), kayak_rt::cons(symbol_lit(str_lit("quote")), kayak_rt::cons(symbol_lit(str_lit("quasiquote")), kayak_rt::cons(symbol_lit(str_lit("unquote")), kayak_rt::cons(symbol_lit(str_lit("unquote-splicing")), kayak_rt::cons(symbol_lit(str_lit("syntax-rules")), kayak_rt::cons(symbol_lit(str_lit("trailmark")), kayak_rt::cons(symbol_lit(str_lit("er-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit("sc-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit("rsc-macro-transformer")), kayak_rt::nil())))))))))))) || macro_p(mxp, maker_st, n) || _gt(mark_now(mxp, maker_st, n), int_lit(0))))
+        Ok((string_eq_p(name, str_lit("_")) || reserved_p(mxp, maker_st, name) || not(null_p(sig_of_name(n, kernel_sigs(mxp, maker_st, mx_fail)?))) || not(null_p(sig_of_name(n, kernel_definitions(mxp, maker_st, mx_fail)?))) || desc_word_p(mxp, maker_st, name, true) || type_form_p(mxp, maker_st, name) || mx_syntax_name_in_p(n, kayak_rt::cons(symbol_lit(str_lit("else")), kayak_rt::cons(symbol_lit(str_lit("=>")), kayak_rt::cons(symbol_lit(str_lit("quote")), kayak_rt::cons(symbol_lit(str_lit("quasiquote")), kayak_rt::cons(symbol_lit(str_lit("unquote")), kayak_rt::cons(symbol_lit(str_lit("unquote-splicing")), kayak_rt::cons(symbol_lit(str_lit("syntax-rules")), kayak_rt::cons(symbol_lit(str_lit("trailmark")), kayak_rt::cons(symbol_lit(str_lit("er-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit("sc-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit("rsc-macro-transformer")), kayak_rt::nil())))))))))))) || macro_p(mxp, maker_st, n) || _gt(mark_now(mxp, maker_st, n), int_lit(0))))
     }
 
     pub fn rules_items(s: &'static Syn) -> SynsA {
@@ -5695,8 +5973,8 @@ pub mod mx_in {
         })));
         let tagcase_ = t;
         match *tagcase_ {
-            mx_types::Sty::SMu(id) => {
-                Ok(fill(mxp, maker_st, mx_fail, mode, ps, at, mu_body(mxp, maker_st, id), s, at)?)
+            mx_types::Sty::SMu(b, r, p) => {
+                Ok(fill(mxp, maker_st, mx_fail, mode, ps, at, mx_types_unfold_mu(mxp, maker_st, t), s, at)?)
             }
             mx_types::Sty::SUnion(ms) => {
                 let all = mx_nodes_fitting(mxp, maker_st, ms, s, mode, ps)?;
@@ -5926,7 +6204,7 @@ pub mod mx_in {
             Ok(operands(mxp, maker_st, mx_fail, ps, at, car(sig_of(string_to_symbol(head), kernel)), nth(parts, int_lit(1)))?)
         } else if (not(string_eq_p(head, str_lit(""))) && {
             let sig = sig_of(string_to_symbol(head), scope_sigs(mxp, maker_st, mx_fail)?);
-            (not(null_p(sig)) && binds_nothing_p(mxp, maker_st, car(sig), nil::<Int>()))
+            (not(null_p(sig)) && binds_nothing_p(car(sig)))
         }) {
             Ok(operands(mxp, maker_st, mx_fail, ps, at, car(sig_of(string_to_symbol(head), scope_sigs(mxp, maker_st, mx_fail)?)), nth(parts, int_lit(1)))?)
         } else if (not(string_eq_p(head, str_lit(""))) && reserved_p(mxp, maker_st, head)) {
@@ -6009,7 +6287,7 @@ pub mod mx_in {
             Ok(operands_as(mxp, maker_st, mx_fail, int_lit(3), ps, at, car(macro_of(n, get(maker_st.defined.get().unwrap()))).0, nth(parts, int_lit(1)))?)
         } else if not(null_p(sig_of(n, sforms))) {
             Ok(operands_as(mxp, maker_st, mx_fail, int_lit(3), ps, at, car(sig_of(n, sforms)), nth(parts, int_lit(1)))?)
-        } else if (not(null_p(sig_of(n, kernel))) && not(mx_types_name_in_p(n, percent_named(mxp, maker_st, kernel)))) {
+        } else if (not(null_p(sig_of(n, kernel))) && not(mx_syntax_name_in_p(n, percent_named(mxp, maker_st, kernel)))) {
             Ok(operands_as(mxp, maker_st, mx_fail, int_lit(3), ps, at, car(sig_of(n, kernel)), nth(parts, int_lit(1)))?)
         } else {
             Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(3), ps, car(sig_of(symbol_lit(str_lit("%app")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
@@ -7874,7 +8152,7 @@ pub mod mx_in {
                     } else {
                         return Ok(nil::<List<Product_11_12<Symbol, &'static mx_types::Syn>>>());
                     }
-                } else if (mx_types_name_in_p(syn_symbol(mxp, maker_st, p)?, ns) && not(syn_symbol_p(s))) {
+                } else if (mx_syntax_name_in_p(syn_symbol(mxp, maker_st, p)?, ns) && not(syn_symbol_p(s))) {
                     return Ok(nil::<List<Product_11_12<Symbol, &'static mx_types::Syn>>>());
                 } else {
                     return Ok(kayak_rt::cons(cons(Product_11_12(syn_symbol(mxp, maker_st, p)?, s), bs), kayak_rt::nil()));
@@ -8065,7 +8343,7 @@ pub mod mx_in {
                         continue;
                     }
                     mx_types::Level::LvCage(n) => {
-                        (ls, ns) = (cdr(ls), if mx_types_name_in_p(n, ns) {
+                        (ls, ns) = (cdr(ls), if mx_syntax_name_in_p(n, ns) {
                             ns
                         } else {
                             kayak_rt::heap_cons(n, ns)
@@ -8106,7 +8384,7 @@ pub mod mx_in {
             if null_p(xs) {
                 return true;
             } else {
-                if mx_types_name_in_p(car(xs), ys) {
+                if mx_syntax_name_in_p(car(xs), ys) {
                     xs = cdr(xs);
                     continue;
                 } else {
@@ -8265,7 +8543,7 @@ pub mod mx_in {
         loop {
             if null_p(ps) {
                 return Ok(nil::<Symbol>());
-            } else if (_gt(car(ps).1.4, level) && mx_types_name_in_p(car(ps).0, pattern_names(mxp, maker_st, x)?)) {
+            } else if (_gt(car(ps).1.4, level) && mx_syntax_name_in_p(car(ps).0, pattern_names(mxp, maker_st, x)?)) {
                 return Ok(cons(car(ps).0, drivers_of(mxp, maker_st, cdr(ps), x, level)?));
             } else {
                 ps = cdr(ps);
@@ -10197,7 +10475,7 @@ pub mod mx_in {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(show_syn(car(lettered)), string_append(str_lit("` is an address "), string_append(str_lit("in Herman's letters: "), maker_st.path_usage.get().unwrap())))), car(lettered))? {}
         };
         let made = signature_made(mxp, maker_st, mx_fail, poly.1)?;
-        let t = read_sty(mxp, maker_st, mx_fail, made.0, nil::<Product_11_12<Symbol, &'static mx_types::Sty>>(), nil::<Product_11_12<Symbol, Int>>())?;
+        let t = read_sty(mxp, maker_st, mx_fail, made.0, nil::<Product_11_12<Symbol, &'static mx_types::Sty>>(), nil::<Product_11_12<Symbol, bool>>())?;
         {
             let tagcase_ = t;
             match *tagcase_ {
@@ -10580,7 +10858,7 @@ pub mod mx_in {
             } else if string_eq_p(name, str_lit("...")) {
                 match fail_at(mxp, maker_st, mx_fail, str_lit("`...` follows the part it repeats, last in a list"), s)? {};
                 Ok(cl_wild())
-            } else if (mx_types_name_in_p(syn_symbol(mxp, maker_st, s)?, nth_names(lits, it.0)) || reserved_p(mxp, maker_st, name)) {
+            } else if (mx_syntax_name_in_p(syn_symbol(mxp, maker_st, s)?, nth_names(lits, it.0)) || reserved_p(mxp, maker_st, name)) {
                 Ok(cl_lit(syn_symbol(mxp, maker_st, s)?))
             } else {
                 Ok(cl_var(syn_symbol(mxp, maker_st, s)?))
@@ -11355,7 +11633,7 @@ pub mod mx_in {
             mx_types::Sty::SPair(a, d) => {
                 true
             }
-            mx_types::Sty::SMu(i) => {
+            mx_types::Sty::SMu(x, r, p) => {
                 true
             }
             mx_types::Sty::SUnion(ms) => {
@@ -11488,7 +11766,7 @@ pub mod mx_in {
     pub fn pattern_vars_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, p: &'static Syn, lits: MxParserTypesNames) -> Result<MxParserTypesNames, Unwind> {
         if syn_symbol_p(p) {
             let n = syn_name(p);
-            if (string_eq_p(n, str_lit("_")) || string_eq_p(n, str_lit("...")) || reserved_p(mxp, maker_st, n) || mx_types_name_in_p(syn_symbol(mxp, maker_st, p)?, lits)) {
+            if (string_eq_p(n, str_lit("_")) || string_eq_p(n, str_lit("...")) || reserved_p(mxp, maker_st, n) || mx_syntax_name_in_p(syn_symbol(mxp, maker_st, p)?, lits)) {
                 Ok(nil::<Symbol>())
             } else {
                 Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, p)?, kayak_rt::nil()))
@@ -11566,7 +11844,7 @@ pub mod mx_in {
                 Ok(kayak_rt::cons(int_lit(0), kayak_rt::nil()))
             } else if not(syn_symbol_p(h)) {
                 Ok(nil::<Int>())
-            } else if mx_types_name_in_p(syn_symbol(mxp, maker_st, h)?, pv) {
+            } else if mx_syntax_name_in_p(syn_symbol(mxp, maker_st, h)?, pv) {
                 Ok(nil::<Int>())
             } else {
                 let i = unsigned_index(syn_symbol(mxp, maker_st, h)?, us, int_lit(0));
@@ -11683,43 +11961,41 @@ pub mod mx_in {
         }
     }
 
-    pub fn alloc_mus_x<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut p: Int, mut s: Sol) -> () {
+    pub fn has_mu_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, p: Int, s: Sol) -> bool {
+        ({
+            let tagcase_ = mx_infer_shape_of(mxp, maker_st, p);
+            match *tagcase_ {
+                mx_types::MxInferShape::ShSeq(e) => {
+                    true
+                }
+                mx_types::MxInferShape::ShUnion(ms) => {
+                    true
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        } || (leaf_p(mxp, maker_st, p) && null_p(kind_at(p, s.0))))
+    }
+
+    pub fn mx_infer_position_of(mut q: Int, mut xs: MxInferInts, mut i: Int) -> Int {
         loop {
-            if _eq(p, get(maker_st.nparts.get().unwrap())) {
-                return ();
+            if null_p(xs) {
+                return int_lit(-1);
+            } else if _eq(q, car(xs)) {
+                return i;
             } else {
-                if ({
-                    let tagcase_ = mx_infer_shape_of(mxp, maker_st, p);
-                    match *tagcase_ {
-                        mx_types::MxInferShape::ShSeq(e) => {
-                            true
-                        }
-                        mx_types::MxInferShape::ShUnion(ms) => {
-                            true
-                        }
-                        _ => {
-                            let y = tagcase_;
-                            false
-                        }
-                    }
-                } || (leaf_p(mxp, maker_st, p) && null_p(kind_at(p, s.0)))) {
-                    set(maker_st.built_mus.get().unwrap(), cons(Product_11_12(p, mu_new(mxp, maker_st)), get(maker_st.built_mus.get().unwrap())))
-                } else {
-                    ()
-                };
-                p = _plus(p, int_lit(1));
+                (xs, i) = (cdr(xs), _plus(i, int_lit(1)));
                 continue;
             }
         }
     }
 
-    #[inline]
-    pub fn mu_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, p: Int) -> Int {
-        car(int_assoc(p, get(maker_st.built_mus.get().unwrap())))
-    }
-
-    pub fn part_ty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, p: Int, s: Sol) -> &'static Sty {
-        let base = {
+    pub fn part_ty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, p: Int, s: Sol, around: MxInferInts) -> &'static Sty {
+        let base = if has_mu_p(mxp, maker_st, p, s) {
+            mu_ty(mxp, maker_st, p, s, around)
+        } else {
             let tagcase_ = mx_infer_shape_of(mxp, maker_st, p);
             match *tagcase_ {
                 mx_types::MxInferShape::ShNil() => {
@@ -11729,39 +12005,28 @@ pub mod mx_in {
                     s_literal(n)
                 }
                 mx_types::MxInferShape::ShPair(a, d) => {
-                    s_pair(part_ty(mxp, maker_st, a, s), part_ty(mxp, maker_st, d, s))
+                    s_pair(part_ty(mxp, maker_st, a, s, around), part_ty(mxp, maker_st, d, s, around))
                 }
-                mx_types::MxInferShape::ShLeaf() => {
-                    let k = kind_at(p, s.0);
-                    if null_p(k) {
-                        let id = mu_of(mxp, maker_st, p);
-                        mu_set_x(mxp, maker_st, id, s_data());
-                        s_mu(id)
-                    } else {
-                        let tagcase_ = car(k);
-                        match *tagcase_ {
-                            mx_types::Kd::KdRef(q) => {
-                                s_mu(mu_of(mxp, maker_st, q))
+                _ => {
+                    let y = tagcase_;
+                    let tagcase_ = car(kind_at(p, s.0));
+                    match *tagcase_ {
+                        mx_types::Kd::KdRef(q) => {
+                            let i = mx_infer_position_of(q, around, int_lit(0));
+                            if _lt(i, int_lit(0)) {
+                                mu_ty(mxp, maker_st, q, s, around)
+                            } else {
+                                s_var(i)
                             }
-                            mx_types::Kd::KdTy(t) => {
-                                if (compound_p(t) && open_p(t)) {
-                                    let id = mu_new(mxp, maker_st);
-                                    mu_set_x(mxp, maker_st, id, t);
-                                    s_mu(id)
-                                } else {
-                                    t
-                                }
+                        }
+                        mx_types::Kd::KdTy(t) => {
+                            if (compound_p(t) && open_p(t)) {
+                                s_mu(t, int_lit(-1), int_lit(-1))
+                            } else {
+                                t
                             }
                         }
                     }
-                }
-                mx_types::MxInferShape::ShSeq(e) => {
-                    seq_ty(mxp, maker_st, p, e, s)
-                }
-                mx_types::MxInferShape::ShUnion(ms) => {
-                    let id = mu_of(mxp, maker_st, p);
-                    mu_set_x(mxp, maker_st, id, s_union(members_ty(mxp, maker_st, ms, s)));
-                    s_mu(id)
                 }
             }
         };
@@ -11778,23 +12043,41 @@ pub mod mx_in {
         }
     }
 
-    pub fn members_ty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, ms: MxInferInts, s: Sol) -> Stys {
+    pub fn mu_ty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, p: Int, s: Sol, around: MxInferInts) -> &'static Sty {
+        let r#in = cons(p, around);
+        s_mu({
+            let tagcase_ = mx_infer_shape_of(mxp, maker_st, p);
+            match *tagcase_ {
+                mx_types::MxInferShape::ShSeq(e) => {
+                    seq_ty(mxp, maker_st, e, s, r#in)
+                }
+                mx_types::MxInferShape::ShUnion(ms) => {
+                    s_union(members_ty(mxp, maker_st, ms, s, r#in))
+                }
+                _ => {
+                    let y = tagcase_;
+                    s_data()
+                }
+            }
+        }, get(maker_st.built_round.get().unwrap()), p)
+    }
+
+    pub fn members_ty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, ms: MxInferInts, s: Sol, around: MxInferInts) -> Stys {
         if null_p(ms) {
             nil::<&'static mx_types::Sty>()
         } else {
-            let t = part_ty(mxp, maker_st, car(ms), s);
+            let t = part_ty(mxp, maker_st, car(ms), s, around);
             let e = bind_at(car(ms), s.4);
             cons(if null_p(e) {
                 t
             } else {
                 s_export(t, car(e))
-            }, members_ty(mxp, maker_st, cdr(ms), s))
+            }, members_ty(mxp, maker_st, cdr(ms), s, around))
         }
     }
 
-    pub fn seq_ty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, p: Int, e: Int, s: Sol) -> &'static Sty {
-        let id = mu_of(mxp, maker_st, p);
-        let t = part_ty(mxp, maker_st, e, s);
+    pub fn seq_ty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, e: Int, s: Sol, around: MxInferInts) -> &'static Sty {
+        let t = part_ty(mxp, maker_st, e, s, around);
         let x = bind_at(e, s.4);
         let elem = if not(null_p(x)) {
             s_export(t, car(x))
@@ -11805,15 +12088,14 @@ pub mod mx_in {
         } else {
             t
         };
-        mu_set_x(mxp, maker_st, id, s_union(seq_body(mxp, maker_st, elem, id)));
-        s_mu(id)
+        s_union(seq_body(mxp, maker_st, elem))
     }
 
     pub fn build_roots<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, rs: MxInferInts, mi: Int, s: Sol) -> Stys {
         if null_p(rs) {
             nil::<&'static mx_types::Sty>()
         } else {
-            let t = part_ty(mxp, maker_st, car(rs), s);
+            let t = part_ty(mxp, maker_st, car(rs), s, nil::<Int>());
             let e = bind_at(mi, s.5);
             cons(if null_p(e) {
                 t
@@ -11824,9 +12106,8 @@ pub mod mx_in {
     }
 
     #[inline]
-    pub fn build<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: Sol) -> Stys {
-        set(maker_st.built_mus.get().unwrap(), nil::<Product_11_12<Int, Int>>());
-        alloc_mus_x(mxp, maker_st, int_lit(0), s);
+    pub fn build<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: Sol, n: Int) -> Stys {
+        set(maker_st.built_round.get().unwrap(), n);
         build_roots(mxp, maker_st, get(maker_st.mx_infer_roots.get().unwrap()), int_lit(0), s)
     }
 
@@ -11969,25 +12250,12 @@ pub mod mx_in {
         }
     }
 
-    pub fn mx_show_shown_of(mut id: Int, mut xs: List<Product_11_12_13<Int, Str, bool>>) -> List<Str> {
-        loop {
-            if null_p(xs) {
-                return nil::<Str>();
-            } else if _eq(id, car(xs).0) {
-                return kayak_rt::heap_cons(car(xs).1, kayak_rt::nil());
-            } else {
-                xs = cdr(xs);
-                continue;
-            }
-        }
-    }
-
     #[inline]
-    pub fn tail_of_p(id: Int, d: &'static Sty) -> bool {
+    pub fn tail_of_p(d: &'static Sty) -> bool {
         let tagcase_ = d;
         match *tagcase_ {
-            mx_types::Sty::SMu(j) => {
-                _eq(j, id)
+            mx_types::Sty::SVar(j) => {
+                _eq(j, int_lit(0))
             }
             _ => {
                 let y = tagcase_;
@@ -12112,14 +12380,14 @@ pub mod mx_in {
         }
     }
 
-    pub fn listed_of(id: Int, nil_m: &'static Sty, pair_m: &'static Sty) -> Stys {
+    pub fn listed_of(nil_m: &'static Sty, pair_m: &'static Sty) -> Stys {
         let tagcase_ = nil_m;
         match *tagcase_ {
             mx_types::Sty::SNil() => {
                 let tagcase_ = pair_m;
                 match *tagcase_ {
                     mx_types::Sty::SPair(e, d) => {
-                        if (tail_of_p(id, d) && {
+                        if (tail_of_p(d) && {
                             let tagcase_ = e;
                             match *tagcase_ {
                                 mx_types::Sty::SBvar() => {
@@ -12156,7 +12424,7 @@ pub mod mx_in {
                             let tagcase_ = p;
                             match *tagcase_ {
                                 mx_types::Sty::SPair(e, d) => {
-                                    if tail_of_p(id, d) {
+                                    if tail_of_p(d) {
                                         let tagcase_ = e;
                                         match *tagcase_ {
                                             mx_types::Sty::SExport(x, bd) => {
@@ -12197,35 +12465,65 @@ pub mod mx_in {
         }
     }
 
-    pub fn listed_elem<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, id: Int) -> Stys {
-        let tagcase_ = mu_body(mxp, maker_st, id);
-        match *tagcase_ {
-            mx_types::Sty::SUnion(ms) => {
-                if (not(null_p(ms)) && not(null_p(cdr(ms))) && null_p(cdr(cdr(ms)))) {
-                    listed_of(id, car(ms), car(cdr(ms)))
-                } else {
+    pub fn listed_elem<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty) -> Stys {
+        let e = {
+            let tagcase_ = t;
+            match *tagcase_ {
+                mx_types::Sty::SMu(x, r, p) => {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        mx_types::Sty::SUnion(ms) => {
+                            if (not(null_p(ms)) && not(null_p(cdr(ms))) && null_p(cdr(cdr(ms)))) {
+                                listed_of(car(ms), car(cdr(ms)))
+                            } else {
+                                nil::<&'static mx_types::Sty>()
+                            }
+                        }
+                        _ => {
+                            let y = tagcase_;
+                            nil::<&'static mx_types::Sty>()
+                        }
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
                     nil::<&'static mx_types::Sty>()
                 }
             }
-            _ => {
-                let y = tagcase_;
-                nil::<&'static mx_types::Sty>()
-            }
+        };
+        if null_p(e) {
+            nil::<&'static mx_types::Sty>()
+        } else {
+            lowered(mxp, maker_st, car(e))
         }
     }
 
-    pub fn used_x(id: Int, xs: List<Product_11_12_13<Int, Str, bool>>) -> List<Product_11_12_13<Int, Str, bool>> {
-        if null_p(xs) {
-            nil::<Product_11_12_13<Int, Str, bool>>()
-        } else if _eq(id, car(xs).0) {
-            kayak_rt::heap_cons(Product_11_12_13(id, car(xs).1, true), cdr(xs))
-        } else {
-            kayak_rt::heap_cons(car(xs), used_x(id, cdr(xs)))
+    pub fn nth_of(mut j: Int, mut xs: List<Product_11_12<Str, bool>>) -> Product_11_12<Str, bool> {
+        loop {
+            if _eq(j, int_lit(0)) {
+                return car(xs);
+            } else {
+                (j, xs) = (_minus(j, int_lit(1)), cdr(xs));
+                continue;
+            }
         }
     }
 
     #[inline]
-    pub fn len_shown(xs: List<Product_11_12_13<Int, Str, bool>>) -> Int {
+    pub fn nth_shown<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, j: Int) -> Product_11_12<Str, bool> {
+        nth_of(j, get(maker_st.shown.get().unwrap()))
+    }
+
+    pub fn used_x(j: Int, xs: List<Product_11_12<Str, bool>>) -> List<Product_11_12<Str, bool>> {
+        if _eq(j, int_lit(0)) {
+            kayak_rt::heap_cons(Product_11_12(car(xs).0, true), cdr(xs))
+        } else {
+            kayak_rt::heap_cons(car(xs), used_x(_minus(j, int_lit(1)), cdr(xs)))
+        }
+    }
+
+    #[inline]
+    pub fn len_shown(xs: List<Product_11_12<Str, bool>>) -> Int {
         if null_p(xs) {
             int_lit(0)
         } else {
@@ -12406,8 +12704,12 @@ pub mod mx_in {
                 mx_types::Sty::SUnion(ms) => {
                     return mk_list(cons(sym(str_lit("oneof")), mx_show_show_each(mxp, maker_st, ms, a, b)), a, b);
                 }
-                mx_types::Sty::SMu(id) => {
-                    return show_mu(mxp, maker_st, id, a, b);
+                mx_types::Sty::SVar(j) => {
+                    set(maker_st.shown.get().unwrap(), used_x(j, get(maker_st.shown.get().unwrap())));
+                    return sym(nth_shown(mxp, maker_st, j).0);
+                }
+                mx_types::Sty::SMu(x, r, p) => {
+                    return show_mu(mxp, maker_st, t, a, b);
                 }
             }
         }
@@ -12432,12 +12734,8 @@ pub mod mx_in {
                 mx_types::Sty::SNil() => {
                     return mk_list(items, a, b);
                 }
-                mx_types::Sty::SMu(id) => {
-                    let e = if null_p(mx_show_shown_of(id, get(maker_st.shown.get().unwrap()))) {
-                        listed_elem(mxp, maker_st, id)
-                    } else {
-                        nil::<&'static mx_types::Sty>()
-                    };
+                mx_types::Sty::SMu(x, r, p) => {
+                    let e = listed_elem(mxp, maker_st, cur);
                     if null_p(e) {
                         return joined_list(items, show_sty(mxp, maker_st, cur, a, b), a, b);
                     } else {
@@ -12452,26 +12750,31 @@ pub mod mx_in {
         }
     }
 
-    pub fn show_mu<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, id: Int, a: Int, b: Int) -> &'static Syn {
-        let v = mx_show_shown_of(id, get(maker_st.shown.get().unwrap()));
-        if not(null_p(v)) {
-            set(maker_st.shown.get().unwrap(), used_x(id, get(maker_st.shown.get().unwrap())));
-            mk_symbol(car(v), a, b)
-        } else {
-            let e = listed_elem(mxp, maker_st, id);
-            if not(null_p(e)) {
-                mk_list(kayak_rt::cons(show_sty(mxp, maker_st, car(e), a, b), kayak_rt::cons(mk_symbol(str_lit("..."), a, b), kayak_rt::nil())), a, b)
-            } else {
-                let name = string_append(str_lit("m"), int_to_string(_plus(len_shown(get(maker_st.shown.get().unwrap())), int_lit(1))));
-                set(maker_st.shown.get().unwrap(), cons(Product_11_12_13(id, name, false), get(maker_st.shown.get().unwrap())));
-                let body = show_sty(mxp, maker_st, mu_body(mxp, maker_st, id), a, b);
-                let used = car(get(maker_st.shown.get().unwrap())).2;
-                set(maker_st.shown.get().unwrap(), cdr(get(maker_st.shown.get().unwrap())));
-                if (used || open_p(mu_body(mxp, maker_st, id))) {
-                    mk_list(kayak_rt::cons(mk_symbol(str_lit("mu"), a, b), kayak_rt::cons(mk_symbol(name, a, b), kayak_rt::cons(body, kayak_rt::nil()))), a, b)
-                } else {
-                    body
+    pub fn show_mu<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, t: &'static Sty, a: Int, b: Int) -> &'static Syn {
+        let (e, body) = (listed_elem(mxp, maker_st, t), {
+            let tagcase_ = t;
+            match *tagcase_ {
+                mx_types::Sty::SMu(x, r, p) => {
+                    x
                 }
+                _ => {
+                    let y = tagcase_;
+                    t
+                }
+            }
+        });
+        if not(null_p(e)) {
+            mk_list(kayak_rt::cons(show_sty(mxp, maker_st, car(e), a, b), kayak_rt::cons(mk_symbol(str_lit("..."), a, b), kayak_rt::nil())), a, b)
+        } else {
+            let name = string_append(str_lit("m"), int_to_string(_plus(len_shown(get(maker_st.shown.get().unwrap())), int_lit(1))));
+            set(maker_st.shown.get().unwrap(), cons(Product_11_12(name, false), get(maker_st.shown.get().unwrap())));
+            let shown_body = show_sty(mxp, maker_st, body, a, b);
+            let used = car(get(maker_st.shown.get().unwrap())).1;
+            set(maker_st.shown.get().unwrap(), cdr(get(maker_st.shown.get().unwrap())));
+            if (used || open_p(body)) {
+                mk_list(kayak_rt::cons(mk_symbol(str_lit("mu"), a, b), kayak_rt::cons(mk_symbol(name, a, b), kayak_rt::cons(shown_body, kayak_rt::nil()))), a, b)
+            } else {
+                shown_body
             }
         }
     }
@@ -13312,7 +13615,7 @@ pub mod mx_in {
         }
     }
 
-    pub fn mx_shown_shown_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, sig: &'static Syn, clause: SynsA) -> Result<&'static Syn, Unwind> {
+    pub fn shown_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, sig: &'static Syn, clause: SynsA) -> Result<&'static Syn, Unwind> {
         let (items, a, b) = (proper_items(sig), syn_start(sig), syn_end(sig));
         if not((_eq(len(items), int_lit(3)) && mx_facts_sym_is_p(car(items), str_lit("macro/addressed")))) {
             match cannot(mxp, maker_st, sig)? {};
@@ -13353,7 +13656,7 @@ pub mod mx_in {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.shown_result.get().unwrap(), kayak_rt::cons(mx_shown_shown_of(mxp, maker_st, sig, clause)?, kayak_rt::nil()));
+                set(maker_st.shown_result.get().unwrap(), kayak_rt::cons(shown_of(mxp, maker_st, sig, clause)?, kayak_rt::nil()));
                 Ok(p_ok(nil::<&'static mx_types::MxParserTypesTop>()))
             })() {
                 Ok(v_) => v_,
@@ -14225,30 +14528,16 @@ pub mod mx_in {
         }
     }
 
-    pub fn part_of_mu(mut id: Int, mut xs: MuParts) -> MxInferInts {
-        loop {
-            if null_p(xs) {
-                return nil::<Int>();
-            } else if _eq(id, car(xs).1) {
-                return kayak_rt::heap_cons(car(xs).0, kayak_rt::nil());
-            } else {
-                xs = cdr(xs);
-                continue;
-            }
-        }
-    }
-
     pub fn classify<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, core: &'static Sty) -> Kds {
         let tagcase_ = core;
         match *tagcase_ {
-            mx_types::Sty::SMu(id) => {
-                let p = part_of_mu(id, get(maker_st.built_mus.get().unwrap()));
-                if null_p(p) {
+            mx_types::Sty::SMu(b, r, p) => {
+                if not(_eq(r, get(maker_st.built_round.get().unwrap()))) {
                     kayak_rt::cons(kd_ty(core), kayak_rt::nil())
-                } else if leaf_p(mxp, maker_st, car(p)) {
+                } else if leaf_p(mxp, maker_st, p) {
                     nil::<&'static mx_types::Kd>()
                 } else {
-                    kayak_rt::cons(kd_ref(car(p)), kayak_rt::nil())
+                    kayak_rt::cons(kd_ref(p), kayak_rt::nil())
                 }
             }
             _ => {
@@ -14974,7 +15263,7 @@ pub mod mx_in {
             nil::<&'static mx_types::Syn>()
         } else {
             let u = car(us).3;
-            set(maker_st.shown.get().unwrap(), nil::<Product_11_12_13<Int, Str, bool>>());
+            set(maker_st.shown.get().unwrap(), nil::<Product_11_12<Str, bool>>());
             cons(show_sty(mxp, maker_st, car(tys), syn_start(u), syn_end(u)), show_each_sig(mxp, maker_st, cdr(tys), cdr(us)))
         }
     }
@@ -15044,7 +15333,7 @@ pub mod mx_in {
                 } else {
                     fresh_sol(s0.1)
                 };
-                let tys = build(mxp, maker_st, s);
+                let tys = build(mxp, maker_st, s, n);
                 let shown = show_each_sig(mxp, maker_st, tys, us);
                 let mx_solve_strings = texts(shown);
                 if (not(null_p(last)) && mx_solve_strings_eq_p(car(last).0, mx_solve_strings)) {
@@ -15180,6 +15469,147 @@ pub mod mx_in {
                 }
             }
         }
+    }
+
+    #[inline]
+    pub fn mix<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, h: Int, x: Int) -> Int {
+        remainder(_plus(_star(h, int_lit(65599)), x), maker_st.hash_p.get().unwrap())
+    }
+
+    pub fn syn_hash<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> Int {
+        let tagcase_ = s;
+        match *tagcase_ {
+            mx_types::Syn::Atom(d, a, b, x) => {
+                if symbol_p(d) {
+                    mix(mxp, maker_st, int_lit(1), remainder(string_hash(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d))), maker_st.hash_p.get().unwrap()))
+                } else if string_p(d) {
+                    mix(mxp, maker_st, int_lit(2), remainder(string_hash(kayak_rt::value::unbox::<Str>(d)), maker_st.hash_p.get().unwrap()))
+                } else {
+                    int_lit(3)
+                }
+            }
+            mx_types::Syn::MxEagerReaderTypesLst(xs, d, a, b, x) => {
+                syns_hash(mxp, maker_st, int_lit(4), xs)
+            }
+            mx_types::Syn::Dotted(xs, t, d, a, b, x) => {
+                mix(mxp, maker_st, syns_hash(mxp, maker_st, int_lit(5), xs), syn_hash(mxp, maker_st, t))
+            }
+            mx_types::Syn::Vec(xs, d, a, b, x) => {
+                syns_hash(mxp, maker_st, int_lit(6), xs)
+            }
+        }
+    }
+
+    pub fn syns_hash<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut h: Int, mut xs: SynsA) -> Int {
+        loop {
+            if null_p(xs) {
+                return h;
+            } else {
+                (h, xs) = (mix(mxp, maker_st, h, syn_hash(mxp, maker_st, car(xs))), cdr(xs));
+                continue;
+            }
+        }
+    }
+
+    pub fn seen_count(mut h: Int, mut ks: SeenKeys) -> Int {
+        loop {
+            if null_p(ks) {
+                return int_lit(0);
+            } else if _eq(h, car(ks).0) {
+                return car(ks).1;
+            } else {
+                ks = cdr(ks);
+                continue;
+            }
+        }
+    }
+
+    pub fn form_begin_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> () {
+        let h = syn_hash(mxp, maker_st, s);
+        let n = seen_count(h, get(maker_st.keys_seen.get().unwrap()));
+        set(maker_st.keys_seen.get().unwrap(), cons(Product_11_12(h, _plus(n, int_lit(1))), get(maker_st.keys_seen.get().unwrap())));
+        set(maker_st.form_key.get().unwrap(), string_append(if get(maker_st.in_module.get().unwrap()) {
+            str_lit("m")
+        } else {
+            str_lit("")
+        }, string_append(int_to_string(h), if _eq(n, int_lit(0)) {
+            str_lit("")
+        } else {
+            string_append(str_lit("-"), int_to_string(n))
+        })));
+        set(maker_st.fresh_count.get().unwrap(), int_lit(0));
+        set(maker_st.captors_made.get().unwrap(), int_lit(0));
+        set(maker_st.mx_fresh_expanded.get().unwrap(), int_lit(0));
+        set(maker_st.form_tags.get().unwrap(), nil::<Product_11_12<Int, Str>>())
+    }
+
+    #[inline]
+    pub fn fresh_tag<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>) -> Str {
+        set(maker_st.fresh_count.get().unwrap(), _plus(get(maker_st.fresh_count.get().unwrap()), int_lit(1)));
+        string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit("."), int_to_string(get(maker_st.fresh_count.get().unwrap()))))
+    }
+
+    #[inline]
+    pub fn captor_tag<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>) -> Str {
+        set(maker_st.captors_made.get().unwrap(), _plus(get(maker_st.captors_made.get().unwrap()), int_lit(1)));
+        string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit("."), int_to_string(get(maker_st.captors_made.get().unwrap()))))
+    }
+
+    pub fn expansion_begun_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, made: Int) -> Str {
+        set(maker_st.mx_fresh_expanded.get().unwrap(), _plus(get(maker_st.mx_fresh_expanded.get().unwrap()), int_lit(1)));
+        let t = string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit("."), int_to_string(get(maker_st.mx_fresh_expanded.get().unwrap()))));
+        set(maker_st.form_tags.get().unwrap(), cons(Product_11_12(made, t), get(maker_st.form_tags.get().unwrap())));
+        t
+    }
+
+    pub fn tag_in(mut made: Int, mut ts: Tags) -> Str {
+        loop {
+            if null_p(ts) {
+                return str_lit("0");
+            } else if _eq(made, car(ts).0) {
+                return car(ts).1;
+            } else {
+                ts = cdr(ts);
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn mx_fresh_tag_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, made: Int) -> Str {
+        tag_in(made, get(maker_st.form_tags.get().unwrap()))
+    }
+
+    #[inline]
+    pub fn tag_char_p(c: char) -> bool {
+        (char_numeric_p(c) || char_eq_p(c, '.') || char_eq_p(c, '-') || char_eq_p(c, 'm'))
+    }
+
+    pub fn fresh_scope_begin_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>) -> FreshSaved {
+        let s = Product_11_12_13_14_15_16_17(get(maker_st.form_key.get().unwrap()), get(maker_st.fresh_count.get().unwrap()), get(maker_st.captors_made.get().unwrap()), get(maker_st.keys_seen.get().unwrap()), get(maker_st.in_module.get().unwrap()), get(maker_st.mx_fresh_expanded.get().unwrap()), get(maker_st.form_tags.get().unwrap()));
+        set(maker_st.keys_seen.get().unwrap(), nil::<Product_11_12<Int, Int>>());
+        set(maker_st.in_module.get().unwrap(), true);
+        s
+    }
+
+    pub fn fresh_scope_end_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: FreshSaved) -> () {
+        set(maker_st.form_key.get().unwrap(), s.0);
+        set(maker_st.fresh_count.get().unwrap(), s.1);
+        set(maker_st.captors_made.get().unwrap(), s.2);
+        set(maker_st.keys_seen.get().unwrap(), s.3);
+        set(maker_st.in_module.get().unwrap(), s.4);
+        set(maker_st.mx_fresh_expanded.get().unwrap(), s.5);
+        set(maker_st.form_tags.get().unwrap(), s.6)
+    }
+
+    #[inline]
+    pub fn seen_now<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>) -> SeenKeys {
+        get(maker_st.keys_seen.get().unwrap())
+    }
+
+    #[inline]
+    pub fn seen_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, ks: SeenKeys) -> () {
+        set(maker_st.keys_seen.get().unwrap(), ks)
     }
 
     pub fn leaf_sty_p(t: &'static Sty) -> bool {
@@ -15976,12 +16406,12 @@ pub mod mx_in {
         }
     }
 
-    pub fn mx_contracts_fresh_of(mut n: Symbol, mut fresh: MxContractsRenames, mut made: Int) -> List<Symbol> {
+    pub fn mx_contracts_fresh_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut n: Symbol, mut fresh: MxContractsRenames, mut made: Int) -> List<Symbol> {
         loop {
             if null_p(fresh) {
                 return nil::<Symbol>();
-            } else if (symbol_eq_p(n, car(fresh).0) || string_eq_p(symbol_to_string(n), string_append(str_lit("%~"), string_append(int_to_string(made), string_append(str_lit(":"), symbol_to_string(car(fresh).0)))))) {
-                return kayak_rt::heap_cons(car(fresh).1, kayak_rt::nil());
+            } else if (symbol_eq_p(n, car(fresh).0) || string_eq_p(symbol_to_string(n), string_append(str_lit("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), string_append(str_lit(":"), symbol_to_string(car(fresh).0)))))) {
+                return kayak_rt::cons(car(fresh).1, kayak_rt::nil());
             } else {
                 fresh = cdr(fresh);
                 continue;
@@ -15989,13 +16419,13 @@ pub mod mx_in {
         }
     }
 
-    pub fn mx_contracts_escaped(mut ns: Anodes, mut fresh: MxContractsRenames, mut made: Int) -> List<Symbol> {
+    pub fn mx_contracts_escaped<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut ns: Anodes, mut fresh: MxContractsRenames, mut made: Int) -> List<Symbol> {
         loop {
             if null_p(ns) {
                 return nil::<Symbol>();
             } else {
                 let x = if (_eq(car(ns).0, int_lit(4)) && not(null_p(car(ns).2))) {
-                    mx_contracts_fresh_of(car(car(ns).2), fresh, made)
+                    mx_contracts_fresh_of(mxp, maker_st, car(car(ns).2), fresh, made)
                 } else {
                     nil::<Symbol>()
                 };
@@ -16018,7 +16448,7 @@ pub mod mx_in {
         if alpha_same_p(mxp, maker_st, a, b)? {
             Ok(())
         } else {
-            let x = mx_contracts_escaped(b, fresh, made);
+            let x = mx_contracts_escaped(mxp, maker_st, b, fresh, made);
             Ok(match in_use(if null_p(x) {
                 str_lit("its expansion depends on how its use's bound names are spelled")
             } else {
@@ -16231,7 +16661,7 @@ pub mod mx_in {
             Ok(match mx_fail(string_append(str_lit("its expansion: "), m), a, b)? {})
         });
         let defines = expansion_defines(mxp, maker_st, ours, out)?;
-        let own = string_append(str_lit("%~"), string_append(int_to_string(made), str_lit(":")));
+        let own = string_append(str_lit("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), str_lit(":")));
         let extra = named_not_in(defines, said, own);
         let missing = named_not_in(said, defines, str_lit(""));
         if not(null_p(extra)) {
@@ -16398,8 +16828,8 @@ pub mod mx_in {
         string_append(str_lit("%forms "), string_append(int_to_string(length(fs)), string_append(str_lit("\n"), forms_given(fs))))
     }
 
-    pub fn applied_text(s: Int, code: Str, form: Str, made: Int, fs: List<Str>) -> Str {
-        string_append(str_lit("%apply "), string_append(int_to_string(s), string_append(str_lit(" "), string_append(int_to_string(made), string_append(str_lit(" "), string_append(int_to_string(string_length(code)), string_append(str_lit(" "), string_append(int_to_string(length(fs)), string_append(str_lit("\n"), string_append(forms_given(fs), string_append(code, form)))))))))))
+    pub fn applied_text<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: Int, code: Str, form: Str, made: Int, fs: List<Str>) -> Str {
+        string_append(str_lit("%apply "), string_append(int_to_string(s), string_append(str_lit(" "), string_append(mx_fresh_tag_of(mxp, maker_st, made), string_append(str_lit(" "), string_append(int_to_string(string_length(code)), string_append(str_lit(" "), string_append(int_to_string(length(fs)), string_append(str_lit("\n"), string_append(forms_given(fs), string_append(code, form)))))))))))
     }
 
     pub fn mx_procedural_run(code: Str) -> kayak_rt::Sum {
@@ -16734,8 +17164,8 @@ pub mod mx_in {
     }
 
     #[inline]
-    pub fn mx_procedural_alias(n: Str, made: Int) -> Str {
-        string_append(str_lit("%~"), string_append(int_to_string(made), string_append(str_lit(":"), n)))
+    pub fn mx_procedural_alias<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, n: Str, made: Int) -> Str {
+        string_append(str_lit("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), string_append(str_lit(":"), n)))
     }
 
     #[inline]
@@ -16794,7 +17224,7 @@ pub mod mx_in {
         match *tagcase_ {
             mx_types::Syn::Atom(d, a, b, x) => {
                 if (macro_env && symbol_p(d)) {
-                    Ok(atom(kayak_rt::value::ToValue::to_value(string_to_symbol(mx_procedural_alias(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)), made))), a, b, x))
+                    Ok(atom(kayak_rt::value::ToValue::to_value(string_to_symbol(mx_procedural_alias(mxp, maker_st, symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)), made))), a, b, x))
                 } else {
                     Ok(s)
                 }
@@ -16806,12 +17236,12 @@ pub mod mx_in {
                 } else if string_eq_p(head, str_lit("%sc")) {
                     Ok(opened_closure(mxp, maker_st, mx_fail, s, items, macro_env, made)?)
                 } else {
-                    let xs = closed_each(mxp, maker_st, mx_fail, items, macro_env, made)?;
+                    let xs = mx_procedural_closed_each(mxp, maker_st, mx_fail, items, macro_env, made)?;
                     Ok(mx_eager_reader_types_lst(xs, kayak_rt::value::list(syn_datums(xs)), a, b, x))
                 }
             }
             mx_types::Syn::Dotted(items, tail, d, a, b, x) => {
-                let (xs, t) = (closed_each(mxp, maker_st, mx_fail, items, macro_env, made)?, closed(mxp, maker_st, mx_fail, tail, macro_env, made)?);
+                let (xs, t) = (mx_procedural_closed_each(mxp, maker_st, mx_fail, items, macro_env, made)?, closed(mxp, maker_st, mx_fail, tail, macro_env, made)?);
                 Ok(dotted(xs, t, mx_datum_dotted(syn_datums(xs), syn_to_datum(t)), a, b, x))
             }
             mx_types::Syn::Vec(items, d, a, b, x) => {
@@ -16820,11 +17250,11 @@ pub mod mx_in {
         }
     }
 
-    pub fn closed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA, macro_env: bool, made: Int) -> Result<SynsA, Unwind> {
+    pub fn mx_procedural_closed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA, macro_env: bool, made: Int) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<&'static mx_types::Syn>())
         } else {
-            Ok(cons(closed(mxp, maker_st, mx_fail, car(xs), macro_env, made)?, closed_each(mxp, maker_st, mx_fail, cdr(xs), macro_env, made)?))
+            Ok(cons(closed(mxp, maker_st, mx_fail, car(xs), macro_env, made)?, mx_procedural_closed_each(mxp, maker_st, mx_fail, cdr(xs), macro_env, made)?))
         }
     }
 
@@ -16889,7 +17319,7 @@ pub mod mx_in {
 
     pub fn mx_procedural_digits_end(mut s: Str, mut i: Int) -> Int {
         loop {
-            if (_lt(i, string_length(s)) && char_numeric_p(string_ref(s, i))) {
+            if (_lt(i, string_length(s)) && tag_char_p(string_ref(s, i))) {
                 i = _plus(i, int_lit(1));
                 continue;
             } else {
@@ -17089,7 +17519,7 @@ pub mod mx_in {
                 at
             })?)
         });
-        let tagcase_ = mx_call_procedural(style, p.1, syn_to_datum(s), made, p.4);
+        let tagcase_ = mx_call_procedural(style, p.1, syn_to_datum(s), mx_fresh_tag_of(mxp, maker_st, made), p.4);
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("ok") } {
             let d: kayak_rt::value::Value = kayak_rt::sum_payload::<kayak_rt::value::Value>(tagcase_);
@@ -17100,7 +17530,7 @@ pub mod mx_in {
             Ok(s)
         } else if tag_ == const { kayak_rt::tag_hash("apart") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            let tagcase_ = mx_procedural_run(applied_text(style, p.1, syn_text(s), made, p.4));
+            let tagcase_ = mx_procedural_run(applied_text(mxp, maker_st, style, p.1, syn_text(s), made, p.4));
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -17327,6 +17757,22 @@ pub mod mx_in {
     }
 
     #[inline]
+    pub fn phase1_state_now<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>) -> Phase1State {
+        Product_11_12(get(maker_st.phase1_forms.get().unwrap()), get(maker_st.procedurals.get().unwrap()))
+    }
+
+    #[inline]
+    pub fn phase1_state_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: Phase1State) -> () {
+        set(maker_st.phase1_forms.get().unwrap(), s.0);
+        set(maker_st.procedurals.get().unwrap(), s.1)
+    }
+
+    #[inline]
+    pub fn phase1_none_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>) -> bool {
+        (null_p(get(maker_st.phase1_forms.get().unwrap())) && null_p(get(maker_st.procedurals.get().unwrap())))
+    }
+
+    #[inline]
     pub fn syns_texts(xs: SynsA) -> List<Str> {
         if null_p(xs) {
             nil::<Str>()
@@ -17468,7 +17914,7 @@ pub mod mx_in {
 
     #[inline]
     pub fn def_env_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, k: Int, h: DefEnv) -> () {
-        set(maker_st.mx_procedural_def_envs.get().unwrap(), cons(Product_11_12(k, h), get(maker_st.mx_procedural_def_envs.get().unwrap())))
+        set(maker_st.mx_procedural_def_envs.get().unwrap(), cons(Product_11_12(mx_fresh_tag_of(mxp, maker_st, k), h), get(maker_st.mx_procedural_def_envs.get().unwrap())))
     }
 
     #[inline]
@@ -18429,7 +18875,7 @@ pub mod mx_in {
     pub fn state_at(mut s: Int, mut xs: ByStates) -> ByStates {
         loop {
             if null_p(xs) {
-                return nil::<Product_11_12_13_14_15_16_17<Int, List<Product_11_12<Symbol, Product_11_12_13_14<&'static mx_types::Sty, List<Product_11_12_13_14_15_16_17_18<&'static mx_types::Syn, &'static mx_types::Syn, List<Product_11_12<List<bool>, &'static mx_types::Action>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<&'static mx_types::Sty, List<&'static mx_types::Level>, bool, List<Product_11_12<List<&'static mx_types::Syn>, List<&'static mx_types::Syn>>>, Int>>>, List<Product_11_12<Symbol, &'static mx_types::Syn>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<&'static mx_types::Syn>, Int>>>, List<Product_11_12<Symbol, Str>>, List<Symbol>, Int, List<Product_11_12<Symbol, Int>>, List<Str>>>();
+                return nil::<Product_11_12_13_14_15_16_17<Int, List<Product_11_12<Symbol, Product_11_12_13_14<&'static mx_types::Sty, List<Product_11_12_13_14_15_16_17_18<&'static mx_types::Syn, &'static mx_types::Syn, List<Product_11_12<List<bool>, &'static mx_types::Action>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<&'static mx_types::Sty, List<&'static mx_types::Level>, bool, List<Product_11_12<List<&'static mx_types::Syn>, List<&'static mx_types::Syn>>>, Int>>>, List<Product_11_12<Symbol, &'static mx_types::Syn>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<&'static mx_types::Syn>, Int>>>, List<Product_11_12<Symbol, Str>>, List<Symbol>, List<Product_11_12<Int, Int>>, List<Product_11_12<Symbol, Int>>, Product_11_12<List<Str>, List<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>>>>();
             } else if _eq(s, car(xs).0) {
                 return the::<ByStates>(kayak_rt::heap_cons(car(xs), kayak_rt::nil()));
             } else {
@@ -18446,25 +18892,25 @@ pub mod mx_in {
             set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<&'static mx_types::Sty, List<Product_11_12_13_14_15_16_17_18<&'static mx_types::Syn, &'static mx_types::Syn, List<Product_11_12<List<bool>, &'static mx_types::Action>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<&'static mx_types::Sty, List<&'static mx_types::Level>, bool, List<Product_11_12<List<&'static mx_types::Syn>, List<&'static mx_types::Syn>>>, Int>>>, List<Product_11_12<Symbol, &'static mx_types::Syn>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<&'static mx_types::Syn>, Int>>>());
             set(maker_st.loads.get().unwrap(), nil::<Product_11_12<Symbol, Str>>());
             set(maker_st.mx_top_globals.get().unwrap(), nil::<Symbol>());
-            set(maker_st.fresh_count.get().unwrap(), int_lit(0));
+            seen_x(mxp, maker_st, nil::<Product_11_12<Int, Int>>());
             set(maker_st.marks.get().unwrap(), nil::<Product_11_12<Symbol, Int>>());
-            phase1_forms_x(mxp, maker_st, nil::<Str>())
+            phase1_state_x(mxp, maker_st, Product_11_12(nil::<Str>(), nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>()))
         } else {
             set(maker_st.defined.get().unwrap(), car(at).1);
             set(maker_st.loads.get().unwrap(), car(at).2);
             set(maker_st.mx_top_globals.get().unwrap(), car(at).3);
-            set(maker_st.fresh_count.get().unwrap(), car(at).4);
+            seen_x(mxp, maker_st, car(at).4);
             set(maker_st.marks.get().unwrap(), car(at).5);
-            phase1_forms_x(mxp, maker_st, car(at).6)
+            phase1_state_x(mxp, maker_st, car(at).6)
         };
         set(maker_st.globals_before.get().unwrap(), get(maker_st.mx_top_globals.get().unwrap()))
     }
 
     pub fn macros_after_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: Int) -> () {
-        if (null_p(get(maker_st.defined.get().unwrap())) && null_p(get(maker_st.loads.get().unwrap())) && null_p(get(maker_st.mx_top_globals.get().unwrap())) && _eq(get(maker_st.fresh_count.get().unwrap()), int_lit(0)) && null_p(get(maker_st.marks.get().unwrap())) && null_p(phase1_forms_now(mxp, maker_st))) {
+        if (null_p(get(maker_st.defined.get().unwrap())) && null_p(get(maker_st.loads.get().unwrap())) && null_p(get(maker_st.mx_top_globals.get().unwrap())) && null_p(seen_now(mxp, maker_st)) && null_p(get(maker_st.marks.get().unwrap())) && phase1_none_p(mxp, maker_st)) {
             ()
         } else {
-            set(maker_st.by_state.get().unwrap(), cons(Product_11_12_13_14_15_16_17(s, get(maker_st.defined.get().unwrap()), get(maker_st.loads.get().unwrap()), get(maker_st.mx_top_globals.get().unwrap()), get(maker_st.fresh_count.get().unwrap()), get(maker_st.marks.get().unwrap()), phase1_forms_now(mxp, maker_st)), get(maker_st.by_state.get().unwrap())))
+            set(maker_st.by_state.get().unwrap(), cons(Product_11_12_13_14_15_16_17(s, get(maker_st.defined.get().unwrap()), get(maker_st.loads.get().unwrap()), get(maker_st.mx_top_globals.get().unwrap()), seen_now(mxp, maker_st), get(maker_st.marks.get().unwrap()), phase1_state_now(mxp, maker_st)), get(maker_st.by_state.get().unwrap())))
         }
     }
 
@@ -18487,6 +18933,7 @@ pub mod mx_in {
         let n = _plus(get(maker_st.nexpansions.get().unwrap()), int_lit(1));
         set(maker_st.nexpansions.get().unwrap(), n);
         set(maker_st.expansions.get().unwrap(), cons(Product_11_12_13_14_15(n, name, syn_start(s), syn_end(s), typed), get(maker_st.expansions.get().unwrap())));
+        expansion_begun_x(mxp, maker_st, n);
         n
     }
 
@@ -18705,8 +19152,7 @@ pub mod mx_in {
         let is = ints_prefix(get(maker_st.iters.get().unwrap()), d);
         let known = mx_top_fresh_of(binder, is, get(maker_st.mx_top_fresh.get().unwrap()));
         if null_p(known) {
-            set(maker_st.fresh_count.get().unwrap(), _plus(get(maker_st.fresh_count.get().unwrap()), int_lit(1)));
-            let f = string_to_symbol(string_append(str_lit("%"), string_append(symbol_to_string(n), string_append(str_lit(":"), int_to_string(get(maker_st.fresh_count.get().unwrap()))))));
+            let f = string_to_symbol(string_append(str_lit("%"), string_append(symbol_to_string(n), string_append(str_lit(":"), fresh_tag(mxp, maker_st)))));
             set(maker_st.mx_top_fresh.get().unwrap(), cons(Product_11_12_13(binder, is, f), get(maker_st.mx_top_fresh.get().unwrap())));
             f
         } else {
@@ -18751,7 +19197,7 @@ pub mod mx_in {
                         atom(kayak_rt::value::ToValue::to_value(fresh_name(mxp, maker_st, n, binder, d)), a, b, made)
                     }
                     mx_types::Action::ActAlias() => {
-                        atom(kayak_rt::value::ToValue::to_value(string_to_symbol(mx_procedural_alias(symbol_to_string(n), made))), a, b, made)
+                        atom(kayak_rt::value::ToValue::to_value(string_to_symbol(mx_procedural_alias(mxp, maker_st, symbol_to_string(n), made))), a, b, made)
                     }
                     mx_types::Action::ActMark(i) => {
                         atom(kayak_rt::value::ToValue::to_value(i), a, b, made)
@@ -19135,8 +19581,7 @@ pub mod mx_in {
 
     #[inline]
     pub fn fresh_symbol<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, prefix: Str) -> Symbol {
-        set(maker_st.fresh_count.get().unwrap(), _plus(get(maker_st.fresh_count.get().unwrap()), int_lit(1)));
-        string_to_symbol(string_append(prefix, int_to_string(get(maker_st.fresh_count.get().unwrap()))))
+        string_to_symbol(string_append(prefix, fresh_tag(mxp, maker_st)))
     }
 
     pub fn symbol_in<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut s: &'static Syn, mut n: Symbol) -> Result<SynsA, Unwind> {
@@ -23073,7 +23518,7 @@ pub mod mx_in {
 
     pub fn mx_shapes_digits_end(mut s: Str, mut i: Int) -> Int {
         loop {
-            if (_lt(i, string_length(s)) && char_numeric_p(string_ref(s, i))) {
+            if (_lt(i, string_length(s)) && tag_char_p(string_ref(s, i))) {
                 i = _plus(i, int_lit(1));
                 continue;
             } else {
@@ -23213,7 +23658,7 @@ pub mod mx_in {
                 Ok(mk_symbol(base, a, b))
             }
             _ => {
-                if (_eq(free, int_lit(0)) && mx_types_name_in_p(string_to_symbol(base), h.2)) {
+                if (_eq(free, int_lit(0)) && mx_syntax_name_in_p(string_to_symbol(base), h.2)) {
                     Ok(with_of(symbol_to_string(h.1)))
                 } else if _eq(free, int_lit(0)) {
                     Ok(with_of(str_lit("#%fx")))
@@ -23227,11 +23672,11 @@ pub mod mx_in {
         }
     }
 
-    pub fn def_env_of(mut k: Int, mut hs: MxNodesDefEnvs) -> DefEnv {
+    pub fn def_env_of(mut k: Str, mut hs: MxNodesDefEnvs) -> DefEnv {
         loop {
             if null_p(hs) {
                 return def_env_top();
-            } else if _eq(k, car(hs).0) {
+            } else if string_eq_p(k, car(hs).0) {
                 return car(hs).1;
             } else {
                 hs = cdr(hs);
@@ -23240,27 +23685,16 @@ pub mod mx_in {
         }
     }
 
-    pub fn mx_shapes_digits_value(mut s: Str, mut i: Int, mut end: Int, mut acc: Int) -> Int {
-        loop {
-            if _gt_eq(i, end) {
-                return acc;
-            } else {
-                (i, acc) = (_plus(i, int_lit(1)), _plus(_star(acc, int_lit(10)), _minus(char_to_integer(string_ref(s, i)), char_to_integer('0'))));
-                continue;
-            }
-        }
-    }
-
-    pub fn alias_made(x: Str) -> Int {
+    pub fn alias_made(x: Str) -> Str {
         let c = if (_gt(string_length(x), int_lit(2)) && string_eq_p(substring(x, int_lit(0), int_lit(2)), str_lit("%~"))) {
             mx_shapes_digits_end(x, int_lit(2))
         } else {
             int_lit(-1)
         };
-        if _gt(c, int_lit(2)) {
-            mx_shapes_digits_value(x, int_lit(2), c, int_lit(0))
+        if (_gt(c, int_lit(2)) && _lt(c, string_length(x)) && char_eq_p(string_ref(x, c), ':')) {
+            substring(x, int_lit(2), c)
         } else {
-            int_lit(0)
+            str_lit("")
         }
     }
 
@@ -23398,16 +23832,15 @@ pub mod mx_in {
         }
     }
 
-    pub fn captors_named<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut cs: MxShapesInts, mut out: Captors) -> Captors {
+    pub fn captors_named<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mut cs: MxShapesInts, mut out: Captors, mut tag: &'mxp dyn Fn() -> Result<Str, Unwind>) -> Result<Captors, Unwind> {
         loop {
             if null_p(cs) {
-                return out;
+                return Ok(out);
             } else {
                 let tagcase_ = node_kids(mxp, maker_st, car(cs));
                 match *tagcase_ {
                     mx_types::MxNodesKids::KBinder(n, e) => {
-                        set(maker_st.captors_made.get().unwrap(), _plus(get(maker_st.captors_made.get().unwrap()), int_lit(1)));
-                        (cs, out) = (cdr(cs), cons(Product_11_12(car(cs), string_to_symbol(string_append(str_lit("%"), string_append(symbol_to_string(n), string_append(str_lit("~"), int_to_string(get(maker_st.captors_made.get().unwrap()))))))), out));
+                        (cs, out) = (cdr(cs), cons(Product_11_12(car(cs), string_to_symbol(string_append(str_lit("%"), string_append(symbol_to_string(n), string_append(str_lit("~"), tag()?))))), out));
                         continue;
                     }
                     _ => {
@@ -23645,7 +24078,7 @@ pub mod mx_in {
         parts_under(s, parts_from_top(ws))
     }
 
-    pub fn aliases_resolved<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, x: &'static Syn, hs: MxNodesDefEnvs) -> Result<&'static Syn, Unwind> {
+    pub fn aliases_resolved<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, x: &'static Syn, hs: MxNodesDefEnvs, tag: &'mxp dyn Fn() -> Result<Str, Unwind>) -> Result<&'static Syn, Unwind> {
         if not(alias_in_p(mxp, maker_st, x)?) {
             Ok(x)
         } else {
@@ -23653,7 +24086,7 @@ pub mod mx_in {
             let root = w.0;
             let mx_nodes_found = w.1;
             let made = aliases_written(mxp, maker_st, mx_fail, mx_nodes_found, hs, root_binders(mxp, maker_st, mx_fail, root, x)?, Product_11_12(the::<MxShapesParts>(nil::<Product_11_12<List<bool>, &'static mx_types::Syn>>()), the::<MxShapesInts>(nil::<Int>())))?;
-            let fresh = captors_named(mxp, maker_st, made.1, nil::<Product_11_12<Int, Symbol>>());
+            let fresh = captors_named(mxp, maker_st, made.1, nil::<Product_11_12<Int, Symbol>>(), tag)?;
             let written = append(captors_renamed(mxp, maker_st, mx_nodes_found, fresh, binders_renamed(mxp, maker_st, fresh, nil::<Product_11_12<List<bool>, &'static mx_types::Syn>>())), made.0);
             aliases_defined_in(mxp, maker_st, mx_fail, root, x)?;
             Ok(with_parts(x, nil::<bool>(), written))
@@ -24106,7 +24539,7 @@ pub mod mx_in {
         if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("import")) || string_eq_p(h, str_lit("define-datatype"))) {
             Ok(x)
         } else {
-            Ok(top_shaped(mxp, maker_st, aliases_resolved(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), sealed_written(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), x)?, def_envs_given(mxp, maker_st))?)?)
+            Ok(top_shaped(mxp, maker_st, aliases_resolved(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), sealed_written(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), x)?, def_envs_given(mxp, maker_st), lambda0(move || Ok((kayak_rt::lambda0(move || captor_tag(mxp, maker_st)))())))?)?)
         }
     }
 
@@ -24123,7 +24556,7 @@ pub mod mx_in {
         if null_p(cs) {
             Ok(nil::<&'static mx_types::Syn>())
         } else {
-            Ok(cons(aliases_resolved(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), expand(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(cs))?, def_envs_given(mxp, maker_st))?, drive_checked(mxp, maker_st, cdr(cs))?))
+            Ok(cons(aliases_resolved(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), expand(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(cs))?, def_envs_given(mxp, maker_st), lambda0(move || Ok((kayak_rt::lambda0(move || captor_tag(mxp, maker_st)))())))?, drive_checked(mxp, maker_st, cdr(cs))?))
         }
     }
 
@@ -24141,7 +24574,17 @@ pub mod mx_in {
         Ok(nil::<&'static mx_types::Syn>())
     }
 
+    pub fn drive_begun_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> () {
+        form_begin_x(mxp, maker_st, s);
+        made_syntax_taken_x(mxp, maker_st);
+        set(maker_st.program_walk.get().unwrap(), false);
+        set(maker_st.heads_on.get().unwrap(), false);
+        set(maker_st.open.get().unwrap(), nil::<Symbol>());
+        set(maker_st.checking.get().unwrap(), false)
+    }
+
     pub fn drive_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MxFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> Result<SynsA, Unwind> {
+        drive_begun_x(mxp, maker_st, s);
         if shape_definition_p(s) {
             drive_taken(mxp, maker_st, syntax_names(mxp, maker_st, s)?, s)?;
             shape_defined_x(mxp, maker_st, s)?;
@@ -24302,10 +24745,9 @@ pub mod mx_in {
             description_heads: std::cell::Cell::new(None),
             type_forms: std::cell::Cell::new(None),
             description_words: std::cell::Cell::new(None),
-            mus: std::cell::Cell::new(None),
-            nmus: std::cell::Cell::new(None),
             marks: std::cell::Cell::new(None),
             mark_count: std::cell::Cell::new(None),
+            oneof_apart: std::cell::Cell::new(None),
             bind_usage: std::cell::Cell::new(None),
             syntax_sigs: std::cell::Cell::new(None),
             path_usage: std::cell::Cell::new(None),
@@ -24356,7 +24798,7 @@ pub mod mx_in {
             mx_infer_members: std::cell::Cell::new(None),
             mx_infer_absorbed: std::cell::Cell::new(None),
             mx_infer_roots: std::cell::Cell::new(None),
-            built_mus: std::cell::Cell::new(None),
+            built_round: std::cell::Cell::new(None),
             mx_infer_got: std::cell::Cell::new(None),
             shown: std::cell::Cell::new(None),
             mx_shown_regions: std::cell::Cell::new(None),
@@ -24371,6 +24813,14 @@ pub mod mx_in {
             demands: std::cell::Cell::new(None),
             mx_solve_clause_usage: std::cell::Cell::new(None),
             caught_sigs: std::cell::Cell::new(None),
+            form_key: std::cell::Cell::new(None),
+            fresh_count: std::cell::Cell::new(None),
+            captors_made: std::cell::Cell::new(None),
+            mx_fresh_expanded: std::cell::Cell::new(None),
+            form_tags: std::cell::Cell::new(None),
+            keys_seen: std::cell::Cell::new(None),
+            in_module: std::cell::Cell::new(None),
+            hash_p: std::cell::Cell::new(None),
             pseudo_parts: std::cell::Cell::new(None),
             made_syntax: std::cell::Cell::new(None),
             source_base: std::cell::Cell::new(None),
@@ -24391,7 +24841,6 @@ pub mod mx_in {
             tried_sigs: std::cell::Cell::new(None),
             tried_checks: std::cell::Cell::new(None),
             loads: std::cell::Cell::new(None),
-            fresh_count: std::cell::Cell::new(None),
             by_state: std::cell::Cell::new(None),
             mx_top_globals: std::cell::Cell::new(None),
             globals_before: std::cell::Cell::new(None),
@@ -24440,7 +24889,6 @@ pub mod mx_in {
             sealed_out: std::cell::Cell::new(None),
             shapes_by_state: std::cell::Cell::new(None),
             aliases_defined: std::cell::Cell::new(None),
-            captors_made: std::cell::Cell::new(None),
             drive_files: std::cell::Cell::new(None),
             drive_met: std::cell::Cell::new(None),
             drive_at: std::cell::Cell::new(None),
@@ -24459,10 +24907,9 @@ pub mod mx_in {
         maker_st.description_heads.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("narrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("composable"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dletrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("listof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mark-key"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("moduleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nat"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nlist"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pairof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("poly"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("productof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("prompt-tag"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("proves"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("subr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("sumof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tupleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bool"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("anyof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("allof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("restrict"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("modnames"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("read"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("write"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("alloc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("goto"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("comefrom"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("await"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("init"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("send"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("receive"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("io"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("maxeff"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("globals"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("conv"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("fields"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("frozen"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("requires"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ensures"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("<="))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("+"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("-"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("acyclic"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("const"))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
         maker_st.type_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("narrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("composable"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dletrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("listof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mark-key"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("moduleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nat"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nlist"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pairof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("poly"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("productof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("prompt-tag"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("proves"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("subr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("sumof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tupleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bool"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("anyof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("allof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("restrict"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("modnames"))), kayak_rt::value::Value::Nil)))))))))))))))))))))))))))))))))));
         maker_st.description_words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("void"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pure"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("spin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nondet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("stage"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("heap"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("const"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("acyclic"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("finite"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cellular"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("native"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("fx"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("distinct"))), kayak_rt::value::Value::Nil)))))))))))))));
-        maker_st.mus.set(Some(new(make_array(int_lit(64), s_nil()))));
-        maker_st.nmus.set(Some(new(int_lit(0))));
         maker_st.marks.set(Some(new(nil::<Product_11_12<Symbol, Int>>())));
         maker_st.mark_count.set(Some(new(int_lit(2))));
+        maker_st.oneof_apart.set(Some(string_append(str_lit("a syntax type: a `oneof`'s members must be told apart by their shapes in the "), str_lit("source (an `expr` may be anything)"))));
         maker_st.bind_usage.set(Some(str_lit("a binding is `(rho (address δ) …)` or `(cage (rho …) (at address) …)`")));
         maker_st.syntax_sigs.set(Some(new(nil::<&'static mx_types::Syn>())));
         maker_st.path_usage.set(Some(string_append(str_lit("an address is `(path #:a #:d …)`, its steps from the root, `#:a` the car "), str_lit("and `#:d` the cdr"))));
@@ -24513,9 +24960,9 @@ pub mod mx_in {
         maker_st.mx_infer_members.set(Some(new(nil::<Product_11_12<Int, List<Int>>>())));
         maker_st.mx_infer_absorbed.set(Some(new(nil::<Product_11_12_13<Int, Int, Int>>())));
         maker_st.mx_infer_roots.set(Some(new(nil::<Int>())));
-        maker_st.built_mus.set(Some(new(nil::<Product_11_12<Int, Int>>())));
+        maker_st.built_round.set(Some(new(int_lit(0))));
         maker_st.mx_infer_got.set(Some(new(nil::<Product_11_12<List<Product_11_12_13_14_15<Symbol, &'static mx_types::Sty, List<&'static mx_types::Level>, bool, Int>>, List<Product_11_12<List<&'static mx_types::Atm>, List<Symbol>>>>>())));
-        maker_st.shown.set(Some(new(nil::<Product_11_12_13<Int, Str, bool>>())));
+        maker_st.shown.set(Some(new(nil::<Product_11_12<Str, bool>>())));
         maker_st.mx_shown_regions.set(Some(new(nil::<Product_11_12_13_14_15<Int, Int, List<bool>, List<&'static mx_types::Syn>, List<&'static mx_types::Syn>>>())));
         maker_st.mx_shown_imported.set(Some(new(nil::<Product_11_12_13<Int, List<bool>, &'static mx_types::Syn>>())));
         maker_st.wanted.set(Some(new(nil::<Product_11_12<Int, List<bool>>>())));
@@ -24528,6 +24975,14 @@ pub mod mx_in {
         maker_st.demands.set(Some(new(nil::<Product_11_12<Int, &'static mx_types::Demand>>())));
         maker_st.mx_solve_clause_usage.set(Some(str_lit("a clause is `((_ . pattern) template)`")));
         maker_st.caught_sigs.set(Some(new(nil::<&'static mx_types::Syn>())));
+        maker_st.form_key.set(Some(new(str_lit(""))));
+        maker_st.fresh_count.set(Some(new(int_lit(0))));
+        maker_st.captors_made.set(Some(new(int_lit(0))));
+        maker_st.mx_fresh_expanded.set(Some(new(int_lit(0))));
+        maker_st.form_tags.set(Some(new(nil::<Product_11_12<Int, Str>>())));
+        maker_st.keys_seen.set(Some(new(nil::<Product_11_12<Int, Int>>())));
+        maker_st.in_module.set(Some(new(false)));
+        maker_st.hash_p.set(Some(int_lit(2147483647)));
         maker_st.pseudo_parts.set(Some(new(nil::<&'static mx_types::Syn>())));
         maker_st.made_syntax.set(Some(new(nil::<Symbol>())));
         maker_st.source_base.set(Some(int_lit(1125899906842624)));
@@ -24539,7 +24994,7 @@ pub mod mx_in {
         maker_st.recheck.set(Some(new(int_lit(0))));
         maker_st.phase1_forms.set(Some(new(nil::<Str>())));
         maker_st.def_env_now.set(Some(new(def_env_top())));
-        maker_st.mx_procedural_def_envs.set(Some(new(nil::<Product_11_12<Int, Product_11_12_13<Int, Symbol, List<Symbol>>>>())));
+        maker_st.mx_procedural_def_envs.set(Some(new(nil::<Product_11_12<Str, Product_11_12_13<Int, Symbol, List<Symbol>>>>())));
         maker_st.chain.set(Some(new(nil::<Product_11_12_13<Symbol, &'static mx_types::Syn, Int>>())));
         maker_st.chain_depth.set(Some(new(int_lit(0))));
         maker_st.max_uses.set(Some(new(int_lit(10000))));
@@ -24548,8 +25003,7 @@ pub mod mx_in {
         maker_st.tried_sigs.set(Some(new(nil::<Product_11_12_13<List<&'static mx_types::Syn>, &'static mx_types::Sty, Int>>())));
         maker_st.tried_checks.set(Some(new(nil::<List<Product_11_12_13_14_15_16_17_18<&'static mx_types::Syn, &'static mx_types::Syn, List<Product_11_12<List<bool>, &'static mx_types::Action>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<&'static mx_types::Sty, List<&'static mx_types::Level>, bool, List<Product_11_12<List<&'static mx_types::Syn>, List<&'static mx_types::Syn>>>, Int>>>, List<Product_11_12<Symbol, &'static mx_types::Syn>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>>())));
         maker_st.loads.set(Some(new(nil::<Product_11_12<Symbol, Str>>())));
-        maker_st.fresh_count.set(Some(new(int_lit(0))));
-        maker_st.by_state.set(Some(new(nil::<Product_11_12_13_14_15_16_17<Int, List<Product_11_12<Symbol, Product_11_12_13_14<&'static mx_types::Sty, List<Product_11_12_13_14_15_16_17_18<&'static mx_types::Syn, &'static mx_types::Syn, List<Product_11_12<List<bool>, &'static mx_types::Action>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<&'static mx_types::Sty, List<&'static mx_types::Level>, bool, List<Product_11_12<List<&'static mx_types::Syn>, List<&'static mx_types::Syn>>>, Int>>>, List<Product_11_12<Symbol, &'static mx_types::Syn>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<&'static mx_types::Syn>, Int>>>, List<Product_11_12<Symbol, Str>>, List<Symbol>, Int, List<Product_11_12<Symbol, Int>>, List<Str>>>())));
+        maker_st.by_state.set(Some(new(nil::<Product_11_12_13_14_15_16_17<Int, List<Product_11_12<Symbol, Product_11_12_13_14<&'static mx_types::Sty, List<Product_11_12_13_14_15_16_17_18<&'static mx_types::Syn, &'static mx_types::Syn, List<Product_11_12<List<bool>, &'static mx_types::Action>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<&'static mx_types::Sty, List<&'static mx_types::Level>, bool, List<Product_11_12<List<&'static mx_types::Syn>, List<&'static mx_types::Syn>>>, Int>>>, List<Product_11_12<Symbol, &'static mx_types::Syn>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<&'static mx_types::Syn>, Int>>>, List<Product_11_12<Symbol, Str>>, List<Symbol>, List<Product_11_12<Int, Int>>, List<Product_11_12<Symbol, Int>>, Product_11_12<List<Str>, List<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>>>>())));
         maker_st.mx_top_globals.set(Some(new(nil::<Symbol>())));
         maker_st.globals_before.set(Some(new(nil::<Symbol>())));
         maker_st.expansions.set(Some(new(nil::<Product_11_12_13_14_15<Int, Symbol, Int, Int, bool>>())));
@@ -24597,7 +25051,6 @@ pub mod mx_in {
         maker_st.sealed_out.set(Some(new(nil::<&'static mx_types::Syn>())));
         maker_st.shapes_by_state.set(Some(new(nil::<Product_11_12_13_14<Int, &'static mx_types::NameTree, &'static mx_types::NameTree, List<Product_11_12<Symbol, &'static mx_types::Syn>>>>())));
         maker_st.aliases_defined.set(Some(new(nil::<Product_11_12<Symbol, bool>>())));
-        maker_st.captors_made.set(Some(new(int_lit(0))));
         maker_st.drive_files.set(Some(new(nil::<Str>())));
         maker_st.drive_met.set(Some(new(nil::<Product_11_12<Int, Int>>())));
         maker_st.drive_at.set(Some(new(make_flatarray_i64(1i64, 0i64))));

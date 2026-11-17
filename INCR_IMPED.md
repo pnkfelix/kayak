@@ -49,6 +49,11 @@ Each entry has the same parts:
   itself and the macros it uses. If it matters to Fixpt that the names be
   short, the printer could abbreviate them.
 - **Seen:** 2026-11-16, C429.
+- **Fixpt's answer (f9001a3d, 05854885; kayak's pin since C441):** done
+  as suggested. A form's fresh names are `%x:K.N`, K the form's key (a
+  hash of what was written, and how many forms of that hash came before),
+  N counted within it. A procedural macro's aliases are `%~K.N:x` alike.
+  kayak's driver begins each form so (`form-begin!`).
 
 ## 2. The expander's state is globals updated form by form
 
@@ -83,6 +88,17 @@ Each entry has the same parts:
   forms still meet in the instance's refs. And a process may make no
   instance, as §4 says.
 - **Seen:** 2026-11-16, C429; C437.
+- **Fixpt's answer, in part (f9001a3d, be35fbd8; C441):**
+  - The `mu` table is gone: a recursive syntax type is a value, `(s-mu
+    body …)`, its variables by de Bruijn index, so a signature is of what
+    was written alone.
+  - What one form keeps is as at any form's start (`form-begun!`).
+  - Still program-wide, and in a form's output, though only provenance
+    reads them: expansion numbers and source keys. Fixpt's TODO §290 asks
+    which a cache of kayak's needs: a form's share of each table,
+    renumbered where it replays, or a per-form provenance designed.
+  - Still open: the state in refs, which a form reads and writes; and a
+    process may make no instance (§4).
 
 ## 3. Positions are offsets into one program-wide text
 
@@ -100,6 +116,9 @@ Each entry has the same parts:
   hash, plus an offset within that file. A made part's key would be the
   use's position plus the template part's own position, not a global
   counter.
+- **Fixpt's note (TODO §290):** a session's texts are placed one after
+  another by length too (`Session::eval_base`); left for when a cache of
+  kayak's needs it.
 - **Seen:** 2026-11-16, C429. Not yet felt in kayak, since the driver isn't
   written; to confirm when it is.
 

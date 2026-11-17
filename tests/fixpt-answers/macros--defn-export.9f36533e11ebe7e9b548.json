@@ -10,8 +10,8 @@
 "code": 0,
 "out": [
 "define x : int ! pure",
-"define %x:1 : int ! pure",
-"define y : int ! (read (globals %x:1))",
+"define %x:1391807903.1 : int ! pure",
+"define y : int ! (read (globals %x:1391807903.1))",
 "int ! (read (globals y))",
 "; both checkers agree",
 ""
@@ -20,7 +20,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

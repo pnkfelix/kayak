@@ -9,11 +9,11 @@
 {
 "code": 0,
 "out": [
-"%~1:v : int ! pure",
-"seven : int ! (read (globals %~1:v))",
-"%~3:v : int ! pure",
-"%x:1 : int ! (read (globals %~3:v))",
-"nine : int ! (read (globals %x:1))",
+"%~520169883.1:v : int ! pure",
+"seven : int ! (read (globals %~520169883.1:v))",
+"%~554967291.2:v : int ! pure",
+"%x:554967291.1 : int ! (read (globals %~554967291.2:v))",
+"nine : int ! (read (globals %x:554967291.1))",
 "17 : int ! (read (globals nine seven))",
 ""
 ],
@@ -21,7 +21,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

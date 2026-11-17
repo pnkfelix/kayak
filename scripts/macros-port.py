@@ -98,6 +98,11 @@ PATCHES = {
     "macros-nodes.fx": [
         ("(subr pure (symbol) int)", "(subr (read rs) (symbol) int)", 3),
     ],
+    # `s-typed`'s closure holds its syntax (`h`), so `one-var`'s procedure
+    # is given the same effect (C441).
+    "macros-types.fx": [
+        ("(define one-var (->* (stys (-> (sty) sty)) stys)", "(define one-var (->* (stys (subr (read rs) (sty) sty)) stys)"),
+    ],
     "macros-align.fx": [
         ('(shown (lambda () (string-append "`" (show-syn s) "`"))))',
          '(shown (the (subr (read rs) () string) (lambda () (string-append "`" (show-syn s) "`")))))'),

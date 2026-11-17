@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"mu-nested-unguarded.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <programs>/macros/mu-nested-unguarded.fx:7:15: a syntax type: a `mu`'s variable is used where no pair is around it (Herman's types are contractive)",
+""
+],
+"by": [
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+]
+}
+]
+}

@@ -248,7 +248,7 @@
     (let ((h (drive-head x)))
       (if (or (string=? h "include") (string=? h "import") (string=? h "define-datatype"))
           x
-          (top-shaped (aliases-resolved pfail-at (sealed-written pfail-at x) (def-envs-given)))))))
+          (top-shaped (aliases-resolved pfail-at (sealed-written pfail-at x) (def-envs-given) captor-tag))))))
 (define drive-written-each (->* (syns-a) syns-a)
   (lambda (xs) (if (null? xs) nil (cons (drive-written (car xs)) (drive-written-each (cdr xs))))))
 "Each check of macros `ns`' templates, expanded (`parse-checks`)."
@@ -256,7 +256,7 @@
   (lambda (cs)
     (if (null? cs)
         nil
-        (cons (aliases-resolved pfail-at (expand pfail-at (car cs)) (def-envs-given)) (drive-checked (cdr cs))))))
+        (cons (aliases-resolved pfail-at (expand pfail-at (car cs)) (def-envs-given) captor-tag) (drive-checked (cdr cs))))))
 (define drive-checks (->* (mx-parser-types-names) syns-a)
   (lambda (ns)
     (if (null? ns)
@@ -265,10 +265,19 @@
 (define drive-not-yet (->* (syn string) syns-a)
   (lambda (s what)
     (begin (pfail-at (string-append what ": not yet in kayak's expander") (syn-start s) (syn-end s)) nil)))
+"Top-level form `s` begun (Fixpt's `form-begun!`): its key, which its fresh
+ names and aliases are of (`form-begin!`); and what the expander keeps
+ within one form as at any form's start, whatever a failure before left."
+(define drive-begun! (->* (syn) unit)
+  (lambda (s)
+    (begin (form-begin! s) (made-syntax-taken!) (set program-walk #f) (set heads-on #f)
+           (set open nil) (set checking #f))))
 "What top-level form `s` makes, the forms the checker reads (`top-made`)."
 (define-rec
   (drive-form (->* (syn) syns-a)
     (lambda (s)
+     (begin
+      (drive-begun! s)
       (cond ;; A shape named (`binding-shapes.md`): held to the globals, as a
             ;; macro is, and defined; it makes nothing (C440).
             ((shape-definition? s) (begin (drive-taken (syntax-names s) s) (shape-defined! s) nil))
@@ -282,7 +291,7 @@
             ((string=? (drive-head s) "hide") (drive-forms (cdr (proper-items s))))
             (else
              (let* ((xs (expand-top pfail-at s)) (ms (made-syntax-taken!)) (ws (drive-written-each xs)))
-               (begin (drive-taken ms s) (drive-guard ws) (append ws (drive-checks ms))))))))
+               (begin (drive-taken ms s) (drive-guard ws) (append ws (drive-checks ms)))))))))
   (drive-forms (->* (syns-a) syns-a)
     (lambda (xs) (if (null? xs) nil (let ((made (drive-form (car xs)))) (append made (drive-forms (cdr xs))))))))
 

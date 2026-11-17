@@ -12676,3 +12676,26 @@ met one: `modules/modnames-sealed.fx`, a shape's definition, and
 Fixpt's programs beyond KFX the engine agrees on: 386 to 390
 (`modnames-sealed`, `modnames-the`, `macros/with-value`,
 `with-macro-not-given`). Fixpt's 594 refused programs are all refused.
+
+## C441. The pin moved to 0585488: Fixpt's answers to INCR_IMPED.md (2026-11-16)
+
+The user: "Pull fixpt main from GitHub. They claim they've addressed some
+of your issues". Three commits since 120b70e, each of `INCR_IMPED.md`:
+fresh names per form, `%x:K.N` (§1); the `mu` table gone, recursive
+syntax types as values (§2); a procedural macro's aliases per form,
+`%~K.N:x`. Not §4: `processes.rs` is as it was, so the REPL stays parked.
+- **The expander**, regenerated (`macros-port.py`), takes in two new files
+  of Fixpt's, `macros-syntax.fx` and `macros-fresh.fx`. One patch is new:
+  `one-var`'s procedure holds syntax, so it gets `(read rs)`, as C429's
+  three do (C102: a `datum` is no thread's to share).
+- **The driver** follows `parser-top.fx`: each top-level form begun
+  (`drive-begun!`, Fixpt's `form-begun!`: its key, and what one form
+  keeps reset), and `aliases-resolved` given the expander's `captor-tag`.
+- **The shim**: `mx-call-procedural`'s expansion is now its tag, a string.
+- **Drift**: the expander's 13 sources and `parser.fx`, whose change
+  (an alias's digits `K.N`) no kayak code reads; `cg.kfx`'s mark moved.
+- `INCR_IMPED.md`: §1 answered, §2 in part, with what Fixpt's TODO §290
+  leaves for kayak's cache to say (expansion numbers, source keys).
+
+Fixpt's programs beyond KFX the engine agrees on: 390 to 391. Fixpt's
+596 refused programs are all refused.

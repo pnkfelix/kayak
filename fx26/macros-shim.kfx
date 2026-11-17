@@ -41,7 +41,7 @@
  environment not read (`syscall::macro_limit`'s `FIXPT_MACRO_*`)."
 (define mx-expand-procedural (subr spin (string) string)
   (lambda (code) "!a procedural macro's transformer, run as the program is read: not yet in kayak"))
-(define mx-call-procedural (subr spin (int string datum int (listof string acyclic)) (sumof (ok datum) (failed string) (apart unit)))
+(define mx-call-procedural (subr spin (int string datum string (listof string acyclic)) (sumof (ok datum) (failed string) (apart unit)))
   (lambda (style code d x forms) (sum apart #u)))
 (define mx-limit (subr spin (string) string)
   (lambda (name)

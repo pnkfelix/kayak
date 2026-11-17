@@ -15,8 +15,8 @@
 "     0: lit 100",
 "     2: global! x",
 "     4: lit 1",
-"     6: global! %x:1",
-"     8: global %x:1",
+"     6: global! %x:1391807903.1",
+"     8: global %x:1391807903.1",
 "    10: global! y",
 "    12: global y",
 "    14: exit",
@@ -27,7 +27,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

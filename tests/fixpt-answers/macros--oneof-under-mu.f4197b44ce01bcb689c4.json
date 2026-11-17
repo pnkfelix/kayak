@@ -1,0 +1,28 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"oneof-under-mu.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (3 cells, cellular):",
+"     0: lit 7",
+"     2: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+]
+}
+]
+}

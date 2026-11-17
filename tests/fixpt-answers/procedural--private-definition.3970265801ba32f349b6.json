@@ -13,8 +13,8 @@
 "",
 "word program (7 cells, cellular):",
 "     0: lit 1",
-"     2: global! %~1:n",
-"     4: global %~1:n",
+"     2: global! %~1348273807.1:n",
+"     4: global %~1348273807.1:n",
 "     6: exit",
 "; both compilers made this",
 ""
@@ -23,7 +23,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

@@ -12,7 +12,7 @@
 "; the FX-26 compiler:",
 "",
 "word program (26 cells, cellular):",
-"     0: closure word %inc:2@1126899:906842678 over 0",
+"     0: closure word %inc:1951466864.2@1126899:906842678 over 0",
 "     3: lit 3",
 "     5: slot 0",
 "     7: tcall 1",
@@ -27,7 +27,7 @@
 "    24: int-add",
 "    25: exit",
 "",
-"word %inc:2@1126899:906842678 (8 cells, cellular):",
+"word %inc:1951466864.2@1126899:906842678 (8 cells, cellular):",
 "     0: slot 0",
 "     2: lit 2",
 "     4: prim %fx26-mul 2",
@@ -40,7 +40,7 @@
 "; the Rust compiler:",
 "",
 "word program (26 cells, cellular):",
-"     0: closure word %inc:2@542 over 0",
+"     0: closure word %inc:1951466864.2@542 over 0",
 "     3: lit 3",
 "     5: slot 0",
 "     7: tcall 1",
@@ -55,7 +55,7 @@
 "    24: int-add",
 "    25: exit",
 "",
-"word %inc:2@542 (8 cells, cellular):",
+"word %inc:1951466864.2@542 (8 cells, cellular):",
 "     0: slot 0",
 "     2: lit 2",
 "     4: prim %fx26-mul 2",
@@ -72,7 +72,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

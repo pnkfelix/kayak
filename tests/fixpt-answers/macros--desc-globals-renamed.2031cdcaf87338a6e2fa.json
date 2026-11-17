@@ -14,7 +14,7 @@
 "word program (17 cells, cellular):",
 "     0: lit 100",
 "     2: prim %make-box 1",
-"     5: global! %count:1",
+"     5: global! %count:1097332473.1",
 "     7: closure word next over 0",
 "    10: global! next",
 "    12: global next",
@@ -22,14 +22,14 @@
 "    16: exit",
 "",
 "word next (8 cells, cellular):",
-"     0: global %count:1",
+"     0: global %count:1097332473.1",
 "     2: field 2",
 "     4: lit 1",
 "     6: int-add",
 "     7: return",
 "  its register code (10 cells, not compiled):",
 "       0: args 0",
-"       2: global %count:1",
+"       2: global %count:1097332473.1",
 "       4: field 2",
 "       6: op2imm int-add 1",
 "       9: return",
@@ -40,7 +40,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

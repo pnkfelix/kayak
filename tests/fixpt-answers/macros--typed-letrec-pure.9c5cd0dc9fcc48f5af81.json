@@ -16,12 +16,12 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/macros/typed-letrec-pure.fx:10:48: `%f:1` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
-"  beyond what is expected, it has spin; it may not end: `%f:1` is named in `%f:1` other than as a call's operator: whoever is given it may call it again, with anything",
+"fixpt: <programs>/macros/typed-letrec-pure.fx:10:48: `%f:1321285879.1` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
+"  beyond what is expected, it has spin; it may not end: `%f:1321285879.1` is named in `%f:1321285879.1` other than as a call's operator: whoever is given it may call it again, with anything",
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

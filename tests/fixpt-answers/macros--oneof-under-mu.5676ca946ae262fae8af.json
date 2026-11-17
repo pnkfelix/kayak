@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"oneof-under-mu.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+]
+}
+]
+}

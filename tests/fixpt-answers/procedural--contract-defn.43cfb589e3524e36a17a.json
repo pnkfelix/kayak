@@ -13,18 +13,18 @@
 "",
 "word program (35 cells, cellular):",
 "     0: lit 6",
-"     2: global! %~1:v",
-"     4: global %~1:v",
+"     2: global! %~520169883.1:v",
+"     4: global %~520169883.1:v",
 "     6: lit 1",
 "     8: int-add",
 "     9: global! seven",
 "    11: lit 4",
-"    13: global! %~3:v",
-"    15: global %~3:v",
+"    13: global! %~554967291.2:v",
+"    15: global %~554967291.2:v",
 "    17: lit 1",
 "    19: int-add",
-"    20: global! %x:1",
-"    22: global %x:1",
+"    20: global! %x:554967291.1",
+"    22: global %x:554967291.1",
 "    24: lit 5",
 "    26: int-add",
 "    27: global! nine",
@@ -39,7 +39,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

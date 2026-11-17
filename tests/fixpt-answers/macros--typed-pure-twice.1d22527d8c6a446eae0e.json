@@ -13,7 +13,7 @@
 "",
 "word program (11 cells, cellular):",
 "     0: closure word lambda@187 over 0",
-"     3: global! %template:double:2",
+"     3: global! %template:double:1111515923.2",
 "     5: lit 21",
 "     7: lit 21",
 "     9: int-add",
@@ -47,7 +47,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@120b70ea684f9cf1f9e396c9c61b88c2f95c4b8f"
+"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
 ]
 }
 ]

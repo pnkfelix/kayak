@@ -7,36 +7,38 @@
  reaches. Made a module maker (C437), each instance its own state,
  Fixpt's five regions its one place: its types first, but those
  that name the place, which the maker's module defines.
- fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/syn.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/parser-types.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/parser-loads.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/parser.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-kernel.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-types.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-env-types.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-env-indexed.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-nodes.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-align.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-scopes.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-match.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-exports.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-facts.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-files.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-infer.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-show.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-shown.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-solve.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-contracts.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-procedural.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-templates.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-imports.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-walk.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-tree.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-shaper.fx@120b70e
- fixpt-source: crates/fixpt-fx26/src/macros-shapes.fx@120b70e"
+ fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/syn.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/parser-types.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/parser-loads.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/parser.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-kernel.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-syntax.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-types.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-env-types.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-env-indexed.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-nodes.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-align.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-scopes.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-match.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-exports.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-facts.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-files.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-infer.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-show.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-shown.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-solve.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-fresh.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-contracts.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-procedural.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-templates.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-imports.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-walk.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-tree.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-shaper.fx@0585488
+ fixpt-source: crates/fixpt-fx26/src/macros-shapes.fx@0585488"
 
 "The expander's types that name no region of its, a module of its own,
  which the maker includes: its constructors are no globals, as in Fixpt,
@@ -216,12 +218,15 @@
 ;; What a typed hole says (`macros.rs`'s `Hole`): its type and its effect,
 ;; each as written, in a list of one, or none if it is left out.
 (define-type hole (tupleof syns-a syns-a))
-;; A syntax type. A `mu` is by its number in `mus`, its variable the same;
+;; A syntax type (`macros.rs`'s `STy`). A `mu`, `(s-mu body round part)`,
+;; a value compared by its structure, its variable `(s-var n)` by how many
+;; `mu`s are between them (de Bruijn's numbering), 0 the innermost; its
+;; round and part, of a signature being inferred (`build`), else -1.
 ;; `s-typed`, an `expr` or `bvar` with its type or effect written.
 (define-datatype sty
   (s-expr) (s-bvar) (s-id) (s-data) (s-type) (s-label) (s-nil)
   (s-literal symbol) (s-pair sty sty) (s-import sty mx-types-bind) (s-export sty mx-types-bind) (s-mark symbol int)
-  (s-mu int) (s-many sty) (s-union (listof sty acyclic)) (s-typed sty hole)
+  (s-mu sty int int) (s-var int) (s-many sty) (s-union (listof sty acyclic)) (s-typed sty hole)
   ;; An expression that is a lambda, where a form wants one (`letrec`).
   (s-lambda)
   ;; A definition, where a template makes one (the kernel's `begin` of
@@ -243,12 +248,14 @@
 ;;; ------------------------------------------------------------ reading
 
 ;; Syntax type `s`, read: `named`'s names (the kernel's abbreviations), and
-;; the `mu` variables in scope, innermost first.
+;; the `mu` variables in scope, innermost first, each `#f` that of a list by
+;; ellipsis, which no name refers to.
 (define-type mx-types-named (listof (tupleof symbol sty) acyclic))
-(define-type mu-scope (listof (tupleof symbol int) acyclic))
+(define-type mu-scope (listof (tupleof symbol bool) acyclic))
 ;; Whether syntax of type `a` is all of type `b`, binding structure alike:
-;; coinductive, as FX-26's recursive types are, each pair compared assumed
-;; (`assumed`) while it is, by structure.
+;; coinductive, as FX-26's recursive types are, each pair a `mu` is of
+;; assumed (`assumed`) while it is compared, by structure: the types a `mu`
+;; unfolds to are finitely many, so the pairs are (`macros.rs`'s `sub`).
 (define-type assumed (listof (tupleof sty sty) acyclic))
 
 ;;; ============================================================ macros-env-types.fx (whole)
@@ -289,7 +296,7 @@
 
 ;; What becomes of one of a template's parts where it is transcribed
 ;; (`macros.rs`'s `Action`): a name made fresh, one for the binder at a
-;; path and each reference to it; a free name its alias, `%~N:n`, which
+;; path and each reference to it; a free name its alias, `%~K.N:n`, which
 ;; the resolution after expansion makes the name where the macro is defined
 ;; (`macros-shapes.fx`'s `aliases-resolved`); a file's macro's description read whole through
 ;; the file's module or the standard environment, by `select`; a use of
@@ -308,7 +315,7 @@
 ;; structure, the same in each instance of the expander's files
 ;; (`macros.fx`'s `def-envs`).
 (define-type def-env (tupleof int symbol mx-parser-types-names))
-(define-type mx-nodes-def-envs (listof (tupleof int def-env) acyclic))
+(define-type mx-nodes-def-envs (listof (tupleof string def-env) acyclic))
 ;; A clause: its pattern (of the operands), its template, and its actions,
 ;; by their paths in the template, the last made first; its pattern's
 ;; variables, in the order the pattern has them; each typed hole's type as
@@ -534,10 +541,6 @@
 ;; patterns written one by one.
 (define-type binds-at (listof (tupleof int mx-types-bind) acyclic))
 (define-type sol (tupleof kinds pkinds mx-infer-ints binds-at binds-at binds-at spans))
-;; Each macro's signature so far, from `s`: its syntax types, and each `mu`
-;; made for a list by ellipsis, a `union`, or a part not known yet, by its
-;; part (`infer.rs`'s `build`).
-(define-type mu-parts (listof (tupleof int int) acyclic))
 ;;; ------------------------------------------------------------ placements
 
 ;; A pattern variable placed by a template: which, as what, in what scope,
@@ -609,6 +612,14 @@
 (define-type got-demands (listof (tupleof int demand) acyclic))
 (define-type mx-solve-strings (listof string acyclic))
 
+;;; ============================================================ macros-fresh.fx (whole)
+
+(define-type tags (listof (tupleof int string) acyclic))
+(define-type seen-keys (listof (tupleof int int) acyclic))
+;; A module file's forms begun: their keys their own; what is given back
+;; puts the program's back (`fresh-scope-end!`).
+(define-type fresh-saved (tupleof string int int seen-keys bool int tags))
+
 ;;; ============================================================ macros-contracts.fx (whole)
 
 (define-type mx-contracts-renames (listof (tupleof symbol symbol) acyclic))
@@ -645,6 +656,9 @@
 ;; What the runtime gave, `text`, read: a datum's syntax, every part at
 ;; `a`..`b` of expansion `x`, the use's place; none if it is not one.
 (define-type mx-procedural-read-one (listof (tupleof syn int) acyclic))
+;; Both, as a session's state after a form keeps them (`by-state`): a state
+;; read again has its own transformers, not a later form's of their names.
+(define-type phase1-state (tupleof (listof string acyclic) (listof procedural acyclic)))
 ;; A module file's own macros' scope begun: none of these macros, nor any
 ;; procedural, defined, and macros defined where the file's items are; what
 ;; was, given back, for `file-scope-end!` (`Macros::in_file_scope`).
@@ -660,17 +674,8 @@
 ;;; ============================================================ macros.fx (whole)
 
 (define-type mx-top-said (tupleof signed-opt (listof string acyclic)))
-;; The macros defined after each form, and the load definitions, by the
-;; session's state the form left (`form-reading`), which folds in every
-;; form before it: so what a form is read with is what its state says, for
-;; a program begun in the standard environment's (none), an entry in a
-;; session's, or anything read again (`typed-macros.md`, the port's
-;; decision 3). Only where there are some.
-;; And the globals defined, which no macro may be named (`globals`).
-;; And the count of fresh names, so that a program begun in the standard
-;; environment's state makes them as the Rust expander, begun anew, does.
 (define-type by-states
-  (listof (tupleof int macro-env load-defs mx-parser-types-names int marked (listof string acyclic)) acyclic))
+  (listof (tupleof int macro-env load-defs mx-parser-types-names seen-keys marked phase1-state) acyclic))
 ;;; ------------------------------------------------------------ expanding
 
 ;; Each expansion made, the last first: its number, its macro's name, where
@@ -744,8 +749,8 @@
 ;; form's own definitions, which are the file's items).
 (define-type mx-shapes-parts (listof (tupleof addr syn) acyclic))
 (define-type mx-shapes-written-of (tupleof mx-shapes-parts mx-shapes-ints))
-;; Each captor, `cs`, with its fresh name, `%x~N`: spelled apart from a
-;; template's fresh names, which another count makes.
+;; Each captor, `cs`, with its fresh name, `%x~K.N`: spelled apart from a
+;; template's fresh names, which another count makes (`captor-tag`).
 (define-type captors (listof (tupleof int symbol) acyclic))
 ))
 
@@ -808,7 +813,7 @@
  environment not read (`syscall::macro_limit`'s `FIXPT_MACRO_*`)."
 (define mx-expand-procedural (subr spin (string) string)
   (lambda (code) "!a procedural macro's transformer, run as the program is read: not yet in kayak"))
-(define mx-call-procedural (subr spin (int string datum int (listof string acyclic)) (sumof (ok datum) (failed string) (apart unit)))
+(define mx-call-procedural (subr spin (int string datum string (listof string acyclic)) (sumof (ok datum) (failed string) (apart unit)))
   (lambda (style code d x forms) (sum apart #u)))
 (define mx-limit (subr spin (string) string)
   (lambda (name)
@@ -1360,108 +1365,7 @@
 (define description-words datum
   (quote (void pure spin nondet stage heap const acyclic finite cellular native fx distinct)))
 
-;;; ============================================================ macros-types.fx (whole)
-
-;; How a part of the expander fails: the caller's `pfail-at`.
-(define-type fails (subr parses (string int int) void))
-(define fail-at (->* (fails string syn) void)
-  (lambda (mx-fail message s) (mx-fail message (syn-start s) (syn-end s))))
-;; Each `mu`'s body, by its number: the program's, and every file's
-;; macros', which refer to them by number.
-(define mus (ref (arrayof sty mxp) mxp) (new (make-array 64 (s-nil))))
-(define nmus (ref int mxp) (new 0))
-(define mu-body (->* (int) sty) (lambda (i) (array-ref (get mus) i)))
-(define copy-stys (->* ((arrayof sty mxp) (arrayof sty mxp) int) unit)
-  (lambda (from to i)
-    (if (= i (array-length from))
-        #u
-        (begin (array-set! to i (array-ref from i)) (copy-stys from to (+ i 1))))))
-;; A new `mu`, its body not yet read: its number.
-(define mu-new (->* () int)
-  (lambda ()
-    (let ((n (get nmus)))
-      (begin
-        (if (= n (array-length (get mus)))
-            (let ((bigger (the (arrayof sty mxp) (make-array (* 2 n) (s-nil)))))
-              (begin (copy-stys (get mus) bigger 0) (set mus bigger)))
-            #u)
-        (set nmus (+ n 1))
-        n))))
-(define mu-set! (->* (int sty) unit) (lambda (i t) (array-set! (get mus) i t)))
-(define marks (ref marked mxp) (new nil))
-(define mark-count (ref int mxp) (new 2))
-;; What is said of a name a macro takes for a trailmark that is none.
-(define no-trailmark (->* (string) string)
-  (lambda (n)
-    (string-append "`" (string-append n (string-append "` names no trailmark here: `(define-syntax " (string-append n " (trailmark))`"))))))
-(define mark-in (->* (symbol marked) int)
-  (lambda (n ms)
-    (cond ((null? ms) (cond ((symbol=? n 'else) 1) ((symbol=? n '=>) 2) (else 0)))
-          ((symbol=? n (extract (car ms) 1)) (extract (car ms) 2))
-          (else (mark-in n (cdr ms))))))
-(define words-have? (->* (symbol datum) bool)
-  (lambda (n ws)
-    (and (pair? ws)
-         (or (and (symbol? (car ws)) (symbol=? n (car ws))) (words-have? n (cdr ws))))))
-(define reserved-sym? (->* (symbol) bool)
-  (lambda (n)
-    (or (symbol=? n (string->symbol "#%fx")) (symbol=? n (string->symbol "#%toplevel")) (symbol=? n 'define-syntax)
-        (symbol=? n 'define-syntax-rec)
-        (words-have? n reserved-words))))
-;;; ------------------------------------------------------------ names
-
-;; Whether `name` is a form's, `#%fx`, `#%toplevel` or `define-syntax`: never
-;; bound, so never a binder or a variable.
-(define reserved? (->* (string) bool)
-  (lambda (name) (reserved-sym? (string->symbol name))))
-;; Whether `name` is one of words `ws`: compared as symbols, no word's name
-;; copied to a string.
-(define word-in? (->* (string datum) bool)
-  (lambda (name ws) (words-have? (string->symbol name) ws)))
-;; Whether `name` is a word of descriptions (the kernel's): one read
-;; anywhere (`pure`, `heap`, a region constant `@r`, or a name already
-;; `#%`'s), or, `head`, one a list's head may be (`subr`, `listof`).
-(define desc-word? (->* (string bool) bool)
-  (lambda (name head)
-    (or (and (> (string-length name) 0) (char=? (string-ref name 0) #\@))
-        (and (> (string-length name) 1) (string=? (substring name 0 2) "#%"))
-        (word-in? name description-words)
-        (and head (word-in? name description-heads)))))
-;; Whether `name` is a type form's head (the kernel's `type-forms`), whose
-;; template makes a description.
-(define type-form? (->* (string) bool)
-  (lambda (name) (word-in? name type-forms)))
-;; Whether `s` is a name, and a reserved one.
-(define reserved-syn? (->* (syn) bool)
-  (lambda (s) (and (syn-symbol? s) (reserved-sym? (syn-symbol s)))))
-(define mx-types-name-in? (->* (symbol mx-parser-types-names) bool)
-  (lambda (n ns) (and (not (null? ns)) (or (symbol=? n (car ns)) (mx-types-name-in? n (cdr ns))))))
-;; Whether typed hole `h` (none or one) has its effect written `pure`.
-(define pure-hole? (->* ((listof hole acyclic)) bool)
-  (lambda (h)
-    (and (not (null? h)) (not (null? (extract (car h) 2)))
-         (syn-symbol? (car (extract (car h) 2)))
-         (string=? (syn-name (car (extract (car h) 2))) "pure"))))
-;; A kind's number, for the cases of `overlap-base?`: 0 expr, 1 bvar, 2 id,
-;; 3 data, 4 type, 5 label, 6 nil, 7 literal, 8 pair, 9 anything else, 10
-;; lambda, 11 defn, 12 dvar, 13 kind, 14 item, 15 trailmark.
-(define mx-types-kind-of (->* (sty) int)
-  (lambda (t)
-    (tagcase t
-      (s-expr () 0) (s-bvar () 1) (s-id () 2) (s-data () 3) (s-type () 4) (s-label () 5)
-      (s-nil () 6) (s-literal (n) 7) (s-pair (a d) 8) (s-lambda () 10) (s-defn () 11)
-      (s-dvar () 12) (s-kind () 13) (s-item () 14) (s-mark (n i) 15) (s-rules () 16)
-      (else y 9))))
-;; Whether a pattern variable of type `t` has an expression in it: not a
-;; binder, name, label, datum or type.
-(define affine-kind? (->* (sty) bool)
-  (lambda (t)
-    (let ((k (mx-types-kind-of t)))
-      (not (or (= k 1) (= k 2) (= k 5) (= k 3) (= k 4) (= k 12) (= k 13))))))
-;; Whether `i` is one of `is`.
-(define mx-types-int-in? (->* (int (listof int acyclic)) bool)
-  (lambda (i is) (and (not (null? is)) (or (= i (car is)) (mx-types-int-in? i (cdr is))))))
-;;; ------------------------------------------------------------ syntax
+;;; ============================================================ macros-syntax.fx (whole)
 
 ;; Whether `s` is `()`.
 (define syn-nil? (->* (syn) bool)
@@ -1532,53 +1436,294 @@
 (show-syn (->* (syn) string)
   (lambda (s)
     (tagcase s
-      (mx-eager-reader-types-lst (items d a b x) (if (null? items) "()" (string-append "(" (string-append (mx-types-show-each items) ")"))))
+      (mx-eager-reader-types-lst (items d a b x) (if (null? items) "()" (string-append "(" (string-append (mx-syntax-show-each items) ")"))))
       (dotted (items tail d a b x)
-        (string-append "(" (string-append (mx-types-show-each items) (string-append " . " (string-append (show-syn tail) ")")))))
-      (vec (items d a b x) (string-append "#(" (string-append (mx-types-show-each items) ")")))
+        (string-append "(" (string-append (mx-syntax-show-each items) (string-append " . " (string-append (show-syn tail) ")")))))
+      (vec (items d a b x) (string-append "#(" (string-append (mx-syntax-show-each items) ")")))
       (atom (d a b x) (show-datum d)))))
-(mx-types-show-each (->* (syns-a) string)
+(mx-syntax-show-each (->* (syns-a) string)
   (lambda (xs)
     (cond ((null? xs) "")
           ((null? (cdr xs)) (show-syn (car xs)))
-          (else (string-append (show-syn (car xs)) (string-append " " (mx-types-show-each (cdr xs)))))))))
+          (else (string-append (show-syn (car xs)) (string-append " " (mx-syntax-show-each (cdr xs)))))))))
+(define words-have? (->* (symbol datum) bool)
+  (lambda (n ws)
+    (and (pair? ws)
+         (or (and (symbol? (car ws)) (symbol=? n (car ws))) (words-have? n (cdr ws))))))
+(define reserved-sym? (->* (symbol) bool)
+  (lambda (n)
+    (or (symbol=? n (string->symbol "#%fx")) (symbol=? n (string->symbol "#%toplevel")) (symbol=? n 'define-syntax)
+        (symbol=? n 'define-syntax-rec)
+        (words-have? n reserved-words))))
+;;; ------------------------------------------------------------ names
+
+;; Whether `name` is a form's, `#%fx`, `#%toplevel` or `define-syntax`: never
+;; bound, so never a binder or a variable.
+(define reserved? (->* (string) bool)
+  (lambda (name) (reserved-sym? (string->symbol name))))
+;; Whether `name` is one of words `ws`: compared as symbols, no word's name
+;; copied to a string.
+(define word-in? (->* (string datum) bool)
+  (lambda (name ws) (words-have? (string->symbol name) ws)))
+;; Whether `name` is a word of descriptions (the kernel's): one read
+;; anywhere (`pure`, `heap`, a region constant `@r`, or a name already
+;; `#%`'s), or, `head`, one a list's head may be (`subr`, `listof`).
+(define desc-word? (->* (string bool) bool)
+  (lambda (name head)
+    (or (and (> (string-length name) 0) (char=? (string-ref name 0) #\@))
+        (and (> (string-length name) 1) (string=? (substring name 0 2) "#%"))
+        (word-in? name description-words)
+        (and head (word-in? name description-heads)))))
+;; Whether `name` is a type form's head (the kernel's `type-forms`), whose
+;; template makes a description.
+(define type-form? (->* (string) bool)
+  (lambda (name) (word-in? name type-forms)))
+;; Whether `s` is a name, and a reserved one.
+(define reserved-syn? (->* (syn) bool)
+  (lambda (s) (and (syn-symbol? s) (reserved-sym? (syn-symbol s)))))
+(define mx-syntax-name-in? (->* (symbol mx-parser-types-names) bool)
+  (lambda (n ns) (and (not (null? ns)) (or (symbol=? n (car ns)) (mx-syntax-name-in? n (cdr ns))))))
+;; Whether `i` is one of `is`.
+(define mx-syntax-int-in? (->* (int (listof int acyclic)) bool)
+  (lambda (i is) (and (not (null? is)) (or (= i (car is)) (mx-syntax-int-in? i (cdr is))))))
+
+;;; ============================================================ macros-types.fx (whole)
+
+;; How a part of the expander fails: the caller's `pfail-at`.
+(define-type fails (subr parses (string int int) void))
+(define fail-at (->* (fails string syn) void)
+  (lambda (mx-fail message s) (mx-fail message (syn-start s) (syn-end s))))
+(define one-var (->* (stys (subr (read mxp) (sty) sty)) stys)
+  (lambda (c f) (if (null? c) nil (list (f (car c))))))
+(define or-same (->* (stys sty) sty) (lambda (c t) (if (null? c) t (car c))))
+(define nth-sty (->* (stys int) sty)
+  (lambda (xs i) (if (= i 0) (car xs) (nth-sty (cdr xs) (- i 1)))))
+(define-rec
+;; Of `t`, under `k` `mu`s more than it is, each variable `j` changed as
+;; `op` says, in a list of one; none if none is (what is not is shared). Op
+;; 0 raises one `k` or more out by `d`; 1 replaces `k`'s by `x` and lowers
+;; those further out, as its `mu` is gone; 2 closes one `k` or more out, by
+;; `env`'s `mu`s (closed, the innermost first); 3 finds one that is `k`.
+(vars-map (->* (sty int int int sty stys) stys)
+  (lambda (t k op d x env)
+    (tagcase t
+      (s-var (j)
+        (cond ((< j k) nil)
+              ((= op 0) (list (s-var (+ j d))))
+              ((= op 2) (list (nth-sty env (- j k))))
+              ((= op 3) (if (= j k) (list t) nil))
+              ((> j k) (list (s-var (- j 1))))
+              ((= k 0) (list x))
+              (else (list (shift x k 0)))))
+      (s-mu (b r p) (one-var (vars-map b (+ k 1) op d x env) (lambda ((c sty)) (s-mu c r p))))
+      (s-pair (a b)
+        (let ((a2 (vars-map a k op d x env)) (b2 (vars-map b k op d x env)))
+          (if (and (null? a2) (null? b2)) nil (list (s-pair (or-same a2 a) (or-same b2 b))))))
+      (s-import (b y) (one-var (vars-map b k op d x env) (lambda ((c sty)) (s-import c y))))
+      (s-export (b y) (one-var (vars-map b k op d x env) (lambda ((c sty)) (s-export c y))))
+      (s-many (b) (one-var (vars-map b k op d x env) (lambda ((c sty)) (s-many c))))
+      (s-typed (b h) (one-var (vars-map b k op d x env) (lambda ((c sty)) (s-typed c h))))
+      (s-union (ms)
+        (let ((c (vars-map-each ms k op d x env))) (if (null? c) nil (list (s-union (car c))))))
+      (else y nil))))
+(vars-map-each (->* (stys int int int sty stys) (listof stys acyclic))
+  (lambda (ms k op d x env)
+    (if (null? ms)
+        nil
+        (let ((m (vars-map (car ms) k op d x env)) (r (vars-map-each (cdr ms) k op d x env)))
+          (if (and (null? m) (null? r))
+              nil
+              (list (cons (or-same m (car ms)) (if (null? r) (cdr ms) (car r)))))))))
+;; `t` placed under `d` `mu`s more, its variables `k` or more out raised.
+(shift (->* (sty int int) sty) (lambda (t d k) (or-same (vars-map t k 0 d t nil) t))))
+;; `t`, under the `mu` `k` around it, `x` for its variable, that `mu` gone.
+(define subst (->* (sty int sty) sty) (lambda (t k x) (or-same (vars-map t k 1 0 x nil) t)))
+;; `mu` `t` unfolded once: its body, its variable `t` again.
+(define mx-types-unfold-mu (->* (sty) sty)
+  (lambda (t) (tagcase t (s-mu (b r p) (subst b 0 t)) (else y t))))
+;; `t` closed by the `mu`s `env` around it, closed, the innermost first.
+(define closed-by (->* (sty stys) sty) (lambda (t env) (or-same (vars-map t 0 2 0 t env) t)))
+;; Whether `t` refers to a `mu` `k` or more out from it; to the one `k`.
+(define free-at? (->* (sty int) bool) (lambda (t k) (not (null? (vars-map t k 0 1 t nil)))))
+(define refers? (->* (sty int) bool) (lambda (t k) (not (null? (vars-map t k 3 0 t nil)))))
+;; `t`, under one `mu` it does not refer to, without it, in a list of one;
+;; none if it refers to it.
+(define lowered (->* (sty) stys)
+  (lambda (t) (if (refers? t 0) nil (list (subst t 0 (s-nil))))))
+(define marks (ref marked mxp) (new nil))
+(define mark-count (ref int mxp) (new 2))
+;; What is said of a name a macro takes for a trailmark that is none.
+(define no-trailmark (->* (string) string)
+  (lambda (n)
+    (string-append "`" (string-append n (string-append "` names no trailmark here: `(define-syntax " (string-append n " (trailmark))`"))))))
+(define mark-in (->* (symbol marked) int)
+  (lambda (n ms)
+    (cond ((null? ms) (cond ((symbol=? n 'else) 1) ((symbol=? n '=>) 2) (else 0)))
+          ((symbol=? n (extract (car ms) 1)) (extract (car ms) 2))
+          (else (mark-in n (cdr ms))))))
+;; Whether typed hole `h` (none or one) has its effect written `pure`.
+(define pure-hole? (->* ((listof hole acyclic)) bool)
+  (lambda (h)
+    (and (not (null? h)) (not (null? (extract (car h) 2)))
+         (syn-symbol? (car (extract (car h) 2)))
+         (string=? (syn-name (car (extract (car h) 2))) "pure"))))
+;; A kind's number, for the cases of `overlap-base?`: 0 expr, 1 bvar, 2 id,
+;; 3 data, 4 type, 5 label, 6 nil, 7 literal, 8 pair, 9 anything else, 10
+;; lambda, 11 defn, 12 dvar, 13 kind, 14 item, 15 trailmark.
+(define mx-types-kind-of (->* (sty) int)
+  (lambda (t)
+    (tagcase t
+      (s-expr () 0) (s-bvar () 1) (s-id () 2) (s-data () 3) (s-type () 4) (s-label () 5)
+      (s-nil () 6) (s-literal (n) 7) (s-pair (a d) 8) (s-lambda () 10) (s-defn () 11)
+      (s-dvar () 12) (s-kind () 13) (s-item () 14) (s-mark (n i) 15) (s-rules () 16)
+      (else y 9))))
+;; Whether a pattern variable of type `t` has an expression in it: not a
+;; binder, name, label, datum or type.
+(define affine-kind? (->* (sty) bool)
+  (lambda (t)
+    (let ((k (mx-types-kind-of t)))
+      (not (or (= k 1) (= k 2) (= k 5) (= k 3) (= k 4) (= k 12) (= k 13))))))
+(define oneof-apart string
+  (string-append "a syntax type: a `oneof`'s members must be told apart by their shapes in the "
+                 "source (an `expr` may be anything)"))
+(define any-free? (->* (stys) bool)
+  (lambda (ms) (and (not (null? ms)) (or (free-at? (car ms) 0) (any-free? (cdr ms))))))
+(define mx-types-closed-each (->* (stys stys) stys)
+  (lambda (ms env) (if (null? ms) nil (cons (closed-by (car ms) env) (mx-types-closed-each (cdr ms) env)))))
+;;; ------------------------------------------------------------ comparing
+
+;; The type at `t`, its annotations, `mu`s seen through to what is under
+;; them.
+(define unfold (->* (sty) sty)
+  (lambda (t)
+    (tagcase t
+      (s-import (b x) (unfold b)) (s-export (b x) (unfold b)) (s-many (b) (unfold b))
+      (s-typed (b h) (unfold b))
+      (s-mu (b r p) (unfold (mx-types-unfold-mu t)))
+      (else y t))))
+(define literal-of (->* (sty) symbol)
+  (lambda (t) (tagcase t (s-literal (n) n) (else y (string->symbol "")))))
+(define mark-of (->* (sty) int) (lambda (t) (tagcase t (s-mark (n i) i) (else y 0))))
+;; Whether kind `k` is a binder's, `bvar` or `dvar`; one any syntax may be
+;; of, `expr`, `data`, `desc`, `kind` or `defn`.
+(define mx-types-binder-kind? (->* (int) bool) (lambda (k) (or (= k 1) (= k 12))))
+(define any-kind? (->* (int) bool)
+  (lambda (k) (or (= k 0) (= k 3) (= k 4) (= k 11) (= k 13) (= k 14))))
+(define-rec
+;; Whether some source syntax could be of both `a` and `b` (Herman's
+;; shapes, §5.2.3): `expr` may be anything but a form's name; looked at to
+;; `depth` pairs, past which they are taken to overlap.
+(overlap? (->* (sty sty int) bool)
+  (lambda (a0 b0 depth)
+    (let ((a (unfold a0)) (b (unfold b0)))
+      (tagcase a
+        (s-union (ms) (any-overlaps? ms b depth))
+        (else y
+          (tagcase b
+            (s-union (ms) (any-overlaps-of? a ms depth))
+            (else z (overlap-base? a b depth))))))))
+(any-overlaps? (->* (stys sty int) bool)
+  (lambda (ms b depth)
+    (and (not (null? ms)) (or (overlap? (car ms) b depth) (any-overlaps? (cdr ms) b depth)))))
+(any-overlaps-of? (->* (sty stys int) bool)
+  (lambda (a ms depth)
+    (and (not (null? ms)) (or (overlap? a (car ms) depth) (any-overlaps-of? a (cdr ms) depth)))))
+(overlap-base? (->* (sty sty int) bool)
+  (lambda (a b depth)
+    (let ((ka (mx-types-kind-of a)) (kb (mx-types-kind-of b)))
+      (cond
+        ;; A trailmark is itself: no expression, datum, binder or other
+        ;; trailmark; an `id` may be any name.
+        ((and (= ka 15) (= kb 15)) (= (mark-of a) (mark-of b)))
+        ((or (and (= ka 15) (= kb 2)) (and (= ka 2) (= kb 15))) #t)
+        ((or (= ka 15) (= kb 15)) #f)
+        ((and (= ka 7) (or (= kb 0) (mx-types-binder-kind? kb))) #f)
+        ((and (= kb 7) (or (= ka 0) (mx-types-binder-kind? ka))) #f)
+        ;; A lambda is a list: no name, `()` or label, and any list.
+        ((or (= ka 10) (= kb 10))
+         (let ((other (if (= ka 10) kb ka)))
+           (not (or (= other 7) (mx-types-binder-kind? other) (= other 2) (= other 6) (= other 5)))))
+        ((and (= ka 7) (= kb 7)) (symbol=? (literal-of a) (literal-of b)))
+        ((or (and (= ka 7) (= kb 2)) (and (= ka 2) (= kb 7))) #t)
+        ((or (any-kind? ka) (any-kind? kb)) #t)
+        ((and (= ka 8) (= kb 8))
+         (or (= depth 0)
+             (tagcase a
+               (s-pair (a1 d1)
+                 (tagcase b
+                   (s-pair (a2 d2) (and (overlap? a1 a2 (- depth 1)) (overlap? d1 d2 (- depth 1))))
+                   (else y #f)))
+               (else y #f))))
+        ((and (= ka 6) (= kb 6)) #t)
+        ((and (= ka 5) (= kb 5)) #t)
+        ((or (= ka 5) (= kb 5)) #f)
+        ((and (or (mx-types-binder-kind? ka) (= ka 2)) (or (mx-types-binder-kind? kb) (= kb 2))) #t)
+        (else #f))))))
+;; Whether two of `ms` overlap.
+(define any-overlap? (->* (stys) bool)
+  (lambda (ms)
+    (and (not (null? ms))
+         (or (any-overlaps-of? (car ms) (cdr ms) 6) (any-overlap? (cdr ms))))))
+(define-rec
+;; Whether, of `t` under the `mu`s `env` (closed, the innermost first),
+;; each `oneof` whose members refer to one of them has them apart.
+(oneofs-apart? (->* (sty stys) bool)
+  (lambda (t env)
+    (tagcase t
+      (s-mu (b r p) (oneofs-apart? b (cons (closed-by t env) env)))
+      (s-union (ms)
+        (and (or (not (any-free? ms)) (not (any-overlap? (mx-types-closed-each ms env))))
+             (all-apart? ms env)))
+      (s-pair (a d) (and (oneofs-apart? a env) (oneofs-apart? d env)))
+      (s-import (b x) (oneofs-apart? b env)) (s-export (b x) (oneofs-apart? b env))
+      (s-many (b) (oneofs-apart? b env)) (s-typed (b h) (oneofs-apart? b env))
+      (else y #t))))
+(all-apart? (->* (stys stys) bool)
+  (lambda (ms env) (or (null? ms) (and (oneofs-apart? (car ms) env) (all-apart? (cdr ms) env))))))
+;; `mu` `t`, read at `s` under `scope`: if it is closed, each `oneof` in it
+;; whose members refer to a `mu` around them, which its reading left, its
+;; members closed, told apart by their shapes (`macros.rs`'s `mu_read`).
+(define mu-read (->* (fails sty syn mu-scope) sty)
+  (lambda (mx-fail t s scope)
+    (begin (if (and (null? scope) (not (oneofs-apart? t nil))) (fail-at mx-fail oneof-apart s) #u)
+           t)))
 (define cars-at (->* (entries (tupleof addr int)) entries)
   (lambda (es d)
     (if (null? es) (list d)
         (cons (tuple (the addr (cons #t (extract (car es) 1))) (extract (car es) 2))
               (cars-at (cdr es) d)))))
-;; List `mu` `id`'s members: `()`, and the pair of `elem` and the list; an element exporting a
-;; rib, the pair its entries from the pair's root, `(A …)`, then the rest's, `(D rib)`: an
-;; element written out is in the pair's region (`macros.rs`'s `seq_members`).
-(define seq-body (->* (sty int) stys)
-  (lambda (elem id)
+;; A list's `mu`'s body, `elem` under it: `()`, and the pair of `elem` and the list; an
+;; element exporting a rib, the pair its entries from the pair's root, `(A …)`, then the
+;; rest's, `(D rib)`: an element written out is in the pair's region (`macros.rs`'s
+;; `seq_members`).
+(define seq-body (->* (sty) stys)
+  (lambda (elem)
     (let ((none (s-export (s-nil) (bind-rib nil))) (d (tuple (the addr (list #f)) 2)))
       (tagcase elem
         (s-export (e bd)
           (tagcase bd
-            (bind-rib (es) (list none (s-export (s-pair e (s-mu id)) (bind-rib (cars-at es d)))))
-            (else y (list none (s-export (s-pair elem (s-mu id))
+            (bind-rib (es) (list none (s-export (s-pair e (s-var 0)) (bind-rib (cars-at es d)))))
+            (else y (list none (s-export (s-pair elem (s-var 0))
                                          (bind-rib (list (tuple (the addr (list #t)) 2) d)))))))
-        (else y (list (s-nil) (s-pair elem (s-mu id))))))))
+        (else y (list (s-nil) (s-pair elem (s-var 0))))))))
 ;; `(elem ...)`: `(mu l (union () (elem . l)))`, and if `elem` exports,
 ;; each element's export together, as a `let`'s bindings do; a binder
 ;; alone, `bvar` or `dvar`, exports itself.
 (define seq-type (->* (sty) sty)
   (lambda (elem0)
-    (let* ((elem (tagcase elem0
-                   (s-bvar () (s-export elem0 (bind-rib (list (tuple (the addr nil) 1)))))
-                   (s-dvar () (s-export elem0 (bind-rib (list (tuple (the addr nil) 4)))))
-                   (else y elem0)))
-           (id (mu-new)))
-      (begin (mu-set! id (s-union (seq-body elem id))) (s-mu id)))))
+    (let ((elem (tagcase elem0
+                  (s-bvar () (s-export elem0 (bind-rib (list (tuple (the addr nil) 1)))))
+                  (s-dvar () (s-export elem0 (bind-rib (list (tuple (the addr nil) 4)))))
+                  (else y elem0))))
+      (s-mu (s-union (seq-body elem)) -1 -1))))
 ;; Whether `s` is the name `...`.
 (define ellipsis? (->* (syn) bool)
   (lambda (s) (and (syn-symbol? s) (string=? (syn-name s) "..."))))
 (define scope-of (->* (symbol mu-scope) int)
   (lambda (n scope)
     (cond ((null? scope) -1)
-          ((symbol=? n (extract (car scope) 1)) (extract (car scope) 2))
-          (else (scope-of n (cdr scope))))))
+          ((and (extract (car scope) 2) (symbol=? n (extract (car scope) 1))) 0)
+          (else (let ((i (scope-of n (cdr scope)))) (if (< i 0) i (+ i 1)))))))
 (define mx-types-named-of (->* (symbol mx-types-named) stys)
   (lambda (n mx-types-named)
     (cond ((null? mx-types-named) nil)
@@ -1589,7 +1734,7 @@
     (let ((n (syn-symbol s)))
       (let ((mu (scope-of n scope)))
         (if (>= mu 0)
-            (s-mu mu)
+            (s-var mu)
             (let ((t (mx-types-named-of n mx-types-named)))
               (if (null? t)
                   (case n
@@ -1618,11 +1763,13 @@
 (define proper-items (->* (syn) syns-a)
   (lambda (s) (tagcase s (mx-eager-reader-types-lst (items d a b x) items) (else y nil))))
 (define-rec
-;; Whether `t` uses `mu` `id`'s variable only under a pair.
+;; Whether `t` uses the variable of the `mu` `id` around it only under a
+;; pair, a `mu` inside it looked into too: none unfolds to itself.
 (guarded? (->* (sty int) bool)
   (lambda (t id)
     (tagcase t
-      (s-mu (j) (not (= j id)))
+      (s-var (j) (not (= j id)))
+      (s-mu (b r p) (guarded? b (+ id 1)))
       (s-import (b x) (guarded? b id)) (s-export (b x) (guarded? b id)) (s-many (b) (guarded? b id))
       (s-typed (b h) (guarded? b id))
       (s-union (ms) (all-guarded? ms id))
@@ -1758,80 +1905,6 @@
 ;; Whether one of entries `es` is a macro's binder's.
 (define syntax-entry? (->* (entries) bool)
   (lambda (es) (and (not (null? es)) (or (>= (extract (car es) 2) 100) (syntax-entry? (cdr es))))))
-;;; ------------------------------------------------------------ comparing
-
-;; The type at `t`, its annotations, `mu`s seen through to what is under
-;; them.
-(define unfold (->* (sty) sty)
-  (lambda (t)
-    (tagcase t
-      (s-import (b x) (unfold b)) (s-export (b x) (unfold b)) (s-many (b) (unfold b))
-      (s-typed (b h) (unfold b))
-      (s-mu (id) (unfold (mu-body id)))
-      (else y t))))
-(define literal-of (->* (sty) symbol)
-  (lambda (t) (tagcase t (s-literal (n) n) (else y (string->symbol "")))))
-(define mark-of (->* (sty) int) (lambda (t) (tagcase t (s-mark (n i) i) (else y 0))))
-;; Whether kind `k` is a binder's, `bvar` or `dvar`; one any syntax may be
-;; of, `expr`, `data`, `desc`, `kind` or `defn`.
-(define mx-types-binder-kind? (->* (int) bool) (lambda (k) (or (= k 1) (= k 12))))
-(define any-kind? (->* (int) bool)
-  (lambda (k) (or (= k 0) (= k 3) (= k 4) (= k 11) (= k 13) (= k 14))))
-(define-rec
-;; Whether some source syntax could be of both `a` and `b` (Herman's
-;; shapes, §5.2.3): `expr` may be anything but a form's name; looked at to
-;; `depth` pairs, past which they are taken to overlap.
-(overlap? (->* (sty sty int) bool)
-  (lambda (a0 b0 depth)
-    (let ((a (unfold a0)) (b (unfold b0)))
-      (tagcase a
-        (s-union (ms) (any-overlaps? ms b depth))
-        (else y
-          (tagcase b
-            (s-union (ms) (any-overlaps-of? a ms depth))
-            (else z (overlap-base? a b depth))))))))
-(any-overlaps? (->* (stys sty int) bool)
-  (lambda (ms b depth)
-    (and (not (null? ms)) (or (overlap? (car ms) b depth) (any-overlaps? (cdr ms) b depth)))))
-(any-overlaps-of? (->* (sty stys int) bool)
-  (lambda (a ms depth)
-    (and (not (null? ms)) (or (overlap? a (car ms) depth) (any-overlaps-of? a (cdr ms) depth)))))
-(overlap-base? (->* (sty sty int) bool)
-  (lambda (a b depth)
-    (let ((ka (mx-types-kind-of a)) (kb (mx-types-kind-of b)))
-      (cond
-        ;; A trailmark is itself: no expression, datum, binder or other
-        ;; trailmark; an `id` may be any name.
-        ((and (= ka 15) (= kb 15)) (= (mark-of a) (mark-of b)))
-        ((or (and (= ka 15) (= kb 2)) (and (= ka 2) (= kb 15))) #t)
-        ((or (= ka 15) (= kb 15)) #f)
-        ((and (= ka 7) (or (= kb 0) (mx-types-binder-kind? kb))) #f)
-        ((and (= kb 7) (or (= ka 0) (mx-types-binder-kind? ka))) #f)
-        ;; A lambda is a list: no name, `()` or label, and any list.
-        ((or (= ka 10) (= kb 10))
-         (let ((other (if (= ka 10) kb ka)))
-           (not (or (= other 7) (mx-types-binder-kind? other) (= other 2) (= other 6) (= other 5)))))
-        ((and (= ka 7) (= kb 7)) (symbol=? (literal-of a) (literal-of b)))
-        ((or (and (= ka 7) (= kb 2)) (and (= ka 2) (= kb 7))) #t)
-        ((or (any-kind? ka) (any-kind? kb)) #t)
-        ((and (= ka 8) (= kb 8))
-         (or (= depth 0)
-             (tagcase a
-               (s-pair (a1 d1)
-                 (tagcase b
-                   (s-pair (a2 d2) (and (overlap? a1 a2 (- depth 1)) (overlap? d1 d2 (- depth 1))))
-                   (else y #f)))
-               (else y #f))))
-        ((and (= ka 6) (= kb 6)) #t)
-        ((and (= ka 5) (= kb 5)) #t)
-        ((or (= ka 5) (= kb 5)) #f)
-        ((and (or (mx-types-binder-kind? ka) (= ka 2)) (or (mx-types-binder-kind? kb) (= kb 2))) #t)
-        (else #f))))))
-;; Whether two of `ms` overlap.
-(define any-overlap? (->* (stys) bool)
-  (lambda (ms)
-    (and (not (null? ms))
-         (or (any-overlaps-of? (car ms) (cdr ms) 6) (any-overlap? (cdr ms))))))
 (define-rec
 (read-sty (->* (fails syn mx-types-named mu-scope) sty)
   (lambda (mx-fail s mx-types-named scope)
@@ -1847,7 +1920,7 @@
            ;; `(σ … σ ...)`: a list ending in any number of the last `σ`.
            ((let ((items (proper-items s)))
               (and (>= (len items) 2) (ellipsis? (nth items (- (len items) 1)))))
-            (read-seq-list mx-fail (proper-items s) mx-types-named scope))
+            (read-seq-list mx-fail s (proper-items s) mx-types-named scope))
            ((or (string=? head "import") (string=? head "export"))
             (let ((args (proper-items s)))
               (if (= (len args) 3)
@@ -1866,13 +1939,11 @@
            ((string=? head "mu") (read-mu mx-fail s mx-types-named scope))
            ((or (string=? head "union") (string=? head "oneof"))
             (let ((ms (read-each mx-fail (cdr (proper-items s)) mx-types-named scope)))
-              (begin (if (any-overlap? ms)
-                         (fail-at mx-fail (string-append "a syntax type: a `oneof`'s members must be "
-                                                      (string-append "told apart by their shapes in the source "
-                                                      "(an `expr` may be anything)"))
-                                  s)
-                         #u)
-                     (s-union ms))))
+              ;; Members that refer to a `mu` around them, checked when it
+              ;; is read whole (`mu-read`).
+              (begin
+                (if (and (not (any-free? ms)) (any-overlap? ms)) (fail-at mx-fail oneof-apart s) #u)
+                (s-union ms))))
            ;; `(expr #:type T #:effect E)`, `(bvar #:type T)`: a list whose
            ;; second is a keyword, which no syntax type is.
            ((and (or (string=? head "expr") (string=? head "bvar") (string=? head "lambda"))
@@ -1910,13 +1981,16 @@
                     (else (s-mark (syn-symbol n) (mark-in (syn-symbol n) (get marks)))))))
            (else (read-pair mx-fail s parts mx-types-named scope))))))))
 ;; The items of a list type ending in `σ ...`: the last `σ` repeated
-;; (`macros.rs`'s `seq`), after the ones before it, each once.
-(read-seq-list (->* (fails syns-a mx-types-named mu-scope) sty)
-  (lambda (mx-fail items mx-types-named scope)
+;; (`macros.rs`'s `seq`), read under its `mu`, after the ones before it,
+;; each once; `s` the whole.
+(read-seq-list (->* (fails syn syns-a mx-types-named mu-scope) sty)
+  (lambda (mx-fail s items mx-types-named scope)
     (if (null? (cdr (cdr items)))
-        (seq-type (read-sty mx-fail (car items) mx-types-named scope))
+        (mu-read mx-fail (seq-type (read-sty mx-fail (car items) mx-types-named
+                                          (cons (tuple (string->symbol "") #f) scope)))
+                 s scope)
         (let ((first (read-sty mx-fail (car items) mx-types-named scope)))
-          (s-pair first (read-seq-list mx-fail (cdr items) mx-types-named scope))))))
+          (s-pair first (read-seq-list mx-fail s (cdr items) mx-types-named scope))))))
 (read-pair (->* (fails syn syns-a mx-types-named mu-scope) sty)
   (lambda (mx-fail s parts mx-types-named scope)
     (s-pair (read-sty mx-fail (car parts) mx-types-named scope) (read-sty mx-fail (nth parts 1) mx-types-named scope))))
@@ -1930,19 +2004,22 @@
   (lambda (mx-fail s mx-types-named scope)
     (let ((args (proper-items s)))
       (if (and (= (len args) 3) (syn-symbol? (nth args 1)))
-          (let* ((id (mu-new))
-                 (body (read-sty mx-fail (nth args 2) mx-types-named
-                                 (cons (tuple (syn-symbol (nth args 1)) id) scope))))
+          (let ((body (read-sty mx-fail (nth args 2) mx-types-named
+                                (cons (tuple (syn-symbol (nth args 1)) #t) scope))))
             (begin
-              (if (guarded? body id)
+              (if (guarded? body 0)
                   #u
                   (fail-at mx-fail (string-append "a syntax type: a `mu`'s variable is used where no "
                                                (string-append "pair is around it (Herman's types are "
                                                "contractive)"))
                            s))
-              (mu-set! id body)
-              (s-mu id)))
+              (mu-read mx-fail (s-mu body -1 -1) s scope)))
           (begin (fail-at mx-fail "a syntax type: `(mu variable type)`" s) (s-nil)))))))
+;; Elements `es`, found under list `mu` `t`, in a list of one, outside it.
+(define out-of-mu (->* (stys sty) stys)
+  (lambda (es t) (if (null? es) nil (list (subst (car es) 0 t)))))
+;; Whether `r`, under a list's `mu`, is the list.
+(define itself? (->* (sty) bool) (lambda (r) (tagcase r (s-var (j) (= j 0)) (else y #f))))
 ;; Entries `es`, each at its car's, from the car, onto `out`, in a list of
 ;; one; none if one is not its car's.
 (define cars-of (->* (entries entries) (listof entries acyclic))
@@ -1992,15 +2069,15 @@
       (bind-direct (as) #f)
       (bind-earlier (as) #f)
       (bind-shape (a) (tagcase q (bind-shape (b) (mx-types-addr=? a b)) (else y #f))))))
-;; Pair type `core` of a ribcage's list `id`, which exports `rings`: its
+;; Pair type `core` of a ribcage's list, under its `mu`, which exports `rings`: its
 ;; element, with what it exports, in a list of one; none if it is not one.
-(define cage-pair (->* (sty rings int) stys)
-  (lambda (core rings id)
+(define cage-pair (->* (sty rings) stys)
+  (lambda (core rings)
     (tagcase core
       (s-pair (a d)
         (tagcase d
           (s-import (r inner)
-            (if (and (tagcase r (s-mu (j) (= j id)) (else y #f)) (not (null? (cdr rings)))
+            (if (and (itself? r) (not (null? (cdr rings)))
                      (null? (cdr (cdr rings)))
                      (tagcase (car rings) (ring-at (x) (mx-types-addr=? x (list #f))) (else y #f)))
                 (let ((own (car (cdr rings))))
@@ -2018,19 +2095,19 @@
                 nil))
           (else y nil)))
       (else y nil))))
-(define cage-members (->* (stys int stys bool) stys)
-  (lambda (ms id es none)
+(define cage-members (->* (stys stys bool) stys)
+  (lambda (ms es none)
     (if (null? ms)
         (if (and none (not (null? es)) (null? (cdr es))) es nil)
         (tagcase (car ms)
           (s-export (core b)
             (tagcase b
               (bind-cage (rings)
-                (cond ((and (null? rings) (= (mx-types-kind-of core) 6)) (cage-members (cdr ms) id es #t))
+                (cond ((and (null? rings) (= (mx-types-kind-of core) 6)) (cage-members (cdr ms) es #t))
                       ((null? rings) nil)
                       (else
-                       (let ((e (cage-pair core rings id)))
-                         (if (null? e) nil (cage-members (cdr ms) id (cons (car e) es) none))))))
+                       (let ((e (cage-pair core rings)))
+                         (if (null? e) nil (cage-members (cdr ms) (cons (car e) es) none))))))
               (else y nil)))
           (else y nil)))))
 ;; A ribcage's list (`macros.rs`'s `cage_seq_of`): `(export () (cage))`, and
@@ -2041,7 +2118,8 @@
 (define cage-seq-elem (->* (sty) stys)
   (lambda (t)
     (tagcase t
-      (s-mu (id) (tagcase (mu-body id) (s-union (ms) (cage-members ms id nil #f)) (else y nil)))
+      (s-mu (b r p)
+        (tagcase b (s-union (ms) (out-of-mu (cage-members ms nil #f) t)) (else y nil)))
       (else y nil))))
 ;; Entries `es` at their car's, from the pair's root.
 (define car-entries (->* (entries) entries)
@@ -2053,12 +2131,12 @@
 ;; Whether `d`, member `m`'s pair's rest, is list `id` itself, perhaps in
 ;; the scope of what the pair's element binds (a `lambda`'s parameters,
 ;; each in the later ones' types: `seq-scoped?`).
-(define seq-rest? (->* (sty sty int) bool)
-  (lambda (m d id)
+(define seq-rest? (->* (sty sty) bool)
+  (lambda (m d)
     (tagcase d
-      (s-mu (j) (= j id))
+      (s-var (j) (= j 0))
       (s-import (r b)
-        (and (tagcase r (s-mu (j) (= j id)) (else y #f))
+        (and (itself? r)
              (tagcase b
                (bind-rib (fs)
                  (tagcase m
@@ -2087,8 +2165,8 @@
           (else (s-export a (bind-rib own))))))
 ;; Of members `ms`, from the first: the elements found so far `es`, the last
 ;; first, and whether `()` is one of them.
-(define seq-members (->* (stys int stys bool) stys)
-  (lambda (ms id es none)
+(define seq-members (->* (stys stys bool) stys)
+  (lambda (ms es none)
     (if (null? ms)
         (cond ((or (null? es) (not none)) nil)
               ((null? (cdr es)) es)
@@ -2099,12 +2177,12 @@
                       (s-import (b x) nil)
                       (else y (list (the entries nil))))))
           (cond ((null? own) nil)
-                ((= (mx-types-kind-of core) 6) (seq-members (cdr ms) id es #t))
+                ((= (mx-types-kind-of core) 6) (seq-members (cdr ms) es #t))
                 (else
                  (tagcase core
                    (s-pair (a d)
-                     (if (seq-rest? m d id)
-                         (seq-members (cdr ms) id (cons (with-own a (car own)) es) none)
+                     (if (seq-rest? m d)
+                         (seq-members (cdr ms) (cons (with-own a (car own)) es) none)
                          nil))
                    (else y nil))))))))
 ;; The type of an element of list type `t`, in a list of one, if a template
@@ -2118,8 +2196,8 @@
     (let ((caged (cage-seq-elem t)))
       (if (null? caged)
           (tagcase t
-            (s-mu (id)
-              (tagcase (mu-body id) (s-union (ms) (seq-members ms id nil #f)) (else y nil)))
+            (s-mu (b r p)
+              (tagcase b (s-union (ms) (out-of-mu (seq-members ms nil #f) t)) (else y nil)))
             (else y nil))
           caged))))
 (define peel-export (->* (sty) sty)
@@ -2136,7 +2214,7 @@
 (define seq-scoped? (->* (sty) bool)
   (lambda (t)
     (tagcase t
-      (s-mu (id) (tagcase (mu-body id) (s-union (ms) (rest-imported? ms)) (else y #f)))
+      (s-mu (b r p) (tagcase b (s-union (ms) (rest-imported? ms)) (else y #f)))
       (else y #f))))
 (define seq-cage? (->* (sty) bool)
   (lambda (t)
@@ -2217,7 +2295,7 @@
 ;; | Label | Bvar | Dvar | Kind | Lambda | Defn)` names in `macros.rs`.
 (define simple-kind? (->* (int) bool) (lambda (k) (or (< k 6) (> k 9))))
 (define-rec
-;; Whether two types are the same, structurally (a `mu` by its number).
+;; Whether two types are the same, structurally.
 (sty=? (->* (sty sty) bool)
   (lambda (a b)
     (tagcase a
@@ -2226,7 +2304,8 @@
       (s-pair (x y) (tagcase b (s-pair (p q) (and (sty=? x p) (sty=? y q))) (else z #f)))
       (s-import (x p) (tagcase b (s-import (y q) (and (sty=? x y) (bind=? p q))) (else z #f)))
       (s-export (x p) (tagcase b (s-export (y q) (and (sty=? x y) (bind=? p q))) (else z #f)))
-      (s-mu (i) (tagcase b (s-mu (j) (= i j)) (else y #f)))
+      (s-mu (x r p) (tagcase b (s-mu (y q o) (and (= r q) (= p o) (sty=? x y))) (else z #f)))
+      (s-var (i) (tagcase b (s-var (j) (= i j)) (else y #f)))
       (s-many (x) (tagcase b (s-many (y) (sty=? x y)) (else z #f)))
       (s-typed (x h) (tagcase b (s-typed (y g) (sty=? x y)) (else z #f)))
       (s-union (ms) (tagcase b (s-union (ns) (all-sty=? ms ns)) (else y #f)))
@@ -2236,6 +2315,7 @@
     (if (null? ms)
         (null? ns)
         (and (not (null? ns)) (sty=? (car ms) (car ns)) (all-sty=? (cdr ms) (cdr ns)))))))
+(define mx-types-mu? (->* (sty) bool) (lambda (t) (tagcase t (s-mu (b r p) #t) (else y #f))))
 (define assumed? (->* (sty sty assumed) bool)
   (lambda (a b xs)
     (and (not (null? xs))
@@ -2244,19 +2324,19 @@
 (define-rec
 (sub? (->* (sty sty assumed) bool)
   (lambda (a b assumed)
-    (if (or (sty=? a b) (assumed? a b assumed))
+    (if (or (sty=? a b) (and (or (mx-types-mu? a) (mx-types-mu? b)) (assumed? a b assumed)))
         #t
-        (let ((more (the assumed (cons (tuple a b) assumed))))
+        (let ((more (if (or (mx-types-mu? a) (mx-types-mu? b)) (the assumed (cons (tuple a b) assumed)) assumed)))
           (tagcase a
             (s-many (x) (sub? x b more))
             (s-typed (x h) (sub? x b more))
-            (s-mu (i) (sub? (mu-body i) b more))
+            (s-mu (x r p) (sub? (mx-types-unfold-mu a) b more))
             (s-union (ms) (all-sub? ms b more))
             (else y
               (tagcase b
                 (s-many (x) (sub? a x more))
                 (s-typed (x h) (sub? a x more))
-                (s-mu (j) (sub? a (mu-body j) more))
+                (s-mu (x r p) (sub? a (mx-types-unfold-mu b) more))
                 (s-union (ms) (any-sub? a ms more))
                 (else z (sub-base? a b more)))))))))
 (sub-base? (->* (sty sty assumed) bool)
@@ -2523,23 +2603,23 @@
 ;; Whether signature `t` binds nothing, as a template may use one of
 ;; `scope-forms` (`bloblet-ref`'s, `TODO.md` §247): no `import` or `export`
 ;; in it, so neither a module's item nor its names (`item`, `(shape A)`),
-;; which a program's walk alone knows; `mu`s seen through once (`seen`). As
-;; `macros.rs`'s `binds_nothing`.
-(binds-nothing? (->* (sty (listof int acyclic)) bool)
-  (lambda (t seen)
+;; which a program's walk alone knows; a `mu`'s body once, its variable
+;; what is around it. As `macros.rs`'s `binds_nothing`.
+(binds-nothing? (->* (sty) bool)
+  (lambda (t)
     (tagcase t
       (s-item () #f)
       (s-import (b x) #f)
       (s-export (b x) #f)
-      (s-pair (a d) (and (binds-nothing? a seen) (binds-nothing? d seen)))
-      (s-many (b) (binds-nothing? b seen))
-      (s-typed (b h) (binds-nothing? b seen))
-      (s-union (ms) (all-bind-nothing? ms seen))
-      (s-mu (id) (or (int-member? id seen) (binds-nothing? (mu-body id) (cons id seen))))
+      (s-pair (a d) (and (binds-nothing? a) (binds-nothing? d)))
+      (s-many (b) (binds-nothing? b))
+      (s-typed (b h) (binds-nothing? b))
+      (s-union (ms) (all-bind-nothing? ms))
+      (s-mu (b r p) (binds-nothing? b))
       (else y #t))))
-(all-bind-nothing? (->* (stys (listof int acyclic)) bool)
-  (lambda (ms seen)
-    (or (null? ms) (and (binds-nothing? (car ms) seen) (all-bind-nothing? (cdr ms) seen))))))
+(all-bind-nothing? (->* (stys) bool)
+  (lambda (ms)
+    (or (null? ms) (and (binds-nothing? (car ms)) (all-bind-nothing? (cdr ms)))))))
 (define pvar-of (->* (symbol pvars) (listof pinfo acyclic))
   (lambda (n ps)
     (cond ((null? ps) nil)
@@ -2681,7 +2761,7 @@
       (if (not (null? parts))
           (and (syn-symbol? (car parts)) (string=? (syn-name (car parts)) "=>"))
           (and (syn-symbol? k)
-               (mx-types-name-in? (syn-symbol k)
+               (mx-syntax-name-in? (syn-symbol k)
                          (list 'region 'place 'effect 'type 'data 'sendable 'flat 'size 'conv)))))))
 ;; Whether module parameter `b` binds a description, `(name kind)` or `(r
 ;; region p)`; else it is `(m T)` or `(m T qualified)`, a module
@@ -2743,7 +2823,7 @@
           (not (null? (sig-of-name n (kernel-sigs mx-fail))))
           (not (null? (sig-of-name n (kernel-definitions mx-fail))))
           (desc-word? name #t) (type-form? name)
-          (mx-types-name-in? n (list 'else '=> 'quote 'quasiquote 'unquote 'unquote-splicing 'syntax-rules
+          (mx-syntax-name-in? n (list 'else '=> 'quote 'quasiquote 'unquote 'unquote-splicing 'syntax-rules
                             'trailmark 'er-macro-transformer 'sc-macro-transformer
                             'rsc-macro-transformer))
           (macro? n) (> (mark-now n) 0)))))
@@ -3209,7 +3289,7 @@
           ;; Written only if refused: `s` may be large.
           (shown (the (subr (read mxp) () string) (lambda () (string-append "`" (string-append (show-syn s) "`"))))))
       (tagcase t
-        (s-mu (id) (fill mx-fail mode ps at (mu-body id) s at))
+        (s-mu (b r p) (fill mx-fail mode ps at (mx-types-unfold-mu t) s at))
         (s-union (ms)
           ;; A program's name that a form's word may be too, `else` or a
           ;; variable bound to `else`: the form's word, if a member writes it.
@@ -3379,7 +3459,7 @@
         ;; nothing (`bloblet-ref`, `TODO.md` §247).
         ((and (not (string=? head ""))
               (let ((sig (sig-of (string->symbol head) (scope-sigs mx-fail))))
-                (and (not (null? sig)) (binds-nothing? (car sig) nil))))
+                (and (not (null? sig)) (binds-nothing? (car sig)))))
          (operands mx-fail ps at (car (sig-of (string->symbol head) (scope-sigs mx-fail))) (nth parts 1)))
         ((and (not (string=? head "")) (reserved? head))
          (fail-at mx-fail (string-append "the prototype does not know `" (string-append head (string-append "`'s binding "
@@ -3468,7 +3548,7 @@
          (operands-as mx-fail 3 ps at (car (sig-of n sforms)) (nth parts 1)))
         ;; Of the kernel's, not one the expander writes, `%app` or
         ;; `%construct`, named so.
-        ((and (not (null? (sig-of n kernel))) (not (mx-types-name-in? n (percent-named kernel))))
+        ((and (not (null? (sig-of n kernel))) (not (mx-syntax-name-in? n (percent-named kernel))))
          (operands-as mx-fail 3 ps at (car (sig-of n kernel)) (nth parts 1)))
         (else (with-kids at (k-form (align mx-fail 3 ps (car (sig-of '%app kernel)) s -1
                                             (node-path at)))))))))
@@ -4447,7 +4527,7 @@
               (if (and (syn-symbol? s) (= (mark-now (syn-symbol s)) (marked-id (syn-symbol p) ks)))
                   (list bs)
                   nil))
-             ((and (mx-types-name-in? (syn-symbol p) ns) (not (syn-symbol? s))) nil)
+             ((and (mx-syntax-name-in? (syn-symbol p) ns) (not (syn-symbol? s))) nil)
              (else (list (cons (tuple (syn-symbol p) s) bs)))))
       ((syn-nil? p) (if (syn-nil? s) (list bs) nil))
       ((not (null? (split p)))
@@ -4508,14 +4588,14 @@
         (tagcase (car ls)
           (lv-rib (xs) (exports-onto (cdr ls) (atms-onto xs as) ns))
           (lv-earlier (xs) (exports-onto (cdr ls) (atms-onto xs as) ns))
-          (lv-cage (n) (exports-onto (cdr ls) as (if (mx-types-name-in? n ns) ns (cons n ns))))
+          (lv-cage (n) (exports-onto (cdr ls) as (if (mx-syntax-name-in? n ns) ns (cons n ns))))
           (lv-shape (m) (exports-onto (cdr ls) as ns))))))
 (define mx-exports-exports-of (->* (levels) mx-exports-exported)
   (lambda (env) (exports-onto (normal env) nil nil)))
 (define atms-within? (->* (atms atms) bool)
   (lambda (xs ys) (or (null? xs) (and (atm-in? (car xs) ys) (atms-within? (cdr xs) ys)))))
 (define names-within? (->* (mx-parser-types-names mx-parser-types-names) bool)
-  (lambda (xs ys) (or (null? xs) (and (mx-types-name-in? (car xs) ys) (names-within? (cdr xs) ys)))))
+  (lambda (xs ys) (or (null? xs) (and (mx-syntax-name-in? (car xs) ys) (names-within? (cdr xs) ys)))))
 (define exports=? (->* (mx-exports-exported mx-exports-exported) bool)
   (lambda (x y)
     (and (atms-within? (extract x 1) (extract y 1)) (atms-within? (extract y 1) (extract x 1))
@@ -4600,7 +4680,7 @@
   (lambda (ps x level)
     (cond ((null? ps) nil)
           ((and (> (extract (extract (car ps) 2) 5) level)
-                (mx-types-name-in? (extract (car ps) 1) (pattern-names x)))
+                (mx-syntax-name-in? (extract (car ps) 1) (pattern-names x)))
            (cons (extract (car ps) 1) (drivers-of (cdr ps) x level)))
           (else (drivers-of (cdr ps) x level)))))
 ;; The renamings in `acts` at paths under `p`, of binders under more
@@ -6074,7 +6154,7 @@
                  ((string=? name "...")
                   (begin (fail-at mx-fail "`...` follows the part it repeats, last in a list" s)
                          (cl-wild)))
-                 ((or (mx-types-name-in? (syn-symbol s) (nth-names lits (extract it 1))) (reserved? name))
+                 ((or (mx-syntax-name-in? (syn-symbol s) (nth-names lits (extract it 1))) (reserved? name))
                   (cl-lit (syn-symbol s)))
                  (else (cl-var (syn-symbol s))))))
         ((syn-nil? s) (cl-nil))
@@ -6367,7 +6447,7 @@
 (define compound? (->* (sty) bool)
   (lambda (t)
     (tagcase t
-      (s-pair (a d) #t) (s-mu (i) #t) (s-union (ms) #t) (s-import (b x) #t) (s-export (b x) #t)
+      (s-pair (a d) #t) (s-mu (x r p) #t) (s-union (ms) #t) (s-import (b x) #t) (s-export (b x) #t)
       (s-many (b) #t) (s-typed (b h) #t) (else y #f))))
 (define len-us (->* (unsigneds) int)
   (lambda (us) (if (null? us) 0 (+ 1 (len-us (cdr us))))))
@@ -6399,7 +6479,7 @@
     (cond ((syn-symbol? p)
            (let ((n (syn-name p)))
              (if (or (string=? n "_") (string=? n "...") (reserved? n)
-                     (mx-types-name-in? (syn-symbol p) lits))
+                     (mx-syntax-name-in? (syn-symbol p) lits))
                  nil
                  (list (syn-symbol p)))))
           ((null? (split p)) nil)
@@ -6431,7 +6511,7 @@
          (cond
            ((syn-keyword? h) (list 0))
            ((not (syn-symbol? h)) nil)
-           ((mx-types-name-in? (syn-symbol h) pv) nil)
+           ((mx-syntax-name-in? (syn-symbol h) pv) nil)
            (else
             (let ((i (unsigned-index (syn-symbol h) us 0)))
               (if (>= i 0)
@@ -6496,71 +6576,77 @@
     (cond ((null? bs) nil)
           ((= p (extract (car bs) 1)) (list (extract (car bs) 2)))
           (else (bind-at p (cdr bs))))))
-(define built-mus (ref mu-parts mxp) (new nil))
-(define alloc-mus! (->* (int sol) unit)
+;; Each macro's signature so far, from `s`, in round `n`: its syntax types,
+;; each `mu` tagged with the round and its part, so that where a template
+;; places it says of what part it is (`solve`'s `classify`; `infer.rs`'s
+;; `build`).
+(define built-round (ref int mxp) (new 0))
+;; Whether part `p` is a `mu` of its own: a list by ellipsis, a `union`, or a
+;; part not known yet.
+(define has-mu? (->* (int sol) bool)
   (lambda (p s)
-    (if (= p (get nparts))
-        #u
-        (begin
-          (if (or (tagcase (mx-infer-shape-of p) (sh-seq (e) #t) (sh-union (ms) #t) (else y #f))
-                  (and (leaf? p) (null? (kind-at p (extract s 1)))))
-              (set built-mus (cons (tuple p (mu-new)) (get built-mus)))
-              #u)
-          (alloc-mus! (+ p 1) s)))))
-(define mu-of (->* (int) int) (lambda (p) (car (int-assoc p (get built-mus)))))
+    (or (tagcase (mx-infer-shape-of p) (sh-seq (e) #t) (sh-union (ms) #t) (else y #f))
+        (and (leaf? p) (null? (kind-at p (extract s 1)))))))
+(define mx-infer-position-of (->* (int mx-infer-ints int) int)
+  (lambda (q xs i)
+    (cond ((null? xs) -1) ((= q (car xs)) i) (else (mx-infer-position-of q (cdr xs) (+ i 1))))))
 (define-rec
-(part-ty (->* (int sol) sty)
-  (lambda (p s)
+;; Part `p`'s type, under the `mu`s of parts `around`, the innermost first:
+;; one of them referred to by its variable, another part's `mu` written
+;; where it is referred to.
+(part-ty (->* (int sol mx-infer-ints) sty)
+  (lambda (p s around)
     (let* ((base
-            (tagcase (mx-infer-shape-of p)
-              (sh-nil () (s-nil))
-              (sh-lit (n) (s-literal n))
-              (sh-pair (a d) (s-pair (part-ty a s) (part-ty d s)))
-              (sh-leaf ()
-                (let ((k (kind-at p (extract s 1))))
-                  (if (null? k)
-                      ;; Not known: anything, by a `mu` of its own.
-                      (let ((id (mu-of p))) (begin (mu-set! id (s-data)) (s-mu id)))
-                      (tagcase (car k)
-                        (kd-ref (q) (s-mu (mu-of q)))
-                        (kd-ty (t)
-                          (if (and (compound? t) (open? t))
-                              (let ((id (mu-new))) (begin (mu-set! id t) (s-mu id)))
-                              t))))))
-              (sh-seq (e) (seq-ty p e s))
-              (sh-union (ms)
-                (let ((id (mu-of p)))
-                  (begin (mu-set! id (s-union (members-ty ms s))) (s-mu id))))))
+            (if (has-mu? p s)
+                (mu-ty p s around)
+                (tagcase (mx-infer-shape-of p)
+                  (sh-nil () (s-nil))
+                  (sh-lit (n) (s-literal n))
+                  (sh-pair (a d) (s-pair (part-ty a s around) (part-ty d s around)))
+                  (else y
+                    (tagcase (car (kind-at p (extract s 1)))
+                      (kd-ref (q)
+                        (let ((i (mx-infer-position-of q around 0)))
+                          (if (< i 0) (mu-ty q s around) (s-var i))))
+                      ;; Its annotations' addresses from its own root.
+                      (kd-ty (t) (if (and (compound? t) (open? t)) (s-mu t -1 -1) t)))))))
            (t (if (mx-infer-int-in? p (extract s 3)) (s-many base) base))
            (i (bind-at p (extract s 4))))
       (if (null? i) t (s-import t (car i))))))
-(members-ty (->* (mx-infer-ints sol) stys)
-  (lambda (ms s)
+;; The `mu` of part `p`, `has-mu?`, under those of `around`.
+(mu-ty (->* (int sol mx-infer-ints) sty)
+  (lambda (p s around)
+    (let ((in (cons p around)))
+      (s-mu (tagcase (mx-infer-shape-of p)
+              (sh-seq (e) (seq-ty e s in))
+              (sh-union (ms) (s-union (members-ty ms s in)))
+              ;; Not known: anything, by a `mu` of its own, which says
+              ;; where it is placed is this part.
+              (else y (s-data)))
+            (get built-round) p))))
+(members-ty (->* (mx-infer-ints sol mx-infer-ints) stys)
+  (lambda (ms s around)
     (if (null? ms)
         nil
-        (let* ((t (part-ty (car ms) s)) (e (bind-at (car ms) (extract s 5))))
-          (cons (if (null? e) t (s-export t (car e))) (members-ty (cdr ms) s))))))
-;; As `seq-type` makes `(elem ...)`.
-(seq-ty (->* (int int sol) sty)
-  (lambda (p e s)
-    (let* ((id (mu-of p)) (t (part-ty e s)) (x (bind-at e (extract s 5)))
+        (let* ((t (part-ty (car ms) s around)) (e (bind-at (car ms) (extract s 5))))
+          (cons (if (null? e) t (s-export t (car e))) (members-ty (cdr ms) s around))))))
+;; As `seq-type` makes `(elem ...)`, its body.
+(seq-ty (->* (int sol mx-infer-ints) sty)
+  (lambda (e s around)
+    (let* ((t (part-ty e s around)) (x (bind-at e (extract s 5)))
            (elem (cond ((not (null? x)) (s-export t (car x)))
                        ((= (mx-types-kind-of t) 1) (s-export t (bind-rib (list (tuple (the addr nil) 1)))))
                        ((= (mx-types-kind-of t) 12) (s-export t (bind-rib (list (tuple (the addr nil) 4)))))
                        (else t))))
-      (begin (mu-set! id (s-union (seq-body elem id))) (s-mu id))))))
+      (s-union (seq-body elem))))))
 (define build-roots (->* (mx-infer-ints int sol) stys)
   (lambda (rs mi s)
     (if (null? rs)
         nil
-        (let* ((t (part-ty (car rs) s)) (e (bind-at mi (extract s 6))))
+        (let* ((t (part-ty (car rs) s nil)) (e (bind-at mi (extract s 6))))
           (cons (if (null? e) t (s-export t (car e))) (build-roots (cdr rs) (+ mi 1) s))))))
-(define build (->* (sol) stys)
-  (lambda (s)
-    (begin
-      (set built-mus nil)
-      (alloc-mus! 0 s)
-      (build-roots (get mx-infer-roots) 0 s))))
+(define build (->* (sol int) stys)
+  (lambda (s n) (begin (set built-round n) (build-roots (get mx-infer-roots) 0 s))))
 (define mx-infer-got (ref (listof mx-infer-placed acyclic) mxp) (new nil))
 (define pvars-for (->* (int vars sol bool) pvars)
   (lambda (cid vs s mx-parser-types-names)
@@ -6624,8 +6710,8 @@
 ;; Syntax type `t` as a signature writes it, at `a`..`b` (`infer.rs`'s
 ;; `shown_sty`): a `mu` whose variable is used, or whose addresses are
 ;; from it; a list by ellipsis, `(σ ...)`. `shown`, the `mu`s being
-;; written, each with its variable and whether it is used.
-(define shown (ref (listof (tupleof int string bool) acyclic) mxp) (new nil))
+;; written, the innermost first, each its variable and whether it is used.
+(define shown (ref (listof (tupleof string bool) acyclic) mxp) (new nil))
 ;; Items `xs` and tail `t` as one list: a tail that is a list joined to it.
 (define joined-list (->* (syns-a syn int int) syn)
   (lambda (xs t a b)
@@ -6636,13 +6722,7 @@
                 a b 0))
       (else y
         (if (null? xs) t (dotted xs t (mx-datum-dotted (syn-datums xs) (syn->datum t)) a b 0))))))
-(define mx-show-shown-of (->* (int (listof (tupleof int string bool) acyclic)) (listof string acyclic))
-  (lambda (id xs)
-    (cond ((null? xs) nil)
-          ((= id (extract (car xs) 1)) (list (extract (car xs) 2)))
-          (else (mx-show-shown-of id (cdr xs))))))
-(define tail-of? (->* (int sty) bool)
-  (lambda (id d) (tagcase d (s-mu (j) (= j id)) (else y #f))))
+(define tail-of? (->* (sty) bool) (lambda (d) (tagcase d (s-var (j) (= j 0)) (else y #f))))
 (define addr-same? (->* (addr addr) bool)
   (lambda (x y)
     (if (null? x)
@@ -6688,13 +6768,13 @@
         (and (= (len-entries es) 2)
              (entry-is? (car es) (list #t) 2) (entry-is? (car (cdr es)) (list #f) 2)))
       (else y #f))))
-(define listed-of (->* (int sty sty) stys)
-  (lambda (id nil-m pair-m)
+(define listed-of (->* (sty sty) stys)
+  (lambda (nil-m pair-m)
     (tagcase nil-m
       (s-nil ()
         (tagcase pair-m
           (s-pair (e d)
-            (if (and (tail-of? id d)
+            (if (and (tail-of? d)
                      (tagcase e (s-bvar () #f) (s-dvar () #f) (s-export (x bd) #f) (else y #t)))
                 (list e)
                 nil))
@@ -6705,7 +6785,7 @@
             (if (and (= (mx-types-kind-of n) 6) (no-entries? none))
                 (tagcase p
                   (s-pair (e d)
-                    (if (tail-of? id d)
+                    (if (tail-of? d)
                         (tagcase e
                           ;; An element's own export not a rib's: the pair's the element's.
                           (s-export (x bd) (if (both-ribs? both) (list e) nil))
@@ -6715,23 +6795,32 @@
                 nil))
           (else y nil)))
       (else y nil))))
-;; The element of `mu` `id`, in a list of one, if it is a list as `(σ ...)`
-;; writes one (`seq-type`): its element as written.
-(define listed-elem (->* (int) stys)
-  (lambda (id)
-    (tagcase (mu-body id)
-      (s-union (ms)
-        (if (and (not (null? ms)) (not (null? (cdr ms))) (null? (cdr (cdr ms))))
-            (listed-of id (car ms) (car (cdr ms)))
-            nil))
-      (else y nil))))
-(define used! (->* (int (listof (tupleof int string bool) acyclic))
-                   (listof (tupleof int string bool) acyclic))
-  (lambda (id xs)
-    (cond ((null? xs) nil)
-          ((= id (extract (car xs) 1)) (cons (tuple id (extract (car xs) 2) #t) (cdr xs)))
-          (else (cons (car xs) (used! id (cdr xs)))))))
-(define len-shown (->* ((listof (tupleof int string bool) acyclic)) int)
+;; The element of `mu` `t`, in a list of one, if it is a list as `(σ ...)`
+;; writes one (`seq-type`) and its element does not refer to it: its
+;; element as written, outside the list's `mu`.
+(define listed-elem (->* (sty) stys)
+  (lambda (t)
+    (let ((e (tagcase t
+               (s-mu (x r p)
+                 (tagcase x
+                   (s-union (ms)
+                     (if (and (not (null? ms)) (not (null? (cdr ms))) (null? (cdr (cdr ms))))
+                         (listed-of (car ms) (car (cdr ms)))
+                         nil))
+                   (else y nil)))
+               (else y nil))))
+      (if (null? e) nil (lowered (car e))))))
+(define nth-of (->* (int (listof (tupleof string bool) acyclic)) (tupleof string bool))
+  (lambda (j xs) (if (= j 0) (car xs) (nth-of (- j 1) (cdr xs)))))
+(define nth-shown (->* (int) (tupleof string bool))
+  (lambda (j) (nth-of j (get shown))))
+(define used! (->* (int (listof (tupleof string bool) acyclic))
+                   (listof (tupleof string bool) acyclic))
+  (lambda (j xs)
+    (if (= j 0)
+        (cons (tuple (extract (car xs) 1) #t) (cdr xs))
+        (cons (car xs) (used! (- j 1) (cdr xs))))))
+(define len-shown (->* ((listof (tupleof string bool) acyclic)) int)
   (lambda (xs) (if (null? xs) 0 (+ 1 (len-shown (cdr xs))))))
 (define delta-name (->* (int) string)
   (lambda (d)
@@ -6798,7 +6887,8 @@
         (s-many (x) (mk-list (list (sym "many") (show-sty x a b)) a b))
         (s-typed (x h) (show-sty x a b))
         (s-union (ms) (mk-list (cons (sym "oneof") (mx-show-show-each ms a b)) a b))
-        (s-mu (id) (show-mu id a b))))))
+        (s-var (j) (begin (set shown (used! j (get shown))) (sym (extract (nth-shown j) 1))))
+        (s-mu (x r p) (show-mu t a b))))))
 (mx-show-show-each (->* (stys int int) syns-a)
   (lambda (ms a b) (if (null? ms) nil (cons (show-sty (car ms) a b) (mx-show-show-each (cdr ms) a b)))))
 (show-pair (->* (sty syns-a int int) syn)
@@ -6806,31 +6896,28 @@
     (tagcase cur
       (s-pair (x y) (show-pair y (append items (the syns-a (list (show-sty x a b)))) a b))
       (s-nil () (mk-list items a b))
-      (s-mu (id)
-        (let ((e (if (null? (mx-show-shown-of id (get shown))) (listed-elem id) nil)))
+      (s-mu (x r p)
+        (let ((e (listed-elem cur)))
           (if (null? e)
               (joined-list items (show-sty cur a b) a b)
               (mk-list (append items
                                (the syns-a (list (show-sty (car e) a b) (mk-symbol "..." a b))))
                        a b))))
       (else y (joined-list items (show-sty cur a b) a b)))))
-(show-mu (->* (int int int) syn)
-  (lambda (id a b)
-    (let ((v (mx-show-shown-of id (get shown))))
-      (if (not (null? v))
-          (begin (set shown (used! id (get shown))) (mk-symbol (car v) a b))
-          (let ((e (listed-elem id)))
-            (if (not (null? e))
-                (mk-list (list (show-sty (car e) a b) (mk-symbol "..." a b)) a b)
-                (let ((name (string-append "m" (int->string (+ (len-shown (get shown)) 1)))))
-                  (begin
-                    (set shown (cons (tuple id name #f) (get shown)))
-                    (let* ((body (show-sty (mu-body id) a b)) (used (extract (car (get shown)) 3)))
-                      (begin
-                        (set shown (cdr (get shown)))
-                        (if (or used (open? (mu-body id)))
-                            (mk-list (list (mk-symbol "mu" a b) (mk-symbol name a b) body) a b)
-                            body))))))))))))
+(show-mu (->* (sty int int) syn)
+  (lambda (t a b)
+    (let ((e (listed-elem t)) (body (tagcase t (s-mu (x r p) x) (else y t))))
+      (if (not (null? e))
+          (mk-list (list (show-sty (car e) a b) (mk-symbol "..." a b)) a b)
+          (let ((name (string-append "m" (int->string (+ (len-shown (get shown)) 1)))))
+            (begin
+              (set shown (cons (tuple name #f) (get shown)))
+              (let* ((shown-body (show-sty body a b)) (used (extract (car (get shown)) 2)))
+                (begin
+                  (set shown (cdr (get shown)))
+                  (if (or used (open? body))
+                      (mk-list (list (mk-symbol "mu" a b) (mk-symbol name a b) shown-body) a b)
+                      shown-body))))))))))
 (define sig-word? (->* (syn) bool)
   (lambda (s)
     (and (syn-symbol? s)
@@ -7279,7 +7366,7 @@
                             (else (string-append "more" (int->string k)))))
                (m (mk-list (cons (mk-symbol mx-shown-label a b) (cons (extract r 1) (extract r 2))) a b)))
           (cons m (mx-shown-members (cdr ms) k)))))))
-(define mx-shown-shown-of (->* (syn syns-a) syn)
+(define shown-of (->* (syn syns-a) syn)
   (lambda (sig clause)
     (let ((items (proper-items sig)) (a (syn-start sig)) (b (syn-end sig)))
       (if (not (and (= (len items) 3) (mx-facts-sym-is? (car items) "macro/addressed")))
@@ -7305,7 +7392,7 @@
 (define in-shapes (->* (syn syns-a) syns-a)
   (lambda (sig clause)
     (let* ((saved-named (get mx-facts-named)) (saved-open (get open))
-           (r (prompt parse-tag (begin (set shown-result (list (mx-shown-shown-of sig clause))) (p-ok nil))
+           (r (prompt parse-tag (begin (set shown-result (list (shown-of sig clause))) (p-ok nil))
                       (lambda (r) r))))
       (begin (set mx-facts-named saved-named)
              (set open saved-open)
@@ -7646,21 +7733,15 @@
     (if (and (not (null? rs)) (null? (cdr rs)) (tagcase (car rs) (rd-rib (es) #t) (else y #f)))
         (tagcase (car rs) (rd-rib (es) (bind-rib (mx-solve-entries-of es))) (else y (bind-rib nil)))
         (bind-cage (rings-each rs)))))
-(define part-of-mu (->* (int mu-parts) mx-infer-ints)
-  (lambda (id xs)
-    (cond ((null? xs) nil)
-          ((= id (extract (car xs) 2)) (list (extract (car xs) 1)))
-          (else (part-of-mu id (cdr xs))))))
 ;; A part of the signature so far: a list by ellipsis or a `union`,
 ;; itself; one whose syntax type is not known yet, none.
 (define classify (->* (sty) kds)
   (lambda (core)
     (tagcase core
-      (s-mu (id)
-        (let ((p (part-of-mu id (get built-mus))))
-          (cond ((null? p) (list (kd-ty core)))
-                ((leaf? (car p)) nil)
-                (else (list (kd-ref (car p)))))))
+      (s-mu (b r p)
+        (cond ((not (= r (get built-round))) (list (kd-ty core)))
+              ((leaf? p) nil)
+              (else (list (kd-ref p)))))
       (else y (list (kd-ty core))))))
 (define name-add (->* (symbol kds named-kds) named-kds)
   (lambda (n ks out)
@@ -8043,7 +8124,7 @@
                  (made-roots (begin (set mx-infer-roots (roots-each mx-fail us rs 0 c)) #u))
                  (mx-infer-shape (fingerprint))
                  (s (if (string=? mx-infer-shape shape-was) s0 (fresh-sol (extract s0 2))))
-                 (tys (build s))
+                 (tys (build s n))
                  (shown (show-each-sig tys us))
                  (mx-solve-strings (texts shown)))
             (if (and (not (null? last)) (mx-solve-strings=? (extract (car last) 1) mx-solve-strings))
@@ -8125,6 +8206,97 @@
                       (list (mk-list (list (mk-symbol "macro/addressed" a b) union
                                            (mk-symbol (mx-solve-made-of (car ms)) a b))
                                      a b))))))))))
+
+;;; ============================================================ macros-fresh.fx (whole)
+
+;; The form's key, the names it made, the binders the resolution renamed
+;; (`%x~K.N`, `macros-shapes.fx`), its expansions, each by its number with
+;; its tag (`expansion-begun!`), and each key's hash with how many forms had
+;; it; whether the forms are a module file's.
+(define form-key (ref string mxp) (new ""))
+(define fresh-count (ref int mxp) (new 0))
+(define captors-made (ref int mxp) (new 0))
+(define mx-fresh-expanded (ref int mxp) (new 0))
+(define form-tags (ref tags mxp) (new nil))
+(define keys-seen (ref seen-keys mxp) (new nil))
+(define in-module (ref bool mxp) (new #f))
+;; A hash of `s`'s symbols, strings and shape, as the Rust one's
+;; (`macros.rs`'s `syn_hash`): any other atom is its kind alone.
+(define hash-p int 2147483647)
+(define mix (->* (int int) int) (lambda (h x) (remainder (+ (* h 65599) x) hash-p)))
+(define-rec
+(syn-hash (->* (syn) int)
+  (lambda (s)
+    (tagcase s
+      (atom (d a b x)
+        (cond ((symbol? d) (mix 1 (remainder (string-hash (symbol->string d)) hash-p)))
+              ((string? d) (mix 2 (remainder (string-hash d) hash-p)))
+              (else 3)))
+      (mx-eager-reader-types-lst (xs d a b x) (syns-hash 4 xs))
+      (dotted (xs t d a b x) (mix (syns-hash 5 xs) (syn-hash t)))
+      (vec (xs d a b x) (syns-hash 6 xs)))))
+(syns-hash (->* (int syns-a) int)
+  (lambda (h xs) (if (null? xs) h (syns-hash (mix h (syn-hash (car xs))) (cdr xs))))))
+(define seen-count (->* (int seen-keys) int)
+  (lambda (h ks)
+    (cond ((null? ks) 0)
+          ((= h (extract (car ks) 1)) (extract (car ks) 2))
+          (else (seen-count h (cdr ks))))))
+;; Form `s` begun: its key, and its names counted from none.
+(define form-begin! (->* (syn) unit)
+  (lambda (s)
+    (let* ((h (syn-hash s)) (n (seen-count h (get keys-seen))))
+      (begin (set keys-seen (cons (tuple h (+ n 1)) (get keys-seen)))
+             (set form-key (string-append (if (get in-module) "m" "") (string-append (int->string h)
+                                          (if (= n 0) "" (string-append "-" (int->string n))))))
+             (set fresh-count 0)
+             (set captors-made 0)
+             (set mx-fresh-expanded 0)
+             (set form-tags nil)))))
+;; The next name's tag, `K.N`.
+(define fresh-tag (->* () string)
+  (lambda ()
+    (begin (set fresh-count (+ (get fresh-count) 1))
+           (string-append (get form-key) (string-append "." (int->string (get fresh-count)))))))
+;; The next renamed binder's tag, counted apart.
+(define captor-tag (->* () string)
+  (lambda ()
+    (begin (set captors-made (+ (get captors-made) 1))
+           (string-append (get form-key) (string-append "." (int->string (get captors-made)))))))
+;; Expansion `made` begun: its tag, `K.N`, counted apart from the names'
+;; (`macros.rs`'s `expansion_begun`), so that its aliases, `%~K.N:x`, are of
+;; the form and the macros it uses alone.
+(define expansion-begun! (->* (int) string)
+  (lambda (made)
+    (begin (set mx-fresh-expanded (+ (get mx-fresh-expanded) 1))
+           (let ((t (string-append (get form-key) (string-append "." (int->string (get mx-fresh-expanded))))))
+             (begin (set form-tags (cons (tuple made t) (get form-tags))) t)))))
+(define tag-in (->* (int tags) string)
+  (lambda (made ts)
+    (cond ((null? ts) "0")
+          ((= made (extract (car ts) 1)) (extract (car ts) 2))
+          (else (tag-in made (cdr ts))))))
+;; Expansion `made`'s tag, one of this form's; a template's check's (`made`
+;; 0), `0`.
+(define mx-fresh-tag-of (->* (int) string) (lambda (made) (tag-in made (get form-tags))))
+;; Whether `c` may be in an expansion's tag: a form's key, `H`, `H-1` or
+;; `mH`, and a count.
+(define tag-char? (->* (char) bool)
+  (lambda (c) (or (char-numeric? c) (char=? c #\.) (char=? c #\-) (char=? c #\m))))
+(define fresh-scope-begin! (->* () fresh-saved)
+  (lambda ()
+    (let ((s (tuple (get form-key) (get fresh-count) (get captors-made) (get keys-seen)
+                    (get in-module) (get mx-fresh-expanded) (get form-tags))))
+      (begin (set keys-seen nil) (set in-module #t) s))))
+(define fresh-scope-end! (->* (fresh-saved) unit)
+  (lambda (s)
+    (begin (set form-key (extract s 1)) (set fresh-count (extract s 2))
+           (set captors-made (extract s 3)) (set keys-seen (extract s 4))
+           (set in-module (extract s 5)) (set mx-fresh-expanded (extract s 6))
+           (set form-tags (extract s 7)))))
+;; The state a session keeps after a form, and puts back before the next.
+(define seen-now (->* () seen-keys) (lambda () (get keys-seen)))
+(define seen! (->* (seen-keys) unit) (lambda (ks) (set keys-seen ks)))
 
 ;;; ============================================================ macros-contracts.fx (whole)
 
@@ -8501,7 +8673,7 @@
     (cond ((null? fresh) nil)
           ((or (symbol=? n (extract (car fresh) 1))
                (string=? (symbol->string n)
-                         (string-append "%~" (string-append (int->string made) (string-append ":"
+                         (string-append "%~" (string-append (mx-fresh-tag-of made) (string-append ":"
                                         (symbol->string (extract (car fresh) 1)))))))
            (list (extract (car fresh) 2)))
           (else (mx-contracts-fresh-of n (cdr fresh) made)))))
@@ -8516,7 +8688,7 @@
 ;; Output `out2`, the transformer's of the α-renamed use, held to output
 ;; `out`, its of the use: the same up to their binders' names; else refused
 ;; at use `s`, by `in-use`: a fresh name of `fresh`, or its alias of
-;; expansion `made` (`%~N:x′`), free in `out2`, placed outside its binder's
+;; expansion `made` (`%~K.N:x′`), free in `out2`, placed outside its binder's
 ;; scope; else a name read (`Macros::contract_expanded`).
 (define contract-held (->* (fails syn syn syn mx-contracts-renames int sty) unit)
   (lambda (in-use s out out2 fresh made ty)
@@ -8631,14 +8803,14 @@
 ;; expansion `made`, held to contract `sig` (`Macros::defined_held`):
 ;; definitions, aligned as a program's are, that define of the use's names
 ;; exactly those the contract says its uses define; any other name they
-;; define their own, an alias of the expansion (`%~N:x`). Refused at `out`.
+;; define their own, an alias of the expansion (`%~K.N:x`). Refused at `out`.
 (define defined-held (->* (fails sty syn syn int) unit)
   (lambda (mx-fail sig operands out made)
     (let* ((said (contract-said mx-fail sig operands))
            (ours (lambda ((m string) (a int) (b int))
                    (mx-fail (string-append "its expansion: " m) a b)))
            (defines (expansion-defines ours out))
-           (own (string-append "%~" (string-append (int->string made) ":")))
+           (own (string-append "%~" (string-append (mx-fresh-tag-of made) ":")))
            (extra (named-not-in defines said own))
            (missing (named-not-in said defines "")))
       (cond ((not (null? extra))
@@ -8757,12 +8929,12 @@
 ;; `begin-for-syntax` on.
 (define forms-text (->* ((listof string acyclic)) string)
   (lambda (fs) (string-append "%forms " (string-append (int->string (length fs)) (string-append "\n" (forms-given fs))))))
-;; The request that runs one on `form` (as text), in expansion `made`: the
+;; The request that runs one on `form` (as text), in expansion `made`, by its tag: the
 ;; transformer checked and compiled at its first use, then called
 ;; (`procedural::apply`, which the Rust expander calls itself).
 (define applied-text (->* (int string string int (listof string acyclic)) string)
   (lambda (s code form made fs)
-    (string-append "%apply " (string-append (int->string s) (string-append " " (string-append (int->string made) (string-append " "
+    (string-append "%apply " (string-append (int->string s) (string-append " " (string-append (mx-fresh-tag-of made) (string-append " "
                    (string-append (int->string (string-length code)) (string-append " " (string-append (int->string (length fs)) (string-append "\n"
                    (string-append (forms-given fs) (string-append code form)))))))))))))
 ;; The runtime's answer to `code`: what it gave (`=`), or why not (`!`),
@@ -8984,8 +9156,9 @@
       (if (and (not (null? r)) (= (mx-procedural-skip text (extract (car r) 2)) (string-length text)))
           (list (extract (car r) 1))
           nil))))
+;; `n`'s alias, of expansion `made`, by its tag.
 (define mx-procedural-alias (->* (string int) string)
-  (lambda (n made) (string-append "%~" (string-append (int->string made) (string-append ":" n)))))
+  (lambda (n made) (string-append "%~" (string-append (mx-fresh-tag-of made) (string-append ":" n)))))
 (define mx-procedural-head-of (->* (syns-a) string)
   (lambda (items)
     (if (and (not (null? items)) (syn-symbol? (car items))) (syn-name (car items)) "")))
@@ -9018,16 +9191,16 @@
         (let ((head (mx-procedural-head-of items)))
           (cond ((string=? head "quote") s)
                 ((string=? head "%sc") (opened-closure mx-fail s items macro-env made))
-                (else (let ((xs (closed-each mx-fail items macro-env made)))
+                (else (let ((xs (mx-procedural-closed-each mx-fail items macro-env made)))
                         (mx-eager-reader-types-lst xs (syn-datums xs) a b x))))))
       (dotted (items tail d a b x)
-        (let ((xs (closed-each mx-fail items macro-env made)) (t (closed mx-fail tail macro-env made)))
+        (let ((xs (mx-procedural-closed-each mx-fail items macro-env made)) (t (closed mx-fail tail macro-env made)))
           (dotted xs t (mx-datum-dotted (syn-datums xs) (syn->datum t)) a b x)))
       (vec (items d a b x) s))))
-(closed-each (->* (fails syns-a bool int) syns-a)
+(mx-procedural-closed-each (->* (fails syns-a bool int) syns-a)
   (lambda (mx-fail xs macro-env made)
     (if (null? xs) nil (cons (closed mx-fail (car xs) macro-env made)
-                             (closed-each mx-fail (cdr xs) macro-env made)))))
+                             (mx-procedural-closed-each mx-fail (cdr xs) macro-env made)))))
 ;; A closure, `(%sc env (free …) form)`, placed where names are in
 ;; `outer`'s environment.
 (opened-closure (->* (fails syn syns-a bool int) syn)
@@ -9072,7 +9245,7 @@
               (opened-each mx-fail (cdr xs) inner outer free made))))))
 (define mx-procedural-digits-end (->* (string int) int)
   (lambda (s i)
-    (if (and (< i (string-length s)) (char-numeric? (string-ref s i))) (mx-procedural-digits-end s (+ i 1)) i)))
+    (if (and (< i (string-length s)) (tag-char? (string-ref s i))) (mx-procedural-digits-end s (+ i 1)) i)))
 (define mx-procedural-alias-base-from (->* (string bool) string)
   (lambda (n any)
     (let ((c (if (and (> (string-length n) 2) (string=? (substring n 0 2) "%~"))
@@ -9084,7 +9257,7 @@
 ;;; ------------------------------------------------------------ aliases
 
 ;; `x`'s name as where its alias's macro was defined, if it is an alias
-;; (`%~N:x`): every `%~N:` taken off; else "".
+;; (`%~T:x`, `T` its expansion's tag): every `%~T:` taken off; else "".
 (define mx-procedural-alias-base (->* (string) string)
   (lambda (n) (mx-procedural-alias-base-from n #f)))
 (define named? (->* (string (listof (tupleof symbol sty) acyclic)) bool)
@@ -9191,7 +9364,8 @@
       ;; the Rust expander calls it in (`phase1.rs`): what it gives made
       ;; syntax at the use's place, no text between; apart, by text, where
       ;; the runtime has none.
-      (tagcase (mx-call-procedural style (extract p 2) (syn->datum s) made (extract p 5))
+      (tagcase (mx-call-procedural style (extract p 2) (syn->datum s) (mx-fresh-tag-of made)
+                                        (extract p 5))
         (ok d (opened (syn-of-datum d (new-source-key a made) (new-source-key b made) made)))
         (failed why (begin (in-use (string-append "its transformer: " why)) s))
         (apart u
@@ -9348,6 +9522,12 @@
 (define phase1-forms (ref (listof string acyclic) mxp) (new nil))
 (define phase1-forms-now (->* () (listof string acyclic)) (lambda () (get phase1-forms)))
 (define phase1-forms! (->* ((listof string acyclic)) unit) (lambda (fs) (set phase1-forms fs)))
+(define phase1-state-now (->* () phase1-state)
+  (lambda () (tuple (get phase1-forms) (get procedurals))))
+(define phase1-state! (->* (phase1-state) unit)
+  (lambda (s) (begin (set phase1-forms (extract s 1)) (set procedurals (extract s 2)))))
+(define phase1-none? (->* () bool)
+  (lambda () (and (null? (get phase1-forms)) (null? (get procedurals)))))
 (define syns-texts (->* (syns-a) (listof string acyclic))
   (lambda (xs) (if (null? xs) nil (cons (syn-text (car xs)) (syns-texts (cdr xs))))))
 ;; `(begin-for-syntax form …)`, `s`: its forms in force from now on, checked,
@@ -9448,13 +9628,13 @@
            (set def-env-now (extract s 3)) (set marks (extract s 4))
            (set phase1-forms (extract s 5)))))
 ;; Where the macro each expansion's aliases are of was defined, by the
-;; expansion's number, the last first; a template's check is expansion 0
+;; expansion's tag (`tag-of`), the last first; a template's check's is `0`
 ;; (`macros.rs`'s `Withs::def_envs`). Given to the resolution after expansion
 ;; (`macros-shapes.fx`'s `aliases-resolved`), which another instance of the
 ;; expander's files reads.
 (define mx-procedural-def-envs (ref mx-nodes-def-envs mxp) (new nil))
 (define def-env! (->* (int def-env) unit)
-  (lambda (k h) (set mx-procedural-def-envs (cons (tuple k h) (get mx-procedural-def-envs)))))
+  (lambda (k h) (set mx-procedural-def-envs (cons (tuple (mx-fresh-tag-of k) h) (get mx-procedural-def-envs)))))
 (define def-envs-given (->* () mx-nodes-def-envs) (lambda () (get mx-procedural-def-envs)))
 (define-rec
 ;; `s`, each part at `a`..`b` of expansion `x`: a hole's call, where the
@@ -10107,8 +10287,6 @@
 ;;; ------------------------------------------------------------ the session
 
 (define loads (ref load-defs mxp) (new nil))
-;; Fresh names' count.
-(define fresh-count (ref int mxp) (new 0))
 (define by-state (ref by-states mxp) (new nil))
 ;; The globals the forms read so far define, and those the forms before
 ;; this parse did (`Checker::global_type` as a program is expanded, before
@@ -10126,19 +10304,19 @@
       (begin
         (set with-uses nil)
         (if (null? at)
-            (begin (set defined nil) (set loads nil) (set mx-top-globals nil) (set fresh-count 0)
-                   (set marks nil) (phase1-forms! nil))
+            (begin (set defined nil) (set loads nil) (set mx-top-globals nil) (seen! nil)
+                   (set marks nil) (phase1-state! (tuple nil nil)))
             (begin (set defined (extract (car at) 2)) (set loads (extract (car at) 3))
-                   (set mx-top-globals (extract (car at) 4)) (set fresh-count (extract (car at) 5))
-                   (set marks (extract (car at) 6)) (phase1-forms! (extract (car at) 7))))
+                   (set mx-top-globals (extract (car at) 4)) (seen! (extract (car at) 5))
+                   (set marks (extract (car at) 6)) (phase1-state! (extract (car at) 7))))
         (set globals-before (get mx-top-globals))))))
 (define macros-after! (->* (int) unit)
   (lambda (s)
     (if (and (null? (get defined)) (null? (get loads)) (null? (get mx-top-globals))
-             (= (get fresh-count) 0) (null? (get marks)) (null? (phase1-forms-now)))
+             (null? (seen-now)) (null? (get marks)) (phase1-none?))
         #u
-        (set by-state (cons (tuple s (get defined) (get loads) (get mx-top-globals) (get fresh-count)
-                                   (get marks) (phase1-forms-now))
+        (set by-state (cons (tuple s (get defined) (get loads) (get mx-top-globals) (seen-now)
+                                   (get marks) (phase1-state-now))
                             (get by-state))))))
 ;; Names `ns` defined as globals.
 (define globals! (->* (mx-parser-types-names) unit) (lambda (ns) (set mx-top-globals (append ns (get mx-top-globals)))))
@@ -10154,6 +10332,7 @@
       (begin
         (set nexpansions n)
         (set expansions (cons (tuple n name (syn-start s) (syn-end s) typed) (get expansions)))
+        (expansion-begun! n)
         n))))
 ;; Whether a clause of pattern variables `ps` has a typed hole: checked once.
 (define holed? (->* (pvars) bool)
@@ -10278,11 +10457,8 @@
   (lambda (n binder d)
     (let* ((is (ints-prefix (get iters) d)) (known (mx-top-fresh-of binder is (get mx-top-fresh))))
       (if (null? known)
-          (begin
-            (set fresh-count (+ (get fresh-count) 1))
-            (let ((f (string->symbol (string-append "%" (string-append (symbol->string n) (string-append ":"
-                                                    (int->string (get fresh-count))))))))
-              (begin (set mx-top-fresh (cons (tuple binder is f) (get mx-top-fresh))) f)))
+          (let ((f (string->symbol (string-append "%" (string-append (symbol->string n) (string-append ":" (fresh-tag)))))))
+            (begin (set mx-top-fresh (cons (tuple binder is f) (get mx-top-fresh))) f))
           (car known)))))
 ;; Each typed hole's contract, by its pattern variable, in a list of one.
 (define contract-of (->* (symbol mx-nodes-contracts) syns-a)
@@ -10579,8 +10755,7 @@
 ;; A name made fresh: `prefix` and the count.
 (define fresh-symbol (->* (string) symbol)
   (lambda (prefix)
-    (begin (set fresh-count (+ (get fresh-count) 1))
-           (string->symbol (string-append prefix (int->string (get fresh-count)))))))
+    (string->symbol (string-append prefix (fresh-tag)))))
 (define symbol-in (->* (syn symbol) syns-a)
   (lambda (s n)
     (cond ((syn-symbol? s) (if (symbol=? (syn-symbol s) n) (list s) nil))
@@ -12666,9 +12841,24 @@
                   (file-shape-keyed (substring name 8 (string-length name)) (get file-shapes))
                   nil)))
       (if (null? f) #u (set top-vals (names-with (get top-vals) n (extract (car f) 2)))))))
+;;; ------------------------------------------------------------ aliases resolved
+
+;; Hygiene, one mechanism (`binding-shapes.md`, step 3; `macros/hygiene.rs`):
+;; top-level form `x`, after expansion, each alias an expansion left free,
+;; `%~K.N:x`, made the name it stands for where its macro is defined
+;; (`def-env-of`): a top-level macro's the top level's, written so (`(with
+;; #%toplevel x)`, `#%toplevel:x`); a file's macro's the file's value,
+;; `(with %shared:key x)`, else the standard one, `(with #%fx x)`; a module
+;; file's own macro's the plain name, a binder at the use that would capture
+;; it renamed, `%x~N`, and each reference to that binder; an alias the
+;; expansion bound, here or at the top level before, a name of its own.
+;; Itself if it has no alias. No alias reaches the checker. A captor's tag
+;; is `tag`'s, the expander's (`macros-fresh.fx`'s `captor-tag`), whose
+;; instance this one is not.
+(define-type tagger (subr parses () string))
 (define mx-shapes-digits-end (->* (string int) int)
   (lambda (s i)
-    (if (and (< i (string-length s)) (char-numeric? (string-ref s i))) (mx-shapes-digits-end s (+ i 1)) i)))
+    (if (and (< i (string-length s)) (tag-char? (string-ref s i))) (mx-shapes-digits-end s (+ i 1)) i)))
 (define mx-shapes-alias-base-from (->* (string bool) string)
   (lambda (n any)
     (let ((c (if (and (> (string-length n) 2) (string=? (substring n 0 2) "%~"))
@@ -12678,7 +12868,7 @@
           (mx-shapes-alias-base-from (substring n (+ c 1) (string-length n)) #t)
           (if any n "")))))
 ;; `x`'s name as where its alias's macro was defined, if it is an alias
-;; (`%~N:x`): every `%~N:` taken off; else "" (`macros-procedural.fx`'s).
+;; (`%~K.N:x`): every `%~K.N:` taken off; else "" (`macros-procedural.fx`'s).
 (define mx-shapes-alias-base (->* (string) string)
   (lambda (n) (mx-shapes-alias-base-from n #f)))
 (define-rec
@@ -12733,7 +12923,7 @@
                 (else (mk-symbol (string-append "#%toplevel:" base) a b))))
         ((2) (mk-symbol base a b))
         (else
-          (cond ((and (= free 0) (mx-types-name-in? (string->symbol base) (extract h 3)))
+          (cond ((and (= free 0) (mx-syntax-name-in? (string->symbol base) (extract h 3)))
                  (with-of (symbol->string (extract h 2))))
                 ((= free 0) (with-of "#%fx"))
                 ((= free 2) (mk-symbol base a b))
@@ -12744,26 +12934,23 @@
                                                      "named apart from its module, not yet")))
                                  s)
                         s))))))))
-;; Where expansion `k`'s macro was defined, of `hs`: the top level if none
-;; is said.
-(define def-env-of (->* (int mx-nodes-def-envs) def-env)
+;; Where the expansion of tag `k` had its macro defined, of `hs`: the top
+;; level if none is said.
+(define def-env-of (->* (string mx-nodes-def-envs) def-env)
   (lambda (k hs)
     (cond ((null? hs) (def-env-top))
-          ((= k (extract (car hs) 1)) (extract (car hs) 2))
+          ((string=? k (extract (car hs) 1)) (extract (car hs) 2))
           (else (def-env-of k (cdr hs))))))
-(define mx-shapes-digits-value (->* (string int int int) int)
-  (lambda (s i end acc)
-    (if (>= i end)
-        acc
-        (mx-shapes-digits-value s (+ i 1) end
-                      (+ (* acc 10) (- (char->integer (string-ref s i)) (char->integer #\0)))))))
-;; The expansion that made alias `x`, its outermost `%~N:`'s `N`; else 0.
-(define alias-made (->* (string) int)
+;; The tag of the expansion that made alias `x`, its outermost `%~T:`'s
+;; `T`; else "".
+(define alias-made (->* (string) string)
   (lambda (x)
     (let ((c (if (and (> (string-length x) 2) (string=? (substring x 0 2) "%~"))
                  (mx-shapes-digits-end x 2)
                  -1)))
-      (if (> c 2) (mx-shapes-digits-value x 2 c 0) 0))))
+      (if (and (> c 2) (< c (string-length x)) (char=? (string-ref x c) #\:))
+          (substring x 2 c)
+          ""))))
 ;; The same, looked for from place `from`, past each module's names.
 (define bound-from? (->* (symbol bool mx-env-indexed-env int) bool)
   (lambda (n d mx-env-indexed-env from)
@@ -12825,22 +13012,19 @@
         (let ((ex (node-export f)))
           (if (null? ex) nil (levels-binders (mx-shaper-exported mx-fail ex x)))))
       (else y nil))))
-(define captors-made (ref int mxp) (new 0))
-(define captors-named (->* (mx-shapes-ints captors) captors)
-  (lambda (cs out)
+(define captors-named (->* (mx-shapes-ints captors tagger) captors)
+  (lambda (cs out tag)
     (if (null? cs)
         out
         (tagcase (node-kids (car cs))
           (k-binder (n e)
-            (begin
-              (set captors-made (+ (get captors-made) 1))
-              (captors-named (cdr cs)
-                             (cons (tuple (car cs)
-                                          (string->symbol
-                                           (string-append "%" (string-append (symbol->string n) (string-append "~"
-                                                          (int->string (get captors-made)))))))
-                                   out))))
-          (else y (captors-named (cdr cs) out))))))
+            (captors-named (cdr cs)
+                           (cons (tuple (car cs)
+                                        (string->symbol
+                                         (string-append "%" (string-append (symbol->string n) (string-append "~" (tag))))))
+                                 out)
+                           tag))
+          (else y (captors-named (cdr cs) out tag))))))
 (define renamed-at (->* (symbol syn) syn)
   (lambda (n s)
     (let ((ab (syn-span s))) (mk-symbol (symbol->string n) (extract ab 1) (extract ab 2)))))
@@ -12953,26 +13137,14 @@
 ;; its path written so.
 (define with-parts (->* (syn addr (listof (tupleof addr syn) acyclic)) syn)
   (lambda (s path ws) (parts-under s (parts-from-top ws))))
-;;; ------------------------------------------------------------ aliases resolved
-
-;; Hygiene, one mechanism (`binding-shapes.md`, step 3; `macros/hygiene.rs`):
-;; top-level form `x`, after expansion, each alias an expansion left free,
-;; `%~N:x`, made the name it stands for where its macro is defined
-;; (`def-env-of`): a top-level macro's the top level's, written so (`(with
-;; #%toplevel x)`, `#%toplevel:x`); a file's macro's the file's value,
-;; `(with %shared:key x)`, else the standard one, `(with #%fx x)`; a module
-;; file's own macro's the plain name, a binder at the use that would capture
-;; it renamed, `%x~N`, and each reference to that binder; an alias the
-;; expansion bound, here or at the top level before, a name of its own.
-;; Itself if it has no alias. No alias reaches the checker.
-(define aliases-resolved (->* (fails syn mx-nodes-def-envs) syn)
-  (lambda (mx-fail x hs)
+(define aliases-resolved (->* (fails syn mx-nodes-def-envs tagger) syn)
+  (lambda (mx-fail x hs tag)
     (if (not (alias-in? x))
         x
         (let* ((w (mx-walk-walked mx-fail x #t)) (root (extract w 1)) (mx-nodes-found (extract w 2))
                (made (aliases-written mx-fail mx-nodes-found hs (root-binders mx-fail root x)
                                       (tuple (the mx-shapes-parts nil) (the mx-shapes-ints nil))))
-               (fresh (captors-named (extract made 2) nil))
+               (fresh (captors-named (extract made 2) nil tag))
                (written (append (captors-renamed mx-nodes-found fresh (binders-renamed fresh nil))
                                 (extract made 1))))
           (begin (aliases-defined-in mx-fail root x)
@@ -13228,7 +13400,7 @@
     (let ((h (drive-head x)))
       (if (or (string=? h "include") (string=? h "import") (string=? h "define-datatype"))
           x
-          (top-shaped (aliases-resolved pfail-at (sealed-written pfail-at x) (def-envs-given)))))))
+          (top-shaped (aliases-resolved pfail-at (sealed-written pfail-at x) (def-envs-given) captor-tag))))))
 (define drive-written-each (->* (syns-a) syns-a)
   (lambda (xs) (if (null? xs) nil (cons (drive-written (car xs)) (drive-written-each (cdr xs))))))
 "Each check of macros `ns`' templates, expanded (`parse-checks`)."
@@ -13236,7 +13408,7 @@
   (lambda (cs)
     (if (null? cs)
         nil
-        (cons (aliases-resolved pfail-at (expand pfail-at (car cs)) (def-envs-given)) (drive-checked (cdr cs))))))
+        (cons (aliases-resolved pfail-at (expand pfail-at (car cs)) (def-envs-given) captor-tag) (drive-checked (cdr cs))))))
 (define drive-checks (->* (mx-parser-types-names) syns-a)
   (lambda (ns)
     (if (null? ns)
@@ -13245,10 +13417,19 @@
 (define drive-not-yet (->* (syn string) syns-a)
   (lambda (s what)
     (begin (pfail-at (string-append what ": not yet in kayak's expander") (syn-start s) (syn-end s)) nil)))
+"Top-level form `s` begun (Fixpt's `form-begun!`): its key, which its fresh
+ names and aliases are of (`form-begin!`); and what the expander keeps
+ within one form as at any form's start, whatever a failure before left."
+(define drive-begun! (->* (syn) unit)
+  (lambda (s)
+    (begin (form-begin! s) (made-syntax-taken!) (set program-walk #f) (set heads-on #f)
+           (set open nil) (set checking #f))))
 "What top-level form `s` makes, the forms the checker reads (`top-made`)."
 (define-rec
   (drive-form (->* (syn) syns-a)
     (lambda (s)
+     (begin
+      (drive-begun! s)
       (cond ;; A shape named (`binding-shapes.md`): held to the globals, as a
             ;; macro is, and defined; it makes nothing (C440).
             ((shape-definition? s) (begin (drive-taken (syntax-names s) s) (shape-defined! s) nil))
@@ -13262,7 +13443,7 @@
             ((string=? (drive-head s) "hide") (drive-forms (cdr (proper-items s))))
             (else
              (let* ((xs (expand-top pfail-at s)) (ms (made-syntax-taken!)) (ws (drive-written-each xs)))
-               (begin (drive-taken ms s) (drive-guard ws) (append ws (drive-checks ms))))))))
+               (begin (drive-taken ms s) (drive-guard ws) (append ws (drive-checks ms)))))))))
   (drive-forms (->* (syns-a) syns-a)
     (lambda (xs) (if (null? xs) nil (let ((made (drive-form (car xs)))) (append made (drive-forms (cdr xs))))))))
 
