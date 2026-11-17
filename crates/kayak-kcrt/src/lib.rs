@@ -36,6 +36,12 @@ const IMM_CHAR: u64 = 8;
 
 unsafe extern "C" {
     fn kc_entry(heap: *mut u64, end: *mut u64) -> u64;
+    /// A procedure of kc's code (its address `f`) called on `a` and `b`,
+    /// the heap's next word where `kc_entry` left it, its end `end`
+    /// (C448: kc's entry object's).
+    fn kc_call2(f: u64, a: u64, b: u64, end: u64) -> u64;
+    /// `%phase1-apply`'s address, if the program defines it, else 0.
+    static kc_apply_entry: u64;
 }
 
 /// The heap's words: no collector yet, so all a run may use (C406).
@@ -275,6 +281,13 @@ pub extern "C" fn kc_is_procedure(v: u64) -> u64 {
     boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_CLOSURE)
 }
 
+/// Whether `v` is a bloblet of `kind` (C448: a `typecase`'s shapes, as
+/// Fixpt's heap has them).
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_is_kind(v: u64, kind_wanted: u64) -> u64 {
+    boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == kind_wanted)
+}
+
 /// `a`'s pairs copied, the last's cdr `b` (C447: a quasiquote's `,@`), in
 /// this runtime's memory; `a` not a list fails as `cdr` of a non-pair does.
 #[unsafe(no_mangle)]
@@ -418,10 +431,34 @@ pub extern "C" fn kc_show(v: u64) {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
+    // `--apply` (C448): a procedural macro's transformer's program, given a
+    // use on the standard input, the expansion's tag on its first line and
+    // the use's text after; the program's definitions made, then its
+    // `%phase1-apply` called on the two, and what it gives written.
+    let apply = std::env::args().nth(1).as_deref() == Some("--apply");
+    let mut input = String::new();
+    if apply {
+        use std::io::Read as _;
+        if std::io::stdin().read_to_string(&mut input).is_err() {
+            failed("kc: the use given is not text");
+        }
+    }
     let heap: &'static mut [u64] = Vec::leak(vec![0u64; HEAP_WORDS]);
     let range = heap.as_mut_ptr_range();
     // SAFETY: `kc_entry` is kc's code, which takes the heap's first free
     // word and its end, and writes each top-level expression's value.
     unsafe { kc_entry(range.start, range.end) };
+    if apply {
+        let (tag, used) = input.split_once('\n').unwrap_or((input.as_str(), ""));
+        // SAFETY: kc's entry object defines it, a word.
+        let f = unsafe { kc_apply_entry };
+        if f == 0 {
+            failed("kc: this program has no transformer to apply");
+        }
+        // SAFETY: `f` is a procedure of kc's code of two arguments, strings
+        // of Fixpt's layout; `kc_call2` gives it the heap `kc_entry` left.
+        let v = unsafe { kc_call2(f, make_string(used), make_string(tag), range.end as u64) };
+        println!("{}", written(v));
+    }
     0
 }

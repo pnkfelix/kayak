@@ -46,7 +46,9 @@
  the screen, files, the workers, the relay; the whole session's."
 (define-effect working (maxeff (alloc @q) (alloc @w) (init @q) (await @q) (send @q) nondet spin))
 (define-effect machining (maxeff running (io terminal) (alloc @m) (send @m) (await @m) (send @f) (init @q) nondet))
-(define-effect fronting (maxeff kfx nondet (io stdout) (io stderr) (io stdin) (io clock) (io fs-read) (io fs-write) (io terminal) (alloc @q) (alloc @w) (init @q) (await @q) (send @q) (send @m)))
+(define-effect fronting (maxeff kfx nondet (io stdout) (io stderr) (io stdin) (io clock) (io fs-read) (io fs-write) (io terminal) (alloc @q) (alloc @w) (init @q) (await @q) (send @q) (send @m)
+                                ;; A procedural macro's transformer's request answered (C448).
+                                (io process)))
 (define-effect front-loop (maxeff fronting (alloc @q) (init @q) (await @q)))
 (define-effect repling (maxeff machining fronting (init @m) (alloc @f) (alloc @io) (read @io) (send @m) (receive @m)))
 
@@ -1152,7 +1154,7 @@ an entry naming one that has not ended waits for it.")
                    (requests (ref (listof asked acyclic) r)) (cv (ref cv r)) (globals (ref strings r)) (count (ref i64 r))
                    (input-ended (ref bool r)) (relay (addr relayed @m))
                    (mx-state (ref int r))
-                   (mx-entry (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (datum int) (tupleof datum string int)))
+                   (mx-entry (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r) (io process)) (datum int) (tupleof datum string int)))
                    (mx-draft (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (datum int) (tupleof datum string)))
                    (mx-macros? (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (int) bool))))
 
@@ -1610,7 +1612,7 @@ an entry naming one that has not ended waits for it.")
        state it leaves, which an entry's acceptance makes the session's. An
        entry (`entry`) leaves its state; a draft, `,type`'s or a hole's,
        none: theirs is the session's still."
-      (define* f-expanded (poly ((r region)) (subr (maxeff (read @globals) spin nondet (read r) (write r) (alloc r) (goto r)) ((fstate r) string string bool) (sumof (text (tupleof string int)) (refused string))))
+      (define* f-expanded (poly ((r region)) (subr (maxeff (read @globals) spin nondet (read r) (write r) (alloc r) (goto r) (io process)) ((fstate r) string string bool) (sumof (text (tupleof string int)) (refused string))))
         (plambda ((r region))
           (lambda (f text file entry)
             (let ((s (get (extract f mx-state))))
@@ -2073,7 +2075,7 @@ an entry naming one that has not ended waits for it.")
        load seeing the standard environment alone, where it may hold no
        procedure of a place (Fixpt's `closed-code.md`)."
       (define* f-new (poly ((r region)) (subr (maxeff (alloc r) (read @globals) spin) ((addr relayed @m)
-                                                                                     (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (datum int) (tupleof datum string int))
+                                                                                     (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r) (io process)) (datum int) (tupleof datum string int))
                                                                                      (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (datum int) (tupleof datum string))
                                                                                      (subr (maxeff (read @globals) spin (read r) (write r) (alloc r) (goto r)) (int) bool))
                                                      (fstate r)))
@@ -2224,9 +2226,28 @@ an entry naming one that has not ended waits for it.")
                     (the (addr told @f)
                          (spawn-monitored relay front-failure (box told p)
                            (let* ((x ((proj (load-module "macros/expander.fx") p)))
+                                  ;; The transformers' answers so far (C448), the session's.
+                                  (answers (the (ref datum p) (new (the datum nil))))
                                   (f (the (fstate p) (f-new relay
-                                                            (lambda ((forms datum) (k int)) (with x (drive-entry forms k)))
-                                                            (lambda ((forms datum) (k int)) (with x (drive-draft forms k)))
+                                                            ;; An entry, each request of a procedural
+                                                            ;; macro's transformer it makes answered
+                                                            ;; (`phase1-asked`, a process of its own: the
+                                                            ;; machine's heap is live) and kept, and
+                                                            ;; expanded again (C448), as `entry-answered`.
+                                                            (letrec ((answered (subr (maxeff (read @globals) spin (read p) (write p) (alloc p) (goto p) (io process)) (datum int) (tupleof datum string int))
+                                                                                 (lambda (forms k)
+                                                                                   (begin
+                                                                                     (with x (drive-answers! (get answers)))
+                                                                                     (let* ((e (with x (drive-entry forms k))) (need (with x (drive-needed))))
+                                                                                       (if (string=? need "")
+                                                                                           e
+                                                                                           (begin
+                                                                                             (set answers (the datum (cons (the datum (cons (the datum need) (the datum ((proj phase1-asked-in p) need)))) (get answers))))
+                                                                                             (answered forms k))))))))
+                                                              answered)
+                                                            ;; A draft, of the answers known alone: no
+                                                            ;; process run as one types.
+                                                            (lambda ((forms datum) (k int)) (begin (with x (drive-answers! (get answers))) (with x (drive-draft forms k))))
                                                             (lambda ((k int)) (with x (drive-macros? k)))))))
                              (begin
                                (write-out (f-started! f live height width path))
@@ -2294,9 +2315,28 @@ an entry naming one that has not ended waits for it.")
                         (the (addr told @f)
                              (spawn-monitored relay front-failure (box told p)
                                (let* ((x ((proj (load-module "macros/expander.fx") p)))
+                                  ;; The transformers' answers so far (C448), the session's.
+                                  (answers (the (ref datum p) (new (the datum nil))))
                                   (f (the (fstate p) (f-new relay
-                                                            (lambda ((forms datum) (k int)) (with x (drive-entry forms k)))
-                                                            (lambda ((forms datum) (k int)) (with x (drive-draft forms k)))
+                                                            ;; An entry, each request of a procedural
+                                                            ;; macro's transformer it makes answered
+                                                            ;; (`phase1-asked`, a process of its own: the
+                                                            ;; machine's heap is live) and kept, and
+                                                            ;; expanded again (C448), as `entry-answered`.
+                                                            (letrec ((answered (subr (maxeff (read @globals) spin (read p) (write p) (alloc p) (goto p) (io process)) (datum int) (tupleof datum string int))
+                                                                                 (lambda (forms k)
+                                                                                   (begin
+                                                                                     (with x (drive-answers! (get answers)))
+                                                                                     (let* ((e (with x (drive-entry forms k))) (need (with x (drive-needed))))
+                                                                                       (if (string=? need "")
+                                                                                           e
+                                                                                           (begin
+                                                                                             (set answers (the datum (cons (the datum (cons (the datum need) (the datum ((proj phase1-asked-in p) need)))) (get answers))))
+                                                                                             (answered forms k))))))))
+                                                              answered)
+                                                            ;; A draft, of the answers known alone: no
+                                                            ;; process run as one types.
+                                                            (lambda ((forms datum) (k int)) (begin (with x (drive-answers! (get answers))) (with x (drive-draft forms k))))
                                                             (lambda ((k int)) (with x (drive-macros? k)))))))
                                  (begin
                                    (write-out (f-started! f #t 24 80 ""))

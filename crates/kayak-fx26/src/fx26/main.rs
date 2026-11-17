@@ -158,8 +158,8 @@ pub fn macro_heads() -> Strings {
 // again (`--phase1`, `phase1-answer`): a process of its own, its heap and
 // machine apart from the program's, which a transformer's run would
 // otherwise share. Its answer, `=` and what it gave, or `!` and why.
-pub fn phase1_asked(request: Str) -> Str {
-    let tagcase_ = process_start(the::<List<Str>>(kayak_rt::heap_cons(str_lit("/proc/self/exe"), the::<List<Str>>(kayak_rt::heap_cons(str_lit("--phase1"), the::<List<Str>>(kayak_rt::heap_cons(request, the::<List<Str>>(nil::<Str>()))))))), str_lit(""));
+pub fn phase1_asked_in<'r>(request: Str) -> Str {
+    let tagcase_ = process_start(the::<ListAt<'r, Str>>(cons(str_lit("/proc/self/exe"), the::<ListAt<'r, Str>>(cons(str_lit("--phase1"), the::<ListAt<'r, Str>>(cons(request, the::<ListAt<'r, Str>>(nil::<Str>()))))))), str_lit(""));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("started") } {
         let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
@@ -191,6 +191,13 @@ pub fn phase1_asked(request: Str) -> Str {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
         string_append(str_lit("!the transformers' run: "), e.1)
     } else { unreachable!() }
+}
+
+// Of the engine's driver, its list at `@io`; the REPL's front asks at its
+// own place's (C448), a process holding nothing of `@io`.
+#[inline]
+pub fn phase1_asked(request: Str) -> Str {
+    (&phase1_asked_in)(request)
 }
 
 // A program's forms expanded as a REPL's first entry (`drive-entry`, from

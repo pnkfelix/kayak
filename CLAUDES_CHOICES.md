@@ -13003,3 +13003,55 @@ same input (`phase1 REQUEST`, C446); the engine's process is gone from kc.
 - **The full check**: all passed; the engine's comparisons as before
   (beyond KFX, 411 of Fixpt's programs agree, 62 its checker refuses), the
   REPL sessions as before.
+
+## C448. C447's gaps: a use a run alone, the REPL's procedural macros, the rest of `typecase` (2026-11-17)
+
+The user, after C447: "Make a todo to revisit this question later" (an
+expansion run again, or suspended: TODO §51, with C447's reasoning and
+what to measure), "Focus now on remaining gaps listed in TODO §51".
+- **A use is a run alone.** A transformer's program (of `%define` and
+  `%apply`) now holds no call: kc adds its own `%phase1-read`, a reader of
+  the data Fixpt's expander writes a use as, and `%phase1-apply`, the
+  transformer called on the use read and the tag, as `phase1-called` calls
+  it (`kc/phase1-read.kfx`, FX-26 that kc compiles with the rest; Fixpt
+  takes it too). The program is built once, where the macro is defined;
+  each use runs it with `--apply`, the tag and the use's text on its
+  standard input (`process-write`: no command line's limit). The runtime
+  makes the definitions (`kc_entry`, which now keeps the heap's next word,
+  `kc_heap_next`), then calls `%phase1-apply` through `kc_call2` (kc's
+  entry object's: the heap in `%r15` and `%r14`, as kc's code has it) at
+  `kc_apply_entry`. A use the reader does not read (a vector, a keyword,
+  `#u`, a number past a fixnum: `%phase1-unread`) is called as before, the
+  call a form of the program, built and run. Measured, a use's operand
+  edited with a database: 0.09 s, 11 query bodies, an assembler, a link
+  and a run (C447), now 0.04 s, 5, one run. Cold: `contract-defn.fx` 0.33
+  s, now 0.16 s; `aif-er.fx` 0.18, now 0.15.
+- **The REPL's procedural macros**: its front answers each request its
+  entry makes as the engine's driver does (`phase1-asked`, the engine run
+  again, `--phase1`: a process of its own, the REPL's heap untouched), keeps
+  the answers for the session, and expands again. A draft is expanded with
+  the answers known alone, so that no process runs as one types (a live
+  session's draft with a new use is untested: its speculation should say
+  not yet until it is entered). A process holds nothing
+  that reads `@io`, so `phase1-asked` is now of any region
+  (`phase1-asked-in`), the front's its own. `tests/repl/procedural.in`.
+- **`typecase`'s other shapes** in kc: `bloblet` (`array?`), `box`
+  (`ref?`), `sum`, `product`, `vector`, `bytevector`, `keyword`, each a
+  bloblet's kind (Fixpt's `layout.rs`; the runtime's `kc_is_kind`), with
+  Fixpt's predicate names (`TYPECASE_SHAPES`). `f64` and `f32` not yet: kc
+  has no floats. A dotted datum, quoted or quasiquoted (`(a . b)`, the
+  reader's `.` before the last item); a quoted vector still not yet.
+- **Kept tidy**: `kc build` takes away the objects in `EXE.o.d/` its
+  program no longer lists (C419's gap); a run that made
+  `/tmp/kc-phase1-PID` takes away, with its own, any whose process is no
+  more (one a `not yet` ended). kc's identity covers its runtime
+  (`crates/kayak-kcrt/src/lib.rs`): a transformer's answer kept in a
+  database is the runtime's run of it, its words the runtime's.
+- **Checks**: `tests/kc/step15/`: a dotted datum, a typecase of kinds, a
+  use the reader leaves to the compiled call, each Fixpt's value.
+  `kc-steps.py`'s procedural edits: cold 9 `asm-item`s (the prelude's 6,
+  the transformer, the reader, `%phase1-apply`), a use's operand edited
+  none. `kc-expanded.py` as C447's.
+- **The full check**: all passed; kc-steps 336 programs, 0 wrong; the REPL
+  sessions 14 (one more, `procedural.in`); the engine's comparisons as
+  before (beyond KFX, 411 agree).

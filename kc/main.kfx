@@ -233,6 +233,25 @@
             (data b #t)
             (failed e #f))))
 
+      (define-rec
+        (stale-of (subr kfx ((listof string acyclic) (listof string acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (files names acc)
+            "Of `files`, each an object's (`NAME.o`, `NAME.s`) whose NAME is not
+             one of `names`."
+            (if (null? files)
+                (reverse acc)
+                (let* ((f (car files)) (n (string-length f))
+                       (base (if (and (> n 2) (or (has-suffix? f ".o") (has-suffix? f ".s"))) (substring f 0 (- n 2)) "")))
+                  (stale-of (cdr files) names (if (or (string=? base "") (string-member? base names)) acc (cons f acc))))))))
+
+      "The objects in `dir` a program built of `names` no longer lists (C448,
+       C419's gap): taken away, so that `EXE.o.d/` holds the program's own.
+       One taken away is made again if a later edit lists it again."
+      (define stale-removed! (subr driving (string (listof string acyclic)) unit)
+        (lambda (dir names)
+          (let ((stale (stale-of (listed dir) names nil)))
+            (if (null? stale) #u (begin (run-command (cons "rm" (cons "-f" stale)) dir) #u)))))
+
       (define build (subr driving (db string string string) string)
         (lambda (d file exe rt)
           "The program of `file` built to `exe`, on the runtime `rt`: `` if
@@ -257,7 +276,9 @@
                                                                      (list rt (string-append "-Wl,-rpath," (directory-of rt)))
                                                                      (list rt "-lgcc_s" "-lutil" "-lrt" "-lpthread" "-lm" "-ldl" "-lc"))))
                                                  "")))
-                        (if (string=? linked "") (begin (write-text record manifest) "") linked))))))))
+                        (if (string=? linked "")
+                            (begin (write-text record manifest) (stale-removed! dir names) "")
+                            linked))))))))
 
       "Where a procedural macro's transformer is built, and on what runtime
        (C447): beside the database, `DB.phase1/`, where there is one, so that
@@ -289,46 +310,74 @@
                   ((char=? (car cs) #\newline) (lines-of (cdr cs) nil (cons (list->string (reverse line)) acc)))
                   (else (lines-of (cdr cs) (cons (car cs) line) acc))))))
 
+      "A phase-1 program (C447) loaded as a file of the database, named by
+       its text's fingerprint, checked and built: its executable, and ``; or
+       the answer that says why it is not, `!` and why."
+      (define phase1-built (subr driving (db string string string) (tupleof string string))
+        (lambda (d dir rt program)
+          (let* ((name (phase1-name program))
+                 (path (string-append "%phase1-" (string-append name ".fx")))
+                 (exe (string-append dir (string-append "/t" name)))
+                 (need (kc-load-file! d kc-run path program)))
+            (if (not (string=? need ""))
+                (tuple exe "!kc: not yet: a phase-1 form that uses a procedural macro")
+                (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" path)))))
+                  (if (not (string=? refused ""))
+                      (tuple exe (string-append "!" (phase1-unplaced refused)))
+                      (let ((built (build d path exe rt)))
+                        (tuple exe (if (string=? built "") "" (string-append "!kc: the transformer's build: " built))))))))))
+
+      "A phase-1 program's run: given a use (`--apply`, the tag and the use's
+       text on its standard input, C448), or not. Its answer, `=` and the value
+       of its last line as `write` writes it (`#u` of none), or `!` and why
+       (`evaluation failed: ` taken off)."
+      (define phase1-ran (subr driving (string bool string) string)
+        (lambda (exe apply input)
+          (tagcase (process-start (strings-at-io (if apply (list exe "--apply") (list exe))) "")
+            (started p
+              (begin
+                (if apply (tagcase (process-write p input) (done u #u) (failed e #u)) #u)
+                (process-close-input p)
+                (let* ((how (process-exit p))
+                       (last (last-line (lines-of (string-chars (process-output p)) nil nil) "")))
+                  (tagcase how
+                    (exited c
+                      (cond ((= c 0) (string-append "=" (if (string=? last "") "#u" last)))
+                            ((has-prefix? last "evaluation failed: ") (string-append "!" (after-prefix last "evaluation failed: ")))
+                            (else (string-append "!the transformer's run: " last))))
+                    (signalled g "!the transformer's run was signalled")
+                    (unknown u "!the transformer's run ended, how is not known")))))
+            (failed e (string-append "!the transformer's run: cannot run " (string-append exe (string-append ": " (extract e detail))))))))
+
       "A procedural macro's transformer's request (C446), answered by kc
        itself (C447): its phase-1 program (`phase1-parts`,
-       fx26/macros-phase1.kfx) a file of the database, checked, compiled to
-       native code and built as any program, each of its items a query, so
-       that a transformer's definitions are compiled once and a use's call
-       alone is new; then run. Its answer, `=` and the value of its last
-       expression as `write` writes it (`#u` of none), or `!` and why its
-       check refused it or its run failed. Of the request's text alone, so
-       kept as the input `phase1 REQUEST`, and asked once."
+       fx26/macros-phase1.kfx) a file of the database, its items queries,
+       checked, compiled to native code and built, then run. A transformer's
+       program (of `%define` and `%apply`) has kc's reader and
+       `%phase1-apply` too (C448, phase1-read.kfx), and no call: it is built
+       once, at the macro's definition, and each use is a run of it given
+       the use. A use the reader does not read (`%phase1-unread`: a vector,
+       say) is called as the engine calls it, the call a form of the
+       program, built and run. Of the request's text alone, so kept as the
+       input `phase1 REQUEST`, and asked once."
       (define phase1-asked (subr driving (db phase1-at string) string)
         (lambda (d at request)
           (tagcase at
             (phase1-at (dir rt)
-              (let* ((ps (phase1-parts request)) (defs (extract ps 1)))
+              (let* ((ps (phase1-parts request)) (defs (extract ps 1))
+                     (use (phase1-use request)) (style (extract use 1)))
                 (if (string=? defs "")
                     "!a malformed transformer request"
-                    (let* ((name (phase1-name defs))
-                           (path (string-append "%phase1-" (string-append name ".fx")))
-                           (need (kc-load-file! d kc-run path (string-append defs (extract ps 2)))))
-                      (if (not (string=? need ""))
-                          "!kc: not yet: a phase-1 form that uses a procedural macro"
-                          (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" path)))))
-                            (if (not (string=? refused ""))
-                                (string-append "!" (phase1-unplaced refused))
-                                (let* ((exe (string-append dir (string-append "/t" name)))
-                                       (built (build d path exe rt)))
-                                  (if (not (string=? built ""))
-                                      (string-append "!kc: the transformer's build: " built)
-                                      (tagcase (process-start (strings-at-io (list exe)) "")
-                                        (started p
-                                          (let* ((how (process-exit p))
-                                                 (last (last-line (lines-of (string-chars (process-output p)) nil nil) "")))
-                                            (tagcase how
-                                              (exited c
-                                                (cond ((= c 0) (string-append "=" (if (string=? last "") "#u" last)))
-                                                      ((has-prefix? last "evaluation failed: ") (string-append "!" (after-prefix last "evaluation failed: ")))
-                                                      (else (string-append "!the transformer's run: " last))))
-                                              (signalled g "!the transformer's run was signalled")
-                                              (unknown u "!the transformer's run ended, how is not known"))))
-                                        (failed e (string-append "!the transformer's run: cannot run " (string-append exe (string-append ": " (extract e detail))))))))))))))))))
+                    (let* ((program (if (string=? style "") defs (string-append defs (string-append phase1-reader (phase1-applier style)))))
+                           (b (phase1-built d dir rt program)))
+                      (cond ((not (string=? (extract b 2) "")) (extract b 2))
+                            ((string=? (extract use 3) "") (phase1-ran (extract b 1) #f ""))
+                            (else
+                             (let ((given (phase1-ran (extract b 1) #t (string-append (extract use 2) (string-append "\n" (extract use 3))))))
+                               (if (not (string=? given "=%phase1-unread"))
+                                   given
+                                   (let ((b2 (phase1-built d dir rt (string-append program (extract ps 2)))))
+                                     (if (string=? (extract b2 2) "") (phase1-ran (extract b2 1) #f "") (extract b2 2))))))))))))))
 
       "`kc-load-file!`, each transformer's request it needs answered and set
        (C446), until it needs none."
@@ -351,12 +400,27 @@
                 (target t (string-append "/tmp/kc-phase1-" t))
                 (failed e "/tmp/kc-phase1")))))
 
-      "This run's own transformers' directory, if it made one, taken away."
+      (define-rec
+        (phase1-orphans (subr driving ((listof string acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (fs acc)
+            "Of `/tmp`'s entries, each `kc-phase1-PID` of a process that is no
+             more (one a `not yet` ended, which does not reach `phase1-done`)."
+            (if (null? fs)
+                acc
+                (let ((f (car fs)))
+                  (phase1-orphans (cdr fs)
+                                  (if (and (has-prefix? f "kc-phase1-")
+                                           (null? (listed (string-append "/proc/" (after-prefix f "kc-phase1-")))))
+                                      (cons (string-append "/tmp/" f) acc)
+                                      acc)))))))
+
+      "This run's own transformers' directory, if it made one, taken away; and
+       any another run left that ended without taking its own away."
       (define phase1-done (subr driving (string) unit)
         (lambda (dbp)
           (if (or (not (string=? dbp "")) (null? (listed (phase1-dir dbp))))
               #u
-              (begin (run-command (list "rm" "-rf" (phase1-dir dbp)) "") #u))))
+              (begin (run-command (cons "rm" (cons "-rf" (cons (phase1-dir dbp) (phase1-orphans (listed "/tmp") nil)))) "") #u))))
 
       (define request (subr driving (db phase1-at string string string) answer)
         (lambda (d at what file out)

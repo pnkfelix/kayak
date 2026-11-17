@@ -592,6 +592,43 @@ pub mod kc_driver {
         } else { unreachable!() }
     }
 
+    /// Of `files`, each an object's (`NAME.o`, `NAME.s`) whose NAME is not
+    /// one of `names`.
+    pub fn stale_of(mut files: List<Str>, mut names: List<Str>, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(files) {
+                return reverse(acc);
+            } else {
+                let f = car(files);
+                let n = string_length(f);
+                let base = if (_gt(n, int_lit(2)) && (has_suffix_p(f, str_lit(".o")) || has_suffix_p(f, str_lit(".s")))) {
+                    substring(f, int_lit(0), _minus(n, int_lit(2)))
+                } else {
+                    str_lit("")
+                };
+                (files, acc) = (cdr(files), if (string_eq_p(base, str_lit("")) || string_member_p(base, names)) {
+                    acc
+                } else {
+                    kayak_rt::heap_cons(f, acc)
+                });
+                continue;
+            }
+        }
+    }
+
+    // The objects in `dir` a program built of `names` no longer lists (C448,
+    // C419's gap): taken away, so that `EXE.o.d/` holds the program's own.
+    // One taken away is made again if a later edit lists it again.
+    pub fn stale_removed_x(dir: Str, names: List<Str>) -> () {
+        let stale = stale_of(listed(dir), names, nil::<Str>());
+        if null_p(stale) {
+            ()
+        } else {
+            run_command(kayak_rt::heap_cons(str_lit("rm"), kayak_rt::heap_cons(str_lit("-f"), stale)), dir);
+            ()
+        }
+    }
+
     /// The program of `file` built to `exe`, on the runtime `rt`: `` if
     /// it is, else what went wrong.
     pub fn build(d: Db, file: Str, exe: Str, rt: Str) -> Str {
@@ -623,6 +660,7 @@ pub mod kc_driver {
                 })), str_lit(""));
                 if string_eq_p(linked, str_lit("")) {
                     write_text(record, manifest);
+                    stale_removed_x(dir, names);
                     str_lit("")
                 } else {
                     linked
@@ -685,71 +723,130 @@ pub mod kc_driver {
         }
     }
 
+    // A phase-1 program (C447) loaded as a file of the database, named by
+    // its text's fingerprint, checked and built: its executable, and ``; or
+    // the answer that says why it is not, `!` and why.
+    pub fn phase1_built(d: Db, dir: Str, rt: Str, program: Str) -> Product_11_12<Str, Str> {
+        let name = phase1_name(program);
+        let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
+        let exe = string_append(dir, string_append(str_lit("/t"), name));
+        let need = kc_load_file_x()(d, &kc_run, path, program);
+        if not(string_eq_p(need, str_lit(""))) {
+            Product_11_12(exe, str_lit("!kc: not yet: a phase-1 form that uses a procedural macro"))
+        } else {
+            let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), path)));
+            if not(string_eq_p(refused, str_lit(""))) {
+                Product_11_12(exe, string_append(str_lit("!"), phase1_unplaced(refused)))
+            } else {
+                let built = build(d, path, exe, rt);
+                Product_11_12(exe, if string_eq_p(built, str_lit("")) {
+                    str_lit("")
+                } else {
+                    string_append(str_lit("!kc: the transformer's build: "), built)
+                })
+            }
+        }
+    }
+
+    // A phase-1 program's run: given a use (`--apply`, the tag and the use's
+    // text on its standard input, C448), or not. Its answer, `=` and the value
+    // of its last line as `write` writes it (`#u` of none), or `!` and why
+    // (`evaluation failed: ` taken off).
+    pub fn phase1_ran(exe: Str, apply: bool, input: Str) -> Str {
+        let tagcase_ = process_start(strings_at_io(if apply {
+            kayak_rt::heap_cons(exe, kayak_rt::heap_cons(str_lit("--apply"), kayak_rt::nil()))
+        } else {
+            kayak_rt::heap_cons(exe, kayak_rt::nil())
+        }), str_lit(""));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("started") } {
+            let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+            if apply {
+                let tagcase_ = process_write(p, input);
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("done") } {
+                    let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                    ()
+                } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                    let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                    ()
+                } else { unreachable!() }
+            } else {
+                ()
+            };
+            process_close_input(p);
+            let how = process_exit(p);
+            let last = last_line(lines_of(string_chars(process_output(p)), nil::<char>(), nil::<Str>()), str_lit(""));
+            let tagcase_ = how;
+            let tag_ = kayak_rt::sum_tag(tagcase_);
+            if tag_ == const { kayak_rt::tag_hash("exited") } {
+                let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                if _eq(c, int_lit(0)) {
+                    string_append(str_lit("="), if string_eq_p(last, str_lit("")) {
+                        str_lit("#u")
+                    } else {
+                        last
+                    })
+                } else if has_prefix_p(last, str_lit("evaluation failed: ")) {
+                    string_append(str_lit("!"), after_prefix(last, str_lit("evaluation failed: ")))
+                } else {
+                    string_append(str_lit("!the transformer's run: "), last)
+                }
+            } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
+                let g: Int = kayak_rt::sum_payload::<Int>(tagcase_);
+                str_lit("!the transformer's run was signalled")
+            } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
+                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                str_lit("!the transformer's run ended, how is not known")
+            } else { unreachable!() }
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            string_append(str_lit("!the transformer's run: cannot run "), string_append(exe, string_append(str_lit(": "), e.1)))
+        } else { unreachable!() }
+    }
+
     // A procedural macro's transformer's request (C446), answered by kc
     // itself (C447): its phase-1 program (`phase1-parts`,
-    // fx26/macros-phase1.kfx) a file of the database, checked, compiled to
-    // native code and built as any program, each of its items a query, so
-    // that a transformer's definitions are compiled once and a use's call
-    // alone is new; then run. Its answer, `=` and the value of its last
-    // expression as `write` writes it (`#u` of none), or `!` and why its
-    // check refused it or its run failed. Of the request's text alone, so
-    // kept as the input `phase1 REQUEST`, and asked once.
+    // fx26/macros-phase1.kfx) a file of the database, its items queries,
+    // checked, compiled to native code and built, then run. A transformer's
+    // program (of `%define` and `%apply`) has kc's reader and
+    // `%phase1-apply` too (C448, phase1-read.kfx), and no call: it is built
+    // once, at the macro's definition, and each use is a run of it given
+    // the use. A use the reader does not read (`%phase1-unread`: a vector,
+    // say) is called as the engine calls it, the call a form of the
+    // program, built and run. Of the request's text alone, so kept as the
+    // input `phase1 REQUEST`, and asked once.
     pub fn phase1_asked(d: Db, at: &'static Phase1At, request: Str) -> Str {
         let tagcase_ = at;
         match *tagcase_ {
             Phase1At::Phase1At(dir, rt) => {
                 let ps = phase1_parts(request);
                 let defs = ps.0;
+                let r#use = phase1_use(request);
+                let style = r#use.0;
                 if string_eq_p(defs, str_lit("")) {
                     str_lit("!a malformed transformer request")
                 } else {
-                    let name = phase1_name(defs);
-                    let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
-                    let need = kc_load_file_x()(d, &kc_run, path, string_append(defs, ps.1));
-                    if not(string_eq_p(need, str_lit(""))) {
-                        str_lit("!kc: not yet: a phase-1 form that uses a procedural macro")
+                    let program = if string_eq_p(style, str_lit("")) {
+                        defs
                     } else {
-                        let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), path)));
-                        if not(string_eq_p(refused, str_lit(""))) {
-                            string_append(str_lit("!"), phase1_unplaced(refused))
+                        string_append(defs, string_append(phase1_reader(), phase1_applier(style)))
+                    };
+                    let b = phase1_built(d, dir, rt, program);
+                    if not(string_eq_p(b.1, str_lit(""))) {
+                        b.1
+                    } else if string_eq_p(r#use.2, str_lit("")) {
+                        phase1_ran(b.0, false, str_lit(""))
+                    } else {
+                        let given = phase1_ran(b.0, true, string_append(r#use.1, string_append(str_lit("\n"), r#use.2)));
+                        if not(string_eq_p(given, str_lit("=%phase1-unread"))) {
+                            given
                         } else {
-                            let exe = string_append(dir, string_append(str_lit("/t"), name));
-                            let built = build(d, path, exe, rt);
-                            if not(string_eq_p(built, str_lit(""))) {
-                                string_append(str_lit("!kc: the transformer's build: "), built)
+                            let b2 = phase1_built(d, dir, rt, string_append(program, ps.1));
+                            if string_eq_p(b2.1, str_lit("")) {
+                                phase1_ran(b2.0, false, str_lit(""))
                             } else {
-                                let tagcase_ = process_start(strings_at_io(kayak_rt::heap_cons(exe, kayak_rt::nil())), str_lit(""));
-                                let tag_ = kayak_rt::sum_tag(tagcase_);
-                                if tag_ == const { kayak_rt::tag_hash("started") } {
-                                    let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                                    let how = process_exit(p);
-                                    let last = last_line(lines_of(string_chars(process_output(p)), nil::<char>(), nil::<Str>()), str_lit(""));
-                                    let tagcase_ = how;
-                                    let tag_ = kayak_rt::sum_tag(tagcase_);
-                                    if tag_ == const { kayak_rt::tag_hash("exited") } {
-                                        let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                                        if _eq(c, int_lit(0)) {
-                                            string_append(str_lit("="), if string_eq_p(last, str_lit("")) {
-                                                str_lit("#u")
-                                            } else {
-                                                last
-                                            })
-                                        } else if has_prefix_p(last, str_lit("evaluation failed: ")) {
-                                            string_append(str_lit("!"), after_prefix(last, str_lit("evaluation failed: ")))
-                                        } else {
-                                            string_append(str_lit("!the transformer's run: "), last)
-                                        }
-                                    } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
-                                        let g: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                                        str_lit("!the transformer's run was signalled")
-                                    } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
-                                        let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                                        str_lit("!the transformer's run ended, how is not known")
-                                    } else { unreachable!() }
-                                } else if tag_ == const { kayak_rt::tag_hash("failed") } {
-                                    let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                                    string_append(str_lit("!the transformer's run: cannot run "), string_append(exe, string_append(str_lit(": "), e.1)))
-                                } else { unreachable!() }
+                                b2.1
                             }
                         }
                     }
@@ -790,12 +887,31 @@ pub mod kc_driver {
         }
     }
 
-    // This run's own transformers' directory, if it made one, taken away.
+    /// Of `/tmp`'s entries, each `kc-phase1-PID` of a process that is no
+    /// more (one a `not yet` ended, which does not reach `phase1-done`).
+    pub fn phase1_orphans(mut fs: List<Str>, mut acc: List<Str>) -> List<Str> {
+        loop {
+            if null_p(fs) {
+                return acc;
+            } else {
+                let f = car(fs);
+                (fs, acc) = (cdr(fs), if (has_prefix_p(f, str_lit("kc-phase1-")) && null_p(listed(string_append(str_lit("/proc/"), after_prefix(f, str_lit("kc-phase1-")))))) {
+                    kayak_rt::heap_cons(string_append(str_lit("/tmp/"), f), acc)
+                } else {
+                    acc
+                });
+                continue;
+            }
+        }
+    }
+
+    // This run's own transformers' directory, if it made one, taken away; and
+    // any another run left that ended without taking its own away.
     pub fn phase1_done(dbp: Str) -> () {
         if (not(string_eq_p(dbp, str_lit(""))) || null_p(listed(phase1_dir(dbp)))) {
             ()
         } else {
-            run_command(kayak_rt::heap_cons(str_lit("rm"), kayak_rt::heap_cons(str_lit("-rf"), kayak_rt::heap_cons(phase1_dir(dbp), kayak_rt::nil()))), str_lit(""));
+            run_command(kayak_rt::heap_cons(str_lit("rm"), kayak_rt::heap_cons(str_lit("-rf"), kayak_rt::heap_cons(phase1_dir(dbp), phase1_orphans(listed(str_lit("/tmp")), nil::<Str>())))), str_lit(""));
             ()
         }
     }

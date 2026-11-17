@@ -156,13 +156,14 @@ def expansions():
     # when it is: cold, the `define-syntax`'s (`%define`) and `f`'s
     # (`%apply`) each twice; a use's operand edited, a new `%apply`.
     # The transformer compiled by kc (C447), its phase-1 program a file of
-    # the database: cold, its 7 definitions' code and the call's; a use's
-    # operand edited, the new call's code alone, the transformer's kept.
+    # the database: cold, its 9 definitions' code (the prelude's 6, the
+    # transformer, kc's reader and `%phase1-apply`, C448); a use's operand
+    # edited, none: the use is given to the program built, a run alone.
     if os.path.exists(db):
         os.remove(db)
-    for text, want, why in [(PROCEDURAL % "n", (6, 4, 8), "procedural, cold"),
+    for text, want, why in [(PROCEDURAL % "n", (6, 4, 9), "procedural, cold"),
                             (PROCEDURAL % "n", (0, 0, 0), "procedural, the same"),
-                            (PROCEDURAL % "(+ n 1)", (2, 1, 1), "procedural, a use's operand edited")]:
+                            (PROCEDURAL % "(+ n 1)", (2, 1, 0), "procedural, a use's operand edited")]:
         open(p, "w").write(text)
         r = run([KC, "--db", db, "--stats", "--check", p])
         got = ran(r.stderr) or []

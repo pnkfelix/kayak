@@ -45,7 +45,9 @@
               ;; Step 12's refs (C424).
               "new" "get"
               ;; A transformer's (C447): what a datum is.
-              "int?" "char?" "bool?" "procedure?"))
+              "int?" "char?" "bool?" "procedure?"
+              ;; And by a bloblet's kind (C448), as Fixpt's heap has them.
+              "array?" "ref?" "sum?" "product?" "vector?" "bytevector?" "keyword?"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
@@ -75,10 +77,17 @@
                     ((string=? n "#u") "(unit)")
                     (else (string-append "(symbol " (string-append (kc-datum (str n "" 0)) ")")))))
             (lst (ys f l p)
-              (if (null? ys)
-                  "(nil)"
-                  (string-list-append (list "(prim cons " (l0-quoted (car ys)) " " (l0-quoted (lst (cdr ys) f l p)) ")"))))
-            (else other (begin (error "kc: not yet: a quoted datum of this kind") "")))))))
+              (if (head-is? d "#vector")
+                  (begin (error "kc: not yet: a quoted vector") "")
+                  (l0-quoted-items ys)))
+            (else other (begin (error "kc: not yet: a quoted datum of this kind") "")))))
+      (l0-quoted-items (subr kfx (sexps) string)
+        (lambda (ys)
+          "A quoted list's items: `cons`es onto `nil`, or, after a `.`, onto its
+           last item (C448: a dotted datum)."
+          (cond ((null? ys) "(nil)")
+                ((and (sym-is? (car ys) ".") (not (null? (cdr ys))) (null? (cdr (cdr ys)))) (l0-quoted (second ys)))
+                (else (string-list-append (list "(prim cons " (l0-quoted (car ys)) " " (l0-quoted-items (cdr ys)) ")"))))))))
 
     (hide
       "Names in scope while a term is made: each bound name, innermost first,
@@ -471,7 +480,10 @@
                     (else
                      (let* ((shape (sym-name (car a)))
                             (test (cond ((string=? shape "nil") "null?")
-                                        ((string-member? shape (list "int" "char" "bool" "pair" "string" "symbol" "procedure")) (string-append shape "?"))
+                                        ((string-member? shape (list "int" "char" "bool" "pair" "string" "symbol" "procedure" "sum" "product" "vector" "bytevector" "keyword")) (string-append shape "?"))
+                                        ;; Fixpt's names for the rest (`parse.rs`'s `TYPECASE_SHAPES`, C448).
+                                        ((string=? shape "bloblet") "array?")
+                                        ((string=? shape "box") "ref?")
                                         (else (not-yet path (string-append "a typecase of the shape " shape))))))
                        (lst (list (sym "if" f p) (lst (list (sym test f p) x) f l p)
                                   (lst (list (sym "let" f p) (lst (list (lst (list (second a) x) f l p)) f l p) (third a)) f l p)
@@ -491,6 +503,7 @@
                            (l0-quasi-tagged path scope env next "unquote" (second ys) (i64- depth 1))))
                       ((and (i64= (size ys) 2) (sym-is? (car ys) "quasiquote"))
                        (l0-quasi-tagged path scope env next "quasiquote" (second ys) (i64+ depth 1)))
+                      ((head-is? d "#vector") (l0-made (not-yet path "a quasiquoted vector") next))
                       (else (l0-quasi-items path scope env next ys depth nil))))
               (else other (l0-made (l0-quoted d) next)))))
 
@@ -505,10 +518,13 @@
           (lambda (path scope env next ys depth done)
             "A list's items, each made in turn (`done`, the newest first, each
              `cons` or `,@`'s `append` open), then closed onto `nil`."
-            (if (null? ys)
-                (l0-made (string-append (string-list-append (reverse (map (lambda ((s string)) (string-append "(prim " s)) done)))
-                                        (string-append " (nil)" (string-list-append (map (lambda ((s string)) ")") done))))
-                         next)
+            (if (or (null? ys) (and (sym-is? (car ys) ".") (not (null? (cdr ys))) (null? (cdr (cdr ys)))))
+                ;; Closed onto `nil`, or, after a `.`, onto its last item (C448).
+                (tagcase (if (null? ys) (l0-made "(nil)" next) (l0-quasi path scope env next (second ys) depth))
+                  (l0-made (tail n1)
+                    (l0-made (string-append (string-list-append (reverse (map (lambda ((s string)) (string-append "(prim " s)) done)))
+                                            (string-append (string-append " " tail) (string-list-append (map (lambda ((s string)) ")") done))))
+                             n1)))
                 (let ((y (car ys)))
                   (if (and (i64= depth 1) (head-is? y "unquote-splicing") (i64= (size (items y)) 2))
                       (tagcase (l0-of path scope env next (second (items y)))

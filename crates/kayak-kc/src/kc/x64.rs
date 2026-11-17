@@ -366,6 +366,25 @@ pub mod kc_x64 {
         }
     }
 
+    // The bloblet kind a predicate tests for (C448).
+    pub fn x64_kind_of(n: Str) -> i64 {
+        if string_eq_p(n, str_lit("array?")) {
+            32i64
+        } else if string_eq_p(n, str_lit("ref?")) {
+            10i64
+        } else if string_eq_p(n, str_lit("sum?")) {
+            36i64
+        } else if string_eq_p(n, str_lit("product?")) {
+            37i64
+        } else if string_eq_p(n, str_lit("vector?")) {
+            3i64
+        } else if string_eq_p(n, str_lit("bytevector?")) {
+            4i64
+        } else {
+            48i64
+        }
+    }
+
     #[inline]
     pub fn x64_comparisons() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
@@ -1251,6 +1270,8 @@ pub mod kc_x64 {
             x64_boolean_if(x64_emit(x64_emit(x64_emit(c, str_lit("movq %rax, %rdx")), str_lit("andq $-9, %rdx")), str_lit("cmpq $3, %rdx")), str_lit("e"))
         } else if string_eq_p(n, str_lit("procedure?")) {
             x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_is_procedure"))
+        } else if string_member_p(n, kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::nil())))))))) {
+            x64_emit(x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), string_append(str_lit("movl $"), string_append(i64_to_string(x64_kind_of(n)), str_lit(", %esi")))), str_lit("call kc_is_kind"))
         } else {
             error(string_append(str_lit("kc: the native back end has no primitive "), n));
             c
@@ -1519,6 +1540,35 @@ pub mod kc_x64 {
         }
     }
 
+    /// Whether the program defines `%phase1-apply`, a procedure (C448).
+    pub fn x64_applies_p(mut kinds: List<Str>, mut names: List<Str>) -> bool {
+        loop {
+            if (null_p(kinds) || null_p(names)) {
+                return false;
+            } else if (string_eq_p(car(kinds), str_lit("proc")) && string_eq_p(car(names), str_lit("%phase1-apply"))) {
+                return true;
+            } else {
+                (kinds, names) = (cdr(kinds), cdr(names));
+                continue;
+            }
+        }
+    }
+
+    // What `kc_entry`'s object gives the runtime besides (C448): the heap's
+    // next free word, kept there when `kc_entry` returns (`kc_heap_next`);
+    // `kc_call2`, which calls a procedure of kc's code on two arguments, the
+    // heap in `%r15` and `%r14` as kc's code has it, and keeps the heap's
+    // next word after; and `kc_apply_entry`, `%phase1-apply`'s address if the
+    // program defines it (a transformer's, kayak-kcrt's `--apply`), else 0.
+    #[inline]
+    pub fn x64_entry_support(applies: bool) -> Str {
+        string_list_append(kayak_rt::heap_cons(str_lit("    .bss\n    .p2align 3\n    .globl kc_heap_next\nkc_heap_next:\n    .quad 0\n"), kayak_rt::heap_cons(str_lit("    .data\n    .p2align 3\n    .globl kc_apply_entry\nkc_apply_entry:\n    .quad "), kayak_rt::heap_cons(if applies {
+            x64_proc_symbol(str_lit("%phase1-apply"))
+        } else {
+            str_lit("0")
+        }, kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r14\n    subq $8, %rsp\n"), kayak_rt::heap_cons(str_lit("    movq kc_heap_next(%rip), %r15\n    movq %rcx, %r14\n    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"), kayak_rt::heap_cons(str_lit("    call *%rax\n    movq %r15, kc_heap_next(%rip)\n    addq $8, %rsp\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil()))))))))
+    }
+
     // A global's cell: in `.bss`, `.globl`, so that a procedure in an object of
     // its own (`kc build`, C419) reads it.
     #[inline]
@@ -1556,13 +1606,13 @@ pub mod kc_x64 {
             } else {
                 x64_part(x, 2i64)
             }
-        }), kinds, its), append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil()))), append(map2(lambda2s(move |k: Str, x: &'static Sexp| {
+        }), kinds, its), append(kayak_rt::heap_cons(str_lit("    movq %r15, kc_heap_next(%rip)\n    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil()))), append(map2(lambda2s(move |k: Str, x: &'static Sexp| {
             if string_eq_p(k, str_lit("proc")) {
                 str_lit("")
             } else {
                 x64_part(x, 3i64)
             }
-        }), kinds, its), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))))))
+        }), kinds, its), kayak_rt::heap_cons(x64_entry_support(x64_applies_p(kinds, names)), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil())))))))))))
     }
 
     // `asm-entry PATH` (C419): the object of what is no procedure's: each
@@ -1588,9 +1638,9 @@ pub mod kc_x64 {
             }
         }), kinds, names), append(kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"), kayak_rt::heap_cons(str_lit("    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n"), kayak_rt::nil())))), append(map(lambda1s(move |x: &'static Sexp| {
             x64_part(x, 2i64)
-        }), its), append(kayak_rt::heap_cons(str_lit("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil()))), append(map(lambda1s(move |x: &'static Sexp| {
+        }), its), append(kayak_rt::heap_cons(str_lit("    movq %r15, kc_heap_next(%rip)\n    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit(", %rsp\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil()))), append(map(lambda1s(move |x: &'static Sexp| {
             x64_part(x, 3i64)
-        }), its), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil()))))))))
+        }), its), kayak_rt::heap_cons(x64_entry_support(x64_applies_p(kinds, names)), kayak_rt::heap_cons(str_lit("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil())))))))))
     }
 
     // A procedure's object's assembly (C419), of its `asm-item`.

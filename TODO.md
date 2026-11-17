@@ -1546,17 +1546,27 @@ Twobit-style optimizations in KFX.
   the transformer checked at its style's type and run, a process of its
   own), in kc an input `phase1 REQUEST`, the expansion asking again; in kc
   answered by kc's own native code (C447), the request's phase-1 program
-  a file of the database, its forms queries, built and run; not
-  yet in the REPL (its heap is live: a request there is said not yet), nor
-  a transformer's answer a vector; each use's call linked (a program of
-  its own): given its use at run time, a use would be a run alone, once
-  kc's code reads a datum; a typecase of a keyword, vector and the rest,
-  and a dotted datum, in kc not yet; an expansion run again for each new request (a form of k
-  procedural uses, k+1 runs: Fixpt's would suspend instead); kc's
-  `DB.phase1/` objects no longer used not pruned, nor a `/tmp/kc-phase1-PID`
-  of a run a `not yet` ended; a `phase1` answer kept across a change to
-  kc's runtime (`kayak-kcrt`, in no identity), which can change its words; the driver's lines (each list's, met; an atom's,
+  a file of the database, its forms queries, built and run: a
+  transformer's program built once, each use a run of it given the use
+  (C448, kc's reader, `--apply`), a use it does not read (a vector, `#u`)
+  the call compiled; in the REPL answered by the engine's `--phase1`
+  (C448), drafts of the answers known alone; not yet a transformer's
+  answer a vector, nor, in kc, a use or a quoted datum that is one; a
+  typecase of an `f64` or `f32` in kc not yet (kc has no floats); an
+  expansion run again for each new request (below: to revisit); a
+  transformer's program kept in `DB.phase1/` once no use names it (its
+  objects pruned, C448, not its executable); the driver's lines (each list's, met; an atom's,
   the last list's before it).
+- Revisit (the user, 2026-11-17): an expansion run again from its form's
+  start for each new transformer request (C446), or suspended until it is
+  answered. Restart costs nothing warm (every answer an input already),
+  is the same path as recovery (no continuation to persist across runs or
+  a `kc serve` restart), and keeps the database's rule that no query is in
+  flight when an input is set; suspension saves k^2 e - k e on a cold run
+  of a form with k new requests (e the expander's work a use), against
+  about 35 ms a request either way. To measure e, and a long explicit
+  renaming chain cold; if it matters, an expander on the async runtime
+  awaiting its answer, the driver answering between revisions.
 - A loaded file's type named as one of the program's (the expander's
   `part`, lib/db.kfx's datatype `part`, C445): one type in the Rust kfx
   makes, which rustc refused. The port names the expander's apart; kfx
@@ -1659,7 +1669,7 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   (`extract p x`, `(product (x ..))`), its position the checker's (kfx's
   emitter reads an `extract-index` fact; kc's `checked` keeps no facts
   yet); sums, products and datatypes in kc's Rust back end. `kc build` (C419): objects no longer listed
-  pruned from `EXE.o.d/`; an edited procedure an object of its own (weak
+  pruned from `EXE.o.d/` (done, C448); an edited procedure an object of its own (weak
   symbols in its run) should reassembling its run of 64 ever be seen.
 - KFX's datatypes stay nominal (C410, the user's choice after the
   measurement): only `sumof` is structural. Were it revisited, the

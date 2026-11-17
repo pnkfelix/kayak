@@ -72,6 +72,23 @@
                           (cut (if (i64> len (string-length-i64 rest)) (string-length-i64 rest) len)))
                      (tuple (string-append base (phase1-defined (car (cdr head)) (substring rest 0 (i64->int cut))))
                             (phase1-called (car (cdr head)) (car (cdr (cdr head))) (substring rest (i64->int cut) (string-length rest))))))))))))
+"A request's transformer's style (`0`, `1`, `2`; `` of `%forms`), the
+ expansion's tag and the use's form, as text (`` but of `%apply`): what
+ kc gives its transformer at run time (C448), its program built once."
+(define phase1-use (subr kfx (string) (tupleof string string string))
+  (lambda (request)
+    (let* ((nl (phase1-line-end request 0))
+           (head (phase1-words (string-chars (substring request 0 (i64->int nl))) nil nil))
+           (kind (if (null? head) "" (car head))))
+      (cond ((and (string=? kind "%define") (i64= (size head) 3)) (tuple (car (cdr head)) "" ""))
+            ((and (string=? kind "%apply") (i64= (size head) 5))
+             (let* ((n (string->i64 (car (cdr (cdr (cdr (cdr head)))))))
+                    (fs (phase1-forms-from request (i64+ nl 1) n nil))
+                    (rest (substring request (i64->int (extract fs 2)) (string-length request)))
+                    (len (string->i64 (car (cdr (cdr (cdr head))))))
+                    (cut (if (i64> len (string-length-i64 rest)) (string-length-i64 rest) len)))
+               (tuple (car (cdr head)) (car (cdr (cdr head))) (substring rest (i64->int cut) (string-length rest)))))
+            (else (tuple "" "" ""))))))
 "The phase-1 program of a request, or `` of one malformed."
 (define phase1-program (subr kfx (string) string)
   (lambda (request)

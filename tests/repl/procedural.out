@@ -1,0 +1,7 @@
+<fx26:11>:1: a use of `second`: its transformer: car of nil
+6 : int ! pure
+-1 : int ! pure
+helper : (subr pure (int) int) ! pure
+101 : int ! (read (globals helper))
+7 : nat ! pure
+6 : int ! pure

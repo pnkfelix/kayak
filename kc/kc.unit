@@ -28,5 +28,7 @@ x64.kfx
 ; which kc compiles and runs as any program (main.kfx):
 ../fx26/macros/phase1-prelude.kfx
 ../fx26/macros-phase1.kfx
+; What kc adds to it, its reader of a use given at run time (C448):
+phase1-read.kfx
 identity.kfx
 main.kfx

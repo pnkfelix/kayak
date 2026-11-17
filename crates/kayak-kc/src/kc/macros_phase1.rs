@@ -136,6 +136,35 @@ pub fn phase1_parts(request: Str) -> Product_11_12<Str, Str> {
     }
 }
 
+// A request's transformer's style (`0`, `1`, `2`; `` of `%forms`), the
+// expansion's tag and the use's form, as text (`` but of `%apply`): what
+// kc gives its transformer at run time (C448), its program built once.
+pub fn phase1_use(request: Str) -> Product_11_12_13<Str, Str, Str> {
+    let nl = phase1_line_end(request, 0i64);
+    let head = phase1_words(string_chars(substring(request, int_lit(0), i64_to_int(nl))), nil::<char>(), nil::<Str>());
+    let kind = if null_p(head) {
+        str_lit("")
+    } else {
+        car(head)
+    };
+    if (string_eq_p(kind, str_lit("%define")) && i64_eq(size(head), 3i64)) {
+        Product_11_12_13(car(cdr(head)), str_lit(""), str_lit(""))
+    } else if (string_eq_p(kind, str_lit("%apply")) && i64_eq(size(head), 5i64)) {
+        let n = string_to_i64(car(cdr(cdr(cdr(cdr(head))))));
+        let fs = phase1_forms_from(request, i64_plus(nl, 1i64), n, nil::<Str>());
+        let rest = substring(request, i64_to_int(fs.1), string_length(request));
+        let len = string_to_i64(car(cdr(cdr(cdr(head)))));
+        let cut = if i64_gt(len, string_length_i64(rest)) {
+            string_length_i64(rest)
+        } else {
+            len
+        };
+        Product_11_12_13(car(cdr(head)), car(cdr(cdr(head))), substring(rest, i64_to_int(cut), string_length(rest)))
+    } else {
+        Product_11_12_13(str_lit(""), str_lit(""), str_lit(""))
+    }
+}
+
 // The phase-1 program of a request, or `` of one malformed.
 #[inline]
 pub fn phase1_program(request: Str) -> Str {

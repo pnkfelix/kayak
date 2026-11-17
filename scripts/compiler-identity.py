@@ -8,7 +8,9 @@ nothing of what it writes. KFX, so that Fixpt running the compiler has the
 same identity, and the fixpoint check's memos are taken by either.
 
 And kc's alike (C399): kc/identity.kfx, of kc/kc.unit's files, its own
-left out, and the expander it loads (C446), which kc writes in its database's first line (`--db`), so that a
+left out, the expander it loads (C446), and its runtime (C448: a
+transformer's answer, kept in the database, is the runtime's run of it),
+which kc writes in its database's first line (`--db`), so that a
 database another kc made is never taken for this one's.
 
 usage: python3 -I scripts/compiler-identity.py [--check]
@@ -60,8 +62,10 @@ def kc_text(ident):
 UNITS = [
     ("kfx", "kfx.unit", ["prelude.fx"], kfx_text),
     # And the expander kc loads where it expands (C445, a file of a place,
-    # in no unit): its expansions are its (C446).
-    ("kc", "kc.unit", ["../fx26/macros/expander.fx", "../fx26/macros/expander-types.fx"], kc_text),
+    # in no unit): its expansions are its (C446). And its runtime: a
+    # transformer's answer kept is its run (C448).
+    ("kc", "kc.unit", ["../fx26/macros/expander.fx", "../fx26/macros/expander-types.fx",
+                       "../crates/kayak-kcrt/src/lib.rs"], kc_text),
 ]
 
 

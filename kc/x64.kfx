@@ -119,6 +119,12 @@
                           (cons (string-list-append (list bad ":\n    movl $" (i64->string what) ", %edi\n    call kc_fail\n")) fs)
                           px))))))
 
+      "The bloblet kind a predicate tests for (C448)."
+      (define x64-kind-of (subr kfx (string) i64)
+        (lambda (n)
+          (cond ((string=? n "array?") 32) ((string=? n "ref?") 10) ((string=? n "sum?") 36) ((string=? n "product?") 37)
+                ((string=? n "vector?") 3) ((string=? n "bytevector?") 4) (else 48))))
+
       (define x64-comparisons (listof string acyclic) (list "=" "<" "<=" ">" ">=" "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?" "symbol=?"))
 
       (define x64-condition (subr kfx (string) string)
@@ -710,6 +716,12 @@
                   ((string=? n "char?") (x64-boolean-if (x64-emit c "cmpb $67, %al") "e"))
                   ((string=? n "bool?") (x64-boolean-if (x64-emit (x64-emit (x64-emit c "movq %rax, %rdx") "andq $-9, %rdx") "cmpq $3, %rdx") "e"))
                   ((string=? n "procedure?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_procedure"))
+                  ;; A bloblet of a kind (C448; `fixpt-heap`'s `layout.rs`), the
+                  ;; runtime's to say.
+                  ((string-member? n (list "array?" "ref?" "sum?" "product?" "vector?" "bytevector?" "keyword?"))
+                   (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi")
+                                       (string-append "movl $" (string-append (i64->string (x64-kind-of n)) ", %esi")))
+                             "call kc_is_kind"))
                   (else (begin (error (string-append "kc: the native back end has no primitive " n)) c)))))
 
         (x64-emit-binary (subr kfx (x64-code string) x64-code)
@@ -892,6 +904,31 @@
         (x64-max-slots (subr kfx (sexps i64) i64)
           (lambda (xs m) (if (null? xs) m (x64-max-slots (cdr xs) (let ((k (x64-slots-of (car xs)))) (if (i64> k m) k m))))))))
 
+    (hide
+      (define-rec
+        (x64-applies? (subr kfx ((listof string acyclic) (listof string acyclic)) bool)
+          (lambda (kinds names)
+            "Whether the program defines `%phase1-apply`, a procedure (C448)."
+            (cond ((or (null? kinds) (null? names)) #f)
+                  ((and (string=? (car kinds) "proc") (string=? (car names) "%phase1-apply")) #t)
+                  (else (x64-applies? (cdr kinds) (cdr names)))))))
+
+      "What `kc_entry`'s object gives the runtime besides (C448): the heap's
+       next free word, kept there when `kc_entry` returns (`kc_heap_next`);
+       `kc_call2`, which calls a procedure of kc's code on two arguments, the
+       heap in `%r15` and `%r14` as kc's code has it, and keeps the heap's
+       next word after; and `kc_apply_entry`, `%phase1-apply`'s address if the
+       program defines it (a transformer's, kayak-kcrt's `--apply`), else 0."
+      (define x64-entry-support (subr kfx (bool) string)
+        (lambda (applies)
+          (string-list-append
+            (list "    .bss\n    .p2align 3\n    .globl kc_heap_next\nkc_heap_next:\n    .quad 0\n"
+                  "    .data\n    .p2align 3\n    .globl kc_apply_entry\nkc_apply_entry:\n    .quad "
+                  (if applies (x64-proc-symbol "%phase1-apply") "0") "\n"
+                  "    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r14\n    subq $8, %rsp\n"
+                  "    movq kc_heap_next(%rip), %r15\n    movq %rcx, %r14\n    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"
+                  "    call *%rax\n    movq %r15, kc_heap_next(%rip)\n    addq $8, %rsp\n    popq %r14\n    popq %r15\n    ret\n")))))
+
     "A global's cell: in `.bss`, `.globl`, so that a procedure in an object of
      its own (`kc build`, C419) reads it."
     (define x64-cell (subr kfx (string) string)
@@ -916,9 +953,9 @@
                 (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
                               "    subq $" (i64->string frame) ", %rsp\n")
                  (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 2))) kinds its)
-                  (append (list "    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
+                  (append (list "    movq %r15, kc_heap_next(%rip)\n    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
                    (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 3))) kinds its)
-                           (list "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))
+                           (list (x64-entry-support (x64-applies? kinds names)) "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))
 
     "`asm-entry PATH` (C419): the object of what is no procedure's: each
      global's cell; `kc_entry`, which keeps the heap in `%r15` and `%r14` and
@@ -940,9 +977,9 @@
               (append (list "    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    movq %rdi, %r15\n    movq %rsi, %r14\n"
                             "    subq $" (i64->string frame) ", %rsp\n")
                (append (map (lambda ((x sexp)) (x64-part x 2)) its)
-                (append (list "    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
+                (append (list "    movq %r15, kc_heap_next(%rip)\n    addq $" (i64->string frame) ", %rsp\n    popq %r14\n    popq %r15\n    ret\n")
                  (append (map (lambda ((x sexp)) (x64-part x 3)) its)
-                         (list "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))
+                         (list (x64-entry-support (x64-applies? kinds names)) "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))
 
     "A procedure's object's assembly (C419), of its `asm-item`."
     (define x64-object-text (subr kfx (sexp) string)

@@ -180,8 +180,10 @@ agreeing, and the passing lists only grow.
    one, the program's). kc keeps each answer as an input, `phase1
    REQUEST`, so a request is run once per database. kc answers it with
    its own native code (C447): the phase-1 program a file of its
-   database, a transformer compiled items like any other, a use's call the
-   one new item at each use.
+   database, a transformer compiled items like any other; its program
+   built once, and each use a run of it, given the use (C448). The REPL's
+   front answers by the engine's `--phase1` (C448), its drafts of the
+   answers known alone.
 6. **The rest of the refusals**: `include`, `module-parameters`, `hide`,
    keyword constructors, `type-at`, `allof` by conversion, the tail; then
    the 105 differing lines.

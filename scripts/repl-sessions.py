@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR = os.path.join(ROOT, "tests", "repl")
 
 
-MACROS = {"macros.in"}
+MACROS = {"macros.in", "procedural.in"}
 
 
 def main():
