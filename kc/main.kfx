@@ -49,7 +49,7 @@
       (import kc-rust q-rust-item q-rust)
       (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text x64-run-support x64-services)
       (import kc-asm asm-object asm-image)
-      (import kc-native native-run native-routines native-sealed native-call native-output (type run-image))
+      (import kc-native native-run native-routines native-sealed native-call native-output native-freed (type run-image))
       (import kc-expand kc-load-file! kc-expanded-lines q-expansion q-macros-for q-macro-in q-global-in q-entry
               q-written q-wseen q-wpos q-wkeys q-syntax-at q-defines-at q-wnames q-wforsyntax)
       (import kc-front q-expanded))
@@ -252,7 +252,9 @@
 
       "A phase-1 program (C447) loaded as a file of the database, named by
        its text's fingerprint, checked, and its image sealed in the code area
-       (C454; was built, C447): once, kept by its name for every use after.
+       (C454; was built, C447): once, kept by its name for every use after,
+       the most recently used first; past `transformers-most`, the least
+       recently used freed (C456), sealed again if it is wanted again.
        The sealed image, and ``; or none, and the answer that says why,
        `!` and why."
       (define-datatype p1 (p1 (listof run-image acyclic) string))
@@ -263,25 +265,58 @@
           (lambda (ns name)
             (cond ((null? ns) nil)
                   ((tagcase (car ns) (named-sealed (n s) (string=? n name))) (tagcase (car ns) (named-sealed (n s) (list s))))
-                  (else (sealed-named (cdr ns) name))))))
+                  (else (sealed-named (cdr ns) name)))))
+        (named-without (subr qe ((listof named-sealed acyclic) string) (listof named-sealed acyclic))
+          (lambda (ns name)
+            (cond ((null? ns) nil)
+                  ((tagcase (car ns) (named-sealed (n s) (string=? n name))) (cdr ns))
+                  (else (cons (car ns) (named-without (cdr ns) name))))))
+        (named-kept (subr qe ((listof named-sealed acyclic) i64) (listof named-sealed acyclic))
+          (lambda (ns k)
+            "The first `k` kept; the rest's images freed."
+            (cond ((null? ns) nil)
+                  ((i64= k 0) (begin (tagcase (car ns) (named-sealed (n s) (native-freed s))) (named-kept (cdr ns) k)))
+                  (else (cons (car ns) (named-kept (cdr ns) (i64- k 1))))))))
+      (define transformers-most i64 (the i64 16))
+
+      "A phase-1 program's image, sealed now, kept by none."
+      (define phase1-image (subr qe (db runner string string) p1)
+        (lambda (d run name program)
+          (let ((path (string-append "%phase1-" (string-append name ".fx"))))
+            (begin
+              ;; Its inputs made inside this query (C449): fresh keys, which
+              ;; no one has read, set at no new revision (`db-set!`).
+              (kc-load-file! d run path program)
+              (let ((refused (kc-refusal (db-get d run (key1 "checked" path)))))
+                (if (not (string=? refused ""))
+                    (p1 nil (string-append "!" (phase1-unplaced refused)))
+                    (p1 (list (native-sealed (asm-image (string-append (x64-run-support (native-routines x64-services)) (db-get d run (key1 "asm" path))))
+                                             (the i64 8388608)))
+                        "")))))))
 
       (define phase1-sealed (subr qe (db runner string) p1)
         (lambda (d run program)
           (let* ((name (phase1-name program))
-                 (path (string-append "%phase1-" (string-append name ".fx")))
                  (had (sealed-named (get transformers) name)))
             (if (not (null? had))
-                (p1 had "")
                 (begin
-                  ;; Its inputs made inside this query (C449): fresh keys, which
-                  ;; no one has read, set at no new revision (`db-set!`).
-                  (kc-load-file! d run path program)
-                  (let ((refused (kc-refusal (db-get d run (key1 "checked" path)))))
-                    (if (not (string=? refused ""))
-                        (p1 nil (string-append "!" (phase1-unplaced refused)))
-                        (let ((s (native-sealed (asm-image (string-append (x64-run-support (native-routines x64-services)) (db-get d run (key1 "asm" path))))
-                                                (the i64 8388608))))
-                          (begin (set transformers (cons (named-sealed name s) (get transformers))) (p1 (list s) ""))))))))))
+                  (set transformers (cons (named-sealed name (car had)) (named-without (get transformers) name)))
+                  (p1 had ""))
+                (tagcase (phase1-image d run name program)
+                  (p1 (ss why)
+                    (begin
+                      (if (null? ss) #u (set transformers (named-kept (cons (named-sealed name (car ss)) (get transformers)) transformers-most)))
+                      (p1 ss why))))))))
+
+      "A phase-1 program run once (C456), a transformer's definition or a
+       use its call is a form of: sealed, run and freed, none kept."
+      (define phase1-once (subr qe (db runner string) string)
+        (lambda (d run program)
+          (tagcase (phase1-image d run (phase1-name program) program)
+            (p1 (ss why)
+              (if (null? ss)
+                  why
+                  (let ((a (phase1-ran (car ss) #f ""))) (begin (native-freed (car ss)) a)))))))
 
       "A phase-1 program's run in process (C454): given a use (the tag and
        the use's text, as a built one's `--apply` reads them, C448), or not.
@@ -314,17 +349,18 @@
                  (use (phase1-use request)) (style (extract use 1)))
             (if (string=? defs "")
                 "!a malformed transformer request"
-                (let ((program (if (string=? style "") defs (string-append defs (string-append phase1-reader (phase1-applier style))))))
-                  (tagcase (phase1-sealed d run program)
-                    (p1 (ss why)
-                      (cond ((null? ss) why)
-                            ((string=? (extract use 3) "") (phase1-ran (car ss) #f ""))
-                            (else
-                             (let ((given (phase1-ran (car ss) #t (string-append (extract use 2) (string-append "\n" (extract use 3))))))
-                               (if (not (string=? given "=%phase1-unread"))
-                                   given
-                                   (tagcase (phase1-sealed d run (string-append program (extract ps 2)))
-                                     (p1 (ss2 why2) (if (null? ss2) why2 (phase1-ran (car ss2) #f "")))))))))))))))
+                (if (string=? style "")
+                    (phase1-once d run defs)
+                    (let ((program (string-append defs (string-append phase1-reader (phase1-applier style)))))
+                      (tagcase (phase1-sealed d run program)
+                        (p1 (ss why)
+                          (cond ((null? ss) why)
+                                ((string=? (extract use 3) "") (phase1-ran (car ss) #f ""))
+                                (else
+                                 (let ((given (phase1-ran (car ss) #t (string-append (extract use 2) (string-append "\n" (extract use 3))))))
+                                   (if (not (string=? given "=%phase1-unread"))
+                                       given
+                                       (phase1-once d run (string-append program (extract ps 2)))))))))))))))
 
       "Every query, by name."
       (define-rec

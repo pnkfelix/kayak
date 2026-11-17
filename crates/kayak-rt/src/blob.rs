@@ -134,7 +134,11 @@ impl<Fs: crate::NativeFields + Clone> Bloblet<Fs> {
             bytes: self.bytes,
             code: Some(code),
             resync: Some(|b, k| {
-                if let Some(c) = b.code {
+                // Its code freed (C456), its block perhaps another's: KFX's
+                // own copy alone written.
+                if let Some(c) = b.code
+                    && kayak_jit::live(c)
+                {
                     c.set_slot(k + 2, b.fields.field_word(k))
                 }
             }),

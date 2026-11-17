@@ -70,6 +70,26 @@ pub fn kc_output() -> Str {
     kayak_rt::syscall0(str_lit("syscall kc-output (\"kayak:kc-output/1\")"), str_lit("kayak:kc-output/1"), str_lit("(subr (io sys) () string)"))
 }
 
+pub fn _pctsyscall_available_colonlast_sealed() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"));
+    true
+}
+
+pub fn last_sealed() -> Int {
+    _pctsyscall_available_colonlast_sealed();
+    kayak_rt::syscall0(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"))
+}
+
+pub fn _pctsyscall_available_colonunseal() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall unseal (\"kayak:unseal/1\")"), str_lit("kayak:unseal/1"), str_lit("(subr (io sys) (int) unit)"));
+    true
+}
+
+pub fn unseal(x1: Int) -> () {
+    _pctsyscall_available_colonunseal();
+    kayak_rt::syscall1(str_lit("syscall unseal (\"kayak:unseal/1\")"), str_lit("kayak:unseal/1"), str_lit("(subr (io sys) (int) unit)"), x1)
+}
+
 pub mod kc_native {
     use super::*;
 
@@ -163,20 +183,38 @@ pub mod kc_native {
     }
 
     // An image sealed in the code area (C451), once, its heap the array of
-    // `words` words: a native procedure to call as often as wanted (C454).
+    // `words` words: a native procedure to call as often as wanted (C454),
+    // until it is freed (C456, `native-freed`); and where its code runs
+    // (`kayak:last-sealed/1` after its `seal-code`), which names it to free.
     pub enum RunImage {
-        RunImage(&'static dyn Fn(HeapArray) -> i64, HeapArray),
+        RunImage(&'static dyn Fn(HeapArray) -> i64, HeapArray, Int),
     }
 
-    pub fn run_image(f0: &'static dyn Fn(HeapArray) -> i64, f1: HeapArray) -> &'static RunImage {
-        kayak_rt::heap_alloc(RunImage::RunImage(f0, f1))
+    pub fn run_image(f0: &'static dyn Fn(HeapArray) -> i64, f1: HeapArray, f2: Int) -> &'static RunImage {
+        kayak_rt::heap_alloc(RunImage::RunImage(f0, f1, f2))
     }
 
     pub fn native_sealed(image: List<i64>, words: i64) -> &'static RunImage {
         let h = heap_of(words);
         let b = the::<Code>(make_bloblet(i64_to_int(size(image)), (std::cell::Cell::new(h),)));
         bytes_put_x(b, int_lit(0), image);
-        run_image(kayak_rt::native_procedure1::<FlatArray<i64>, i64>(seal_code(b)), h)
+        let sealed = seal_code(b);
+        let at = last_sealed();
+        run_image(kayak_rt::native_procedure1::<FlatArray<i64>, i64>(sealed), h, at)
+    }
+
+    // An image's code freed (C456): its block of the code area given back
+    // (`kayak:unseal/1`), as Fixpt's collected code area frees what
+    // nothing reaches; kayak-rt collects nothing, so kc says when. Called
+    // after, it fails, never runs.
+    #[inline]
+    pub fn native_freed(s: &'static RunImage) -> () {
+        let tagcase_ = s;
+        match *tagcase_ {
+            RunImage::RunImage(f, h, at) => {
+                unseal(at)
+            }
+        }
     }
 
     // `native-call S APPLY INPUT` (C451, C454): the sealed image run, its
@@ -187,7 +225,7 @@ pub mod kc_native {
     pub fn native_call(s: &'static RunImage, apply: bool, input: Str) -> Str {
         let tagcase_ = s;
         match *tagcase_ {
-            RunImage::RunImage(f, h) => {
+            RunImage::RunImage(f, h, at) => {
                 flatarray_set_i64_x(h, 5i64, if apply {
                     1i64
                 } else {
@@ -214,10 +252,14 @@ pub mod kc_native {
     }
 
     // `native-run IMAGE WORDS` (C451): the image sealed and run once, its
-    // heap `WORDS` words; ``, or the words of the failure it ended in.
+    // heap `WORDS` words, then freed (C456); ``, or the words of the failure
+    // it ended in.
     #[inline]
     pub fn native_run(image: List<i64>, words: i64) -> Str {
-        native_call(native_sealed(image, words), false, str_lit(""))
+        let s = native_sealed(image, words);
+        let m = native_call(s, false, str_lit(""));
+        native_freed(s);
+        m
     }
 }
 

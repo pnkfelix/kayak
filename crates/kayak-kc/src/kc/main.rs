@@ -168,6 +168,11 @@ pub mod kc_driver {
         &kc_native::native_output
     }
 
+    #[inline]
+    pub fn native_freed() -> &'static dyn Fn(&'static kc_native::RunImage) -> () {
+        &kc_native::native_freed
+    }
+
     pub type RunImage = &'static kc_native::RunImage;
 
     #[inline]
@@ -634,7 +639,9 @@ pub mod kc_driver {
 
     // A phase-1 program (C447) loaded as a file of the database, named by
     // its text's fingerprint, checked, and its image sealed in the code area
-    // (C454; was built, C447): once, kept by its name for every use after.
+    // (C454; was built, C447): once, kept by its name for every use after,
+    // the most recently used first; past `transformers-most`, the least
+    // recently used freed (C456), sealed again if it is wanted again.
     // The sealed image, and ``; or none, and the answer that says why,
     // `!` and why.
     pub enum P1 {
@@ -686,21 +693,96 @@ pub mod kc_driver {
         }
     }
 
+    pub fn named_without(ns: List<&'static NamedSealed>, name: Str) -> List<&'static NamedSealed> {
+        if null_p(ns) {
+            nil::<&'static kc_driver::NamedSealed>()
+        } else if {
+            let tagcase_ = car(ns);
+            match *tagcase_ {
+                NamedSealed::NamedSealed(n, s) => {
+                    string_eq_p(n, name)
+                }
+            }
+        } {
+            cdr(ns)
+        } else {
+            kayak_rt::heap_cons(car(ns), named_without(cdr(ns), name))
+        }
+    }
+
+    /// The first `k` kept; the rest's images freed.
+    pub fn named_kept(mut ns: List<&'static NamedSealed>, mut k: i64) -> List<&'static NamedSealed> {
+        loop {
+            if null_p(ns) {
+                return nil::<&'static kc_driver::NamedSealed>();
+            } else if i64_eq(k, 0i64) {
+                {
+                    let tagcase_ = car(ns);
+                    match *tagcase_ {
+                        NamedSealed::NamedSealed(n, s) => {
+                            native_freed()(s)
+                        }
+                    }
+                };
+                ns = cdr(ns);
+                continue;
+            } else {
+                return kayak_rt::heap_cons(car(ns), named_kept(cdr(ns), i64_minus(k, 1i64)));
+            }
+        }
+    }
+
+    #[inline]
+    pub fn transformers_most() -> i64 {
+        the::<i64>(16i64)
+    }
+
+    // A phase-1 program's image, sealed now, kept by none.
+    pub fn phase1_image(d: Db, run: Runner, name: Str, program: Str) -> &'static P1 {
+        let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
+        kc_load_file_x()(d, run, path, program);
+        let refused = kc_refusal()(db_get(d, run, key1(str_lit("checked"), path)));
+        if not(string_eq_p(refused, str_lit(""))) {
+            p1(nil::<&'static kc_native::RunImage>(), string_append(str_lit("!"), phase1_unplaced(refused)))
+        } else {
+            p1(kayak_rt::heap_cons(native_sealed()(asm_image()(string_append(x64_run_support()(native_routines()(x64_services())), db_get(d, run, key1(str_lit("asm"), path)))), the::<i64>(8388608i64)), kayak_rt::nil()), str_lit(""))
+        }
+    }
+
     pub fn phase1_sealed(d: Db, run: Runner, program: Str) -> &'static P1 {
         let name = phase1_name(program);
-        let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
         let had = sealed_named(get(transformers()), name);
         if not(null_p(had)) {
+            set(transformers(), kayak_rt::heap_cons(named_sealed(name, car(had)), named_without(get(transformers()), name)));
             p1(had, str_lit(""))
         } else {
-            kc_load_file_x()(d, run, path, program);
-            let refused = kc_refusal()(db_get(d, run, key1(str_lit("checked"), path)));
-            if not(string_eq_p(refused, str_lit(""))) {
-                p1(nil::<&'static kc_native::RunImage>(), string_append(str_lit("!"), phase1_unplaced(refused)))
-            } else {
-                let s = native_sealed()(asm_image()(string_append(x64_run_support()(native_routines()(x64_services())), db_get(d, run, key1(str_lit("asm"), path)))), the::<i64>(8388608i64));
-                set(transformers(), kayak_rt::heap_cons(named_sealed(name, s), get(transformers())));
-                p1(kayak_rt::heap_cons(s, kayak_rt::nil()), str_lit(""))
+            let tagcase_ = phase1_image(d, run, name, program);
+            match *tagcase_ {
+                P1::P1(ss, why) => {
+                    if null_p(ss) {
+                        ()
+                    } else {
+                        set(transformers(), named_kept(kayak_rt::heap_cons(named_sealed(name, car(ss)), get(transformers())), transformers_most()))
+                    };
+                    p1(ss, why)
+                }
+            }
+        }
+    }
+
+    // A phase-1 program run once (C456), a transformer's definition or a
+    // use its call is a form of: sealed, run and freed, none kept.
+    pub fn phase1_once(d: Db, run: Runner, program: Str) -> Str {
+        let tagcase_ = phase1_image(d, run, phase1_name(program), program);
+        match *tagcase_ {
+            P1::P1(ss, why) => {
+                if null_p(ss) {
+                    why
+                } else {
+                    let a = phase1_ran(car(ss), false, str_lit(""));
+                    native_freed()(car(ss));
+                    a
+                }
             }
         }
     }
@@ -744,32 +826,23 @@ pub mod kc_driver {
         if string_eq_p(defs, str_lit("")) {
             str_lit("!a malformed transformer request")
         } else {
-            let program = if string_eq_p(style, str_lit("")) {
-                defs
+            if string_eq_p(style, str_lit("")) {
+                phase1_once(d, run, defs)
             } else {
-                string_append(defs, string_append(phase1_reader(), phase1_applier(style)))
-            };
-            let tagcase_ = phase1_sealed(d, run, program);
-            match *tagcase_ {
-                P1::P1(ss, why) => {
-                    if null_p(ss) {
-                        why
-                    } else if string_eq_p(r#use.2, str_lit("")) {
-                        phase1_ran(car(ss), false, str_lit(""))
-                    } else {
-                        let given = phase1_ran(car(ss), true, string_append(r#use.1, string_append(str_lit("\n"), r#use.2)));
-                        if not(string_eq_p(given, str_lit("=%phase1-unread"))) {
-                            given
+                let program = string_append(defs, string_append(phase1_reader(), phase1_applier(style)));
+                let tagcase_ = phase1_sealed(d, run, program);
+                match *tagcase_ {
+                    P1::P1(ss, why) => {
+                        if null_p(ss) {
+                            why
+                        } else if string_eq_p(r#use.2, str_lit("")) {
+                            phase1_ran(car(ss), false, str_lit(""))
                         } else {
-                            let tagcase_ = phase1_sealed(d, run, string_append(program, ps.1));
-                            match *tagcase_ {
-                                P1::P1(ss2, why2) => {
-                                    if null_p(ss2) {
-                                        why2
-                                    } else {
-                                        phase1_ran(car(ss2), false, str_lit(""))
-                                    }
-                                }
+                            let given = phase1_ran(car(ss), true, string_append(r#use.1, string_append(str_lit("\n"), r#use.2)));
+                            if not(string_eq_p(given, str_lit("=%phase1-unread"))) {
+                                given
+                            } else {
+                                phase1_once(d, run, string_append(program, ps.1))
                             }
                         }
                     }

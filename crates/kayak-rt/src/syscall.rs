@@ -226,6 +226,22 @@ const SYSCALLS: &[Syscall] = &[
         canonical: "(subr (io sys) () string)",
         run: |_| crate::leak_string(kayak_kcrt_core::output_taken()).word(),
     },
+    // Sealed code freed (C456), named by where it runs (what
+    // `kayak:last-sealed/1` gave after its `seal-code`): its block of the
+    // code area given back, first fit, as Fixpt's area gives back what
+    // nothing reaches; a procedure of it called after, it fails
+    // (`native.rs`'s `FREED`), never runs. An address of no code that
+    // lives, nothing done.
+    Syscall {
+        host: "kayak:unseal/1",
+        canonical: "(subr (io sys) (int) unit)",
+        run: |a| {
+            if let Ok(at) = usize::try_from(int(a[0])) {
+                kayak_jit::free(at);
+            }
+            ().word()
+        },
+    },
     Syscall {
         host: "kayak:last-sealed/1",
         canonical: "(subr (io sys) () int)",

@@ -13499,3 +13499,64 @@ What changed:
 - **The full check**: all passed in 453 s; kc-steps 337 of 337 (in
   process, and with a heap of 64 words); kc-objects 433, 0 differ;
   nextest 5500 passed.
+
+## C456. kc's sealed code freed: the code area's room given back, first fit (2026-11-17)
+
+The user: "Address these" (with C455): kc's sealed images never freed.
+Reviewed first:
+- **Fixpt**: "A collected code area" (`docs/object-model.md`; `PLAN.md`
+  steps 1-4): code bloblets in a fourth part of the heap, taken first fit
+  from a free list, never moving, marked within the copying collection
+  and swept, each unmarked block made free and joined to the free ones
+  beside it; tables that name code cleared when it is freed. Its test
+  (`fixpt-native/tests/code_gc.rs`) generates, runs and drops code past
+  one space's room.
+- **Accomplice** (Larceny): code is a bytevector in the heap, collected
+  as any object.
+- **Coopt**: no native code.
+- **kayak**: kayak-jit's code area (C116), a bump allocator, never freed,
+  as kayak-rt collects nothing (`alloc` is `Box::leak`); FX-26's regions
+  that end (`letrena`, `letreap`, a process's reap) end with a body or a
+  process, not when a cache drops an entry; a syscall takes only
+  integers, strings and the like (KFX refuses a bloblet), and
+  `kayak:last-sealed/1` (C239) gives where code sealed last runs.
+
+So the area is Fixpt's but for what decides what is freed: kayak-rt
+traces nothing, so the program says it, and a check makes saying it
+wrongly a failure rather than a fault.
+
+What changed:
+- **The code area's room** (kayak-jit): taken first fit from the blocks
+  given back, else past the top; `free(entry)` gives a block back,
+  joined to the free blocks beside it, the top lowered if it ends there.
+- **A generation per block**: a table beside the area, a word for each
+  16-byte granule (reserved whole, nothing committed until touched),
+  holds the generation of the block starting there while it lives;
+  `live(code)` is one load. kayak-rt checks it at each call of a native
+  procedure, at `native-procedure`, where a sealed bloblet crosses, and
+  before a field written is written beside its code: freed code fails,
+  "native code: its code was freed", and is never run, nor a reused
+  block written through an old bloblet.
+- **`kayak:unseal/1`** (`(subr (io sys) (int) unit)`, lang/items.sexp's
+  22nd syscall): code freed by where it runs; an address of no live code,
+  nothing done.
+- **kc's images**: each keeps where it runs (`last-sealed` after its
+  `seal-code`), and `native-freed` frees it. `kc run`'s image is freed
+  after its run. A transformer's uses' image is kept, the most recently
+  used first, at most 16 (`transformers-most`); the least recently used
+  freed past them, sealed again if wanted again. A program run once (a
+  macro's definition's, a use its call is a form of) is sealed, run and
+  freed (`phase1-once`), so the 16 are all of uses.
+- **Tests**: kayak-jit's `tests/code_free.rs`, 600 rounds of 1 MiB of
+  code sealed, run and freed (past twice the area's 256 MiB), the top as
+  it was after, each freed `live` no more and not freed twice; blocks
+  freed joined and used again, first fit. tests/kc/step15/
+  procedural-many.fx, 18 procedural macros, the first used again last:
+  in process 38 images sealed and 22 freed (counted once by hand, with a
+  log since removed: 18 definitions, 19 uses' images, `kc run`'s own;
+  3 evicted).
+- **The full check**: all passed in 522 s; kc-steps 338 of 338, 238 s
+  (was 169: procedural-many's 18 transformers compiled cold in each of
+  its ways, 9457 query bodies, was 6786); kc-objects 434, 0 differ;
+  lang-items 22 syscalls; nextest 5501 passed; selfhost-cells 145 s, as
+  before (the check at each native call no cost seen).

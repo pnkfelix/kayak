@@ -1673,15 +1673,18 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   region, done with step 5 (C454); kcrt's own objects, made in kc's heap
   and collected (C455: its strings and pairs; its symbols kept for the
   run, as Fixpt's table keeps them); kc's
-  code never freed (a transformer's image sealed once and kept for the
-  run; Fixpt's collected code area frees code nothing reaches); no
+  code freed (C456: the code area's room given back first fit, as
+  Fixpt's; kc says what, as kayak-rt traces nothing, and a generation
+  per block makes a call of freed code a failure; a transformer's uses'
+  images, 16 most recently used kept; left: what the program forgets to
+  free stays, where Fixpt's collector would find it); no
   generations; a large bloblet; tier 1's collector, KFX's, and this one,
   Rust's, two copies of Cheney's over Fixpt's layout, to-discuss 15);
   (5) `phase1`'s body a call of the compiled transformer, no process
   (done, C454: its image sealed once, each use a call in process, its
   heap one array used again from its start; left: a transformer's run
   no longer a process of its own, so a fault of its code (a bad store,
-  a loop with no end) is kc's; kc's images never freed).
+  a loop with no end) is kc's; kc's images freed, C456).
 - kc's front end fails (`car or cdr of a non-pair`, in `kc-unlocated`)
   on a transformer's `(typecase (car (cdr form)) ...)`, a typecase of no
   local, where the engine refuses it ("a typecase of a local of a union",

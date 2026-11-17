@@ -189,6 +189,9 @@ macro_rules! crossing_bloblet {
             fn word(self) -> u64 {
                 let (bytes, code) = self.native_parts();
                 if let Some(c) = code {
+                    if !kayak_jit::live(c) {
+                        fail(FREED);
+                    }
                     return c.reference();
                 }
                 let fields: Vec<u64> = vec![$(self.fields.$i.get().word()),*];
@@ -335,8 +338,12 @@ pub fn seal_code<'a, Fs: NativeFields + Clone + 'a>(b: &Bloblet<Fs>) -> &'a Blob
 }
 
 /// A native procedure's call: its answer, or a failure, as Fixpt's machines
-/// say its traps; or a routine kayak does not have yet.
-fn run(clo: u64, entry: usize, args: &[u64]) -> u64 {
+/// say its traps; or a routine kayak does not have yet. Code freed
+/// (`kayak:unseal/1`, C456) is never run: a failure.
+fn run(code: kayak_jit::Code, clo: u64, entry: usize, args: &[u64]) -> u64 {
+    if !kayak_jit::live(code) {
+        fail(FREED);
+    }
     match kayak_jit::call(clo, entry, args) {
         Ok(w) => w,
         Err(kayak_jit::Trap::Kind(k)) => fail(match k {
@@ -365,47 +372,51 @@ impl<Fs> Sealed for Bloblet<Fs> {
     }
 }
 
+/// The words of a sealed copy's use after its code is freed (C456).
+pub(crate) const FREED: &str = "native code: its code was freed";
+
 /// What `native-procedure` makes a procedure of: a sealed copy's code,
-/// and its native closure.
-fn sealed(c: &dyn Sealed) -> (u64, usize) {
+/// its native closure, and where it runs.
+fn sealed(c: &dyn Sealed) -> (kayak_jit::Code, u64, usize) {
     if !kayak_jit::native_code() {
         fail("native-procedure: this machine runs no native code");
     }
     match c.sealed_code() {
-        Some(code) => (kayak_jit::closure(code), code.entry()),
+        Some(code) if !kayak_jit::live(code) => fail(FREED),
+        Some(code) => (code, kayak_jit::closure(code), code.entry()),
         None => fail("native-procedure: not code that `seal-code` gave"),
     }
 }
 
 /// `(native-procedure c)` at `(subr (conv native) E () R)`.
 pub fn native_procedure0<'a, R: Native>(c: &dyn Sealed) -> &'a (dyn Fn() -> R + Send + Sync) {
-    let (clo, entry) = sealed(c);
-    crate::lambda0s(move || R::of_word(run(clo, entry, &[])))
+    let (code, clo, entry) = sealed(c);
+    crate::lambda0s(move || R::of_word(run(code, clo, entry, &[])))
 }
 
 /// At `(subr (conv native) E (A) R)`.
 pub fn native_procedure1<'a, A: Native, R: Native>(
     c: &dyn Sealed,
 ) -> &'a (dyn Fn(A) -> R + Send + Sync) {
-    let (clo, entry) = sealed(c);
-    crate::lambda1s(move |a: A| R::of_word(run(clo, entry, &[a.word()])))
+    let (code, clo, entry) = sealed(c);
+    crate::lambda1s(move |a: A| R::of_word(run(code, clo, entry, &[a.word()])))
 }
 
 /// At `(subr (conv native) E (A B) R)`.
 pub fn native_procedure2<'a, A: Native, B: Native, R: Native>(
     c: &dyn Sealed,
 ) -> &'a (dyn Fn(A, B) -> R + Send + Sync) {
-    let (clo, entry) = sealed(c);
-    crate::lambda2s(move |a: A, b: B| R::of_word(run(clo, entry, &[a.word(), b.word()])))
+    let (code, clo, entry) = sealed(c);
+    crate::lambda2s(move |a: A, b: B| R::of_word(run(code, clo, entry, &[a.word(), b.word()])))
 }
 
 /// At `(subr (conv native) E (A B C) R)`.
 pub fn native_procedure3<'a, A: Native, B: Native, C: Native, R: Native>(
     c: &dyn Sealed,
 ) -> &'a (dyn Fn(A, B, C) -> R + Send + Sync) {
-    let (clo, entry) = sealed(c);
+    let (code, clo, entry) = sealed(c);
     crate::lambda3s(move |a: A, b: B, d: C| {
-        R::of_word(run(clo, entry, &[a.word(), b.word(), d.word()]))
+        R::of_word(run(code, clo, entry, &[a.word(), b.word(), d.word()]))
     })
 }
 
@@ -414,8 +425,13 @@ pub fn native_procedure3<'a, A: Native, B: Native, C: Native, R: Native>(
 pub fn native_procedure4<'a, A: Native, B: Native, C: Native, D: Native, R: Native>(
     c: &dyn Sealed,
 ) -> &'a (dyn Fn(A, B, C, D) -> R + Send + Sync) {
-    let (clo, entry) = sealed(c);
+    let (code, clo, entry) = sealed(c);
     crate::lambda4s(move |a: A, b: B, d: C, e: D| {
-        R::of_word(run(clo, entry, &[a.word(), b.word(), d.word(), e.word()]))
+        R::of_word(run(
+            code,
+            clo,
+            entry,
+            &[a.word(), b.word(), d.word(), e.word()],
+        ))
     })
 }

@@ -9,7 +9,11 @@
 //!   (`docs/object-model.md`, "A collected code area"): written through a
 //!   read+write view, run from a read+execute view of the same pages, at a
 //!   fixed distance, so nothing is ever both and nothing is re-protected.
-//!   Nothing in it is ever freed, as nothing of kayak's heap is (C116).
+//!   Its room taken first fit and given back ([`free`], C456), as Fixpt's
+//!   area's is, never moving, a block freed joined to the free ones beside
+//!   it; what frees it is the runtime's word, as kayak's heap collects
+//!   nothing (C116). A block's generation, in a table beside the area, is
+//!   each call's check ([`live`]): code freed is never run.
 //! - **Objects in Fixpt's layout** that code reads and makes (closures,
 //!   pairs), in memory of their own, never freed either.
 //! - **The trampoline**: from Rust into the convention (on arm64 the
@@ -235,8 +239,26 @@ struct Area {
     /// Where the area's first byte is, in each view.
     rw: usize,
     rx: usize,
-    /// The next free byte's offset.
-    top: Mutex<usize>,
+    /// Its room (C456).
+    room: Mutex<Room>,
+    /// Each 16-byte granule's generation, reserved whole: the one of the
+    /// block that starts there while it lives, else 0.
+    ids: usize,
+}
+
+/// The code area's room: the offset past every block ever taken, the
+/// blocks given back below it (each offset's bytes, in order), and the
+/// generations given so far.
+struct Room {
+    top: usize,
+    free: std::collections::BTreeMap<usize, usize>,
+    sealed: u64,
+}
+
+/// Where the area's granule of `at` (a read+write address) keeps its
+/// generation.
+fn id_at(a: &Area, at: usize) -> usize {
+    a.ids + 8 * ((at - a.rw) / 16)
 }
 
 /// The code area and the data region after it, one reservation, so that
@@ -253,11 +275,17 @@ fn space() -> Option<&'static Space> {
         .get_or_init(|| {
             let (rw, rx) = sys::map_space(AREA_BYTES, DATA_BYTES)?;
             let cards = sys::reserve((AREA_BYTES + DATA_BYTES) >> CARD_SHIFT)?;
+            let ids = sys::reserve(AREA_BYTES / 2)?;
             Some(Space {
                 area: Area {
                     rw,
                     rx,
-                    top: Mutex::new(0),
+                    room: Mutex::new(Room {
+                        top: 0,
+                        free: std::collections::BTreeMap::new(),
+                        sealed: 0,
+                    }),
+                    ids,
                 },
                 data: Data {
                     base: rw + AREA_BYTES,
@@ -274,26 +302,116 @@ fn area() -> Option<&'static Area> {
 }
 
 /// A code bloblet in the code area: where its suffix, its code, is in the
-/// read+write view; how many fields it has, its trailer counted; and its
-/// suffix's bytes. It never moves and is never freed.
+/// read+write view; how many fields it has, its trailer counted; its
+/// suffix's bytes; and its block, where it starts and its bytes, and its
+/// generation (C456). It never moves; it lives until [`free`]d.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Code {
     suffix: usize,
     fields: usize,
     bytes: usize,
+    block: usize,
+    size: usize,
+    id: u64,
 }
 
-/// Room for `n` words in the code area, 16-byte aligned.
-fn take(n: usize) -> usize {
+/// Room for `n` words in the code area, 16-byte aligned: the first block
+/// given back that holds them, else past the top. Where, its bytes, and
+/// its generation, which its first granule keeps.
+fn take(n: usize) -> (usize, usize, u64) {
     let a = area().unwrap_or_else(|| panic!("seal-code: this machine runs no native code"));
-    let mut top = a.top.lock().unwrap_or_else(|e| e.into_inner());
-    let at = top.next_multiple_of(16);
-    let end = at + 8 * n;
-    if end > AREA_BYTES {
-        panic!("seal-code: the code area is full");
+    let mut r = a.room.lock().unwrap_or_else(|e| e.into_inner());
+    let size = (8 * n).next_multiple_of(16);
+    let fit = r
+        .free
+        .iter()
+        .find(|&(_, &len)| len >= size)
+        .map(|(&at, &len)| (at, len));
+    let at = match fit {
+        Some((at, len)) => {
+            r.free.remove(&at);
+            if len > size {
+                r.free.insert(at + size, len - size);
+            }
+            at
+        }
+        None => {
+            let at = r.top;
+            if at + size > AREA_BYTES {
+                panic!("seal-code: the code area is full");
+            }
+            r.top = at + size;
+            at
+        }
+    };
+    r.sealed += 1;
+    let id = r.sealed;
+    sys::put(id_at(a, a.rw + at), id);
+    (a.rw + at, size, id)
+}
+
+/// Whether `code` still lives (C456): its block's generation its own.
+#[inline]
+pub fn live(code: Code) -> bool {
+    match area() {
+        Some(a) => sys::get(id_at(a, code.block)) == code.id,
+        None => false,
     }
-    *top = end;
-    a.rw + at
+}
+
+/// The code that runs at `entry` ([`Code::entry`], what [`last_sealed`]
+/// gives) freed (C456): its block given back, joined to the free ones
+/// beside it, the top lowered if it ends there, and its generation gone,
+/// so that [`live`] says no of it. Whether it was code that lived; an
+/// address of none, nothing done.
+pub fn free(entry: usize) -> bool {
+    let Some(a) = area() else { return false };
+    if entry < a.rx || entry >= a.rx + AREA_BYTES {
+        return false;
+    }
+    let suffix = entry - a.rx + a.rw;
+    let mut r = a.room.lock().unwrap_or_else(|e| e.into_inner());
+    let Some(code) = LIVE_CODE.with_lock(|l| l.remove(&suffix)) else {
+        return false;
+    };
+    sys::put(id_at(a, code.block), 0);
+    let (mut at, mut len) = (code.block - a.rw, code.size);
+    if let Some((&before, &blen)) = r.free.range(..at).next_back()
+        && before + blen == at
+    {
+        r.free.remove(&before);
+        at = before;
+        len += blen;
+    }
+    if let Some(&alen) = r.free.get(&(at + len)) {
+        r.free.remove(&(at + len));
+        len += alen;
+    }
+    if at + len == r.top {
+        r.top = at;
+    } else {
+        r.free.insert(at, len);
+    }
+    true
+}
+
+/// The code area's use: the bytes below its top, and of them those given
+/// back (C456; a test's).
+pub fn area_use() -> (usize, usize) {
+    area().map_or((0, 0), |a| {
+        let r = a.room.lock().unwrap_or_else(|e| e.into_inner());
+        (r.top, r.free.values().sum())
+    })
+}
+
+/// The code that lives, by its suffix's read+write address.
+struct LiveCode(Mutex<Option<std::collections::HashMap<usize, Code>>>);
+static LIVE_CODE: LiveCode = LiveCode(Mutex::new(None));
+impl LiveCode {
+    fn with_lock<T>(&self, f: impl FnOnce(&mut std::collections::HashMap<usize, Code>) -> T) -> T {
+        let mut g = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        f(g.get_or_insert_with(std::collections::HashMap::new))
+    }
 }
 
 /// Seal a copy of a bloblet into the code area (FX-26's `seal-code`): of
@@ -308,13 +426,17 @@ pub fn seal(kind: u8, fields: &[u64], fields_frozen: bool, suffix: &[u8]) -> Cod
     // tier 5 keeps its 8-aligned return points in frames as fixnums
     // (C131; `tests/code.rs` holds this to it).
     let pad = (1 + n) % 2;
-    let base = take(pad + 1 + n + words);
+    let (base, size, id) = take(pad + 1 + n + words);
     let header = base + 8 * pad;
     let code = Code {
         suffix: header + 8 * (1 + n),
         fields: n,
         bytes: suffix.len(),
+        block: base,
+        size,
+        id,
     };
+    LIVE_CODE.with_lock(|l| l.insert(code.suffix, code));
     sys::put(
         header,
         layout::header(kind, n, suffix.len(), fields_frozen, true),
