@@ -13,8 +13,10 @@
  and the words are kayak-rt's to give (`kayak:kc-failure/1`).
 
  The code bloblet's one field is the heap, an `i64` flat array that kc's
- code allocates in (kc's own objects; kcrt's are in its own memory). Its
- first words say where things are, the rest is the heap:
+ code allocates in (kc's own objects; kcrt's are in its own memory), its
+ first space: the collector (C453, kcrt-core's) copies into spaces of its
+ own from there. Its first words say where things are, the rest is the
+ heap:
 
    0  the array's own address    (the code's, at entry)
    1  the image's address        (the code's, at entry)

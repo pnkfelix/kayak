@@ -27,6 +27,11 @@ edit expands again only the forms that name what it changed.
 And kc's own convention (C451): a recursion past the stack's limit fails
 as kc says it, and a loop past a slice of fuel runs on, built and in
 process alike.
+
+And kc's collector (C453): each program in process again with a heap of a
+few words, so that nearly every allocation collects, its output and status
+the executable's; and a program whose garbage passes a built program's
+heap many times over.
 """
 
 import os
@@ -190,12 +195,32 @@ PROCEDURAL = """(define-syntax twice
 """
 
 
+# The heap `kc run --heap` is given (C453): its words.
+TINY_HEAP = 64
+
 CONVENTION = {
     # Past the stack's limit (C451): a failure, as kc says it, by both.
     "deep": ("(define down (subr (maxeff spin (read (globals down))) (int) int) (lambda (n) (if (zero? n) 0 (+ 1 (down (- n 1))))))\n"
              "(down 1000)\n(down 100000000)\n",
              "1000\n", "evaluation failed: stack overflow\n", 1),
     # Fuel spent and given again by `poll`, a slice at a time (2^20 calls).
+    # Garbage past the heap many times over (C453): 20000 rounds of a list
+    # of 1000, an array and a closure, some 330 MB made, a list a global
+    # keeps and a closure another keeps across every collection.
+    "collected": ("(define build (subr (maxeff spin (read (globals build))) (int (listof int)) (listof int))\n"
+                  "  (lambda (n acc) (if (zero? n) acc (build (- n 1) (cons n acc)))))\n"
+                  "(define total (subr (maxeff spin (read (globals total))) ((listof int) int) int)\n"
+                  "  (lambda (l acc) (if (null? l) acc (total (cdr l) (+ acc (car l))))))\n"
+                  "(define keep (listof int) (build 100 nil))\n"
+                  "(define adder (subr (maxeff) (int) (subr (maxeff) (int) int)) (lambda (k) (lambda (x) (+ x k))))\n"
+                  "(define add7 (subr (maxeff) (int) int) (adder 7))\n"
+                  "(define churn (subr (maxeff spin (read (globals churn build total adder))) (int int) int)\n"
+                  "  (lambda (k acc)\n"
+                  "    (if (zero? k) acc\n"
+                  "        (let* ((a (make-array 50 k)) (f (adder k)) (l (build 1000 nil)))\n"
+                  "          (churn (- k 1) (+ acc (+ (total l 0) (f (array-ref a 49)))))))))\n"
+                  "(churn 20000 0)\n(total keep 0)\n(add7 1)\n",
+                  "10410020000\n5050\n8\n", "", 0),
     "fuel": ("(define loop (subr (maxeff spin (read (globals loop))) (int int) int) (lambda (n acc) (if (zero? n) acc (loop (- n 1) (+ acc 1)))))\n"
              "(loop 3000000 0)\n",
              "3000000\n", "", 0),
@@ -228,7 +253,7 @@ def main():
     os.makedirs(WORK, exist_ok=True)
     db = os.path.join(ROOT, "target", "kc-steps.db")
     fx = fixpt()
-    wrong, ran, in_process = [], 0, 0
+    wrong, ran, in_process, collected = [], 0, 0, 0
     ps = programs()
     for p in ps:
         name = os.path.relpath(p, TESTS)
@@ -265,6 +290,14 @@ def main():
                          % (name, q.stdout[-300:], q.stderr[-300:], q.returncode, r.stdout[-300:], r.stderr[-300:], r.returncode))
         else:
             in_process += 1
+        # And with a heap of a few words (C453): the collector called at
+        # nearly every allocation, the program's answer its executable's.
+        q = run([KC, "--db", db, "run", "--heap", str(TINY_HEAP), p])
+        if (q.stdout, q.stderr, q.returncode) != (r.stdout, r.stderr, r.returncode):
+            wrong.append("%s: kc run --heap %d gives %r %r %d, the executable %r %r %d"
+                         % (name, TINY_HEAP, q.stdout[-300:], q.stderr[-300:], q.returncode, r.stdout[-300:], r.stderr[-300:], r.returncode))
+        else:
+            collected += 1
     kfx = [p for p in ps if p.endswith(".kfx")]
     crate = os.path.join(ROOT, "target", "kc-rust")
     os.makedirs(os.path.join(crate, "src"), exist_ok=True)
@@ -309,8 +342,8 @@ def main():
     wrong += convention()
     for w in wrong:
         print("kc-steps: " + w)
-    print("kc-steps: %d programs, %d by native code (%d of them in process as their executables), %d by Rust; %d wrong; %d query bodies ran%s"
-          % (len(ps), len(ps), in_process, len(kfx), len(wrong), ran, "" if fx else "; Fixpt not here, its answers unchecked"))
+    print("kc-steps: %d programs, %d by native code (%d of them in process as their executables, %d with a heap of %d words), %d by Rust; %d wrong; %d query bodies ran%s"
+          % (len(ps), len(ps), in_process, collected, TINY_HEAP, len(kfx), len(wrong), ran, "" if fx else "; Fixpt not here, its answers unchecked"))
     sys.exit(1 if wrong else 0)
 
 

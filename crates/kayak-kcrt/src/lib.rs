@@ -12,14 +12,15 @@ unsafe extern "C" {
     /// kc's code keeps in `%r15` (C451, Fixpt's native convention's).
     fn kc_entry(heap: *mut u64, end: *mut u64, state: *const u64) -> u64;
     /// A procedure of kc's code (its address `f`) called on `a` and `b`,
-    /// the heap's next word where `kc_entry` left it, its end `end`
-    /// (C448: kc's entry object's), and the state.
+    /// the heap where `kc_entry` left it (C448: kc's entry object's; its
+    /// end now the collector's, C453, `end` not read), and the state.
     fn kc_call2(f: u64, a: u64, b: u64, end: u64, state: *const u64) -> u64;
     /// `%phase1-apply`'s address, if the program defines it, else 0.
     static kc_apply_entry: u64;
 }
 
-/// The heap's words: no collector yet, so all a run may use (C406).
+/// The heap's first space, its words: collected (C453), grown as what
+/// lives needs.
 const HEAP_WORDS: usize = 1 << 23;
 
 /// The state's words, and its fields kc's code reads (Fixpt's native

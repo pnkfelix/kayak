@@ -13,8 +13,9 @@
 //! (`fixpt-heap`'s `make_string`, `intern`): a string's words its length
 //! and its code points, two a word; a symbol's fields its name, its hash and
 //! its global slot. What kc's code makes of them past a literal (an
-//! append, a symbol interned) is made here, in this runtime's own memory:
-//! no collector yet, so nothing is freed.
+//! append, a symbol interned) is made here, in this runtime's own memory,
+//! never freed. kc's own heap is collected (C453, `gc.rs`): the pairs made
+//! here are among the collector's roots.
 //!
 //! kc's code is called through `extern "C"`: the one place here that is
 //! not safe Rust.
@@ -28,6 +29,9 @@
 //! code goes back to the trampoline (x64.kfx's `kc_failed`), as Fixpt's
 //! call-outs keep their message and say they failed.
 #![allow(unsafe_code)]
+
+mod gc;
+pub use gc::{Heap, collections};
 
 const TAG_MASK: u64 = 0b111;
 const TAG_FIXNUM: u64 = 0b000;
@@ -303,10 +307,12 @@ fn appended(a: u64, b: u64) -> Result<u64, String> {
         cars.push(car);
         rest = cdr;
     }
-    Ok(cars
-        .iter()
-        .rev()
-        .fold(b, |tail, &car| made(vec![car, tail]) + TAG_PAIR))
+    Ok(cars.iter().rev().fold(b, |tail, &car| {
+        // Kept, so that the collector moves on what its words hold (C453).
+        let at = made(vec![car, tail]);
+        gc::kept_pair(at);
+        at + TAG_PAIR
+    }))
 }
 
 #[unsafe(no_mangle)]
@@ -331,6 +337,15 @@ pub extern "C" fn kc_make_array_fail() -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_string_index_fail(len: u64) -> ! {
     failed(&format!("string index out of range (length {len})"))
+}
+
+/// The collector (C453), called by kc's code (x64.kfx's `kc_gc_call`)
+/// where an allocation of `need` bytes does not fit: its stack pointer
+/// `sp`, its block `block` (the writable address of `kc_gc`). The heap
+/// after, or the run ended.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_collect(need: u64, sp: u64, block: *mut u64) -> Heap {
+    gc::collect(need, sp, block).unwrap_or_else(|m| failed(&m))
 }
 
 /// A built program's failure: said, as `fixpt eval` says one, and the run
@@ -379,6 +394,13 @@ extern "C" fn here_substring(s: u64, i: u64, j: u64) -> u64 {
     substring_of(s, i, j).unwrap_or_else(failed_here)
 }
 
+extern "C" fn here_collect(need: u64, sp: u64, block: *mut u64) -> Heap {
+    gc::collect(need, sp, block).unwrap_or_else(|m| {
+        failed_here(m);
+        Heap { next: 0, end: 0 }
+    })
+}
+
 extern "C" fn here_append(a: u64, b: u64) -> u64 {
     appended(a, b).unwrap_or_else(failed_here)
 }
@@ -405,6 +427,7 @@ pub fn routine(name: &str) -> u64 {
         "kc_array_index_fail" => here_array_index_fail as *const (),
         "kc_make_array_fail" => here_make_array_fail as *const (),
         "kc_string_index_fail" => here_string_index_fail as *const (),
+        "kc_collect" => here_collect as *const (),
         _ => return 0,
     };
     f as usize as u64
@@ -487,8 +510,8 @@ fn fail_words(what: u64) -> &'static str {
     match what {
         1 => "not a Unicode scalar value",
         4 => "car or cdr of a non-pair",
-        // kc's own: no collector yet.
-        5 => "kc: not yet: the heap used up (no collector yet)",
+        // kc's own: the collector's space past its most (C453).
+        5 => "kc: the heap past its most (2^31 words)",
         // kc's own, not Fixpt's: its integers are fixnums alone, as yet.
         2 => "kc: not yet: an integer past a fixnum",
         3 => "division by zero",

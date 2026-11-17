@@ -66,7 +66,8 @@ UNITS = [
     # transformer's answer kept is its run (C448), its routines kcrt-core's
     # (C452).
     ("kc", "kc.unit", ["../fx26/macros/expander-kc.fx", "../fx26/macros/expander-types.fx",
-                       "../crates/kayak-kcrt/src/lib.rs", "../crates/kayak-kcrt-core/src/lib.rs"], kc_text),
+                       "../crates/kayak-kcrt/src/lib.rs", "../crates/kayak-kcrt-core/src/lib.rs",
+                       "../crates/kayak-kcrt-core/src/gc.rs"], kc_text),
 ]
 
 

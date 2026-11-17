@@ -163,3 +163,16 @@ where it was seen and what it would take.
     Rust in process through a syscall of kayak-rt's, as Fixpt's code
     reaches its call-outs; the KFX service deleted. Done, C452.
 
+
+15. **Two collectors of Fixpt's layout, KFX's and Rust's (C453).** Tier 1's
+    (`cells/heap.kfx`, KFX, kayak's run of Fixpt's cellular machine) and
+    kc's (`crates/kayak-kcrt-core/src/gc.rs`, Rust, kc's built programs
+    and `kc run` alike) are each Cheney's over the same layout, about 200
+    lines each, with different roots (tier 1's machine's registers and
+    stacks; kc's stack read whole, its cells, kcrt's pairs). kc's is Rust
+    because the runtime is (C452) and its roots are raw memory. Ways to
+    one copy: tier 1's collector called by kc through a syscall (tier 1's
+    heap is KFX's flat arrays, kc's a space of kcrt's); or the copying
+    core written once in KFX, translated by kfx into kcrt-core (kfx's
+    Rust needs kayak-rt, which links kcrt-core: a cycle to break first).
+    Worth it now, or once generations or regions make both larger?

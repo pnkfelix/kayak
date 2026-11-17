@@ -1667,7 +1667,13 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   scheduler takes it; an absolute address in the image, which step 5's
   `kc_apply_entry` is); (4) a heap of Fixpt's layout
   that KFX owns, a region a transformer's call drops first, then the
-  collector, code too (Fixpt's "A collected code area"); (5) `phase1`'s
+  collector, code too (Fixpt's "A collected code area") (the collector
+  done, C453: Cheney's, kcrt-core's, its roots every word of kc's stack,
+  each frame zeroed, the globals' cells and kcrt's pairs; left: the
+  region, with step 5; kcrt's own objects never freed; kc's code never
+  freed, with step 5's images; no generations; a large bloblet; tier 1's
+  collector, KFX's, and this one, Rust's, two copies of Cheney's over
+  Fixpt's layout); (5) `phase1`'s
   body a call of the compiled transformer, no process.
 - Models (`docs/research/models.md`): exhaustive checking (Java 17+ for
   Apalache; the snap's OpenJDK 27 works with `QUINT_HOME` and a temporary

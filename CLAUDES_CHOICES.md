@@ -13301,3 +13301,81 @@ What changed:
   1M calls 32 ms (C451's KFX service 56, built 7; kc's startup about 24
   of it); `string=?` 1M 100 ms (651, built 68); `string-append` 300k 77
   ms (324, built 99).
+
+## C453. kc's collector: Cheney's, kcrt's, its roots kc's stack read whole (2026-11-17)
+
+The user: "Go for it" (TODO §52, step 4: a heap of Fixpt's layout, then
+the collector). Reviewed first, as the user asked (C452):
+- **Fixpt** (the pin): its native code bumps inline against the state's
+  `alloc_limit`, and past it calls out; a collection runs only inside a
+  call-out, never in the line. Roots by precise stack maps (a map word at
+  fp+16, values from fp+24, written before each call that may collect);
+  before a collection every frame made a `native-frame` bloblet in place
+  (the stack lies in the nursery), moved, then the innermost copied back,
+  the rest on return (Larceny's flush and underflow). Cards and a
+  generation table for its barrier. Its regions: arenas (never moved,
+  reused when they end) and reaps (copied, an ended one's chunks
+  quarantined until a collection finds nothing in them). The collected
+  code area: code bloblets marked, never moved, swept to a free list.
+- **Accomplice** (Larceny): no stack maps and no conservatism: every
+  word of the Scheme stack a tagged value, return points padded so that
+  each return address reads as a fixnum; registers saved to the globals
+  at a millicode call; the stack flushed to heap frames before a
+  collection. Two barriers (SATB, and generational to an SSB).
+- **Coopt**: no native code; `Root` handles, the interpreter's whole
+  state in them; arenas (`letrena`) dropped whole and quarantined.
+- **kayak**: tier 1's collector in KFX (`cells/heap.kfx`, Coopt's
+  baseline, Cheney's, of Fixpt's layout) with the code area marked and
+  swept (C226, C229); kayak-jit's `traced_slots` walks Fixpt-shaped
+  frames by their maps (C229).
+
+What was done, kc's code needing neither maps nor a flush:
+- **The collector** (`crates/kayak-kcrt-core/src/gc.rs`): Cheney's, two
+  spaces, of Fixpt's layout, as tier 1's and Coopt's baseline (a
+  forwarding word, tag 7, in a pair's first word, a bloblet's header, and
+  the word below its suffix when that is no trailer). In Rust, in
+  kcrt-core: one copy, a built program's and `kc run`'s (C452's reason;
+  the user: "Why are we writing the runtime itself in KFX instead of
+  Rust?"). A space grows (doubled, collected again) when what lives and
+  what is wanted fill more than half; past 2^31 words, failure 5, now
+  "the heap past its most".
+- **The roots, Larceny's way, by Fixpt's tags**: every word of kc's stack
+  from the caller's pointer to the base its entry kept, each a value of
+  Fixpt's format, or something no pointer into the space (a return
+  address, in the code): only a word that points into the space being
+  collected is followed. So each frame is zeroed when made (after the
+  entry's checks), and a value a register holds where an allocation does
+  not fit is pushed for the collector (`cons`'s car and cdr;
+  `make-array`'s value, its length made a fixnum while it waits). The
+  globals' cells, one run in the entry object (`kc_cells_lo` to
+  `kc_cells_hi`), forwarded in place; the pairs kcrt makes in its own
+  memory (`append`), never moved, their words roots.
+- **kc's code**: each allocation's check, past the end, calls
+  `kc_gc_call` out of the line and checks again (in place of failure 5);
+  `kc_gc_call` gives kcrt's `kc_collect` the bytes, the caller's stack
+  pointer and the block (`kc_gc`: the space, the stack's base, the cells'
+  run, as writable addresses, so that the same bytes run in process),
+  and makes `%r12`/`%r13` the heap it gives back. In process
+  `kc_collect` is a routine that may fail (C452's table). `kc_call2`
+  takes the heap's end from the block.
+- **`kc run --heap WORDS FILE`**: the first space that size.
+- **Tests** (scripts/kc-steps.py): every program in process again with a
+  heap of 64 words, so that nearly every allocation collects, its output
+  and status the executable's: 336 of 336. And `collected`, built and in
+  process: 20000 rounds of a list of 1000, an array of 50 and a closure
+  (some 330 MB made), a global's list and a global's closure kept across;
+  built, 0.32 s and 132 MB at most (two spaces of 64 MB); in process with
+  1024 words, 21 MB.
+- **The full check**: all passed in 463 s; kc-steps 336 of 336 in
+  process, and 336 of 336 with a heap of 64 words; kc-objects 465, 0
+  differ; lang-items 19 syscalls, every copy agrees; nextest 5500 passed.
+- **Measured**: zeroing frames, on a loop of calls and nothing else (20M
+  tail calls and 20M non-tail), 0.11-0.13 s against 0.11 s with the zeroing
+  lines taken out of the same assembly (best of five).
+- **Left** (TODO §52): the region a transformer's call drops (with step
+  5, where there are calls to drop it after); kcrt's own objects (strings,
+  symbols, `append`'s pairs) never freed; kc's code never freed (the code
+  area's sweep, with step 5's images); no generations, so no barrier; a
+  large bloblet (more than 2^18 fields) kc's `make-array` cannot make
+  yet, and the collector refuses one; tier 1's collector and this one two
+  copies of Cheney's over Fixpt's layout, KFX's and Rust's.

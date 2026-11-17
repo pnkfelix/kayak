@@ -14,10 +14,13 @@ use super::*;
 // once; linked only if its objects are
 // new; RT the runtime's library
 // (libkayak_kcrt.a beside kc)
-// kc [--db DB] run FILE             its program run in process (C451):
+// kc [--db DB] run [--heap WORDS] FILE
+// its program run in process (C451):
 // its code sealed in the code area and
 // called (FX-26's seal-code and
-// native-procedure), its runtime KFX's
+// native-procedure), its runtime
+// kcrt's (C452); its heap's first space
+// WORDS words (C453), else 2^23
 // kc [--db DB] serve                requests, a line each, on the
 // standard input (C415)
 // kc [--db DB] --expanded-located FILE
@@ -1134,7 +1137,7 @@ pub mod kc_driver {
                 });
                 let sided = phase1_sides_x(d, at);
                 let status = if null_p(rest) {
-                    match fail_with(str_lit("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run FILE | serve)"), int_lit(2)) {}
+                    match fail_with(str_lit("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run [--heap WORDS] FILE | serve)"), int_lit(2)) {}
                 } else if string_eq_p(car(rest), str_lit("serve")) {
                     serve(d, dbp, stats, at)
                 } else if (string_eq_p(car(rest), str_lit("--object")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
@@ -1154,7 +1157,17 @@ pub mod kc_driver {
                         int_lit(1)
                     }
                 } else if (string_eq_p(car(rest), str_lit("run")) && not(null_p(cdr(rest)))) {
-                    let file = car(cdr(rest));
+                    let sized = (string_eq_p(car(cdr(rest)), str_lit("--heap")) && not(null_p(cdr(cdr(rest)))) && not(null_p(cdr(cdr(cdr(rest))))));
+                    let words = if sized {
+                        i64_plus(the::<i64>(16i64), string_to_i64(car(cdr(cdr(rest)))))
+                    } else {
+                        the::<i64>(8388608i64)
+                    };
+                    let file = if sized {
+                        car(cdr(cdr(cdr(rest))))
+                    } else {
+                        car(cdr(rest))
+                    };
                     kc_load_file_x()(d, &kc_run, file, read_text(file));
                     let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), file)));
                     if not(string_eq_p(refused, str_lit(""))) {
@@ -1182,7 +1195,7 @@ pub mod kc_driver {
                         } else {
                             save_db(d, dbp)
                         };
-                        let m = native_run()(image, 8388608i64);
+                        let m = native_run()(image, words);
                         if string_eq_p(m, str_lit("")) {
                             int_lit(0)
                         } else {

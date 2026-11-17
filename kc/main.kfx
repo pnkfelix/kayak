@@ -9,10 +9,13 @@
                                      once; linked only if its objects are
                                      new; RT the runtime's library
                                      (libkayak_kcrt.a beside kc)
-   kc [--db DB] run FILE             its program run in process (C451):
+   kc [--db DB] run [--heap WORDS] FILE
+                                     its program run in process (C451):
                                      its code sealed in the code area and
                                      called (FX-26's seal-code and
-                                     native-procedure), its runtime KFX's
+                                     native-procedure), its runtime
+                                     kcrt's (C452); its heap's first space
+                                     WORDS words (C453), else 2^23
    kc [--db DB] serve                requests, a line each, on the
                                      standard input (C415)
    kc [--db DB] --expanded-located FILE
@@ -526,7 +529,7 @@
                    (sided (phase1-sides! d at))
                    (status
               (cond ((null? rest)
-                     (fail-with "usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run FILE | serve)" 2))
+                     (fail-with "usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run [--heap WORDS] FILE | serve)" 2))
                     ((string=? (car rest) "serve") (serve d dbp stats at))
                     ;; An assembly file made an object by kc's assembler (C450),
                     ;; for comparing with `as`'s (scripts/kc-objects.py).
@@ -542,8 +545,12 @@
                     ;; the code area and called, its runtime KFX's
                     ;; (kc/native.kfx); a failure said as a built program says
                     ;; it, and the run's status 1.
+                    ;; `run --heap WORDS FILE`: its heap's first space `WORDS` words
+                    ;; (C453), for the collector's tests; else 2^23.
                     ((and (string=? (car rest) "run") (not (null? (cdr rest))))
-                     (let ((file (car (cdr rest))))
+                     (let* ((sized (and (string=? (car (cdr rest)) "--heap") (not (null? (cdr (cdr rest)))) (not (null? (cdr (cdr (cdr rest)))))))
+                            (words (if sized (i64+ (the i64 16) (string->i64 (car (cdr (cdr rest))))) (the i64 8388608)))
+                            (file (if sized (car (cdr (cdr (cdr rest)))) (car (cdr rest)))))
                        (begin
                          (kc-load-file! d kc-run file (read-text file))
                          (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" file)))))
@@ -555,7 +562,7 @@
                                (let ((image (asm-image (string-append (x64-run-support (native-routines x64-services)) (db-get d kc-run (key1 "asm" file))))))
                                  (begin
                                    (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
-                                   (let ((m (native-run image 8388608)))
+                                   (let ((m (native-run image words)))
                                      (if (string=? m "")
                                          0
                                          (begin (tagcase (write-err (string-append "evaluation failed: " (string-append m "\n"))) (done u #u) (failed e #u))
