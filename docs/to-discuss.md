@@ -176,3 +176,12 @@ where it was seen and what it would take.
     core written once in KFX, translated by kfx into kcrt-core (kfx's
     Rust needs kayak-rt, which links kcrt-core: a cycle to break first).
     Worth it now, or once generations or regions make both larger?
+
+16. **Incremental collection: in TODO §54 or after it? (C457).** The plan
+    puts the expander's state, its transformers and their code in kc's
+    collected heap, as Fixpt has them. Fixpt's collector stops the
+    world; marking spread over the mutator's work (with a write barrier
+    in kc's code at each store into the heap) goes past it. Since the
+    expander's heap persists (step 3), a pause grows with what it keeps.
+    Its design is to come to the user first: as step 6, or once the
+    expander runs on kcrt and its pauses are measured?

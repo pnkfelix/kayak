@@ -1724,3 +1724,62 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
 - `lang-items.py` lists the emitter's calls of kayak-rt by `NAME(`, so
   `sum_new::<P>(` and `sum_payload::<T>(` are not listed (C409).
 
+
+## 54. The expander's state in kc's collected heap (the user, 2026-11-17)
+
+The user: "I believe I do want the expander's state in the collected
+heap", and "work via those steps". As Fixpt has it: the expander runs in
+the heap its transformers do, its bindings traced roots, a transformer's
+code freed when its binding is, by the collector. kc's expander today is
+Fixpt's (fx26/macros/expander-kc.fx), compiled by kfx into kc, on
+kayak-rt, which traces nothing; so C456 frees a transformer's image when
+kc's cache drops it (16 kept), not when nothing reaches it. Steps:
+1. **Survey** (done, C457): kc made to compile the expander; what it
+   has not yet, sized.
+2. **The gaps closed** in kc's native compiler, each a step with its
+   tests, until `kc build` makes the expander and it expands as kc's KFX
+   one does (`kc-expanded` the yardstick).
+3. **A heap that persists**: one for the expander, collected, never
+   reset between forms and requests.
+4. **Transformers as closures in that heap**: a `define-syntax`'s
+   transformer compiled into a code bloblet of a collected code area,
+   its binding the closure; a use a call of it.
+5. **Code collected**: kcrt's collector marks code bloblets the heap
+   reaches and sweeps the rest, as Fixpt's area (C456's room and
+   generations under it); the cap of 16 gone.
+6. **Incremental collection**: marking spread over the mutator's work,
+   a write barrier; past Fixpt's, which stops the world. Its design to
+   the user first; whether in this plan or after, to ask.
+7. **The database at the boundary**: kc's front end asks the native
+   expander a form at a time; memos hold data (expansions' text), never
+   heap pointers.
+
+The survey (C457; step 2's list): kc's checker takes the expander whole
+(flattened: its types file inlined, its place one region, its items a
+`module`'s); its code generator refuses, by kind, occurrences counted
+over its 1664 definitions, 335 of them refused:
+- **Tuples** (`tuple`, `extract`): 1484.
+- **List procedures as forms**: `reverse` 519, `append` (not `,@`'s)
+  325, `length` 3.
+- **Delimited control** (the parser's): `prompt` 112,
+  `abort-current-continuation` 4, `make-continuation-prompt-tag` 1.
+- **`i64`**: `int->i64` 39, `i64->int` 32, `i64+` 14, `i64>=` 10,
+  `i64=` 9, `i64-quotient` 3, `i64<=` 2, `i64-` 2.
+- **Strings and characters**: `int->string` 149, `char->string` 11,
+  `char-whitespace?` 6, `char-numeric?` 7, `string-hash` 6,
+  `symbol-name-hash` 4.
+- **More than six**: 26 procedures' parameters, 32 calls' arguments.
+- **Type-level names reached as values** (the expander's types of its
+  own module system, `mu`, `union`, `export`, `import`, `rho`): `expr`
+  27, `data` 26, `bvar` 24, `id` 22, `lambda` 18, `desc` 16, `label` 14,
+  `type` 13, `dvar` 12, `region` 11, `kind` 10, `place` 9, `item` 8,
+  `effect` 8, `sendable` 5, `size` 3, `conv` 2: kc lowers a form these
+  are in as an expression; which form, to find first.
+- **`f64`**: `f64?` 6, `f64->string` 4. **Vectors**:
+  `datum-list->vector` 4. `error` 1.
+- **A file of a place**: kc's checker refuses `module-parameters` as a
+  program (`a region KFX-0 does not have: mxp`); kc's code has one
+  heap, so the place can be it.
+- Not seen by a survey of the code generator: what runs (an `int` past
+  a fixnum, which kc fails; the expander's hashes), and the expander's
+  host: its asker, the bridge's data, its files read.

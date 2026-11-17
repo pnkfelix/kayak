@@ -13560,3 +13560,47 @@ What changed:
   its ways, 9457 query bodies, was 6786); kc-objects 434, 0 differ;
   lang-items 22 syscalls; nextest 5501 passed; selfhost-cells 145 s, as
   before (the check at each native call no cost seen).
+
+## C457. The expander's state in kc's heap: the survey of what kc lacks (2026-11-17)
+
+The user, after C456: "I believe I do want the expander's state in the
+collected heap", and "work via those steps" (TODO §54). Step 1, the
+survey. Reviewed first:
+- **Fixpt**: its expander runs on the machine its transformers do
+  (`phase1.rs`'s `call_transformer`, a procedure of the running heap),
+  its environments heap objects, a transformer a closure; its code in the
+  collected code area, freed with its binding.
+- **Accomplice** (Larceny): macros expanded by `eval` in the running
+  heap; the expander is heap code like any.
+- **Coopt**: no expander of its own.
+- **kayak**: kc's expander is Fixpt's, ported (`macros-port.py`, C429),
+  a file of a place (C442), loaded by kc's `kc-instance` under a
+  `letrena` and compiled by kfx into kc; kc has never compiled it itself.
+
+How: the expander made one file (its types file inlined, `mxp` made
+`@io`, the items a `module`'s, so that naming one reads no global, as in
+the place's file), then `kc --check` and `kc --asm` of it. The checker
+takes it whole. The code generator stops at its first gap, so for the
+survey alone a build of kc whose `not-yet` said its words and went on,
+and whose `asm-item` query caught its item's failure (the generated Rust
+edited by hand, then restored from git, kc rebuilt): every item's gaps
+in one run, 335 of the 1664 definitions refused. Each failure that was
+not a `not-yet` (126 `car or cdr of a non-pair` in kc's x64, and "no
+primitive" for 189 more) came after a `not-yet` in the same item: what
+the survey's going on made, not gaps of their own.
+
+The gaps, sized, are TODO §54's list: tuples (1484), `reverse` and
+`append` as procedures (844), delimited control (117, the parser's
+backtracking), `i64` (111), strings and characters (183), more than six
+parameters or arguments (58), type-level names reached as values (228,
+the form to find first), `f64`, a vector, a file of a place. What runs
+is not surveyed: an `int` past a fixnum, the hashes, the expander's
+host (its asker, the bridge, files).
+
+What the plan's order makes of it: step 2 is most of the work; tuples,
+list procedures, `i64` and strings are kc's steps of the kind done
+before, delimited control the one new mechanism (Fixpt's native
+convention has it, prompts and marks frames of known kinds a walk of the
+stack finds, `docs/research/native-conventions.md` step 5; kc's own
+convention has none yet). Incremental collection,
+whether in the plan or after: to-discuss 16.
