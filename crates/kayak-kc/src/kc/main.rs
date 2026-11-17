@@ -154,6 +154,23 @@ pub mod kc_driver {
     }
 
     #[inline]
+    pub fn native_sealed() -> &'static dyn Fn(List<i64>, i64) -> &'static kc_native::RunImage {
+        &kc_native::native_sealed
+    }
+
+    #[inline]
+    pub fn native_call() -> &'static dyn Fn(&'static kc_native::RunImage, bool, Str) -> Str {
+        &kc_native::native_call
+    }
+
+    #[inline]
+    pub fn native_output() -> &'static dyn Fn() -> Str {
+        &kc_native::native_output
+    }
+
+    pub type RunImage = &'static kc_native::RunImage;
+
+    #[inline]
     pub fn kc_load_file_x() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> () {
         &kc_expand::kc_load_file_x
     }
@@ -574,19 +591,6 @@ pub mod kc_driver {
         }
     }
 
-    // Where a procedural macro's transformer is built, and on what runtime
-    // (C447): beside the database, `DB.phase1/`, where there is one, so that
-    // a transformer built once is built no more; else a directory of this
-    // run's own, taken away at its end. The runtime the shared one
-    // (`libkayak_kcrt.so`) where it is beside the static one.
-    pub enum Phase1At {
-        Phase1At(Str, Str),
-    }
-
-    pub fn phase1_at(f0: Str, f1: Str) -> &'static Phase1At {
-        kayak_rt::heap_alloc(Phase1At::Phase1At(f0, f1))
-    }
-
     // A request's file's name in the database, of the fingerprint of what
     // it defines (`phase1-parts`): each transformer a file of its own, its
     // items kept, so that only a use's call is new at each use.
@@ -629,127 +633,143 @@ pub mod kc_driver {
     }
 
     // A phase-1 program (C447) loaded as a file of the database, named by
-    // its text's fingerprint, checked and built: its executable, and ``; or
-    // the answer that says why it is not, `!` and why.
-    pub fn phase1_built(d: Db, run: Runner, dir: Str, rt: Str, program: Str) -> Product_11_12<Str, Str> {
-        let name = phase1_name(program);
-        let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
-        let exe = string_append(dir, string_append(str_lit("/t"), name));
-        kc_load_file_x()(d, run, path, program);
-        let refused = kc_refusal()(db_get(d, run, key1(str_lit("checked"), path)));
-        if not(string_eq_p(refused, str_lit(""))) {
-            Product_11_12(exe, string_append(str_lit("!"), phase1_unplaced(refused)))
-        } else {
-            let built = build(d, run, path, exe, rt);
-            Product_11_12(exe, if string_eq_p(built, str_lit("")) {
-                str_lit("")
+    // its text's fingerprint, checked, and its image sealed in the code area
+    // (C454; was built, C447): once, kept by its name for every use after.
+    // The sealed image, and ``; or none, and the answer that says why,
+    // `!` and why.
+    pub enum P1 {
+        P1(List<RunImage>, Str),
+    }
+
+    pub fn p1(f0: List<RunImage>, f1: Str) -> &'static P1 {
+        kayak_rt::heap_alloc(P1::P1(f0, f1))
+    }
+
+    pub enum NamedSealed {
+        NamedSealed(Str, RunImage),
+    }
+
+    pub fn named_sealed(f0: Str, f1: RunImage) -> &'static NamedSealed {
+        kayak_rt::heap_alloc(NamedSealed::NamedSealed(f0, f1))
+    }
+
+    #[inline]
+    pub fn transformers() -> Ref<List<&'static NamedSealed>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSealed>>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<&'static kc_driver::NamedSealed>())
+        })
+    }
+
+    pub fn sealed_named(mut ns: List<&'static NamedSealed>, mut name: Str) -> List<RunImage> {
+        loop {
+            if null_p(ns) {
+                return nil::<&'static kc_native::RunImage>();
+            } else if {
+                let tagcase_ = car(ns);
+                match *tagcase_ {
+                    NamedSealed::NamedSealed(n, s) => {
+                        string_eq_p(n, name)
+                    }
+                }
+            } {
+                let tagcase_ = car(ns);
+                match *tagcase_ {
+                    NamedSealed::NamedSealed(n, s) => {
+                        return kayak_rt::heap_cons(s, kayak_rt::nil());
+                    }
+                }
             } else {
-                string_append(str_lit("!kc: the transformer's build: "), built)
-            })
+                ns = cdr(ns);
+                continue;
+            }
         }
     }
 
-    // A phase-1 program's run: given a use (`--apply`, the tag and the use's
-    // text on its standard input, C448), or not. Its answer, `=` and the value
-    // of its last line as `write` writes it (`#u` of none), or `!` and why
-    // (`evaluation failed: ` taken off).
-    pub fn phase1_ran(exe: Str, apply: bool, input: Str) -> Str {
-        let tagcase_ = process_start(strings_at_io(if apply {
-            kayak_rt::heap_cons(exe, kayak_rt::heap_cons(str_lit("--apply"), kayak_rt::nil()))
+    pub fn phase1_sealed(d: Db, run: Runner, program: Str) -> &'static P1 {
+        let name = phase1_name(program);
+        let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
+        let had = sealed_named(get(transformers()), name);
+        if not(null_p(had)) {
+            p1(had, str_lit(""))
         } else {
-            kayak_rt::heap_cons(exe, kayak_rt::nil())
-        }), str_lit(""));
-        let tag_ = kayak_rt::sum_tag(tagcase_);
-        if tag_ == const { kayak_rt::tag_hash("started") } {
-            let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            if apply {
-                let tagcase_ = process_write(p, input);
-                let tag_ = kayak_rt::sum_tag(tagcase_);
-                if tag_ == const { kayak_rt::tag_hash("done") } {
-                    let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                    ()
-                } else if tag_ == const { kayak_rt::tag_hash("failed") } {
-                    let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                    ()
-                } else { unreachable!() }
+            kc_load_file_x()(d, run, path, program);
+            let refused = kc_refusal()(db_get(d, run, key1(str_lit("checked"), path)));
+            if not(string_eq_p(refused, str_lit(""))) {
+                p1(nil::<&'static kc_native::RunImage>(), string_append(str_lit("!"), phase1_unplaced(refused)))
             } else {
-                ()
-            };
-            process_close_input(p);
-            let how = process_exit(p);
-            let last = last_line(lines_of(string_chars(process_output(p)), nil::<char>(), nil::<Str>()), str_lit(""));
-            let tagcase_ = how;
-            let tag_ = kayak_rt::sum_tag(tagcase_);
-            if tag_ == const { kayak_rt::tag_hash("exited") } {
-                let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                if _eq(c, int_lit(0)) {
-                    string_append(str_lit("="), if string_eq_p(last, str_lit("")) {
-                        str_lit("#u")
-                    } else {
-                        last
-                    })
-                } else if has_prefix_p(last, str_lit("evaluation failed: ")) {
-                    string_append(str_lit("!"), after_prefix(last, str_lit("evaluation failed: ")))
-                } else {
-                    string_append(str_lit("!the transformer's run: "), last)
-                }
-            } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
-                let g: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                str_lit("!the transformer's run was signalled")
-            } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
-                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                str_lit("!the transformer's run ended, how is not known")
-            } else { unreachable!() }
-        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
-            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            string_append(str_lit("!the transformer's run: cannot run "), string_append(exe, string_append(str_lit(": "), e.1)))
-        } else { unreachable!() }
+                let s = native_sealed()(asm_image()(string_append(x64_run_support()(native_routines()(x64_services())), db_get(d, run, key1(str_lit("asm"), path)))), the::<i64>(8388608i64));
+                set(transformers(), kayak_rt::heap_cons(named_sealed(name, s), get(transformers())));
+                p1(kayak_rt::heap_cons(s, kayak_rt::nil()), str_lit(""))
+            }
+        }
+    }
+
+    // A phase-1 program's run in process (C454): given a use (the tag and
+    // the use's text, as a built one's `--apply` reads them, C448), or not.
+    // Its answer, `=` and the value of its last line as `write` writes it
+    // (`#u` of none), or `!` and why.
+    pub fn phase1_ran(s: RunImage, apply: bool, input: Str) -> Str {
+        let m = native_call()(s, apply, input);
+        let last = last_line(lines_of(string_chars(native_output()()), nil::<char>(), nil::<Str>()), str_lit(""));
+        if string_eq_p(m, str_lit("")) {
+            string_append(str_lit("="), if string_eq_p(last, str_lit("")) {
+                str_lit("#u")
+            } else {
+                last
+            })
+        } else {
+            string_append(str_lit("!"), m)
+        }
     }
 
     // A procedural macro's transformer's request (C446), answered by kc
     // itself (C447): its phase-1 program (`phase1-parts`,
     // fx26/macros-phase1.kfx) a file of the database, its items queries,
-    // checked, compiled to native code and built, then run. A transformer's
-    // program (of `%define` and `%apply`) has kc's reader and
-    // `%phase1-apply` too (C448, phase1-read.kfx), and no call: it is built
-    // once, at the macro's definition, and each use is a run of it given
-    // the use. A use the reader does not read (`%phase1-unread`: a vector,
-    // say) is called as the engine calls it, the call a form of the
-    // program, built and run. The body of the query `phase1 REQUEST`
-    // (C449), which the expansion asks as it goes, so asked once; of the
-    // request's text alone (where it builds, and on what runtime, the run's
-    // side values, `phase1-dir` and `phase1-rt`, no reads).
-    pub fn phase1_asked(d: Db, run: Runner, at: &'static Phase1At, request: Str) -> Str {
-        let tagcase_ = at;
-        match *tagcase_ {
-            Phase1At::Phase1At(dir, rt) => {
-                let ps = phase1_parts(request);
-                let defs = ps.0;
-                let r#use = phase1_use(request);
-                let style = r#use.0;
-                if string_eq_p(defs, str_lit("")) {
-                    str_lit("!a malformed transformer request")
-                } else {
-                    let program = if string_eq_p(style, str_lit("")) {
-                        defs
-                    } else {
-                        string_append(defs, string_append(phase1_reader(), phase1_applier(style)))
-                    };
-                    let b = phase1_built(d, run, dir, rt, program);
-                    if not(string_eq_p(b.1, str_lit(""))) {
-                        b.1
+    // checked, compiled to native code, and its image sealed in the code
+    // area once (C454; it was built, an executable, and run as a process,
+    // C447). A transformer's program (of `%define` and `%apply`) has kc's
+    // reader and `%phase1-apply` too (C448, phase1-read.kfx), and no call:
+    // it is sealed once, at the macro's definition, and each use is a call
+    // of it in process given the use. A use the reader does not read
+    // (`%phase1-unread`: a vector, say) is called as the engine calls it,
+    // the call a form of the program, sealed and run. The body of the
+    // query `phase1 REQUEST` (C449), which the expansion asks as it goes,
+    // so asked once; of the request's text alone.
+    pub fn phase1_asked(d: Db, run: Runner, request: Str) -> Str {
+        let ps = phase1_parts(request);
+        let defs = ps.0;
+        let r#use = phase1_use(request);
+        let style = r#use.0;
+        if string_eq_p(defs, str_lit("")) {
+            str_lit("!a malformed transformer request")
+        } else {
+            let program = if string_eq_p(style, str_lit("")) {
+                defs
+            } else {
+                string_append(defs, string_append(phase1_reader(), phase1_applier(style)))
+            };
+            let tagcase_ = phase1_sealed(d, run, program);
+            match *tagcase_ {
+                P1::P1(ss, why) => {
+                    if null_p(ss) {
+                        why
                     } else if string_eq_p(r#use.2, str_lit("")) {
-                        phase1_ran(b.0, false, str_lit(""))
+                        phase1_ran(car(ss), false, str_lit(""))
                     } else {
-                        let given = phase1_ran(b.0, true, string_append(r#use.1, string_append(str_lit("\n"), r#use.2)));
+                        let given = phase1_ran(car(ss), true, string_append(r#use.1, string_append(str_lit("\n"), r#use.2)));
                         if not(string_eq_p(given, str_lit("=%phase1-unread"))) {
                             given
                         } else {
-                            let b2 = phase1_built(d, run, dir, rt, string_append(program, ps.1));
-                            if string_eq_p(b2.1, str_lit("")) {
-                                phase1_ran(b2.0, false, str_lit(""))
-                            } else {
-                                b2.1
+                            let tagcase_ = phase1_sealed(d, run, string_append(program, ps.1));
+                            match *tagcase_ {
+                                P1::P1(ss2, why2) => {
+                                    if null_p(ss2) {
+                                        why2
+                                    } else {
+                                        phase1_ran(car(ss2), false, str_lit(""))
+                                    }
+                                }
                             }
                         }
                     }
@@ -816,7 +836,7 @@ pub mod kc_driver {
         } else if string_eq_p(q, str_lit("wforsyntax")) {
             q_wforsyntax()(d, &kc_run, a, b)
         } else if string_eq_p(q, str_lit("phase1")) {
-            phase1_asked(d, &kc_run, phase1_at(db_side(d, str_lit("phase1-dir")), db_side(d, str_lit("phase1-rt"))), a)
+            phase1_asked(d, &kc_run, a)
         } else {
             error(string_append(str_lit("kc: no query "), key_text(k)));
             str_lit("")
@@ -914,88 +934,11 @@ pub mod kc_driver {
     // it is made from (`objects`), so that an object made once is made no
     // more; the program linked only when its objects, or the runtime, are not
     // those it was last linked of (`EXE.objects` says which).
-
-    // Where this run builds transformers (`phase1-at`): `DB.phase1`, or
-    // `/tmp/kc-phase1-PID`, PID this process's.
-    pub fn phase1_dir(dbp: Str) -> Str {
-        if not(string_eq_p(dbp, str_lit(""))) {
-            string_append(dbp, str_lit(".phase1"))
-        } else {
-            let tagcase_ = read_symlink(str_lit("/proc/self"));
-            let tag_ = kayak_rt::sum_tag(tagcase_);
-            if tag_ == const { kayak_rt::tag_hash("target") } {
-                let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                string_append(str_lit("/tmp/kc-phase1-"), t)
-            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
-                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                str_lit("/tmp/kc-phase1")
-            } else { unreachable!() }
-        }
-    }
-
-    /// Of `/tmp`'s entries, each `kc-phase1-PID` of a process that is no
-    /// more (one a `not yet` ended, which does not reach `phase1-done`).
-    pub fn phase1_orphans(mut fs: List<Str>, mut acc: List<Str>) -> List<Str> {
-        loop {
-            if null_p(fs) {
-                return acc;
-            } else {
-                let f = car(fs);
-                (fs, acc) = (cdr(fs), if (has_prefix_p(f, str_lit("kc-phase1-")) && null_p(listed(string_append(str_lit("/proc/"), after_prefix(f, str_lit("kc-phase1-")))))) {
-                    kayak_rt::heap_cons(string_append(str_lit("/tmp/"), f), acc)
-                } else {
-                    acc
-                });
-                continue;
-            }
-        }
-    }
-
-    // Where a transformer is built, and on what runtime, given the `phase1`
-    // query's body (C449) as the database's side values, which no query
-    // records as read: the answer is of the request alone. Put where they
-    // differ only, so that a run that changes nothing writes nothing.
-    pub fn phase1_sides_x(d: Db, at: &'static Phase1At) -> () {
-        let tagcase_ = at;
-        match *tagcase_ {
-            Phase1At::Phase1At(dir, rt) => {
-                if string_eq_p(db_side(d, str_lit("phase1-dir")), dir) {
-                    ()
-                } else {
-                    db_side_put_x(d, str_lit("phase1-dir"), dir)
-                };
-                if string_eq_p(db_side(d, str_lit("phase1-rt")), rt) {
-                    ()
-                } else {
-                    db_side_put_x(d, str_lit("phase1-rt"), rt)
-                }
-            }
-        }
-    }
-
-    // This run's own transformers' directory, if it made one, taken away; and
-    // any another run left that ended without taking its own away.
-    pub fn phase1_done(dbp: Str) -> () {
-        if (not(string_eq_p(dbp, str_lit(""))) || null_p(listed(phase1_dir(dbp)))) {
-            ()
-        } else {
-            run_command(kayak_rt::heap_cons(str_lit("rm"), kayak_rt::heap_cons(str_lit("-rf"), kayak_rt::heap_cons(phase1_dir(dbp), phase1_orphans(listed(str_lit("/tmp")), nil::<Str>())))), str_lit(""));
-            ()
-        }
-    }
-
     /// `what` (`check`, `asm`, `rust`, `build`) of `file`, its output to
     /// `out`: the file read, its forms set (`kc-load-file!`), checked, and, if
     /// it passes, its code asked for, or built (on the runtime `rt`).
-    pub fn request(d: Db, at: &'static Phase1At, what: Str, file: Str, out: Str) -> &'static Answer {
-        let (before, rt) = (db_runs(d), {
-            let tagcase_ = at;
-            match *tagcase_ {
-                Phase1At::Phase1At(dir, r) => {
-                    r
-                }
-            }
-        });
+    pub fn request(d: Db, at: Str, what: Str, file: Str, out: Str) -> &'static Answer {
+        let (before, rt) = (db_runs(d), at);
         kc_load_file_x()(d, &kc_run, file, read_text(file));
         let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), file)));
         if (string_eq_p(refused, str_lit("")) && not(string_eq_p(what, str_lit("check"))) && not(string_eq_p(what, str_lit("build")))) {
@@ -1036,7 +979,7 @@ pub mod kc_driver {
     }
 
     /// Requests until the input ends, or `quit`.
-    pub fn serve(mut d: Db, mut dbp: Str, mut stats: bool, mut at: &'static Phase1At) -> Int {
+    pub fn serve(mut d: Db, mut dbp: Str, mut stats: bool, mut at: Str) -> Int {
         loop {
             let tagcase_ = read_line();
             let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -1130,12 +1073,11 @@ pub mod kc_driver {
                     } else { unreachable!() }
                 };
                 let shared = string_append(directory_of(rt), str_lit("/libkayak_kcrt.so"));
-                let at = phase1_at(phase1_dir(dbp), if exists_p(shared) {
+                let at = if exists_p(shared) {
                     shared
                 } else {
                     rt
-                });
-                let sided = phase1_sides_x(d, at);
+                };
                 let status = if null_p(rest) {
                     match fail_with(str_lit("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run [--heap WORDS] FILE | serve)"), int_lit(2)) {}
                 } else if string_eq_p(car(rest), str_lit("serve")) {
@@ -1196,6 +1138,17 @@ pub mod kc_driver {
                             save_db(d, dbp)
                         };
                         let m = native_run()(image, words);
+                        {
+                            let tagcase_ = write_out(native_output()());
+                            let tag_ = kayak_rt::sum_tag(tagcase_);
+                            if tag_ == const { kayak_rt::tag_hash("done") } {
+                                let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+                                ()
+                            } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+                                let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+                                ()
+                            } else { unreachable!() }
+                        };
                         if string_eq_p(m, str_lit("")) {
                             int_lit(0)
                         } else {
@@ -1307,7 +1260,6 @@ pub mod kc_driver {
                         }
                     }
                 };
-                phase1_done(dbp);
                 status
             }
         }

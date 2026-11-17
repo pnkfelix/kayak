@@ -984,8 +984,10 @@
        next free word, kept there when `kc_entry` returns (`kc_heap_next`);
        `kc_call2`, which calls a procedure of kc's code on two arguments, the
        heap in `%r12` and `%r13` as kc's code has it, and keeps the heap's
-       next word after; and `kc_apply_entry`, `%phase1-apply`'s address if the
-       program defines it (a transformer's, kayak-kcrt's `--apply`), else 0.
+       next word after; and `kc_apply_address`, which gives `%phase1-apply`'s
+       address if the program defines it (a transformer's, kayak-kcrt's
+       `--apply`), else 0: made relative to the code, so that an image needs
+       no absolute address (C454; it was a word, `kc_apply_entry`).
 
        And the collector's (C453): `kc_gc`, its block, as kcrt-core's
        `gc.rs` reads it (the space's first word and its end, the stack's
@@ -1007,8 +1009,9 @@
                   "    leaq kc_cells_hi(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 28(%rcx)\n    ret\n"
                   "    .globl kc_gc_call\nkc_gc_call:\n    leaq 8(%rsp), %rsi\n    leaq kc_gc(%rip), %rdx\n    subq 208(%r15), %rdx\n    subq $4, %rdx\n"
                   "    subq $8, %rsp\n    call kc_collect\n    addq $8, %rsp\n    movq %rax, %r12\n    movq %rdx, %r13\n    ret\n"
-                  "    .data\n    .p2align 3\n    .globl kc_apply_entry\nkc_apply_entry:\n    .quad "
-                  (if applies (x64-proc-symbol "%phase1-apply") "0") "\n"
+                  "    .text\n    .globl kc_apply_address\nkc_apply_address:\n"
+                  (if applies (string-append "    leaq " (string-append (x64-proc-symbol "%phase1-apply") "(%rip), %rax\n")) "    movl $0, %eax\n")
+                  "    ret\n"
                   "    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"
                   "    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n    movq %rsp, 12(%rcx)\n"
                   "    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"
@@ -1019,7 +1022,8 @@
     (define x64-services strings
       (list "kc_show" "kc_fail" "kc_intern" "kc_string_eq" "kc_string_lt" "kc_string_append"
             "kc_substring" "kc_symbol_to_string" "kc_is_string" "kc_is_symbol" "kc_is_procedure"
-            "kc_is_kind" "kc_append" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_collect"))
+            "kc_is_kind" "kc_append" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_collect"
+            "kc_given" "kc_gc_reset"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,
@@ -1057,7 +1061,13 @@
      in `%r15`, the heap's array in `%rdi`, its first element's address
      less the tag 4): the array's words 0 and 1 made its own address and
      the code's; the heap from word 16 to the length KFX put in word 3; its
-     stack pointer to word 4; then `kc_entry`, and 0 back.
+     stack pointer to word 4; the collector's spaces of a run before
+     dropped (C454, `kc_gc_reset`: the run's region, the array's heap
+     used again from its start); then `kc_entry`, and 0 back. Where KFX
+     put 1 in word 5, a transformer's run (C454, as a built one's
+     `--apply`): after `kc_entry`, `%phase1-apply` called (`kc_call2`) on
+     the use and the tag KFX gave (`kc_given`), its answer written
+     (`kc_show`, whose lines KFX takes).
 
      The runtime (C452) is kayak-kcrt-core's, a built program's: `addrs`,
      each routine's address in order (`x64-services`), a table
@@ -1074,8 +1084,14 @@
         (string-list-append
           (list "    .text\nkc_native_entry:\n    pushq %rbp\n    leaq -4(%rdi), %rax\n    movq %rax, 0(%rax)\n"
                 "    leaq kc_native_entry(%rip), %rcx\n    movq %rcx, 8(%rax)\n    movq 24(%rax), %rsi\n    shlq $3, %rsi\n"
-                "    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %r15, %rdx\n    movq %rsp, 32(%rax)\n    call kc_entry\n"
-                "    movl $0, %eax\n    popq %rbp\n    ret\n"
+                "    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %rsp, 32(%rax)\n    pushq %rdi\n    pushq %rsi\n    call kc_gc_reset\n"
+                "    popq %rsi\n    popq %rdi\n    movq %r15, %rdx\n    call kc_entry\n"
+                "    movq kc_native_entry-16(%rip), %rcx\n    cmpq $0, 36(%rcx)\n    je .Lkc_native_done\n"
+                "    call kc_apply_address\n    testq %rax, %rax\n    jne .Lkc_native_apply\n    movl $9, %edi\n    call kc_fail\n"
+                ".Lkc_native_apply:\n    subq $16, %rsp\n    movq %rax, 0(%rsp)\n    movl $0, %edi\n    call kc_given\n    movq %rax, 8(%rsp)\n"
+                "    movl $1, %edi\n    call kc_given\n    movq %rax, %rdx\n    movq 8(%rsp), %rsi\n    movq 0(%rsp), %rdi\n    movl $0, %ecx\n    movq %r15, %r8\n"
+                "    call kc_call2\n    movq %rax, %rdi\n    call kc_show\n    addq $16, %rsp\n"
+                ".Lkc_native_done:\n    movl $0, %eax\n    popq %rbp\n    ret\n"
                 "kc_failed:\n    movq kc_native_entry-16(%rip), %rcx\n    movq 28(%rcx), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"
                 (x64-routine-stubs x64-services 0 nil)
                 "    .data\n    .p2align 3\nkc_routines:\n" (x64-quads addrs nil) "    .text\n"))))

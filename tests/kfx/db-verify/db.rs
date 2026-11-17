@@ -53,7 +53,9 @@ use super::*;
 // And a body may build and run a program (C449): a procedural macro's
 // transformer's answer, `phase1 REQUEST`, a query whose body checks,
 // compiles, builds and runs the transformer, as deterministic as any of
-// its key, the request's text, its files named by what they hold.
+// its key, the request's text, its files named by what they hold. Since
+// C454 it runs it in process: its image sealed in the code area and
+// called, through its runtime's syscalls.
 
 // A value as a node keeps it (C417): its text; where it is in the payload
 // read with the database, its offset and length, and whether it is escaped

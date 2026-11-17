@@ -66,6 +66,14 @@ pub(crate) fn kept_pair(at: u64) {
     KEPT.with(|k| k.borrow_mut().push(at));
 }
 
+/// The spaces this collector made, and the pairs kept, dropped (C454): a
+/// run in process starts again from the space it is given, nothing of the
+/// run before reachable.
+pub(crate) fn reset() {
+    SPACES.with(|s| s.borrow_mut().clear());
+    KEPT.with(|k| k.borrow_mut().clear());
+}
+
 /// Collections so far in this thread.
 pub fn collections() -> u64 {
     COLLECTIONS.with(|c| c.get())

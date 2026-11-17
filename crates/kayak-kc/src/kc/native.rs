@@ -27,6 +27,7 @@ use super::*;
 // 1  the image's address        (the code's, at entry)
 // 3  the array's length         (KFX's)
 // 4  the entry's stack pointer  (the code's, for a failure)
+// 5  1 for a transformer's run  (KFX's, C454)
 // 16 on   the heap
 
 pub fn _pctsyscall_available_colonkc_routine() -> bool {
@@ -49,12 +50,32 @@ pub fn kc_failure() -> Str {
     kayak_rt::syscall0(str_lit("syscall kc-failure (\"kayak:kc-failure/1\")"), str_lit("kayak:kc-failure/1"), str_lit("(subr (io sys) () string)"))
 }
 
+pub fn _pctsyscall_available_colonkc_give() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall kc-give (\"kayak:kc-give/1\")"), str_lit("kayak:kc-give/1"), str_lit("(subr (io sys) (string) unit)"));
+    true
+}
+
+pub fn kc_give(x1: Str) -> () {
+    _pctsyscall_available_colonkc_give();
+    kayak_rt::syscall1(str_lit("syscall kc-give (\"kayak:kc-give/1\")"), str_lit("kayak:kc-give/1"), str_lit("(subr (io sys) (string) unit)"), x1)
+}
+
+pub fn _pctsyscall_available_colonkc_output() -> bool {
+    kayak_rt::syscall_require(str_lit("syscall kc-output (\"kayak:kc-output/1\")"), str_lit("kayak:kc-output/1"), str_lit("(subr (io sys) () string)"));
+    true
+}
+
+pub fn kc_output() -> Str {
+    _pctsyscall_available_colonkc_output();
+    kayak_rt::syscall0(str_lit("syscall kc-output (\"kayak:kc-output/1\")"), str_lit("kayak:kc-output/1"), str_lit("(subr (io sys) () string)"))
+}
+
 pub mod kc_native {
     use super::*;
 
-    pub type Heap = FlatArray<i64>;
+    pub type HeapArray = FlatArray<i64>;
 
-    pub type Code = &'static Bloblet<(std::cell::Cell<Heap>,)>;
+    pub type Code = &'static Bloblet<(std::cell::Cell<HeapArray>,)>;
 
     pub fn bytes_put_x(mut b: Code, mut at: Int, mut bs: List<i64>) -> () {
         loop {
@@ -84,18 +105,119 @@ pub mod kc_native {
         }
     }
 
-    // `native-run IMAGE WORDS` (C451): the image run in process, its heap
-    // `WORDS` words; ``, or the words of the failure it ended in.
-    pub fn native_run(image: List<i64>, words: i64) -> Str {
-        let h = the::<Heap>(make_flatarray_i64(words, 0i64));
-        let b = the::<Code>(make_bloblet(i64_to_int(size(image)), (std::cell::Cell::new(h),)));
-        flatarray_set_i64_x(h, 3i64, words);
-        bytes_put_x(b, int_lit(0), image);
-        if i64_eq((kayak_rt::native_procedure1::<FlatArray<i64>, i64>(seal_code(b)))(h), 0i64) {
-            str_lit("")
-        } else {
-            kc_failure()
+    // The heaps, by their words (C454): one array for each size, every run
+    // of that size given it again from its start, what the run before left
+    // there dropped whole (its region; the collector's own spaces dropped by
+    // the code, `kc_gc_reset`).
+    pub enum Sized {
+        Sized(i64, HeapArray),
+    }
+
+    pub fn sized(f0: i64, f1: HeapArray) -> &'static Sized {
+        kayak_rt::heap_alloc(Sized::Sized(f0, f1))
+    }
+
+    #[inline]
+    pub fn heaps() -> Ref<List<&'static Sized>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<&'static Sized>>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<&'static kc_native::Sized>())
+        })
+    }
+
+    pub fn heap_in(mut hs: List<&'static Sized>, mut words: i64) -> List<HeapArray> {
+        loop {
+            if null_p(hs) {
+                return nil::<FlatArray<i64>>();
+            } else if {
+                let tagcase_ = car(hs);
+                match *tagcase_ {
+                    Sized::Sized(w, h) => {
+                        i64_eq(w, words)
+                    }
+                }
+            } {
+                let tagcase_ = car(hs);
+                match *tagcase_ {
+                    Sized::Sized(w, h) => {
+                        return kayak_rt::heap_cons(h, kayak_rt::nil());
+                    }
+                }
+            } else {
+                hs = cdr(hs);
+                continue;
+            }
         }
+    }
+
+    pub fn heap_of(words: i64) -> HeapArray {
+        let had = heap_in(get(heaps()), words);
+        if null_p(had) {
+            let h = the::<HeapArray>(make_flatarray_i64(words, 0i64));
+            flatarray_set_i64_x(h, 3i64, words);
+            set(heaps(), kayak_rt::heap_cons(sized(words, h), get(heaps())));
+            h
+        } else {
+            car(had)
+        }
+    }
+
+    // An image sealed in the code area (C451), once, its heap the array of
+    // `words` words: a native procedure to call as often as wanted (C454).
+    pub enum RunImage {
+        RunImage(&'static dyn Fn(HeapArray) -> i64, HeapArray),
+    }
+
+    pub fn run_image(f0: &'static dyn Fn(HeapArray) -> i64, f1: HeapArray) -> &'static RunImage {
+        kayak_rt::heap_alloc(RunImage::RunImage(f0, f1))
+    }
+
+    pub fn native_sealed(image: List<i64>, words: i64) -> &'static RunImage {
+        let h = heap_of(words);
+        let b = the::<Code>(make_bloblet(i64_to_int(size(image)), (std::cell::Cell::new(h),)));
+        bytes_put_x(b, int_lit(0), image);
+        run_image(kayak_rt::native_procedure1::<FlatArray<i64>, i64>(seal_code(b)), h)
+    }
+
+    // `native-call S APPLY INPUT` (C451, C454): the sealed image run, its
+    // program's definitions and expressions; and, if `APPLY`, its
+    // transformer called on `INPUT` (its expansion's tag, a line, and the
+    // use), as a built one's `--apply`. ``, or the words of the failure it
+    // ended in. What it wrote, `native-output`.
+    pub fn native_call(s: &'static RunImage, apply: bool, input: Str) -> Str {
+        let tagcase_ = s;
+        match *tagcase_ {
+            RunImage::RunImage(f, h) => {
+                flatarray_set_i64_x(h, 5i64, if apply {
+                    1i64
+                } else {
+                    0i64
+                });
+                if apply {
+                    kc_give(input)
+                } else {
+                    ()
+                };
+                if i64_eq(f(h), 0i64) {
+                    str_lit("")
+                } else {
+                    kc_failure()
+                }
+            }
+        }
+    }
+
+    // What the code wrote, each value's line, taken.
+    #[inline]
+    pub fn native_output() -> Str {
+        kc_output()
+    }
+
+    // `native-run IMAGE WORDS` (C451): the image sealed and run once, its
+    // heap `WORDS` words; ``, or the words of the failure it ended in.
+    #[inline]
+    pub fn native_run(image: List<i64>, words: i64) -> Str {
+        native_call(native_sealed(image, words), false, str_lit(""))
     }
 }
 

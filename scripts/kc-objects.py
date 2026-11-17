@@ -112,8 +112,9 @@ def compare(path):
 def main():
     verbose = "-v" in sys.argv[1:]
     given = [a for a in sys.argv[1:] if a != "-v"]
-    files = given or sorted(glob.glob(os.path.join(WORK, "*.o.d", "*.s")) + glob.glob(os.path.join(WORK, "*.phase1", "*.o.d", "*.s"))
-                            + glob.glob(os.path.join(ROOT, "target", "kc-steps.db.phase1", "*.o.d", "*.s")))
+    # The step programs' objects; a transformer's program is no longer built
+    # (C454: sealed in process), so it has none.
+    files = given or sorted(glob.glob(os.path.join(WORK, "*.o.d", "*.s")))
     if not files:
         sys.exit("kc-objects: no assembly under %s: run scripts/kc-steps.py first" % WORK)
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as ex:

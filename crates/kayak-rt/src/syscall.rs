@@ -210,6 +210,22 @@ const SYSCALLS: &[Syscall] = &[
         canonical: "(subr (io sys) () string)",
         run: |_| crate::leak_string(kayak_kcrt_core::failure_taken()).word(),
     },
+    // A transformer's input, for its run in process (C454): its tag, a
+    // line, and its use, as a built one's `--apply` reads them.
+    Syscall {
+        host: "kayak:kc-give/1",
+        canonical: "(subr (io sys) (string) unit)",
+        run: |a| {
+            kayak_kcrt_core::give(crate::Str::of_word(a[0]).as_str());
+            ().word()
+        },
+    },
+    // What kc's code wrote in process (C454), taken: each value's line.
+    Syscall {
+        host: "kayak:kc-output/1",
+        canonical: "(subr (io sys) () string)",
+        run: |_| crate::leak_string(kayak_kcrt_core::output_taken()).word(),
+    },
     Syscall {
         host: "kayak:last-sealed/1",
         canonical: "(subr (io sys) () int)",

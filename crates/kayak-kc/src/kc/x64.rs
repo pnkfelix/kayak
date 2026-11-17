@@ -1640,8 +1640,10 @@ pub mod kc_x64 {
     // next free word, kept there when `kc_entry` returns (`kc_heap_next`);
     // `kc_call2`, which calls a procedure of kc's code on two arguments, the
     // heap in `%r12` and `%r13` as kc's code has it, and keeps the heap's
-    // next word after; and `kc_apply_entry`, `%phase1-apply`'s address if the
-    // program defines it (a transformer's, kayak-kcrt's `--apply`), else 0.
+    // next word after; and `kc_apply_address`, which gives `%phase1-apply`'s
+    // address if the program defines it (a transformer's, kayak-kcrt's
+    // `--apply`), else 0: made relative to the code, so that an image needs
+    // no absolute address (C454; it was a word, `kc_apply_entry`).
     //
     // And the collector's (C453): `kc_gc`, its block, as kcrt-core's
     // `gc.rs` reads it (the space's first word and its end, the stack's
@@ -1653,11 +1655,11 @@ pub mod kc_x64 {
     // the caller's stack pointer and the block, the heap it gives back
     // made `%r12` and `%r13`.
     pub fn x64_entry_support(applies: bool) -> Str {
-        string_list_append(kayak_rt::heap_cons(str_lit("    .bss\n    .p2align 3\n    .globl kc_heap_next\nkc_heap_next:\n    .quad 0\n"), kayak_rt::heap_cons(str_lit("kc_gc:\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n"), kayak_rt::heap_cons(str_lit("    .text\nkc_gc_init:\n    leaq 8(%rsp), %rax\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"), kayak_rt::heap_cons(str_lit("    movq %r12, -4(%rcx)\n    movq %r13, 4(%rcx)\n    movq %rax, 12(%rcx)\n"), kayak_rt::heap_cons(str_lit("    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 20(%rcx)\n"), kayak_rt::heap_cons(str_lit("    leaq kc_cells_hi(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 28(%rcx)\n    ret\n"), kayak_rt::heap_cons(str_lit("    .globl kc_gc_call\nkc_gc_call:\n    leaq 8(%rsp), %rsi\n    leaq kc_gc(%rip), %rdx\n    subq 208(%r15), %rdx\n    subq $4, %rdx\n"), kayak_rt::heap_cons(str_lit("    subq $8, %rsp\n    call kc_collect\n    addq $8, %rsp\n    movq %rax, %r12\n    movq %rdx, %r13\n    ret\n"), kayak_rt::heap_cons(str_lit("    .data\n    .p2align 3\n    .globl kc_apply_entry\nkc_apply_entry:\n    .quad "), kayak_rt::heap_cons(if applies {
-            x64_proc_symbol(str_lit("%phase1-apply"))
+        string_list_append(kayak_rt::heap_cons(str_lit("    .bss\n    .p2align 3\n    .globl kc_heap_next\nkc_heap_next:\n    .quad 0\n"), kayak_rt::heap_cons(str_lit("kc_gc:\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n"), kayak_rt::heap_cons(str_lit("    .text\nkc_gc_init:\n    leaq 8(%rsp), %rax\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"), kayak_rt::heap_cons(str_lit("    movq %r12, -4(%rcx)\n    movq %r13, 4(%rcx)\n    movq %rax, 12(%rcx)\n"), kayak_rt::heap_cons(str_lit("    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 20(%rcx)\n"), kayak_rt::heap_cons(str_lit("    leaq kc_cells_hi(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 28(%rcx)\n    ret\n"), kayak_rt::heap_cons(str_lit("    .globl kc_gc_call\nkc_gc_call:\n    leaq 8(%rsp), %rsi\n    leaq kc_gc(%rip), %rdx\n    subq 208(%r15), %rdx\n    subq $4, %rdx\n"), kayak_rt::heap_cons(str_lit("    subq $8, %rsp\n    call kc_collect\n    addq $8, %rsp\n    movq %rax, %r12\n    movq %rdx, %r13\n    ret\n"), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_apply_address\nkc_apply_address:\n"), kayak_rt::heap_cons(if applies {
+            string_append(str_lit("    leaq "), string_append(x64_proc_symbol(str_lit("%phase1-apply")), str_lit("(%rip), %rax\n")))
         } else {
-            str_lit("0")
-        }, kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"), kayak_rt::heap_cons(str_lit("    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n    movq %rsp, 12(%rcx)\n"), kayak_rt::heap_cons(str_lit("    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"), kayak_rt::heap_cons(str_lit("    call *%rax\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%r12"), str_lit("kc_heap_next")), kayak_rt::heap_cons(str_lit("    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"), kayak_rt::nil()))))))))))))))))))
+            str_lit("    movl $0, %eax\n")
+        }, kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"), kayak_rt::heap_cons(str_lit("    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n    movq %rsp, 12(%rcx)\n"), kayak_rt::heap_cons(str_lit("    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"), kayak_rt::heap_cons(str_lit("    call *%rax\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%r12"), str_lit("kc_heap_next")), kayak_rt::heap_cons(str_lit("    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"), kayak_rt::nil()))))))))))))))))))
     }
 
     // The runtime's procedures kc's code calls, in order: in process, each
@@ -1666,7 +1668,7 @@ pub mod kc_x64 {
     pub fn x64_services() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("kc_show"), kayak_rt::heap_cons(str_lit("kc_fail"), kayak_rt::heap_cons(str_lit("kc_intern"), kayak_rt::heap_cons(str_lit("kc_string_eq"), kayak_rt::heap_cons(str_lit("kc_string_lt"), kayak_rt::heap_cons(str_lit("kc_string_append"), kayak_rt::heap_cons(str_lit("kc_substring"), kayak_rt::heap_cons(str_lit("kc_symbol_to_string"), kayak_rt::heap_cons(str_lit("kc_is_string"), kayak_rt::heap_cons(str_lit("kc_is_symbol"), kayak_rt::heap_cons(str_lit("kc_is_procedure"), kayak_rt::heap_cons(str_lit("kc_is_kind"), kayak_rt::heap_cons(str_lit("kc_append"), kayak_rt::heap_cons(str_lit("kc_array_index_fail"), kayak_rt::heap_cons(str_lit("kc_make_array_fail"), kayak_rt::heap_cons(str_lit("kc_string_index_fail"), kayak_rt::heap_cons(str_lit("kc_collect"), kayak_rt::nil())))))))))))))))))
+            kayak_rt::heap_cons(str_lit("kc_show"), kayak_rt::heap_cons(str_lit("kc_fail"), kayak_rt::heap_cons(str_lit("kc_intern"), kayak_rt::heap_cons(str_lit("kc_string_eq"), kayak_rt::heap_cons(str_lit("kc_string_lt"), kayak_rt::heap_cons(str_lit("kc_string_append"), kayak_rt::heap_cons(str_lit("kc_substring"), kayak_rt::heap_cons(str_lit("kc_symbol_to_string"), kayak_rt::heap_cons(str_lit("kc_is_string"), kayak_rt::heap_cons(str_lit("kc_is_symbol"), kayak_rt::heap_cons(str_lit("kc_is_procedure"), kayak_rt::heap_cons(str_lit("kc_is_kind"), kayak_rt::heap_cons(str_lit("kc_append"), kayak_rt::heap_cons(str_lit("kc_array_index_fail"), kayak_rt::heap_cons(str_lit("kc_make_array_fail"), kayak_rt::heap_cons(str_lit("kc_string_index_fail"), kayak_rt::heap_cons(str_lit("kc_collect"), kayak_rt::heap_cons(str_lit("kc_given"), kayak_rt::heap_cons(str_lit("kc_gc_reset"), kayak_rt::nil())))))))))))))))))))
         })
     }
 
@@ -1726,7 +1728,13 @@ pub mod kc_x64 {
     // in `%r15`, the heap's array in `%rdi`, its first element's address
     // less the tag 4): the array's words 0 and 1 made its own address and
     // the code's; the heap from word 16 to the length KFX put in word 3; its
-    // stack pointer to word 4; then `kc_entry`, and 0 back.
+    // stack pointer to word 4; the collector's spaces of a run before
+    // dropped (C454, `kc_gc_reset`: the run's region, the array's heap
+    // used again from its start); then `kc_entry`, and 0 back. Where KFX
+    // put 1 in word 5, a transformer's run (C454, as a built one's
+    // `--apply`): after `kc_entry`, `%phase1-apply` called (`kc_call2`) on
+    // the use and the tag KFX gave (`kc_given`), its answer written
+    // (`kc_show`, whose lines KFX takes).
     //
     // The runtime (C452) is kayak-kcrt-core's, a built program's: `addrs`,
     // each routine's address in order (`x64-services`), a table
@@ -1738,9 +1746,8 @@ pub mod kc_x64 {
     // convention's failure; kayak-jit's traps end the program a KFX error,
     // which nothing of `kc run`'s could catch, an `attempt` doing no
     // output).
-    #[inline]
     pub fn x64_run_support(addrs: List<i64>) -> Str {
-        string_list_append(kayak_rt::heap_cons(str_lit("    .text\nkc_native_entry:\n    pushq %rbp\n    leaq -4(%rdi), %rax\n    movq %rax, 0(%rax)\n"), kayak_rt::heap_cons(str_lit("    leaq kc_native_entry(%rip), %rcx\n    movq %rcx, 8(%rax)\n    movq 24(%rax), %rsi\n    shlq $3, %rsi\n"), kayak_rt::heap_cons(str_lit("    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %r15, %rdx\n    movq %rsp, 32(%rax)\n    call kc_entry\n"), kayak_rt::heap_cons(str_lit("    movl $0, %eax\n    popq %rbp\n    ret\n"), kayak_rt::heap_cons(str_lit("kc_failed:\n    movq kc_native_entry-16(%rip), %rcx\n    movq 28(%rcx), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"), kayak_rt::heap_cons(x64_routine_stubs(x64_services(), 0i64, nil::<Str>()), kayak_rt::heap_cons(str_lit("    .data\n    .p2align 3\nkc_routines:\n"), kayak_rt::heap_cons(x64_quads(addrs, nil::<Str>()), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::nil()))))))))))
+        string_list_append(kayak_rt::heap_cons(str_lit("    .text\nkc_native_entry:\n    pushq %rbp\n    leaq -4(%rdi), %rax\n    movq %rax, 0(%rax)\n"), kayak_rt::heap_cons(str_lit("    leaq kc_native_entry(%rip), %rcx\n    movq %rcx, 8(%rax)\n    movq 24(%rax), %rsi\n    shlq $3, %rsi\n"), kayak_rt::heap_cons(str_lit("    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %rsp, 32(%rax)\n    pushq %rdi\n    pushq %rsi\n    call kc_gc_reset\n"), kayak_rt::heap_cons(str_lit("    popq %rsi\n    popq %rdi\n    movq %r15, %rdx\n    call kc_entry\n"), kayak_rt::heap_cons(str_lit("    movq kc_native_entry-16(%rip), %rcx\n    cmpq $0, 36(%rcx)\n    je .Lkc_native_done\n"), kayak_rt::heap_cons(str_lit("    call kc_apply_address\n    testq %rax, %rax\n    jne .Lkc_native_apply\n    movl $9, %edi\n    call kc_fail\n"), kayak_rt::heap_cons(str_lit(".Lkc_native_apply:\n    subq $16, %rsp\n    movq %rax, 0(%rsp)\n    movl $0, %edi\n    call kc_given\n    movq %rax, 8(%rsp)\n"), kayak_rt::heap_cons(str_lit("    movl $1, %edi\n    call kc_given\n    movq %rax, %rdx\n    movq 8(%rsp), %rsi\n    movq 0(%rsp), %rdi\n    movl $0, %ecx\n    movq %r15, %r8\n"), kayak_rt::heap_cons(str_lit("    call kc_call2\n    movq %rax, %rdi\n    call kc_show\n    addq $16, %rsp\n"), kayak_rt::heap_cons(str_lit(".Lkc_native_done:\n    movl $0, %eax\n    popq %rbp\n    ret\n"), kayak_rt::heap_cons(str_lit("kc_failed:\n    movq kc_native_entry-16(%rip), %rcx\n    movq 28(%rcx), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"), kayak_rt::heap_cons(x64_routine_stubs(x64_services(), 0i64, nil::<Str>()), kayak_rt::heap_cons(str_lit("    .data\n    .p2align 3\nkc_routines:\n"), kayak_rt::heap_cons(x64_quads(addrs, nil::<Str>()), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::nil()))))))))))))))))
     }
 
     // A global's cell: in `.bss`, `.globl`, so that a procedure in an object of

@@ -22,18 +22,21 @@
    1  the image's address        (the code's, at entry)
    3  the array's length         (KFX's)
    4  the entry's stack pointer  (the code's, for a failure)
+   5  1 for a transformer's run  (KFX's, C454)
    16 on   the heap"
 
 (define-syscall kc-routine "kayak:kc-routine/1" (subr (io sys) (string) int))
 (define-syscall kc-failure "kayak:kc-failure/1" (subr (io sys) () string))
+(define-syscall kc-give "kayak:kc-give/1" (subr (io sys) (string) unit))
+(define-syscall kc-output "kayak:kc-output/1" (subr (io sys) () string))
 
 (define kc-native
   (module
     (define-effect nrt (maxeff (read @globals) spin (read @io) (write @io) (alloc @io) (io sys)))
 
     (hide
-      (define-type heap (flatarrayof i64 @io))
-      (define-type code (bloblet (fields heap) @io))
+      (define-type heap-array (flatarrayof i64 @io))
+      (define-type code (bloblet (fields heap-array) @io))
 
       (define-rec
         (bytes-put! (subr nrt (code int (listof i64 acyclic)) unit)
@@ -51,15 +54,57 @@
                     (begin (error (string-append "kc run: kayak-rt has no routine " (car names))) nil)
                     (cons a (native-routines (cdr names)))))))))
 
-    "`native-run IMAGE WORDS` (C451): the image run in process, its heap
-     `WORDS` words; ``, or the words of the failure it ended in."
-    (define native-run (subr (maxeff nrt (io native)) ((listof i64 acyclic) i64) string)
+    "The heaps, by their words (C454): one array for each size, every run
+     of that size given it again from its start, what the run before left
+     there dropped whole (its region; the collector's own spaces dropped by
+     the code, `kc_gc_reset`)."
+    (hide
+      (define-datatype sized (sized i64 heap-array))
+      (define heaps (ref (listof sized acyclic) @io) (new nil))
+      (define-rec
+        (heap-in (subr nrt ((listof sized acyclic) i64) (listof heap-array acyclic))
+          (lambda (hs words)
+            (cond ((null? hs) nil)
+                  ((tagcase (car hs) (sized (w h) (i64= w words))) (tagcase (car hs) (sized (w h) (list h))))
+                  (else (heap-in (cdr hs) words))))))
+      (define heap-of (subr nrt (i64) heap-array)
+        (lambda (words)
+          (let ((had (heap-in (get heaps) words)))
+            (if (null? had)
+                (let ((h (the heap-array (make-flatarray-i64 words 0))))
+                  (begin (flatarray-set-i64! h 3 words) (set heaps (cons (sized words h) (get heaps))) h))
+                (car had))))))
+
+    "An image sealed in the code area (C451), once, its heap the array of
+     `words` words: a native procedure to call as often as wanted (C454)."
+    (define-datatype run-image (run-image (subr (conv native) nrt (heap-array) i64) heap-array))
+
+    (define native-sealed (subr (maxeff nrt (io native)) ((listof i64 acyclic) i64) run-image)
       (lambda (image words)
-        (let* ((h (the heap (make-flatarray-i64 words 0)))
+        (let* ((h (heap-of words))
                (b (the code (make-bloblet (i64->int (size image)) h))))
           (begin
-            (flatarray-set-i64! h 3 words)
             (bytes-put! b 0 image)
-            (if (i64= ((the (subr (conv native) nrt (heap) i64) (native-procedure (seal-code b))) h) 0)
-                ""
-                (kc-failure))))))))
+            (run-image (the (subr (conv native) nrt (heap-array) i64) (native-procedure (seal-code b))) h)))))
+
+    "`native-call S APPLY INPUT` (C451, C454): the sealed image run, its
+     program's definitions and expressions; and, if `APPLY`, its
+     transformer called on `INPUT` (its expansion's tag, a line, and the
+     use), as a built one's `--apply`. ``, or the words of the failure it
+     ended in. What it wrote, `native-output`."
+    (define native-call (subr (maxeff nrt (io native)) (run-image bool string) string)
+      (lambda (s apply input)
+        (tagcase s
+          (run-image (f h)
+            (begin
+              (flatarray-set-i64! h 5 (if apply 1 0))
+              (if apply (kc-give input) #u)
+              (if (i64= (f h) 0) "" (kc-failure)))))))
+
+    "What the code wrote, each value's line, taken."
+    (define native-output (subr nrt () string) (lambda () (kc-output)))
+
+    "`native-run IMAGE WORDS` (C451): the image sealed and run once, its
+     heap `WORDS` words; ``, or the words of the failure it ended in."
+    (define native-run (subr (maxeff nrt (io native)) ((listof i64 acyclic) i64) string)
+      (lambda (image words) (native-call (native-sealed image words) #f "")))))

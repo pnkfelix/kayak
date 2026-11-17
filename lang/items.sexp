@@ -596,6 +596,8 @@
 (syscall "kayak:string-utf8-length/1" "(subr pure (string) int)" kayak)
 (syscall "kayak:kc-routine/1" "(subr (io sys) (string) int)" kayak)
 (syscall "kayak:kc-failure/1" "(subr (io sys) () string)" kayak)
+(syscall "kayak:kc-give/1" "(subr (io sys) (string) unit)" kayak)
+(syscall "kayak:kc-output/1" "(subr (io sys) () string)" kayak)
 (syscall "kayak:last-sealed/1" "(subr (io sys) () int)" kayak)
 
 ;; KFX's typed names: a kayak-rt function of the mangled name, or the emitter's own.

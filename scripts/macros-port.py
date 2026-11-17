@@ -57,12 +57,13 @@ PLACE = "mxp"
 # `--phase1`, a process (`(io process)`, its command line a constant, so
 # that a process holding the instance holds nothing of `@io`); kc's, its
 # `phase1` query, of the database's effect `qe` (lib/db.kfx), its atoms
-# written out, as a load sees the standard environment alone. Two files
+# written out, as a load sees the standard environment alone (since C454
+# with `(io native)` and `(io sys)`: a transformer run in process). Two files
 # of one text but for the asker's effect: KFX's Rust writes no module type
 # of an effect parameter (C24, C170), which one file would need.
 ASKS = {"expander.fx": "(read @globals) (io process)",
         "expander-kc.fx": "(read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write)"
-                          " (io stderr) (io exit) (alloc @io) (read @io) (write @io)"}
+                          " (io stderr) (io exit) (alloc @io) (read @io) (write @io) (io native) (io sys)"}
 # What KFX has not, the shim's in its place.
 PRIMS = {"keyword?": "mx-keyword?", "keyword->symbol": "mx-keyword->symbol",
          "symbol->keyword": "mx-symbol->keyword", "datum-int?": "mx-datum-int?", "eq?": "mx-eq?",

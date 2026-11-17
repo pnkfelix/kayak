@@ -15,8 +15,10 @@ unsafe extern "C" {
     /// the heap where `kc_entry` left it (C448: kc's entry object's; its
     /// end now the collector's, C453, `end` not read), and the state.
     fn kc_call2(f: u64, a: u64, b: u64, end: u64, state: *const u64) -> u64;
-    /// `%phase1-apply`'s address, if the program defines it, else 0.
-    static kc_apply_entry: u64;
+    /// `%phase1-apply`'s address, if the program defines it, else 0: a
+    /// function, its address made relative to the code (C454), so that
+    /// the image `kc run` seals needs no absolute address.
+    fn kc_apply_address() -> u64;
 }
 
 /// The heap's first space, its words: collected (C453), grown as what
@@ -111,10 +113,10 @@ fn program() -> i32 {
     unsafe { kc_entry(range.start, range.end, state) };
     if apply {
         let (tag, used) = input.split_once('\n').unwrap_or((input.as_str(), ""));
-        // SAFETY: kc's entry object defines it, a word.
-        let f = unsafe { kc_apply_entry };
+        // SAFETY: kc's entry object defines it, a function of no arguments.
+        let f = unsafe { kc_apply_address() };
         if f == 0 {
-            failed("kc: this program has no transformer to apply");
+            failed(fail_words(9));
         }
         // SAFETY: `f` is a procedure of kc's code of two arguments, strings
         // of Fixpt's layout; `kc_call2` gives it the heap `kc_entry` left.

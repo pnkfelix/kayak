@@ -374,6 +374,53 @@ pub fn failure_taken() -> String {
     FAILURE.with(|f| f.borrow_mut().take()).unwrap_or_default()
 }
 
+std::thread_local! {
+    /// What kc's code wrote in process (C454), each value's line: given
+    /// to KFX (`kayak:kc-output/1`), which writes it (`kc run`) or reads
+    /// its last line (a transformer's answer).
+    static OUTPUT: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
+    /// What a transformer's run in process is given (C454,
+    /// `kayak:kc-give/1`): its expansion's tag and its use, as a built
+    /// transformer's `--apply` reads them from its standard input.
+    static GIVEN: std::cell::RefCell<(String, String)> = const { std::cell::RefCell::new((String::new(), String::new())) };
+}
+
+/// kc's code's output in process, taken.
+pub fn output_taken() -> String {
+    OUTPUT.with(|o| std::mem::take(&mut *o.borrow_mut()))
+}
+
+/// A transformer's input in process: the tag on its first line, the use
+/// after.
+pub fn give(input: &str) {
+    let (tag, used) = input.split_once('\n').unwrap_or((input, ""));
+    GIVEN.with(|g| *g.borrow_mut() = (tag.to_string(), used.to_string()));
+}
+
+extern "C" fn here_show(v: u64) {
+    let line = written(v);
+    OUTPUT.with(|o| {
+        let mut o = o.borrow_mut();
+        o.push_str(&line);
+        o.push('\n');
+    });
+}
+
+/// What the transformer is given: the use (0) or the tag (1), a string.
+extern "C" fn here_given(which: u64) -> u64 {
+    GIVEN.with(|g| {
+        let g = g.borrow();
+        make_string(if which == 0 { &g.1 } else { &g.0 })
+    })
+}
+
+/// A run's start in process (C454): the heap the code is given is the
+/// first space again, the collector's own spaces and kept pairs dropped
+/// (the run before's region, dropped whole).
+extern "C" fn here_gc_reset() {
+    gc::reset();
+}
+
 extern "C" fn here_fail(what: u64) -> u64 {
     failed_here(fail_words(what).to_string())
 }
@@ -411,7 +458,9 @@ extern "C" fn here_append(a: u64, b: u64) -> u64 {
 /// run; 0 if there is none of that name.
 pub fn routine(name: &str) -> u64 {
     let f: *const () = match name {
-        "kc_show" => kc_show as *const (),
+        "kc_show" => here_show as *const (),
+        "kc_given" => here_given as *const (),
+        "kc_gc_reset" => here_gc_reset as *const (),
         "kc_fail" => here_fail as *const (),
         "kc_intern" => kc_intern as *const (),
         "kc_string_eq" => kc_string_eq as *const (),
@@ -506,7 +555,7 @@ fn atom(v: u64) -> String {
 
 /// A failure of kc's code, by number (`kc/x64.kfx`'s `fail-…`), in
 /// Fixpt's words.
-fn fail_words(what: u64) -> &'static str {
+pub fn fail_words(what: u64) -> &'static str {
     match what {
         1 => "not a Unicode scalar value",
         4 => "car or cdr of a non-pair",
@@ -519,6 +568,8 @@ fn fail_words(what: u64) -> &'static str {
         7 => "kc: a sum no arm of its tagcase is for",
         // The stack past its limit (C451), as kayak-rt says Fixpt's trap.
         8 => "stack overflow",
+        // kc's own: a transformer's program run with no transformer (C448).
+        9 => "kc: this program has no transformer to apply",
         _ => "a failure kc's runtime has no words for",
     }
 }

@@ -1554,8 +1554,8 @@ Twobit-style optimizations in KFX.
   answer a vector, nor, in kc, a use or a quoted datum that is one; a
   typecase of an `f64` or `f32` in kc not yet (kc has no floats); an
   expansion run once, its requests asked as it goes (C449); a
-  transformer's program kept in `DB.phase1/` once no use names it (its
-  objects pruned, C448, not its executable); the driver's lines (each list's, met; an atom's,
+  transformer's image kept sealed, in process, once no use names it
+  (C454; no longer built into `DB.phase1/`); the driver's lines (each list's, met; an atom's,
   the last list's before it).
 - An expansion run again for each new transformer request (C446): done,
   C449 (the user, 2026-11-17: "remove the quadratic case"): a request is
@@ -1664,17 +1664,26 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   step program as its executable answers (done, C451: FX-26's
   `seal-code` and `native-procedure`, the heap a shared flat array, the
   runtime kcrt's, its routines' addresses by a syscall, C452; left: `poll` gives fuel, no
-  scheduler takes it; an absolute address in the image, which step 5's
-  `kc_apply_entry` is); (4) a heap of Fixpt's layout
+  scheduler takes it; an absolute address in the image (none needed
+  since C454, `kc_apply_address` relative to the code)); (4) a heap of Fixpt's layout
   that KFX owns, a region a transformer's call drops first, then the
   collector, code too (Fixpt's "A collected code area") (the collector
   done, C453: Cheney's, kcrt-core's, its roots every word of kc's stack,
   each frame zeroed, the globals' cells and kcrt's pairs; left: the
-  region, with step 5; kcrt's own objects never freed; kc's code never
-  freed, with step 5's images; no generations; a large bloblet; tier 1's
-  collector, KFX's, and this one, Rust's, two copies of Cheney's over
-  Fixpt's layout); (5) `phase1`'s
-  body a call of the compiled transformer, no process.
+  region, done with step 5 (C454); kcrt's own objects never freed; kc's
+  code never freed (a transformer's image sealed once and kept for the
+  run; Fixpt's collected code area frees code nothing reaches); no
+  generations; a large bloblet; tier 1's collector, KFX's, and this one,
+  Rust's, two copies of Cheney's over Fixpt's layout, to-discuss 15);
+  (5) `phase1`'s body a call of the compiled transformer, no process
+  (done, C454: its image sealed once, each use a call in process, its
+  heap one array used again from its start; left: a transformer's run
+  no longer a process of its own, so a fault of its code (a bad store,
+  a loop with no end) is kc's; kc's images never freed).
+- kc's front end fails (`car or cdr of a non-pair`, in `kc-unlocated`)
+  on a transformer's `(typecase (car (cdr form)) ...)`, a typecase of no
+  local, where the engine refuses it ("a typecase of a local of a union",
+  C62): a refusal, not a crash (found by C454's benchmark).
 - Models (`docs/research/models.md`): exhaustive checking (Java 17+ for
   Apalache; the snap's OpenJDK 27 works with `QUINT_HOME` and a temporary
   directory it can see); the model of the asynchronous engine when it is;

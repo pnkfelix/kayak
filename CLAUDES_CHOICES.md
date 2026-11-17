@@ -13379,3 +13379,62 @@ What was done, kc's code needing neither maps nor a flush:
   large bloblet (more than 2^18 fields) kc's `make-array` cannot make
   yet, and the collector refuses one; tier 1's collector and this one two
   copies of Cheney's over Fixpt's layout, KFX's and Rust's.
+
+## C454. A transformer called in process: its image sealed once, no process (2026-11-17)
+
+The user: "Step 5, go for it" (TODO §52: `phase1`'s body a call of the
+compiled transformer, no process). Reviewed first:
+- **Fixpt**: its expander calls a transformer in its own process, a
+  procedure of the running machine (`phase1.rs`'s `call_transformer`),
+  its use given as data and its answer read back; kayak's engine runs
+  `--phase1`, a process of its own (C448).
+- **Accomplice** (Larceny): macros expand by `eval` in the running
+  heap, no process.
+- **Coopt**: no native code, no transformers of its own.
+- **kayak**: C451's `kc run` (an image sealed and called), C452's
+  syscalls to kcrt-core, C453's collector; C448's `--apply`, a built
+  transformer given the tag and the use on its standard input, its answer
+  its last line.
+
+What changed:
+- **A transformer's image sealed once** (`phase1-sealed`, kc/main.kfx):
+  its program loaded as a file of the database, checked, its `asm` made
+  an image after `x64-run-support` and sealed in the code area, kept by
+  its name (the fingerprint of its text) for every use after; each use a
+  call (`native-call`). No executable, no `DB.phase1/`, no process, no
+  link: `phase1-dir`, its orphans and the database's side values are
+  gone; `kc --rt` is `kc build`'s alone.
+- **The call, as `--apply`**: KFX gives the tag and the use
+  (`kayak:kc-give/1`) and puts 1 in the heap's word 5; `kc_native_entry`,
+  after `kc_entry`, calls `%phase1-apply` (`kc_call2`) on the use and the
+  tag (`kc_given`, strings kcrt makes) and writes its answer (`kc_show`).
+  In process `kc_show` keeps each value's line (`kayak:kc-output/1` takes
+  them): `kc run` writes them, a transformer's answer is the last.
+- **No absolute address**: `kc_apply_entry`, a word holding
+  `%phase1-apply`'s address (abs64, which `asm-image` refuses), is now
+  `kc_apply_address`, a function giving it by `leaq` relative to the
+  code; kcrt's `--apply` calls it. Failure 9, "this program has no
+  transformer to apply", kcrt's words.
+- **The region a call drops**: one heap array of each size, every run
+  given it again from its start (kc/native.kfx's `heap-of`); at each
+  run's start the collector's own spaces and kept pairs dropped
+  (`kc_gc_reset`), so nothing of the run before is reached or kept.
+- **The effects**: `qe` (lib/db.kfx) and kc's expander's asker
+  (`macros-port.py`'s `ASKS`, fx26/macros/expander-kc.fx) allow `(io
+  native)` and `(io sys)`.
+- **The corpus**: lib/db.kfx's two programs (`db`, `db-verify`) re-blessed,
+  their Rust's doc comment alone new (the first check stopped there).
+- **The full check**: all passed in 398 s; kc-steps 336 of 336 (in
+  process, and with a heap of 64 words); kc-objects 431, 0 differ;
+  lang-items 21 syscalls, every copy agrees; REPL sessions 12 as before;
+  nextest 5500 passed.
+- **kc-objects** compares 431 objects, was 465: the 34 were transformers'
+  programs' objects, which are no longer made.
+- **Measured**: C449's explicit renaming chain, cold, `kc --check`, best
+  of three: n=25 0.16 s (C449: 0.21), 50 0.17 (0.25), 100 0.17 (0.34),
+  200 0.20 (0.57), 400 0.29: about 0.35 ms a use, was about 2 ms (a
+  process each). kc-steps 144 s, was 198.
+- **Left**: a transformer's run is no longer a process of its own, so a
+  fault in its code is kc's (fuel is counted, but no scheduler takes a
+  slice); kc's images never freed (code that nothing reaches, Fixpt's
+  collected code area); kcrt's own objects never freed.

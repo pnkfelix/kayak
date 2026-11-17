@@ -11,7 +11,8 @@ use super::*;
 // `%phase1-apply`, of each style, the transformer called on the use read
 // from its text and the tag's, as `phase1-called` calls it. So a
 // transformer's program is built once, and each use is a run of it, given
-// the use (`kc_apply_entry`, kayak-kcrt's `--apply`). Checked by Fixpt as
+// the use (`kc_apply_address`, kayak-kcrt's `--apply`; in process since
+// C454, its image sealed once and each use a call). Checked by Fixpt as
 // by kc: each test of a procedural macro runs through it.
 #[inline]
 pub fn phase1_reader() -> Str {
