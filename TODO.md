@@ -1553,20 +1553,23 @@ Twobit-style optimizations in KFX.
   (C448), drafts of the answers known alone; not yet a transformer's
   answer a vector, nor, in kc, a use or a quoted datum that is one; a
   typecase of an `f64` or `f32` in kc not yet (kc has no floats); an
-  expansion run again for each new request (below: to revisit); a
+  expansion run once, its requests asked as it goes (C449); a
   transformer's program kept in `DB.phase1/` once no use names it (its
   objects pruned, C448, not its executable); the driver's lines (each list's, met; an atom's,
   the last list's before it).
-- Revisit (the user, 2026-11-17): an expansion run again from its form's
-  start for each new transformer request (C446), or suspended until it is
-  answered. Restart costs nothing warm (every answer an input already),
-  is the same path as recovery (no continuation to persist across runs or
-  a `kc serve` restart), and keeps the database's rule that no query is in
-  flight when an input is set; suspension saves k^2 e - k e on a cold run
-  of a form with k new requests (e the expander's work a use), against
-  about 35 ms a request either way. To measure e, and a long explicit
-  renaming chain cold; if it matters, an expander on the async runtime
-  awaiting its answer, the driver answering between revisions.
+- An expansion run again for each new transformer request (C446): done,
+  C449 (the user, 2026-11-17: "remove the quadratic case"): a request is
+  asked as the expansion goes, of the host's asker (kc's `phase1` query;
+  the engine's `--phase1`), the expansion going on with the answer, as
+  Fixpt's does. An explicit renaming chain of 200 uses, cold, in kc: 18.6
+  s, now 0.57 s. Left: the engine's asker runs the engine again for each
+  request (5 s at 200, kc's being a run of a transformer built once), and
+  in-memory code (the user's steps 1-5, C449: one byte emitter, kc's own
+  convention) would make each a call; `models/db.qnt` has no input set
+  fresh (C449's `db-set!` of a key no node is of, no new revision); the
+  expander written twice (expander.fx, expander-kc.fx), one asker's
+  effect each, as KFX's Rust writes no module type of an effect
+  parameter (a file of a place and an effect, FX-26's, kfx's to take).
 - A loaded file's type named as one of the program's (the expander's
   `part`, lib/db.kfx's datatype `part`, C445): one type in the Rust kfx
   makes, which rustc refused. The port names the expander's apart; kfx
@@ -1644,6 +1647,22 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   transformer's items queries, a use's call the one new item. Step 14
   (the effects that need the runtime) not done before it: the macro
   programs kc takes are those its back ends take.
+- kc's code in memory (the user, 2026-11-17, C449): "what if we drove
+  ahead to get ourselves to building executable code in the GC'ed heap,
+  the same way Fixpt does?" The plan, each step a C-entry and the full
+  check: (1-2) x64.kfx's instructions as data, encoded to bytes by kc
+  everywhere (the user: "surely it's better to just use the same byte
+  emitter everywhere, as that is the thing that's most likely to expose
+  bugs"), `kc build` writing ELF objects that `cc` links, the assembly
+  text kept for comparison: each step program's objects as `as` makes
+  them of it, byte for byte; (3) kc's own convention (the user: "I'm
+  okay with us inventing our own variant"; data stays Fixpt's): a stack
+  limit, a failure that returns to the trampoline, a state register kept
+  for fuel; linked into kayak-jit's code area, `kc run` in process, each
+  step program as its executable answers; (4) a heap of Fixpt's layout
+  that KFX owns, a region a transformer's call drops first, then the
+  collector, code too (Fixpt's "A collected code area"); (5) `phase1`'s
+  body a call of the compiled transformer, no process.
 - Models (`docs/research/models.md`): exhaustive checking (Java 17+ for
   Apalache; the snap's OpenJDK 27 works with `QUINT_HOME` and a temporary
   directory it can see); the model of the asynchronous engine when it is;

@@ -150,20 +150,20 @@ def expansions():
             wrong.append("expansions: %s: kc --check: %s" % (why, r.stderr.strip()))
         elif n != want:
             wrong.append("expansions: %s: ran %d expansions and %d macros-for, not %d and %d" % (why, n[0], n[1], want[0], want[1]))
-    # A procedural macro (C446): its transformer's answers inputs, kept in
-    # the database; a use's expansion again only when its form is edited.
-    # An expansion that makes a request not answered yet runs once more
-    # when it is: cold, the `define-syntax`'s (`%define`) and `f`'s
-    # (`%apply`) each twice; a use's operand edited, a new `%apply`.
+    # A procedural macro (C446): its transformer's answers queries' values,
+    # kept in the database; a use's expansion again only when its form is
+    # edited. Each form is expanded once (C449): a request is asked as the
+    # expansion goes, of the `phase1` query, not answered between runs of
+    # it (C446's restart, which ran the `define-syntax`'s and `f`'s twice).
     # The transformer compiled by kc (C447), its phase-1 program a file of
     # the database: cold, its 9 definitions' code (the prelude's 6, the
     # transformer, kc's reader and `%phase1-apply`, C448); a use's operand
     # edited, none: the use is given to the program built, a run alone.
     if os.path.exists(db):
         os.remove(db)
-    for text, want, why in [(PROCEDURAL % "n", (6, 4, 9), "procedural, cold"),
+    for text, want, why in [(PROCEDURAL % "n", (4, 4, 9), "procedural, cold"),
                             (PROCEDURAL % "n", (0, 0, 0), "procedural, the same"),
-                            (PROCEDURAL % "(+ n 1)", (2, 1, 0), "procedural, a use's operand edited")]:
+                            (PROCEDURAL % "(+ n 1)", (1, 1, 0), "procedural, a use's operand edited")]:
         open(p, "w").write(text)
         r = run([KC, "--db", db, "--stats", "--check", p])
         got = ran(r.stderr) or []

@@ -35,18 +35,19 @@
 (define mx-parse-nat (->* (string int) int)
   (lambda (s radix) (if (= (string-length s) 0) -1 (mx-parse-nat-from s radix 0 0))))
 "The runtime's for procedural macros (Fixpt's `standard.rs`, `TODO.md`
- §228; C446): a request of the expander's (`%forms`, `%define`, `%apply`,
- Fixpt's `procedural::asked`) answered by what the instance was given,
- the answers its host has (`drive-answers!`): a request's answer is of its
- text alone, as a transformer is deterministic, so the host may answer it
- anywhere, once, and keep it. A request not given is kept, the first
- (`drive-needed`), for the host to answer and expand again, and said not
- yet. None is in a phase-1 namespace, `apart`. And a limit of expansion,
- Fixpt's default, the environment not read (`syscall::macro_limit`'s
- `FIXPT_MACRO_*`)."
+ §228; C446, C449): a request of the expander's (`%forms`, `%define`,
+ `%apply`, Fixpt's `procedural::asked`) answered as Fixpt's runtime
+ answers it, by a call, and the expansion goes on: by the asker its host
+ gives (`drive-asker!`), of its host's effect, which scripts/macros-port.py
+ writes in (`ASKS`: expander.fx's, the engine's `--phase1`, a process;
+ expander-kc.fx's, kc's `phase1` query, `qe`). A request's answer is of
+ its text alone, as a transformer is deterministic, so each is kept, and
+ one asked again is answered at once. An asker that answers `` (none
+ given, or a REPL's draft, which runs nothing) is said not yet. None is in
+ a phase-1 namespace, `apart`. And a limit of expansion, Fixpt's default,
+ the environment not read (`syscall::macro_limit`'s `FIXPT_MACRO_*`)."
 (define mx-phase1-given (ref datum mxp) (new (the datum nil)))
-(define mx-phase1-next-given (ref datum mxp) (new (the datum nil)))
-(define mx-phase1-needed (ref string mxp) (new ""))
+(define mx-phase1-asker (ref (subr (maxeff mxe spin) (string) string) mxp) (new (lambda ((r string)) "")))
 "Request `r` as it is asked and answered: of a syntactic-closure
  transformer's `%apply` (style 1 or 2), its expansion's tag `0`, which its
  transformer is not given (Fixpt's `call_transformer`), so its answer is
@@ -69,25 +70,17 @@
                   (mx-phase1-in request (cdr xs)))
               (mx-phase1-in request (cdr xs))))
         "")))
-"The answer to `request`: the next given, as the expander asks again in
- the order it asked before, so each is found at once; else any given."
-(define mx-phase1-next (->* (string) string)
-  (lambda (request)
-    (let* ((xs (get mx-phase1-next-given)) (x (if (pair? xs) (car xs) (the datum nil)))
-           (k (if (pair? x) (car x) (the datum nil))) (v (if (pair? x) (cdr x) (the datum nil))))
-      (if (string? k)
-          (if (string? v)
-              (if (string=? k request) (begin (set mx-phase1-next-given (cdr xs)) v) (mx-phase1-in request (get mx-phase1-given)))
-              (mx-phase1-in request (get mx-phase1-given)))
-          (mx-phase1-in request (get mx-phase1-given))))))
 (define mx-expand-procedural (->* (string) string)
   (lambda (asked)
-    (let* ((request (mx-phase1-key asked)) (a (mx-phase1-next request)))
-      (if (string=? a "")
-          (begin
-            (if (string=? (get mx-phase1-needed) "") (set mx-phase1-needed request) #u)
-            "!a procedural macro's transformer, run as the program is read: not yet here")
-          a))))
+    (let* ((request (mx-phase1-key asked)) (a (mx-phase1-in request (get mx-phase1-given))))
+      (if (not (string=? a ""))
+          a
+          (let ((b ((get mx-phase1-asker) request)))
+            (if (string=? b "")
+                "!a procedural macro's transformer, run as the program is read: not yet here"
+                (begin
+                  (set mx-phase1-given (the datum (cons (the datum (cons (the datum request) (the datum b))) (get mx-phase1-given))))
+                  b)))))))
 (define mx-call-procedural (subr spin (int string datum string (listof string acyclic)) (sumof (ok datum) (failed string) (apart unit)))
   (lambda (style code d x forms) (sum apart #u)))
 (define mx-limit (subr spin (string) string)

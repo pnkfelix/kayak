@@ -44,7 +44,12 @@
  value and not the end of the run; what a failure says is the machine's,
  which a database of one compiler's (its identity in its first line) has
  one of."
-(define-effect qe (maxeff (read @globals) spin nondet (read @q) (write @q) (alloc @q)))
+"And a body may build and run a program (C449): a procedural macro's
+ transformer's answer, `phase1 REQUEST`, a query whose body checks,
+ compiles, builds and runs the transformer, as deterministic as any of
+ its key, the request's text, its files named by what they hold."
+(define-effect qe (maxeff (read @globals) spin nondet (read @q) (write @q) (alloc @q)
+                          (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)))
 
 "A value as a node keeps it (C417): its text; where it is in the payload
  read with the database, its offset and length, and whether it is escaped
@@ -498,14 +503,23 @@
       (db-put! d (db-id d key) (node key #t 0 0 0 nil 0 (v-text text))))))
 
 "Input `k` set to `text`, of durability `du`: a new revision if its value
- is new."
+ is new. Of a key no node is of (C449), no new revision: nothing has read
+ it, so no value made is made stale, and a query may make inputs no one
+ has asked for (a transformer's phase-1 file, `phase1 REQUEST`) without
+ sending every node to be verified again. Not in `models/db.qnt` yet,
+ whose inputs all are from the first."
 (define db-set! (subr qe (db sexp string i64) unit)
   (lambda (d k text du)
     (let* ((fp ((with queries fnv-string) text (with queries fnv-offset)))
            (i (db-id d k))
            (old (db-node-at d i)))
-      (if (and (not (null? old)) (node-input? (car old)) (i64= (node-fp (car old)) fp) (i64= (node-durability (car old)) du))
-          #u
+      (cond
+        ((and (not (null? old)) (node-input? (car old)) (i64= (node-fp (car old)) fp) (i64= (node-durability (car old)) du))
+         #u)
+        ((null? old)
+         (let ((r (get (extract d rev))))
+           (db-put! d i (node k #t r r fp nil du (v-text text)))))
+        (else
           (let ((r (i64+ (get (extract d rev)) 1)))
             (begin
               (set (extract d rev) r)
@@ -515,7 +529,7 @@
               (set (extract d last) (bumped (get (extract d last))
                                             (if (and (not (null? old)) (i64> (node-durability (car old)) du)) (node-durability (car old)) du)
                                             r 0))
-              (db-put! d i (node k #t r r fp nil du (v-text text)))))))))
+              (db-put! d i (node k #t r r fp nil du (v-text text))))))))))
 
 "That the innermost query being run read `i`, of durability `du`."
 (define note-read! (subr qe (db i64 i64) unit)

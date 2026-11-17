@@ -1,6 +1,6 @@
 "expand.kfx: kc's macros (C445; docs/research/kc.md, step 15): a file that
  defines one, each of its forms expanded as a query of its own, by Fixpt's
- expander (`fx26/macros/expander.fx`, a file of a place, an instance of it
+ expander (`fx26/macros/expander-kc.fx`, a file of a place, an instance of it
  made for each), so that what a form makes depends on what it names alone,
  and an edit elsewhere expands it not again.
 
@@ -20,15 +20,16 @@
    defines-at PATH NAME  the keys of the forms written to define NAME
    wnames PATH           the names either is set of
    wforsyntax PATH       the keys of the `begin-for-syntax`es (C446)
-   phase1 REQUEST        a procedural macro's transformer's request's
-                         answer (C446; `%forms`, `%define`, `%apply`, as
-                         Fixpt's expander asks its runtime), `` until the
-                         driver sets it: of the request's text alone;
-                         the driver answers it by kc's own native code
-                         (C447), the request's phase-1 program a file of
-                         this database (main.kfx, `phase1-asked`)
 
  The queries:
+
+   phase1 REQUEST            a procedural macro's transformer's request's
+                             answer (C446; `%forms`, `%define`, `%apply`, as
+                             Fixpt's expander asks its runtime): a query
+                             (C449), asked by the expansion as it goes,
+                             whose body runs the transformer by kc's own
+                             native code (C447, C448: main.kfx's
+                             `q-phase1`), of the request's text alone
 
    macro-in PATH KEY NAME    the key of the `define-syntax` of NAME in scope
                              at form KEY, or ``
@@ -39,8 +40,7 @@
    expansion PATH KEY        form KEY expanded: `(ok (NODE ...) (ENTRY
                              ...))`, what it makes, located (`kc-unlocated`),
                              and what it defines; or `(refused FILE LINE
-                             MESSAGE)`; or `(needs REQUEST)`, a
-                             transformer's request with no answer yet
+                             MESSAGE)`
 
  A form's expansion reads its own text, the macros it names, to a fixed
  point through their definitions, each by `macro-in` and `written`, and of
@@ -56,26 +56,26 @@
  expansion would meet it, and refuses: not yet, or as Fixpt does."
 
 "An instance of the expander for each call (C442, C443): a form's
- expansion (`drive-given`), given the transformers' answers `answers`
- (C446, `drive-answers!`), and the first request it was not given, or
- ``; and what is read of a file's written forms (`drive-written-facts`).
- Top-level definitions, the load's maker made beside them, as the
- engine's `expanded` has it."
-(define kc-instance (subr (maxeff (read @globals) spin) (bool datum datum datum datum) (tupleof datum datum datum string))
-  (lambda (facts? defs es target answers)
-    (letrena p (let ((x ((proj (load-module "../fx26/macros/expander.fx") p))))
+ expansion (`drive-given`), each transformer's request it makes answered
+ as it is asked (C449), by `asker` (`drive-asker!`: the `phase1` query,
+ which reads the request's answer as a query's value, made where it is
+ first asked); and what is read of a file's written forms
+ (`drive-written-facts`), which asks none. Top-level definitions, the
+ load's maker made beside them, as the engine's `expanded` has it."
+(define kc-instance (subr qe (bool datum datum datum (subr qe (string) string)) (tupleof datum datum datum))
+  (lambda (facts? defs es target asker)
+    (letrena p (let ((x ((proj (load-module "../fx26/macros/expander-kc.fx") p))))
                  (if facts?
-                     (tuple (with x (drive-written-facts defs)) (the datum nil) (the datum nil) "")
+                     (tuple (with x (drive-written-facts defs)) (the datum nil) (the datum nil))
                      (begin
-                       (with x (drive-answers! answers))
-                       (let ((r (with x (drive-given defs es target))))
-                         (tuple (extract r 1) (extract r 2) (extract r 3) (with x (drive-needed))))))))))
+                       (with x (drive-asker! asker))
+                       (with x (drive-given defs es target))))))))
 
-(define kc-given (subr (maxeff (read @globals) spin) (datum datum datum datum) (tupleof datum datum datum string))
-  (lambda (defs es target answers) (kc-instance #f defs es target answers)))
+(define kc-given (subr qe (datum datum datum (subr qe (string) string)) (tupleof datum datum datum))
+  (lambda (defs es target asker) (kc-instance #f defs es target asker)))
 
-(define kc-written-facts (subr (maxeff (read @globals) spin) (datum) datum)
-  (lambda (forms) (extract (kc-instance #t forms (the datum nil) (the datum nil) (the datum nil)) 1)))
+(define kc-written-facts (subr qe (datum) datum)
+  (lambda (forms) (extract (kc-instance #t forms (the datum nil) (the datum nil) (lambda ((r string)) "")) 1)))
 
 (define kc-expand
   (module
@@ -171,7 +171,6 @@
     (define q-wnames qbody (lambda (d run a-path a-key) "()"))
     (define q-wforsyntax qbody (lambda (d run a-path a-key) "()"))
     "`phase1 REQUEST` the driver set none of (C446): no answer yet."
-    (define q-phase1 qbody (lambda (d run a-request a-key) ""))
 
     ;;; ------------------------------------------------------------ scopes
     (hide
@@ -297,24 +296,6 @@
             (string-list-append (list "((" (words-of (map (lambda ((k string)) (kc-datum (str k "" 0))) (by-place d run path defs nil))) ") ("
                                       (words-of (map (lambda ((n string)) (kc-datum (str n "" 0))) names)) "))"))))))
 
-    (hide
-      "Form `target` expanded, given `ds` and `es`, each request of a
-       transformer's it makes answered by its `phase1` input (C446), the
-       expander, deterministic, asking again what it asked before, then
-       more: what the last instance gave, its request not answered yet, if
-       one is not."
-      (define-rec
-        (given-answered (subr qe (db runner datum datum datum datum) (tupleof datum datum datum string))
-          (lambda (d run ds es target answers)
-            (let ((r (kc-given ds es target answers)))
-              (if (string=? (extract r 4) "")
-                  r
-                  (let ((a (db-get d run (key1 "phase1" (extract r 4)))))
-                    (if (string=? a "")
-                        r
-                        (given-answered d run ds es target
-                                        (the datum (cons (the datum (cons (the datum (extract r 4)) (the datum a))) answers)))))))))))
-
     "`expansion PATH KEY`."
     (define q-expansion qbody
       (lambda (d run path key)
@@ -325,10 +306,9 @@
                (es (sexps-datum (entries-of d run path key names)))
                (target (given d run path key))
                (ds (given-each d run path defs))
-               (r (given-answered d run ds es target (the datum nil))))
+               ;; A transformer's request answered by the `phase1` query (C449).
+               (r (kc-given ds es target (lambda ((request string)) (db-get d run (key1 "phase1" request))))))
           (cond
-            ((not (string=? (extract r 4) ""))
-             (string-append "(needs " (string-append (kc-datum (str (extract r 4) "" 0)) ")")))
             ((pair? (extract r 2))
               ;; `(file line message)`, said as a datum.
              (string-append "(refused " (string-append (kc-data (items (datum-sexp (extract r 2) "" 0 0))) ")")))
@@ -523,7 +503,7 @@
                        (shaped (tagcase (third xs) (lst (ys f l p) (not (null? ys))) (else other #f))))
                   (defined-onto (cdr es) names i (cons (kx-defd n i k (string-member? n names) shaped) ds)))))))
 
-      (define-datatype kx-expanded (expanded-forms sexps) (expanded-refused string) (expanded-needs string))
+      (define-datatype kx-expanded (expanded-forms sexps) (expanded-refused string))
 
       "Each form's expansion, in order: what they make, moved where they are,
        or the first refusal."
@@ -540,7 +520,6 @@
                           (expanded-refused (string-list-append (list "kfx: " path ":" (i64->string here) ": " why)))
                           (let ((v (car (read-all (db-get d run (key2 "expansion" path (car ks))) "expansion" 1))))
                             (cond
-                              ((sym-is? (car (items v)) "needs") (expanded-needs (tagcase (second (items v)) (str (t f2 p2) t) (else other ""))))
                               ((sym-is? (car (items v)) "refused")
                                 (let* ((xs (cdr (items v)))
                                        (f (tagcase (car xs) (str (t f2 p2) t) (else other "")))
@@ -567,16 +546,15 @@
     "`kc-load-file! PATH TEXT`: the file `PATH`'s text read once, and its
      inputs made, as `kc-load!` makes them; of a file that defines a macro,
      each form expanded first, a query of its own, and the inputs made of
-     what they make (C445). ``, or, of an expansion that needs a
-     transformer's answer, its request (C446), the file not loaded yet: the
-     driver answers it (`phase1 REQUEST`) and loads it again."
-    (define kc-load-file! (subr qe (db runner string string) string)
+     what they make (C445), each transformer's request answered as it is
+     asked (C449, `phase1 REQUEST`)."
+    (define kc-load-file! (subr qe (db runner string string) unit)
       (lambda (d run path text)
         (if (kc-text-as-was? d path text)
-            ""
+            #u
             (let ((forms (read-all text path 1)))
               (if (not (mentions? forms macro-heads))
-                  (begin (kc-load-forms! d path text forms "") "")
+                  (kc-load-forms! d path text forms "")
                   (let* ((fs (facts-of forms))
                          (ks (keys-of fs 0 nil))
                          (texts (with incremental-check (form-texts text (string-length-i64 text) (map datum-pos forms))))
@@ -606,9 +584,8 @@
                                                         (map2 (lambda ((k string) (f sexp)) (tuple k f)) ks forms))))
                                0)
                       (tagcase (expand-each d run path ks fs forms ps 0 nil nil)
-                        (expanded-forms (xs) (begin (kc-load-forms! d path text xs (words-of (map located xs))) ""))
-                        (expanded-refused (m) (begin (kc-load-forms! d path text nil (string-append "(refused " (string-append (kc-datum (str m "" 0)) ")"))) ""))
-                        (expanded-needs (r) r)))))))))
+                        (expanded-forms (xs) (begin (kc-load-forms! d path text xs (words-of (map located xs))) #u))
+                        (expanded-refused (m) (begin (kc-load-forms! d path text nil (string-append "(refused " (string-append (kc-datum (str m "" 0)) ")"))) #u))))))))))
 
     "The program as expanded, located, each node a line, as the engine's
      `--expanded-located` writes it (C445; scripts/kc-expanded.py)."

@@ -64,7 +64,7 @@ UNITS = [
     # And the expander kc loads where it expands (C445, a file of a place,
     # in no unit): its expansions are its (C446). And its runtime: a
     # transformer's answer kept is its run (C448).
-    ("kc", "kc.unit", ["../fx26/macros/expander.fx", "../fx26/macros/expander-types.fx",
+    ("kc", "kc.unit", ["../fx26/macros/expander-kc.fx", "../fx26/macros/expander-types.fx",
                        "../crates/kayak-kcrt/src/lib.rs"], kc_text),
 ]
 

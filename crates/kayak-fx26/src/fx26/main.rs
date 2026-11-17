@@ -158,8 +158,8 @@ pub fn macro_heads() -> Strings {
 // again (`--phase1`, `phase1-answer`): a process of its own, its heap and
 // machine apart from the program's, which a transformer's run would
 // otherwise share. Its answer, `=` and what it gave, or `!` and why.
-pub fn phase1_asked_in<'r>(request: Str) -> Str {
-    let tagcase_ = process_start(the::<ListAt<'r, Str>>(cons(str_lit("/proc/self/exe"), the::<ListAt<'r, Str>>(cons(str_lit("--phase1"), the::<ListAt<'r, Str>>(cons(request, the::<ListAt<'r, Str>>(nil::<Str>()))))))), str_lit(""));
+pub fn phase1_asked(request: Str) -> Str {
+    let tagcase_ = process_start(the::<List<Str>>(kayak_rt::heap_cons(str_lit("/proc/self/exe"), kayak_rt::heap_cons(str_lit("--phase1"), kayak_rt::heap_cons(request, kayak_rt::nil())))), str_lit(""));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("started") } {
         let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
@@ -193,18 +193,11 @@ pub fn phase1_asked_in<'r>(request: Str) -> Str {
     } else { unreachable!() }
 }
 
-// Of the engine's driver, its list at `@io`; the REPL's front asks at its
-// own place's (C448), a process holding nothing of `@io`.
-#[inline]
-pub fn phase1_asked(request: Str) -> Str {
-    (&phase1_asked_in)(request)
-}
-
 // A program's forms expanded as a REPL's first entry (`drive-entry`, from
 // no state): its forms, and why it is refused, or ``. Each request of a
-// procedural macro's transformer the instance was not given answered
-// (`phase1-asked`), and the forms expanded again with it (C446): the
-// expander, deterministic, asks what it asked before, then more.
+// procedural macro's transformer answered as it is asked (C449): the
+// instance's asker this program run again (`phase1-asked`), the expansion
+// going on with its answer, as Fixpt's does.
 pub mod made__load__2__expander {
     use super::*;
 
@@ -1253,8 +1246,7 @@ pub mod made__load__3__main {
     /// values, made as it is made (C433).
     pub struct MadeLoad3MainFaceState<'mxp, Place_Mxp> {
         pub mx_phase1_given: std::cell::Cell<Option<RefAt<'mxp, kayak_rt::value::Value>>>,
-        pub mx_phase1_next_given: std::cell::Cell<Option<RefAt<'mxp, kayak_rt::value::Value>>>,
-        pub mx_phase1_needed: std::cell::Cell<Option<RefAt<'mxp, Str>>>,
+        pub mx_phase1_asker: std::cell::Cell<Option<RefAt<'mxp, &'mxp (dyn Fn(Str) -> Str + Send + Sync)>>>,
         pub load_base: std::cell::Cell<Option<Int>>,
         pub parse_tag: std::cell::Cell<Option<Tag<&'static Presult, &'static Presult>>>,
         pub dt_type_forms: std::cell::Cell<Option<List<Symbol>>>,
@@ -1550,51 +1542,19 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_phase1_next<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, request: Str) -> Str {
-        let xs = get(maker_st.mx_phase1_next_given.get().unwrap());
-        let x = if kayak_rt::value::pair_p(xs) {
-            kayak_rt::value::car(xs)
-        } else {
-            the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
-        };
-        let k = if kayak_rt::value::pair_p(x) {
-            kayak_rt::value::car(x)
-        } else {
-            the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
-        };
-        let v = if kayak_rt::value::pair_p(x) {
-            kayak_rt::value::cdr(x)
-        } else {
-            the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)
-        };
-        if string_p(k) {
-            if string_p(v) {
-                if string_eq_p(kayak_rt::value::unbox::<Str>(k), request) {
-                    set(maker_st.mx_phase1_next_given.get().unwrap(), kayak_rt::value::cdr(xs));
-                    kayak_rt::value::unbox::<Str>(v)
-                } else {
-                    mx_phase1_in(request, get(maker_st.mx_phase1_given.get().unwrap()))
-                }
-            } else {
-                mx_phase1_in(request, get(maker_st.mx_phase1_given.get().unwrap()))
-            }
-        } else {
-            mx_phase1_in(request, get(maker_st.mx_phase1_given.get().unwrap()))
-        }
-    }
-
     pub fn mx_expand_procedural<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, asked: Str) -> Str {
         let request = mx_phase1_key(asked);
-        let a = mx_phase1_next(mxp, maker_st, request);
-        if string_eq_p(a, str_lit("")) {
-            if string_eq_p(get(maker_st.mx_phase1_needed.get().unwrap()), str_lit("")) {
-                set(maker_st.mx_phase1_needed.get().unwrap(), request)
-            } else {
-                ()
-            };
-            str_lit("!a procedural macro's transformer, run as the program is read: not yet here")
-        } else {
+        let a = mx_phase1_in(request, get(maker_st.mx_phase1_given.get().unwrap()));
+        if not(string_eq_p(a, str_lit(""))) {
             a
+        } else {
+            let b = (get(maker_st.mx_phase1_asker.get().unwrap()))(request);
+            if string_eq_p(b, str_lit("")) {
+                str_lit("!a procedural macro's transformer, run as the program is read: not yet here")
+            } else {
+                set(maker_st.mx_phase1_given.get().unwrap(), the::<kayak_rt::value::Value>(kayak_rt::value::cons(the::<kayak_rt::value::Value>(kayak_rt::value::cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(request)), the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(b)))), get(maker_st.mx_phase1_given.get().unwrap()))));
+                b
+            }
         }
     }
 
@@ -25423,27 +25383,9 @@ pub mod made__load__3__main {
         Ok(drive_macros_p_star(mxp, maker_st, s))
     }
 
-    pub fn drive_rev_datum(mut xs: kayak_rt::value::Value, mut out: kayak_rt::value::Value) -> kayak_rt::value::Value {
-        loop {
-            if kayak_rt::value::pair_p(xs) {
-                (xs, out) = (kayak_rt::value::cdr(xs), the::<kayak_rt::value::Value>(kayak_rt::value::cons(kayak_rt::value::car(xs), out)));
-                continue;
-            } else {
-                return out;
-            }
-        }
-    }
-
-    pub fn drive_answers_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, xs: kayak_rt::value::Value) -> Result<(), Unwind> {
-        let given = drive_rev_datum(xs, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil));
-        set(maker_st.mx_phase1_given.get().unwrap(), given);
-        set(maker_st.mx_phase1_next_given.get().unwrap(), given);
-        Ok(set(maker_st.mx_phase1_needed.get().unwrap(), str_lit("")))
-    }
-
     #[inline]
-    pub fn drive_needed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>) -> Result<Str, Unwind> {
-        Ok(get(maker_st.mx_phase1_needed.get().unwrap()))
+    pub fn drive_asker_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, f: &'mxp (dyn Fn(Str) -> Str + Send + Sync)) -> Result<(), Unwind> {
+        Ok(set(maker_st.mx_phase1_asker.get().unwrap(), f))
     }
 
     #[inline]
@@ -25463,8 +25405,7 @@ pub mod made__load__3__main {
     pub fn maker_state<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp) -> &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp> {
         let maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp> = kayak_rt::alloc(MadeLoad3MainFaceState {
             mx_phase1_given: std::cell::Cell::new(None),
-            mx_phase1_next_given: std::cell::Cell::new(None),
-            mx_phase1_needed: std::cell::Cell::new(None),
+            mx_phase1_asker: std::cell::Cell::new(None),
             load_base: std::cell::Cell::new(None),
             parse_tag: std::cell::Cell::new(None),
             dt_type_forms: std::cell::Cell::new(None),
@@ -25631,8 +25572,9 @@ pub mod made__load__3__main {
             phantom_: std::marker::PhantomData,
         });
         maker_st.mx_phase1_given.set(Some(new(the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))));
-        maker_st.mx_phase1_next_given.set(Some(new(the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))));
-        maker_st.mx_phase1_needed.set(Some(new(str_lit(""))));
+        maker_st.mx_phase1_asker.set(Some(new(lambda1s(move |r: Str| {
+            str_lit("")
+        }))));
         maker_st.load_base.set(Some(int_lit(1000000000)));
         maker_st.parse_tag.set(Some(make_continuation_prompt_tag()));
         maker_st.dt_type_forms.set(Some(kayak_rt::cons(symbol_lit(str_lit("arrayof")), kayak_rt::cons(symbol_lit(str_lit("narrayof")), kayak_rt::cons(symbol_lit(str_lit("bloblet")), kayak_rt::cons(symbol_lit(str_lit("composable")), kayak_rt::cons(symbol_lit(str_lit("dletrec")), kayak_rt::cons(symbol_lit(str_lit("icell")), kayak_rt::cons(symbol_lit(str_lit("listof")), kayak_rt::cons(symbol_lit(str_lit("mark-key")), kayak_rt::cons(symbol_lit(str_lit("moduleof")), kayak_rt::cons(symbol_lit(str_lit("mu")), kayak_rt::cons(symbol_lit(str_lit("nat")), kayak_rt::cons(symbol_lit(str_lit("nlist")), kayak_rt::cons(symbol_lit(str_lit("oneshot")), kayak_rt::cons(symbol_lit(str_lit("pairof")), kayak_rt::cons(symbol_lit(str_lit("place")), kayak_rt::cons(symbol_lit(str_lit("poly")), kayak_rt::cons(symbol_lit(str_lit("productof")), kayak_rt::cons(symbol_lit(str_lit("prompt-tag")), kayak_rt::cons(symbol_lit(str_lit("proves")), kayak_rt::cons(symbol_lit(str_lit("ref")), kayak_rt::cons(symbol_lit(str_lit("select")), kayak_rt::cons(symbol_lit(str_lit("subr")), kayak_rt::cons(symbol_lit(str_lit("sumof")), kayak_rt::cons(symbol_lit(str_lit("tupleof")), kayak_rt::cons(symbol_lit(str_lit("bool")), kayak_rt::cons(symbol_lit(str_lit("oneof")), kayak_rt::cons(symbol_lit(str_lit("union")), kayak_rt::cons(symbol_lit(str_lit("anyof")), kayak_rt::cons(symbol_lit(str_lit("allof")), kayak_rt::cons(symbol_lit(str_lit("->")), kayak_rt::cons(symbol_lit(str_lit("->*")), kayak_rt::cons(symbol_lit(str_lit("restrict")), kayak_rt::cons(symbol_lit(str_lit("modnames")), kayak_rt::nil())))))))))))))))))))))))))))))))))));
@@ -25853,12 +25795,8 @@ impl<'mxp, Place_Mxp> MadeLoad3MainFace<'mxp, Place_Mxp> {
         made__load__3__main::drive_macros_p(self.0, self.1, s)
     }
 
-    pub fn drive_answers_x(self, xs: kayak_rt::value::Value) -> Result<(), Unwind> {
-        made__load__3__main::drive_answers_x(self.0, self.1, xs)
-    }
-
-    pub fn drive_needed(self) -> Result<Str, Unwind> {
-        made__load__3__main::drive_needed(self.0, self.1)
+    pub fn drive_asker_x(self, f: &'mxp (dyn Fn(Str) -> Str + Send + Sync)) -> Result<(), Unwind> {
+        made__load__3__main::drive_asker_x(self.0, self.1, f)
     }
 
     pub fn drive_written_facts(self, forms: kayak_rt::value::Value) -> Result<kayak_rt::value::Value, Unwind> {
@@ -25874,28 +25812,19 @@ pub fn made__load__3__main<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp) -> MadeLoad3Ma
     MadeLoad3MainFace(mxp, made__load__3__main::maker_state(mxp))
 }
 
-pub fn entry_answered(mut forms: Sexps, mut answers: kayak_rt::value::Value) -> Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind> {
-    loop {
-        let r = {
-            struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
-            impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
-            fn letrena__p<'p>(p: &'p Region_P<'p>, answers: kayak_rt::value::Value, forms: List<&'static Sexp>) -> Result<Product_11_12_13<kayak_rt::value::Value, Str, Str>, Unwind> {
-                let x = made__load__3__main(p);
-                x.drive_answers_x(answers)?;
-                let e = x.drive_entry(sexps_located(forms), int_lit(0))?;
-                Ok(Product_11_12_13(e.0, e.1, x.drive_needed()?))
-            }
-            let p__arena = Region_P::default();
-            letrena__p(&p__arena, answers, forms)?
-        };
-        if string_eq_p(r.2, str_lit("")) {
-            return Ok(Product_11_12(r.0, r.1));
-        } else {
-            let asked = r.2;
-            answers = the::<kayak_rt::value::Value>(kayak_rt::value::cons(the::<kayak_rt::value::Value>(kayak_rt::value::cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(asked)), the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(phase1_asked(asked))))), answers));
-            continue;
+pub fn entry_expanded(forms: Sexps) -> Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind> {
+    Ok({
+        struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
+        impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+        fn letrena__p<'p>(p: &'p Region_P<'p>, forms: List<&'static Sexp>) -> Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind> {
+            let x = made__load__3__main(p);
+            x.drive_asker_x(&phase1_asked)?;
+            let e = x.drive_entry(sexps_located(forms), int_lit(0))?;
+            Ok(Product_11_12(e.0, e.1))
         }
-    }
+        let p__arena = Region_P::default();
+        letrena__p(&p__arena, forms)?
+    })
 }
 
 // A program's forms, expanded, if it defines a macro, as Fixpt's parser
@@ -25904,7 +25833,7 @@ pub fn entry_answered(mut forms: Sexps, mut answers: kayak_rt::value::Value) -> 
 // checker raises its own.
 pub fn expanded(forms: Sexps) -> Result<Sexps, Unwind> {
     if forms_mention_p(forms, macro_heads()) {
-        let r = entry_answered(forms, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))?;
+        let r = entry_expanded(forms)?;
         if string_eq_p(r.1, str_lit("")) {
             Ok(located_sexps(r.0))
         } else {
@@ -25919,7 +25848,7 @@ pub fn expanded(forms: Sexps) -> Result<Sexps, Unwind> {
 // A program's expansion as located text, a node a line (C445); a refusal,
 // its message, a line.
 pub fn located_expanded(forms: Sexps) -> Result<List<Str>, Unwind> {
-    let r = entry_answered(forms, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))?;
+    let r = entry_expanded(forms)?;
     if string_eq_p(r.1, str_lit("")) {
         Ok(located_lines(sexps_located(located_sexps(r.0))))
     } else {

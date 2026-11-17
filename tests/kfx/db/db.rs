@@ -50,6 +50,11 @@ use super::*;
 // which a database of one compiler's (its identity in its first line) has
 // one of.
 
+// And a body may build and run a program (C449): a procedural macro's
+// transformer's answer, `phase1 REQUEST`, a query whose body checks,
+// compiles, builds and runs the transformer, as deterministic as any of
+// its key, the request's text, its files named by what they hold.
+
 // A value as a node keeps it (C417): its text; where it is in the payload
 // read with the database, its offset and length, and whether it is escaped
 // there (past ASCII, or with a `\`), cut out when it is read;
@@ -1084,13 +1089,20 @@ pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
 }
 
 // Input `k` set to `text`, of durability `du`: a new revision if its value
-// is new.
+// is new. Of a key no node is of (C449), no new revision: nothing has read
+// it, so no value made is made stale, and a query may make inputs no one
+// has asked for (a transformer's phase-1 file, `phase1 REQUEST`) without
+// sending every node to be verified again. Not in `models/db.qnt` yet,
+// whose inputs all are from the first.
 pub fn db_set_x(d: Db, k: &'static Sexp, text: Str, du: i64) -> () {
     let fp = (&queries::fnv_string)(text, queries::fnv_offset());
     let i = db_id(d, k);
     let old = db_node_at(d, i);
     if (not(null_p(old)) && node_input_p(car(old)) && i64_eq(node_fp(car(old)), fp) && i64_eq(node_durability(car(old)), du)) {
         ()
+    } else if null_p(old) {
+        let r = get(d.0);
+        db_put_x(d, i, node(k, true, r, r, fp, nil::<i64>(), du, v_text(text)))
     } else {
         let r = i64_plus(get(d.0), 1i64);
         set(d.0, r);

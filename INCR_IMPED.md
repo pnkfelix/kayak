@@ -215,7 +215,9 @@ Each entry has the same parts:
   request not answered yet, a transformer that returns its use
   (`procedural/returns-its-input.fx`) made a request for each of the
   thousand uses before the depth limit: 35 s, against 65 ms once kayak
-  keys such a request with the tag `0`.
+  keys such a request with the tag `0`. Since C449 a request is asked as
+  the expansion goes, each answer kept by the instance by that key, so the
+  thousand uses are still one request.
 - **Alternative:** leave the tag out of a style 1 or 2 request (or write
   `0`), as the transformer never reads it; kayak does so already, which
   changes nothing Fixpt's runtime would answer.

@@ -52,6 +52,17 @@ MX_MAKES = "(maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp))"
 # The place's name, which no local of the expander's has (Rust's
 # parameters are one namespace).
 PLACE = "mxp"
+# The asker's effect (C449), written where the shim and the driver say
+# `mxe`, a file for each host: the engine's and the REPL's, which run
+# `--phase1`, a process (`(io process)`, its command line a constant, so
+# that a process holding the instance holds nothing of `@io`); kc's, its
+# `phase1` query, of the database's effect `qe` (lib/db.kfx), its atoms
+# written out, as a load sees the standard environment alone. Two files
+# of one text but for the asker's effect: KFX's Rust writes no module type
+# of an effect parameter (C24, C170), which one file would need.
+ASKS = {"expander.fx": "(read @globals) (io process)",
+        "expander-kc.fx": "(read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write)"
+                          " (io stderr) (io exit) (alloc @io) (read @io)"}
 # What KFX has not, the shim's in its place.
 PRIMS = {"keyword?": "mx-keyword?", "keyword->symbol": "mx-keyword->symbol",
          "symbol->keyword": "mx-symbol->keyword", "datum-int?": "mx-datum-int?", "eq?": "mx-eq?",
@@ -81,6 +92,14 @@ WRITTEN = {("parser.fx", "mk-symbol"): "pure", ("macros-nodes.fx", "def-env-top"
 # it says: the file, the text, what it is made, and why. Each must be
 # found once (the pin's moving says so when it is not).
 PATCHES = {
+    # The parse's prompt allows its delimited computations its host's
+    # effect too (C449): an expansion calls the host's asker, of the file's
+    # effect parameter `mxe`, where Fixpt's calls a primitive of its
+    # runtime's, whose effect is the runtime's own.
+    "parser.fx": [
+        ("(define parse-tag (prompt-tag presult presult (maxeff tree-builds (write rs) spin) rp)",
+         "(define parse-tag (prompt-tag presult presult (maxeff tree-builds (write rs) spin mxe) rp)"),
+    ],
     "macros-shapes.fx": [
         # Syntax compared by identity, a shortcut that keeps a form as it
         # was where nothing in it changed: KFX has no `eq?` (C75), and the
@@ -836,7 +855,10 @@ def made():
               ' (C442, C443), Fixpt\'s five regions its one, each load an instance in\n'
               ' the place given, its state its own: a process may load one, as a\n'
               ' load sees the standard environment alone. Its types, but those that\n'
-              ' name the place, are expander-types.fx\'s, loaded once for all.\n' + marks + '"\n')
+              ' name the place, are expander-types.fx\'s, loaded once for all. Of\n'
+              ' one host\'s asker\'s effect (C449, `ASKS`), which answers a\n'
+              ' procedural macro\'s transformer\'s request: expander.fx the\n'
+              ' engine\'s, expander-kc.fx kc\'s.\n' + marks + '"\n')
     text = ("(module-parameters ((mxp place)))\n" + header +
             "(include (load-module \"expander-types.fx\"))\n\n" +
             placed(shim + "\n" + body + "\n" + open(DRIVER, encoding="utf-8").read()))
@@ -853,7 +875,8 @@ def made():
               ' `--phase1` defines it before a transformer (main.kfx).\n'
               ' fixpt-source: %s/macros/procedural-prelude.fx@%s"\n'
               '(define phase1-prelude string "%s")\n' % (SRC, rev, escaped))
-    return files, {"expander.fx": text, "expander-types.fx": types, "phase1-prelude.kfx": phase1}
+    made_texts = {name: re.sub(r"(?<![A-Za-z0-9!?*<>=/+-])mxe(?![A-Za-z0-9!?*<>=/+-])", atoms, text) for name, atoms in ASKS.items()}
+    return files, dict(made_texts, **{"expander-types.fx": types, "phase1-prelude.kfx": phase1})
 
 
 def main():

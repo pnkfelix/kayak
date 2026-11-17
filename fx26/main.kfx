@@ -81,10 +81,11 @@
  again (`--phase1`, `phase1-answer`): a process of its own, its heap and
  machine apart from the program's, which a transformer's run would
  otherwise share. Its answer, `=` and what it gave, or `!` and why."
-(define* phase1-asked-in (poly ((r region)) (subr (maxeff (io process) (alloc r) (read r)) (string) string))
- (plambda ((r region))
+(define phase1-asked (subr (maxeff (io process) (read @globals) spin) (string) string)
   (lambda (request)
-    (tagcase (process-start (the (listof string r) (cons "/proc/self/exe" (the (listof string r) (cons "--phase1" (the (listof string r) (cons request (the (listof string r) nil))))))) "")
+    ;; Its command line a constant (C449), so that a process holding the
+    ;; asker (the REPL's front) holds nothing of `@io`.
+    (tagcase (process-start (the (listof string acyclic) (list "/proc/self/exe" "--phase1" request)) "")
       (started p
         (let* ((how (process-exit p)) (out (process-output p))
                (n (string-length out))
@@ -93,32 +94,24 @@
             (exited c (if (and (= c 0) (> (string-length said) 0)) said (string-append "!the transformers' run: " said)))
             (signalled g "!the transformers' run was signalled")
             (unknown u "!the transformers' run ended, how is not known"))))
-      (failed e (string-append "!the transformers' run: " (extract e detail)))))))
-"Of the engine's driver, its list at `@io`; the REPL's front asks at its
- own place's (C448), a process holding nothing of `@io`."
-(define phase1-asked (subr (maxeff (io process) (alloc @io) (read @io) (read (globals phase1-asked-in))) (string) string)
-  (lambda (request) ((proj phase1-asked-in @io) request)))
+      (failed e (string-append "!the transformers' run: " (extract e detail))))))
 
 "A program's forms expanded as a REPL's first entry (`drive-entry`, from
  no state): its forms, and why it is refused, or ``. Each request of a
- procedural macro's transformer the instance was not given answered
- (`phase1-asked`), and the forms expanded again with it (C446): the
- expander, deterministic, asks what it asked before, then more."
-(define-rec
-  (entry-answered (subr (maxeff driving expands) (sexps datum) (tupleof datum string))
-    (lambda (forms answers)
-      ;; An instance of the expander for the program, its state its own,
-      ;; made in a place of its own (C437): a file of a place, loaded
-      ;; (C443), given the forms as located datums (`macros-bridge.kfx`).
-      (let ((r (letrena p (let ((x ((proj (load-module "macros/expander.fx") p))))
-                            (begin
-                              (with x (drive-answers! answers))
-                              (let ((e (with x (drive-entry (sexps-located forms) 0))))
-                                (tuple (extract e 1) (extract e 2) (with x (drive-needed)))))))))
-        (if (string=? (extract r 3) "")
-            (tuple (extract r 1) (extract r 2))
-            (let ((asked (extract r 3)))
-              (entry-answered forms (the datum (cons (the datum (cons (the datum asked) (the datum (phase1-asked asked)))) answers)))))))))
+ procedural macro's transformer answered as it is asked (C449): the
+ instance's asker this program run again (`phase1-asked`), the expansion
+ going on with its answer, as Fixpt's does."
+(define entry-expanded (subr (maxeff driving expands) (sexps) (tupleof datum string))
+  (lambda (forms)
+    ;; An instance of the expander for the program, its state its own,
+    ;; made in a place of its own (C437): a file of a place, loaded
+    ;; (C443), given the forms as located datums (`macros-bridge.kfx`); its
+    ;; asker this program run again (C449).
+    (letrena p (let ((x ((proj (load-module "macros/expander.fx") p))))
+                 (begin
+                   (with x (drive-asker! phase1-asked))
+                   (let ((e (with x (drive-entry (sexps-located forms) 0))))
+                     (tuple (extract e 1) (extract e 2))))))))
 
 "A program's forms, expanded, if it defines a macro, as Fixpt's parser
  expands them (C431: Fixpt's expander, `fx26/macros/expander.kfx`); one
@@ -127,7 +120,7 @@
 (define expanded (subr (maxeff driving expands) (sexps) sexps)
   (lambda (forms)
     (if (forms-mention? forms macro-heads)
-        (let ((r (entry-answered forms (the datum nil))))
+        (let ((r (entry-expanded forms)))
           (if (string=? (extract r 2) "")
               (located-sexps (extract r 1))
               (begin (error (extract r 2)) (the sexps nil))))
@@ -137,7 +130,7 @@
  its message, a line."
 (define located-expanded (subr (maxeff driving expands) (sexps) (listof string acyclic))
   (lambda (forms)
-    (let ((r (entry-answered forms (the datum nil))))
+    (let ((r (entry-expanded forms)))
       (if (string=? (extract r 2) "")
           ;; As the reader's data, which keep no atom's line, so that kc's,
           ;; read back, write the same (`kc --expanded-located`).

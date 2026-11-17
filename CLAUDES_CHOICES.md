@@ -13055,3 +13055,66 @@ what to measure), "Focus now on remaining gaps listed in TODO §51".
 - **The full check**: all passed; kc-steps 336 programs, 0 wrong; the REPL
   sessions 14 (one more, `procedural.in`); the engine's comparisons as
   before (beyond KFX, 411 agree).
+
+## C449. A transformer's request asked as the expansion goes: no expansion run again (2026-11-17)
+
+The user, on my answer to "isn't that middle path in fact giving us the
+best of both worlds?": "remove the quadratic case before steps 1–5, yes"
+(steps 1-5: kc's code in memory, TODO §52). An expansion that met a
+request not answered yet ran again from its form's start once it was
+(C446): k+1 runs of a form of k new requests. Not async, nor a
+continuation: Fixpt's expander calls its runtime and goes on, and so now
+does kayak's.
+- **The shim asks.** `mx-expand-procedural` calls the asker its host gives
+  (`drive-asker!`) and keeps each answer by the request's key (C446's tag
+  `0` for a syntactic closure's: `returns-its-input.fx`'s thousand uses
+  one request still). An asker that answers `` is said not yet. The
+  restart's machinery is gone: `drive-answers!`, `drive-needed`, kc's
+  `(needs ...)`, the drivers' loops (`entry-answered`, `load-answered!`,
+  `given-answered`, the REPL front's).
+- **kc's asker is a query.** `phase1 REQUEST` is no input now but a query
+  whose body is C448's (the request's phase-1 program a file of the
+  database, built and run), asked by the expansion query as it goes, so
+  recorded as one of its reads and memoized as any query's value. That
+  needs two changes to the database (lib/db.kfx; kc's, and two corpus
+  programs', `db` and `db-verify`, whose Rust is re-blessed, their answers
+  as they were):
+  - `qe` may build and run a program (process, files, `@io`): the
+    transformer's run is as deterministic as any body, of its key, the
+    request's text, its files named by what they hold;
+  - `db-set!` of a key no node is of makes no new revision: no one has
+    read it, so nothing made is stale, and the `phase1` body may make its
+    file's inputs inside a query without sending every node to be verified
+    again. `models/db.qnt` has no such input yet (TODO §51).
+  Where it builds and on what runtime are the run's side values
+  (`db-side`, `phase1-dir`, `phase1-rt`), which no query records as read.
+  The build's helpers (`build`, `phase1-built`, `phase1-ran`) moved before
+  `kc-run`, each given the runner.
+- **The engine's and the REPL's asker** is the engine run again
+  (`phase1-asked`, `--phase1`), its command line now a constant list, so
+  that the REPL's front, a process, holds nothing of `@io`; a draft's asker
+  answers ``, so typing runs nothing.
+- **Two expander files.** The asker's effect is the host's: kc's is `qe`,
+  the engine's `(io process)`. One file of a place and an effect, `(mxe
+  effect)`, is FX-26 (Fixpt's `made-core.fx` is of a region and an
+  effect), and kfx took the file once taught (its maker polymorphic in the
+  effect, the effect's binder in scope for the maker's items), but KFX's
+  Rust writes no module type with an effect parameter (C24, C170), and an
+  instance in a `letrena` saw the effect variable as a suspension. So
+  `macros-port.py` writes the expander twice from one text, the asker's
+  effect written in each (`ASKS`): `expander.fx` (the engine's, the
+  REPL's) and `expander-kc.fx` (kc's), both drift-checked; kfx unchanged.
+  Fixpt's `parse-tag` is patched to allow its delimited computations the
+  asker's effect (where Fixpt's is its runtime primitive's own).
+- **Measured**, an explicit renaming chain (`(chain n)` making
+  `(+ 1 (chain n-1))`), cold, `kc --check`: n=25 0.35 s, now 0.21; 50,
+  0.87, now 0.25; 100, 3.47, now 0.34; 200, 18.61, now 0.57 (about 2 ms a
+  use, a run of the transformer built once). The engine: 200, 5.61 s, now
+  5.11, its time the engine's process for each request (in-memory code is
+  the step that makes each a call). `kc-steps.py`'s procedural edits:
+  cold 4 expansions (6), a use's operand edited 1 (2).
+- **Checks**: `kc-expanded.py` as C448's; REPL sessions 14; kc-steps 336
+  programs, 0 wrong.
+- **The full check**: all passed (the first stopped at the corpus: the
+  two programs of lib/db.kfx, re-blessed); the engine's comparisons as
+  before (beyond KFX, 411 agree); `macros-port --check` of 4 files.

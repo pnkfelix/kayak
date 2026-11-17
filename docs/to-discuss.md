@@ -125,5 +125,7 @@ where it was seen and what it would take.
       continuation kayak's Rust does not have. Quadratic only in a form's
       own procedural uses, but an explicit renaming chain that is a
       thousand uses deep would be slow.
+      **Answered** (the user: "remove the quadratic case"): each request
+      asked as the expansion goes, by a call; done, C449.
     And for Fixpt (INCR_IMPED.md §6): a syntactic closure's `%apply` need
     not carry the expansion's tag.

@@ -13,8 +13,8 @@
  its key's place in the template (`source-of`). A list's line, kayak's
  checker's place, kept by its position (`drive-lines`). Not yet: a file's
  macros (`import-with-syntax`), refused, saying so. A procedural macro's
- transformer, and `begin-for-syntax`, run by the host (C446,
- `drive-answers!`)."
+ transformer, and `begin-for-syntax`, run by the host (C446), asked by a
+ call (C449, `drive-asker!`)."
 
 ;;; ------------------------------------------------------------ places
 
@@ -609,34 +609,28 @@
 "What the file gives (C443), each of a written type, so its loader's
  interface (C442): the forms, each a located datum, and what is made of
  them, a list of them, as a datum."
-(define drive-program (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum) datum)
+(define drive-program (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms) mxe) (datum) datum)
   (lambda (forms) (mx-datum-list (drive-program* (loc-nodes forms)))))
-(define drive-entry (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum int) (tupleof datum string int))
+(define drive-entry (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms) mxe) (datum int) (tupleof datum string int))
   (lambda (forms s)
     (let ((r (drive-entry* (loc-nodes forms) s)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2) (extract r 3)))))
-(define drive-draft (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum int) (tupleof datum string))
+(define drive-draft (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms) mxe) (datum int) (tupleof datum string))
   (lambda (forms s)
     (let ((r (drive-draft* (loc-nodes forms) s)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2)))))
 (define drive-macros? (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (int) bool)
   (lambda (s) (drive-macros?* s)))
-"A procedural macro's transformers' answers (C446): those its host has,
- `((REQUEST . ANSWER) ...)`, the newest first, given before the instance
- expands; and, after, the first request it was not given, or ``, for the
- host to answer and expand again (`mx-expand-procedural`)."
-(define drive-rev-datum (->* (datum datum) datum)
-  (lambda (xs out) (if (pair? xs) (drive-rev-datum (cdr xs) (the datum (cons (car xs) out))) out)))
-(define drive-answers! (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum) unit)
-  (lambda (xs)
-    (let ((given (drive-rev-datum xs (the datum nil))))
-      (begin (set mx-phase1-given given) (set mx-phase1-next-given given) (set mx-phase1-needed "")))))
-(define drive-needed (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) () string)
-  (lambda () (get mx-phase1-needed)))
-(define drive-written-facts (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum) datum)
+"A procedural macro's transformer's asker (C449): what answers each
+ request the instance's expansions make, of its host's effect, which
+ scripts/macros-port.py writes in (`ASKS`);
+ until one is given, none, each request said not yet."
+(define drive-asker! (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms) mxe) ((subr (maxeff mxe spin) (string) string)) unit)
+  (lambda (f) (set mx-phase1-asker f)))
+(define drive-written-facts (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms) mxe) (datum) datum)
   (lambda (forms)
     (begin (set drive-files nil) (set drive-met nil) (mx-datum-list (drive-facts (drive-syns (loc-nodes forms)))))))
-(define drive-given (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms)) (datum datum datum) (tupleof datum datum datum))
+(define drive-given (subr (maxeff (read @globals) spin (read @ms) (write @ms) (alloc @ms) (goto @ms) mxe) (datum datum datum) (tupleof datum datum datum))
   (lambda (defs es target)
     (let ((r (drive-given* (loc-nodes defs) (loc-nodes es) target)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2) (mx-datum-list (extract r 3))))))

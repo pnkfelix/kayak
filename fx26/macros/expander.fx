@@ -9,7 +9,10 @@
  (C442, C443), Fixpt's five regions its one, each load an instance in
  the place given, its state its own: a process may load one, as a
  load sees the standard environment alone. Its types, but those that
- name the place, are expander-types.fx's, loaded once for all.
+ name the place, are expander-types.fx's, loaded once for all. Of
+ one host's asker's effect (C449, `ASKS`), which answers a
+ procedural macro's transformer's request: expander.fx the
+ engine's, expander-kc.fx kc's.
  fixpt-source: crates/fixpt-fx26/src/eager-reader-types.fx@0585488
  fixpt-source: crates/fixpt-fx26/src/syn.fx@0585488
  fixpt-source: crates/fixpt-fx26/src/parser-types.fx@0585488
@@ -81,18 +84,19 @@
 (define mx-parse-nat (->* (string int) int)
   (lambda (s radix) (if (= (string-length s) 0) -1 (mx-parse-nat-from s radix 0 0))))
 "The runtime's for procedural macros (Fixpt's `standard.rs`, `TODO.md`
- §228; C446): a request of the expander's (`%forms`, `%define`, `%apply`,
- Fixpt's `procedural::asked`) answered by what the instance was given,
- the answers its host has (`drive-answers!`): a request's answer is of its
- text alone, as a transformer is deterministic, so the host may answer it
- anywhere, once, and keep it. A request not given is kept, the first
- (`drive-needed`), for the host to answer and expand again, and said not
- yet. None is in a phase-1 namespace, `apart`. And a limit of expansion,
- Fixpt's default, the environment not read (`syscall::macro_limit`'s
- `FIXPT_MACRO_*`)."
+ §228; C446, C449): a request of the expander's (`%forms`, `%define`,
+ `%apply`, Fixpt's `procedural::asked`) answered as Fixpt's runtime
+ answers it, by a call, and the expansion goes on: by the asker its host
+ gives (`drive-asker!`), of its host's effect, which scripts/macros-port.py
+ writes in (`ASKS`: expander.fx's, the engine's `--phase1`, a process;
+ expander-kc.fx's, kc's `phase1` query, `qe`). A request's answer is of
+ its text alone, as a transformer is deterministic, so each is kept, and
+ one asked again is answered at once. An asker that answers `` (none
+ given, or a REPL's draft, which runs nothing) is said not yet. None is in
+ a phase-1 namespace, `apart`. And a limit of expansion, Fixpt's default,
+ the environment not read (`syscall::macro_limit`'s `FIXPT_MACRO_*`)."
 (define mx-phase1-given (ref datum mxp) (new (the datum nil)))
-(define mx-phase1-next-given (ref datum mxp) (new (the datum nil)))
-(define mx-phase1-needed (ref string mxp) (new ""))
+(define mx-phase1-asker (ref (subr (maxeff (read @globals) (io process) spin) (string) string) mxp) (new (lambda ((r string)) "")))
 "Request `r` as it is asked and answered: of a syntactic-closure
  transformer's `%apply` (style 1 or 2), its expansion's tag `0`, which its
  transformer is not given (Fixpt's `call_transformer`), so its answer is
@@ -115,25 +119,17 @@
                   (mx-phase1-in request (cdr xs)))
               (mx-phase1-in request (cdr xs))))
         "")))
-"The answer to `request`: the next given, as the expander asks again in
- the order it asked before, so each is found at once; else any given."
-(define mx-phase1-next (->* (string) string)
-  (lambda (request)
-    (let* ((xs (get mx-phase1-next-given)) (x (if (pair? xs) (car xs) (the datum nil)))
-           (k (if (pair? x) (car x) (the datum nil))) (v (if (pair? x) (cdr x) (the datum nil))))
-      (if (string? k)
-          (if (string? v)
-              (if (string=? k request) (begin (set mx-phase1-next-given (cdr xs)) v) (mx-phase1-in request (get mx-phase1-given)))
-              (mx-phase1-in request (get mx-phase1-given)))
-          (mx-phase1-in request (get mx-phase1-given))))))
 (define mx-expand-procedural (->* (string) string)
   (lambda (asked)
-    (let* ((request (mx-phase1-key asked)) (a (mx-phase1-next request)))
-      (if (string=? a "")
-          (begin
-            (if (string=? (get mx-phase1-needed) "") (set mx-phase1-needed request) #u)
-            "!a procedural macro's transformer, run as the program is read: not yet here")
-          a))))
+    (let* ((request (mx-phase1-key asked)) (a (mx-phase1-in request (get mx-phase1-given))))
+      (if (not (string=? a ""))
+          a
+          (let ((b ((get mx-phase1-asker) request)))
+            (if (string=? b "")
+                "!a procedural macro's transformer, run as the program is read: not yet here"
+                (begin
+                  (set mx-phase1-given (the datum (cons (the datum (cons (the datum request) (the datum b))) (get mx-phase1-given))))
+                  b)))))))
 (define mx-call-procedural (subr spin (int string datum string (listof string acyclic)) (sumof (ok datum) (failed string) (apart unit)))
   (lambda (style code d x forms) (sum apart #u)))
 (define mx-limit (subr spin (string) string)
@@ -212,7 +208,7 @@
 
 ;;; ============================================================ parser.fx (the definitions the expander reaches)
 
-(define parse-tag (prompt-tag presult presult (maxeff tree-builds (write mxp) spin) mxp)
+(define parse-tag (prompt-tag presult presult (maxeff tree-builds (write mxp) spin (read @globals) (io process)) mxp)
   (make-continuation-prompt-tag))
 ;;; -------------------------------------------------------- looking at syn
 
@@ -12486,8 +12482,8 @@
  its key's place in the template (`source-of`). A list's line, kayak's
  checker's place, kept by its position (`drive-lines`). Not yet: a file's
  macros (`import-with-syntax`), refused, saying so. A procedural macro's
- transformer, and `begin-for-syntax`, run by the host (C446,
- `drive-answers!`)."
+ transformer, and `begin-for-syntax`, run by the host (C446), asked by a
+ call (C449, `drive-asker!`)."
 
 ;;; ------------------------------------------------------------ places
 
@@ -13082,34 +13078,28 @@
 "What the file gives (C443), each of a written type, so its loader's
  interface (C442): the forms, each a located datum, and what is made of
  them, a list of them, as a datum."
-(define drive-program (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum) datum)
+(define drive-program (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) (io process)) (datum) datum)
   (lambda (forms) (mx-datum-list (drive-program* (loc-nodes forms)))))
-(define drive-entry (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum int) (tupleof datum string int))
+(define drive-entry (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) (io process)) (datum int) (tupleof datum string int))
   (lambda (forms s)
     (let ((r (drive-entry* (loc-nodes forms) s)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2) (extract r 3)))))
-(define drive-draft (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum int) (tupleof datum string))
+(define drive-draft (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) (io process)) (datum int) (tupleof datum string))
   (lambda (forms s)
     (let ((r (drive-draft* (loc-nodes forms) s)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2)))))
 (define drive-macros? (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (int) bool)
   (lambda (s) (drive-macros?* s)))
-"A procedural macro's transformers' answers (C446): those its host has,
- `((REQUEST . ANSWER) ...)`, the newest first, given before the instance
- expands; and, after, the first request it was not given, or ``, for the
- host to answer and expand again (`mx-expand-procedural`)."
-(define drive-rev-datum (->* (datum datum) datum)
-  (lambda (xs out) (if (pair? xs) (drive-rev-datum (cdr xs) (the datum (cons (car xs) out))) out)))
-(define drive-answers! (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum) unit)
-  (lambda (xs)
-    (let ((given (drive-rev-datum xs (the datum nil))))
-      (begin (set mx-phase1-given given) (set mx-phase1-next-given given) (set mx-phase1-needed "")))))
-(define drive-needed (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) () string)
-  (lambda () (get mx-phase1-needed)))
-(define drive-written-facts (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum) datum)
+"A procedural macro's transformer's asker (C449): what answers each
+ request the instance's expansions make, of its host's effect, which
+ scripts/macros-port.py writes in (`ASKS`);
+ until one is given, none, each request said not yet."
+(define drive-asker! (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) (io process)) ((subr (maxeff (read @globals) (io process) spin) (string) string)) unit)
+  (lambda (f) (set mx-phase1-asker f)))
+(define drive-written-facts (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) (io process)) (datum) datum)
   (lambda (forms)
     (begin (set drive-files nil) (set drive-met nil) (mx-datum-list (drive-facts (drive-syns (loc-nodes forms)))))))
-(define drive-given (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum datum datum) (tupleof datum datum datum))
+(define drive-given (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) (io process)) (datum datum datum) (tupleof datum datum datum))
   (lambda (defs es target)
     (let ((r (drive-given* (loc-nodes defs) (loc-nodes es) target)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2) (mx-datum-list (extract r 3))))))

@@ -42,7 +42,7 @@
       (import kc-rust q-rust-item q-rust)
       (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text)
       (import kc-expand kc-load-file! kc-expanded-lines q-expansion q-macros-for q-macro-in q-global-in q-entry
-              q-written q-wseen q-wpos q-wkeys q-syntax-at q-defines-at q-wnames q-wforsyntax q-phase1)
+              q-written q-wseen q-wpos q-wkeys q-syntax-at q-defines-at q-wnames q-wforsyntax)
       (import kc-front q-expanded))
 
     (define-effect driving (maxeff qe (io args) (io stdin) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (io process) (alloc @io) (read @io)))
@@ -55,19 +55,19 @@
         (lambda (message status)
           (begin (tagcase (write-err (string-append "kc: " (string-append message "\n"))) (done u #u) (failed e #u)) (exit status))))
 
-      (define read-text (subr driving (string) string)
+      (define read-text (subr qe (string) string)
         (lambda (path)
           (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
             (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
             (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
-      (define read-text-or-none (subr driving (string) string)
+      (define read-text-or-none (subr qe (string) string)
         (lambda (path)
           (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
             (data b (tagcase (utf8->string b) (text s s) (bad k "")))
             (failed e ""))))
 
-      (define write-text (subr driving (string string) unit)
+      (define write-text (subr qe (string string) unit)
         (lambda (path text)
           (tagcase (write-file path (the (bytevectorof @io) (string->utf8 text)))
             (done u #u)
@@ -82,94 +82,11 @@
             (db-files-made (graph payload)
               (begin (write-text dbp graph) (write-text (string-append dbp ".payload") payload))))))
 
-      "Every query, by name."
-      (define-rec
-        (kc-run (subr qe (db sexp) string)
-          (lambda (d k)
-            ;; A key is `(QUERY PATH)` or `(QUERY PATH KEY)` (C417).
-            (let ((q (key-query k)) (a (key-arg k 0)) (b (key-arg k 1)))
-              (cond ((string=? q "checked") (q-checked d kc-run a b))
-                    ((string=? q "kfx") (q-kfx d kc-run a b))
-                    ((string=? q "form") (q-form d kc-run a b))
-                    ((string=? q "interface") (q-interface d kc-run a b))
-                    ((string=? q "position") (q-position d kc-run a b))
-                    ((string=? q "type") (q-type d kc-run a b))
-                    ((string=? q "l0-item") (q-l0-item d kc-run a b))
-                    ((string=? q "rust-item") (q-rust-item d kc-run a b))
-                    ((string=? q "rust") (q-rust d kc-run a b))
-                    ((string=? q "asm-item") (q-asm-item d kc-run a b))
-                    ((string=? q "asm") (q-asm d kc-run a b))
-                    ((string=? q "asm-entry") (q-asm-entry d kc-run a b))
-                    ((string=? q "objects") (q-objects d kc-run a b))
-                    ;; A file's macros (C445): its forms each expanded, and
-                    ;; the inputs, written, they are expanded from.
-                    ((string=? q "expanded") (q-expanded d kc-run a b))
-                    ((string=? q "expansion") (q-expansion d kc-run a b))
-                    ((string=? q "macros-for") (q-macros-for d kc-run a b))
-                    ((string=? q "macro-in") (q-macro-in d kc-run a b (key-arg k 2)))
-                    ((string=? q "global-in") (q-global-in d kc-run a b (key-arg k 2)))
-                    ((string=? q "entry") (q-entry d kc-run a b (key-arg k 2)))
-                    ((string=? q "written") (q-written d kc-run a b))
-                    ((string=? q "wseen") (q-wseen d kc-run a b))
-                    ((string=? q "wpos") (q-wpos d kc-run a b))
-                    ((string=? q "wkeys") (q-wkeys d kc-run a b))
-                    ((string=? q "syntax-at") (q-syntax-at d kc-run a b))
-                    ((string=? q "defines-at") (q-defines-at d kc-run a b))
-                    ((string=? q "wnames") (q-wnames d kc-run a b))
-                    ((string=? q "wforsyntax") (q-wforsyntax d kc-run a b))
-                    ;; A transformer's answer (C446), an input.
-                    ((string=? q "phase1") (q-phase1 d kc-run a b))
-                    (else (begin (error (string-append "kc: no query " (key-text k))) "")))))))
-
-      (define-rec
-        (ran-names (subr kfx (sexps i64) string)
-          (lambda (ks n)
-            "The first `n` of `ks`, oldest first, each after a space."
-            (if (or (null? ks) (i64<= n 0)) "" (string-append (ran-names (cdr ks) (i64- n 1)) (string-append " " (key-query (car ks))))))))
-
-      (define-datatype opts (opts string bool string (listof string acyclic)))
-
-      (define-rec
-        (opts-of (subr kfx ((listof string acyclic) string bool string (listof string acyclic)) opts)
-          (lambda (as db stats rt rest)
-            (cond ((null? as) (opts db stats rt (reverse rest)))
-                  ((and (string=? (car as) "--db") (not (null? (cdr as)))) (opts-of (cdr (cdr as)) (car (cdr as)) stats rt rest))
-                  ((and (string=? (car as) "--rt") (not (null? (cdr as)))) (opts-of (cdr (cdr as)) db stats (car (cdr as)) rest))
-                  ((string=? (car as) "--stats") (opts-of (cdr as) db #t rt rest))
-                  (else (opts-of (cdr as) db stats rt (cons (car as) rest))))))))
-
-    (hide
-      "A request's outcome: refused (the checker's message), or not; and
-       what it ran."
-      (define-datatype answer (answer bool string i64 string))
-
-      (define-rec
-        (words-in (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
-          (lambda (cs word acc)
-            "A request's words, apart at its spaces, in order."
-            (cond ((null? cs) (reverse (if (null? word) acc (cons (list->string (reverse word)) acc))))
-                  ((char=? (car cs) #\space) (words-in (cdr cs) nil (if (null? word) acc (cons (list->string (reverse word)) acc))))
-                  (else (words-in (cdr cs) (cons (car cs) word) acc))))))
-
-      (define-rec
-        (one-line (subr kfx ((listof char acyclic) (listof char acyclic)) string)
-          (lambda (cs acc)
-            (cond ((null? cs) (list->string (reverse acc)))
-                  ((or (char=? (car cs) #\newline) (char=? (car cs) #\tab)) (one-line (cdr cs) (cons #\space acc)))
-                  (else (one-line (cdr cs) (cons (car cs) acc)))))))
-
-      "`kc build` (C419; the user: \"I'm wondering if we can go so far as to
-       detect that the generated object code is actually unchanged in order
-       to avoid downstream work\"): each procedure an object of its own and
-       what is no procedure's one more, each named by the fingerprint of what
-       it is made from (`objects`), so that an object made once is made no
-       more; the program linked only when its objects, or the runtime, are not
-       those it was last linked of (`EXE.objects` says which)."
       (define-rec
         (strings-at-io (subr (alloc @io) ((listof string acyclic)) (listof string @io))
           (lambda (xs) (if (null? xs) (the (listof string @io) nil) (the (listof string @io) (cons (car xs) (strings-at-io (cdr xs))))))))
 
-      (define run-command (subr driving ((listof string acyclic) string) string)
+      (define run-command (subr qe ((listof string acyclic) string) string)
         (lambda (argv dir)
           "A program run in `dir` to its end: `` if it exits 0; else what it said."
           (tagcase (process-start (strings-at-io argv) dir)
@@ -190,44 +107,44 @@
                   (object-names (cdr os) (cons (if (i64< fp 0) (string-append "o_" (i64->string (i64- 0 fp))) (string-append "o" (i64->string fp))) acc)))))))
 
       (define-rec
-        (members-text (subr driving (db string sexps (listof string acyclic)) string)
-          (lambda (d file ks acc)
+        (members-text (subr qe (db runner string sexps (listof string acyclic)) string)
+          (lambda (d run file ks acc)
             "A run of procedures' objects' assembly, one after another."
             (if (null? ks)
                 (string-list-append (reverse acc))
-                (members-text d file (cdr ks)
-                              (cons (x64-object-text (car (read-all (db-get d kc-run (key2 "asm-item" file (tagcase (car ks) (str (t f p) t) (else other "")))) "asm" 1)))
+                (members-text d run file (cdr ks)
+                              (cons (x64-object-text (car (read-all (db-get d run (key2 "asm-item" file (tagcase (car ks) (str (t f p) t) (else other "")))) "asm" 1)))
                                     acc))))))
 
       (define-rec
-        (objects-written (subr driving (db string string sexps (listof string acyclic) (listof string acyclic) (listof string acyclic)) (listof string acyclic))
-          (lambda (d file dir os names have acc)
+        (objects-written (subr qe (db runner string string sexps (listof string acyclic) (listof string acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (d run file dir os names have acc)
             "The assembly of each object not made yet, written to `dir`; their
              files' names."
             (if (null? os)
                 (reverse acc)
                 (if (string-member? (string-append (car names) ".o") have)
-                    (objects-written d file dir (cdr os) (cdr names) have acc)
+                    (objects-written d run file dir (cdr os) (cdr names) have acc)
                     (let* ((ks (items (car (items (car os)))))
                            (text (if (null? ks)
-                                     (db-get d kc-run (key1 "asm-entry" file))
-                                     (members-text d file ks nil)))
+                                     (db-get d run (key1 "asm-entry" file))
+                                     (members-text d run file ks nil)))
                            (s (string-append (car names) ".s")))
                       (begin
                         (write-text (string-append dir (string-append "/" s)) text)
-                        (objects-written d file dir (cdr os) (cdr names) have (cons s acc)))))))))
+                        (objects-written d run file dir (cdr os) (cdr names) have (cons s acc)))))))))
 
       (define-rec
         (strings-from-io (subr (maxeff (read @io) spin) ((listof string @io)) (listof string acyclic))
           (lambda (xs) (if (null? xs) nil (cons (car xs) (strings-from-io (cdr xs)))))))
 
-      (define listed (subr driving (string) (listof string acyclic))
+      (define listed (subr qe (string) (listof string acyclic))
         (lambda (dir)
           (tagcase (the (sumof (names (listof string @io)) (failed io-error)) (list-dir dir))
             (names ns (strings-from-io ns))
             (failed e nil))))
 
-      (define exists? (subr driving (string) bool)
+      (define exists? (subr qe (string) bool)
         (lambda (path)
           (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
             (data b #t)
@@ -247,16 +164,16 @@
       "The objects in `dir` a program built of `names` no longer lists (C448,
        C419's gap): taken away, so that `EXE.o.d/` holds the program's own.
        One taken away is made again if a later edit lists it again."
-      (define stale-removed! (subr driving (string (listof string acyclic)) unit)
+      (define stale-removed! (subr qe (string (listof string acyclic)) unit)
         (lambda (dir names)
           (let ((stale (stale-of (listed dir) names nil)))
             (if (null? stale) #u (begin (run-command (cons "rm" (cons "-f" stale)) dir) #u)))))
 
-      (define build (subr driving (db string string string) string)
-        (lambda (d file exe rt)
+      (define build (subr qe (db runner string string string) string)
+        (lambda (d run file exe rt)
           "The program of `file` built to `exe`, on the runtime `rt`: `` if
            it is, else what went wrong."
-          (let* ((objs-text (db-get d kc-run (key1 "objects" file)))
+          (let* ((objs-text (db-get d run (key1 "objects" file)))
                  (manifest (string-append objs-text (string-append "\n" rt)))
                  (record (string-append exe ".objects"))
                  (dir (string-append exe ".o.d")))
@@ -265,7 +182,7 @@
                 (let* ((os (items (car (read-all objs-text "objects" 1))))
                        (names (object-names os nil))
                        (made (run-command (list "mkdir" "-p" dir) ""))
-                       (new (objects-written d file dir os names (listed dir) nil))
+                       (new (objects-written d run file dir os names (listed dir) nil))
                        (assembled (if (null? new) "" (run-command (cons "cc" (cons "-c" new)) dir))))
                   (if (not (string=? assembled ""))
                       assembled
@@ -313,25 +230,26 @@
       "A phase-1 program (C447) loaded as a file of the database, named by
        its text's fingerprint, checked and built: its executable, and ``; or
        the answer that says why it is not, `!` and why."
-      (define phase1-built (subr driving (db string string string) (tupleof string string))
-        (lambda (d dir rt program)
+      (define phase1-built (subr qe (db runner string string string) (tupleof string string))
+        (lambda (d run dir rt program)
           (let* ((name (phase1-name program))
                  (path (string-append "%phase1-" (string-append name ".fx")))
-                 (exe (string-append dir (string-append "/t" name)))
-                 (need (kc-load-file! d kc-run path program)))
-            (if (not (string=? need ""))
-                (tuple exe "!kc: not yet: a phase-1 form that uses a procedural macro")
-                (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" path)))))
-                  (if (not (string=? refused ""))
-                      (tuple exe (string-append "!" (phase1-unplaced refused)))
-                      (let ((built (build d path exe rt)))
-                        (tuple exe (if (string=? built "") "" (string-append "!kc: the transformer's build: " built))))))))))
+                 (exe (string-append dir (string-append "/t" name))))
+            (begin
+              ;; Its inputs made inside this query (C449): fresh keys, which
+              ;; no one has read, set at no new revision (`db-set!`).
+              (kc-load-file! d run path program)
+              (let ((refused (kc-refusal (db-get d run (key1 "checked" path)))))
+                (if (not (string=? refused ""))
+                    (tuple exe (string-append "!" (phase1-unplaced refused)))
+                    (let ((built (build d run path exe rt)))
+                      (tuple exe (if (string=? built "") "" (string-append "!kc: the transformer's build: " built))))))))))
 
       "A phase-1 program's run: given a use (`--apply`, the tag and the use's
        text on its standard input, C448), or not. Its answer, `=` and the value
        of its last line as `write` writes it (`#u` of none), or `!` and why
        (`evaluation failed: ` taken off)."
-      (define phase1-ran (subr driving (string bool string) string)
+      (define phase1-ran (subr qe (string bool string) string)
         (lambda (exe apply input)
           (tagcase (process-start (strings-at-io (if apply (list exe "--apply") (list exe))) "")
             (started p
@@ -358,10 +276,12 @@
        once, at the macro's definition, and each use is a run of it given
        the use. A use the reader does not read (`%phase1-unread`: a vector,
        say) is called as the engine calls it, the call a form of the
-       program, built and run. Of the request's text alone, so kept as the
-       input `phase1 REQUEST`, and asked once."
-      (define phase1-asked (subr driving (db phase1-at string) string)
-        (lambda (d at request)
+       program, built and run. The body of the query `phase1 REQUEST`
+       (C449), which the expansion asks as it goes, so asked once; of the
+       request's text alone (where it builds, and on what runtime, the run's
+       side values, `phase1-dir` and `phase1-rt`, no reads)."
+      (define phase1-asked (subr qe (db runner phase1-at string) string)
+        (lambda (d run at request)
           (tagcase at
             (phase1-at (dir rt)
               (let* ((ps (phase1-parts request)) (defs (extract ps 1))
@@ -369,27 +289,100 @@
                 (if (string=? defs "")
                     "!a malformed transformer request"
                     (let* ((program (if (string=? style "") defs (string-append defs (string-append phase1-reader (phase1-applier style)))))
-                           (b (phase1-built d dir rt program)))
+                           (b (phase1-built d run dir rt program)))
                       (cond ((not (string=? (extract b 2) "")) (extract b 2))
                             ((string=? (extract use 3) "") (phase1-ran (extract b 1) #f ""))
                             (else
                              (let ((given (phase1-ran (extract b 1) #t (string-append (extract use 2) (string-append "\n" (extract use 3))))))
                                (if (not (string=? given "=%phase1-unread"))
                                    given
-                                   (let ((b2 (phase1-built d dir rt (string-append program (extract ps 2)))))
+                                   (let ((b2 (phase1-built d run dir rt (string-append program (extract ps 2)))))
                                      (if (string=? (extract b2 2) "") (phase1-ran (extract b2 1) #f "") (extract b2 2))))))))))))))
 
-      "`kc-load-file!`, each transformer's request it needs answered and set
-       (C446), until it needs none."
+      "Every query, by name."
       (define-rec
-        (load-answered! (subr driving (db phase1-at string string) unit)
-          (lambda (d at file text)
-            (let ((need (kc-load-file! d kc-run file text)))
-              (if (string=? need "")
-                  #u
-                  (begin (db-set! d (key1 "phase1" need) (phase1-asked d at need) 0)
-                         (load-answered! d at file text)))))))
+        (kc-run (subr qe (db sexp) string)
+          (lambda (d k)
+            ;; A key is `(QUERY PATH)` or `(QUERY PATH KEY)` (C417).
+            (let ((q (key-query k)) (a (key-arg k 0)) (b (key-arg k 1)))
+              (cond ((string=? q "checked") (q-checked d kc-run a b))
+                    ((string=? q "kfx") (q-kfx d kc-run a b))
+                    ((string=? q "form") (q-form d kc-run a b))
+                    ((string=? q "interface") (q-interface d kc-run a b))
+                    ((string=? q "position") (q-position d kc-run a b))
+                    ((string=? q "type") (q-type d kc-run a b))
+                    ((string=? q "l0-item") (q-l0-item d kc-run a b))
+                    ((string=? q "rust-item") (q-rust-item d kc-run a b))
+                    ((string=? q "rust") (q-rust d kc-run a b))
+                    ((string=? q "asm-item") (q-asm-item d kc-run a b))
+                    ((string=? q "asm") (q-asm d kc-run a b))
+                    ((string=? q "asm-entry") (q-asm-entry d kc-run a b))
+                    ((string=? q "objects") (q-objects d kc-run a b))
+                    ;; A file's macros (C445): its forms each expanded, and
+                    ;; the inputs, written, they are expanded from.
+                    ((string=? q "expanded") (q-expanded d kc-run a b))
+                    ((string=? q "expansion") (q-expansion d kc-run a b))
+                    ((string=? q "macros-for") (q-macros-for d kc-run a b))
+                    ((string=? q "macro-in") (q-macro-in d kc-run a b (key-arg k 2)))
+                    ((string=? q "global-in") (q-global-in d kc-run a b (key-arg k 2)))
+                    ((string=? q "entry") (q-entry d kc-run a b (key-arg k 2)))
+                    ((string=? q "written") (q-written d kc-run a b))
+                    ((string=? q "wseen") (q-wseen d kc-run a b))
+                    ((string=? q "wpos") (q-wpos d kc-run a b))
+                    ((string=? q "wkeys") (q-wkeys d kc-run a b))
+                    ((string=? q "syntax-at") (q-syntax-at d kc-run a b))
+                    ((string=? q "defines-at") (q-defines-at d kc-run a b))
+                    ((string=? q "wnames") (q-wnames d kc-run a b))
+                    ((string=? q "wforsyntax") (q-wforsyntax d kc-run a b))
+                    ;; A transformer's answer (C446), an input.
+                    ;; A transformer's answer (C449): a query whose body runs it.
+                    ((string=? q "phase1") (phase1-asked d kc-run (phase1-at (db-side d "phase1-dir") (db-side d "phase1-rt")) a))
+                    (else (begin (error (string-append "kc: no query " (key-text k))) "")))))))
 
+      (define-rec
+        (ran-names (subr kfx (sexps i64) string)
+          (lambda (ks n)
+            "The first `n` of `ks`, oldest first, each after a space."
+            (if (or (null? ks) (i64<= n 0)) "" (string-append (ran-names (cdr ks) (i64- n 1)) (string-append " " (key-query (car ks))))))))
+
+      (define-datatype opts (opts string bool string (listof string acyclic)))
+
+      (define-rec
+        (opts-of (subr kfx ((listof string acyclic) string bool string (listof string acyclic)) opts)
+          (lambda (as db stats rt rest)
+            (cond ((null? as) (opts db stats rt (reverse rest)))
+                  ((and (string=? (car as) "--db") (not (null? (cdr as)))) (opts-of (cdr (cdr as)) (car (cdr as)) stats rt rest))
+                  ((and (string=? (car as) "--rt") (not (null? (cdr as)))) (opts-of (cdr (cdr as)) db stats (car (cdr as)) rest))
+                  ((string=? (car as) "--stats") (opts-of (cdr as) db #t rt rest))
+                  (else (opts-of (cdr as) db stats rt (cons (car as) rest))))))))
+
+    (hide
+      "A request's outcome: refused (the checker's message), or not; and
+       what it ran."
+      (define-datatype answer (answer bool string i64 string))
+
+      (define-rec
+        (words-in (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (cs word acc)
+            "A request's words, apart at its spaces, in order."
+            (cond ((null? cs) (reverse (if (null? word) acc (cons (list->string (reverse word)) acc))))
+                  ((char=? (car cs) #\space) (words-in (cdr cs) nil (if (null? word) acc (cons (list->string (reverse word)) acc))))
+                  (else (words-in (cdr cs) (cons (car cs) word) acc))))))
+
+      (define-rec
+        (one-line (subr kfx ((listof char acyclic) (listof char acyclic)) string)
+          (lambda (cs acc)
+            (cond ((null? cs) (list->string (reverse acc)))
+                  ((or (char=? (car cs) #\newline) (char=? (car cs) #\tab)) (one-line (cdr cs) (cons #\space acc)))
+                  (else (one-line (cdr cs) (cons (car cs) acc)))))))
+
+      "`kc build` (C419; the user: \"I'm wondering if we can go so far as to
+       detect that the generated object code is actually unchanged in order
+       to avoid downstream work\"): each procedure an object of its own and
+       what is no procedure's one more, each named by the fingerprint of what
+       it is made from (`objects`), so that an object made once is made no
+       more; the program linked only when its objects, or the runtime, are not
+       those it was last linked of (`EXE.objects` says which)."
       "Where this run builds transformers (`phase1-at`): `DB.phase1`, or
        `/tmp/kc-phase1-PID`, PID this process's."
       (define phase1-dir (subr driving (string) string)
@@ -414,6 +407,18 @@
                                       (cons (string-append "/tmp/" f) acc)
                                       acc)))))))
 
+      "Where a transformer is built, and on what runtime, given the `phase1`
+       query's body (C449) as the database's side values, which no query
+       records as read: the answer is of the request alone. Put where they
+       differ only, so that a run that changes nothing writes nothing."
+      (define phase1-sides! (subr qe (db phase1-at) unit)
+        (lambda (d at)
+          (tagcase at
+            (phase1-at (dir rt)
+              (begin
+                (if (string=? (db-side d "phase1-dir") dir) #u (db-side-put! d "phase1-dir" dir))
+                (if (string=? (db-side d "phase1-rt") rt) #u (db-side-put! d "phase1-rt" rt)))))))
+
       "This run's own transformers' directory, if it made one, taken away; and
        any another run left that ended without taking its own away."
       (define phase1-done (subr driving (string) unit)
@@ -429,7 +434,7 @@
            it passes, its code asked for, or built (on the runtime `rt`)."
           (let ((before (db-runs d)) (rt (tagcase at (phase1-at (dir r) r))))
             (begin
-              (load-answered! d at file (read-text file))
+              (kc-load-file! d kc-run file (read-text file))
               (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" file)))))
                 (begin
                   ;; Written only if it is new (C417): an output as it was is left as
@@ -446,7 +451,7 @@
                             #u
                             (write-text out (db-get d kc-run key))))
                       #u)
-                  (let ((failed (if (and (string=? refused "") (string=? what "build")) (build d file out rt) refused)))
+                  (let ((failed (if (and (string=? refused "") (string=? what "build")) (build d kc-run file out rt) refused)))
                     (answer (not (string=? failed "")) failed (i64- (db-runs d) before)
                             (ran-names (db-ran d) (i64- (db-runs d) before))))))))))
 
@@ -492,6 +497,7 @@
                    ;; it is beside this kc: a link a sixth of the static one's (C447).
                    (shared (string-append (directory-of rt) "/libkayak_kcrt.so"))
                    (at (phase1-at (phase1-dir dbp) (if (exists? shared) shared rt)))
+                   (sided (phase1-sides! d at))
                    (status
               (cond ((null? rest)
                      (fail-with "usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | serve)" 2))
@@ -501,7 +507,7 @@
                     ((and (string=? (car rest) "--expanded-located") (not (null? (cdr rest))))
                      (let ((file (car (cdr rest))))
                        (begin
-                         (load-answered! d at file (read-text file))
+                         (kc-load-file! d kc-run file (read-text file))
                          (tagcase (write-out (string-list-append (kc-expanded-lines d kc-run file))) (done u #u) (failed e #u))
                          (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
                          0)))
