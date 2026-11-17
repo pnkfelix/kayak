@@ -449,7 +449,7 @@
   (sh-union (listof int acyclic)))
 (define-type mx-infer-ints (listof int acyclic))
 ;; A part: its shape, its address from its region's root, and that root.
-(define-type part (tupleof mx-infer-shape addr int))
+(define-type mx-infer-part (tupleof mx-infer-shape addr int))
 ;; A pattern's part, of a clause, under so many ellipses in its pattern.
 (define-type mx-infer-item (tupleof int syn int))
 (define-type mx-infer-items (listof mx-infer-item acyclic))

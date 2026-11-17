@@ -118,6 +118,16 @@ port keeps every decision and makes the state a value:
   macros it uses, so that defining it again the same way changes nothing
   downstream.
 
+**As built (C445), in kc**: no state carried at all. Each form is
+expanded in an instance of the expander of its own, given its text, the
+definitions of the macros it names (to a fixed point, each by the scope
+query `macro-in`), the shapes of the globals it names (by `global-in` and
+`entry`, each name alone), and its hash's count (Fixpt's fresh names are
+per form since 0585488, C441). A macro's definition is defined again in
+each instance that needs it, cheap; its value is the definition's text.
+What a form needs that no written definition gives (a macro or a shaped
+global a use makes) is refused, not yet.
+
 ## Stages (track A)
 
 Each stage ends with the full check; each moves programs from refused to

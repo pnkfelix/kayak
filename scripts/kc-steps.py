@@ -18,6 +18,9 @@ then edited to text that means the same (spaces, a comment) runs again
 only what reads the text (`checked`, `l0`), not the back end after it,
 whose input, `l0`'s value, is as it was; edited to another value, the back
 end runs too.
+
+And a file's macros (C445): each form's expansion a query of its own, an
+edit expands again only the forms that name what it changed.
 """
 
 import os
@@ -105,6 +108,51 @@ def cutoff():
     return wrong
 
 
+MACROS = """(define-syntax inc
+  (macro (_ expr) expr)
+  (syntax-rules ((_ e) %s)))
+(define double (subr pure (int) int) (lambda (n) %s))
+(define-syntax inc2
+  (macro (_ expr) expr)
+  (syntax-rules ((_ e) (inc (inc e)))))
+(define f (subr pure (int) int) (lambda (n) (inc2 n)))
+(+ (f 3) (- (double 1) 2))
+"""
+
+
+def expansions():
+    """What a file's macros expand again after edits (C445): each form a
+    query of its own, reading the macros it names, and the shapes of the
+    globals it names, alone: the wrongs found. `(expansion, macros-for)`,
+    how many of each ran."""
+    p = os.path.join(WORK, "expansions.fx")
+    db = os.path.join(WORK, "expansions.db")
+    if os.path.exists(db):
+        os.remove(db)
+    wrong = []
+    body = "(* n 2)"
+    for text, want, why in [(MACROS % ("(+ e 1)", body), (5, 5), "cold"),
+                            (MACROS % ("(+ e 1)", body), (0, 0), "the same"),
+                            # A procedure's body: its form alone; what names it,
+                            # its entry the same, spared.
+                            (MACROS % ("(+ e 1)", "(* 2 n)"), (1, 1), "a body edited"),
+                            # A macro: it, and what names it, to a fixed point
+                            # (`inc2`'s definition, `f`), and no other.
+                            (MACROS % ("(+ 1 e)", "(* 2 n)"), (3, 3), "a macro edited"),
+                            # A form put first: it alone expanded; the scopes'
+                            # queries again, their values the same.
+                            ("(define unused int 9)\n" + MACROS % ("(+ 1 e)", "(* 2 n)"), (1, 3), "a form put first")]:
+        open(p, "w").write(text)
+        r = run([KC, "--db", db, "--stats", "--check", p])
+        got = ran(r.stderr) or []
+        n = (got.count("expansion"), got.count("macros-for"))
+        if r.returncode != 0:
+            wrong.append("expansions: %s: kc --check: %s" % (why, r.stderr.strip()))
+        elif n != want:
+            wrong.append("expansions: %s: ran %d expansions and %d macros-for, not %d and %d" % (why, n[0], n[1], want[0], want[1]))
+    return wrong
+
+
 def main():
     if sys.argv[1:]:
         sys.exit(__doc__)
@@ -179,6 +227,7 @@ def main():
             if got != want:
                 wrong.append("%s: rust gives %s, not %s" % (name, got, want))
     wrong += cutoff()
+    wrong += expansions()
     for w in wrong:
         print("kc-steps: " + w)
     print("kc-steps: %d programs, %d by native code, %d by Rust; %d wrong; %d query bodies ran%s"

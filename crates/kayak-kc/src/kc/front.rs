@@ -153,12 +153,6 @@ pub mod kc_front {
         }), kc_get_all(d, run, query, path, ks))
     }
 
-    // A file's forms, as read.
-    #[inline]
-    pub fn kc_forms(d: Db, run: Runner, path: Str) -> Sexps {
-        read_all(db_get(d, run, key1(str_lit("text"), path)), path, 1i64)
-    }
-
     /// A definition's name, `define`'s or `define*`'s (C426: its effect found
     /// from its lambda, its code a `define`'s); `` of any other form.
     pub fn form_name(f: &'static Sexp) -> Str {
@@ -816,19 +810,45 @@ pub mod kc_front {
         }
     }
 
-    // `kc-load! PATH TEXT`: the file `PATH`'s text, read once, and the inputs
-    // made of it (C414): each form's datum and position, the keys in order; a
-    // form no longer there, `()`. An input set to what it was is no change
-    // (`db-set!`), so a run with the text as it was changes nothing.
-    pub fn kc_load_x(d: Db, run: Runner, path: Str, text: Str) -> () {
-        if {
-            let t = db_node(d, key1(str_lit("text"), path));
-            (not(null_p(t)) && string_eq_p(node_value(d, car(t)), text))
-        } {
-            ()
+    // Whether the file `PATH`'s text is as it was (C417): its forms' inputs
+    // are too, not read again.
+    pub fn kc_text_as_was_p(d: Db, path: Str, text: Str) -> bool {
+        let t = db_node(d, key1(str_lit("text"), path));
+        (not(null_p(t)) && string_eq_p(node_value(d, car(t)), text))
+    }
+
+    // `kc-load-forms! PATH TEXT FORMS EXPANDED`: the file `PATH`'s text, and
+    // the inputs made of its forms `forms` (C414): each form's datum and
+    // position, the keys in order; a form no longer there, `()`. An input set
+    // to what it was is no change (`db-set!`), so a run with the text as it
+    // was changes nothing. `forms` are as read, or, of a file that defines a
+    // macro, as kc expanded them (C445, `kc/expand.kfx`), `expanded`, the
+    // `expanded PATH` input, says so (`kc-program-forms`): `` of a file that
+    // defines none.
+    pub fn kc_load_forms_x(d: Db, path: Str, text: Str, forms: Sexps, expanded: Str) -> () {
+        let kd = lambda1s(move |x: &'static Sexp| {
+            let tagcase_ = car(items(x));
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        });
+        let keyed = map(lambda1s(move |t: Str| {
+            car(read_all(t, str_lit("forms"), 1i64))
+        }), reverse(forms_keyed(modules_expanded(forms, nil::<&'static kc_front::Kmod>(), nil::<&'static Sexp>()), 0i64, nil::<Str>())));
+        let keys = map(kd, keyed);
+        let keys_text = string_append(str_lit("("), string_append(words_of(keys), str_lit(")")));
+        let old = db_node(d, key1(str_lit("keys"), path));
+        let old_keys = if null_p(old) {
+            nil::<Str>()
         } else {
-            let kd = lambda1s(move |x: &'static Sexp| {
-                let tagcase_ = car(items(x));
+            map(lambda1s(move |x: &'static Sexp| {
+                let tagcase_ = x;
                 match *tagcase_ {
                     Sexp::Sym(n, f, p) => {
                         n
@@ -838,39 +858,129 @@ pub mod kc_front {
                         str_lit("")
                     }
                 }
-            });
-            let keyed = map(lambda1s(move |t: Str| {
-                car(read_all(t, str_lit("forms"), 1i64))
-            }), reverse(forms_keyed(modules_expanded(read_all(text, path, 1i64), nil::<&'static kc_front::Kmod>(), nil::<&'static Sexp>()), 0i64, nil::<Str>())));
-            let keys = map(kd, keyed);
-            let keys_text = string_append(str_lit("("), string_append(words_of(keys), str_lit(")")));
-            let old = db_node(d, key1(str_lit("keys"), path));
-            let old_keys = if null_p(old) {
-                nil::<Str>()
-            } else {
-                map(lambda1s(move |x: &'static Sexp| {
-                    let tagcase_ = x;
-                    match *tagcase_ {
-                        Sexp::Sym(n, f, p) => {
-                            n
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            str_lit("")
-                        }
-                    }
-                }), items(car(read_all(node_value(d, car(old)), str_lit("keys"), 1i64))))
-            };
-            db_set_x(d, key1(str_lit("text"), path), text, 0i64);
-            kc_set_forms_x(d, path, keyed, 0i64);
-            if (not(null_p(old)) && not(string_eq_p(node_value(d, car(old)), keys_text))) {
-                kc_unset_forms_x(d, path, filter(lambda1s(move |k: Str| {
-                    not(string_member_p(k, keys))
-                }), old_keys))
-            } else {
-                ()
-            };
-            db_set_x(d, key1(str_lit("keys"), path), keys_text, 0i64)
+            }), items(car(read_all(node_value(d, car(old)), str_lit("keys"), 1i64))))
+        };
+        db_set_x(d, key1(str_lit("text"), path), text, 0i64);
+        db_set_x(d, key1(str_lit("expanded"), path), expanded, 0i64);
+        kc_set_forms_x(d, path, keyed, 0i64);
+        if (not(null_p(old)) && not(string_eq_p(node_value(d, car(old)), keys_text))) {
+            kc_unset_forms_x(d, path, filter(lambda1s(move |k: Str| {
+                not(string_member_p(k, keys))
+            }), old_keys))
+        } else {
+            ()
+        };
+        db_set_x(d, key1(str_lit("keys"), path), keys_text, 0i64)
+    }
+
+    // `kc-load! PATH TEXT`: the file `PATH`'s text, read once, and its forms'
+    // inputs, as read (`kc-load-forms!`).
+    #[inline]
+    pub fn kc_load_x(d: Db, run: Runner, path: Str, text: Str) -> () {
+        if kc_text_as_was_p(d, path, text) {
+            ()
+        } else {
+            kc_load_forms_x(d, path, text, read_all(text, path, 1i64), str_lit(""))
+        }
+    }
+
+    // `expanded PATH` of a file `kc-load-forms!` set none of: ``.
+    #[inline]
+    pub fn q_expanded(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+        str_lit("")
+    }
+
+    // A located datum's text (C445), as kc's `expanded PATH` and `expansion
+    // PATH KEY` keep a form's: `(1 file line pos node ...)`, a list,
+    // `(0 file line pos atom)`, an atom, each where it is; read as the
+    // reader's datum, there.
+    pub fn kc_unlocated(n: &'static Sexp) -> &'static Sexp {
+        let xs = items(n);
+        let at = lambda1s(move |e: &'static Sexp| {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Num(i, f, p) => {
+                    i
+                }
+                _ => {
+                    let other = tagcase_;
+                    the::<i64>(0i64)
+                }
+            }
+        });
+        let f = {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Str(t, f2, p2) => {
+                    t
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        };
+        let l = at(third(xs));
+        let p = at(fourth(xs));
+        let rest = cdr(cdr(cdr(cdr(xs))));
+        if i64_eq(at(car(xs)), 1i64) {
+            lst(map(&kc_unlocated, rest), f, l, p)
+        } else {
+            let tagcase_ = car(rest);
+            match *tagcase_ {
+                Sexp::Sym(x, f2, p2) => {
+                    sym(x, f, p)
+                }
+                Sexp::Num(i, f2, p2) => {
+                    num(i, f, p)
+                }
+                Sexp::Big(t, f2, p2) => {
+                    big(t, f, p)
+                }
+                Sexp::Real(t, f2, p2) => {
+                    real(t, f, p)
+                }
+                Sexp::Chr(c, f2, p2) => {
+                    chr(c, f, p)
+                }
+                Sexp::Str(t, f2, p2) => {
+                    str(t, f, p)
+                }
+                Sexp::Lst(ys, f2, l2, p2) => {
+                    lst(ys, f, l, p)
+                }
+            }
+        }
+    }
+
+    // A file's forms, as read; of a file that defines a macro, as kc
+    // expanded them (C445): `expanded PATH`, the forms' located data, or
+    // `(refused MESSAGE)`; `` of one that defines none.
+    pub fn kc_program_forms(d: Db, run: Runner, path: Str) -> Sexps {
+        let x = db_get(d, run, key1(str_lit("expanded"), path));
+        if string_eq_p(x, str_lit("")) {
+            read_all(db_get(d, run, key1(str_lit("text"), path)), path, 1i64)
+        } else {
+            map(&kc_unlocated, read_all(x, str_lit("expanded"), 1i64))
+        }
+    }
+
+    // The refusal an expansion came to (C445), or ``.
+    pub fn kc_expansion_refusal(d: Db, run: Runner, path: Str) -> Str {
+        let x = db_get(d, run, key1(str_lit("expanded"), path));
+        if has_prefix_p(x, str_lit("(refused ")) {
+            let tagcase_ = second(items(car(read_all(x, str_lit("expanded"), 1i64))));
+            match *tagcase_ {
+                Sexp::Str(m, f, p) => {
+                    m
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("?")
+                }
+            }
+        } else {
+            str_lit("")
         }
     }
 
@@ -899,6 +1009,12 @@ pub mod kc_front {
     #[inline]
     pub fn q_position(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
         str_lit("-1")
+    }
+
+    // A file's forms, as read, or as expanded (C445).
+    #[inline]
+    pub fn kc_forms(d: Db, run: Runner, path: Str) -> Sexps {
+        kc_program_forms(d, run, path)
     }
 
     #[inline]
@@ -1010,13 +1126,22 @@ pub mod kc_front {
     // other does, its work kept, and a `kc serve` goes on.
     pub fn q_checked(d: Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, path: Str, a_key: Str) -> Str {
         let text = db_get(d, run, key1(str_lit("text"), path));
-        let forms = import_items(read_all(text, path, 1i64));
-        let texts = incremental_check::form_texts(text, string_length_i64(text), map(&datum_pos, forms));
+        let expanded = db_get(d, run, key1(str_lit("expanded"), path));
+        let forms = import_items(kc_program_forms(d, run, path));
+        let texts = if string_eq_p(expanded, str_lit("")) {
+            incremental_check::form_texts(text, string_length_i64(text), map(&datum_pos, forms))
+        } else {
+            map(&kc_datum, forms)
+        };
         let side = string_append(str_lit("check-memos "), path);
         let old = (&queries::memos_of_text)(db_side(d, side), str_lit("kc"));
-        let tagcase_ = kayak_rt::attempt(|| { check_outcome_of(path, forms, texts, old) }, |m: Str| {
-            check_refused(m)
-        });
+        let tagcase_ = if string_eq_p(kc_expansion_refusal(d, run, path), str_lit("")) {
+            kayak_rt::attempt(|| { check_outcome_of(path, forms, texts, old) }, |m: Str| {
+                check_refused(m)
+            })
+        } else {
+            check_refused(kc_expansion_refusal(d, run, path))
+        };
         match *tagcase_ {
             CheckOutcome::CheckPassed(t, made) => {
                 db_side_put_x(d, side, (&queries::memos_text)(made, str_lit("kc")));

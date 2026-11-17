@@ -12805,3 +12805,66 @@ so `f-new` itself takes no place.
 - **Not yet**: the legacy `rust-repl` (live-repl.kfx, C103), which
   `repl-sessions.py --rust-repl` runs on the sessions without macros; a live session's drafts and hints with macros,
   untested.
+
+## C445. kc expands: each form a query, by the names it reads (2026-11-16)
+
+TODO §51's per-form caching, folded into kc (the user's choice, asked
+first: nothing kayak runs today expands a form twice but a REPL's draft;
+kc already re-runs only what an edit reaches). kc's step 15 (`kc.md`):
+a file that defines a macro has each written form expanded as a query of
+its own, `expansion PATH KEY`, by an instance of Fixpt's expander made for
+it (`kc/expand.kfx`; making one costs nothing measurable).
+- **What a form's instance is given** (`drive-given`, `macros-driver.kfx`),
+  and nothing else, so its dependencies are what its query reads:
+  - its text, cut from the file where it begins, read alone at line 1, so
+    that a form moved is as it was (the driver moves the places back);
+  - the definitions of the macros it names, followed through what each
+    names, at the form and at the definition (`macro-in`, a query of the
+    scope), in the order written (`macros-for`, whose value, not the
+    expansion, changes when a form is put before another);
+  - of each name met, what the last form before written to define it says
+    of it (`global-in`, `entry`): its shapes (the top level's `top-vals`,
+    `top-descs`: a `with`'s `#:relied` reads its module's type's), and
+    that it is a global (so that a macro may not take its name, as
+    Fixpt's check says);
+  - how many forms of its hash were begun before it (`wseen`, an input),
+    the key of its fresh names (`form-begin!`, Fixpt's `%x:K.N`).
+- **First tried in the engine**: each form of a program expanded alone,
+  each in an instance of its own, against the program's, positions too.
+  With macros alone, 241 of Fixpt's 269 macro programs agreed. The rest
+  showed what else a form reads: the shapes of the globals it names
+  (`cost/diamond-*`, `with` of a module), then the globals for the
+  "defined already" refusals. That mode is gone; kc is compared with the
+  engine directly.
+- **What is no written definition's**, the driver finds after, in order,
+  and refuses: a macro a use makes, or a `hide` holds, named by a later
+  form, not yet (6 programs); a global a use defines, its shape known,
+  named later, not yet (2); a macro taking the name of a global a use
+  defined, as Fixpt does.
+- **Check**: `scripts/kc-expanded.py`, in the full check: kc's
+  `--expanded-located` against the engine's (now the reader's data, so an
+  atom keeps no line in either) for each of Fixpt's 269 programs that
+  defines a macro. 261 agree, node for node and place for place; the 8
+  are KNOWN, each with why.
+- **Measured** (`kc-steps.py`'s `expansions`, five forms, two macros):
+  cold, 5 expansions; the same text, none; a procedure's body edited, 1
+  (its own; the last form names it, but its entry is the same); a macro
+  edited, 3 (it, the macro that uses it, the procedure that uses that); a
+  form put first, 1 (it), and 3 `macros-for` again, their values the same.
+- **kc runs them**: `tests/kc/step15/` (four programs: a use, hygiene, a
+  macro using one defined before, macros that make definitions), their
+  values Fixpt's. kc's l0 lowers `(with #%toplevel NAME)` as the global
+  where no local hides it, which every expansion writes.
+- **The program as expanded**: kc's forms' inputs are made of the
+  expansion (`kc-load-forms!`), and `checked` checks it, from an input
+  `expanded PATH` (each form's located datum) that `kc-load-file!` sets.
+  A refused expansion is `checked`'s refusal.
+- **Found**: the expander's type `part` and kc's database's datatype
+  `part` were one type in kc's Rust (the emitter's names are a unit's),
+  as `atom` would be. The port now gives the expander's types kc's types'
+  names apart too (`unit_names`, kc's types alone). kfx should refuse it,
+  or keep a loaded file's types apart (TODO).
+- **Fixpt's TODO §290** asks what kayak's cache needs of expansion numbers
+  and source keys: neither. Each form is expanded in an instance of its
+  own, whose numbers start over, and the driver writes places, not keys
+  (`drive-placed`). What a form needs of the forms before it is by name.

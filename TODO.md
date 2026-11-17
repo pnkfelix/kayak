@@ -1532,10 +1532,22 @@ Twobit-style optimizations in KFX.
   the legacy `rust-repl` (live-repl.kfx) not yet; a live session's drafts
   and hints with macros untested; the `expands` effect, which C437's
   instance, made in a `letrena`, masks (still carried by `engine-main`
-  and start.kfx's `main`); each form's state as a value, cached
-  (`docs/research/fx26-macros.md`, "Cacheable and incremental"); kc;
-  procedural macros (stage 5, a phase-1 namespace); the driver's lines
-  (each list's, met; an atom's, the last list's before it).
+  and start.kfx's `main`); each form's expansion cached, by the names it
+  reads, folded into kc (the user, 2026-11-16): done, C445, kc's step 15
+  (`kc/expand.kfx`, `scripts/kc-expanded.py`: 261 of Fixpt's 269 macro
+  programs as the engine expands them), but what no written definition
+  gives a later form: a macro a use makes, or a `hide` holds (6
+  programs); a global a use defines, its shape known (2): kc refuses
+  them, not yet (each wants a form's query to read what an earlier
+  form's expansion made, by name); two `define-syntax`es of one name
+  each given, untested beyond a trailmark's; procedural macros (stage 5,
+  a phase-1 namespace); the driver's lines (each list's, met; an atom's,
+  the last list's before it).
+- A loaded file's type named as one of the program's (the expander's
+  `part`, lib/db.kfx's datatype `part`, C445): one type in the Rust kfx
+  makes, which rustc refused. The port names the expander's apart; kfx
+  should refuse it, as a module's ("a module's type named as the
+  program's"), or keep a load's types apart.
 - Found by macros' expansions, the checker's (C432): a keyword's
   construction, `(#:circle 2)` (`macros/define-data*.fx`, and
   `run/keyword-construct.fx` with none); a `moduleof` a template makes,
@@ -1599,6 +1611,12 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   a checked program's refusal to be one, said, and kept, as any value.
 - kc: each query reads its file's forms again from the text (`kc-forms`);
   the forms as a query's value once values are kept decoded.
+- kc's step 15, macros (C445): each form's expansion a query, by the
+  names it reads (TODO §51); a macro's checks (a typed one's hidden
+  definitions) checked with the program; a file's macros
+  (`import-with-syntax`), loads, `begin-for-syntax`, not yet. Step 14
+  (the effects that need the runtime) not done before it: the macro
+  programs kc takes are those its back ends take.
 - Models (`docs/research/models.md`): exhaustive checking (Java 17+ for
   Apalache; the snap's OpenJDK 27 works with `QUINT_HOME` and a temporary
   directory it can see); the model of the asynchronous engine when it is;

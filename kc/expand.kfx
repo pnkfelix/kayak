@@ -1,0 +1,552 @@
+"expand.kfx: kc's macros (C445; docs/research/kc.md, step 15): a file that
+ defines one, each of its forms expanded as a query of its own, by Fixpt's
+ expander (`fx26/macros/expander.fx`, a file of a place, an instance of it
+ made for each), so that what a form makes depends on what it names alone,
+ and an edit elsewhere expands it not again.
+
+ The inputs, set by `kc-load-file!` from one reading of the text, syntax
+ alone, each form by its written key (`%syntax:NAME`, a `define-syntax`;
+ `%def:NAME`, a definition written so; `#wN`, any other, the Nth such):
+
+   written PATH KEY      the form's text, as written, from where it begins
+                         to where the next does: read alone, at line 1,
+                         offset 0, so that a form moved is as it was
+   wseen PATH KEY        `((HASH COUNT) ...)`: of each form it begins (its
+                         own, a `hide`'s), how many of that hash the forms
+                         before began, its fresh names' key (`form-begin!`)
+   wpos PATH KEY         where it is among them
+   wkeys PATH            the keys, in order
+   syntax-at PATH NAME   the keys of the `define-syntax`es of macro NAME
+   defines-at PATH NAME  the keys of the forms written to define NAME
+   wnames PATH           the names either is set of
+
+ The queries:
+
+   macro-in PATH KEY NAME    the key of the `define-syntax` of NAME in scope
+                             at form KEY, or ``
+   global-in PATH KEY NAME   the key of the last form before KEY written to
+                             define NAME, or ``
+   entry PATH KEY NAME       what form KEY's expansion says of NAME: its
+                             shapes, and that it is a global
+   expansion PATH KEY        form KEY expanded: `(ok (NODE ...) (ENTRY
+                             ...))`, what it makes, located (`kc-unlocated`),
+                             and what it defines; or `(refused FILE LINE
+                             MESSAGE)`
+
+ A form's expansion reads its own text, the macros it names, to a fixed
+ point through their definitions, each by `macro-in` and `written`, and of
+ each name, the global its `global-in` finds, by `entry`: so an edit of a
+ macro expands again only its users, and one that leaves a global's shape
+ as it was stops there (early cutoff). The scope queries read positions,
+ so that their values, not the expansions, change when a form is put
+ before another.
+
+ What a form's expansion kx-needs but no form written defines (a macro a use
+ makes, or a `hide` holds; a global a use defines, of a shape known, or a
+ macro's name), the driver finds after, in order, as the program's
+ expansion would meet it, and refuses: not yet, or as Fixpt does."
+
+"An instance of the expander for each call (C442, C443): a form's
+ expansion (`drive-given`), and what is read of a file's written forms
+ (`drive-written-facts`). Top-level definitions, the load's maker made
+ beside them, as the engine's `expanded` has it."
+(define kc-instance (subr (maxeff (read @globals) spin) (bool datum datum datum) (tupleof datum datum datum))
+  (lambda (facts? defs es target)
+    (letrena p (let ((x ((proj (load-module "../fx26/macros/expander.fx") p))))
+                 (if facts?
+                     (tuple (with x (drive-written-facts defs)) (the datum nil) (the datum nil))
+                     (with x (drive-given defs es target)))))))
+
+(define kc-given (subr (maxeff (read @globals) spin) (datum datum datum) (tupleof datum datum datum))
+  (lambda (defs es target) (kc-instance #f defs es target)))
+
+(define kc-written-facts (subr (maxeff (read @globals) spin) (datum) datum)
+  (lambda (forms) (extract (kc-instance #t forms (the datum nil) (the datum nil)) 1)))
+
+(define kc-expand
+  (module
+    (define-type xbody (subr qe (db runner string string string) string))
+
+    (hide
+      (import kc-front kc-datum kc-data kc-unlocated kc-load-forms! kc-text-as-was? (type qbody))
+
+      (define key3 (subr kfx (string string string string) sexp)
+        (lambda (q a b c) (lst (list (sym q "" 0) (str a "" 0) (str b "" 0) (str c "" 0)) "" 0 0)))
+
+      (define macro-heads strings (list "define-syntax" "define-syntax-rec"))
+
+      (define-rec
+        (mentions? (subr kfx (sexps strings) bool)
+          (lambda (es heads)
+            "Whether any of `es` is, or holds, a form whose head is one of `heads`."
+            (if (null? es)
+                #f
+                (or (tagcase (car es)
+                      (lst (xs f l p)
+                        (or (and (not (null? xs)) (tagcase (car xs) (sym (n f2 p2) (string-member? n heads)) (else other #f)))
+                            (mentions? xs heads)))
+                      (else other #f))
+                    (mentions? (cdr es) heads))))))
+
+      "A datum as the reader's, read back: names, numbers, strings, lists."
+      (define-rec
+        (sexp-datum (subr kfx (sexp) datum)
+          (lambda (e)
+            (tagcase e
+              (sym (n f p) (cond ((string=? n "#t") (the datum #t)) ((string=? n "#f") (the datum #f)) (else (the datum (string->symbol n)))))
+              (num (i f p) (the datum (i64->int i)))
+              (str (t f p) (the datum t))
+              (chr (c f p) (the datum c))
+              (lst (xs f l p) (sexps-datum xs))
+              (else other (the datum nil)))))
+        (sexps-datum (subr kfx (sexps) datum)
+          (lambda (xs) (if (null? xs) (the datum nil) (the datum (cons (sexp-datum (car xs)) (sexps-datum (cdr xs))))))))
+
+      "A located datum's text, as `kc-unlocated` reads it."
+      (define atom-file (subr kfx (sexp) string)
+        (lambda (e)
+          (tagcase e (sym (n f p) f) (num (i f p) f) (big (t f p) f) (real (t f p) f) (chr (c f p) f) (str (t f p) f) (lst (xs f l p) f))))
+      (define-rec
+        (located (subr kfx (sexp) string)
+          (lambda (e)
+            (tagcase e
+              (lst (xs f l p) (string-list-append (list "(1 " (kc-datum (str f "" 0)) " " (i64->string l) " " (i64->string p) (located-nodes xs) ")")))
+              (else other (string-list-append (list "(0 " (kc-datum (str (atom-file e) "" 0)) " 0 " (i64->string (datum-pos e)) " " (kc-datum e) ")"))))))
+        (located-nodes (subr kfx (sexps) string)
+          (lambda (xs) (if (null? xs) "" (string-append " " (string-append (located (car xs)) (located-nodes (cdr xs))))))))
+
+      "The symbols of `e`, onto `out`, each once."
+      (define-rec
+        (symbols-of (subr kfx (sexp strings) strings)
+          (lambda (e out)
+            (tagcase e
+              (sym (n f p) (if (string-member? n out) out (cons n out)))
+              (lst (xs f l p) (symbols-each xs out))
+              (else other out))))
+        (symbols-each (subr kfx (sexps strings) strings)
+          (lambda (xs out) (if (null? xs) out (symbols-each (cdr xs) (symbols-of (car xs) out))))))
+
+      (define form-file (subr kfx (string) string) (lambda (key) (string-append "%form:" key)))
+
+      "Form `key` as written, read alone, its file its key's."
+      (define written-form (subr qe (db runner string string) sexp)
+        (lambda (d run path key) (car (read-all (db-get d run (key2 "written" path key)) (form-file key) 1))))
+
+      (define keys-in (subr qe (db runner sexp) strings)
+        (lambda (d run k)
+          (map (lambda ((x sexp)) (tagcase x (sym (n f p) n) (str (t f p) t) (else other "")))
+               (items (car (read-all (db-get d run k) "keys" 1))))))
+
+      (define wpos (subr qe (db runner string string) i64)
+        (lambda (d run path key) (string->i64 (db-get d run (key2 "wpos" path key)))))
+
+      (define-rec
+        (datum-items (subr kfx (datum) (listof datum acyclic))
+          (lambda (d) (if (pair? d) (let ((x (car d))) (cons x (datum-items (cdr d)))) nil))))
+      (define datum-names (subr kfx (datum) strings)
+        (lambda (d) (map (lambda ((x datum)) (if (symbol? x) (symbol->string x) "")) (datum-items d)))))
+
+    ;;; ------------------------------------------------------------ the inputs' defaults
+    "Of a key or name `kc-load-file!` set none of."
+    (define q-written qbody (lambda (d run a-path a-key) ""))
+    (define q-wseen qbody (lambda (d run a-path a-key) "()"))
+    (define q-wpos qbody (lambda (d run a-path a-key) "-1"))
+    (define q-wkeys qbody (lambda (d run a-path a-key) "()"))
+    (define q-syntax-at qbody (lambda (d run a-path a-key) "()"))
+    (define q-defines-at qbody (lambda (d run a-path a-key) "()"))
+    (define q-wnames qbody (lambda (d run a-path a-key) "()"))
+
+    ;;; ------------------------------------------------------------ scopes
+    (hide
+      "Of keys `ks`, the last whose position is before `at`, or ``."
+      (define-rec
+        (last-before (subr qe (db runner string strings i64 string i64) string)
+          (lambda (d run path ks at best best-at)
+            (if (null? ks)
+                best
+                (let ((p (wpos d run path (car ks))))
+                  (if (and (i64>= p 0) (i64< p at) (i64> p best-at))
+                      (last-before d run path (cdr ks) at (car ks) p)
+                      (last-before d run path (cdr ks) at best best-at))))))))
+
+    "`macro-in PATH KEY NAME`."
+    (define q-macro-in xbody
+      (lambda (d run path key name)
+        (last-before d run path (keys-in d run (key2 "syntax-at" path name)) (wpos d run path key) "" -1)))
+
+    "`global-in PATH KEY NAME`."
+    (define q-global-in xbody
+      (lambda (d run path key name)
+        (last-before d run path (keys-in d run (key2 "defines-at" path name)) (wpos d run path key) "" -1)))
+
+    "`entry PATH KEY NAME`: the entries of form `key`'s expansion of `name`,
+     `((NAME KIND SHAPES) ...)`; `()` of a refused one."
+    (define q-entry xbody
+      (lambda (d run path key name)
+        (let ((v (car (read-all (db-get d run (key2 "expansion" path key)) "expansion" 1))))
+          (if (sym-is? (car (items v)) "ok")
+              (string-append "(" (string-append (words-of (map kc-datum (filter (lambda ((e sexp)) (sym-is? (car (items e)) name)) (items (third (items v)))))) ")"))
+              "()"))))
+
+    ;;; ------------------------------------------------------------ a form's expansion
+    (hide
+      "The macros' definitions form `key` needs, by name, to a fixed point:
+       of each name in `todo`, asked at a form (`(AT NAME)`, the form `key`
+       or a definition found), the `define-syntax` in scope there; and of
+       each found, its own names, at it and at `key`. `asked` the pairs
+       asked of, `defs` the keys found, `names` the names met."
+      (define-datatype kx-needs (kx-needs strings strings))
+      (define-rec
+        (needed (subr qe (db runner string string (listof (tupleof string string) acyclic) strings strings strings) kx-needs)
+          (lambda (d run path key todo asked defs names)
+            (if (null? todo)
+                (kx-needs defs names)
+                (let* ((at (extract (car todo) 1)) (n (extract (car todo) 2)) (ask (string-append at (string-append " " n))))
+                  (if (string-member? ask asked)
+                      (needed d run path key (cdr todo) asked defs names)
+                      (let ((m (db-get d run (key3 "macro-in" path at n)))
+                            (names (if (string-member? n names) names (cons n names))))
+                        (if (or (string=? m "") (string-member? m defs))
+                            (needed d run path key (cdr todo) (cons ask asked) defs names)
+                            (let ((ns (symbols-of (written-form d run path m) nil)))
+                              (needed d run path key
+                                      (onto (map (lambda ((x string)) (tuple m x)) ns) (onto (map (lambda ((x string)) (tuple key x)) ns) (cdr todo)))
+                                      (cons ask asked) (cons m defs) names))))))))))
+
+      "Keys `ks` in the order they are written, by insertion."
+      (define-rec
+        (placed-in (subr kfx (string i64 (listof (tupleof string i64) acyclic)) (listof (tupleof string i64) acyclic))
+          (lambda (k at xs)
+            (cond ((null? xs) (list (tuple k at)))
+                  ((i64< at (extract (car xs) 2)) (cons (tuple k at) xs))
+                  (else (cons (car xs) (placed-in k at (cdr xs))))))))
+      (define-rec
+        (by-place (subr qe (db runner string strings (listof (tupleof string i64) acyclic)) strings)
+          (lambda (d run path ks out)
+            (if (null? ks)
+                (map (lambda ((x (tupleof string i64))) (extract x 1)) out)
+                (by-place d run path (cdr ks) (placed-in (car ks) (wpos d run path (car ks)) out))))))
+
+      "Of names `ns`, the entries each's global in scope at `key` gives."
+      (define-rec
+        (entries-of (subr qe (db runner string string strings) sexps)
+          (lambda (d run path key ns)
+            (if (null? ns)
+                nil
+                (let ((g (db-get d run (key3 "global-in" path key (car ns)))))
+                  (if (string=? g "")
+                      (entries-of d run path key (cdr ns))
+                      (onto (items (car (read-all (db-get d run (key3 "entry" path g (car ns))) "entry" 1)))
+                            (entries-of d run path key (cdr ns)))))))))
+
+      "Form `k`, as the expander is given it: `(form counts)`, located."
+      (define given (subr qe (db runner string string) datum)
+        (lambda (d run path k)
+          (the datum (cons (sexp-located (written-form d run path k))
+                           (the datum (cons (sexp-datum (car (read-all (db-get d run (key2 "wseen" path k)) "wseen" 1))) (the datum nil)))))))
+
+      (define-rec
+        (given-each (subr qe (db runner string strings) datum)
+          (lambda (d run path ks)
+            (if (null? ks) (the datum nil) (the datum (cons (given d run path (car ks)) (given-each d run path (cdr ks)))))))))
+
+    "`macros-for PATH KEY`: `((DEF ...) (NAME ...))`, the definitions of the
+     macros form `key` needs, in the order they are written, and the names
+     it and they hold: a query of its own, so that its value, not the
+     expansion, changes when a form is put before another."
+    (define q-macros-for qbody
+      (lambda (d run path key)
+        (tagcase (needed d run path key (map (lambda ((x string)) (tuple key x)) (symbols-of (written-form d run path key) nil)) nil nil nil)
+          (kx-needs (defs names)
+            (string-list-append (list "((" (words-of (map (lambda ((k string)) (kc-datum (str k "" 0))) (by-place d run path defs nil))) ") ("
+                                      (words-of (map (lambda ((n string)) (kc-datum (str n "" 0))) names)) "))"))))))
+
+    "`expansion PATH KEY`."
+    (define q-expansion qbody
+      (lambda (d run path key)
+        (let* ((m (items (car (read-all (db-get d run (key2 "macros-for" path key)) "macros-for" 1))))
+               (strs (lambda ((x sexp)) (map (lambda ((y sexp)) (tagcase y (str (t f p) t) (else other ""))) (items x))))
+               (defs (strs (car m)))
+               (names (strs (second m)))
+               (es (sexps-datum (entries-of d run path key names)))
+               (target (given d run path key))
+               (ds (given-each d run path defs))
+               (r (kc-given ds es target)))
+          (if (pair? (extract r 2))
+              ;; `(file line message)`, said as a datum.
+              (string-append "(refused " (string-append (kc-data (items (datum-sexp (extract r 2) "" 0 0))) ")"))
+              (string-list-append
+                (list "(ok (" (words-of (map located (located-sexps (extract r 1)))) ") ("
+                      (words-of (map kc-datum (map (lambda ((e datum)) (datum-sexp e "" 0 0)) (datum-items (extract r 3))))) "))"))))))
+
+    ;;; ------------------------------------------------------------ the driver's
+    (hide
+
+      "What the expander reads of a written form (`drive-written-facts`): the
+       hashes it begins, the names it is written to define, its macros."
+      (define-datatype kx-fact (kx-fact (listof i64 acyclic) strings strings))
+      (define facts-of (subr qe (sexps) (listof kx-fact acyclic))
+        (lambda (forms)
+          (let ((fs (kc-written-facts (sexps-located forms))))
+            (map (lambda ((x datum))
+                   (let ((xs (datum-items x)))
+                     (kx-fact (map (lambda ((h datum)) (if (int? h) (int->i64 h) (the i64 0))) (datum-items (car xs)))
+                           (datum-names (car (cdr xs)))
+                           (datum-names (car (cdr (cdr xs)))))))
+                 (datum-items fs)))))
+
+      "Each form's key: a `define-syntax`'s `%syntax:NAME`, a definition's
+       `%def:NAME`, any other's `#wN`; one taken already, a `~` and a count."
+      (define-rec
+        (keys-of (subr kfx ((listof kx-fact acyclic) i64 strings) strings)
+          (lambda (fs k out)
+            (if (null? fs)
+                (reverse out)
+                (tagcase (car fs)
+                  (kx-fact (hs names ms)
+                    (let* ((base (cond ((not (null? ms)) (string-append "%syntax:" (car ms)))
+                                       ((not (null? names)) (string-append "%def:" (car names)))
+                                       (else (string-append "#w" (i64->string k)))))
+                           (key (unique base out 1)))
+                      (keys-of (cdr fs) (if (and (null? ms) (null? names)) (i64+ k 1) k) (cons key out)))))))))
+      (define-rec
+        (unique (subr kfx (string strings i64) string)
+          (lambda (b ks n)
+            (let ((k (if (i64= n 1) b (string-append b (string-append "~" (i64->string n))))))
+              (if (string-member? k ks) (unique b ks (i64+ n 1)) k)))))
+
+      "Counts: of each hash, how many forms began it so far."
+      (define-datatype kx-count (kx-count i64 i64))
+      (define-rec
+        (count-of (subr kfx (i64 (listof kx-count acyclic)) i64)
+          (lambda (h cs) (cond ((null? cs) 0) ((tagcase (car cs) (kx-count (x n) (i64= x h))) (tagcase (car cs) (kx-count (x n) n))) (else (count-of h (cdr cs)))))))
+      "Of hashes `hs`, a form's, the counts before it, `(HASH COUNT)`, each
+       hash once (the expander counts those it begins again itself); and
+       the counts after."
+      (define-rec
+        (seen-text (subr kfx ((listof i64 acyclic) (listof kx-count acyclic) (listof i64 acyclic) strings) strings)
+          (lambda (hs cs done out)
+            (cond ((null? hs) (reverse out))
+                  ((i64-member? (car hs) done) (seen-text (cdr hs) cs done out))
+                  (else (seen-text (cdr hs) cs (cons (car hs) done)
+                                   (cons (string-list-append (list "(" (i64->string (car hs)) " " (i64->string (count-of (car hs) cs)) ")")) out)))))))
+      (define-rec
+        (i64-member? (subr kfx (i64 (listof i64 acyclic)) bool)
+          (lambda (x xs) (cond ((null? xs) #f) ((i64= x (car xs)) #t) (else (i64-member? x (cdr xs)))))))
+      (define-rec
+        (counts-after (subr kfx ((listof i64 acyclic) (listof kx-count acyclic)) (listof kx-count acyclic))
+          (lambda (hs cs) (if (null? hs) cs (counts-after (cdr hs) (cons (kx-count (car hs) (i64+ (count-of (car hs) cs) 1)) cs))))))
+
+      "Name `n` -> the keys of `ks` whose names `of` holds it, in order."
+      (define-datatype kx-named (kx-named string strings))
+      (define-rec
+        (named-add (subr kfx ((listof kx-named acyclic) strings string (listof kx-named acyclic)) (listof kx-named acyclic))
+          (lambda (ns names key acc)
+            (if (null? names)
+                ns
+                (named-add (named-put ns (car names) key) (cdr names) key acc)))))
+      (define-rec
+        (named-put (subr kfx ((listof kx-named acyclic) string string) (listof kx-named acyclic))
+          (lambda (ns n key)
+            (cond ((null? ns) (list (kx-named n (list key))))
+                  ((tagcase (car ns) (kx-named (m ks) (string=? m n))) (tagcase (car ns) (kx-named (m ks) (cons (kx-named m (onto ks (list key))) (cdr ns)))))
+                  (else (cons (car ns) (named-put (cdr ns) n key)))))))
+      (define named-text (subr kfx (strings) string)
+        (lambda (ks) (string-append "(" (string-append (words-of (map (lambda ((k string)) (kc-datum (str k "" 0))) ks)) ")"))))
+
+      "Each form's inputs, from the facts, the forms and their texts."
+      (define-rec
+        (set-forms! (subr qe (db string strings strings (listof kx-fact acyclic) i64 (listof kx-count acyclic)) unit)
+          (lambda (d path ks texts fs i cs)
+            (if (null? ks)
+                #u
+                (tagcase (car fs)
+                  (kx-fact (hs names ms)
+                    (begin
+                      (db-set! d (key2 "written" path (car ks)) (car texts) 0)
+                      (db-set! d (key2 "wseen" path (car ks)) (string-append "(" (string-append (words-of (seen-text hs cs nil nil)) ")")) 0)
+                      (db-set! d (key2 "wpos" path (car ks)) (i64->string i) 0)
+                      (set-forms! d path (cdr ks) (cdr texts) (cdr fs) (i64+ i 1) (counts-after hs cs)))))))))
+      (define-rec
+        (unset-forms! (subr qe (db string strings) unit)
+          (lambda (d path ks)
+            (if (null? ks) #u
+                (begin (db-set! d (key2 "written" path (car ks)) "" 0)
+                       (db-set! d (key2 "wseen" path (car ks)) "()" 0)
+                       (db-set! d (key2 "wpos" path (car ks)) "-1" 0)
+                       (unset-forms! d path (cdr ks)))))))
+      (define-rec
+        (set-named! (subr qe (db string string (listof kx-named acyclic)) unit)
+          (lambda (d path q ns)
+            (if (null? ns) #u
+                (tagcase (car ns)
+                  (kx-named (n ks) (begin (db-set! d (key2 q path n) (named-text ks) 0) (set-named! d path q (cdr ns)))))))))
+      (define-rec
+        (unset-named! (subr qe (db string strings) unit)
+          (lambda (d path ns)
+            (if (null? ns) #u
+                (begin (db-set! d (key2 "syntax-at" path (car ns)) "()" 0)
+                       (db-set! d (key2 "defines-at" path (car ns)) "()" 0)
+                       (unset-named! d path (cdr ns)))))))
+      (define named-names (subr kfx ((listof kx-named acyclic)) strings)
+        (lambda (ns) (map (lambda ((x kx-named)) (tagcase x (kx-named (n ks) n))) ns)))
+
+      "Where each written form begins, its key's: its line, its offset."
+      (define-datatype kx-place (kx-place string i64 i64))
+      (define-rec
+        (place-of (subr kfx (string (listof kx-place acyclic)) (listof kx-place acyclic))
+          (lambda (k ps) (cond ((null? ps) nil) ((tagcase (car ps) (kx-place (x l o) (string=? x k))) (list (car ps))) (else (place-of k (cdr ps)))))))
+      (define-rec
+        (lines-to (subr kfx ((listof char acyclic) i64 i64 i64) i64)
+          (lambda (cs i at n) (if (or (null? cs) (i64>= i at)) n (lines-to (cdr cs) (i64+ i 1) at (if (char=? (car cs) #\newline) (i64+ n 1) n))))))
+      "A node an expansion made, where it is in the file: of a form read
+       alone (`%form:KEY`), its line and offset moved by its form's."
+      (define-rec
+        (moved (subr kfx (sexp string (listof kx-place acyclic)) sexp)
+          (lambda (e path ps)
+            (let* ((f (atom-file e))
+                   (at (if (has-prefix? f "%form:") (place-of (substring f 6 (string-length f)) ps) nil))
+                   (l0 (if (null? at) (the i64 1) (tagcase (car at) (kx-place (k l o) l))))
+                   (o0 (if (null? at) (the i64 0) (tagcase (car at) (kx-place (k l o) o))))
+                   (f2 (if (null? at) f path)))
+              (tagcase e
+                (lst (xs f3 l p) (lst (map (lambda ((x sexp)) (moved x path ps)) xs) f2 (if (null? at) l (i64+ l (i64- l0 1))) (if (null? at) p (i64+ p o0))))
+                (sym (n f3 p) (sym n f2 (if (null? at) p (i64+ p o0))))
+                (num (i f3 p) (num i f2 (if (null? at) p (i64+ p o0))))
+                (big (t f3 p) (big t f2 (if (null? at) p (i64+ p o0))))
+                (real (t f3 p) (real t f2 (if (null? at) p (i64+ p o0))))
+                (chr (c f3 p) (chr c f2 (if (null? at) p (i64+ p o0))))
+                (str (t f3 p) (str t f2 (if (null? at) p (i64+ p o0)))))))))
+
+      "What the forms so far define of a name, as the forms after see it,
+       the newest first: by form `i`, of kind `k` (its expansion's entries),
+       written there to (`defines-at`) or not, its shapes known or not; the
+       program's expansion would meet each in order."
+      (define-datatype kx-defd (kx-defd string i64 i64 bool bool))
+      "Of `ds`, those of name `n` by the newest form that defines it."
+      (define-rec
+        (defd-of (subr kfx (string (listof kx-defd acyclic) i64) (listof kx-defd acyclic))
+          (lambda (n ds at)
+            (cond ((null? ds) nil)
+                  ((tagcase (car ds) (kx-defd (m i k w sh) (and (string=? m n) (or (i64< at 0) (i64= i at)))))
+                   (cons (car ds) (defd-of n (cdr ds) (tagcase (car ds) (kx-defd (m i k w sh) i)))))
+                  (else (defd-of n (cdr ds) at))))))
+      "Why entries `xs`, of the newest form to define `n`, are not kc's to
+       give yet, or a macro `ms` may not take `n`; or ``."
+      (define-rec
+        (defd-why (subr kfx (string (listof kx-defd acyclic) strings) string)
+          (lambda (n xs ms)
+            (if (null? xs)
+                ""
+                (tagcase (car xs)
+                  (kx-defd (m i k written shaped)
+                    (cond ((i64= k 2) (string-list-append (list "`" n "` is a macro a form makes, not one a `define-syntax` written at the top level defines: not yet in kc, which expands a form at a time")))
+                          (written (defd-why n (cdr xs) ms))
+                          ((and (i64= k 3) (string-member? n ms)) (string-list-append (list "`" n "` is defined already: a macro may not take its name")))
+                          ((and shaped (i64< k 2)) (string-list-append (list "`" n "` is defined by a use of a macro, its shape known: not yet in kc, which expands a form at a time")))
+                          (else (defd-why n (cdr xs) ms)))))))))
+      "Of names `ns`, a form's, the first a form before defined as kc does
+       not give yet, or a macro may not take: why, or ``."
+      (define-rec
+        (unwritten-why (subr kfx (strings (listof kx-defd acyclic) strings) string)
+          (lambda (ns ds ms)
+            (if (null? ns)
+                ""
+                (let ((why (defd-why (car ns) (defd-of (car ns) ds -1) ms)))
+                  (if (string=? why "") (unwritten-why (cdr ns) ds ms) why))))))
+
+      "The entries of form `i`'s expansion, onto what was defined so far."
+      (define-rec
+        (defined-onto (subr kfx (sexps strings i64 (listof kx-defd acyclic)) (listof kx-defd acyclic))
+          (lambda (es names i ds)
+            (if (null? es)
+                ds
+                (let* ((xs (items (car es))) (n (sym-name (car xs))) (k (tagcase (second xs) (num (j f p) j) (else other (the i64 0))))
+                       (shaped (tagcase (third xs) (lst (ys f l p) (not (null? ys))) (else other #f))))
+                  (defined-onto (cdr es) names i (cons (kx-defd n i k (string-member? n names) shaped) ds)))))))
+
+      (define-datatype kx-expanded (expanded-forms sexps) (expanded-refused string))
+
+      "Each form's expansion, in order: what they make, moved where they are,
+       or the first refusal."
+      (define-rec
+        (expand-each (subr qe (db runner string strings (listof kx-fact acyclic) sexps (listof kx-place acyclic) i64 (listof kx-defd acyclic) sexps) kx-expanded)
+          (lambda (d run path ks fs forms ps i ds out)
+            (if (null? ks)
+                (expanded-forms (reverse out))
+                (tagcase (car fs)
+                  (kx-fact (hs names ms)
+                    (let* ((here (tagcase (car (place-of (car ks) ps)) (kx-place (k l o) l)))
+                           (why (unwritten-why (symbols-of (car forms) nil) ds ms)))
+                      (if (not (string=? why ""))
+                          (expanded-refused (string-list-append (list "kfx: " path ":" (i64->string here) ": " why)))
+                          (let ((v (car (read-all (db-get d run (key2 "expansion" path (car ks))) "expansion" 1))))
+                            (if (sym-is? (car (items v)) "refused")
+                                (let* ((xs (cdr (items v)))
+                                       (f (tagcase (car xs) (str (t f2 p2) t) (else other "")))
+                                       (at (if (has-prefix? f "%form:") (place-of (substring f 6 (string-length f)) ps) nil))
+                                       (l (tagcase (second xs) (num (i f2 p2) i) (else other (the i64 0))))
+                                       (line (if (null? at) l (tagcase (car at) (kx-place (k l0 o) (i64+ l (i64- l0 1))))))
+                                       (m (tagcase (third xs) (str (t f2 p2) t) (else other ""))))
+                                  (expanded-refused (string-list-append (list "kfx: " (if (null? at) f path) ":" (i64->string line) ": " m))))
+                                (expand-each d run path (cdr ks) (cdr fs) (cdr forms) ps (i64+ i 1)
+                                             (defined-onto (items (third (items v))) names i ds)
+                                             (onto (reverse (map (lambda ((x sexp)) (moved (kc-unlocated x) path ps)) (items (second (items v))))) out)))))))))))))
+
+    (hide
+      "Name -> keys, of the facts' macros (`macros?`) or names."
+      (define-rec
+        (fold-named (subr kfx ((listof kx-fact acyclic) strings bool (listof kx-named acyclic)) (listof kx-named acyclic))
+          (lambda (fs ks macros? acc)
+            (if (null? fs)
+                acc
+                (tagcase (car fs)
+                  (kx-fact (hs names ms) (fold-named (cdr fs) (cdr ks) macros? (named-add acc (if macros? ms names) (car ks) nil)))))))))
+
+    "`kc-load-file! PATH TEXT`: the file `PATH`'s text read once, and its
+     inputs made, as `kc-load!` makes them; of a file that defines a macro,
+     each form expanded first, a query of its own, and the inputs made of
+     what they make (C445)."
+    (define kc-load-file! (subr qe (db runner string string) unit)
+      (lambda (d run path text)
+        (if (kc-text-as-was? d path text)
+            #u
+            (let ((forms (read-all text path 1)))
+              (if (not (mentions? forms macro-heads))
+                  (kc-load-forms! d path text forms "")
+                  (let* ((fs (facts-of forms))
+                         (ks (keys-of fs 0 nil))
+                         (texts (with incremental-check (form-texts text (string-length-i64 text) (map datum-pos forms))))
+                         (chars (string-chars text))
+                         (ps (map2 (lambda ((k string) (f sexp))
+                                     (kx-place k (tagcase f (lst (xs f2 l p) l) (else other (lines-to chars (the i64 0) (datum-pos f) (the i64 1)))) (datum-pos f)))
+                                   ks forms))
+                         (macros (fold-named fs ks #t nil))
+                         (defs (fold-named fs ks #f nil))
+                         (old-keys (keys-in d run (key1 "wkeys" path)))
+                         (old-names (keys-in d run (key1 "wnames" path)))
+                         (names (onto (named-names macros) (named-names defs))))
+                    (begin
+                      (set-forms! d path ks texts fs 0 nil)
+                      (unset-forms! d path (filter (lambda ((k string)) (not (string-member? k ks))) old-keys))
+                      (unset-named! d path (filter (lambda ((n string)) (not (string-member? n names))) old-names))
+                      (set-named! d path "syntax-at" macros)
+                      (set-named! d path "defines-at" defs)
+                      ;; A name of one but not the other: none of the other.
+                      (set-named! d path "syntax-at" (map (lambda ((n string)) (kx-named n nil)) (filter (lambda ((n string)) (not (string-member? n (named-names macros)))) names)))
+                      (set-named! d path "defines-at" (map (lambda ((n string)) (kx-named n nil)) (filter (lambda ((n string)) (not (string-member? n (named-names defs)))) names)))
+                      (db-set! d (key1 "wkeys" path) (named-text ks) 0)
+                      (db-set! d (key1 "wnames" path) (named-text names) 0)
+                      (tagcase (expand-each d run path ks fs forms ps 0 nil nil)
+                        (expanded-forms (xs) (kc-load-forms! d path text xs (words-of (map located xs))))
+                        (expanded-refused (m) (kc-load-forms! d path text nil (string-append "(refused " (string-append (kc-datum (str m "" 0)) ")"))))))))))))
+
+    "The program as expanded, located, each node a line, as the engine's
+     `--expanded-located` writes it (C445; scripts/kc-expanded.py)."
+    (define kc-expanded-lines (subr qe (db runner string) strings)
+      (lambda (d run path)
+        (let ((x (db-get d run (key1 "expanded" path))))
+          (cond ((string=? x "") (located-lines (sexps-located (read-all (db-get d run (key1 "text" path)) path 1))))
+                ((has-prefix? x "(refused ")
+                 (list (string-append (tagcase (second (items (car (read-all x "expanded" 1)))) (str (m f p) m) (else other "?")) "\n")))
+                (else (located-lines (sexps-located (map kc-unlocated (read-all x "expanded" 1)))))))))))

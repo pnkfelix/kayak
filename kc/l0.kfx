@@ -180,6 +180,16 @@
                       (l0-free (cdr used) bound acc)
                       (l0-free (cdr used) bound (cons (car used) acc))))))))
 
+      "`(with #%toplevel NAME)`'s name; `` of any other."
+      (define l0-toplevel (subr kfx (sexp) string)
+        (lambda (e)
+          (tagcase e
+            (lst (xs f l p)
+              (if (and (i64= (size xs) 3) (sym-is? (car xs) "with") (sym-is? (second xs) "#%toplevel"))
+                  (tagcase (third xs) (sym (n f2 p2) n) (else other ""))
+                  ""))
+            (else other ""))))
+
       (define-rec
         (l0-of (subr kfx (string sexps (listof l0-bound acyclic) i64 sexp) l0-made)
           (lambda (path scope env next e)
@@ -207,7 +217,20 @@
                         (else (l0-made (not-yet path (string-append "a global, " n)) next)))))
               (lst (xs f l p)
                 (let ((h (tagcase (car xs) (sym (n f2 p2) n) (else other ""))))
-                  (cond ((and (string=? h "") (head-is? (car xs) "proj"))
+                  (cond ;; `(with #%toplevel NAME)`, as an expansion writes a
+                        ;; template's free name (C445; C397): the global, where no
+                        ;; local hides it; a call of one, of it.
+                        ((not (string=? (l0-toplevel e) ""))
+                         (let ((n (l0-toplevel e)))
+                           (if (i64>= (l0-number-of n env) 0)
+                               (l0-made (not-yet path (string-append "a global a local hides, " n)) next)
+                               (l0-of path scope env next (sym n f p)))))
+                        ((not (string=? (l0-toplevel (car xs)) ""))
+                         (let ((n (l0-toplevel (car xs))))
+                           (if (i64>= (l0-number-of n env) 0)
+                               (l0-made (not-yet path (string-append "a global a local hides, " n)) next)
+                               (l0-of path scope env next (lst (cons (sym n f p) (cdr xs)) f l p)))))
+                        ((and (string=? h "") (head-is? (car xs) "proj"))
                          ;; `((proj F T ...) ARG ...)`: `(F ARG ...)`, its types the
                          ;; checker's (C426).
                          (l0-of path scope env next (lst (cons (second (items (car xs))) (cdr xs)) f l p)))

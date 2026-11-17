@@ -67,3 +67,27 @@
             (datum-sexp (bridge-nth n 4) f l p)))))
   (located-sexps (subr kfx (datum) sexps)
     (lambda (d) (if (pair? d) (cons (located-sexp (car d)) (located-sexps (cdr d))) nil))))
+
+"A located datum as text, its places with it (C445): what the engine's
+ `--expanded-located` and `--expanded-alone` write, a program's expansion
+ and its forms' each alone, to be compared."
+(define-rec
+  (located-text (subr kfx (datum) string)
+    (lambda (d)
+      (cond ((null? d) "()")
+            ((pair? d) (string-append "(" (string-append (located-texts d) ")")))
+            ((symbol? d) (symbol->string d))
+            ((int? d) (int->string d))
+            ((string? d) (string-append "\"" (string-append d "\"")))
+            ((char? d) (string-append "#\\" (char->string d)))
+            ((bool? d) (if d "#t" "#f"))
+            (else "#u"))))
+  (located-texts (subr kfx (datum) string)
+    (lambda (d)
+      (cond ((null? d) "")
+            ((pair? d) (let ((x (car d)) (rest (cdr d)))
+                         (if (null? rest) (located-text x) (string-append (located-text x) (string-append " " (located-texts rest))))))
+            (else (string-append ". " (located-text d)))))))
+(define-rec
+  (located-lines (subr kfx (datum) (listof string acyclic))
+    (lambda (d) (if (pair? d) (let ((x (car d))) (cons (string-append (located-text x) "\n") (located-lines (cdr d)))) nil))))

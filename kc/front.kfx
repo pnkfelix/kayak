@@ -103,11 +103,6 @@
         (map (lambda ((t string)) (car (read-all t query 1)))
              (kc-get-all d run query path ks))))
 
-    (hide
-      "A file's forms, as read."
-      (define kc-forms (subr qe (db runner string) sexps)
-        (lambda (d run path) (read-all (db-get d run (key1 "text" path)) path 1))))
-
     (define form-name (subr kfx (sexp) string)
       (lambda (f)
         "A definition's name, `define`'s or `define*`'s (C426: its effect found
@@ -377,19 +372,25 @@
                                    acc))))
                         (else (modules-expanded (cdr fs) ms (cons (withs-expanded f ms) acc))))))))))
 
-    "`kc-load! PATH TEXT`: the file `PATH`'s text, read once, and the inputs
-     made of it (C414): each form's datum and position, the keys in order; a
-     form no longer there, `()`. An input set to what it was is no change
-     (`db-set!`), so a run with the text as it was changes nothing."
-    (define kc-load! (subr qe (db runner string string) unit)
-      (lambda (d run path text)
-        (if (let ((t (db-node d (key1 "text" path))))
-              (and (not (null? t)) (string=? (node-value d (car t)) text)))
-            ;; The text as it was (C417): its forms' inputs are too, not read
-            ;; again.
-            #u
+    "Whether the file `PATH`'s text is as it was (C417): its forms' inputs
+     are too, not read again."
+    (define kc-text-as-was? (subr qe (db string string) bool)
+      (lambda (d path text)
+        (let ((t (db-node d (key1 "text" path))))
+          (and (not (null? t)) (string=? (node-value d (car t)) text)))))
+
+    "`kc-load-forms! PATH TEXT FORMS EXPANDED`: the file `PATH`'s text, and
+     the inputs made of its forms `forms` (C414): each form's datum and
+     position, the keys in order; a form no longer there, `()`. An input set
+     to what it was is no change (`db-set!`), so a run with the text as it
+     was changes nothing. `forms` are as read, or, of a file that defines a
+     macro, as kc expanded them (C445, `kc/expand.kfx`), `expanded`, the
+     `expanded PATH` input, says so (`kc-program-forms`): `` of a file that
+     defines none."
+    (define kc-load-forms! (subr qe (db string string sexps string) unit)
+      (lambda (d path text forms expanded)
         (let* ((kd (lambda ((x sexp)) (tagcase (car (items x)) (sym (n f p) n) (else other ""))))
-               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (modules-expanded (read-all text path 1) nil nil) 0 nil))))
+               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (modules-expanded forms nil nil) 0 nil))))
                (keys (map kd keyed))
                (keys-text (string-append "(" (string-append (words-of keys) ")")))
                (old (db-node d (key1 "keys" path)))
@@ -398,11 +399,64 @@
                                   (items (car (read-all (node-value d (car old)) "keys" 1)))))))
           (begin
             (db-set! d (key1 "text" path) text 0)
+            (db-set! d (key1 "expanded" path) expanded 0)
             (kc-set-forms! d path keyed 0)
             (if (and (not (null? old)) (not (string=? (node-value d (car old)) keys-text)))
                 (kc-unset-forms! d path (filter (lambda ((k string)) (not (string-member? k keys))) old-keys))
                 #u)
-            (db-set! d (key1 "keys" path) keys-text 0))))))
+            (db-set! d (key1 "keys" path) keys-text 0)))))
+
+    "`kc-load! PATH TEXT`: the file `PATH`'s text, read once, and its forms'
+     inputs, as read (`kc-load-forms!`)."
+    (define kc-load! (subr qe (db runner string string) unit)
+      (lambda (d run path text)
+        (if (kc-text-as-was? d path text) #u (kc-load-forms! d path text (read-all text path 1) ""))))
+
+    "`expanded PATH` of a file `kc-load-forms!` set none of: ``."
+    (define q-expanded qbody (lambda (d run a-path a-key) ""))
+
+    "A located datum's text (C445), as kc's `expanded PATH` and `expansion
+     PATH KEY` keep a form's: `(1 file line pos node ...)`, a list,
+     `(0 file line pos atom)`, an atom, each where it is; read as the
+     reader's datum, there."
+    (define-rec
+      (kc-unlocated (subr kfx (sexp) sexp)
+        (lambda (n)
+          (let* ((xs (items n))
+                 (at (lambda ((e sexp)) (tagcase e (num (i f p) i) (else other (the i64 0)))))
+                 (f (tagcase (second xs) (str (t f2 p2) t) (else other "")))
+                 (l (at (third xs)))
+                 (p (at (fourth xs)))
+                 (rest (cdr (cdr (cdr (cdr xs))))))
+            (if (i64= (at (car xs)) 1)
+                (lst (map kc-unlocated rest) f l p)
+                (tagcase (car rest)
+                  (sym (x f2 p2) (sym x f p))
+                  (num (i f2 p2) (num i f p))
+                  (big (t f2 p2) (big t f p))
+                  (real (t f2 p2) (real t f p))
+                  (chr (c f2 p2) (chr c f p))
+                  (str (t f2 p2) (str t f p))
+                  (lst (ys f2 l2 p2) (lst ys f l p))))))))
+
+    (hide
+      "A file's forms, as read; of a file that defines a macro, as kc
+       expanded them (C445): `expanded PATH`, the forms' located data, or
+       `(refused MESSAGE)`; `` of one that defines none."
+      (define kc-program-forms (subr qe (db runner string) sexps)
+        (lambda (d run path)
+          (let ((x (db-get d run (key1 "expanded" path))))
+            (if (string=? x "")
+                (read-all (db-get d run (key1 "text" path)) path 1)
+                (map kc-unlocated (read-all x "expanded" 1)))))))
+
+    "The refusal an expansion came to (C445), or ``."
+    (define kc-expansion-refusal (subr qe (db runner string) string)
+      (lambda (d run path)
+        (let ((x (db-get d run (key1 "expanded" path))))
+          (if (has-prefix? x "(refused ")
+              (tagcase (second (items (car (read-all x "expanded" 1)))) (str (m f p) m) (else other "?"))
+              ""))))
 
     (define kc-keys (subr qe (db runner string) (listof string acyclic))
       (lambda (d run path)
@@ -413,6 +467,11 @@
     (define q-form qbody (lambda (d run a-path a-key) "()"))
 
     (define q-position qbody (lambda (d run a-path a-key) "-1"))
+
+    (hide
+      "A file's forms, as read, or as expanded (C445)."
+      (define kc-forms (subr qe (db runner string) sexps)
+        (lambda (d run path) (kc-program-forms d run path))))
 
     (define kc-form (subr qe (db runner string string) sexp)
       (lambda (d run path key) (car (read-all (db-get d run (key2 "form" path key)) path 1))))
@@ -489,16 +548,24 @@
         ;; change to the checker's state replayed. Content-addressed, the
         ;; memos are no input: they spare work, and change no value.
         (let* ((text (db-get d run (key1 "text" path)))
+               (expanded (db-get d run (key1 "expanded" path)))
                ;; FX-26's `import` expanded as it is read, as kfx's `with-loads`
                ;; does (C425).
-               (forms (import-items (read-all text path 1)))
-               (texts (with incremental-check (form-texts text (string-length-i64 text) (map datum-pos forms))))
+               (forms (import-items (kc-program-forms d run path)))
+               ;; A form's memo is addressed by its text: as written, its
+               ;; file's; as expanded (C445), the datum's.
+               (texts (if (string=? expanded "")
+                          (with incremental-check (form-texts text (string-length-i64 text) (map datum-pos forms)))
+                          (map kc-datum forms)))
                (side (string-append "check-memos " path))
                (old ((with queries memos-of-text) (db-side d side) "kc")))
           ;; The checker's refusal, an `error`, caught (FX-26's `attempt`): the
           ;; check writes nothing, so a refusal half way leaves nothing to undo;
           ;; the memos are kept as they were.
-          (tagcase (attempt (check-outcome-of path forms texts old) (lambda ((m string)) (check-refused m)))
+          (tagcase (if (string=? (kc-expansion-refusal d run path) "")
+                       (attempt (check-outcome-of path forms texts old) (lambda ((m string)) (check-refused m)))
+                       ;; Refused as it was expanded (C445): not checked.
+                       (check-refused (kc-expansion-refusal d run path)))
             (check-passed (t made)
               (begin
                 (db-side-put! d side ((with queries memos-text) made "kc"))

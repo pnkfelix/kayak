@@ -54,6 +54,9 @@ step python3 -I scripts/corpus.py
 step python3 -I scripts/engine-programs.py
 # kc's steps (C399): each back end against Fixpt's answers.
 step python3 -I scripts/kc-steps.py
+# kc's expansion, a form at a time, against the engine's, a program at a
+# time (C445): each of Fixpt's programs that defines a macro.
+step python3 -I scripts/kc-expanded.py
 # The models (C400): Quint's simulator, the fixed holding, the unfixed not.
 step python3 -I scripts/models.py
 step python3 -I scripts/repl-sessions.py

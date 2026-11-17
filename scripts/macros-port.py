@@ -327,21 +327,27 @@ class Program:
         return None
 
 
-def unit_names():
-    """Every name kayak's engine's unit defines, but the expander's."""
+def unit_names(units=((os.path.join("fx26", "fx26.unit"), False),)):
+    """Every name a unit that loads the expander defines, but the
+    expander's: the engine's; with kc's (C445), its types' names alone,
+    where one of theirs and one of Fixpt's the same would be one type in
+    Rust."""
     names = set()
-    for line in open(os.path.join(ROOT, "fx26", "fx26.unit")):
-        line = line.strip()
-        if not line or line.startswith((";", "--")) or line.startswith("macros/") or line in ("macros-shim.kfx", "macros-bridge.kfx"):
-            continue
-        s = open(os.path.join(ROOT, "fx26", line), encoding="utf-8").read()
-        names |= defined_in(s)
+    for unit, types_only in units:
+        here = os.path.dirname(os.path.join(ROOT, unit))
+        for line in open(os.path.join(ROOT, unit)):
+            line = line.strip()
+            if not line or line.startswith((";", "--")) or line.startswith("macros/") or os.path.basename(line) in ("macros-shim.kfx", "macros-bridge.kfx"):
+                continue
+            s = open(os.path.join(here, line), encoding="utf-8").read()
+            names |= defined_in(s, types_only)
     return names
 
 
-def defined_in(s):
+def defined_in(s, types_only=False):
     """The names a KFX file's text defines at its top level, its
-    `define-rec`s' and datatypes' constructors too."""
+    `define-rec`s' and datatypes' constructors too; or, `types_only`, its
+    types' names alone (kc's, whose values the expander's do not meet)."""
     names = set()
     t = tokens(s)
     for f in tree(t):
@@ -349,6 +355,10 @@ def defined_in(s):
             continue
         h = head(t, f)
         n = f.items[1]
+        if types_only:
+            if h in ("define-type", "define-datatype", "define-generative"):
+                names.add(atom_of(t, n) if not isinstance(n, Node) else atom_of(t, n.items[0]))
+            continue
         if h in ("define", "define-type", "define-effect", "define-datatype", "define-generative"):
             names.add(atom_of(t, n) if not isinstance(n, Node) else atom_of(t, n.items[0]))
             if h == "define-datatype":
@@ -520,7 +530,7 @@ def constructors_of(prog, keep, names):
     return {c: g for c, g in out.items() if seen[c] == 1}
 
 
-def globals_of(prog, keep, taken):
+def globals_of(prog, keep, taken, taken_types=frozenset()):
     count = {}
     for n in prog.order:
         f = prog.files[n]
@@ -532,7 +542,7 @@ def globals_of(prog, keep, taken):
         f = prog.files[n]
         for (d, ns), s in f.defs.items():
             if s in keep[n]:
-                out[(n, d, ns)] = "mx-%s-%s" % (short(n), d) if (count[d] > 1 or d in taken or d in PRIMS or d in WORDS) else d
+                out[(n, d, ns)] = "mx-%s-%s" % (short(n), d) if (count[d] > 1 or d in taken or (ns == "t" and d in taken_types) or d in PRIMS or d in WORDS) else d
     return out
 
 
@@ -807,7 +817,7 @@ def made():
     prog = Program()
     keep = kept(prog)
     taken = unit_names() | (defined_in(open(SHIM, encoding="utf-8").read()) if os.path.exists(SHIM) else set())
-    names = globals_of(prog, keep, taken)
+    names = globals_of(prog, keep, taken, unit_names(((os.path.join("kc", "kc.unit"), True),)))
     CTORS.clear()
     CTORS.update(constructors_of(prog, keep, names))
     files = [n for n in prog.order if keep[n]]

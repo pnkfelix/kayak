@@ -446,6 +446,33 @@ pub mod kc_l0 {
         }
     }
 
+    // `(with #%toplevel NAME)`'s name; `` of any other.
+    pub fn l0_toplevel(e: &'static Sexp) -> Str {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("with")) && sym_is_p(second(xs), str_lit("#%toplevel"))) {
+                    let tagcase_ = third(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                } else {
+                    str_lit("")
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }
+
     /// The term of `e`, an expression, its names bound as `env` says; the
     /// binders it makes numbered from `next`.
     pub fn l0_of(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut e: &'static Sexp) -> &'static L0Made {
@@ -498,7 +525,23 @@ pub mod kc_l0 {
                             }
                         }
                     };
-                    if (string_eq_p(h, str_lit("")) && head_is_p(car(xs), str_lit("proj"))) {
+                    if not(string_eq_p(l0_toplevel(e), str_lit(""))) {
+                        let n = l0_toplevel(e);
+                        if i64_gt_eq(l0_number_of(n, env), 0i64) {
+                            return l0_made(not_yet(path, string_append(str_lit("a global a local hides, "), n)), next);
+                        } else {
+                            e = sym(n, f, p);
+                            continue;
+                        }
+                    } else if not(string_eq_p(l0_toplevel(car(xs)), str_lit(""))) {
+                        let n = l0_toplevel(car(xs));
+                        if i64_gt_eq(l0_number_of(n, env), 0i64) {
+                            return l0_made(not_yet(path, string_append(str_lit("a global a local hides, "), n)), next);
+                        } else {
+                            e = lst(kayak_rt::heap_cons(sym(n, f, p), cdr(xs)), f, l, p);
+                            continue;
+                        }
+                    } else if (string_eq_p(h, str_lit("")) && head_is_p(car(xs), str_lit("proj"))) {
                         e = lst(kayak_rt::heap_cons(second(items(car(xs))), cdr(xs)), f, l, p);
                         continue;
                     } else if (string_eq_p(h, str_lit("")) || (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit("")))) || string_eq_p(l0_global_kind(h, scope), str_lit("value"))) {

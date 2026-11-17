@@ -11,6 +11,10 @@
                                      (target/release/libkayak_kcrt.a)
    kc [--db DB] serve                requests, a line each, on the
                                      standard input (C415)
+   kc [--db DB] --expanded-located FILE
+                                     the program as kc expands it, a form at
+                                     a time (C445), as the engine's
+                                     `--expanded-located` writes it
 
  With --db, the database is read from DB first (if it is there and kc's)
  and written back after, so that a run begins with the last run's graph
@@ -33,10 +37,13 @@
 (define kc-driver
   (module
     (hide
-      (import kc-front kc-load! kc-refusal q-form q-position q-interface q-checked q-type q-kfx)
+      (import kc-front kc-refusal q-form q-position q-interface q-checked q-type q-kfx)
       (import kc-l0 q-l0-item)
       (import kc-rust q-rust-item q-rust)
-      (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text))
+      (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text)
+      (import kc-expand kc-load-file! kc-expanded-lines q-expansion q-macros-for q-macro-in q-global-in q-entry
+              q-written q-wseen q-wpos q-wkeys q-syntax-at q-defines-at q-wnames)
+      (import kc-front q-expanded))
 
     (define-effect driving (maxeff qe (io args) (io stdin) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (io process) (alloc @io) (read @io)))
 
@@ -94,6 +101,21 @@
                     ((string=? q "asm") (q-asm d kc-run a b))
                     ((string=? q "asm-entry") (q-asm-entry d kc-run a b))
                     ((string=? q "objects") (q-objects d kc-run a b))
+                    ;; A file's macros (C445): its forms each expanded, and
+                    ;; the inputs, written, they are expanded from.
+                    ((string=? q "expanded") (q-expanded d kc-run a b))
+                    ((string=? q "expansion") (q-expansion d kc-run a b))
+                    ((string=? q "macros-for") (q-macros-for d kc-run a b))
+                    ((string=? q "macro-in") (q-macro-in d kc-run a b (key-arg k 2)))
+                    ((string=? q "global-in") (q-global-in d kc-run a b (key-arg k 2)))
+                    ((string=? q "entry") (q-entry d kc-run a b (key-arg k 2)))
+                    ((string=? q "written") (q-written d kc-run a b))
+                    ((string=? q "wseen") (q-wseen d kc-run a b))
+                    ((string=? q "wpos") (q-wpos d kc-run a b))
+                    ((string=? q "wkeys") (q-wkeys d kc-run a b))
+                    ((string=? q "syntax-at") (q-syntax-at d kc-run a b))
+                    ((string=? q "defines-at") (q-defines-at d kc-run a b))
+                    ((string=? q "wnames") (q-wnames d kc-run a b))
                     (else (begin (error (string-append "kc: no query " (key-text k))) "")))))))
 
       (define-rec
@@ -234,11 +256,11 @@
       (define request (subr driving (db string string string string) answer)
         (lambda (d what file out rt)
           "`what` (`check`, `asm`, `rust`, `build`) of `file`, its output to
-           `out`: the file read, its forms set (`kc-load!`), checked, and, if
+           `out`: the file read, its forms set (`kc-load-file!`), checked, and, if
            it passes, its code asked for, or built (on the runtime `rt`)."
           (let ((before (db-runs d)))
             (begin
-              (kc-load! d kc-run file (read-text file))
+              (kc-load-file! d kc-run file (read-text file))
               (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" file)))))
                 (begin
                   ;; Written only if it is new (C417): an output as it was is left as
@@ -294,6 +316,15 @@
               (cond ((null? rest)
                      (fail-with "usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | serve)" 2))
                     ((string=? (car rest) "serve") (serve d dbp stats rt))
+                    ;; The program as kc expands it, a form at a time (C445),
+                    ;; located, as the engine's `--expanded-located` writes it.
+                    ((and (string=? (car rest) "--expanded-located") (not (null? (cdr rest))))
+                     (let ((file (car (cdr rest))))
+                       (begin
+                         (kc-load-file! d kc-run file (read-text file))
+                         (tagcase (write-out (string-list-append (kc-expanded-lines d kc-run file))) (done u #u) (failed e #u))
+                         (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
+                         0)))
                     (else
                      (let* ((what (car rest)) (file (if (null? (cdr rest)) "" (car (cdr rest)))))
                        (begin

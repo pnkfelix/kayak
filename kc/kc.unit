@@ -15,7 +15,12 @@
 ../lib/query.kfx
 ../kfx/incr-check.kfx
 ../lib/db.kfx
+; The macro expander's bridge (C445): kc expands each form of a file that
+; defines a macro by an instance of Fixpt's expander of its own
+; (expand.kfx; ../fx26/macros/expander.fx, a file of a place).
+../fx26/macros-bridge.kfx
 front.kfx
+expand.kfx
 l0.kfx
 rust.kfx
 x64.kfx

@@ -95,3 +95,15 @@ where it was seen and what it would take.
     ask Fixpt first, the REPL parked till then. **Answered**: Fixpt's
     `docs/research/closed-code.md` declined it and showed the load route,
     which the user chose; done (C442-C444).
+
+12. **For Fixpt: what kayak's cache needs of an expansion's numbers (their
+    TODO §290), and a form key's hash (INCR_IMPED.md §2, §5; C445).** Their
+    §290 asks whether a cache of kayak's needs a form's share of the
+    expansion numbers and source keys, or a provenance per form. kc needs
+    neither: each form is expanded in an instance of its own, given by name
+    what it reads of the forms before it, and the driver writes places,
+    not keys. One small thing found instead: `syn-hash` takes a number,
+    character or boolean as its kind alone, so `(check 1)` and `(check 2)`
+    share a form key's count, and a form put before them renames the later
+    ones' fresh names (§5). Hashing every atom would keep that to forms
+    written alike.

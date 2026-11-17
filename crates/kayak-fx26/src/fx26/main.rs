@@ -924,7 +924,7 @@ pub mod made__load__2__expander {
 
     pub type MxInferInts = List<Int>;
 
-    pub type Part = Product_11_12_13<&'static MxInferShape, Addr, Int>;
+    pub type MxInferPart = Product_11_12_13<&'static MxInferShape, Addr, Int>;
 
     pub type MxInferItem = Product_11_12_13<Int, &'static Syn, Int>;
 
@@ -1198,7 +1198,7 @@ impl<'mxp, Place_Mxp> Copy for MadeLoad3MainFace<'mxp, Place_Mxp> {}
 pub mod made__load__3__main {
     use super::*;
 
-    pub use super::made__load__2__expander::{atom, mx_eager_reader_types_lst, dotted, vec, rl_none, rl_unknown, rl_names, sh_module, sh_fun, datum_field, datum_blobref_field, datum_layout, datum_array, datum_fits, e_var, e_int, e_bool, e_str, e_char, e_float, e_sym, e_quote, e_unit, e_lambda, e_app, e_plambda, e_proj, e_if, e_letrec, e_let, e_begin, e_prompt, e_letregion, e_rlambda, e_the, e_convention, e_bloblet, e_product, e_extract, e_sum, e_tagcase, e_module, e_with, mx_parser_types_t_define, mx_parser_types_t_define_rec, t_define_type, t_define_effect, t_define_convention, t_define_syscall, t_define_generative, mx_parser_types_t_exp, p_ok, p_err, ring_rib, ring_at, ring_shape, atm_var, atm_rib_of, atm_lit, bind_rib, bind_cage, bind_direct, bind_earlier, bind_shape, s_expr, s_bvar, s_id, s_data, s_type, s_label, s_nil, s_literal, s_pair, s_import, s_export, s_mark, s_mu, s_var, s_many, s_union, s_typed, s_lambda, s_defn, s_dvar, s_kind, s_item, s_rules, lv_rib, lv_cage, lv_earlier, lv_shape, ix_leaf, ix_node, gr_names, gr_shape, env_of, act_rename, act_alias, act_module_type, act_standard_type, act_macro_head, act_mark, k_pair, k_nil, k_pvar, k_binder, k_ref, k_form, k_desc, mx_nodes_k_seq, k_other, sh_nil, sh_pair, sh_seq, sh_lit, sh_leaf, sh_union, cl_seq, cl_wild, cl_lit, cl_var, cl_nil, cl_pair, kd_ty, kd_ref, iv_rib, iv_cage, rd_at, rd_rib, dm_rib, dm_cage, nm_leaf, nm_node, Syn, SynsA, MxParserTypesNames, Relied, MxParserTypesShape, MxParserTypesShapes, MxParserTypesMembers, KDatum, KDatums, Exp, MxParserTypesTop, Presult, LoadedFile, LoadedFiles, Addr, Entries, Ring, Rings, Atm, Atms, MxTypesBind, Hole, Sty, Stys, Marked, MxTypesNamed, MuScope, Assumed, Level, Levels, Looked, Index, Group, MxEnvIndexedGroups, MxEnvIndexedEnv, Action, Actions, DefEnv, MxNodesDefEnvs, MxNodesContracts, Holes, Pinfo, Pvars, Clause, Clauses, Macro, MacroEnv, MxNodesScope, Scopes, MxNodesStrings, MxNodesKids, Rooted, MxNodesNode, MxNodesFound, Dparts, HeadReading, HeadReadings, SyntaxBinder, MxMatchBinds, MxExportsExported, Nested, MxExportsPlaces, Uses, Depths, MxFactsSteps, MxFactsLabel, MxFactsLabels, Adds, Eaches, LoadDefs, MxFilesPlaces, Files, Mades, MxFilesFilter, FileMacro, MxFilesWritten, Writtens, Signed, SignedOpt, MxInferShape, MxInferInts, Part, MxInferItem, MxInferItems, Class, Classes, Vars, LitsOf, Spans, Kd, Pkinds, MxInferCx, MxInferGroups, Took, Kds, Kinds, Unsigned, Unsigneds, Rule, Rules, MakesKnown, BindsAt, Sol, Placement, Placements, MxInferPlaced, Zone, Spot, Spots, MxShownLabel, MxShownLabels, MxShownImports, Givens, Nstate, Pents, Gents, Lv, Lvs, Rd, Rds, Demand, Site, Sites, Thru, SiteRings, ByClause, NamedKds, SiteList, GotDemands, MxSolveStrings, Tags, SeenKeys, FreshSaved, MxContractsRenames, MxContractsPlaces, MxContractsNumbered, Renamings, PartVar, PlacedRenames, Anode, Anodes, NamedNs, Procedural, MxProceduralReadOne, Phase1State, ScopeSaved, Link, MxTopSaid, ByStates, ExpansionsMade, Freshes, MxTopCounts, Params, ScopeVars, Pairs, MxWalkRenames, MxTreeInts, NameTree, FileShape, Asked, Source, Writing, MxShapesNamed, ShapesState, MxShapesInts, MxShapesParts, MxShapesWrittenOf, Captors};
+    pub use super::made__load__2__expander::{atom, mx_eager_reader_types_lst, dotted, vec, rl_none, rl_unknown, rl_names, sh_module, sh_fun, datum_field, datum_blobref_field, datum_layout, datum_array, datum_fits, e_var, e_int, e_bool, e_str, e_char, e_float, e_sym, e_quote, e_unit, e_lambda, e_app, e_plambda, e_proj, e_if, e_letrec, e_let, e_begin, e_prompt, e_letregion, e_rlambda, e_the, e_convention, e_bloblet, e_product, e_extract, e_sum, e_tagcase, e_module, e_with, mx_parser_types_t_define, mx_parser_types_t_define_rec, t_define_type, t_define_effect, t_define_convention, t_define_syscall, t_define_generative, mx_parser_types_t_exp, p_ok, p_err, ring_rib, ring_at, ring_shape, atm_var, atm_rib_of, atm_lit, bind_rib, bind_cage, bind_direct, bind_earlier, bind_shape, s_expr, s_bvar, s_id, s_data, s_type, s_label, s_nil, s_literal, s_pair, s_import, s_export, s_mark, s_mu, s_var, s_many, s_union, s_typed, s_lambda, s_defn, s_dvar, s_kind, s_item, s_rules, lv_rib, lv_cage, lv_earlier, lv_shape, ix_leaf, ix_node, gr_names, gr_shape, env_of, act_rename, act_alias, act_module_type, act_standard_type, act_macro_head, act_mark, k_pair, k_nil, k_pvar, k_binder, k_ref, k_form, k_desc, mx_nodes_k_seq, k_other, sh_nil, sh_pair, sh_seq, sh_lit, sh_leaf, sh_union, cl_seq, cl_wild, cl_lit, cl_var, cl_nil, cl_pair, kd_ty, kd_ref, iv_rib, iv_cage, rd_at, rd_rib, dm_rib, dm_cage, nm_leaf, nm_node, Syn, SynsA, MxParserTypesNames, Relied, MxParserTypesShape, MxParserTypesShapes, MxParserTypesMembers, KDatum, KDatums, Exp, MxParserTypesTop, Presult, LoadedFile, LoadedFiles, Addr, Entries, Ring, Rings, Atm, Atms, MxTypesBind, Hole, Sty, Stys, Marked, MxTypesNamed, MuScope, Assumed, Level, Levels, Looked, Index, Group, MxEnvIndexedGroups, MxEnvIndexedEnv, Action, Actions, DefEnv, MxNodesDefEnvs, MxNodesContracts, Holes, Pinfo, Pvars, Clause, Clauses, Macro, MacroEnv, MxNodesScope, Scopes, MxNodesStrings, MxNodesKids, Rooted, MxNodesNode, MxNodesFound, Dparts, HeadReading, HeadReadings, SyntaxBinder, MxMatchBinds, MxExportsExported, Nested, MxExportsPlaces, Uses, Depths, MxFactsSteps, MxFactsLabel, MxFactsLabels, Adds, Eaches, LoadDefs, MxFilesPlaces, Files, Mades, MxFilesFilter, FileMacro, MxFilesWritten, Writtens, Signed, SignedOpt, MxInferShape, MxInferInts, MxInferPart, MxInferItem, MxInferItems, Class, Classes, Vars, LitsOf, Spans, Kd, Pkinds, MxInferCx, MxInferGroups, Took, Kds, Kinds, Unsigned, Unsigneds, Rule, Rules, MakesKnown, BindsAt, Sol, Placement, Placements, MxInferPlaced, Zone, Spot, Spots, MxShownLabel, MxShownLabels, MxShownImports, Givens, Nstate, Pents, Gents, Lv, Lvs, Rd, Rds, Demand, Site, Sites, Thru, SiteRings, ByClause, NamedKds, SiteList, GotDemands, MxSolveStrings, Tags, SeenKeys, FreshSaved, MxContractsRenames, MxContractsPlaces, MxContractsNumbered, Renamings, PartVar, PlacedRenames, Anode, Anodes, NamedNs, Procedural, MxProceduralReadOne, Phase1State, ScopeSaved, Link, MxTopSaid, ByStates, ExpansionsMade, Freshes, MxTopCounts, Params, ScopeVars, Pairs, MxWalkRenames, MxTreeInts, NameTree, FileShape, Asked, Source, Writing, MxShapesNamed, ShapesState, MxShapesInts, MxShapesParts, MxShapesWrittenOf, Captors};
 
     /// What made--load--3--main makes (C274): its module's items, the place given, and its
     /// values, made as it is made (C433).
@@ -1258,7 +1258,7 @@ pub mod made__load__3__main {
         pub define_usage: std::cell::Cell<Option<Str>>,
         pub rec_usage: std::cell::Cell<Option<Str>>,
         pub rules_usage: std::cell::Cell<Option<Str>>,
-        pub mx_infer_parts: std::cell::Cell<Option<RefAt<'mxp, Array<Part>>>>,
+        pub mx_infer_parts: std::cell::Cell<Option<RefAt<'mxp, Array<MxInferPart>>>>,
         pub nparts: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub found_vars: std::cell::Cell<Option<RefAt<'mxp, Vars>>>,
         pub boundaries: std::cell::Cell<Option<RefAt<'mxp, List<Product_11_12<Int, Int>>>>>,
@@ -1362,6 +1362,9 @@ pub mod made__load__3__main {
         pub drive_line: std::cell::Cell<Option<RefAt<'mxp, Array<i64>>>>,
         pub drive_count: std::cell::Cell<Option<RefAt<'mxp, i64>>>,
         pub drive_out: std::cell::Cell<Option<RefAt<'mxp, SynsA>>>,
+        pub drive_put: std::cell::Cell<Option<RefAt<'mxp, MxParserTypesNames>>>,
+        pub drive_macros_before: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
+        pub drive_globals_before: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub drive_states: std::cell::Cell<Option<RefAt<'mxp, Int>>>,
         pub phantom_: std::marker::PhantomData<&'mxp Place_Mxp>,
     }
@@ -10694,7 +10697,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn mx_infer_part_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, i: Int) -> Part {
+    pub fn mx_infer_part_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, i: Int) -> MxInferPart {
         array_ref(get(maker_st.mx_infer_parts.get().unwrap()), i)
     }
 
@@ -10717,7 +10720,7 @@ pub mod made__load__3__main {
         array_set_x(get(maker_st.mx_infer_parts.get().unwrap()), i, Product_11_12_13(sh, path_of(mxp, maker_st, i), mx_infer_region(mxp, maker_st, i)))
     }
 
-    pub fn copy_parts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut from: Array<Part>, mut to: Array<Part>, mut i: Int) -> () {
+    pub fn copy_parts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut from: Array<MxInferPart>, mut to: Array<MxInferPart>, mut i: Int) -> () {
         loop {
             if _eq(i, array_length(from)) {
                 return ();
@@ -10732,7 +10735,7 @@ pub mod made__load__3__main {
     pub fn part_new<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, path: Addr, root: Int) -> Int {
         let i = get(maker_st.nparts.get().unwrap());
         if _eq(i, array_length(get(maker_st.mx_infer_parts.get().unwrap()))) {
-            let bigger = the::<Array<Part>>(make_array(_star(int_lit(2), i), mx_infer_part_at(mxp, maker_st, int_lit(0))));
+            let bigger = the::<Array<MxInferPart>>(make_array(_star(int_lit(2), i), mx_infer_part_at(mxp, maker_st, int_lit(0))));
             copy_parts(mxp, maker_st, get(maker_st.mx_infer_parts.get().unwrap()), bigger, int_lit(0));
             set(maker_st.mx_infer_parts.get().unwrap(), bigger)
         } else {
@@ -24856,6 +24859,397 @@ pub mod made__load__3__main {
         (not(null_p(at)) && not(null_p(car(at).1)))
     }
 
+    pub fn drive_symbols(mut s: &'static Syn, mut out: MxParserTypesNames) -> MxParserTypesNames {
+        loop {
+            let tagcase_ = s;
+            match *tagcase_ {
+                made__load__2__expander::Syn::Atom(d, a, b, x) => {
+                    if (symbol_p(d) && not(mx_files_name_in_p(kayak_rt::value::unbox::<Symbol>(d), out))) {
+                        return kayak_rt::heap_cons(kayak_rt::value::unbox::<Symbol>(d), out);
+                    } else {
+                        return out;
+                    }
+                }
+                made__load__2__expander::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
+                    return drive_symbols_each(items, out);
+                }
+                made__load__2__expander::Syn::Dotted(items, tail, d, a, b, x) => {
+                    (s, out) = (tail, drive_symbols_each(items, out));
+                    continue;
+                }
+                made__load__2__expander::Syn::Vec(items, d, a, b, x) => {
+                    return drive_symbols_each(items, out);
+                }
+            }
+        }
+    }
+
+    pub fn drive_symbols_each(mut xs: SynsA, mut out: MxParserTypesNames) -> MxParserTypesNames {
+        loop {
+            if null_p(xs) {
+                return out;
+            } else {
+                (xs, out) = (cdr(xs), drive_symbols(car(xs), out));
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_names_count(mut ns: MxParserTypesNames, mut k: Int) -> Int {
+        loop {
+            if null_p(ns) {
+                return k;
+            } else {
+                (ns, k) = (cdr(ns), _plus(k, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_chosen_symbols(mut ds: List<Product_11_12<&'static Syn, SeenKeys>>, mut ns: MxParserTypesNames) -> MxParserTypesNames {
+        loop {
+            if null_p(ds) {
+                return ns;
+            } else {
+                (ds, ns) = (cdr(ds), drive_symbols(car(ds).0, ns));
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_define_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut ds: List<Product_11_12<&'static Syn, SeenKeys>>) -> Result<(), Unwind> {
+        loop {
+            if null_p(ds) {
+                return Ok(());
+            } else {
+                seen_x(mxp, maker_st, car(ds).1);
+                drive_form(mxp, maker_st, car(ds).0)?;
+                ds = cdr(ds);
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn drive_sym(n: Str) -> kayak_rt::value::Value {
+        the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(n)))
+    }
+
+    #[inline]
+    pub fn loc_sym(d: kayak_rt::value::Value) -> Symbol {
+        if symbol_p(d) {
+            kayak_rt::value::unbox::<Symbol>(d)
+        } else {
+            string_to_symbol(str_lit("?"))
+        }
+    }
+
+    pub fn drive_shape_datum(x: &'static MxParserTypesShape) -> kayak_rt::value::Value {
+        let tagcase_ = x;
+        match *tagcase_ {
+            made__load__2__expander::MxParserTypesShape::ShModule(vs, ds) => {
+                mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit("m")), kayak_rt::heap_cons(drive_members_datum(vs), kayak_rt::heap_cons(drive_members_datum(ds), kayak_rt::nil()))))
+            }
+            made__load__2__expander::MxParserTypesShape::ShFun(ps, r) => {
+                mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit("f")), kayak_rt::heap_cons(mx_datum_list(drive_shapes_each(ps)), kayak_rt::heap_cons(drive_shapes_datum(r), kayak_rt::nil()))))
+            }
+        }
+    }
+
+    #[inline]
+    pub fn drive_shapes_datum(ss: MxParserTypesShapes) -> kayak_rt::value::Value {
+        mx_datum_list(drive_shape_items(ss))
+    }
+
+    #[inline]
+    pub fn drive_shape_items(ss: MxParserTypesShapes) -> List<kayak_rt::value::Value> {
+        if null_p(ss) {
+            nil::<kayak_rt::value::Value>()
+        } else {
+            kayak_rt::heap_cons(drive_shape_datum(car(ss)), drive_shape_items(cdr(ss)))
+        }
+    }
+
+    #[inline]
+    pub fn drive_shapes_each(xs: List<MxParserTypesShapes>) -> List<kayak_rt::value::Value> {
+        if null_p(xs) {
+            nil::<kayak_rt::value::Value>()
+        } else {
+            kayak_rt::heap_cons(drive_shapes_datum(car(xs)), drive_shapes_each(cdr(xs)))
+        }
+    }
+
+    #[inline]
+    pub fn drive_members_datum(ms: MxParserTypesMembers) -> kayak_rt::value::Value {
+        mx_datum_list(drive_member_items(ms))
+    }
+
+    pub fn drive_member_items(ms: MxParserTypesMembers) -> List<kayak_rt::value::Value> {
+        if null_p(ms) {
+            nil::<kayak_rt::value::Value>()
+        } else {
+            kayak_rt::heap_cons(mx_datum_list(kayak_rt::heap_cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(car(ms).0)), kayak_rt::heap_cons(drive_shapes_datum(car(ms).1), kayak_rt::nil()))), drive_member_items(cdr(ms)))
+        }
+    }
+
+    #[inline]
+    pub fn loc_is_sym_p(d: kayak_rt::value::Value, n: Str) -> bool {
+        (symbol_p(d) && string_eq_p(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)), n))
+    }
+
+    pub fn drive_datum_shape(d: kayak_rt::value::Value) -> &'static MxParserTypesShape {
+        if loc_is_sym_p(loc_nth(d, int_lit(0)), str_lit("m")) {
+            sh_module(drive_datum_members(loc_nth(d, int_lit(1))), drive_datum_members(loc_nth(d, int_lit(2))))
+        } else {
+            sh_fun(drive_datum_shapes_each(loc_nth(d, int_lit(1))), drive_datum_shapes(loc_nth(d, int_lit(2))))
+        }
+    }
+
+    #[inline]
+    pub fn drive_datum_shapes(d: kayak_rt::value::Value) -> MxParserTypesShapes {
+        if kayak_rt::value::pair_p(d) {
+            let x = kayak_rt::value::car(d);
+            kayak_rt::heap_cons(drive_datum_shape(x), drive_datum_shapes(kayak_rt::value::cdr(d)))
+        } else {
+            nil::<&'static made__load__2__expander::MxParserTypesShape>()
+        }
+    }
+
+    #[inline]
+    pub fn drive_datum_shapes_each(d: kayak_rt::value::Value) -> List<MxParserTypesShapes> {
+        if kayak_rt::value::pair_p(d) {
+            let x = kayak_rt::value::car(d);
+            kayak_rt::heap_cons(drive_datum_shapes(x), drive_datum_shapes_each(kayak_rt::value::cdr(d)))
+        } else {
+            nil::<List<&'static made__load__2__expander::MxParserTypesShape>>()
+        }
+    }
+
+    pub fn drive_datum_members(d: kayak_rt::value::Value) -> MxParserTypesMembers {
+        if kayak_rt::value::pair_p(d) {
+            let m = kayak_rt::value::car(d);
+            kayak_rt::heap_cons(Product_11_12(loc_sym(loc_nth(m, int_lit(0))), drive_datum_shapes(loc_nth(m, int_lit(1)))), drive_datum_members(kayak_rt::value::cdr(d)))
+        } else {
+            nil::<Product_11_12<Symbol, List<&'static made__load__2__expander::MxParserTypesShape>>>()
+        }
+    }
+
+    pub fn drive_inject_x<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut ns: MxParserTypesNames, mut es: List<kayak_rt::value::Value>, mut put: MxParserTypesNames) -> MxParserTypesNames {
+        loop {
+            if null_p(es) {
+                return put;
+            } else {
+                let e = car(es);
+                let n = loc_sym(loc_nth(e, int_lit(0)));
+                let k = loc_int(loc_nth(e, int_lit(1)));
+                let sh = drive_datum_shapes(loc_nth(e, int_lit(2)));
+                if not(mx_files_name_in_p(n, ns)) {
+                    es = cdr(es);
+                    continue;
+                } else if _eq(k, int_lit(3)) {
+                    globals_x(mxp, maker_st, kayak_rt::cons(n, kayak_rt::nil()));
+                    es = cdr(es);
+                    continue;
+                } else if null_p(sh) {
+                    es = cdr(es);
+                    continue;
+                } else if _eq(k, int_lit(1)) {
+                    set(maker_st.top_descs.get().unwrap(), names_with(get(maker_st.top_descs.get().unwrap()), n, sh));
+                    (es, put) = (cdr(es), cons(n, put));
+                    continue;
+                } else {
+                    set(maker_st.top_vals.get().unwrap(), names_with(get(maker_st.top_vals.get().unwrap()), n, sh));
+                    (es, put) = (cdr(es), cons(n, put));
+                    continue;
+                }
+            }
+        }
+    }
+
+    pub fn drive_env_count(mut m: MacroEnv, mut k: Int) -> Int {
+        loop {
+            if null_p(m) {
+                return k;
+            } else {
+                (m, k) = (cdr(m), _plus(k, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_env_first(m: MacroEnv, k: Int) -> MxParserTypesNames {
+        if (null_p(m) || _lt_eq(k, int_lit(0))) {
+            nil::<Symbol>()
+        } else {
+            kayak_rt::heap_cons(car(m).0, drive_env_first(cdr(m), _minus(k, int_lit(1))))
+        }
+    }
+
+    pub fn drive_names_first(ns: MxParserTypesNames, k: Int) -> MxParserTypesNames {
+        if (null_p(ns) || _lt_eq(k, int_lit(0))) {
+            nil::<Symbol>()
+        } else {
+            kayak_rt::heap_cons(car(ns), drive_names_first(cdr(ns), _minus(k, int_lit(1))))
+        }
+    }
+
+    pub fn drive_name_entries(mut ns: MxParserTypesNames, mut k: Int, mut out: List<kayak_rt::value::Value>) -> List<kayak_rt::value::Value> {
+        loop {
+            if null_p(ns) {
+                return out;
+            } else {
+                (ns, out) = (cdr(ns), kayak_rt::heap_cons(mx_datum_list(kayak_rt::heap_cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(car(ns))), kayak_rt::heap_cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(k)), kayak_rt::heap_cons(the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), kayak_rt::nil())))), out));
+                continue;
+            }
+        }
+    }
+
+    pub fn drive_tree_entries(mut t: &'static NameTree, mut k: Int, mut put: MxParserTypesNames, mut out: List<kayak_rt::value::Value>) -> List<kayak_rt::value::Value> {
+        loop {
+            let tagcase_ = t;
+            match *tagcase_ {
+                made__load__2__expander::NameTree::NmNode(h, m, sh, l, r) => {
+                    (t, out) = (l, drive_tree_entries(r, k, put, if (null_p(sh) || mx_files_name_in_p(m, put)) {
+                        out
+                    } else {
+                        kayak_rt::heap_cons(mx_datum_list(kayak_rt::heap_cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(m)), kayak_rt::heap_cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(k)), kayak_rt::heap_cons(drive_shapes_datum(sh), kayak_rt::nil())))), out)
+                    }));
+                    continue;
+                }
+                _ => {
+                    let y = tagcase_;
+                    return out;
+                }
+            }
+        }
+    }
+
+    pub fn drive_alone_said<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, ds: List<Product_11_12<&'static Syn, SeenKeys>>, s: &'static Syn, ks: SeenKeys, es: List<kayak_rt::value::Value>) -> Result<Product_11_12_13<List<kayak_rt::value::Value>, kayak_rt::value::Value, List<kayak_rt::value::Value>>, Unwind> {
+        macros_at_x(mxp, maker_st, int_lit(0));
+        shapes_at_x(mxp, maker_st, int_lit(0), nil::<Product_11_12_13_14_15_16_17_18<Int, Int, Str, Str, List<&'static made__load__2__expander::Syn>, Str, Str, bool>>());
+        let ns = drive_chosen_symbols(ds, drive_symbols(s, nil::<Symbol>()));
+        let r = {
+            let prompt_tag__ = maker_st.parse_tag.get().unwrap();
+            match (move || -> Result<_, Unwind> {
+                drive_define_each(mxp, maker_st, ds)?;
+                set(maker_st.drive_put.get().unwrap(), drive_inject_x(mxp, maker_st, ns, es, nil::<Symbol>()));
+                set(maker_st.drive_macros_before.get().unwrap(), drive_env_count(get(maker_st.defined.get().unwrap()), int_lit(0)));
+                set(maker_st.drive_globals_before.get().unwrap(), drive_names_count(get(maker_st.mx_top_globals.get().unwrap()), int_lit(0)));
+                seen_x(mxp, maker_st, ks);
+                set(maker_st.drive_out.get().unwrap(), drive_form(mxp, maker_st, s)?);
+                Ok(p_ok(nil::<&'static made__load__2__expander::MxParserTypesTop>()))
+            })() {
+                Ok(v_) => v_,
+                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                    r
+                }))(prompt_tag__.payload(u_)),
+                Err(u_) => return Err(u_),
+            }
+        };
+        let tagcase_ = r;
+        match *tagcase_ {
+            made__load__2__expander::Presult::PErr(m, a, b) => {
+                let w = drive_placed(mxp, maker_st, a);
+                Ok(Product_11_12_13(nil::<kayak_rt::value::Value>(), mx_datum_list(kayak_rt::cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(w.0)), kayak_rt::cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(i64_to_int(w.1))), kayak_rt::cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(m)), kayak_rt::nil())))), nil::<kayak_rt::value::Value>()))
+            }
+            made__load__2__expander::Presult::POk(ts) => {
+                let (made, globals) = (if defines_syntax_p(s) {
+                    nil::<Symbol>()
+                } else {
+                    drive_env_first(get(maker_st.defined.get().unwrap()), _minus(drive_env_count(get(maker_st.defined.get().unwrap()), int_lit(0)), get(maker_st.drive_macros_before.get().unwrap())))
+                }, drive_names_first(get(maker_st.mx_top_globals.get().unwrap()), _minus(drive_names_count(get(maker_st.mx_top_globals.get().unwrap()), int_lit(0)), get(maker_st.drive_globals_before.get().unwrap()))));
+                Ok(Product_11_12_13(drive_locs(mxp, maker_st, get(maker_st.drive_out.get().unwrap())), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), drive_name_entries(made, int_lit(2), drive_name_entries(globals, int_lit(3), drive_tree_entries(get(maker_st.top_vals.get().unwrap()), int_lit(0), get(maker_st.drive_put.get().unwrap()), drive_tree_entries(get(maker_st.top_descs.get().unwrap()), int_lit(1), get(maker_st.drive_put.get().unwrap()), nil::<kayak_rt::value::Value>()))))))
+            }
+        }
+    }
+
+    pub fn drive_desc_name<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, s: &'static Syn) -> Result<MxParserTypesNames, Unwind> {
+        let (xs, h) = (proper_items(s), drive_head(s));
+        if ((string_eq_p(h, str_lit("define-type")) || string_eq_p(h, str_lit("define-datatype")) || string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-generative"))) && _gt_eq(len(xs), int_lit(2))) {
+            let n = nth(xs, int_lit(1));
+            if syn_symbol_p(n) {
+                Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, n)?, kayak_rt::nil()))
+            } else if (not(null_p(proper_items(n))) && syn_symbol_p(car(proper_items(n)))) {
+                Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, car(proper_items(n)))?, kayak_rt::nil()))
+            } else {
+                Ok(nil::<Symbol>())
+            }
+        } else {
+            Ok(nil::<Symbol>())
+        }
+    }
+
+    pub fn drive_begun_hashes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, s: &'static Syn, out: List<kayak_rt::value::Value>) -> List<kayak_rt::value::Value> {
+        let after = cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(syn_hash(mxp, maker_st, s))), out);
+        if string_eq_p(drive_head(s), str_lit("hide")) {
+            drive_begun_each(mxp, maker_st, cdr(proper_items(s)), after)
+        } else {
+            after
+        }
+    }
+
+    pub fn drive_begun_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut xs: SynsA, mut out: List<kayak_rt::value::Value>) -> List<kayak_rt::value::Value> {
+        loop {
+            if null_p(xs) {
+                return out;
+            } else {
+                (xs, out) = (cdr(xs), drive_begun_hashes(mxp, maker_st, car(xs), out));
+                continue;
+            }
+        }
+    }
+
+    #[inline]
+    pub fn map_names_data(ns: MxParserTypesNames) -> List<kayak_rt::value::Value> {
+        if null_p(ns) {
+            nil::<kayak_rt::value::Value>()
+        } else {
+            kayak_rt::heap_cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(car(ns))), map_names_data(cdr(ns)))
+        }
+    }
+
+    #[inline]
+    pub fn drive_names_data(ns: MxParserTypesNames) -> kayak_rt::value::Value {
+        mx_datum_list(map_names_data(ns))
+    }
+
+    pub fn drive_facts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, xs: SynsA) -> Result<List<kayak_rt::value::Value>, Unwind> {
+        if null_p(xs) {
+            Ok(nil::<kayak_rt::value::Value>())
+        } else {
+            let s = car(xs);
+            Ok(cons(mx_datum_list(kayak_rt::cons(mx_datum_list(reverse(drive_begun_hashes(mxp, maker_st, s, nil::<kayak_rt::value::Value>()))), kayak_rt::cons(drive_names_data(append(drive_names(mxp, maker_st, s)?, drive_desc_name(mxp, maker_st, s)?)), kayak_rt::cons(drive_names_data(syntax_names(mxp, maker_st, s)?), kayak_rt::nil())))), drive_facts(mxp, maker_st, cdr(xs))?))
+        }
+    }
+
+    pub fn drive_seen_of(d: kayak_rt::value::Value) -> SeenKeys {
+        if kayak_rt::value::pair_p(d) {
+            let x = kayak_rt::value::car(d);
+            kayak_rt::heap_cons(Product_11_12(loc_int(loc_nth(x, int_lit(0))), loc_int(loc_nth(x, int_lit(1)))), drive_seen_of(kayak_rt::value::cdr(d)))
+        } else {
+            nil::<Product_11_12<Int, Int>>()
+        }
+    }
+
+    pub fn drive_given_defs<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, ds: List<kayak_rt::value::Value>) -> List<Product_11_12<&'static Syn, SeenKeys>> {
+        if null_p(ds) {
+            nil::<Product_11_12<&'static made__load__2__expander::Syn, List<Product_11_12<Int, Int>>>>()
+        } else {
+            let d = car(ds);
+            cons(Product_11_12(drive_syn(mxp, maker_st, loc_nth(d, int_lit(0))), drive_seen_of(loc_nth(d, int_lit(1)))), drive_given_defs(mxp, maker_st, cdr(ds)))
+        }
+    }
+
+    pub fn drive_given_star<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, defs: List<kayak_rt::value::Value>, es: List<kayak_rt::value::Value>, target: kayak_rt::value::Value) -> Result<Product_11_12_13<List<kayak_rt::value::Value>, kayak_rt::value::Value, List<kayak_rt::value::Value>>, Unwind> {
+        set(maker_st.drive_files.get().unwrap(), nil::<Str>());
+        set(maker_st.drive_met.get().unwrap(), nil::<Product_11_12<Int, Int>>());
+        let ds = drive_given_defs(mxp, maker_st, defs);
+        let s = drive_syn(mxp, maker_st, loc_nth(target, int_lit(0)));
+        let ks = drive_seen_of(loc_nth(target, int_lit(1)));
+        drive_lines_x(mxp, maker_st);
+        Ok(drive_alone_said(mxp, maker_st, ds, s, ks, es)?)
+    }
+
     #[inline]
     pub fn drive_program<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, forms: kayak_rt::value::Value) -> Result<kayak_rt::value::Value, Unwind> {
         Ok(mx_datum_list(drive_program_star(mxp, maker_st, loc_nodes(forms))?))
@@ -24874,6 +25268,18 @@ pub mod made__load__3__main {
     #[inline]
     pub fn drive_macros_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, s: Int) -> Result<bool, Unwind> {
         Ok(drive_macros_p_star(mxp, maker_st, s))
+    }
+
+    #[inline]
+    pub fn drive_written_facts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, forms: kayak_rt::value::Value) -> Result<kayak_rt::value::Value, Unwind> {
+        set(maker_st.drive_files.get().unwrap(), nil::<Str>());
+        set(maker_st.drive_met.get().unwrap(), nil::<Product_11_12<Int, Int>>());
+        Ok(mx_datum_list(drive_facts(mxp, maker_st, drive_syns(mxp, maker_st, loc_nodes(forms)))?))
+    }
+
+    pub fn drive_given<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target: kayak_rt::value::Value) -> Result<Product_11_12_13<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value>, Unwind> {
+        let r = drive_given_star(mxp, maker_st, loc_nodes(defs), loc_nodes(es), target)?;
+        Ok(Product_11_12_13(mx_datum_list(r.0), r.1, mx_datum_list(r.2)))
     }
 
 
@@ -25039,6 +25445,9 @@ pub mod made__load__3__main {
             drive_line: std::cell::Cell::new(None),
             drive_count: std::cell::Cell::new(None),
             drive_out: std::cell::Cell::new(None),
+            drive_put: std::cell::Cell::new(None),
+            drive_macros_before: std::cell::Cell::new(None),
+            drive_globals_before: std::cell::Cell::new(None),
             drive_states: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
         });
@@ -25201,6 +25610,9 @@ pub mod made__load__3__main {
         maker_st.drive_line.set(Some(new(make_array(int_lit(1), the::<i64>(0i64)))));
         maker_st.drive_count.set(Some(new(0i64)));
         maker_st.drive_out.set(Some(new(nil::<&'static made__load__2__expander::Syn>())));
+        maker_st.drive_put.set(Some(new(nil::<Symbol>())));
+        maker_st.drive_macros_before.set(Some(new(int_lit(0))));
+        maker_st.drive_globals_before.set(Some(new(int_lit(0))));
         maker_st.drive_states.set(Some(new(int_lit(0))));
         maker_st
     }
@@ -25262,6 +25674,14 @@ impl<'mxp, Place_Mxp> MadeLoad3MainFace<'mxp, Place_Mxp> {
     pub fn drive_macros_p(self, s: Int) -> Result<bool, Unwind> {
         made__load__3__main::drive_macros_p(self.0, self.1, s)
     }
+
+    pub fn drive_written_facts(self, forms: kayak_rt::value::Value) -> Result<kayak_rt::value::Value, Unwind> {
+        made__load__3__main::drive_written_facts(self.0, self.1, forms)
+    }
+
+    pub fn drive_given(self, defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target: kayak_rt::value::Value) -> Result<Product_11_12_13<kayak_rt::value::Value, kayak_rt::value::Value, kayak_rt::value::Value>, Unwind> {
+        made__load__3__main::drive_given(self.0, self.1, defs, es, target)
+    }
 }
 
 pub fn made__load__3__main<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp) -> MadeLoad3MainFace<'mxp, Place_Mxp> {
@@ -25282,6 +25702,26 @@ pub fn expanded(forms: Sexps) -> Result<Sexps, Unwind> {
         })
     } else {
         Ok(forms)
+    }
+}
+
+// A program's expansion as located text, a node a line (C445); a refusal,
+// its message, a line.
+pub fn located_expanded(forms: Sexps) -> Result<List<Str>, Unwind> {
+    let r = {
+        struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
+        impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+        fn letrena__p<'p>(p: &'p Region_P<'p>, forms: List<&'static Sexp>) -> Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind> {
+            let x = made__load__3__main(p);
+            Ok(x.drive_entry(sexps_located(forms), int_lit(0))?)
+        }
+        let p__arena = Region_P::default();
+        letrena__p(&p__arena, forms)?
+    };
+    if string_eq_p(r.1, str_lit("")) {
+        Ok(located_lines(sexps_located(located_sexps(r.0))))
+    } else {
+        Ok(kayak_rt::heap_cons(string_append(r.1, str_lit("\n")), kayak_rt::nil()))
     }
 }
 
@@ -25476,6 +25916,9 @@ pub fn engine_main() -> Result<Int, Unwind> {
         say_each(map(lambda1s(move |f: &'static Sexp| {
             string_append(show_sexp(f), str_lit("\n"))
         }), files_expanded(cdr(r#as))?));
+        Ok(int_lit(0))
+    } else if (string_eq_p(car(r#as), str_lit("--expanded-located")) && not(null_p(cdr(r#as)))) {
+        say_each(located_expanded(read_all(read_text(car(cdr(r#as))), car(cdr(r#as)), 1i64))?);
         Ok(int_lit(0))
     } else if (string_eq_p(car(r#as), str_lit("--cells")) || string_eq_p(car(r#as), str_lit("--cells-run"))) {
         // `--cells-run`: the words with `(main)` after the program's forms, if it

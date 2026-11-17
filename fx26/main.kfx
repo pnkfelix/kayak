@@ -89,6 +89,19 @@
                      (located-sexps (with x (drive-program (sexps-located forms))))))
         forms)))
 
+"A program's expansion as located text, a node a line (C445); a refusal,
+ its message, a line."
+(define located-expanded (subr (maxeff driving expands) (sexps) (listof string acyclic))
+  (lambda (forms)
+    ;; As a REPL's first entry (`drive-entry`, from no state): the program's
+    ;; expansion, `drive-program`'s, but a refusal said, not an error.
+    (let ((r (letrena p (let ((x ((proj (load-module "macros/expander.fx") p))))
+                          (with x (drive-entry (sexps-located forms) 0))))))
+      (if (string=? (extract r 2) "")
+          ;; As the reader's data, which keep no atom's line, so that kc's,
+          ;; read back, write the same (`kc --expanded-located`).
+          (located-lines (sexps-located (located-sexps (extract r 1))))
+          (list (string-append (extract r 2) "\n"))))))
 (define-rec
   (read-files-expanded (subr (maxeff driving expands) (strings) sexps)
     (lambda (paths)
@@ -241,6 +254,10 @@ and where the time went.
         ;; counts the values a program's forms give by them).
         ((string=? (car as) "--expanded")
          (begin (say-each (map (lambda ((f sexp)) (string-append (show-sexp f) "\n")) (files-expanded (cdr as)))) 0))
+        ;; The program's expansion, its places with it (C445), for comparing
+        ;; kc's, a form at a time, with it (scripts/kc-expanded.py): one file.
+        ((and (string=? (car as) "--expanded-located") (not (null? (cdr as))))
+         (begin (say-each (located-expanded (read-all (read-text (car (cdr as))) (car (cdr as)) 1))) 0))
         ;; The program's cellular words, as Fixpt lists its (C133).
         ((or (string=? (car as) "--cells") (string=? (car as) "--cells-run"))
          "`--cells-run`: the words with `(main)` after the program's forms, if it

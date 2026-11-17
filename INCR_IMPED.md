@@ -99,6 +99,14 @@ Each entry has the same parts:
     renumbered where it replays, or a per-form provenance designed.
   - Still open: the state in refs, which a form reads and writes; and a
     process may make no instance (§4).
+- **kayak's answer to §290 (C445):** a cache of kayak's needs neither a
+  form's share of the expansion numbers nor of the source keys. kc
+  expands each form in an instance of its own, whose numbers start over,
+  given the definitions of the macros it names and the shapes of the
+  globals it names, by name. The driver writes places, not keys
+  (`drive-placed`), so no number leaves the instance. The state in refs is
+  no impediment so used: an instance's refs are its own, and live for one
+  form. Nothing for Fixpt to change.
 
 ## 3. Positions are offsets into one program-wide text
 
@@ -119,8 +127,9 @@ Each entry has the same parts:
 - **Fixpt's note (TODO §290):** a session's texts are placed one after
   another by length too (`Session::eval_base`); left for when a cache of
   kayak's needs it.
-- **Seen:** 2026-11-16, C429. Not yet felt in kayak, since the driver isn't
-  written; to confirm when it is.
+- **Seen:** 2026-11-16, C429. Not felt in kc (C445): it reads each form
+  from its own text, at line 1, offset 0, and moves the places back, so
+  a form's positions in the instance are its own.
 
 ## 4. A procedure of a place may not be held by a process
 
@@ -170,3 +179,23 @@ Each entry has the same parts:
 - **Taken (C442-C444):** the expander is a file of a place, loaded by
   the engine and by the REPL's front, each an instance of its own. Each
   worker could load one too, for expansion in parallel.
+
+## 5. A form's key counts the forms of its hash before it
+
+- **Where:** `macros-templates.fx`, `form-begin!`, `syn-hash`: K in
+  `%x:K.N` is a hash of the form's symbols, strings and shape, and how
+  many forms of that hash came before it. Any other atom is its kind
+  alone, so `(check 1)` and `(check 2)` hash alike.
+- **What:** two forms that differ only in their numbers (or characters,
+  booleans) share a hash, so the later one's K counts the earlier.
+- **Cost:** putting such a form before others, say one more `(check-eq?
+  (f 3) 9)` among many, changes K for every later form of that hash. Each
+  is then expanded again, and its fresh names change, so its checked
+  result and code differ by name alone. kc reads the count as an input
+  (`wseen`), so it re-runs exactly those forms. That is correct, but it is
+  work an edit elsewhere causes.
+- **Alternative:** hash every atom, numbers too, so that only forms
+  written alike share a hash. Or count only forms whose text is the
+  same. Forms that are the same text would still count each other, which
+  seems unavoidable if two of them must get different names.
+- **Seen:** 2026-11-16, C445.

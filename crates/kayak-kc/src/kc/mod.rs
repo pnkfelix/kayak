@@ -26,8 +26,12 @@ pub mod incr_check;
 pub use incr_check::*;
 pub mod db;
 pub use db::*;
+pub mod macros_bridge;
+pub use macros_bridge::*;
 pub mod front;
 pub use front::*;
+pub mod expand;
+pub use expand::*;
 pub mod l0;
 pub use l0::*;
 pub mod rust;
@@ -41,4 +45,22 @@ pub use main::*;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10);
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_11_12_13_14<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_11_12_13_14_15_16_17_18<A0, A1, A2, A3, A4, A5, A6, A7>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7);
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_11_12_13_14_15_16<A0, A1, A2, A3, A4, A5>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5);
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_11_12_13_14_15_16_17<A0, A1, A2, A3, A4, A5, A6>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6);
+
+const _: () = kayak_rt::tags_apart_from_runtime(&["apart", "failed", "ok"]);
 

@@ -5306,7 +5306,7 @@
 
 ;;; ============================================================ macros-infer.fx (whole)
 
-(define mx-infer-parts (ref (arrayof part mxp) mxp) (new (make-array 64 (tuple (sh-leaf) (the addr nil) 0))))
+(define mx-infer-parts (ref (arrayof mx-infer-part mxp) mxp) (new (make-array 64 (tuple (sh-leaf) (the addr nil) 0))))
 (define nparts (ref int mxp) (new 0))
 (define found-vars (ref vars mxp) (new nil))
 ;; Each region's root (a list's element, a `union`'s member), and the part
@@ -5321,14 +5321,14 @@
   (lambda ()
     (begin (set nparts 0) (set found-vars nil) (set boundaries nil) (set mx-infer-members nil)
            (set mx-infer-absorbed nil) (set mx-infer-roots nil))))
-(define mx-infer-part-at (->* (int) part) (lambda (i) (array-ref (get mx-infer-parts) i)))
+(define mx-infer-part-at (->* (int) mx-infer-part) (lambda (i) (array-ref (get mx-infer-parts) i)))
 (define mx-infer-shape-of (->* (int) mx-infer-shape) (lambda (i) (extract (mx-infer-part-at i) 1)))
 (define path-of (->* (int) addr) (lambda (i) (extract (mx-infer-part-at i) 2)))
 (define mx-infer-region (->* (int) int) (lambda (i) (extract (mx-infer-part-at i) 3)))
 (define shape-set! (->* (int mx-infer-shape) unit)
   (lambda (i sh)
     (array-set! (get mx-infer-parts) i (tuple sh (path-of i) (mx-infer-region i)))))
-(define copy-parts (->* ((arrayof part mxp) (arrayof part mxp) int) unit)
+(define copy-parts (->* ((arrayof mx-infer-part mxp) (arrayof mx-infer-part mxp) int) unit)
   (lambda (from to i)
     (if (= i (array-length from))
         #u
@@ -5339,7 +5339,7 @@
     (let ((i (get nparts)))
       (begin
         (if (= i (array-length (get mx-infer-parts)))
-            (let ((bigger (the (arrayof part mxp) (make-array (* 2 i) (mx-infer-part-at 0)))))
+            (let ((bigger (the (arrayof mx-infer-part mxp) (make-array (* 2 i) (mx-infer-part-at 0)))))
               (begin (copy-parts (get mx-infer-parts) bigger 0) (set mx-infer-parts bigger)))
             #u)
         (set nparts (+ i 1))
@@ -12726,6 +12726,9 @@
     (lambda (xs) (if (null? xs) nil (let ((made (drive-form (car xs)))) (append made (drive-forms (cdr xs))))))))
 
 (define drive-out (ref syns-a mxp) (new nil))
+(define drive-put (ref mx-parser-types-names mxp) (new nil))
+(define drive-macros-before (ref int mxp) (new 0))
+(define drive-globals-before (ref int mxp) (new 0))
 "A refusal where Fixpt's parse is refused, as kayak's checker says one."
 (define drive-refused (->* (string int) void)
   (lambda (m a)
@@ -12805,6 +12808,224 @@
     (let ((at (state-at s (get by-state))))
       (and (not (null? at)) (not (null? (extract (car at) 2)))))))
 
+;;; ------------------------------------------------------------ a form alone
+
+"A form expanded alone (C445), as kc expands each, a query of its own
+ (`docs/research/kc.md`, step 15; kc/expand.kfx): in an instance of its
+ own, given none of the forms before it but the definitions of the macros
+ it names, and of those their definitions name (kc finds them, by name),
+ each defined in turn; the shapes of the globals they name, and which are
+ globals; and how many forms of each hash were begun before each
+ (`form-begin!`, its fresh names' key). So what it makes depends on what
+ it names, not on the forms that name nothing of it.
+
+ The symbols of `s`, onto `out`, each once."
+(define-rec
+  (drive-symbols (->* (syn mx-parser-types-names) mx-parser-types-names)
+    (lambda (s out)
+      (tagcase s
+        (atom (d a b x) (if (and (symbol? d) (not (mx-files-name-in? d out))) (cons d out) out))
+        (mx-eager-reader-types-lst (items d a b x) (drive-symbols-each items out))
+        (dotted (items tail d a b x) (drive-symbols tail (drive-symbols-each items out)))
+        (vec (items d a b x) (drive-symbols-each items out)))))
+  (drive-symbols-each (->* (syns-a mx-parser-types-names) mx-parser-types-names)
+    (lambda (xs out) (if (null? xs) out (drive-symbols-each (cdr xs) (drive-symbols (car xs) out))))))
+(define drive-names-count (->* (mx-parser-types-names int) int)
+  (lambda (ns k) (if (null? ns) k (drive-names-count (cdr ns) (+ k 1)))))
+"A form and the count of the hashes begun before it."
+(define-type drive-counted (listof (tupleof syn seen-keys) acyclic))
+(define-rec
+  (drive-chosen-symbols (->* (drive-counted mx-parser-types-names) mx-parser-types-names)
+    (lambda (ds ns) (if (null? ds) ns (drive-chosen-symbols (cdr ds) (drive-symbols (extract (car ds) 1) ns))))))
+(define-rec
+  (drive-define-each (->* (drive-counted) unit)
+    (lambda (ds)
+      (if (null? ds)
+          #u
+          (begin (seen! (extract (car ds) 2)) (drive-form (extract (car ds) 1)) (drive-define-each (cdr ds)))))))
+"The top level's shapes (`top-vals`, `top-descs`) as data (C445), so that
+ a form alone is given those of the globals it names, which the forms that
+ define them found, and gives those of the globals it defines: an entry
+ `(name kind shapes)`, `kind` 0 a value's, 1 a description's; a shape
+ `(m members members)` or `(f (shapes ...) shapes)`, a member `(name
+ shapes)`, `shapes` a list of none or one."
+(define drive-sym (->* (string) datum) (lambda (n) (the datum (string->symbol n))))
+(define loc-sym (->* (datum) symbol) (lambda (d) (if (symbol? d) d (string->symbol "?"))))
+(define-rec
+  (drive-shape-datum (->* (mx-parser-types-shape) datum)
+    (lambda (x)
+      (tagcase x
+        (sh-module (vs ds) (mx-datum-list (list (drive-sym "m") (drive-members-datum vs) (drive-members-datum ds))))
+        (sh-fun (ps r) (mx-datum-list (list (drive-sym "f") (mx-datum-list (drive-shapes-each ps)) (drive-shapes-datum r)))))))
+  (drive-shapes-datum (->* (mx-parser-types-shapes) datum)
+    (lambda (ss) (mx-datum-list (drive-shape-items ss))))
+  (drive-shape-items (->* (mx-parser-types-shapes) (listof datum acyclic))
+    (lambda (ss) (if (null? ss) nil (cons (drive-shape-datum (car ss)) (drive-shape-items (cdr ss))))))
+  (drive-shapes-each (->* ((listof mx-parser-types-shapes acyclic)) (listof datum acyclic))
+    (lambda (xs) (if (null? xs) nil (cons (drive-shapes-datum (car xs)) (drive-shapes-each (cdr xs))))))
+  (drive-members-datum (->* (mx-parser-types-members) datum)
+    (lambda (ms) (mx-datum-list (drive-member-items ms))))
+  (drive-member-items (->* (mx-parser-types-members) (listof datum acyclic))
+    (lambda (ms)
+      (if (null? ms)
+          nil
+          (cons (mx-datum-list (list (the datum (extract (car ms) 1)) (drive-shapes-datum (extract (car ms) 2))))
+                (drive-member-items (cdr ms)))))))
+(define loc-is-sym? (->* (datum string) bool)
+  (lambda (d n) (and (symbol? d) (string=? (symbol->string d) n))))
+(define-rec
+  (drive-datum-shape (->* (datum) mx-parser-types-shape)
+    (lambda (d)
+      (if (loc-is-sym? (loc-nth d 0) "m")
+          (sh-module (drive-datum-members (loc-nth d 1)) (drive-datum-members (loc-nth d 2)))
+          (sh-fun (drive-datum-shapes-each (loc-nth d 1)) (drive-datum-shapes (loc-nth d 2))))))
+  (drive-datum-shapes (->* (datum) mx-parser-types-shapes)
+    (lambda (d) (if (pair? d) (let ((x (car d))) (cons (drive-datum-shape x) (drive-datum-shapes (cdr d)))) nil)))
+  (drive-datum-shapes-each (->* (datum) (listof mx-parser-types-shapes acyclic))
+    (lambda (d) (if (pair? d) (let ((x (car d))) (cons (drive-datum-shapes x) (drive-datum-shapes-each (cdr d)))) nil)))
+  (drive-datum-members (->* (datum) mx-parser-types-members)
+    (lambda (d)
+      (if (pair? d)
+          (let ((m (car d))) (cons (tuple (loc-sym (loc-nth m 0)) (drive-datum-shapes (loc-nth m 1))) (drive-datum-members (cdr d))))
+          nil))))
+"Of entries `es`, the oldest first, those of names `ns` put in the state:
+ a shape in the top level's, a later one of a name in an earlier's place;
+ a global (kind 3) one from now on, so that a macro may not take its name
+ (`drive-taken`). The names whose shapes were put. (A macro a form made
+ but a `define-syntax`, kind 2, is no form's to be given: kc refuses a
+ form that names one, not yet.)"
+(define-rec
+  (drive-inject! (->* (mx-parser-types-names (listof datum acyclic) mx-parser-types-names) mx-parser-types-names)
+    (lambda (ns es put)
+      (if (null? es)
+          put
+          (let* ((e (car es)) (n (loc-sym (loc-nth e 0))) (k (loc-int (loc-nth e 1))) (sh (drive-datum-shapes (loc-nth e 2))))
+            (cond ((not (mx-files-name-in? n ns)) (drive-inject! ns (cdr es) put))
+                  ((= k 3) (begin (globals! (list n)) (drive-inject! ns (cdr es) put)))
+                  ((null? sh) (drive-inject! ns (cdr es) put))
+                  ((= k 1) (begin (set top-descs (names-with (get top-descs) n sh)) (drive-inject! ns (cdr es) (cons n put))))
+                  (else (begin (set top-vals (names-with (get top-vals) n sh)) (drive-inject! ns (cdr es) (cons n put))))))))))
+"How many macros `m` defines; the names of its first `k`, the newest
+ first; the first `k` of names `ns`."
+(define-rec
+  (drive-env-count (->* (macro-env int) int)
+    (lambda (m k) (if (null? m) k (drive-env-count (cdr m) (+ k 1))))))
+(define-rec
+  (drive-env-first (->* (macro-env int) mx-parser-types-names)
+    (lambda (m k) (if (or (null? m) (<= k 0)) nil (cons (extract (car m) 1) (drive-env-first (cdr m) (- k 1)))))))
+(define-rec
+  (drive-names-first (->* (mx-parser-types-names int) mx-parser-types-names)
+    (lambda (ns k) (if (or (null? ns) (<= k 0)) nil (cons (car ns) (drive-names-first (cdr ns) (- k 1)))))))
+"Names `ns` as entries of kind `k`, onto `out`."
+(define-rec
+  (drive-name-entries (->* (mx-parser-types-names int (listof datum acyclic)) (listof datum acyclic))
+    (lambda (ns k out)
+      (if (null? ns) out
+          (drive-name-entries (cdr ns) k (cons (mx-datum-list (list (the datum (car ns)) (the datum k) (the datum nil))) out))))))
+"The entries of tree `t`, of kind `k`, a shape known, but those of names
+ `put`, onto `out`."
+(define-rec
+  (drive-tree-entries (->* (name-tree int mx-parser-types-names (listof datum acyclic)) (listof datum acyclic))
+    (lambda (t k put out)
+      (tagcase t
+        (nm-node (h m sh l r)
+          (drive-tree-entries l k put
+            (drive-tree-entries r k put
+              (if (or (null? sh) (mx-files-name-in? m put))
+                  out
+                  (cons (mx-datum-list (list (the datum m) (the datum k) (drive-shapes-datum sh))) out)))))
+        (else y out)))))
+"Form `s`, begun after counts `ks`, expanded in a state of definitions
+ `ds` alone, given the shapes of the globals it names of entries `es`:
+ what it makes, or its refusal, `(file line message)`; and the entries of
+ the globals it defines."
+(define drive-alone-said (->* (drive-counted syn seen-keys (listof datum acyclic)) (tupleof (listof datum acyclic) datum (listof datum acyclic)))
+  (lambda (ds s ks es)
+    (begin
+      (macros-at! 0)
+      (shapes-at! 0 nil)
+      (let* ((ns (drive-chosen-symbols ds (drive-symbols s nil)))
+             (r (prompt parse-tag
+                        (begin (drive-define-each ds)
+                               (set drive-put (drive-inject! ns es nil))
+                               (set drive-macros-before (drive-env-count (get defined) 0))
+                               (set drive-globals-before (drive-names-count (get mx-top-globals) 0))
+                               (seen! ks)
+                               (set drive-out (drive-form s))
+                               (p-ok nil))
+                        (lambda (r) r))))
+        (tagcase r
+          (p-err (m a b)
+            (let ((w (drive-placed a)))
+              (tuple nil (mx-datum-list (list (the datum (extract w 1)) (the datum (i64->int (extract w 2))) (the datum m))) nil)))
+          (p-ok (ts)
+            ;; What it defines, for the forms after it: its globals' shapes;
+            ;; its globals; the macros it made but by a `define-syntax`.
+            (let ((made (if (defines-syntax? s) nil (drive-env-first (get defined) (- (drive-env-count (get defined) 0) (get drive-macros-before)))))
+                  (globals (drive-names-first (get mx-top-globals) (- (drive-names-count (get mx-top-globals) 0) (get drive-globals-before)))))
+              (tuple (drive-locs (get drive-out)) (the datum nil)
+                     (drive-name-entries made 2 (drive-name-entries globals 3
+                       (drive-tree-entries (get top-vals) 0 (get drive-put) (drive-tree-entries (get top-descs) 1 (get drive-put) nil))))))))))))
+"What kc reads of each of a file's forms (C445), as written: `(hashes
+ names macros)`, the hashes of the forms it begins, in order (its own, and
+ a `hide`'s forms'); the names it defines, written there, values' and
+ descriptions'; the macros, a `define-syntax`'s."
+(define drive-desc-name (->* (syn) mx-parser-types-names)
+  (lambda (s)
+    (let ((xs (proper-items s)) (h (drive-head s)))
+      (if (and (or (string=? h "define-type") (string=? h "define-datatype") (string=? h "define-effect") (string=? h "define-generative"))
+               (>= (len xs) 2))
+          (let ((n (nth xs 1)))
+            (cond ((syn-symbol? n) (list (syn-symbol n)))
+                  ((and (not (null? (proper-items n))) (syn-symbol? (car (proper-items n)))) (list (syn-symbol (car (proper-items n)))))
+                  (else nil)))
+          nil))))
+(define-rec
+  (drive-begun-hashes (->* (syn (listof datum acyclic)) (listof datum acyclic))
+    (lambda (s out)
+      (let ((after (cons (the datum (syn-hash s)) out)))
+        (if (string=? (drive-head s) "hide") (drive-begun-each (cdr (proper-items s)) after) after))))
+  (drive-begun-each (->* (syns-a (listof datum acyclic)) (listof datum acyclic))
+    (lambda (xs out) (if (null? xs) out (drive-begun-each (cdr xs) (drive-begun-hashes (car xs) out))))))
+(define-rec
+  (map-names-data (->* (mx-parser-types-names) (listof datum acyclic))
+    (lambda (ns) (if (null? ns) nil (cons (the datum (car ns)) (map-names-data (cdr ns)))))))
+(define drive-names-data (->* (mx-parser-types-names) datum)
+  (lambda (ns) (mx-datum-list (map-names-data ns))))
+(define-rec
+  (drive-facts (->* (syns-a) (listof datum acyclic))
+    (lambda (xs)
+      (if (null? xs)
+          nil
+          (let ((s (car xs)))
+            (cons (mx-datum-list (list (mx-datum-list (reverse (drive-begun-hashes s nil)))
+                                       (drive-names-data (append (drive-names s) (drive-desc-name s)))
+                                       (drive-names-data (syntax-names s))))
+                  (drive-facts (cdr xs))))))))
+"Counts `(hash count)` ..., as data, as the state keeps them."
+(define-rec
+  (drive-seen-of (->* (datum) seen-keys)
+    (lambda (d)
+      (if (pair? d)
+          (let ((x (car d))) (cons (tuple (loc-int (loc-nth x 0)) (loc-int (loc-nth x 1))) (drive-seen-of (cdr d))))
+          nil))))
+(define-rec
+  (drive-given-defs (->* ((listof datum acyclic)) drive-counted)
+    (lambda (ds)
+      (if (null? ds)
+          nil
+          (let ((d (car ds))) (cons (tuple (drive-syn (loc-nth d 0)) (drive-seen-of (loc-nth d 1))) (drive-given-defs (cdr ds))))))))
+"A form given alone, `(form counts)`, with definitions `defs`, each so, in
+ the order they are defined, and entries `es`, the oldest first, as kc's
+ `expansion` query gives them: what `drive-alone-said` says of it."
+(define drive-given* (->* ((listof datum acyclic) (listof datum acyclic) datum) (tupleof (listof datum acyclic) datum (listof datum acyclic)))
+  (lambda (defs es target)
+    (begin
+      (set drive-files nil)
+      (set drive-met nil)
+      (let* ((ds (drive-given-defs defs)) (s (drive-syn (loc-nth target 0))) (ks (drive-seen-of (loc-nth target 1))))
+        (begin (drive-lines!) (drive-alone-said ds s ks es))))))
+
 ;;; ------------------------------------------------------------ what an instance gives
 
 "What the file gives (C443), each of a written type, so its loader's
@@ -12822,3 +13043,10 @@
       (tuple (mx-datum-list (extract r 1)) (extract r 2)))))
 (define drive-macros? (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (int) bool)
   (lambda (s) (drive-macros?* s)))
+(define drive-written-facts (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum) datum)
+  (lambda (forms)
+    (begin (set drive-files nil) (set drive-met nil) (mx-datum-list (drive-facts (drive-syns (loc-nodes forms)))))))
+(define drive-given (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp)) (datum datum datum) (tupleof datum datum datum))
+  (lambda (defs es target)
+    (let ((r (drive-given* (loc-nodes defs) (loc-nodes es) target)))
+      (tuple (mx-datum-list (extract r 1)) (extract r 2) (mx-datum-list (extract r 3))))))
