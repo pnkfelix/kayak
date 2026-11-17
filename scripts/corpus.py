@@ -140,8 +140,10 @@ def refused(compiler, interpreter, kind, wrong):
         src = os.path.join(directory, n + ".kfx")
         if r.returncode == 0:
             wrong.append("%s/%s: kfx accepts it" % (kind, n))
-        elif not any(l.startswith("kfx: " + src + ":") for l in r.stderr.splitlines()):
-            # Every refusal says where: the file, and the line (TODO.md section 7).
+        elif not any(l.startswith("kfx: " + w + ":") for w in [src] + [os.path.normpath(os.path.join(directory, x)) for x in own_loads(src)]
+                     for l in r.stderr.splitlines()):
+            # Every refusal says where: the file, and the line (TODO.md section 7);
+            # the file it loads, if it is there (C442).
             wrong.append("%s/%s: kfx's message says not where: %s" % (kind, n, r.stderr.strip()[-200:]))
         if theirs is not None:
             accepted = theirs.returncode == 0

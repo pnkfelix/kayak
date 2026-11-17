@@ -1511,6 +1511,9 @@ pub mod writing {
             } else if head_is_p(car(forms), str_lit("include")) {
                 forms = cdr(forms);
                 continue;
+            } else if head_is_p(car(forms), str_lit("%loaded")) {
+                forms = cdr(forms);
+                continue;
             } else {
                 return error(string_append(str_lit("kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433): "), show_sexp(car(forms))));
             }

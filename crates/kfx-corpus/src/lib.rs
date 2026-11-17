@@ -443,6 +443,11 @@ pub mod places_mutual;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/process-load-place.rs"]
+pub mod process_load_place;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/processes.rs"]
 pub mod processes;
 
@@ -687,6 +692,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("paths-narrow", paths_narrow::main),
     ("places", places::main),
     ("places-mutual", places_mutual::main),
+    ("process-load-place", process_load_place::main),
     ("processes", processes::main),
     ("procs", procs::main),
     ("promises", promises_main),

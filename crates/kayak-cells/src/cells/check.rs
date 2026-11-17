@@ -17796,3 +17796,49 @@ pub fn uses_wrong(t: &'static Ty, uses: &'static Sexp, m: Str) -> Str {
     }
 }
 
+/// What a file of a place's maker's module sees (C442), as a file loaded
+/// does (`standard-scope`, C88): the standard environment, the shared
+/// loads' modules and `sees`; and, the maker's own, its locals (its
+/// place) and marks, which are no program's globals.
+pub fn loaded_scope(v: &'static Cv, sees: Strings) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
+            let of = lambda1s(move |n: Str| {
+                (has_prefix_p(n, str_lit("made--load--")) || any_p(lambda1s(move |m: Str| {
+                    (string_eq_p(n, m) || has_prefix_p(n, string_append(m, str_lit(" "))) || has_prefix_p(n, string_append(m, str_lit(".."))))
+                }), sees))
+            });
+            cv_reindexed(cv(kayak_rt::heap_cons(bind(str_lit("%loaded"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), filter(lambda1s(move |b: &'static Bind| {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        (of(n) || string_eq_p(w, str_lit("prim")) || string_eq_p(w, str_lit("local")) || string_eq_p(w, str_lit("mark")) || has_prefix_p(n, str_lit("%")))
+                    }
+                }
+            }), bs)), filter(lambda1s(move |d: &'static Dt| {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Dt::Dt(n, ps, vs) => {
+                        of(n)
+                    }
+                }
+            }), ds), filter(lambda1s(move |a: &'static Alias| {
+                let tagcase_ = a;
+                match *tagcase_ {
+                    Alias::Alias(n, ps, b) => {
+                        of(n)
+                    }
+                }
+            }), als), filter(lambda1s(move |e: &'static Effdef| {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Effdef::Effdef(n, xs) => {
+                        of(n)
+                    }
+                }
+            }), es), here, group, file, line, fs, tv, at, bempty(), nil::<&'static Bind>()))
+        }
+    }
+}
+

@@ -1942,7 +1942,10 @@
                                #u
                                (tagcase (car found)
                                  (bind (n sc wher)
-                                   (if (string=? wher "prim")
+                                   ;; A load's module, or a file of a place's maker (C442): a
+                                   ;; load sees the standard environment alone, so it holds
+                                   ;; nothing, as Fixpt's `shared_globals` exempts it.
+                                   (if (or (string=? wher "prim") (has-prefix? name "made--load--"))
                                        #u
                                        (tagcase sc
                                          (scheme (tvars t)
@@ -5017,14 +5020,18 @@
                                         (cv-file v) (cv-pos v) (string-append "module-made " (words-of (mtype-value-names (ty-data "%mtype" (onto kept bs))))))))))))))))
 
       (module-expr (subr kfx (cv st sexps) res)
-        (lambda (v s its)
+        (lambda (v0 s its0)
           "`(module item ...)` made as a value (C170; Fixpt's first-class
            modules): its types, generative ones abstract, `mt@P..t`, each
            seeing those before it; then its values, each typed one in scope for
            all, each seeing those made before it. Its type a `moduleof` of what
            it gives, a hidden item not. Not KFX's, whose modules are Rust's,
-           defined at the top level (C19)."
-          (let ((s (note-fact (if (null? (scope-bind "%module-maker" v))
+           defined at the top level (C19). A file of a place's maker's module
+           (C442), `(%loaded path …)` first, sees what a file loaded sees."
+          (let* ((loaded (and (not (null? its0)) (head-is? (car its0) "%loaded")))
+                 (v (if loaded (loaded-scope v0 (map sym-name (cdr (cdr (items (car its0)))))) v0))
+                 (its (if loaded (cdr its0) its0))
+                 (s (note-fact (if (null? (scope-bind "%module-maker" v))
                                   (kfx-restricted v s "a module made as a value, FX-26's first-class modules', which KFX has not yet: KFX's are defined at the top level (C19, C170)")
                                   ;; A module maker's (C274).
                                   s)

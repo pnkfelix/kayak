@@ -1,0 +1,14 @@
+"A process loading a module file of a place parameter in its own place
+ (C442), as Fixpt's docs/research/closed-code.md has it: a load sees the
+ standard environment alone, so a process may hold it, and its state is
+ the process's, made in its place."
+(define-effect kfx (maxeff (read @globals) spin))
+(define* start (subr (maxeff (alloc @w) (init @o) nondet spin) ((icell i64 @o)) (addr unit @w))
+  (lambda (out)
+    (spawn (box unit p)
+      (let ((x ((proj (load-module "loads/counter-place.fx") p))))
+        (begin (with x (bump 3)) (icell-put! out (with x (bump 4))))))))
+(define main (subr (maxeff kfx (alloc @w) (init @o) (alloc @o) (await @o) nondet) () string)
+  (lambda ()
+    (let ((c (the (icell i64 @o) (make-icell))))
+      (begin (start c) (i64->string (icell-get c))))))

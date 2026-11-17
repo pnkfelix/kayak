@@ -4458,7 +4458,7 @@ pub mod expressions {
                             let tagcase_ = car(found);
                             match *tagcase_ {
                                 Bind::Bind(n, sc, wher) => {
-                                    if string_eq_p(wher, str_lit("prim")) {
+                                    if (string_eq_p(wher, str_lit("prim")) || has_prefix_p(name, str_lit("made--load--"))) {
                                         ()
                                     } else {
                                         let tagcase_ = sc;
@@ -11217,13 +11217,26 @@ pub mod expressions {
     /// seeing those before it; then its values, each typed one in scope for
     /// all, each seeing those made before it. Its type a `moduleof` of what
     /// it gives, a hidden item not. Not KFX's, whose modules are Rust's,
-    /// defined at the top level (C19).
-    pub fn module_expr(v: &'static Cv, s: &'static St, its: Sexps) -> &'static Res {
-        let (s, id) = (note_fact(if null_p(scope_bind(str_lit("%module-maker"), v)) {
+    /// defined at the top level (C19). A file of a place's maker's module
+    /// (C442), `(%loaded path …)` first, sees what a file loaded sees.
+    pub fn module_expr(v0: &'static Cv, s: &'static St, its0: Sexps) -> &'static Res {
+        let loaded = (not(null_p(its0)) && head_is_p(car(its0), str_lit("%loaded")));
+        let v = if loaded {
+            loaded_scope(v0, map(&sym_name, cdr(cdr(items(car(its0))))))
+        } else {
+            v0
+        };
+        let its = if loaded {
+            cdr(its0)
+        } else {
+            its0
+        };
+        let s = note_fact(if null_p(scope_bind(str_lit("%module-maker"), v)) {
             kfx_restricted(v, s, str_lit("a module made as a value, FX-26's first-class modules', which KFX has not yet: KFX's are defined at the top level (C19, C170)"))
         } else {
             s
-        }, cv_file(v), cv_pos(v), str_lit("module-value")), string_append(str_lit("mt@"), i64_to_string(cv_pos(v))));
+        }, cv_file(v), cv_pos(v), str_lit("module-value"));
+        let id = string_append(str_lit("mt@"), i64_to_string(cv_pos(v)));
         let tagcase_ = mod_types(v, s, its, id, true, nil::<&'static Ty>(), nil::<Str>());
         match *tagcase_ {
             Mres::Mres(w, items, es, s) => {

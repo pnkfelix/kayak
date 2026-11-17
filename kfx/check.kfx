@@ -7187,3 +7187,21 @@
             (if (sym-is? (second (items (car bad))) "#t")
                 (string-append "`" (string-append m (string-append "` gives no value `" (string-append n (string-append "`, which a template's `(with " (string-append m (string-append " " (string-append n ")` takes from it alone"))))))))
                 (string-append "`" (string-append n (string-append "` is a macro here, and `" (string-append m "` gives a value of that name, which this `with` would seem to call"))))))))))
+
+(define loaded-scope (subr kfx (cv strings) cv)
+  (lambda (v sees)
+    "What a file of a place's maker's module sees (C442), as a file loaded
+     does (`standard-scope`, C88): the standard environment, the shared
+     loads' modules and `sees`; and, the maker's own, its locals (its
+     place) and marks, which are no program's globals."
+    (tagcase v
+      (cv (bs ds als es here group file line fs tv at ix mk)
+        (let ((of (lambda ((n string))
+                    (or (has-prefix? n "made--load--")
+                        (any? (lambda ((m string)) (or (string=? n m) (has-prefix? n (string-append m " ")) (has-prefix? n (string-append m "..")))) sees)))))
+          (cv-reindexed (cv (cons (bind "%loaded" (scheme nil (ty-unit)) "mark")
+                                  (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (or (of n) (string=? w "prim") (string=? w "local") (string=? w "mark") (has-prefix? n "%"))))) bs))
+                            (filter (lambda ((d dt)) (tagcase d (dt (n ps vs) (of n)))) ds)
+                            (filter (lambda ((a alias)) (tagcase a (alias (n ps b) (of n)))) als)
+                            (filter (lambda ((e effdef)) (tagcase e (effdef (n xs) (of n)))) es)
+                            here group file line fs tv at (bempty) nil)))))))

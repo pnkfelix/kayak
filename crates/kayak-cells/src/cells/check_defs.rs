@@ -2854,7 +2854,17 @@ pub fn maker_found(v: &'static Cv, form: &'static Sexp) -> Product_11_12<&'stati
             }
         }
     }), items(second(lam)));
-    let m = items(third(lam));
+    let m0 = items(third(lam));
+    let ld = if (not(null_p(cdr(m0))) && head_is_p(second(m0), str_lit("%loaded"))) {
+        the::<Sexps>(kayak_rt::heap_cons(second(m0), kayak_rt::nil()))
+    } else {
+        nil::<&'static Sexp>()
+    };
+    let m = if null_p(ld) {
+        m0
+    } else {
+        kayak_rt::heap_cons(car(m0), cdr(cdr(m0)))
+    };
     let stars = star_items(cdr(m));
     let checked = map(lambda1s(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(lambda_form_p(fourth(items(f))))) {
@@ -2884,6 +2894,11 @@ pub fn maker_found(v: &'static Cv, form: &'static Sexp) -> Product_11_12<&'stati
             ()
         }
     }), cdr(m));
+    let v = if null_p(ld) {
+        v
+    } else {
+        loaded_scope(v, map(&sym_name, cdr(cdr(items(car(ld))))))
+    };
     let r = maker_items_found(with_tvars(with_binds({
         let tagcase_ = form;
         match *tagcase_ {
@@ -2898,7 +2913,7 @@ pub fn maker_found(v: &'static Cv, form: &'static Sexp) -> Product_11_12<&'stati
     }, kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), sym_name(second(xs))), kayak_rt::nil())), concat(map(lambda1s(move |q: Str| {
         the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("'"), q), kayak_rt::heap_cons(string_append(str_lit("%place "), q), kayak_rt::nil())))
     }), ps))), cdr(m), nil::<&'static Sexp>(), nil::<&'static Fact>());
-    Product_11_12(relist(form, kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(relist(fourth(xs), kayak_rt::heap_cons(car(lam), kayak_rt::heap_cons(second(lam), kayak_rt::heap_cons(relist(third(lam), kayak_rt::heap_cons(car(m), r.0)), kayak_rt::nil())))), kayak_rt::nil()))))), r.1)
+    Product_11_12(relist(form, kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(relist(fourth(xs), kayak_rt::heap_cons(car(lam), kayak_rt::heap_cons(second(lam), kayak_rt::heap_cons(relist(third(lam), kayak_rt::heap_cons(car(m), onto(ld, r.0))), kayak_rt::nil())))), kayak_rt::nil()))))), r.1)
 }
 
 /// A module maker (C274) whose module has a `->*` item (C435): a procedure
@@ -6676,6 +6691,175 @@ pub fn imports_in(e: &'static Sexp) -> &'static Sexp {
     }
 }
 
+// A file whose `module-parameters` are one place, `((p place))` (C442;
+// Fixpt's `docs/research/closed-code.md`): the place's name, else empty. Its
+// load is no module shared but an instance, made at each load in the place
+// given, as FX-26 makes a file of parameters again at each call: a module
+// maker (C274, C433), defined at the top level as a load's module is.
+pub fn place_parameter(forms: Sexps) -> Str {
+    if (not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters")) && i64_eq(size(items(car(forms))), 2i64)) {
+        let ps = items(second(items(car(forms))));
+        if (i64_eq(size(ps), 1i64) && i64_eq(size(items(car(ps))), 2i64) && sym_is_p(second(items(car(ps))), str_lit("place"))) {
+            let tagcase_ = car(items(car(ps)));
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        } else {
+            str_lit("")
+        }
+    } else {
+        str_lit("")
+    }
+}
+
+pub enum PlaceDef {
+    PlaceDef(Str, &'static Sexp),
+}
+
+pub fn place_def(f0: Str, f1: &'static Sexp) -> &'static PlaceDef {
+    kayak_rt::heap_alloc(PlaceDef::PlaceDef(f0, f1))
+}
+
+/// The file's own `(define-effect e E)` or `(define-type t T)`, `head` the
+/// one, by name, a `hide`'s too.
+pub fn place_names_of(its: Sexps, head: Str) -> List<&'static PlaceDef> {
+    concat(map(lambda1s(move |g: &'static Sexp| {
+        if head_is_p(g, str_lit("hide")) {
+            place_names_of(cdr(items(g)), head)
+        } else if (head_is_p(g, head) && i64_eq(size(items(g)), 3i64)) {
+            let tagcase_ = second(items(g));
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    the::<List<&'static PlaceDef>>(kayak_rt::heap_cons(place_def(n, third(items(g))), kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static PlaceDef>()
+                }
+            }
+        } else {
+            nil::<&'static PlaceDef>()
+        }
+    }), its))
+}
+
+pub fn place_named_find(n: Str, xs: List<&'static PlaceDef>) -> Sexps {
+    concat(map(lambda1s(move |x: &'static PlaceDef| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            PlaceDef::PlaceDef(m, e) => {
+                if string_eq_p(m, n) {
+                    the::<Sexps>(kayak_rt::heap_cons(e, kayak_rt::nil()))
+                } else {
+                    nil::<&'static Sexp>()
+                }
+            }
+        }
+    }), xs))
+}
+
+/// Type `e` as the top level reads it: each of the file's own type
+/// abbreviations written out, and each of its own effects' atoms, in
+/// the `maxeff` that names it (the maker's interface is outside the
+/// file, C442).
+pub fn place_spelt(mut e: &'static Sexp, mut effs: List<&'static PlaceDef>, mut types: List<&'static PlaceDef>, mut depth: i64) -> &'static Sexp {
+    loop {
+        if i64_gt(depth, 64i64) {
+            return e;
+        } else {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    let t = place_named_find(n, types);
+                    if null_p(t) {
+                        return e;
+                    } else {
+                        (e, depth) = (car(t), i64_plus(depth, 1i64));
+                        continue;
+                    }
+                }
+                Sexp::Lst(xs, f, l, p) => {
+                    if head_is_p(e, str_lit("maxeff")) {
+                        return lst(kayak_rt::heap_cons(car(xs), place_atoms(cdr(xs), effs, depth)), f, l, p);
+                    } else {
+                        return lst(map(lambda1s(move |x: &'static Sexp| {
+                            place_spelt(x, effs, types, depth)
+                        }), xs), f, l, p);
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return e;
+                }
+            }
+        }
+    }
+}
+
+pub fn place_atoms(r#as: Sexps, effs: List<&'static PlaceDef>, depth: i64) -> Sexps {
+    concat(map(lambda1s(move |a: &'static Sexp| {
+        let d = {
+            let tagcase_ = a;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    place_named_find(n, effs)
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        };
+        if null_p(d) {
+            the::<Sexps>(kayak_rt::heap_cons(a, kayak_rt::nil()))
+        } else if head_is_p(car(d), str_lit("maxeff")) {
+            place_atoms(cdr(items(car(d))), effs, i64_plus(depth, 1i64))
+        } else {
+            place_atoms(kayak_rt::heap_cons(car(d), kayak_rt::nil()), effs, i64_plus(depth, 1i64))
+        }
+    }), r#as))
+}
+
+/// The interface of a file of a place: each of its procedures whose type
+/// is written, a `subr` (not `->*`'s, found), `(val n T)`, `T` spelt out.
+pub fn place_vals(its: Sexps, effs: List<&'static PlaceDef>, types: List<&'static PlaceDef>) -> Sexps {
+    concat(map(lambda1s(move |g: &'static Sexp| {
+        if head_is_p(g, str_lit("hide")) {
+            place_vals(cdr(items(g)), effs, types)
+        } else if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64) && head_is_p(third(items(g)), str_lit("subr")) && not(sym_is_p(second(items(third(items(g)))), str_lit("%found")))) {
+            let tagcase_ = second(items(g));
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("val"), f, p), kayak_rt::heap_cons(second(items(g)), kayak_rt::heap_cons(place_spelt(third(items(g)), effs, types, 0i64), kayak_rt::nil()))), f, 0i64, p), kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }), its))
+}
+
+/// The maker of a file of place `pn`, `name`, its items `its`: its
+/// interface's type, `name--face`, and its definition.
+pub fn place_made(name: Str, pn: Str, its: Sexps, file: Str, f: Str, l: i64, p: i64) -> Sexps {
+    let effs = place_names_of(its, str_lit("define-effect"));
+    let types = place_names_of(its, str_lit("define-type"));
+    let face = string_append(name, str_lit("--face"));
+    let pb = lst(kayak_rt::heap_cons(sym(pn, f, p), kayak_rt::heap_cons(sym(str_lit("place"), f, p), kayak_rt::nil())), f, l, p);
+    let made_eff = lst(kayak_rt::heap_cons(sym(str_lit("maxeff"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("read"), f, p), kayak_rt::heap_cons(sym(str_lit("@globals"), f, p), kayak_rt::nil())), f, l, p), kayak_rt::heap_cons(sym(str_lit("spin"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("read"), f, p), kayak_rt::heap_cons(sym(pn, f, p), kayak_rt::nil())), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("write"), f, p), kayak_rt::heap_cons(sym(pn, f, p), kayak_rt::nil())), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("alloc"), f, p), kayak_rt::heap_cons(sym(pn, f, p), kayak_rt::nil())), f, l, p), kayak_rt::nil())))))), f, l, p);
+    kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define-type"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(face, f, p), kayak_rt::heap_cons(pb, kayak_rt::nil())), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("moduleof"), f, p), place_vals(its, effs, types)), f, l, p), kayak_rt::nil()))), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("poly"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(pb, kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("subr"), f, p), kayak_rt::heap_cons(made_eff, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("place"), f, p), kayak_rt::heap_cons(sym(pn, f, p), kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(face, f, p), kayak_rt::heap_cons(sym(pn, f, p), kayak_rt::nil())), f, l, p), kayak_rt::nil())))), f, l, p), kayak_rt::nil()))), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("lambda"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(pn, f, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(file, f, p), kayak_rt::heap_cons(sym(str_lit("%instance"), f, p), kayak_rt::nil()))), f, l, p), its)), f, l, p), kayak_rt::nil()))), f, l, p), kayak_rt::nil())))), f, l, p), kayak_rt::nil()))
+}
+
 /// `e`, each load in it the module its file is, shared.
 pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain: Strings, mut known: Keyeds) -> &'static SplicedTo {
     loop {
@@ -6831,7 +7015,21 @@ pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain
                             }
                         }
                     }), known));
-                    if not(null_p(had)) {
+                    let made_place = concat(map(lambda1s(move |k: &'static Keyed| {
+                        let tagcase_ = k;
+                        match *tagcase_ {
+                            Keyed::Keyed(kk, n) => {
+                                if string_eq_p(kk, string_append(str_lit("%place "), path)) {
+                                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }
+                        }
+                    }), known));
+                    if (not(null_p(made_place)) && i64_eq(size(args), 1i64)) {
+                        return spliced_to(lst(kayak_rt::heap_cons(sym(car(made_place), f, p), kayak_rt::heap_cons(car(args), kayak_rt::nil())), f, l, p), nil::<&'static Sexp>(), known);
+                    } else if not(null_p(had)) {
                         return spliced_to(included_module(car(had), f, l, p), nil::<&'static Sexp>(), known);
                     } else {
                         let found = if built_in_path_p(path) {
@@ -6858,6 +7056,15 @@ pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain
                             return error(string_append(str_lit("kfx: "), string_append(f, string_append(str_lit(": a load cycle: "), words_of(reverse(the::<Strings>(kayak_rt::heap_cons(path, chain))))))));
                         } else if null_p(found) {
                             return error(string_append(str_lit("kfx: cannot read "), path));
+                        } else if (i64_eq(size(args), 1i64) && not(string_eq_p(place_parameter(import_items(read_all(car(found), path, 1i64))), str_lit("")))) {
+                            // A file of a place (C442): its maker, defined, then called with the
+                            // place given.
+                            let forms = import_items(read_all(car(found), path, 1i64));
+                            let pn = place_parameter(forms);
+                            let inner = spliced_each(run_items(cdr(forms)), directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p);
+                            let name = string_append(str_lit("made--load--"), string_append(i64_to_string(size(spliced_known(inner))), string_append(str_lit("--"), file_tag(f))));
+                            let made = place_made(name, pn, items(spliced_form(inner)), path, f, l, p);
+                            return spliced_to(lst(kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(car(args), kayak_rt::nil())), f, l, p), onto(spliced_defs(inner), made), kayak_rt::heap_cons(keyed(string_append(str_lit("%place "), path), name), spliced_known(inner)));
                         } else {
                             let forms = import_items(read_all(car(found), path, 1i64));
                             let its = run_items(parameters_given(forms, args, path));

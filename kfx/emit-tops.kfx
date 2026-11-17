@@ -856,6 +856,8 @@
                 ((maker-state? (car forms)) (maker-defs (cdr forms)))
                 ((maker-type? (car forms)) (maker-defs (cdr forms)))
                 ((head-is? (car forms) "include") (maker-defs (cdr forms)))
+                ;; A file of a place's mark (C442), the checker's alone.
+                ((head-is? (car forms) "%loaded") (maker-defs (cdr forms)))
                 (else (error (string-append "kfx: a module maker's item not a procedure's definition, typed, nor a ref, which KFX writes not yet (C274, C433): "
                                             (show-sexp (car forms)))))))))
 

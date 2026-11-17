@@ -148,3 +148,22 @@ Each entry has the same parts:
   it. The procedure's latent effect is already checked by
   `crossing_effect`, where an atom on a bound binder is the caller's.
 - **Seen:** 2026-11-16, C439.
+- **Fixpt's answer (`docs/research/closed-code.md`, their working copy,
+  uncommitted, 2026-11-16):** the alternative declined: the maker's result
+  is a module, whose abstract types may hide a captured value, so judging
+  it by its type would need another type-based approximation. Instead:
+  - Today: a module file of `(module-parameters ((p place)))`, loaded in
+    the process's body, is accepted, since a load sees only the standard
+    environment and the spawn check exempts a load's hidden globals.
+  - Proposed, not built: *closed* globals, a `lambda` naming only standard
+    bindings, loads' globals, closed globals or transmissible ones; a spawn
+    would not judge one by its type. It rests on a global's binding never
+    changing after it is defined.
+  - What kayak would need for the first: its loads are static, one module
+    per path and arguments (C116, C117), so a load given a process's place
+    has no top-level module to be. It would have to be an instance per
+    load, made as a module maker's is (C433-C437), and the spawn check
+    taught the exemption.
+  - On the second: FX-26 defines a top-level global again
+    (`redefine/rerun-chain.fx`, `knot*.fx`; kayak's C202), so the premise
+    needs checking against redefinition, not only against assignment.

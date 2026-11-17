@@ -12699,3 +12699,41 @@ syntax types as values (§2); a procedural macro's aliases per form,
 
 Fixpt's programs beyond KFX the engine agrees on: 390 to 391. Fixpt's
 596 refused programs are all refused.
+
+## C442. A file of a place, loaded: an instance, made at each load (2026-11-16)
+
+Fixpt's answer to `INCR_IMPED.md` §4 (`docs/research/closed-code.md`, in
+their working copy): a process may not hold a module maker defined at the
+top level, but it may load a file of `(module-parameters ((p place)))` in
+its own place, since a load sees the standard environment alone and the
+spawn check exempts a load's globals. The user chose this route ("Load
+route"). Its first step, kfx's side.
+- **The load**: kayak makes a load static, one module per path and
+  arguments (C116, C117). A file whose parameters are one place is now
+  instead a module maker (C274, C433), `made--load--K`, defined at the top
+  level as a load's module is, and each load a call of it with the place
+  given. That is FX-26's meaning, a file of parameters made again at each
+  call, where C117's sharing was not quite it. A second load of the path
+  calls the same maker.
+  - **Its interface**, `made--load--K--face`: the file's procedures whose
+    types are written (a `subr`, not a `->*`'s), as `(val name T)`. The
+    file's own effects and type abbreviations are spelt out there, since
+    the interface is outside the file. A value of no written type is not
+    in it, so kfx refuses a `with` that names one: stricter.
+  - **What it sees**: its module begins `(%loaded path %instance)`, as a
+    load's does. The module-value path (`module-expr`) and `maker-found`
+    read it as `check-module` does a top-level one (`loaded-scope`): the
+    standard environment, the loads' modules, and the maker's own place
+    and marks. The emitter skips the mark.
+- **A process may hold a load's globals** (`holds-checked`), as Fixpt's
+  `shared_globals` exempts them.
+- **The corpus**: a refusal may say where in a file the program loads.
+- **Tests**:
+  - `tests/kfx/process-load-place.kfx` (with `loads/counter-place.fx`):
+    Fixpt's example from closed-code.md. Fixpt answers 7, and so does
+    kfx's Rust.
+  - `tests/kfx-refused/load-place-global.kfx`: such a file naming its
+    loader's global, refused by both.
+
+Next (C443): the expander written as such a file, so that the REPL's
+front and the engine each load an instance in a place of their own.

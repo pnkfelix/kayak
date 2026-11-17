@@ -1550,6 +1550,10 @@ Twobit-style optimizations in KFX.
   definition's type is not (`macros/defn-rec.fx`); a definition of no type
   whose type is not known (`macros/defn-hidden.fx`); mutable data at no
   region (`macros/swap.fx`, `many.fx`).
+- A datatype's constructor named as a global already is (`place-named`,
+  C442): kfx took it and its synchronous Rust built, the async mode's not
+  (a call of the function then a future no one awaits). To refuse it, as a
+  name defined twice.
 - `kfx --cache` on the engine's unit fails, "substring range out of
   bounds", with or without the expander (C432, found measuring): the
   memos are used for kfx's own unit alone, so far.

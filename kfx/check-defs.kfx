@@ -1665,7 +1665,10 @@
      variables in scope; the maker as found, and the types found."
     (let* ((xs (items form)) (lam (items (fourth xs)))
            (ps (map (lambda ((q sexp)) (tagcase q (sym (n f p) n) (lst (ys f l p) (sym-name (car ys))) (else other ""))) (items (second lam))))
-           (m (items (third lam)))
+           (m0 (items (third lam)))
+           ;; A file of a place's (C442): what a file loaded sees, its mark kept.
+           (ld (if (and (not (null? (cdr m0))) (head-is? (second m0) "%loaded")) (the sexps (list (second m0))) nil))
+           (m (if (null? ld) m0 (cons (car m0) (cdr (cdr m0)))))
            ;; A value that names a `->*` item as it is made: refused, as Fixpt
            ;; refuses it (C438), whose effect is found only after the module's
            ;; values are made.
@@ -1687,12 +1690,13 @@
            ;; `'NAME` and `%place NAME`.
            ;; In a module, so that its items, named, read no global, as a
            ;; top-level module's do not (C437).
+           (v (if (null? ld) v (loaded-scope v (map sym-name (cdr (cdr (items (car ld))))))))
            (r (maker-items-found (with-tvars (with-binds (tagcase form (lst (ys f l p) (near v f l p)) (else other v))
                                                          (list (bind "%module" (scheme nil (ty-unit)) (sym-name (second xs)))))
                                              (concat (map (lambda ((q string)) (the strings (list (string-append "'" q) (string-append "%place " q)))) ps)))
                                  (cdr m) nil nil)))
       (tuple (relist form (list (car xs) (second xs) (third xs)
-                                (relist (fourth xs) (list (car lam) (second lam) (relist (third lam) (cons (car m) (extract r 1)))))))
+                                (relist (fourth xs) (list (car lam) (second lam) (relist (third lam) (cons (car m) (onto ld (extract r 1))))))))
              (extract r 2)))))
 
 (define maker-form? (subr kfx (sexp) bool)
@@ -3419,6 +3423,109 @@
                 (else (lst (map imports-in xs) f l p))))
         (else other e)))))
 
+"A file whose `module-parameters` are one place, `((p place))` (C442;
+ Fixpt's `docs/research/closed-code.md`): the place's name, else empty. Its
+ load is no module shared but an instance, made at each load in the place
+ given, as FX-26 makes a file of parameters again at each call: a module
+ maker (C274, C433), defined at the top level as a load's module is."
+(define place-parameter (subr kfx (sexps) string)
+  (lambda (forms)
+    (if (and (not (null? forms)) (head-is? (car forms) "module-parameters") (i64= (size (items (car forms))) 2))
+        (let ((ps (items (second (items (car forms))))))
+          (if (and (i64= (size ps) 1) (i64= (size (items (car ps))) 2) (sym-is? (second (items (car ps))) "place"))
+              (tagcase (car (items (car ps))) (sym (n f p) n) (else other ""))
+              ""))
+        "")))
+
+(define-datatype place-def (place-def string sexp))
+
+(define-rec
+  (place-names-of (subr kfx (sexps string) (listof place-def acyclic))
+    (lambda (its head)
+      "The file's own `(define-effect e E)` or `(define-type t T)`, `head` the
+       one, by name, a `hide`'s too."
+      (concat (map (lambda ((g sexp))
+                     (cond ((head-is? g "hide") (place-names-of (cdr (items g)) head))
+                           ((and (head-is? g head) (i64= (size (items g)) 3))
+                            (tagcase (second (items g))
+                              (sym (n f p) (the (listof place-def acyclic) (list (place-def n (third (items g))))))
+                              (else other nil)))
+                           (else nil)))
+                   its)))))
+
+(define place-named-find (subr kfx (string (listof place-def acyclic)) sexps)
+  (lambda (n xs)
+    (concat (map (lambda ((x place-def)) (tagcase x (place-def (m e) (if (string=? m n) (the sexps (list e)) nil)))) xs))))
+
+(define-rec
+  (place-spelt (subr kfx (sexp (listof place-def acyclic) (listof place-def acyclic) i64) sexp)
+    (lambda (e effs types depth)
+      "Type `e` as the top level reads it: each of the file's own type
+       abbreviations written out, and each of its own effects' atoms, in
+       the `maxeff` that names it (the maker's interface is outside the
+       file, C442)."
+      (if (i64> depth 64)
+          e
+          (tagcase e
+            (sym (n f p)
+              (let ((t (place-named-find n types)))
+                (if (null? t) e (place-spelt (car t) effs types (i64+ depth 1)))))
+            (lst (xs f l p)
+              (if (head-is? e "maxeff")
+                  (lst (cons (car xs) (place-atoms (cdr xs) effs depth)) f l p)
+                  (lst (map (lambda ((x sexp)) (place-spelt x effs types depth)) xs) f l p)))
+            (else other e)))))
+  (place-atoms (subr kfx (sexps (listof place-def acyclic) i64) sexps)
+    (lambda (as effs depth)
+      (concat (map (lambda ((a sexp))
+                     (let ((d (tagcase a (sym (n f p) (place-named-find n effs)) (else other nil))))
+                       (cond ((null? d) (the sexps (list a)))
+                             ((head-is? (car d) "maxeff") (place-atoms (cdr (items (car d))) effs (i64+ depth 1)))
+                             (else (place-atoms (list (car d)) effs (i64+ depth 1))))))
+                   as)))))
+
+(define-rec
+  (place-vals (subr kfx (sexps (listof place-def acyclic) (listof place-def acyclic)) sexps)
+    (lambda (its effs types)
+      "The interface of a file of a place: each of its procedures whose type
+       is written, a `subr` (not `->*`'s, found), `(val n T)`, `T` spelt out."
+      (concat (map (lambda ((g sexp))
+                     (cond ((head-is? g "hide") (place-vals (cdr (items g)) effs types))
+                           ((and (head-is? g "define") (i64= (size (items g)) 4) (head-is? (third (items g)) "subr")
+                                 (not (sym-is? (second (items (third (items g)))) "%found")))
+                            (tagcase (second (items g))
+                              (sym (n f p) (the sexps (list (lst (list (sym "val" f p) (second (items g)) (place-spelt (third (items g)) effs types 0)) f 0 p))))
+                              (else other nil)))
+                           (else nil)))
+                   its)))))
+
+(define place-made (subr kfx (string string sexps string string i64 i64) sexps)
+  (lambda (name pn its file f l p)
+    "The maker of a file of place `pn`, `name`, its items `its`: its
+     interface's type, `name--face`, and its definition."
+    (let* ((effs (place-names-of its "define-effect"))
+           (types (place-names-of its "define-type"))
+           (face (string-append name "--face"))
+           (pb (lst (list (sym pn f p) (sym "place" f p)) f l p))
+           (made-eff (lst (list (sym "maxeff" f p) (lst (list (sym "read" f p) (sym "@globals" f p)) f l p) (sym "spin" f p)
+                                (lst (list (sym "read" f p) (sym pn f p)) f l p) (lst (list (sym "write" f p) (sym pn f p)) f l p)
+                                (lst (list (sym "alloc" f p) (sym pn f p)) f l p))
+                          f l p)))
+      (list (lst (list (sym "define-type" f p) (lst (list (sym face f p) pb) f l p)
+                       (lst (cons (sym "moduleof" f p) (place-vals its effs types)) f l p))
+                 f l p)
+            (lst (list (sym "define" f p) (sym name f p)
+                       (lst (list (sym "poly" f p) (lst (list pb) f l p)
+                                  (lst (list (sym "subr" f p) made-eff (lst (list (lst (list (sym "place" f p) (sym pn f p)) f l p)) f l p)
+                                             (lst (list (sym face f p) (sym pn f p)) f l p))
+                                       f l p))
+                            f l p)
+                       (lst (list (sym "lambda" f p) (lst (list (sym pn f p)) f l p)
+                                  ;; Seeing the standard environment alone, as a load does (C117).
+                                  (lst (cons (sym "module" f p) (cons (lst (list (sym "%loaded" f p) (str file f p) (sym "%instance" f p)) f l p) its)) f l p))
+                            f l p))
+                 f l p)))))
+
 (define-rec
   (spliced (subr kfx (sexp string fileds strings keyeds) spliced-to)
     (lambda (e dir loaded chain known)
@@ -3475,15 +3582,32 @@
                 (let* ((path (tagcase (car load) (str (s f2 p2) (if (built-in-path? s) s (path-joined dir s))) (else other "")))
                        (args (cdr load))
                        (key (string-append path (string-append " " (show-sexps args))))
-                       (had (concat (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (if (string=? kk key) (the strings (list n)) nil)))) known))))
-                  (if (not (null? had))
-                      (spliced-to (included-module (car had) f l p) nil known)
+                       (had (concat (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (if (string=? kk key) (the strings (list n)) nil)))) known)))
+                       ;; A file of a place made before (C442): its maker, called again.
+                       (made-place (concat (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (if (string=? kk (string-append "%place " path)) (the strings (list n)) nil)))) known))))
+                  (cond
+                   ((and (not (null? made-place)) (i64= (size args) 1))
+                    (spliced-to (lst (list (sym (car made-place) f p) (car args)) f l p) nil known))
+                   ((not (null? had))
+                      (spliced-to (included-module (car had) f l p) nil known))
+                   (else
                       (let ((found (if (built-in-path? path)
                                        (if (string=? (built-in-text path) "") nil (the strings (list (built-in-text path))))
                                        (concat (map (lambda ((x filed)) (tagcase x (filed (n text) (if (string=? n path) (the strings (list text)) nil)))) loaded)))))
                         (cond ((string-member? path chain)
                                (error (string-append "kfx: " (string-append f (string-append ": a load cycle: " (words-of (reverse (the strings (cons path chain)))))))))
                               ((null? found) (error (string-append "kfx: cannot read " path)))
+                              ((and (i64= (size args) 1) (not (string=? (place-parameter (import-items (read-all (car found) path 1))) "")))
+                               "A file of a place (C442): its maker, defined, then called with the
+                                place given."
+                               (let* ((forms (import-items (read-all (car found) path 1)))
+                                      (pn (place-parameter forms))
+                                      (inner (spliced-each (run-items (cdr forms)) (directory-of path) loaded (cons path chain) known nil nil f l p))
+                                      (name (string-append "made--load--" (string-append (i64->string (size (spliced-known inner))) (string-append "--" (file-tag f)))))
+                                      (made (place-made name pn (items (spliced-form inner)) path f l p)))
+                                 (spliced-to (lst (list (sym name f p) (car args)) f l p)
+                                             (onto (spliced-defs inner) made)
+                                             (cons (keyed (string-append "%place " path) name) (spliced-known inner)))))
                               (else
                                (let* ((forms (import-items (read-all (car found) path 1)))
                                       (its (run-items (parameters-given forms args path)))
@@ -3499,7 +3623,7 @@
                                                  f l p)))
                                  (spliced-to (included-module name f l p)
                                              (onto (spliced-defs inner) (list made))
-                                             (cons (keyed key name) (spliced-known inner)))))))))))))
+                                             (cons (keyed key name) (spliced-known inner))))))))))))))
         (else other (spliced-to e nil known)))))
   (spliced-each (subr kfx (sexps string fileds strings keyeds sexps sexps string i64 i64) spliced-to)
     (lambda (xs dir loaded chain known done defs f l p)
