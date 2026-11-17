@@ -30,7 +30,7 @@
        immediate, a number or a symbol; memory, its displacement, a symbol
        in it (``: none), its base (-1: none; 16: `%rip`), its index (-1:
        none) and scale; a symbol, a jump's or call's target; `*%r`; and
-       `*D(%b)`."
+       `*D(%b)`, or `*sym(%rip)` (C452: a call through a table cell)."
       (define-datatype opd
         (o-reg i64 i64)
         (o-imm i64)
@@ -38,7 +38,7 @@
         (o-mem i64 string i64 i64 i64)
         (o-sym string)
         (o-ireg i64)
-        (o-imem i64 i64))
+        (o-imem i64 string i64))
 
       "What a section is made of, in order: bytes; a label; padding to a
        boundary of `2^k`; a jump (its condition, -1 of `jmp`) to a symbol;
@@ -184,7 +184,7 @@
                    (let ((v (after-prefix s "*")))
                      (if (char=? (string-ref v 0) #\%)
                          (o-ireg (reg-number (reg-of v)))
-                         (tagcase (mem-of v) (o-mem (d sym b i sc) (o-imem d b)) (else other (o-imem 0 0))))))
+                         (tagcase (mem-of v) (o-mem (d sym b i sc) (o-imem d sym b)) (else other (o-imem 0 "" 0))))))
                   ((string-member-char? #\( s) (mem-of s))
                   (else (o-sym s))))))
 
@@ -344,7 +344,7 @@
                  (tagcase a
                    (o-sym (s) (list (if (string=? m "call") (p-call s) (p-branch -1 s))))
                    (o-ireg (n) (enc #f (list 255) ext (o-reg n 64) 0))
-                   (o-imem (d bb) (enc #f (list 255) ext (o-mem d "" bb -1 1) 0))
+                   (o-imem (d sym bb) (enc #f (list 255) ext (o-mem d sym bb -1 1) 0))
                    (else other (list (p-bytes (list (not-yet "a call or jump of this"))))))))
               ((and (has-prefix? m "j") (i64> (string-length-i64 m) 1))
                (tagcase a

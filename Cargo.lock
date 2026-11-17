@@ -45,6 +45,13 @@ dependencies = [
 [[package]]
 name = "kayak-kcrt"
 version = "0.1.0"
+dependencies = [
+ "kayak-kcrt-core",
+]
+
+[[package]]
+name = "kayak-kcrt-core"
+version = "0.1.0"
 
 [[package]]
 name = "kayak-reps"
@@ -58,6 +65,7 @@ name = "kayak-rt"
 version = "0.1.0"
 dependencies = [
  "kayak-jit",
+ "kayak-kcrt-core",
  "kayak-reps",
  "kayak-runner",
  "kayak-sched",

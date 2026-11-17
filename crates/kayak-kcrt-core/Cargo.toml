@@ -1,0 +1,13 @@
+[package]
+name = "kayak-kcrt-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# The routines kc's native code calls (C452), apart from a built program's
+# `main` (kayak-kcrt), so that kayak-rt links them into kc for `kc run`.
+[lib]
+test = false
+doctest = false
+
+[dependencies]

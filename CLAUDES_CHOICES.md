@@ -13243,3 +13243,61 @@ changed.
   is a flat array never collected (step 4); kcrt's runtime is written
   twice, in Rust and in KFX (docs/to-discuss.md item 14); `poll` only
   gives fuel, no scheduler takes the slice.
+
+## C452. kc's runtime once, kcrt's, reached in process by a syscall (2026-11-17)
+
+The user, on C451's second copy of kcrt in KFX: "didn't the old Kayak
+code base already use syscalls? Did you not review what came before when
+you started this?" It did (C224, C225): a runtime's program
+(`--syscalls`) declares `define-syscall`s, which kayak-rt answers in Rust,
+each a lang item (C367). C451's premise, that only `seal-code` and
+`native-procedure` reach native code from KFX, was wrong, and so was its
+question to the user. Then: "When starting a new step and before claiming
+something cannot be done ... review the Fixpt code base, review the Coopt
+code base, review the Accomplice code base, and review the previous Kayak
+work." Done for this step:
+- **Fixpt**: its native code calls its Rust `extern "C"` call-outs
+  indirectly, through addresses the runtime puts in the state
+  (`fixpt-native`'s `direct.rs` `callout`, `cellular.rs`'s `pure_call`,
+  `prim_call`), never an address baked into the code as an immediate; a
+  call-out that fails keeps its message (`LAST_MESSAGE`), sets the trap,
+  and the code goes to its trap stub: a failure of the form, not of the
+  process. Syscalls name a runtime's own operations in its namespace
+  (`kayak:`, docs/research/syscalls.md).
+- **Accomplice** (Larceny): millicode called through a table of function
+  pointers in the globals array, held in a callee-saved register
+  (`call [GLOBALS+offset]`); an error a callout to a Scheme handler by
+  longjmp to the entry's setjmp. Its measured cost is the whole context
+  saved at each call (its fast paths moved inline).
+- **Coopt**: no native code yet; a failure a `Result` returned, never an
+  exit nor an unwind across machine code.
+- **kayak**: kayak-rt's syscall table (`kayak:call-native/1` and others),
+  the units that say `--syscalls` (fx26, cells), lang/items.sexp.
+
+What changed:
+- **kayak-kcrt-core**: kcrt's routines, apart from a built program's
+  `main`, its state and `poll` (kayak-kcrt, which re-exports them, its
+  static and shared libraries' symbols as before). A crate, not a cargo
+  feature: features are unified across a build, and kc must not get
+  `main`. Each routine that may fail has a variant that keeps its words in
+  a thread-local and answers 0 (`here_…`), as Fixpt's call-outs do.
+- **Two syscalls** of kayak-rt's, lang items: `kayak:kc-routine/1`, a
+  routine's address by the name kc's code calls it (`kc_show`, ...), the
+  variant of one that may fail; `kayak:kc-failure/1`, the words of the
+  last failure, taken.
+- **kc a runtime's program** (kc.unit's `--syscalls`). `kc run` asks each
+  routine's address and writes them as a table in the image
+  (`kc_routines`); each stub jumps through its cell, as Larceny's code
+  through its globals and Fixpt's through its state; one that may fail
+  calls through it and, on 0, goes to `kc_failed` (C451's return to the
+  trampoline).
+- **kc/native.kfx's service is gone**: the printer, `intern`, the string
+  operations in KFX. What is left: the syscalls' declarations, the heap
+  array, sealing and calling. to-discuss item 14 answered.
+- **The full check**: all passed in 404 s; kc-steps 336 of 336 in
+  process; kc-objects 463, 0 differ; lang-items 19 syscalls, every copy
+  agrees; nextest 5500 passed.
+- **Measured** (best of three, `kc run`; built for comparison): `string?`
+  1M calls 32 ms (C451's KFX service 56, built 7; kc's startup about 24
+  of it); `string=?` 1M 100 ms (651, built 68); `string-append` 300k 77
+  ms (324, built 99).

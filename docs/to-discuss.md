@@ -158,4 +158,8 @@ where it was seen and what it would take.
     tradeoff, so proposed: the runtime in KFX, compiled once by kc, linked
     into each built program and placed beside the program in process;
     output and exit in a small kcrt and service. Awaiting the user's word.
+    **Answered** (the user: "didn't the old Kayak code base already use
+    syscalls?"): there was no need of a second copy; kc reaches kcrt's
+    Rust in process through a syscall of kayak-rt's, as Fixpt's code
+    reaches its call-outs; the KFX service deleted. Done, C452.
 

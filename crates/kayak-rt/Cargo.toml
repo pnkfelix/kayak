@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 kayak-jit = { path = "../kayak-jit" }
+kayak-kcrt-core = { path = "../kayak-kcrt-core" }
 kayak-reps = { path = "../kayak-reps" }
 kayak-runner = { path = "../kayak-runner" }
 kayak-sched = { path = "../kayak-sched" }

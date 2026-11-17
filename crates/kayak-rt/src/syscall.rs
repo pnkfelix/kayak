@@ -192,6 +192,24 @@ const SYSCALLS: &[Syscall] = &[
         canonical: "(subr pure (string) int)",
         run: |a| (crate::Str::of_word(a[0]).as_str().len() as i64).word(),
     },
+    // The address of the routine of kc's runtime that kc's code names
+    // `name` (`kc_show`, ...), as it is called in process (C452, `kc run`:
+    // kayak-kcrt-core's, the one copy a built program links too); 0 if
+    // there is none. As Fixpt's native code reaches its Rust (the state's
+    // `callout`, `pure_call`), through an address it is given, not one of
+    // its own.
+    Syscall {
+        host: "kayak:kc-routine/1",
+        canonical: "(subr (io sys) (string) int)",
+        run: |a| (kayak_kcrt_core::routine(crate::Str::of_word(a[0]).as_str()) as i64).word(),
+    },
+    // What the last of those routines that failed in process said, taken:
+    // its words, which a built program would say before it ends.
+    Syscall {
+        host: "kayak:kc-failure/1",
+        canonical: "(subr (io sys) () string)",
+        run: |_| crate::leak_string(kayak_kcrt_core::failure_taken()).word(),
+    },
     Syscall {
         host: "kayak:last-sealed/1",
         canonical: "(subr (io sys) () int)",

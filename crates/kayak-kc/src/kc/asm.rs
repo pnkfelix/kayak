@@ -34,7 +34,7 @@ pub mod kc_asm {
     // immediate, a number or a symbol; memory, its displacement, a symbol
     // in it (``: none), its base (-1: none; 16: `%rip`), its index (-1:
     // none) and scale; a symbol, a jump's or call's target; `*%r`; and
-    // `*D(%b)`.
+    // `*D(%b)`, or `*sym(%rip)` (C452: a call through a table cell).
     pub enum Opd {
         OReg(i64, i64),
         OImm(i64),
@@ -42,7 +42,7 @@ pub mod kc_asm {
         OMem(i64, Str, i64, i64, i64),
         OSym(Str),
         OIreg(i64),
-        OImem(i64, i64),
+        OImem(i64, Str, i64),
     }
 
     pub fn o_reg(f0: i64, f1: i64) -> &'static Opd {
@@ -69,8 +69,8 @@ pub mod kc_asm {
         kayak_rt::heap_alloc(Opd::OIreg(f0))
     }
 
-    pub fn o_imem(f0: i64, f1: i64) -> &'static Opd {
-        kayak_rt::heap_alloc(Opd::OImem(f0, f1))
+    pub fn o_imem(f0: i64, f1: Str, f2: i64) -> &'static Opd {
+        kayak_rt::heap_alloc(Opd::OImem(f0, f1, f2))
     }
 
     // What a section is made of, in order: bytes; a label; padding to a
@@ -379,11 +379,11 @@ pub mod kc_asm {
                 let tagcase_ = mem_of(v);
                 match *tagcase_ {
                     Opd::OMem(d, sym, b, i, sc) => {
-                        o_imem(d, b)
+                        o_imem(d, sym, b)
                     }
                     _ => {
                         let other = tagcase_;
-                        o_imem(0i64, 0i64)
+                        o_imem(0i64, str_lit(""), 0i64)
                     }
                 }
             }
@@ -808,8 +808,8 @@ pub mod kc_asm {
                 Opd::OIreg(n) => {
                     enc(false, kayak_rt::heap_cons(255i64, kayak_rt::nil()), ext, o_reg(n, 64i64), 0i64)
                 }
-                Opd::OImem(d, bb) => {
-                    enc(false, kayak_rt::heap_cons(255i64, kayak_rt::nil()), ext, o_mem(d, str_lit(""), bb, -1i64, 1i64), 0i64)
+                Opd::OImem(d, sym, bb) => {
+                    enc(false, kayak_rt::heap_cons(255i64, kayak_rt::nil()), ext, o_mem(d, sym, bb, -1i64, 1i64), 0i64)
                 }
                 _ => {
                     let other = tagcase_;

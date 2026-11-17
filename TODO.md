@@ -1663,8 +1663,7 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   for fuel; linked into kayak-jit's code area, `kc run` in process, each
   step program as its executable answers (done, C451: FX-26's
   `seal-code` and `native-procedure`, the heap a shared flat array, the
-  runtime a KFX service called by `foreign`, kc/native.kfx; left: kcrt's
-  runtime written twice, to-discuss item 14; `poll` gives fuel, no
+  runtime kcrt's, its routines' addresses by a syscall, C452; left: `poll` gives fuel, no
   scheduler takes it; an absolute address in the image, which step 5's
   `kc_apply_entry` is); (4) a heap of Fixpt's layout
   that KFX owns, a region a transformer's call drops first, then the

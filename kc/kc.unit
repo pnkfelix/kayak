@@ -2,6 +2,9 @@
 ; its passes queries on the database (lib/db.kfx). First the checker it
 ; keeps (kfx's, and the restriction pass that makes KFX of FX-26), then
 ; the database, then kc's own files.
+; A runtime's own program (C452): it declares syscalls, kc's code's
+; routines run in process (native.kfx).
+--syscalls
 ../kfx/base.kfx
 ../kfx/read.kfx
 ../kfx/names.kfx
@@ -26,7 +29,7 @@ rust.kfx
 x64.kfx
 ; kc's assembler (C450): x64.kfx's text an ELF object, as `as` makes it.
 asm.kfx
-; kc's code run in process (C451): sealed, called, its runtime in KFX.
+; kc's code run in process (C451): sealed, called, its runtime kcrt's (C452).
 native.kfx
 ; A procedural macro's transformer's request as its phase-1 program (C447),
 ; which kc compiles and runs as any program (main.kfx):

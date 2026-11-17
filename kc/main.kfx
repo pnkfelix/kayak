@@ -44,14 +44,14 @@
       (import kc-front kc-refusal q-form q-position q-interface q-checked q-type q-kfx)
       (import kc-l0 q-l0-item)
       (import kc-rust q-rust-item q-rust)
-      (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text x64-run-support)
+      (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text x64-run-support x64-services)
       (import kc-asm asm-object asm-image)
-      (import kc-native native-run)
+      (import kc-native native-run native-routines)
       (import kc-expand kc-load-file! kc-expanded-lines q-expansion q-macros-for q-macro-in q-global-in q-entry
               q-written q-wseen q-wpos q-wkeys q-syntax-at q-defines-at q-wnames q-wforsyntax)
       (import kc-front q-expanded))
 
-    (define-effect driving (maxeff qe (io args) (io stdin) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (io process) (io native) (alloc @io) (read @io)))
+    (define-effect driving (maxeff qe (io args) (io stdin) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (io process) (io native) (io sys) (alloc @io) (read @io)))
 
     (hide
       "Bytes, each 0 to 255, written to `path` (C450: an object kc made)."
@@ -536,7 +536,7 @@
                     ;; An assembly file made the image `kc run` runs (C451), after
                     ;; what kc's code runs on in process, for looking at it.
                     ((and (string=? (car rest) "--image") (not (null? (cdr rest))) (not (null? (cdr (cdr rest)))))
-                     (let ((m (bytes-written (car (cdr (cdr rest))) (asm-image (string-append (x64-run-support) (read-text (car (cdr rest))))))))
+                     (let ((m (bytes-written (car (cdr (cdr rest))) (asm-image (string-append (x64-run-support (native-routines x64-services)) (read-text (car (cdr rest))))))))
                        (if (string=? m "") 0 (begin (fail-with m 1) 1))))
                     ;; The program run in process (C451): its code sealed in
                     ;; the code area and called, its runtime KFX's
@@ -552,7 +552,7 @@
                                  (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
                                  (tagcase (write-err (string-append refused "\n")) (done u #u) (failed e #u))
                                  1)
-                               (let ((image (asm-image (string-append (x64-run-support) (db-get d kc-run (key1 "asm" file))))))
+                               (let ((image (asm-image (string-append (x64-run-support (native-routines x64-services)) (db-get d kc-run (key1 "asm" file))))))
                                  (begin
                                    (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
                                    (let ((m (native-run image 8388608)))

@@ -1621,8 +1621,8 @@ pub mod kc_x64 {
         }, kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"), kayak_rt::heap_cons(str_lit("    movq kc_heap_next(%rip), %r12\n    movq %rcx, %r13\n    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"), kayak_rt::heap_cons(str_lit("    call *%rax\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%r12"), str_lit("kc_heap_next")), kayak_rt::heap_cons(str_lit("    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"), kayak_rt::nil()))))))))))
     }
 
-    // The runtime's procedures kc's code calls, in order: each a number, the
-    // service's (`kc/native.kfx`), in process (C451).
+    // The runtime's procedures kc's code calls, in order: in process, each
+    // a cell of the table of their addresses (C452, `x64-run-support`).
     #[inline]
     pub fn x64_services() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
@@ -1631,42 +1631,77 @@ pub mod kc_x64 {
         })
     }
 
-    pub fn x64_service_stubs(mut ns: Strings, mut k: i64, mut acc: List<Str>) -> Str {
+    // Routines that always fail, and those that may (C452): each called,
+    // not jumped to, so that its answer is seen.
+    #[inline]
+    pub fn x64_failing() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("kc_fail"), kayak_rt::heap_cons(str_lit("kc_array_index_fail"), kayak_rt::heap_cons(str_lit("kc_make_array_fail"), kayak_rt::heap_cons(str_lit("kc_string_index_fail"), kayak_rt::nil()))))
+        })
+    }
+
+    #[inline]
+    pub fn x64_may_fail() -> Strings {
+        static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("kc_substring"), kayak_rt::heap_cons(str_lit("kc_append"), kayak_rt::nil()))
+        })
+    }
+
+    pub fn x64_routine_stubs(mut ns: Strings, mut k: i64, mut acc: List<Str>) -> Str {
         loop {
             if null_p(ns) {
                 return string_list_append(reverse(acc));
             } else {
-                (ns, k, acc) = (cdr(ns), i64_plus(k, 1i64), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(car(ns), kayak_rt::heap_cons(str_lit(":\n    movl $"), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(", %eax\n    jmp kc_service\n"), kayak_rt::nil()))))), acc));
+                let cell = string_append(str_lit("kc_routines+"), i64_to_string(i64_star(8i64, k)));
+                (ns, k, acc) = (cdr(ns), i64_plus(k, 1i64), kayak_rt::heap_cons(string_list_append(if string_member_p(car(ns), x64_failing()) {
+                    kayak_rt::heap_cons(car(ns), kayak_rt::heap_cons(str_lit(":\n    subq $8, %rsp\n    call *"), kayak_rt::heap_cons(cell, kayak_rt::heap_cons(str_lit("(%rip)\n    jmp kc_failed\n"), kayak_rt::nil()))))
+                } else if string_member_p(car(ns), x64_may_fail()) {
+                    kayak_rt::heap_cons(car(ns), kayak_rt::heap_cons(str_lit(":\n    subq $8, %rsp\n    call *"), kayak_rt::heap_cons(cell, kayak_rt::heap_cons(str_lit("(%rip)\n    addq $8, %rsp\n"), kayak_rt::heap_cons(str_lit("    testq %rax, %rax\n    je kc_failed\n    ret\n"), kayak_rt::nil())))))
+                } else {
+                    kayak_rt::heap_cons(car(ns), kayak_rt::heap_cons(str_lit(":\n    jmp *"), kayak_rt::heap_cons(cell, kayak_rt::heap_cons(str_lit("(%rip)\n"), kayak_rt::nil()))))
+                }), acc));
                 continue;
             }
         }
     }
 
-    // What kc's code runs on in process (C451, `kc run`), before the program
-    // (`asm`), so that its first byte is the code bloblet's: the code's
-    // fields before it, as Fixpt's, field 0 (16 bytes back) the heap, an
-    // `i64` flat array shared with KFX, field 1 (24 back) the service, a
-    // procedure of KFX's that native code calls by `foreign`.
+    pub fn x64_quads(mut xs: List<i64>, mut acc: List<Str>) -> Str {
+        loop {
+            if null_p(xs) {
+                return string_list_append(reverse(acc));
+            } else {
+                (xs, acc) = (cdr(xs), kayak_rt::heap_cons(string_append(str_lit("    .quad "), string_append(i64_to_string(car(xs)), str_lit("\n"))), acc));
+                continue;
+            }
+        }
+    }
+
+    // What kc's code runs on in process (C451), before the program (`asm`),
+    // so that its first byte is the code bloblet's: the code's field before
+    // it, as Fixpt's, field 0 (16 bytes back) the heap, an `i64` flat array
+    // shared with KFX.
     //
     // `kc_native_entry`, as Fixpt's native convention enters code (the state
     // in `%r15`, the heap's array in `%rdi`, its first element's address
     // less the tag 4): the array's words 0 and 1 made its own address and
-    // the code's, so that the service reads both; the heap from word 16 to
-    // the length KFX put in word 3; its stack pointer to word 4; then
-    // `kc_entry`, and 0 back.
+    // the code's; the heap from word 16 to the length KFX put in word 3; its
+    // stack pointer to word 4; then `kc_entry`, and 0 back.
     //
-    // Each runtime procedure a stub of its number, in `%eax`, and
-    // `kc_service`, which keeps what C's convention keeps and `foreign` does
-    // not: the heap's next word to the array's word 2 and back (the service
-    // allocates there too), the arguments to its words 5 to 7, the answer
-    // from word 8. A failure is the service's answer 1 (its words kept by
-    // KFX): `kc_failed` goes back past kc's frames to the entry's, the stack
-    // pointer word 4 kept, and so to the trampoline, 1 back (kc's own
+    // The runtime (C452) is kayak-kcrt-core's, a built program's: `addrs`,
+    // each routine's address in order (`x64-services`), a table
+    // (`kc_routines`) each stub jumps through, as Fixpt's code calls its
+    // Rust through addresses it is given. A routine that fails keeps its
+    // words and answers 0 (kcrt's `here_…`): its stub calls it, and goes to
+    // `kc_failed`, which goes back past kc's frames to the entry's, the
+    // stack pointer word 4 kept, and so to the trampoline, 1 back (kc's own
     // convention's failure; kayak-jit's traps end the program a KFX error,
-    // which nothing of `kc run`'s could catch, an `attempt` doing no output).
+    // which nothing of `kc run`'s could catch, an `attempt` doing no
+    // output).
     #[inline]
-    pub fn x64_run_support() -> Str {
-        string_list_append(kayak_rt::heap_cons(str_lit("    .text\nkc_native_entry:\n    pushq %rbp\n    leaq -4(%rdi), %rax\n    movq %rax, 0(%rax)\n"), kayak_rt::heap_cons(str_lit("    leaq kc_native_entry(%rip), %rcx\n    movq %rcx, 8(%rax)\n    movq 24(%rax), %rsi\n    shlq $3, %rsi\n"), kayak_rt::heap_cons(str_lit("    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %r15, %rdx\n    movq %rsp, 32(%rax)\n    call kc_entry\n"), kayak_rt::heap_cons(str_lit("    movl $0, %eax\n    popq %rbp\n    ret\n"), kayak_rt::heap_cons(str_lit("kc_failed:\n    movq kc_native_entry-16(%rip), %rcx\n    movq 28(%rcx), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"), kayak_rt::heap_cons(str_lit("kc_service:\n    pushq %rbx\n    pushq %rbp\n    pushq %r13\n    pushq %r14\n"), kayak_rt::heap_cons(str_lit("    movq kc_native_entry-16(%rip), %rcx\n    movq %r12, 12(%rcx)\n    movq %rdi, 36(%rcx)\n"), kayak_rt::heap_cons(str_lit("    movq %rsi, 44(%rcx)\n    movq %rdx, 52(%rcx)\n    movq %rax, %rdi\n    shlq $3, %rdi\n"), kayak_rt::heap_cons(str_lit("    movq kc_native_entry-24(%rip), %rbx\n    movl $1, %r10d\n    call *288(%r15)\n"), kayak_rt::heap_cons(str_lit("    testq %rax, %rax\n    jne kc_failed\n"), kayak_rt::heap_cons(str_lit("    movq kc_native_entry-16(%rip), %rcx\n    movq 12(%rcx), %r12\n    movq 60(%rcx), %rax\n"), kayak_rt::heap_cons(str_lit("    popq %r14\n    popq %r13\n    popq %rbp\n    popq %rbx\n    ret\n"), kayak_rt::heap_cons(x64_service_stubs(x64_services(), 0i64, nil::<Str>()), kayak_rt::nil()))))))))))))))
+    pub fn x64_run_support(addrs: List<i64>) -> Str {
+        string_list_append(kayak_rt::heap_cons(str_lit("    .text\nkc_native_entry:\n    pushq %rbp\n    leaq -4(%rdi), %rax\n    movq %rax, 0(%rax)\n"), kayak_rt::heap_cons(str_lit("    leaq kc_native_entry(%rip), %rcx\n    movq %rcx, 8(%rax)\n    movq 24(%rax), %rsi\n    shlq $3, %rsi\n"), kayak_rt::heap_cons(str_lit("    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %r15, %rdx\n    movq %rsp, 32(%rax)\n    call kc_entry\n"), kayak_rt::heap_cons(str_lit("    movl $0, %eax\n    popq %rbp\n    ret\n"), kayak_rt::heap_cons(str_lit("kc_failed:\n    movq kc_native_entry-16(%rip), %rcx\n    movq 28(%rcx), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"), kayak_rt::heap_cons(x64_routine_stubs(x64_services(), 0i64, nil::<Str>()), kayak_rt::heap_cons(str_lit("    .data\n    .p2align 3\nkc_routines:\n"), kayak_rt::heap_cons(x64_quads(addrs, nil::<Str>()), kayak_rt::heap_cons(str_lit("    .text\n"), kayak_rt::nil()))))))))))
     }
 
     // A global's cell: in `.bss`, `.globl`, so that a procedure in an object of

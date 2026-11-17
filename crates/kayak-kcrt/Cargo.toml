@@ -15,3 +15,4 @@ test = false
 doctest = false
 
 [dependencies]
+kayak-kcrt-core = { path = "../kayak-kcrt-core" }

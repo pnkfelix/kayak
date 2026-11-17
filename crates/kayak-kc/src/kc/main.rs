@@ -121,8 +121,13 @@ pub mod kc_driver {
     }
 
     #[inline]
-    pub fn x64_run_support() -> &'static (dyn Fn() -> Str + Send + Sync) {
+    pub fn x64_run_support() -> &'static (dyn Fn(List<i64>) -> Str + Send + Sync) {
         &kc_x64::x64_run_support
+    }
+
+    #[inline]
+    pub fn x64_services() -> List<Str> {
+        kc_x64::x64_services()
     }
 
     #[inline]
@@ -138,6 +143,11 @@ pub mod kc_driver {
     #[inline]
     pub fn native_run() -> &'static dyn Fn(List<i64>, i64) -> Str {
         &kc_native::native_run
+    }
+
+    #[inline]
+    pub fn native_routines() -> &'static dyn Fn(List<Str>) -> List<i64> {
+        &kc_native::native_routines
     }
 
     #[inline]
@@ -1136,7 +1146,7 @@ pub mod kc_driver {
                         int_lit(1)
                     }
                 } else if (string_eq_p(car(rest), str_lit("--image")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
-                    let m = bytes_written(car(cdr(cdr(rest))), asm_image()(string_append(x64_run_support()(), read_text(car(cdr(rest))))));
+                    let m = bytes_written(car(cdr(cdr(rest))), asm_image()(string_append(x64_run_support()(native_routines()(x64_services())), read_text(car(cdr(rest))))));
                     if string_eq_p(m, str_lit("")) {
                         int_lit(0)
                     } else {
@@ -1166,7 +1176,7 @@ pub mod kc_driver {
                         };
                         int_lit(1)
                     } else {
-                        let image = asm_image()(string_append(x64_run_support()(), db_get(d, &kc_run, key1(str_lit("asm"), file))));
+                        let image = asm_image()(string_append(x64_run_support()(native_routines()(x64_services())), db_get(d, &kc_run, key1(str_lit("asm"), file))));
                         if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
                             ()
                         } else {

@@ -970,60 +970,71 @@
                   "    movq kc_heap_next(%rip), %r12\n    movq %rcx, %r13\n    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"
                   "    call *%rax\n" (x64-cell-stored "%r12" "kc_heap_next") "    popq %r12\n    popq %r13\n    popq %r15\n    ret\n")))))
 
-    "The runtime's procedures kc's code calls, in order: each a number, the
-     service's (`kc/native.kfx`), in process (C451)."
+    "The runtime's procedures kc's code calls, in order: in process, each
+     a cell of the table of their addresses (C452, `x64-run-support`)."
     (define x64-services strings
       (list "kc_show" "kc_fail" "kc_intern" "kc_string_eq" "kc_string_lt" "kc_string_append"
             "kc_substring" "kc_symbol_to_string" "kc_is_string" "kc_is_symbol" "kc_is_procedure"
             "kc_is_kind" "kc_append" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail"))
 
     (hide
+      "Routines that always fail, and those that may (C452): each called,
+       not jumped to, so that its answer is seen."
+      (define x64-failing strings (list "kc_fail" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail"))
+      (define x64-may-fail strings (list "kc_substring" "kc_append"))
+
       (define-rec
-        (x64-service-stubs (subr kfx (strings i64 (listof string acyclic)) string)
+        (x64-routine-stubs (subr kfx (strings i64 (listof string acyclic)) string)
           (lambda (ns k acc)
             (if (null? ns)
                 (string-list-append (reverse acc))
-                (x64-service-stubs (cdr ns) (i64+ k 1)
-                                   (cons (string-list-append (list (car ns) ":\n    movl $" (i64->string k) ", %eax\n    jmp kc_service\n")) acc)))))))
+                (let ((cell (string-append "kc_routines+" (i64->string (i64* 8 k)))))
+                  (x64-routine-stubs (cdr ns) (i64+ k 1)
+                    (cons (string-list-append
+                            (cond ((string-member? (car ns) x64-failing)
+                                   (list (car ns) ":\n    subq $8, %rsp\n    call *" cell "(%rip)\n    jmp kc_failed\n"))
+                                  ((string-member? (car ns) x64-may-fail)
+                                   (list (car ns) ":\n    subq $8, %rsp\n    call *" cell "(%rip)\n    addq $8, %rsp\n"
+                                         "    testq %rax, %rax\n    je kc_failed\n    ret\n"))
+                                  (else (list (car ns) ":\n    jmp *" cell "(%rip)\n"))))
+                          acc)))))))
 
-    "What kc's code runs on in process (C451, `kc run`), before the program
-     (`asm`), so that its first byte is the code bloblet's: the code's
-     fields before it, as Fixpt's, field 0 (16 bytes back) the heap, an
-     `i64` flat array shared with KFX, field 1 (24 back) the service, a
-     procedure of KFX's that native code calls by `foreign`.
+      (define-rec
+        (x64-quads (subr kfx ((listof i64 acyclic) (listof string acyclic)) string)
+          (lambda (xs acc)
+            (if (null? xs) (string-list-append (reverse acc)) (x64-quads (cdr xs) (cons (string-append "    .quad " (string-append (i64->string (car xs)) "\n")) acc)))))))
+
+    "What kc's code runs on in process (C451), before the program (`asm`),
+     so that its first byte is the code bloblet's: the code's field before
+     it, as Fixpt's, field 0 (16 bytes back) the heap, an `i64` flat array
+     shared with KFX.
 
      `kc_native_entry`, as Fixpt's native convention enters code (the state
      in `%r15`, the heap's array in `%rdi`, its first element's address
      less the tag 4): the array's words 0 and 1 made its own address and
-     the code's, so that the service reads both; the heap from word 16 to
-     the length KFX put in word 3; its stack pointer to word 4; then
-     `kc_entry`, and 0 back.
+     the code's; the heap from word 16 to the length KFX put in word 3; its
+     stack pointer to word 4; then `kc_entry`, and 0 back.
 
-     Each runtime procedure a stub of its number, in `%eax`, and
-     `kc_service`, which keeps what C's convention keeps and `foreign` does
-     not: the heap's next word to the array's word 2 and back (the service
-     allocates there too), the arguments to its words 5 to 7, the answer
-     from word 8. A failure is the service's answer 1 (its words kept by
-     KFX): `kc_failed` goes back past kc's frames to the entry's, the stack
-     pointer word 4 kept, and so to the trampoline, 1 back (kc's own
+     The runtime (C452) is kayak-kcrt-core's, a built program's: `addrs`,
+     each routine's address in order (`x64-services`), a table
+     (`kc_routines`) each stub jumps through, as Fixpt's code calls its
+     Rust through addresses it is given. A routine that fails keeps its
+     words and answers 0 (kcrt's `here_…`): its stub calls it, and goes to
+     `kc_failed`, which goes back past kc's frames to the entry's, the
+     stack pointer word 4 kept, and so to the trampoline, 1 back (kc's own
      convention's failure; kayak-jit's traps end the program a KFX error,
-     which nothing of `kc run`'s could catch, an `attempt` doing no output)."
-    (define x64-run-support (subr kfx () string)
-      (lambda ()
+     which nothing of `kc run`'s could catch, an `attempt` doing no
+     output)."
+    (define x64-run-support (subr kfx ((listof i64 acyclic)) string)
+      (lambda (addrs)
         (string-list-append
           (list "    .text\nkc_native_entry:\n    pushq %rbp\n    leaq -4(%rdi), %rax\n    movq %rax, 0(%rax)\n"
                 "    leaq kc_native_entry(%rip), %rcx\n    movq %rcx, 8(%rax)\n    movq 24(%rax), %rsi\n    shlq $3, %rsi\n"
                 "    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %r15, %rdx\n    movq %rsp, 32(%rax)\n    call kc_entry\n"
                 "    movl $0, %eax\n    popq %rbp\n    ret\n"
                 "kc_failed:\n    movq kc_native_entry-16(%rip), %rcx\n    movq 28(%rcx), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"
-                "kc_service:\n    pushq %rbx\n    pushq %rbp\n    pushq %r13\n    pushq %r14\n"
-                "    movq kc_native_entry-16(%rip), %rcx\n    movq %r12, 12(%rcx)\n    movq %rdi, 36(%rcx)\n"
-                "    movq %rsi, 44(%rcx)\n    movq %rdx, 52(%rcx)\n    movq %rax, %rdi\n    shlq $3, %rdi\n"
-                "    movq kc_native_entry-24(%rip), %rbx\n    movl $1, %r10d\n    call *288(%r15)\n"
-                "    testq %rax, %rax\n    jne kc_failed\n"
-                "    movq kc_native_entry-16(%rip), %rcx\n    movq 12(%rcx), %r12\n    movq 60(%rcx), %rax\n"
-                "    popq %r14\n    popq %r13\n    popq %rbp\n    popq %rbx\n    ret\n"
-                (x64-service-stubs x64-services 0 nil)))))
+                (x64-routine-stubs x64-services 0 nil)
+                "    .data\n    .p2align 3\nkc_routines:\n" (x64-quads addrs nil) "    .text\n"))))
 
     "A global's cell: in `.bss`, `.globl`, so that a procedure in an object of
      its own (`kc build`, C419) reads it."
