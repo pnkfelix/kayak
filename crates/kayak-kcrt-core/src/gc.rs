@@ -14,13 +14,18 @@
 //!   Fixpt's format, a return address (in the code, outside the heap), or
 //!   a value a register held, pushed for the call;
 //! - the program's globals' cells, one run in the entry object (from
-//!   `kc_cells_lo` to `kc_cells_hi`);
-//! - the pairs this runtime made (`appended`), in its own memory, which
-//!   never move.
+//!   `kc_cells_lo` to `kc_cells_hi`).
+//!
+//! What this runtime makes for kc's code, its strings and pairs, it makes
+//! in kc's heap too (C455, [`words`]), collected as kc's own are: a
+//! routine that makes one is called with its arguments in stack words the
+//! collector moves (x64.kfx's `x64-heap-routine`), and reads them after it
+//! has its room. Only its symbols are its own, interned for the run, as
+//! Fixpt's symbol table keeps its heap's.
 //!
 //! Only a word that points into the space being collected is followed:
-//! this runtime's own objects (strings, symbols), the code's addresses and
-//! a literal's data are none of it. No generations, so no barrier.
+//! this runtime's symbols, the code's addresses and a literal's data are
+//! none of it. No generations, so no barrier.
 
 use std::cell::{Cell, RefCell};
 
@@ -35,12 +40,16 @@ const MOST_WORDS: u64 = 1 << 31;
 
 /// Where things are, a block of the entry object's (`kc_gc`), its
 /// writable view's address given: the space's first word and its end, the
-/// stack's base, and the globals' cells' run (their writable addresses).
+/// stack's base, and the globals' cells' run (their writable addresses);
+/// and, for a routine that makes something in the heap (C455), the heap's
+/// next free word and the stack pointer where its caller's frames start.
 const B_LO: usize = 0;
 const B_HI: usize = 1;
 const B_STACK: usize = 2;
 const B_CELLS_LO: usize = 3;
 const B_CELLS_HI: usize = 4;
+const B_NEXT: usize = 5;
+const B_SP: usize = 6;
 
 /// The heap after a collection, in `%rax` and `%rdx`: its next free word
 /// and its end; a next of 0, a failure (in process).
@@ -54,24 +63,14 @@ std::thread_local! {
     /// The spaces this collector made, the one in use last: the one before
     /// it freed when it is copied from. The first space is the caller's.
     static SPACES: RefCell<Vec<Vec<u64>>> = const { RefCell::new(Vec::new()) };
-    /// The pairs this runtime made in its own memory (`appended`): their
-    /// words are roots.
-    static KEPT: RefCell<Vec<u64>> = const { RefCell::new(Vec::new()) };
     /// Collections so far, and words copied.
     static COLLECTIONS: Cell<u64> = const { Cell::new(0) };
 }
 
-/// A pair this runtime made (its address), kept as roots.
-pub(crate) fn kept_pair(at: u64) {
-    KEPT.with(|k| k.borrow_mut().push(at));
-}
-
-/// The spaces this collector made, and the pairs kept, dropped (C454): a
-/// run in process starts again from the space it is given, nothing of the
-/// run before reachable.
+/// The spaces this collector made dropped (C454): a run in process starts
+/// again from the space it is given, nothing of the run before reachable.
 pub(crate) fn reset() {
     SPACES.with(|s| s.borrow_mut().clear());
-    KEPT.with(|k| k.borrow_mut().clear());
 }
 
 /// Collections so far in this thread.
@@ -226,11 +225,6 @@ fn copy_all(lo: u64, hi: u64, sp: u64, block: *mut u64, words: u64) -> Result<(u
         c.forward_at(a)?;
         a += 8;
     }
-    let kept: Vec<u64> = KEPT.with(|k| k.borrow().clone());
-    for p in kept {
-        c.forward_at(p)?;
-        c.forward_at(p + 8)?;
-    }
     c.scan()?;
     let top = c.top;
     SPACES.with(|s| {
@@ -274,4 +268,20 @@ pub(crate) fn collect(need: u64, sp: u64, block: *mut u64) -> Result<Heap, Strin
         next: top,
         end: base + 8 * more,
     })
+}
+
+/// Room for `n` words in kc's heap, for a routine of this runtime's (C455):
+/// the heap's next free word as its block has it, the heap collected first
+/// if they do not fit, the caller's frames from the stack pointer its
+/// block has; the block's next word moved past them, for the caller to
+/// take back. What the routine was given it reads after, from the stack
+/// words the collection moved.
+pub(crate) fn words(block: *mut u64, n: u64) -> Result<u64, String> {
+    let b = |k: usize| get(block as u64 + 8 * k as u64);
+    let mut next = b(B_NEXT);
+    if next + 8 * n > b(B_HI) {
+        next = collect(8 * n, b(B_SP), block)?.next;
+    }
+    put(block as u64 + 8 * B_NEXT as u64, next + 8 * n);
+    Ok(next)
 }

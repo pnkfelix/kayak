@@ -12,10 +12,12 @@
 //! kind. Step 11: strings and symbols (C421), of Fixpt's layout too
 //! (`fixpt-heap`'s `make_string`, `intern`): a string's words its length
 //! and its code points, two a word; a symbol's fields its name, its hash and
-//! its global slot. What kc's code makes of them past a literal (an
-//! append, a symbol interned) is made here, in this runtime's own memory,
-//! never freed. kc's own heap is collected (C453, `gc.rs`): the pairs made
-//! here are among the collector's roots.
+//! its global slot. What kc's code makes of them past a literal (a
+//! string appended, a substring, an append's pairs) is made here, in kc's
+//! own heap, which is collected (C453, `gc.rs`; C455): a routine that makes
+//! one is given its arguments where the collector moves them. A symbol is
+//! this runtime's own, interned for the run, as Fixpt's symbol table keeps
+//! each symbol for its heap's life.
 //!
 //! kc's code is called through `extern "C"`: the one place here that is
 //! not safe Rust.
@@ -163,14 +165,43 @@ fn string_text(v: u64) -> String {
         .collect()
 }
 
-/// Words this runtime makes, as long as the run.
+/// Words this runtime makes, as long as the run: a symbol and its name.
 fn made(words: Vec<u64>) -> u64 {
     Vec::leak(words).as_ptr() as u64
 }
 
-/// A string of `s`, as Fixpt lays one out: a header of kind 1, its words
+fn set(addr: u64, w: u64) {
+    // SAFETY: a word of room `gc::words` gave in kc's heap, live and
+    // writable for the run.
+    unsafe { *(addr as *mut u64) = w }
+}
+
+/// Argument `k` of a routine that makes something in kc's heap (C455):
+/// from the stack word its wrapper put it in (x64.kfx's
+/// `x64-heap-routine`), which the collector moves, so read after room is
+/// had.
+fn arg(args: *const u64, k: u64) -> u64 {
+    word(args as u64 + 8 * k)
+}
+
+/// A string of `s`, in this runtime's own memory: a symbol's name.
+fn make_string(s: &str) -> u64 {
+    made(string_words(s)) + 8 + TAG_BLOBLET
+}
+
+/// A string of `s` in kc's heap (C455), its block's.
+fn string_in(block: *mut u64, s: &str) -> Result<u64, String> {
+    let w = string_words(s);
+    let at = gc::words(block, w.len() as u64)?;
+    for (k, &x) in w.iter().enumerate() {
+        set(at + 8 * k as u64, x);
+    }
+    Ok(at + 8 + TAG_BLOBLET)
+}
+
+/// A string's words, as Fixpt lays one out: a header of kind 1, its words
 /// all suffix; the length; the code points, two a word.
-pub fn make_string(s: &str) -> u64 {
+fn string_words(s: &str) -> Vec<u64> {
     let cs: Vec<u32> = s.chars().map(|c| c as u32).collect();
     let n = cs.len();
     let words = 1 + n.div_ceil(2);
@@ -187,7 +218,7 @@ pub fn make_string(s: &str) -> u64 {
         };
         w.push(lo | hi);
     }
-    made(w) + 8 + TAG_BLOBLET
+    w
 }
 
 std::thread_local! {
@@ -245,25 +276,36 @@ pub extern "C" fn kc_string_lt(a: u64, b: u64) -> u64 {
     boolean(string_text(a) < string_text(b))
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn kc_string_append(a: u64, b: u64) -> u64 {
-    make_string(&(string_text(a) + &string_text(b)))
+fn string_appended(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    string_in(
+        block,
+        &(string_text(arg(args, 0)) + &string_text(arg(args, 1))),
+    )
 }
 
-fn substring_of(s: u64, i: u64, j: u64) -> Result<u64, String> {
-    let cs: Vec<char> = string_text(s).chars().collect();
-    let (i, j) = ((i as i64) >> 3, (j as i64) >> 3);
+/// `string-append` of its two arguments, in kc's heap (C455), as each
+/// routine that makes something there is called: its arguments' stack
+/// words and the block (x64.kfx's `x64-heap-routine`).
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_string_append(args: *const u64, block: *mut u64) -> u64 {
+    string_appended(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+fn substring_of(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let cs: Vec<char> = string_text(arg(args, 0)).chars().collect();
+    let (i, j) = ((arg(args, 1) as i64) >> 3, (arg(args, 2) as i64) >> 3);
     if i < 0 || j < i || j as usize > cs.len() {
         return Err("substring range out of bounds".to_string());
     }
-    Ok(make_string(
+    string_in(
+        block,
         &cs[i as usize..j as usize].iter().collect::<String>(),
-    ))
+    )
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn kc_substring(s: u64, i: u64, j: u64) -> u64 {
-    substring_of(s, i, j).unwrap_or_else(|m| failed(&m))
+pub extern "C" fn kcrt_substring(args: *const u64, block: *mut u64) -> u64 {
+    substring_of(args, block).unwrap_or_else(|m| failed(&m))
 }
 
 /// A symbol's name: its field 0, the string it was made of.
@@ -295,29 +337,40 @@ pub extern "C" fn kc_is_kind(v: u64, kind_wanted: u64) -> u64 {
 }
 
 /// `a`'s pairs copied, the last's cdr `b` (C447: a quasiquote's `,@`), in
-/// this runtime's memory; `a` not a list fails as `cdr` of a non-pair does.
-fn appended(a: u64, b: u64) -> Result<u64, String> {
-    let mut cars = Vec::new();
-    let mut rest = a;
+/// kc's heap (C455), the room for them all had at once and `a` and `b`
+/// read again after; `a` not a list fails as `cdr` of a non-pair does.
+fn appended(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let mut n = 0;
+    let mut rest = arg(args, 0);
     while rest != null() {
         if rest & TAG_MASK != TAG_PAIR {
             return Err(fail_words(4).to_string());
         }
+        n += 1;
+        rest = pair(rest).1;
+    }
+    if n == 0 {
+        return Ok(arg(args, 1));
+    }
+    let at = gc::words(block, 2 * n)?;
+    let mut rest = arg(args, 0);
+    for k in 0..n {
         let (car, cdr) = pair(rest);
-        cars.push(car);
+        let tail = if k + 1 < n {
+            at + 16 * (k + 1) + TAG_PAIR
+        } else {
+            arg(args, 1)
+        };
+        set(at + 16 * k, car);
+        set(at + 16 * k + 8, tail);
         rest = cdr;
     }
-    Ok(cars.iter().rev().fold(b, |tail, &car| {
-        // Kept, so that the collector moves on what its words hold (C453).
-        let at = made(vec![car, tail]);
-        gc::kept_pair(at);
-        at + TAG_PAIR
-    }))
+    Ok(at + TAG_PAIR)
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn kc_append(a: u64, b: u64) -> u64 {
-    appended(a, b).unwrap_or_else(|m| failed(&m))
+pub extern "C" fn kcrt_append(args: *const u64, block: *mut u64) -> u64 {
+    appended(args, block).unwrap_or_else(|m| failed(&m))
 }
 
 /// An array's index past its end, or below 0 (C422): kc's words, in a
@@ -406,17 +459,37 @@ extern "C" fn here_show(v: u64) {
     });
 }
 
-/// What the transformer is given: the use (0) or the tag (1), a string.
-extern "C" fn here_given(which: u64) -> u64 {
-    GIVEN.with(|g| {
+/// What the transformer is given (`give`): the use (0) or the tag (the
+/// fixnum 1), a string in kc's heap (C455).
+fn given_in(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let s = GIVEN.with(|g| {
         let g = g.borrow();
-        make_string(if which == 0 { &g.1 } else { &g.0 })
-    })
+        if arg(args, 0) == 0 {
+            g.1.clone()
+        } else {
+            g.0.clone()
+        }
+    });
+    string_in(block, &s)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_given(args: *const u64, block: *mut u64) -> u64 {
+    given_in(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+extern "C" fn here_given(args: *const u64, block: *mut u64) -> u64 {
+    given_in(args, block).unwrap_or_else(failed_here)
+}
+
+extern "C" fn here_string_append(args: *const u64, block: *mut u64) -> u64 {
+    string_appended(args, block).unwrap_or_else(failed_here)
 }
 
 /// A run's start in process (C454): the heap the code is given is the
-/// first space again, the collector's own spaces and kept pairs dropped
-/// (the run before's region, dropped whole).
+/// first space again, the collector's own spaces dropped (the run
+/// before's region, dropped whole, what this runtime made there with it,
+/// C455).
 extern "C" fn here_gc_reset() {
     gc::reset();
 }
@@ -437,8 +510,8 @@ extern "C" fn here_string_index_fail(len: u64) -> u64 {
     failed_here(format!("string index out of range (length {len})"))
 }
 
-extern "C" fn here_substring(s: u64, i: u64, j: u64) -> u64 {
-    substring_of(s, i, j).unwrap_or_else(failed_here)
+extern "C" fn here_substring(args: *const u64, block: *mut u64) -> u64 {
+    substring_of(args, block).unwrap_or_else(failed_here)
 }
 
 extern "C" fn here_collect(need: u64, sp: u64, block: *mut u64) -> Heap {
@@ -448,8 +521,8 @@ extern "C" fn here_collect(need: u64, sp: u64, block: *mut u64) -> Heap {
     })
 }
 
-extern "C" fn here_append(a: u64, b: u64) -> u64 {
-    appended(a, b).unwrap_or_else(failed_here)
+extern "C" fn here_append(args: *const u64, block: *mut u64) -> u64 {
+    appended(args, block).unwrap_or_else(failed_here)
 }
 
 /// The address of the routine kc's code names `name` (`kc_show`, ...), as
@@ -459,20 +532,20 @@ extern "C" fn here_append(a: u64, b: u64) -> u64 {
 pub fn routine(name: &str) -> u64 {
     let f: *const () = match name {
         "kc_show" => here_show as *const (),
-        "kc_given" => here_given as *const (),
+        "kcrt_given" => here_given as *const (),
         "kc_gc_reset" => here_gc_reset as *const (),
         "kc_fail" => here_fail as *const (),
         "kc_intern" => kc_intern as *const (),
         "kc_string_eq" => kc_string_eq as *const (),
         "kc_string_lt" => kc_string_lt as *const (),
-        "kc_string_append" => kc_string_append as *const (),
-        "kc_substring" => here_substring as *const (),
+        "kcrt_string_append" => here_string_append as *const (),
+        "kcrt_substring" => here_substring as *const (),
         "kc_symbol_to_string" => kc_symbol_to_string as *const (),
         "kc_is_string" => kc_is_string as *const (),
         "kc_is_symbol" => kc_is_symbol as *const (),
         "kc_is_procedure" => kc_is_procedure as *const (),
         "kc_is_kind" => kc_is_kind as *const (),
-        "kc_append" => here_append as *const (),
+        "kcrt_append" => here_append as *const (),
         "kc_array_index_fail" => here_array_index_fail as *const (),
         "kc_make_array_fail" => here_make_array_fail as *const (),
         "kc_string_index_fail" => here_string_index_fail as *const (),

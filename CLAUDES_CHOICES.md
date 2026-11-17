@@ -13438,3 +13438,64 @@ What changed:
   fault in its code is kc's (fuel is counted, but no scheduler takes a
   slice); kc's images never freed (code that nothing reaches, Fixpt's
   collected code area); kcrt's own objects never freed.
+
+## C455. What kcrt makes for kc's code, made in kc's heap and collected (2026-11-17)
+
+The user: "Address these", of two gaps C454 left: kc's sealed images
+never freed (C456), and kcrt's own objects never freed (this entry).
+Reviewed first:
+- **Fixpt**: its runtime's routines make what they make in the heap the
+  code runs on (`fixpt-heap`'s `make_string`, a pair the `cons` routine
+  makes), collected as the code's own are; a routine that may collect is
+  a call-out, at which the frames are flushed into the heap. Its symbols
+  are its heap's, held by its symbol table for the heap's life
+  (`heap.rs`'s `intern`, `Which::Symbols`): never freed while it runs.
+- **Accomplice** (Larceny): the runtime's allocations are the mutator's,
+  in the same heap; a C routine that allocates is given the heap's
+  pointers and hands them back.
+- **Coopt**: its runtime objects are `Root` handles into its heap, which
+  its collector moves.
+- **kayak**: kayak-jit's `HOST` heap (tier 1's, C229): a routine making
+  objects in a heap its caller gives, its next free address handed back;
+  C453's `kc_gc_call`, the stack the roots from a stack pointer the call
+  gives.
+
+What changed:
+- **kcrt's strings and pairs in kc's heap**: `string-append`,
+  `substring`, a `,@`'s pairs (`kc_append`) and a transformer's given use
+  and tag (`kc_given`) are made in kc's heap, collected with kc's own
+  objects; the pairs kcrt kept as roots (C453's `kept_pair`) are gone.
+- **How a routine allocates**: kc's code calls `kc_string_append` as
+  any routine; that is now a wrapper of the entry object's
+  (`x64-heap-routine`, x64.kfx) which puts the arguments in three stack
+  words of its own (a 0 for each not given), the heap's next free word
+  and that stack pointer in the collector's block (two new words, 5 and
+  6), and calls kcrt's `kcrt_…` on the words and the block. The routine
+  takes its room by `gc::words`, which collects if it does not fit, the
+  roots from that stack pointer up, the arguments among them; it reads
+  its arguments after it has its room. An append takes the room for all
+  its pairs at once. The wrapper makes the block's next word and end
+  `%r12` and `%r13`. kc's code keeps no value in a register across a
+  routine's call (its frames' slots hold them), so the stack is the whole
+  of what lives.
+- **One transformer's run, built and in process**: `kc_apply_run` (in
+  both entry objects) does what `kc_native_entry` did after `kc_entry`
+  (`%phase1-apply` on the use and the tag, its answer written), the first
+  string kept in a stack word above a base of its own while the second is
+  made. A built transformer's `--apply` calls it after `give`, so it no
+  longer makes its strings in kcrt's memory; tested by hand (an apply,
+  and failure 9 of a program with none), as no check runs a built
+  transformer since C454.
+- **Symbols stay kcrt's**: interned once a run, each with its name, as
+  Fixpt's symbol table keeps its own; kc's code keeps each symbol it
+  interns in a cell of its name's (`kcy_…`, `.comm`, outside the
+  globals' run), which a moving symbol would leave behind.
+- **A test**: tests/kc/step15/made-collected.fx, 300000 rounds of a
+  substring, a string appended and two `,@`s, past a heap of 64 words
+  (kc-steps' every way: built, in process, `--heap 64`, and Fixpt's
+  answer). In process with a heap of 64 words, 18.6 MB at most, 0.19 s;
+  before, kcrt's memory would have kept every round's, about 50 words a
+  round by their layout, some 120 MB.
+- **The full check**: all passed in 453 s; kc-steps 337 of 337 (in
+  process, and with a heap of 64 words); kc-objects 433, 0 differ;
+  nextest 5500 passed.

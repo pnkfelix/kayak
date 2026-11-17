@@ -1669,8 +1669,10 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   that KFX owns, a region a transformer's call drops first, then the
   collector, code too (Fixpt's "A collected code area") (the collector
   done, C453: Cheney's, kcrt-core's, its roots every word of kc's stack,
-  each frame zeroed, the globals' cells and kcrt's pairs; left: the
-  region, done with step 5 (C454); kcrt's own objects never freed; kc's
+  each frame zeroed, and the globals' cells; left: the
+  region, done with step 5 (C454); kcrt's own objects, made in kc's heap
+  and collected (C455: its strings and pairs; its symbols kept for the
+  run, as Fixpt's table keeps them); kc's
   code never freed (a transformer's image sealed once and kept for the
   run; Fixpt's collected code area frees code nothing reaches); no
   generations; a large bloblet; tier 1's collector, KFX's, and this one,

@@ -11,14 +11,11 @@ unsafe extern "C" {
     /// The program: the heap's first free word and its end, and the state
     /// kc's code keeps in `%r15` (C451, Fixpt's native convention's).
     fn kc_entry(heap: *mut u64, end: *mut u64, state: *const u64) -> u64;
-    /// A procedure of kc's code (its address `f`) called on `a` and `b`,
-    /// the heap where `kc_entry` left it (C448: kc's entry object's; its
-    /// end now the collector's, C453, `end` not read), and the state.
-    fn kc_call2(f: u64, a: u64, b: u64, end: u64, state: *const u64) -> u64;
-    /// `%phase1-apply`'s address, if the program defines it, else 0: a
-    /// function, its address made relative to the code (C454), so that
-    /// the image `kc run` seals needs no absolute address.
-    fn kc_apply_address() -> u64;
+    /// A transformer's run (C448; C455, kc's code's, shared with a run in
+    /// process): `%phase1-apply` called on what `give` gave, each a string
+    /// made in kc's heap, and its answer written (`kc_show`); a program
+    /// with none fails.
+    fn kc_apply_run(state: *const u64);
 }
 
 /// The heap's first space, its words: collected (C453), grown as what
@@ -112,24 +109,10 @@ fn program() -> i32 {
     // expression's value.
     unsafe { kc_entry(range.start, range.end, state) };
     if apply {
-        let (tag, used) = input.split_once('\n').unwrap_or((input.as_str(), ""));
-        // SAFETY: kc's entry object defines it, a function of no arguments.
-        let f = unsafe { kc_apply_address() };
-        if f == 0 {
-            failed(fail_words(9));
-        }
-        // SAFETY: `f` is a procedure of kc's code of two arguments, strings
-        // of Fixpt's layout; `kc_call2` gives it the heap `kc_entry` left.
-        let v = unsafe {
-            kc_call2(
-                f,
-                make_string(used),
-                make_string(tag),
-                range.end as u64,
-                state,
-            )
-        };
-        println!("{}", written(v));
+        give(&input);
+        // SAFETY: kc's entry object's, on the state `kc_entry` ran on, the
+        // heap where it left it.
+        unsafe { kc_apply_run(state) };
     }
     0
 }
