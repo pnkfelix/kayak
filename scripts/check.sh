@@ -54,6 +54,8 @@ step python3 -I scripts/corpus.py
 step python3 -I scripts/engine-programs.py
 # kc's steps (C399): each back end against Fixpt's answers.
 step python3 -I scripts/kc-steps.py
+# kc's assembler (C450): each object kc-steps' builds made, as `as` makes it.
+step python3 -I scripts/kc-objects.py
 # kc's expansion, a form at a time, against the engine's, a program at a
 # time (C445): each of Fixpt's programs that defines a macro.
 step python3 -I scripts/kc-expanded.py

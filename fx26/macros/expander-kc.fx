@@ -96,7 +96,7 @@
  a phase-1 namespace, `apart`. And a limit of expansion, Fixpt's default,
  the environment not read (`syscall::macro_limit`'s `FIXPT_MACRO_*`)."
 (define mx-phase1-given (ref datum mxp) (new (the datum nil)))
-(define mx-phase1-asker (ref (subr (maxeff (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) spin) (string) string) mxp) (new (lambda ((r string)) "")))
+(define mx-phase1-asker (ref (subr (maxeff (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io) spin) (string) string) mxp) (new (lambda ((r string)) "")))
 "Request `r` as it is asked and answered: of a syntactic-closure
  transformer's `%apply` (style 1 or 2), its expansion's tag `0`, which its
  transformer is not given (Fixpt's `call_transformer`), so its answer is
@@ -208,7 +208,7 @@
 
 ;;; ============================================================ parser.fx (the definitions the expander reaches)
 
-(define parse-tag (prompt-tag presult presult (maxeff tree-builds (write mxp) spin (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) mxp)
+(define parse-tag (prompt-tag presult presult (maxeff tree-builds (write mxp) spin (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io)) mxp)
   (make-continuation-prompt-tag))
 ;;; -------------------------------------------------------- looking at syn
 
@@ -13078,13 +13078,13 @@
 "What the file gives (C443), each of a written type, so its loader's
  interface (C442): the forms, each a located datum, and what is made of
  them, a list of them, as a datum."
-(define drive-program (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (datum) datum)
+(define drive-program (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io)) (datum) datum)
   (lambda (forms) (mx-datum-list (drive-program* (loc-nodes forms)))))
-(define drive-entry (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (datum int) (tupleof datum string int))
+(define drive-entry (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io)) (datum int) (tupleof datum string int))
   (lambda (forms s)
     (let ((r (drive-entry* (loc-nodes forms) s)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2) (extract r 3)))))
-(define drive-draft (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (datum int) (tupleof datum string))
+(define drive-draft (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io)) (datum int) (tupleof datum string))
   (lambda (forms s)
     (let ((r (drive-draft* (loc-nodes forms) s)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2)))))
@@ -13094,12 +13094,12 @@
  request the instance's expansions make, of its host's effect, which
  scripts/macros-port.py writes in (`ASKS`);
  until one is given, none, each request said not yet."
-(define drive-asker! (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) ((subr (maxeff (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) spin) (string) string)) unit)
+(define drive-asker! (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io)) ((subr (maxeff (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io) spin) (string) string)) unit)
   (lambda (f) (set mx-phase1-asker f)))
-(define drive-written-facts (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (datum) datum)
+(define drive-written-facts (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io)) (datum) datum)
   (lambda (forms)
     (begin (set drive-files nil) (set drive-met nil) (mx-datum-list (drive-facts (drive-syns (loc-nodes forms)))))))
-(define drive-given (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (datum datum datum) (tupleof datum datum datum))
+(define drive-given (subr (maxeff (read @globals) spin (read mxp) (write mxp) (alloc mxp) (goto mxp) (read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io)) (datum datum datum) (tupleof datum datum datum))
   (lambda (defs es target)
     (let ((r (drive-given* (loc-nodes defs) (loc-nodes es) target)))
       (tuple (mx-datum-list (extract r 1)) (extract r 2) (mx-datum-list (extract r 3))))))

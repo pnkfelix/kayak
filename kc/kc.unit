@@ -24,6 +24,8 @@ expand.kfx
 l0.kfx
 rust.kfx
 x64.kfx
+; kc's assembler (C450): x64.kfx's text an ELF object, as `as` makes it.
+asm.kfx
 ; A procedural macro's transformer's request as its phase-1 program (C447),
 ; which kc compiles and runs as any program (main.kfx):
 ../fx26/macros/phase1-prelude.kfx

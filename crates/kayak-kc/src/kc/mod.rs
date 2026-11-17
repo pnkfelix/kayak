@@ -38,6 +38,8 @@ pub mod rust;
 pub use rust::*;
 pub mod x64;
 pub use x64::*;
+pub mod asm;
+pub use asm::*;
 pub mod phase1_prelude;
 pub use phase1_prelude::*;
 pub mod macros_phase1;

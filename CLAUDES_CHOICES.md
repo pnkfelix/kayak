@@ -13118,3 +13118,48 @@ does kayak's.
 - **The full check**: all passed (the first stopped at the corpus: the
   two programs of lib/db.kfx, re-blessed); the engine's comparisons as
   before (beyond KFX, 411 agree); `macros-port --check` of 4 files.
+
+## C450. kc's own assembler: its objects `kc build`'s, each as `as` makes it (2026-11-17)
+
+The user: "Go ahead" (TODO §52's steps 1-2, kc's code in memory: "surely
+it's better to just use the same byte emitter everywhere, as that is the
+thing that's most likely to expose bugs").
+- **An assembler of kc's text, not instructions as data, first.** The plan
+  was x64.kfx's instructions as data, rendered as text and encoded as
+  bytes. Taken instead: `kc/asm.kfx`, an assembler of the text x64.kfx
+  makes (the `asm-item`s the database keeps), a subset of GNU as's x86-64
+  syntax (about 35 mnemonics, `.quad`, `.comm`, `.set`, `.p2align`, five
+  sections), made an ELF relocatable object. One byte emitter
+  everywhere still, and kc's and `as`'s given the same input, so a
+  difference of their objects is the encoder's alone. The text made
+  instructions as data is left for later (TODO §52), and changes no byte.
+- **As `as` makes it**, settled by trying GNU as 2.38, each rule at the
+  file's head: a jump of its own section, local or global, resolved and
+  relaxed (short, grown until none changes, every branch measured on one
+  layout a pass); a call of a local of its own section resolved, else
+  `R_X86_64_PLT32`; a `%rip` operand of a global, common or undefined
+  symbol `R_X86_64_PC32` against it, of a local of another section against
+  that section, of its own resolved; `.quad` of a symbol `R_X86_64_64`; an
+  immediate of 8 bits where it fits, but of a symbol not `.set` yet 32;
+  `%rax`'s short forms; `.p2align` in code padded with `as`'s no-ops of
+  each length (1 to 11; more, 11 and the rest).
+- **`kc build`** writes each new object's text (`NAME.s`, for reading and
+  comparing) and kc's object (`NAME.o`); no `cc -c`. `cc` still links.
+  `kc --object FILE OUT` assembles a file alone. The bytes go out through
+  a bytevector at `@io`, so `qe` (lib/db.kfx) has `(write @io)` too, and
+  kc's asker's effect with it (C449's `ASKS`).
+- **`scripts/kc-objects.py`**, in the check after kc-steps: each object
+  kc-steps' builds made (the step programs', the transformers'), by kc
+  and by `as`, compared section by section (`.text`, `.data`,
+  `.rodata`'s bytes, `.bss`'s size), relocation by relocation, symbol by
+  symbol (but the sections'). Found on its first run: 7 of 459 objects,
+  the transformers' (17 KB of code), longer by a few hundred bytes: a
+  branch measured against the layout being made, not the one its target's
+  offset was of, grew where `as`'s stays short. Now 441 of 441.
+- **Measured**: kc-steps cold 78 s (the mean of its warm runs 65); a
+  transformer's cold run as before (`contract-defn.fx` 0.18 s, the chain
+  of 200 0.54 s): kc's assembler costs what `cc -c` did.
+- **Checks**: kc-steps 336 programs, 0 wrong, each native one linked of
+  kc's objects; kc-objects 441 objects, 0 differ; kc-expanded as before.
+- **The full check**: all passed; kc-objects 459 objects (the check's
+  kc-steps builds), 0 differ, in 1.5 s; the engine's comparisons as before.

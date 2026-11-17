@@ -49,7 +49,7 @@
  compiles, builds and runs the transformer, as deterministic as any of
  its key, the request's text, its files named by what they hold."
 (define-effect qe (maxeff (read @globals) spin nondet (read @q) (write @q) (alloc @q)
-                          (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)))
+                          (io process) (io fs-read) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io) (write @io)))
 
 "A value as a node keeps it (C417): its text; where it is in the payload
  read with the database, its offset and length, and whether it is escaped

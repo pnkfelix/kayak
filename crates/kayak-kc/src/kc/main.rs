@@ -117,6 +117,11 @@ pub mod kc_driver {
     }
 
     #[inline]
+    pub fn asm_object() -> &'static (dyn Fn(Str) -> List<i64> + Send + Sync) {
+        &kc_asm::asm_object
+    }
+
+    #[inline]
     pub fn kc_load_file_x() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> () {
         &kc_expand::kc_load_file_x
     }
@@ -194,6 +199,33 @@ pub mod kc_driver {
     #[inline]
     pub fn q_expanded() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
         &kc_front::q_expanded
+    }
+
+    // Bytes, each 0 to 255, written to `path` (C450: an object kc made).
+    pub fn bytes_written(path: Str, bs: List<i64>) -> Str {
+        let v = the::<Bytes>(make_bytevector(i64_to_int(size(bs)), int_to_u8(int_lit(0))));
+        bytes_set_x(v, bs, 0i64);
+        let tagcase_ = write_file(path, v);
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("done") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            str_lit("")
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1)))
+        } else { unreachable!() }
+    }
+
+    pub fn bytes_set_x(mut v: Bytes, mut bs: List<i64>, mut i: i64) -> () {
+        loop {
+            if null_p(bs) {
+                return ();
+            } else {
+                bytevector_u8_set_x(v, i64_to_int(i), int_to_u8(i64_to_int(car(bs))));
+                (bs, i) = (cdr(bs), i64_plus(i, 1i64));
+                continue;
+            }
+        }
     }
 
     // Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399).
@@ -372,7 +404,9 @@ pub mod kc_driver {
         }
     }
 
-    /// The assembly of each object not made yet, written to `dir`; their
+    /// Each object not made yet, written to `dir`: its assembly, `NAME.s`,
+    /// and its object, `NAME.o`, kc's assembler's (C450, kc/asm.kfx), as
+    /// `as` makes it of the text beside it (scripts/kc-objects.py); their
     /// files' names.
     pub fn objects_written(mut d: Db, mut run: Runner, mut file: Str, mut dir: Str, mut os: Sexps, mut names: List<Str>, mut have: List<Str>, mut acc: List<Str>) -> List<Str> {
         loop {
@@ -391,6 +425,15 @@ pub mod kc_driver {
                     };
                     let s = string_append(car(names), str_lit(".s"));
                     write_text(string_append(dir, string_append(str_lit("/"), s)), text);
+                    {
+                        let m = bytes_written(string_append(dir, string_append(str_lit("/"), string_append(car(names), str_lit(".o")))), asm_object()(text));
+                        if string_eq_p(m, str_lit("")) {
+                            ()
+                        } else {
+                            error(string_append(str_lit("kc: "), m));
+                            ()
+                        }
+                    };
                     (os, names, acc) = (cdr(os), cdr(names), kayak_rt::heap_cons(s, acc));
                     continue;
                 }
@@ -482,28 +525,19 @@ pub mod kc_driver {
             let names = object_names(os, nil::<Str>());
             let made = run_command(kayak_rt::heap_cons(str_lit("mkdir"), kayak_rt::heap_cons(str_lit("-p"), kayak_rt::heap_cons(dir, kayak_rt::nil()))), str_lit(""));
             let new = objects_written(d, run, file, dir, os, names, listed(dir), nil::<Str>());
-            let assembled = if null_p(new) {
+            let linked = run_command(append(kayak_rt::heap_cons(str_lit("cc"), kayak_rt::heap_cons(str_lit("-o"), kayak_rt::heap_cons(exe, kayak_rt::nil()))), append(map(lambda1s(move |n: Str| {
+                string_append(dir, string_append(str_lit("/"), string_append(n, str_lit(".o"))))
+            }), names), if has_suffix_p(rt, str_lit(".so")) {
+                kayak_rt::heap_cons(rt, kayak_rt::heap_cons(string_append(str_lit("-Wl,-rpath,"), directory_of(rt)), kayak_rt::nil()))
+            } else {
+                kayak_rt::heap_cons(rt, kayak_rt::heap_cons(str_lit("-lgcc_s"), kayak_rt::heap_cons(str_lit("-lutil"), kayak_rt::heap_cons(str_lit("-lrt"), kayak_rt::heap_cons(str_lit("-lpthread"), kayak_rt::heap_cons(str_lit("-lm"), kayak_rt::heap_cons(str_lit("-ldl"), kayak_rt::heap_cons(str_lit("-lc"), kayak_rt::nil()))))))))
+            })), str_lit(""));
+            if string_eq_p(linked, str_lit("")) {
+                write_text(record, manifest);
+                stale_removed_x(dir, names);
                 str_lit("")
             } else {
-                run_command(kayak_rt::heap_cons(str_lit("cc"), kayak_rt::heap_cons(str_lit("-c"), new)), dir)
-            };
-            if not(string_eq_p(assembled, str_lit(""))) {
-                assembled
-            } else {
-                let linked = run_command(append(kayak_rt::heap_cons(str_lit("cc"), kayak_rt::heap_cons(str_lit("-o"), kayak_rt::heap_cons(exe, kayak_rt::nil()))), append(map(lambda1s(move |n: Str| {
-                    string_append(dir, string_append(str_lit("/"), string_append(n, str_lit(".o"))))
-                }), names), if has_suffix_p(rt, str_lit(".so")) {
-                    kayak_rt::heap_cons(rt, kayak_rt::heap_cons(string_append(str_lit("-Wl,-rpath,"), directory_of(rt)), kayak_rt::nil()))
-                } else {
-                    kayak_rt::heap_cons(rt, kayak_rt::heap_cons(str_lit("-lgcc_s"), kayak_rt::heap_cons(str_lit("-lutil"), kayak_rt::heap_cons(str_lit("-lrt"), kayak_rt::heap_cons(str_lit("-lpthread"), kayak_rt::heap_cons(str_lit("-lm"), kayak_rt::heap_cons(str_lit("-ldl"), kayak_rt::heap_cons(str_lit("-lc"), kayak_rt::nil()))))))))
-                })), str_lit(""));
-                if string_eq_p(linked, str_lit("")) {
-                    write_text(record, manifest);
-                    stale_removed_x(dir, names);
-                    str_lit("")
-                } else {
-                    linked
-                }
+                linked
             }
         }
     }
@@ -1074,6 +1108,14 @@ pub mod kc_driver {
                     match fail_with(str_lit("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | serve)"), int_lit(2)) {}
                 } else if string_eq_p(car(rest), str_lit("serve")) {
                     serve(d, dbp, stats, at)
+                } else if (string_eq_p(car(rest), str_lit("--object")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
+                    let m = bytes_written(car(cdr(cdr(rest))), asm_object()(read_text(car(cdr(rest)))));
+                    if string_eq_p(m, str_lit("")) {
+                        int_lit(0)
+                    } else {
+                        match fail_with(m, int_lit(1)) {};
+                        int_lit(1)
+                    }
                 } else if (string_eq_p(car(rest), str_lit("--expanded-located")) && not(null_p(cdr(rest)))) {
                     let file = car(cdr(rest));
                     kc_load_file_x()(d, &kc_run, file, read_text(file));

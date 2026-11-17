@@ -1,0 +1,751 @@
+"asm.kfx: kc's assembler (C450; the user, 2026-11-17: \"surely it's better
+ to just use the same byte emitter everywhere, as that is the thing that's
+ most likely to expose bugs\"). The assembly text kc's native back end
+ makes (x64.kfx), a subset of the GNU assembler's x86-64 syntax, made an
+ ELF relocatable object, as `as` makes one of it: each section's bytes,
+ symbols and relocations the same (`scripts/kc-objects.py` compares them,
+ object by object). `kc build` links these (main.kfx); the text is kept
+ beside them, the same text `as` is given, for comparing and reading.
+
+ What `as` does that decides bytes, found by trying it (GNU as 2.38):
+ - a jump to a symbol of its own section, local or global, resolved and
+   made short (`eb`, `7x`) where its target is near, grown (`e9`, `0f
+   8x`) until none changes; to another's, long, `R_X86_64_PLT32`;
+ - a call to a local symbol of its section resolved, any other
+   `R_X86_64_PLT32`; a `%rip` operand of a global, a common or an
+   undefined symbol `R_X86_64_PC32` against it, of a local one of
+   another section against that section, of its own section resolved;
+   `.quad` of a symbol `R_X86_64_64`, of a local one against its section;
+ - an immediate of 8 bits where it fits (`83`, `c1`; `d1` of a shift by
+   1), but of a symbol not set yet, 32 (`81`); `%rax`'s short forms
+   (`05`, `3d`, `a9`, ...) where 32 bits are written;
+ - code padded by `.p2align` with its no-ops of each length (`nops`).
+ A symbol `.L...` is in no symbol table; any other label not `.globl` a
+ local one."
+
+(define kc-asm
+  (module
+    (hide
+      "An operand: a register, its number and its width (64, 32, 8); an
+       immediate, a number or a symbol; memory, its displacement, a symbol
+       in it (``: none), its base (-1: none; 16: `%rip`), its index (-1:
+       none) and scale; a symbol, a jump's or call's target; `*%r`; and
+       `*D(%b)`."
+      (define-datatype opd
+        (o-reg i64 i64)
+        (o-imm i64)
+        (o-isym string)
+        (o-mem i64 string i64 i64 i64)
+        (o-sym string)
+        (o-ireg i64)
+        (o-imem i64 i64))
+
+      "What a section is made of, in order: bytes; a label; padding to a
+       boundary of `2^k`; a jump (its condition, -1 of `jmp`) to a symbol;
+       a call of a symbol; and a field to fill (its size, the symbol, the
+       addend, and its kind: 2 `%rip`-relative, 1 absolute 64 bits, 0 a
+       symbol's `.set` value)."
+      (define-datatype piece
+        (p-bytes (listof i64 acyclic))
+        (p-label string)
+        (p-align i64)
+        (p-branch i64 string)
+        (p-call string)
+        (p-fix i64 string i64 i64))
+
+      (define-type pieces (listof piece acyclic))
+      (define-type bytes (listof i64 acyclic))
+
+      (define not-yet (subr kfx (string) i64)
+        (lambda (what) (begin (error (string-append "kc: the assembler: not yet: " what)) 0)))
+
+      ;;; ------------------------------------------------------------ reading
+
+      (define-rec
+        (trimmed-left (subr kfx (chars) chars)
+          (lambda (cs) (if (and (not (null? cs)) (or (char=? (car cs) #\space) (char=? (car cs) #\tab))) (trimmed-left (cdr cs)) cs))))
+
+      (define trimmed (subr kfx (string) string)
+        (lambda (s) (list->string (reverse (trimmed-left (reverse (trimmed-left (string-chars s))))))))
+
+      (define-rec
+        (lines-of (subr kfx (chars chars strings) strings)
+          (lambda (cs line acc)
+            (cond ((null? cs) (reverse (if (null? line) acc (cons (list->string (reverse line)) acc))))
+                  ((char=? (car cs) #\newline) (lines-of (cdr cs) nil (cons (list->string (reverse line)) acc)))
+                  (else (lines-of (cdr cs) (cons (car cs) line) acc))))))
+
+      (define-rec
+        (word-end (subr kfx (chars chars) (tupleof string chars))
+          (lambda (cs acc)
+            (if (or (null? cs) (char=? (car cs) #\space) (char=? (car cs) #\tab))
+                (tuple (list->string (reverse acc)) (trimmed-left cs))
+                (word-end (cdr cs) (cons (car cs) acc))))))
+
+      (define-rec
+        (split-commas (subr kfx (chars i64 chars strings) strings)
+          (lambda (cs depth cur acc)
+            "Operands, apart at the commas outside parentheses."
+            (cond ((null? cs) (reverse (if (null? cur) acc (cons (trimmed (list->string (reverse cur))) acc))))
+                  ((and (char=? (car cs) #\,) (i64= depth 0)) (split-commas (cdr cs) depth nil (cons (trimmed (list->string (reverse cur))) acc)))
+                  ((char=? (car cs) #\() (split-commas (cdr cs) (i64+ depth 1) (cons (car cs) cur) acc))
+                  ((char=? (car cs) #\)) (split-commas (cdr cs) (i64- depth 1) (cons (car cs) cur) acc))
+                  (else (split-commas (cdr cs) depth (cons (car cs) cur) acc))))))
+
+      (define digit? (subr kfx (char) bool)
+        (lambda (c) (and (char>=? c #\0) (char<=? c #\9))))
+
+      (define number-text? (subr kfx (string) bool)
+        (lambda (s)
+          (let ((cs (string-chars s)))
+            (and (not (null? cs))
+                 (or (digit? (car cs)) (and (char=? (car cs) #\-) (not (null? (cdr cs))) (digit? (car (cdr cs)))))))))
+
+      (define-rec
+        (digits-value (subr kfx (chars i64) i64)
+          (lambda (cs acc) (if (null? cs) acc (digits-value (cdr cs) (i64+ (i64* acc 10) (i64- (char->i64 (car cs)) 48)))))))
+
+      (define number-of (subr kfx (string) i64)
+        (lambda (s)
+          (let ((cs (string-chars s)))
+            (if (char=? (car cs) #\-) (i64- 0 (digits-value (cdr cs) 0)) (digits-value cs 0)))))
+
+      (define regs64 strings (list "rax" "rcx" "rdx" "rbx" "rsp" "rbp" "rsi" "rdi" "r8" "r9" "r10" "r11" "r12" "r13" "r14" "r15"))
+      (define regs32 strings (list "eax" "ecx" "edx" "ebx" "esp" "ebp" "esi" "edi" "r8d" "r9d" "r10d" "r11d" "r12d" "r13d" "r14d" "r15d"))
+      (define regs8 strings (list "al" "cl" "dl" "bl"))
+
+      (define-rec
+        (index-in (subr kfx (string strings i64) i64)
+          (lambda (s xs i) (cond ((null? xs) (the i64 -1)) ((string=? (car xs) s) i) (else (index-in s (cdr xs) (i64+ i 1)))))))
+
+      (define reg-of (subr kfx (string) opd)
+        (lambda (s)
+          "`%name`'s register."
+          (let ((n (after-prefix s "%")))
+            (cond ((i64>= (index-in n regs64 0) 0) (o-reg (index-in n regs64 0) 64))
+                  ((i64>= (index-in n regs32 0) 0) (o-reg (index-in n regs32 0) 32))
+                  ((i64>= (index-in n regs8 0) 0) (o-reg (index-in n regs8 0) 8))
+                  ((string=? n "rip") (o-reg 16 64))
+                  (else (o-reg (not-yet (string-append "a register " s)) 64))))))
+
+      (define reg-number (subr kfx (opd) i64)
+        (lambda (o) (tagcase o (o-reg (n w) n) (else other (not-yet "a register where one is wanted")))))
+
+      (define-rec
+        (cut-at (subr kfx (chars char chars) (tupleof string chars))
+          (lambda (cs c acc)
+            "The text before `c`, and what is after it."
+            (cond ((null? cs) (tuple (list->string (reverse acc)) nil))
+                  ((char=? (car cs) c) (tuple (list->string (reverse acc)) (cdr cs)))
+                  (else (cut-at (cdr cs) c (cons (car cs) acc)))))))
+
+      (define-rec
+        (sign-at (subr kfx (chars i64) i64)
+          (lambda (cs i)
+            "Where a `+` or `-` after the first character is, or -1."
+            (cond ((null? cs) (the i64 -1))
+                  ((and (i64> i 0) (or (char=? (car cs) #\+) (char=? (car cs) #\-))) i)
+                  (else (sign-at (cdr cs) (i64+ i 1)))))))
+
+      (define disp-of (subr kfx (string) (tupleof i64 string))
+        (lambda (s)
+          "A displacement: a number, a symbol, or `sym+n`, `sym-n`."
+          (cond ((string=? s "") (tuple (the i64 0) ""))
+                ((number-text? s) (tuple (number-of s) ""))
+                (else
+                 (let ((k (sign-at (string-chars s) 0)))
+                   (if (i64< k 0)
+                       (tuple (the i64 0) s)
+                       (let ((sym (substring s 0 (i64->int k)))
+                             (n (number-of (substring s (i64->int (i64+ k 1)) (string-length s)))))
+                         (tuple (if (char=? (string-ref s (i64->int k)) #\-) (i64- 0 n) n) sym))))))))
+
+      (define mem-of (subr kfx (string) opd)
+        (lambda (s)
+          "`D(%b)`, `D(%b,%i,s)`, `sym(%rip)`."
+          (let* ((a (cut-at (string-chars s) #\( nil))
+                 (d (disp-of (extract a 1)))
+                 (inside (extract (cut-at (extract a 2) #\) nil) 1))
+                 (parts (split-commas (string-chars inside) 0 nil nil))
+                 (base (if (string=? (car parts) "") (the i64 -1) (reg-number (reg-of (car parts))))))
+            (if (null? (cdr parts))
+                (o-mem (extract d 1) (extract d 2) base -1 1)
+                (o-mem (extract d 1) (extract d 2) base (reg-number (reg-of (second-of parts))) (number-of (car (cdr (cdr parts)))))))))
+
+      (define second-of (subr kfx (strings) string) (lambda (xs) (car (cdr xs))))
+
+      (define operand-of (subr kfx (string) opd)
+        (lambda (s)
+          (let ((c (string-ref s 0)))
+            (cond ((char=? c #\%) (reg-of s))
+                  ((char=? c #\$)
+                   (let ((v (after-prefix s "$"))) (if (number-text? v) (o-imm (number-of v)) (o-isym v))))
+                  ((char=? c #\*)
+                   (let ((v (after-prefix s "*")))
+                     (if (char=? (string-ref v 0) #\%)
+                         (o-ireg (reg-number (reg-of v)))
+                         (tagcase (mem-of v) (o-mem (d sym b i sc) (o-imem d b)) (else other (o-imem 0 0))))))
+                  ((string-member-char? #\( s) (mem-of s))
+                  (else (o-sym s))))))
+
+      (define-rec
+        (has-char? (subr kfx (chars char) bool)
+          (lambda (cs c) (cond ((null? cs) #f) ((char=? (car cs) c) #t) (else (has-char? (cdr cs) c))))))
+
+      (define string-member-char? (subr kfx (char string) bool)
+        (lambda (c s) (has-char? (string-chars s) c)))
+
+      ;;; ------------------------------------------------------------ encoding
+
+      (define-rec
+        (le (subr kfx (i64 i64 bytes) bytes)
+          (lambda (v n acc)
+            "`v`'s low `n` bytes, the least first, onto `acc` (reversed)."
+            (if (i64<= n 0) acc (le (i64-shr v 8) (i64- n 1) (cons (i64-and v 255) acc))))))
+
+      (define le-bytes (subr kfx (i64 i64) bytes) (lambda (v n) (reverse (le v n nil))))
+
+      (define fits8? (subr kfx (i64) bool) (lambda (v) (and (i64>= v -128) (i64<= v 127))))
+
+      (define bit (subr kfx (bool i64) i64) (lambda (b v) (if b v 0)))
+
+      "A REX prefix, or none where it would say nothing."
+      (define rex (subr kfx (bool i64 i64 i64) bytes)
+        (lambda (w r x b)
+          (let ((v (i64+ 64 (i64+ (bit w 8) (i64+ (bit (i64>= r 8) 4) (i64+ (bit (i64>= x 8) 2) (bit (i64>= b 8) 1)))))))
+            (if (i64= v 64) nil (list v)))))
+
+      (define modrm (subr kfx (i64 i64 i64) i64)
+        (lambda (md rf rm) (i64+ (i64* md 64) (i64+ (i64* (i64-and rf 7) 8) (i64-and rm 7)))))
+
+      "An instruction of opcode `op` (its bytes), register field `rf` (a
+       register's number or an extension), and `o`, a register or memory;
+       64 bits if `w`; `after` the bytes that follow the operand, an
+       immediate's, for a `%rip` field's addend."
+      (define enc (subr kfx (bool bytes i64 opd i64) pieces)
+        (lambda (w op rf o after)
+          (tagcase o
+            (o-reg (n width) (list (p-bytes (onto (rex w rf -1 n) (onto op (list (modrm 3 rf n)))))))
+            (o-mem (d sym b i sc)
+              (cond
+                ((i64= b 16)
+                 (list (p-bytes (onto (rex w rf -1 -1) (onto op (list (modrm 0 rf 5)))))
+                       (if (string=? sym "")
+                           (p-bytes (le-bytes d 4))
+                           (p-fix 4 sym (i64- d (i64+ 4 after)) 2))))
+                (else
+                 (let* ((sib? (or (i64>= i 0) (i64= (i64-and b 7) 4)))
+                        (md (cond ((not (string=? sym "")) (not-yet "a symbol in memory not of %rip"))
+                                  ((and (i64= d 0) (not (i64= (i64-and b 7) 5))) (the i64 0))
+                                  ((fits8? d) (the i64 1))
+                                  (else (the i64 2))))
+                        (sib (if (i64>= i 0)
+                                 (list (i64+ (i64* (cond ((i64= sc 1) 0) ((i64= sc 2) 1) ((i64= sc 4) 2) (else 3)) 64)
+                                             (i64+ (i64* (i64-and i 7) 8) (i64-and b 7))))
+                                 (if sib? (list (i64+ 32 (i64-and b 7))) nil))))
+                   (list (p-bytes (onto (rex w rf (if (i64>= i 0) i -1) b)
+                                        (onto op (cons (modrm md rf (if sib? 4 b))
+                                                       (onto sib (cond ((i64= md 0) nil) ((i64= md 1) (le-bytes d 1)) (else (le-bytes d 4)))))))))))))
+            (else other (list (p-bytes (list (not-yet "an operand of this kind here"))))))))
+
+      (define arith-ext (subr kfx (string) i64)
+        (lambda (m)
+          (cond ((string=? m "addq") 0) ((string=? m "orq") 1) ((string=? m "andq") 4)
+                ((string=? m "subq") 5) ((string=? m "xorq") 6) (else 7))))
+
+      (define shift-ext (subr kfx (string) i64)
+        (lambda (m) (cond ((string=? m "shlq") 4) ((string=? m "shrq") 5) (else 7))))
+
+      (define conditions strings (list "o" "no" "b" "ae" "e" "ne" "be" "a" "s" "ns" "p" "np" "l" "ge" "le" "g"))
+
+      (define condition-of (subr kfx (string) i64)
+        (lambda (c)
+          (cond ((string=? c "z") 4) ((string=? c "nz") 5) ((string=? c "c") 2) ((string=? c "nc") 3)
+                ((string=? c "nb") 3) ((string=? c "nae") 2) ((string=? c "nbe") 7) ((string=? c "na") 6)
+                (else (let ((k (index-in c conditions 0))) (if (i64< k 0) (not-yet (string-append "a condition " c)) k))))))
+
+      (define is-rax? (subr kfx (opd) bool)
+        (lambda (o) (tagcase o (o-reg (n w) (and (i64= n 0) (i64= w 64))) (else other #f))))
+
+      (define is-reg? (subr kfx (opd) bool)
+        (lambda (o) (tagcase o (o-reg (n w) #t) (else other #f))))
+
+      "An immediate's value now, or none: a number, or a symbol set before."
+      (define imm-known (subr kfx (opd (listof (tupleof string i64) acyclic)) (listof i64 acyclic))
+        (lambda (o sets)
+          (tagcase o
+            (o-imm (v) (list v))
+            (o-isym (s) (map (lambda ((x (tupleof string i64))) (extract x 2)) (filter (lambda ((x (tupleof string i64))) (string=? (extract x 1) s)) sets)))
+            (else other nil))))
+
+      "An immediate of 32 bits: its bytes, or a field the set symbol fills."
+      (define imm32 (subr kfx (opd (listof (tupleof string i64) acyclic)) pieces)
+        (lambda (o sets)
+          (let ((k (imm-known o sets)))
+            (if (not (null? k))
+                (list (p-bytes (le-bytes (car k) 4)))
+                (tagcase o (o-isym (s) (list (p-fix 4 s 0 0))) (else other (list (p-bytes (list (not-yet "an immediate"))))))))))
+
+      (define instruction (subr kfx (string (listof opd acyclic) (listof (tupleof string i64) acyclic)) pieces)
+        (lambda (m os sets)
+          (let ((a (if (null? os) (o-imm 0) (car os)))
+                (b (if (or (null? os) (null? (cdr os))) (o-imm 0) (car (cdr os)))))
+            (cond
+              ((string=? m "ret") (list (p-bytes (list 195))))
+              ((string=? m "cqto") (list (p-bytes (list 72 153))))
+              ((string=? m "movq")
+               (cond ((is-reg? a) (enc #t (list 137) (reg-number a) b 0))
+                     ((tagcase a (o-mem (d s bb i sc) #t) (else other #f)) (enc #t (list 139) (reg-number b) a 0))
+                     (else (onto (enc #t (list 199) 0 b 4) (imm32 a sets)))))
+              ((string=? m "movl")
+               (if (is-reg? a)
+                   (enc #f (list 137) (reg-number a) b 0)
+                   (cons (p-bytes (onto (rex #f -1 -1 (reg-number b)) (list (i64+ 184 (i64-and (reg-number b) 7)))))
+                         (imm32 a sets))))
+              ((string=? m "movabsq")
+               (tagcase a
+                 (o-imm (v) (list (p-bytes (onto (rex #t -1 -1 (reg-number b)) (cons (i64+ 184 (i64-and (reg-number b) 7)) (le-bytes v 8))))))
+                 (else other (list (p-bytes (list (not-yet "a movabsq of a symbol")))))))
+              ((string=? m "leaq") (enc #t (list 141) (reg-number b) a 0))
+              ((string-member? m (list "addq" "orq" "andq" "subq" "xorq" "cmpq"))
+               (let ((ext (arith-ext m)))
+                 (cond ((is-reg? a) (enc #t (list (i64+ (i64* ext 8) 1)) (reg-number a) b 0))
+                       ((tagcase a (o-mem (d s bb i sc) #t) (else other #f)) (enc #t (list (i64+ (i64* ext 8) 3)) (reg-number b) a 0))
+                       (else
+                        (let ((k (imm-known a sets)))
+                          (cond ((and (not (null? k)) (fits8? (car k))) (onto (enc #t (list 131) ext b 1) (list (p-bytes (le-bytes (car k) 1)))))
+                                ((is-rax? b) (cons (p-bytes (list 72 (i64+ (i64* ext 8) 5))) (imm32 a sets)))
+                                (else (onto (enc #t (list 129) ext b 4) (imm32 a sets)))))))))
+              ((string=? m "testq")
+               (cond ((is-reg? a) (enc #t (list 133) (reg-number a) b 0))
+                     ((is-rax? b) (cons (p-bytes (list 72 169)) (imm32 a sets)))
+                     (else (onto (enc #t (list 247) 0 b 4) (imm32 a sets)))))
+              ((string=? m "cmpb")
+               (tagcase a
+                 (o-imm (v) (if (and (i64= (reg-number b) 0)) (list (p-bytes (list 60 (i64-and v 255)))) (list (p-bytes (list (not-yet "a cmpb but of %al"))))))
+                 (else other (list (p-bytes (list (not-yet "a cmpb of this")))))))
+              ((string-member? m (list "shlq" "shrq" "sarq"))
+               (tagcase a
+                 (o-imm (v) (if (i64= v 1)
+                                (enc #t (list 209) (shift-ext m) b 0)
+                                (onto (enc #t (list 193) (shift-ext m) b 1) (list (p-bytes (le-bytes v 1))))))
+                 (else other (list (p-bytes (list (not-yet "a shift of a register count")))))))
+              ((string=? m "imulq") (enc #t (list 15 175) (reg-number b) a 0))
+              ((string=? m "idivq") (enc #t (list 247) 7 a 0))
+              ((string=? m "negq") (enc #t (list 247) 3 a 0))
+              ((string=? m "incq") (enc #t (list 255) 0 a 0))
+              ((string=? m "decq") (enc #t (list 255) 1 a 0))
+              ((string=? m "pushq") (list (p-bytes (onto (rex #f -1 -1 (reg-number a)) (list (i64+ 80 (i64-and (reg-number a) 7)))))))
+              ((string=? m "popq") (list (p-bytes (onto (rex #f -1 -1 (reg-number a)) (list (i64+ 88 (i64-and (reg-number a) 7)))))))
+              ((and (has-prefix? m "cmov") (i64> (string-length-i64 m) 4))
+               (enc #t (list 15 (i64+ 64 (condition-of (after-prefix m "cmov")))) (reg-number b) a 0))
+              ((or (string=? m "call") (string=? m "jmp"))
+               (let ((ext (if (string=? m "call") (the i64 2) (the i64 4))))
+                 (tagcase a
+                   (o-sym (s) (list (if (string=? m "call") (p-call s) (p-branch -1 s))))
+                   (o-ireg (n) (enc #f (list 255) ext (o-reg n 64) 0))
+                   (o-imem (d bb) (enc #f (list 255) ext (o-mem d "" bb -1 1) 0))
+                   (else other (list (p-bytes (list (not-yet "a call or jump of this"))))))))
+              ((and (has-prefix? m "j") (i64> (string-length-i64 m) 1))
+               (tagcase a
+                 (o-sym (s) (list (p-branch (condition-of (after-prefix m "j")) s)))
+                 (else other (list (p-bytes (list (not-yet "a conditional jump of this")))))))
+              (else (list (p-bytes (list (not-yet (string-append "an instruction " m))))))))))
+
+      ;;; ------------------------------------------------------------ sections
+
+      "The sections, by number: 0 `.text`, 1 `.data`, 2 `.bss`, 3 `.rodata`,
+       4 one of no contents (`.note.GNU-stack`)."
+      (define section-names strings (list ".text" ".data" ".bss" ".rodata" ".note.GNU-stack"))
+
+      "What is read so far: each section's pieces (the newest first), the
+       section in use, the globals, the commons (`(NAME SIZE ALIGN)`), the
+       symbols set, and where each label is (its section)."
+      (define-datatype reading (reading (listof pieces acyclic) i64 strings (listof (tupleof string i64 i64) acyclic) (listof (tupleof string i64) acyclic) (listof (tupleof string i64) acyclic)))
+
+      (define-rec
+        (nth-set (subr kfx ((listof pieces acyclic) i64 pieces) (listof pieces acyclic))
+          (lambda (xs k ps)
+            "Section `k`'s pieces, `ps` put before them (newest first)."
+            (if (i64= k 0)
+                (cons (rev-onto-pieces ps (car xs)) (cdr xs))
+                (cons (car xs) (nth-set (cdr xs) (i64- k 1) ps))))))
+
+      (define-rec
+        (rev-onto-pieces (subr kfx (pieces pieces) pieces)
+          (lambda (xs acc) (if (null? xs) acc (rev-onto-pieces (cdr xs) (cons (car xs) acc))))))
+
+      (define added (subr kfx (reading pieces) reading)
+        (lambda (r ps)
+          (tagcase r (reading (ss cur gs cs sets labels) (reading (nth-set ss cur ps) cur gs cs sets labels)))))
+
+      (define line-read (subr kfx (reading string) reading)
+        (lambda (r line0)
+          (let ((line (trimmed line0)))
+            (tagcase r
+              (reading (ss cur gs cs sets labels)
+                (cond
+                  ((or (string=? line "") (has-prefix? line "#")) r)
+                  ((has-suffix? line ":")
+                   (let ((name (substring line 0 (- (string-length line) 1))))
+                     (reading (nth-set ss cur (list (p-label name))) cur gs cs sets (cons (tuple name cur) labels))))
+                  ((has-prefix? line ".")
+                   (let* ((w (word-end (string-chars line) nil)) (d (extract w 1)) (args (split-commas (extract w 2) 0 nil nil)))
+                     (cond
+                       ((string=? d ".text") (reading ss 0 gs cs sets labels))
+                       ((string=? d ".data") (reading ss 1 gs cs sets labels))
+                       ((string=? d ".bss") (reading ss 2 gs cs sets labels))
+                       ((string=? d ".section")
+                        (reading ss (cond ((string=? (car args) ".rodata") 3) ((string=? (car args) ".text") 0)
+                                          ((string=? (car args) ".data") 1) ((string=? (car args) ".bss") 2) (else 4))
+                                 gs cs sets labels))
+                       ((string=? d ".globl") (reading ss cur (cons (car args) gs) cs sets labels))
+                       ((string=? d ".p2align") (added r (list (p-align (number-of (car args))))))
+                       ((string=? d ".quad")
+                        (if (number-text? (car args))
+                            (added r (list (p-bytes (le-bytes (number-of (car args)) 8))))
+                            (added r (list (p-fix 8 (car args) 0 1)))))
+                       ((string=? d ".comm")
+                        (reading ss cur gs (cons (tuple (car args) (number-of (second-of args)) (number-of (car (cdr (cdr args))))) cs) sets labels))
+                       ((string=? d ".set") (reading ss cur gs cs (cons (tuple (car args) (number-of (second-of args))) sets) labels))
+                       (else (begin (not-yet (string-append "a directive " d)) r)))))
+                  (else
+                   (let* ((w (word-end (string-chars line) nil))
+                          (os (map operand-of (split-commas (extract w 2) 0 nil nil))))
+                     (added r (instruction (extract w 1) os sets))))))))))
+
+      (define-rec
+        (lines-read (subr kfx (reading strings) reading)
+          (lambda (r ls) (if (null? ls) r (lines-read (line-read r (car ls)) (cdr ls))))))
+
+      ;;; ------------------------------------------------------------ layout
+
+      "The no-ops `as` pads code with, of `n` bytes, 1 to 11; more, 11 and
+       the rest."
+      (define nop-of (subr kfx (i64) bytes)
+        (lambda (n)
+          (cond ((i64= n 1) (list 144))
+                ((i64= n 2) (list 102 144))
+                ((i64= n 3) (list 15 31 0))
+                ((i64= n 4) (list 15 31 64 0))
+                ((i64= n 5) (list 15 31 68 0 0))
+                ((i64= n 6) (list 102 15 31 68 0 0))
+                ((i64= n 7) (list 15 31 128 0 0 0 0))
+                ((i64= n 8) (list 15 31 132 0 0 0 0 0))
+                ((i64= n 9) (list 102 15 31 132 0 0 0 0 0))
+                ((i64= n 10) (list 102 46 15 31 132 0 0 0 0 0))
+                (else (list 102 102 46 15 31 132 0 0 0 0 0)))))
+
+      (define-rec
+        (nops (subr kfx (i64 bytes) bytes)
+          (lambda (n acc)
+            (if (i64<= n 0) acc (let ((k (if (i64> n 11) (the i64 11) n))) (nops (i64- n k) (onto acc (nop-of k))))))))
+
+      (define padding (subr kfx (i64 i64) i64)
+        (lambda (off k)
+          (let* ((a (i64-shl 1 (i64->int k))) (r (i64-remainder off a))) (if (i64= r 0) 0 (i64- a r)))))
+
+      (define-rec
+        (label-at (subr kfx (string (listof (tupleof string i64) acyclic)) (listof i64 acyclic))
+          (lambda (n xs) (cond ((null? xs) nil) ((string=? (extract (car xs) 1) n) (list (extract (car xs) 2))) (else (label-at n (cdr xs)))))))
+
+      "A branch's size, long or short."
+      (define branch-size (subr kfx (i64 bool) i64)
+        (lambda (cc long) (cond ((not long) 2) ((i64< cc 0) 5) (else 6))))
+
+      "Where each label is in the section, given each branch's length (the
+       branches' in order, `#t` long): `(NAME OFFSET)`, and the end."
+      (define-rec
+        (offsets (subr kfx (pieces (listof bool acyclic) i64 (listof (tupleof string i64) acyclic)) (tupleof (listof (tupleof string i64) acyclic) i64))
+          (lambda (ps longs off acc)
+            (if (null? ps)
+                (tuple acc off)
+                (tagcase (car ps)
+                  (p-bytes (bs) (offsets (cdr ps) longs (i64+ off (size bs)) acc))
+                  (p-label (n) (offsets (cdr ps) longs off (cons (tuple n off) acc)))
+                  (p-align (k) (offsets (cdr ps) longs (i64+ off (padding off k)) acc))
+                  (p-branch (cc s) (offsets (cdr ps) (cdr longs) (i64+ off (branch-size cc (car longs))) acc))
+                  (p-call (s) (offsets (cdr ps) longs (i64+ off 5) acc))
+                  (p-fix (n s a k) (offsets (cdr ps) longs (i64+ off n) acc)))))))
+
+      (define-rec
+        (lengthened (subr kfx (pieces (listof bool acyclic) i64 (listof (tupleof string i64) acyclic) (listof bool acyclic) bool) (tupleof (listof bool acyclic) bool))
+          (lambda (ps longs off at acc changed)
+            "Each short branch whose target is too far for 8 bits made long."
+            (if (null? ps)
+                (tuple (reverse acc) changed)
+                (tagcase (car ps)
+                  (p-bytes (bs) (lengthened (cdr ps) longs (i64+ off (size bs)) at acc changed))
+                  (p-label (n) (lengthened (cdr ps) longs off at acc changed))
+                  (p-align (k) (lengthened (cdr ps) longs (i64+ off (padding off k)) at acc changed))
+                  (p-branch (cc s)
+                    (let* ((long (car longs)) (t (label-at s at))
+                           (now (cond (long #t)
+                                      ((null? t) #t)
+                                      (else (not (fits8? (i64- (car t) (i64+ off 2))))))))
+                      ;; Offsets of the layout the labels' are of (`long`), not the
+                      ;; one being made: one pass, one layout, as `as` relaxes.
+                      (lengthened (cdr ps) (cdr longs) (i64+ off (branch-size cc long)) at (cons now acc) (or changed (if now (not long) long)))))
+                  (p-call (s) (lengthened (cdr ps) longs (i64+ off 5) at acc changed))
+                  (p-fix (n s a k) (lengthened (cdr ps) longs (i64+ off n) at acc changed)))))))
+
+      (define-rec
+        (branches-of (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
+          (lambda (ps acc)
+            (if (null? ps) (reverse acc)
+                (branches-of (cdr ps) (tagcase (car ps) (p-branch (cc s) (cons #f acc)) (else other acc)))))))
+
+      (define-rec
+        (settled (subr kfx (pieces (listof bool acyclic)) (listof bool acyclic))
+          (lambda (ps longs)
+            (let* ((at (extract (offsets ps longs 0 nil) 1))
+                   (r (lengthened ps longs 0 at nil #f)))
+              (if (extract r 2) (settled ps (extract r 1)) longs)))))
+
+      "A relocation: the offset in its section, its type, its symbol (a
+       section's name for a section's), and its addend."
+      (define-datatype reloc (reloc i64 i64 string i64))
+
+      "A symbol, as the object knows it: its section (-1 undefined) and
+       where in it, whether it is global."
+      (define-datatype where (where i64 i64 bool))
+
+      (define-rec
+        (where-of (subr kfx (string (listof (tupleof string i64 i64 bool) acyclic)) (listof where acyclic))
+          (lambda (n xs)
+            (cond ((null? xs) nil)
+                  ((string=? (extract (car xs) 1) n) (list (where (extract (car xs) 2) (extract (car xs) 3) (extract (car xs) 4))))
+                  (else (where-of n (cdr xs)))))))
+
+      "A section made: its bytes and its relocations."
+      (define-datatype made (made bytes (listof reloc acyclic)))
+
+      (define-rec
+        (emitted (subr kfx (pieces (listof bool acyclic) i64 i64 (listof (tupleof string i64 i64 bool) acyclic) strings (listof (tupleof string i64) acyclic) bytes (listof reloc acyclic)) made)
+          (lambda (ps longs sec off syms commons sets out rs)
+            "The section's bytes (`out`, reversed) and relocations, each
+             symbol resolved as `as` resolves it (this file's head)."
+            (if (null? ps)
+                (made (reverse out) (reverse rs))
+                (tagcase (car ps)
+                  (p-bytes (bs) (emitted (cdr ps) longs sec (i64+ off (size bs)) syms commons sets (rev-onto-bytes bs out) rs))
+                  (p-label (n) (emitted (cdr ps) longs sec off syms commons sets out rs))
+                  (p-align (k)
+                    (let ((n (padding off k)))
+                      (emitted (cdr ps) longs sec (i64+ off n) syms commons sets
+                               (rev-onto-bytes (if (i64= sec 0) (nops n nil) (zeros n nil)) out) rs)))
+                  (p-branch (cc s)
+                    (let* ((long (car longs)) (w (where-of s syms))
+                           (here (and (not (null? w)) (tagcase (car w) (where (ws wo g) (i64= ws sec)))))
+                           (size-now (branch-size cc long))
+                           (end (i64+ off size-now))
+                           (op (the bytes (cond ((not long) (list (if (i64< cc 0) (the i64 235) (i64+ 112 cc))))
+                                                ((i64< cc 0) (list 233))
+                                                (else (list 15 (i64+ 128 cc)))))))
+                      (if here
+                          (let ((rel (i64- (tagcase (car w) (where (ws wo g) wo)) end)))
+                            (emitted (cdr ps) (cdr longs) sec end syms commons sets
+                                     (rev-onto-bytes (onto op (le-bytes rel (if long (the i64 4) (the i64 1)))) out) rs))
+                          (emitted (cdr ps) (cdr longs) sec end syms commons sets
+                                   (rev-onto-bytes (onto op (le-bytes 0 4)) out)
+                                   (cons (reloc (i64+ off (size op)) 4 s -4) rs)))))
+                  (p-call (s)
+                    (let* ((w (where-of s syms))
+                           (local-here (and (not (null? w)) (tagcase (car w) (where (ws wo g) (and (i64= ws sec) (not g)))))))
+                      (if local-here
+                          (emitted (cdr ps) longs sec (i64+ off 5) syms commons sets
+                                   (rev-onto-bytes (cons 232 (le-bytes (i64- (tagcase (car w) (where (ws wo g) wo)) (i64+ off 5)) 4)) out) rs)
+                          (emitted (cdr ps) longs sec (i64+ off 5) syms commons sets
+                                   (rev-onto-bytes (list 232 0 0 0 0) out)
+                                   (cons (reloc (i64+ off 1) 4 s -4) rs)))))
+                  (p-fix (n s a k)
+                    (cond
+                      ((i64= k 0)
+                       (let ((v (map (lambda ((x (tupleof string i64))) (extract x 2)) (filter (lambda ((x (tupleof string i64))) (string=? (extract x 1) s)) sets))))
+                         (emitted (cdr ps) longs sec (i64+ off n) syms commons sets
+                                  (rev-onto-bytes (le-bytes (if (null? v) (not-yet (string-append "a symbol never set, " s)) (car v)) n) out) rs)))
+                      (else
+                       (let ((w (where-of s syms)))
+                         (cond
+                           ;; Global, common or undefined: against the symbol.
+                           ((or (null? w) (tagcase (car w) (where (ws wo g) g)))
+                            (emitted (cdr ps) longs sec (i64+ off n) syms commons sets (rev-onto-bytes (le-bytes 0 n) out)
+                                     (cons (reloc off (if (i64= k 2) 2 1) s a) rs)))
+                           ;; Local, of this section, `%rip`-relative: resolved.
+                           ((and (i64= k 2) (tagcase (car w) (where (ws wo g) (i64= ws sec))))
+                            (emitted (cdr ps) longs sec (i64+ off n) syms commons sets
+                                     (rev-onto-bytes (le-bytes (i64- (i64+ (tagcase (car w) (where (ws wo g) wo)) a) off) n) out) rs))
+                           ;; Local, else: against its section.
+                           (else
+                            (tagcase (car w)
+                              (where (ws wo g)
+                                (emitted (cdr ps) longs sec (i64+ off n) syms commons sets (rev-onto-bytes (le-bytes 0 n) out)
+                                         (cons (reloc off (if (i64= k 2) 2 1) (section-name ws) (i64+ a wo)) rs)))))))))))))))
+
+      (define-rec
+        (rev-onto-bytes (subr kfx (bytes bytes) bytes)
+          (lambda (xs acc) (if (null? xs) acc (rev-onto-bytes (cdr xs) (cons (car xs) acc))))))
+
+      (define-rec
+        (zeros (subr kfx (i64 bytes) bytes)
+          (lambda (n acc) (if (i64<= n 0) acc (zeros (i64- n 1) (cons (the i64 0) acc))))))
+
+      (define section-name (subr kfx (i64) string)
+        (lambda (k) (car (sexps-after-strings section-names k))))
+
+      (define-rec
+        (sexps-after-strings (subr kfx (strings i64) strings)
+          (lambda (xs k) (if (i64<= k 0) xs (sexps-after-strings (cdr xs) (i64- k 1))))))
+
+      ;;; ------------------------------------------------------------ the object
+
+      (define u16 (subr kfx (i64) bytes) (lambda (v) (le-bytes v 2)))
+      (define u32 (subr kfx (i64) bytes) (lambda (v) (le-bytes v 4)))
+      (define u64 (subr kfx (i64) bytes) (lambda (v) (le-bytes v 8)))
+
+      (define-rec
+        (string-bytes (subr kfx (chars bytes) bytes)
+          (lambda (cs acc) (if (null? cs) (reverse (cons (the i64 0) acc)) (string-bytes (cdr cs) (cons (char->i64 (car cs)) acc))))))
+
+      "A string table of `names`: its bytes, and each name's offset."
+      (define-rec
+        (strtab (subr kfx (strings bytes i64 (listof (tupleof string i64) acyclic)) (tupleof bytes (listof (tupleof string i64) acyclic)))
+          (lambda (names acc off at)
+            (if (null? names)
+                (tuple (reverse acc) at)
+                (let ((bs (string-bytes (string-chars (car names)) nil)))
+                  (strtab (cdr names) (rev-onto-bytes bs acc) (i64+ off (size bs)) (cons (tuple (car names) off) at)))))))
+
+      (define name-at (subr kfx (string (listof (tupleof string i64) acyclic)) i64)
+        (lambda (n at) (let ((x (label-at n at))) (if (null? x) 0 (car x)))))
+
+      (define-rec
+        (index-of-symbol (subr kfx (string strings i64) i64)
+          (lambda (n xs i) (cond ((null? xs) (the i64 0)) ((string=? (car xs) n) i) (else (index-of-symbol n (cdr xs) (i64+ i 1)))))))
+
+      (define aligned (subr kfx (i64 i64) i64) (lambda (off a) (i64+ off (padding off (if (i64= a 16) 4 3)))))
+
+      (define section-header (subr kfx (i64 i64 i64 i64 i64 i64 i64 i64 i64) bytes)
+        (lambda (name type flags off sz link info align entsize)
+          (concat (list (u32 name) (u32 type) (u64 flags) (u64 0) (u64 off) (u64 sz) (u32 link) (u32 info) (u64 align) (u64 entsize)))))
+
+      (define symbol-entry (subr kfx (i64 i64 i64 i64 i64) bytes)
+        (lambda (name info shndx value sz)
+          (concat (list (u32 name) (the bytes (list info 0)) (u16 shndx) (u64 value) (u64 sz)))))
+
+      (define rela-bytes (subr kfx ((listof reloc acyclic) strings) bytes)
+        (lambda (rs symbols)
+          (concat (map (lambda ((r reloc))
+                         (tagcase r
+                           (reloc (off type s a)
+                             (concat (list (u64 off) (u64 (i64+ (i64-shl (index-of-symbol s symbols 0) 32) type)) (u64 a))))))
+                       rs))))
+
+      (define-rec
+        (pad-to (subr kfx (bytes i64 i64) bytes)
+          (lambda (acc have want) (if (i64>= have want) acc (pad-to (cons (the i64 0) acc) (i64+ have 1) want)))))
+
+      "The file so far (reversed) and its length, `part` put at `at`, zeros
+       before it."
+      (define placed (subr kfx (bytes i64 i64 bytes) (tupleof bytes i64))
+        (lambda (acc have at part)
+          (tuple (rev-onto-bytes part (pad-to acc have at)) (i64+ at (size part)))))
+
+      (define-rec
+        (sexps-after-sections (subr kfx ((listof pieces acyclic) i64) (listof pieces acyclic))
+          (lambda (xs k) (if (i64<= k 0) xs (sexps-after-sections (cdr xs) (i64- k 1))))))
+
+      (define-rec
+        (sexps-after-longs (subr kfx ((listof (listof bool acyclic) acyclic) i64) (listof (listof bool acyclic) acyclic))
+          (lambda (xs k) (if (i64<= k 0) xs (sexps-after-longs (cdr xs) (i64- k 1))))))
+
+      (define-rec
+        (undefined-names (subr kfx (strings (listof (tupleof string i64 i64 bool) acyclic) strings strings) strings)
+          (lambda (ns syms commons acc)
+            "The names relocations name that are no section's, none defined
+             here, no common: each once, in the order first named."
+            (cond ((null? ns) (reverse acc))
+                  ((or (string-member? (car ns) section-names) (not (null? (where-of (car ns) syms)))
+                       (string-member? (car ns) commons) (string-member? (car ns) acc))
+                   (undefined-names (cdr ns) syms commons acc))
+                  (else (undefined-names (cdr ns) syms commons (cons (car ns) acc))))))))
+
+    "`asm-object TEXT`: the ELF relocatable object of assembly `TEXT`, its
+     bytes, as `as` makes it (this file's head)."
+    (define asm-object (subr kfx (string) (listof i64 acyclic))
+      (lambda (text)
+        (tagcase (lines-read (reading (list nil nil nil nil nil) 0 nil nil nil nil) (lines-of (string-chars text) nil nil))
+          (reading (ss0 cur gs commons sets labels)
+            (let* ((ss (map (lambda ((ps pieces)) (rev-onto-pieces ps nil)) ss0))
+                   (longs (map (lambda ((ps pieces)) (settled ps (branches-of ps nil))) ss))
+                   (syms (concat (map (lambda ((k i64))
+                                        (map (lambda ((x (tupleof string i64)))
+                                               (tuple (extract x 1) k (extract x 2) (string-member? (extract x 1) gs)))
+                                             (extract (offsets (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) 0 nil) 1)))
+                                      (the (listof i64 acyclic) (list 0 1 2 3)))))
+                   (mades (map (lambda ((k i64)) (emitted (car (sexps-after-sections ss k)) (car (sexps-after-longs longs k)) k 0 syms (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) sets nil nil))
+                               (the (listof i64 acyclic) (list 0 1 2 3))))
+                   (text-m (car mades)) (data-m (car (cdr mades))) (bss-m (car (cdr (cdr mades)))) (ro-m (car (cdr (cdr (cdr mades)))))
+                   (code (tagcase text-m (made (b r) b))) (text-rs (tagcase text-m (made (b r) r)))
+                   (data (tagcase data-m (made (b r) b))) (data-rs (tagcase data-m (made (b r) r)))
+                   (bss-size (tagcase bss-m (made (b r) (size b))))
+                   (ro (tagcase ro-m (made (b r) b)))
+                   ;; The symbols: none, the four sections', the locals (no
+                   ;; `.L`), then the globals: defined, common, undefined.
+                   (locals (filter (lambda ((x (tupleof string i64 i64 bool))) (and (not (extract x 4)) (not (has-prefix? (extract x 1) ".L")))) syms))
+                   (defined (filter (lambda ((x (tupleof string i64 i64 bool))) (extract x 4)) syms))
+                   (named-by-relocs (map (lambda ((r reloc)) (tagcase r (reloc (o t s a) s))) (onto text-rs data-rs)))
+                   (undefined (undefined-names named-by-relocs syms (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) nil))
+                   (local-names (map (lambda ((x (tupleof string i64 i64 bool))) (extract x 1)) locals))
+                   (global-names (onto (map (lambda ((x (tupleof string i64 i64 bool))) (extract x 1)) defined)
+                                       (onto (map (lambda ((c (tupleof string i64 i64))) (extract c 1)) commons) undefined)))
+                   (symbol-order (onto (list "" ".text" ".data" ".bss" ".rodata") (onto local-names global-names)))
+                   (st (strtab (onto local-names global-names) (the bytes (list 0)) 1 nil))
+                   (shndx (lambda ((k i64)) (cond ((i64= k 0) (the i64 1)) ((i64= k 1) (the i64 3)) ((i64= k 2) (the i64 5)) (else (the i64 6)))))
+                   (symtab (concat (list (symbol-entry 0 0 0 0 0)
+                                         (symbol-entry 0 3 1 0 0) (symbol-entry 0 3 3 0 0) (symbol-entry 0 3 5 0 0) (symbol-entry 0 3 6 0 0)
+                                         (concat (map (lambda ((x (tupleof string i64 i64 bool))) (symbol-entry (name-at (extract x 1) (extract st 2)) 0 (shndx (extract x 2)) (extract x 3) 0)) locals))
+                                         (concat (map (lambda ((x (tupleof string i64 i64 bool))) (symbol-entry (name-at (extract x 1) (extract st 2)) 16 (shndx (extract x 2)) (extract x 3) 0)) defined))
+                                         (concat (map (lambda ((c (tupleof string i64 i64))) (symbol-entry (name-at (extract c 1) (extract st 2)) 17 65522 (extract c 3) (extract c 2))) commons))
+                                         (concat (map (lambda ((n string)) (symbol-entry (name-at n (extract st 2)) 16 0 0 0)) undefined)))))
+                   (first-global (i64+ 5 (size locals)))
+                   (rela-text (rela-bytes text-rs symbol-order))
+                   (rela-data (rela-bytes data-rs symbol-order))
+                   (shs (strtab (list ".text" ".rela.text" ".data" ".rela.data" ".bss" ".rodata" ".note.GNU-stack" ".symtab" ".strtab" ".shstrtab") (the bytes (list 0)) 1 nil))
+                   (sh (lambda ((n string)) (name-at n (extract shs 2))))
+                   ;; The file: the header, each section's contents, aligned, then
+                   ;; the section headers.
+                   (o-text (the i64 64))
+                   (o-data (aligned (i64+ o-text (size code)) 8))
+                   (o-ro (aligned (i64+ o-data (size data)) 8))
+                   (o-rt (aligned (i64+ o-ro (size ro)) 8))
+                   (o-rd (i64+ o-rt (size rela-text)))
+                   (o-sym (aligned (i64+ o-rd (size rela-data)) 8))
+                   (o-str (i64+ o-sym (size symtab)))
+                   (o-shs (i64+ o-str (size (extract st 1))))
+                   (o-sh (aligned (i64+ o-shs (size (extract shs 1))) 8))
+                   (header (concat (list (the bytes (list 127 69 76 70 2 1 1 0 0 0 0 0 0 0 0 0))
+                                         (u16 1) (u16 62) (u32 1) (u64 0) (u64 0) (u64 o-sh) (u32 0)
+                                         (u16 64) (u16 0) (u16 0) (u16 64) (u16 11) (u16 10))))
+                   (headers (concat (list (section-header 0 0 0 0 0 0 0 0 0)
+                                          (section-header (sh ".text") 1 6 o-text (size code) 0 0 16 0)
+                                          (section-header (sh ".rela.text") 4 64 o-rt (size rela-text) 8 1 8 24)
+                                          (section-header (sh ".data") 1 3 o-data (size data) 0 0 8 0)
+                                          (section-header (sh ".rela.data") 4 64 o-rd (size rela-data) 8 3 8 24)
+                                          (section-header (sh ".bss") 8 3 o-ro bss-size 0 0 8 0)
+                                          (section-header (sh ".rodata") 1 2 o-ro (size ro) 0 0 8 0)
+                                          (section-header (sh ".note.GNU-stack") 1 0 o-sh 0 0 0 1 0)
+                                          (section-header (sh ".symtab") 2 0 o-sym (size symtab) 9 first-global 8 24)
+                                          (section-header (sh ".strtab") 3 0 o-str (size (extract st 1)) 0 0 1 0)
+                                          (section-header (sh ".shstrtab") 3 0 o-shs (size (extract shs 1)) 0 0 1 0)))))
+              (let* ((f0 (placed nil 0 0 header))
+                     (f1 (placed (extract f0 1) (extract f0 2) o-text code))
+                     (f2 (placed (extract f1 1) (extract f1 2) o-data data))
+                     (f3 (placed (extract f2 1) (extract f2 2) o-ro ro))
+                     (f4 (placed (extract f3 1) (extract f3 2) o-rt rela-text))
+                     (f5 (placed (extract f4 1) (extract f4 2) o-rd rela-data))
+                     (f6 (placed (extract f5 1) (extract f5 2) o-sym symtab))
+                     (f7 (placed (extract f6 1) (extract f6 2) o-str (extract st 1)))
+                     (f8 (placed (extract f7 1) (extract f7 2) o-shs (extract shs 1)))
+                     (f9 (placed (extract f8 1) (extract f8 2) o-sh headers)))
+                (reverse (extract f9 1))))))))))

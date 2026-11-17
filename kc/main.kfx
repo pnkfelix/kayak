@@ -41,6 +41,7 @@
       (import kc-l0 q-l0-item)
       (import kc-rust q-rust-item q-rust)
       (import kc-x64 q-asm-item q-asm q-asm-entry q-objects x64-object-text)
+      (import kc-asm asm-object)
       (import kc-expand kc-load-file! kc-expanded-lines q-expansion q-macros-for q-macro-in q-global-in q-entry
               q-written q-wseen q-wpos q-wkeys q-syntax-at q-defines-at q-wnames q-wforsyntax)
       (import kc-front q-expanded))
@@ -48,6 +49,23 @@
     (define-effect driving (maxeff qe (io args) (io stdin) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (io process) (alloc @io) (read @io)))
 
     (hide
+      "Bytes, each 0 to 255, written to `path` (C450: an object kc made)."
+      (define bytes-written (subr qe (string (listof i64 acyclic)) string)
+        (lambda (path bs)
+          (let ((v (the (bytevectorof @io) (make-bytevector (i64->int (size bs)) (int->u8 0)))))
+            (begin
+              (bytes-set! v bs 0)
+              (tagcase (write-file path v)
+                (done u "")
+                (failed e (string-append "cannot write " (string-append path (string-append ": " (extract e detail))))))))))
+
+      (define-rec
+        (bytes-set! (subr (maxeff (read @globals) spin (write @io)) ((bytevectorof @io) (listof i64 acyclic) i64) unit)
+          (lambda (v bs i)
+            (if (null? bs)
+                #u
+                (begin (bytevector-u8-set! v (i64->int i) (int->u8 (i64->int (car bs)))) (bytes-set! v (cdr bs) (i64+ i 1)))))))
+
       "Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399)."
       (define kc-whose string (string-append "kc " kc-identity))
 
@@ -119,7 +137,9 @@
       (define-rec
         (objects-written (subr qe (db runner string string sexps (listof string acyclic) (listof string acyclic) (listof string acyclic)) (listof string acyclic))
           (lambda (d run file dir os names have acc)
-            "The assembly of each object not made yet, written to `dir`; their
+            "Each object not made yet, written to `dir`: its assembly, `NAME.s`,
+             and its object, `NAME.o`, kc's assembler's (C450, kc/asm.kfx), as
+             `as` makes it of the text beside it (scripts/kc-objects.py); their
              files' names."
             (if (null? os)
                 (reverse acc)
@@ -132,6 +152,8 @@
                            (s (string-append (car names) ".s")))
                       (begin
                         (write-text (string-append dir (string-append "/" s)) text)
+                        (let ((m (bytes-written (string-append dir (string-append "/" (string-append (car names) ".o"))) (asm-object text))))
+                          (if (string=? m "") #u (begin (error (string-append "kc: " m)) #u)))
                         (objects-written d run file dir (cdr os) (cdr names) have (cons s acc)))))))))
 
       (define-rec
@@ -182,10 +204,9 @@
                 (let* ((os (items (car (read-all objs-text "objects" 1))))
                        (names (object-names os nil))
                        (made (run-command (list "mkdir" "-p" dir) ""))
-                       (new (objects-written d run file dir os names (listed dir) nil))
-                       (assembled (if (null? new) "" (run-command (cons "cc" (cons "-c" new)) dir))))
-                  (if (not (string=? assembled ""))
-                      assembled
+                       ;; Each new object assembled by kc (C450): no `cc -c`.
+                       (new (objects-written d run file dir os names (listed dir) nil)))
+                  (begin
                       (let ((linked (run-command (append (list "cc" "-o" exe)
                                                          (append (map (lambda ((n string)) (string-append dir (string-append "/" (string-append n ".o")))) names)
                                                                  ;; The runtime shared (C447), found where it is.
@@ -502,6 +523,11 @@
               (cond ((null? rest)
                      (fail-with "usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | serve)" 2))
                     ((string=? (car rest) "serve") (serve d dbp stats at))
+                    ;; An assembly file made an object by kc's assembler (C450),
+                    ;; for comparing with `as`'s (scripts/kc-objects.py).
+                    ((and (string=? (car rest) "--object") (not (null? (cdr rest))) (not (null? (cdr (cdr rest)))))
+                     (let ((m (bytes-written (car (cdr (cdr rest))) (asm-object (read-text (car (cdr rest)))))))
+                       (if (string=? m "") 0 (begin (fail-with m 1) 1))))
                     ;; The program as kc expands it, a form at a time (C445),
                     ;; located, as the engine's `--expanded-located` writes it.
                     ((and (string=? (car rest) "--expanded-located") (not (null? (cdr rest))))

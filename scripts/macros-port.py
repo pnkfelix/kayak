@@ -62,7 +62,7 @@ PLACE = "mxp"
 # of an effect parameter (C24, C170), which one file would need.
 ASKS = {"expander.fx": "(read @globals) (io process)",
         "expander-kc.fx": "(read @globals) nondet (read @q) (write @q) (alloc @q) (io process) (io fs-read) (io fs-write)"
-                          " (io stderr) (io exit) (alloc @io) (read @io)"}
+                          " (io stderr) (io exit) (alloc @io) (read @io) (write @io)"}
 # What KFX has not, the shim's in its place.
 PRIMS = {"keyword?": "mx-keyword?", "keyword->symbol": "mx-keyword->symbol",
          "symbol->keyword": "mx-symbol->keyword", "datum-int?": "mx-datum-int?", "eq?": "mx-eq?",
