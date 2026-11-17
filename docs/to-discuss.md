@@ -117,6 +117,8 @@ where it was seen and what it would take.
       request. kc's own native code could take its place once kc compiles
       `datum`, `typecase` and the prelude, and then a transformer is one
       more of kc's compiled items. Is that worth doing before step 14?
+      **Answered** (the user: "you aren't done. This sound important."):
+      done, C447.
     - An expansion that needs an answer is run again from the form's start
       once it has it. Fixpt's expander calls its runtime and goes on.
       Suspending instead would need the expander's instance resumable, a

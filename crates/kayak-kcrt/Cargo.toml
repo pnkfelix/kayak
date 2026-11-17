@@ -5,7 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [lib]
-crate-type = ["staticlib"]
+# Static for a program kc builds; shared too, for a procedural macro's
+# transformer, built and run as a program is expanded, whose link is then a
+# sixth of the static one's (C447).
+crate-type = ["staticlib", "cdylib"]
 # Its `main` is the program's, which a test harness of its own would
 # declare again: tested through kc's programs (scripts/kc-steps.py).
 test = false

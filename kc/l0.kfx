@@ -43,17 +43,42 @@
               ;; Step 11's arrays (C422).
               "array-length"
               ;; Step 12's refs (C424).
-              "new" "get"))
+              "new" "get"
+              ;; A transformer's (C447): what a datum is.
+              "int?" "char?" "bool?" "procedure?"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
               "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"
-              "string-ref" "string=?" "string<?" "string-append" "make-array" "array-ref" "set"))
+              "string-ref" "string=?" "string<?" "string-append" "make-array" "array-ref" "set"
+              ;; A transformer's (C447): symbols are interned, so one name one word.
+              "symbol=?"))
 
       (define ternary-primitives (listof string acyclic) (list "substring" "array-set!")))
 
     (define not-yet (subr kfx (string string) string)
       (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
+
+    (hide
+     (define-rec
+      (l0-quoted (subr kfx (sexp) string)
+        (lambda (d)
+          "A quoted datum's term (C447): a list's pairs made as `cons`es; an
+           atom its constant's."
+          (tagcase d
+            (num (k f p) (string-append "(int " (string-append (i64->string k) ")")))
+            (chr (c f p) (string-append "(char " (string-append (i64->string (char->i64 c)) ")")))
+            (str (s f p) (string-append "(string " (string-append (kc-datum d) ")")))
+            (sym (n f p)
+              (cond ((string=? n "#t") "(bool 1)")
+                    ((string=? n "#f") "(bool 0)")
+                    ((string=? n "#u") "(unit)")
+                    (else (string-append "(symbol " (string-append (kc-datum (str n "" 0)) ")")))))
+            (lst (ys f l p)
+              (if (null? ys)
+                  "(nil)"
+                  (string-list-append (list "(prim cons " (l0-quoted (car ys)) " " (l0-quoted (lst (cdr ys) f l p)) ")"))))
+            (else other (begin (error "kc: not yet: a quoted datum of this kind") "")))))))
 
     (hide
       "Names in scope while a term is made: each bound name, innermost first,
@@ -312,6 +337,17 @@
                            (l0-made (t n1)
                              (tagcase (l0-arms path scope env n1 (cdr (cdr xs)) nil)
                                (l0-made (arms n2) (l0-made (string-list-append (list "(tagcase " t " " arms ")")) n2))))))
+                        ;; A quoted datum of any other kind (C447): its pairs made, as
+                        ;; `cons`es, when it is met.
+                        ((and (string=? h "quote") (i64= (size xs) 2)) (l0-made (l0-quoted (second xs)) next))
+                        ;; `` `d `` (C447), as the checker reads it (C79): `,e` at depth
+                        ;; 1 is `e`; `,@e`, a list, appended; a nested `` ` `` deepens.
+                        ((and (string=? h "quasiquote") (i64= (size xs) 2)) (l0-quasi path scope env next (second xs) 1))
+                        ;; `(typecase x (SHAPE NAME BODY) ... (else [NAME] BODY))` (C447):
+                        ;; `if`s on what `x` is, each arm's name bound to it.
+                        ((and (string=? h "typecase") (i64>= (size xs) 3))
+                         (l0-of path scope env next (l0-typecase-as-if path (second xs) (cdr (cdr xs)) f l p)))
+                        ((and (string=? h "list") (null? (cdr xs))) (l0-made "(nil)" next))
                         ;; `(list a b ...)`, `cons`es of each, its last onto `nil` (C406).
                         ((and (string=? h "list") (not (null? (cdr xs))))
                          (l0-of path scope env next
@@ -421,6 +457,64 @@
                                  (lst (cons (sym "begin" f p) (cdr c)) f l p)
                                  (l0-case-as-if path key (cdr clauses) f l p))
                            f l p))))))
+
+        (l0-typecase-as-if (subr kfx (string sexp sexps string i64 i64) sexp)
+          (lambda (path x arms f l p)
+            "A `typecase`'s arms as `if`s on `x`, a local: each shape's test
+             (`int?`, ...), its arm's name a `let` of `x`; `else`'s too."
+            (let ((a (items (car arms))))
+              (cond ((sym-is? (car a) "else")
+                     (if (i64= (size a) 3)
+                         (lst (list (sym "let" f p) (lst (list (lst (list (second a) x) f l p)) f l p) (third a)) f l p)
+                         (second a)))
+                    ((null? (cdr arms)) (sym (not-yet path "a typecase with no else") f p))
+                    (else
+                     (let* ((shape (sym-name (car a)))
+                            (test (cond ((string=? shape "nil") "null?")
+                                        ((string-member? shape (list "int" "char" "bool" "pair" "string" "symbol" "procedure")) (string-append shape "?"))
+                                        (else (not-yet path (string-append "a typecase of the shape " shape))))))
+                       (lst (list (sym "if" f p) (lst (list (sym test f p) x) f l p)
+                                  (lst (list (sym "let" f p) (lst (list (lst (list (second a) x) f l p)) f l p) (third a)) f l p)
+                                  (l0-typecase-as-if path x (cdr arms) f l p))
+                            f l p)))))))
+
+        (l0-quasi (subr kfx (string sexps (listof l0-bound acyclic) i64 sexp i64) l0-made)
+          (lambda (path scope env next d depth)
+            "A quasiquoted datum's term at `depth` (C447): what it makes when met,
+             its unquoted expressions' values in it, left to right."
+            (tagcase d
+              (lst (ys f l p)
+                (cond ((null? ys) (l0-made "(nil)" next))
+                      ((and (i64= (size ys) 2) (sym-is? (car ys) "unquote"))
+                       (if (i64= depth 1)
+                           (l0-of path scope env next (second ys))
+                           (l0-quasi-tagged path scope env next "unquote" (second ys) (i64- depth 1))))
+                      ((and (i64= (size ys) 2) (sym-is? (car ys) "quasiquote"))
+                       (l0-quasi-tagged path scope env next "quasiquote" (second ys) (i64+ depth 1)))
+                      (else (l0-quasi-items path scope env next ys depth nil))))
+              (else other (l0-made (l0-quoted d) next)))))
+
+        (l0-quasi-tagged (subr kfx (string sexps (listof l0-bound acyclic) i64 string sexp i64) l0-made)
+          (lambda (path scope env next tag d depth)
+            "`(TAG d)`, `d` quasiquoted at `depth`."
+            (tagcase (l0-quasi path scope env next d depth)
+              (l0-made (t n1)
+                (l0-made (string-list-append (list "(prim cons (symbol " (kc-datum (str tag "" 0)) ") (prim cons " t " (nil)))")) n1)))))
+
+        (l0-quasi-items (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps i64 (listof string acyclic)) l0-made)
+          (lambda (path scope env next ys depth done)
+            "A list's items, each made in turn (`done`, the newest first, each
+             `cons` or `,@`'s `append` open), then closed onto `nil`."
+            (if (null? ys)
+                (l0-made (string-append (string-list-append (reverse (map (lambda ((s string)) (string-append "(prim " s)) done)))
+                                        (string-append " (nil)" (string-list-append (map (lambda ((s string)) ")") done))))
+                         next)
+                (let ((y (car ys)))
+                  (if (and (i64= depth 1) (head-is? y "unquote-splicing") (i64= (size (items y)) 2))
+                      (tagcase (l0-of path scope env next (second (items y)))
+                        (l0-made (t n1) (l0-quasi-items path scope env n1 (cdr ys) depth (cons (string-append "append " t) done))))
+                      (tagcase (l0-quasi path scope env next y depth)
+                        (l0-made (t n1) (l0-quasi-items path scope env n1 (cdr ys) depth (cons (string-append "cons " t) done)))))))))
 
         (l0-let (subr kfx (string sexps (listof l0-bound acyclic) i64 sexps sexps (listof string acyclic) (listof l0-bound acyclic)) l0-made)
           (lambda (path scope env next bindings body done inner)

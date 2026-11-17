@@ -370,7 +370,7 @@ pub mod kc_x64 {
     pub fn x64_comparisons() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::nil())))))))))))
+            kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::nil()))))))))))))
         })
     }
 
@@ -378,7 +378,7 @@ pub mod kc_x64 {
     /// second in `%rcx`: characters compare as their words do, the code above
     /// the same low bits.
     pub fn x64_condition(n: Str) -> Str {
-        if (string_eq_p(n, str_lit("=")) || string_eq_p(n, str_lit("char=?")) || string_eq_p(n, str_lit("eq?"))) {
+        if (string_eq_p(n, str_lit("=")) || string_eq_p(n, str_lit("char=?")) || string_eq_p(n, str_lit("eq?")) || string_eq_p(n, str_lit("symbol=?"))) {
             str_lit("e")
         } else if (string_eq_p(n, str_lit("<")) || string_eq_p(n, str_lit("char<?"))) {
             str_lit("l")
@@ -1243,6 +1243,14 @@ pub mod kc_x64 {
             x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_is_string"))
         } else if string_eq_p(n, str_lit("symbol?")) {
             x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_is_symbol"))
+        } else if string_eq_p(n, str_lit("int?")) {
+            x64_boolean_if(x64_emit(c, str_lit("testq $7, %rax")), str_lit("e"))
+        } else if string_eq_p(n, str_lit("char?")) {
+            x64_boolean_if(x64_emit(c, str_lit("cmpb $67, %al")), str_lit("e"))
+        } else if string_eq_p(n, str_lit("bool?")) {
+            x64_boolean_if(x64_emit(x64_emit(x64_emit(c, str_lit("movq %rax, %rdx")), str_lit("andq $-9, %rdx")), str_lit("cmpq $3, %rdx")), str_lit("e"))
+        } else if string_eq_p(n, str_lit("procedure?")) {
+            x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_is_procedure"))
         } else {
             error(string_append(str_lit("kc: the native back end has no primitive "), n));
             c
@@ -1348,6 +1356,8 @@ pub mod kc_x64 {
             x64_calling(c, str_lit("kc_string_lt"))
         } else if string_eq_p(n, str_lit("string-append")) {
             x64_calling(c, str_lit("kc_string_append"))
+        } else if string_eq_p(n, str_lit("append")) {
+            x64_calling(c, str_lit("kc_append"))
         } else if string_eq_p(n, str_lit("max")) {
             x64_emit(x64_emit(c, str_lit("cmpq %rcx, %rax")), str_lit("cmovl %rcx, %rax"))
         } else if string_eq_p(n, str_lit("min")) {

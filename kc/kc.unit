@@ -24,5 +24,9 @@ expand.kfx
 l0.kfx
 rust.kfx
 x64.kfx
+; A procedural macro's transformer's request as its phase-1 program (C447),
+; which kc compiles and runs as any program (main.kfx):
+../fx26/macros/phase1-prelude.kfx
+../fx26/macros-phase1.kfx
 identity.kfx
 main.kfx

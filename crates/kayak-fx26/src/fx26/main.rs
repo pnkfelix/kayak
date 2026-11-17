@@ -26083,167 +26083,11 @@ pub fn usage() -> Str {
     str_lit("usage: kayak-fx26 [repl]                       the REPL (,help in it for more)\n       kayak-fx26 FILE ...                     the files, one program, checked\n                                               and run, each top-level\n                                               expression's value written\n       kayak-fx26 --main FILE ...              the same, then (main), its\n                                               string written\n       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the\n                                               ARGs, its low byte the status\n       kayak-fx26 --cells FILE ...             the program's cellular words,\n                                               as `fixpt compile` lists its\n       kayak-fx26 --cells-run FILE ...         the same, (main) last, for\n                                               `kayak-cells --main`\n       kayak-fx26 --expanded FILE ...          the program as the expander\n                                               made it, a form a line\n       kayak-fx26 --keys FILE                  a REPL session from a script of\n                                               keys (tests/repl/)\n       kayak-fx26 --help                       this\n\nThe REPL's history is kept in ~/.kayak_fx26_history. Built with the\nrust-repl feature, the REPL is C103's, in Rust's threads: there,\nKAYAK_SPEC_DEBUG set, it writes each refusal of checking as you type to\nstderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,\nand where the time went.\n")
 }
 
-// A procedural macro's transformer's request answered (C446; Fixpt's
-// `procedural::asked`, `phase1.rs`): its phase-1 namespace a program of
-// its own, Fixpt's prelude (`phase1-prelude`) and the `begin-for-syntax`
-// forms in force, in the standard environment alone; the transformer, of
-// `%define` and `%apply`, defined at its style's type, Fixpt's
-// `procedural::helpers` around it; and, of `%apply`, called on the use's
-// datum, as `phase1::call_transformer` calls it. Checked and run as any
-// program: `=` and the call's value as `write` writes it (`#u`, of the
-// others), or `!` and why its check refused it or its run failed.
-pub fn phase1_line_end(mut s: Str, mut i: i64) -> i64 {
-    loop {
-        if i64_gt_eq(i, string_length_i64(s)) {
-            return i;
-        } else if char_eq_p(string_ref_i64(s, i), '\n') {
-            return i;
-        } else {
-            i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
-}
-
-pub fn phase1_words(mut cs: List<char>, mut w: List<char>, mut out: Strings) -> Strings {
-    loop {
-        if null_p(cs) {
-            return reverse(if null_p(w) {
-                out
-            } else {
-                kayak_rt::heap_cons(list_to_string(reverse(w)), out)
-            });
-        } else if char_eq_p(car(cs), ' ') {
-            (cs, w, out) = (cdr(cs), nil::<char>(), if null_p(w) {
-                out
-            } else {
-                kayak_rt::heap_cons(list_to_string(reverse(w)), out)
-            });
-            continue;
-        } else {
-            (cs, w) = (cdr(cs), kayak_rt::heap_cons(car(cs), w));
-            continue;
-        }
-    }
-}
-
-// A request's `n` forms from `i`, each its length on a line and its text:
-// them, and where the rest begins.
-pub fn phase1_forms_from(mut s: Str, mut i: i64, mut n: i64, mut out: Strings) -> Product_11_12<Strings, i64> {
-    loop {
-        if i64_lt_eq(n, 0i64) {
-            return Product_11_12(reverse(out), i);
-        } else {
-            let nl = phase1_line_end(s, i);
-            let len = string_to_i64(substring(s, i64_to_int(i), i64_to_int(nl)));
-            let from = i64_plus(nl, 1i64);
-            let to = {
-                let t = i64_plus(from, len);
-                if i64_gt(t, string_length_i64(s)) {
-                    string_length_i64(s)
-                } else {
-                    t
-                }
-            };
-            (i, n, out) = (to, i64_minus(n, 1i64), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(to)), out));
-            continue;
-        }
-    }
-}
-
-#[inline]
-pub fn phase1_type(style: Str) -> Str {
-    if string_eq_p(style, str_lit("0")) {
-        str_lit("(subr (maxeff (read @globals) spin) (datum (subr pure (symbol) symbol) (subr spin (symbol symbol) bool)) datum)")
-    } else {
-        str_lit("(subr (maxeff (read @globals) spin) (datum symbol) datum)")
-    }
-}
-
-#[inline]
-pub fn phase1_defined(style: Str, code: Str) -> Str {
-    string_list_append(kayak_rt::heap_cons(str_lit("(define %transformer "), kayak_rt::heap_cons(phase1_type(style), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(str_lit("(let ((make-syntactic-closure %make-syntactic-closure) (identifier? %identifier?) (identifier=? %identifier=?)) "), kayak_rt::heap_cons(code, kayak_rt::heap_cons(str_lit("))\n"), kayak_rt::nil())))))))
-}
-
-pub fn phase1_called(style: Str, tag: Str, form: Str) -> Str {
-    string_list_append(kayak_rt::heap_cons(str_lit("(%transformer (quote "), kayak_rt::heap_cons(form, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(if string_eq_p(style, str_lit("0")) {
-        string_append(str_lit("(%er-renamer (string->symbol "), string_append(string_append(str_lit("\""), string_append(tag, str_lit("\""))), str_lit(")) %er-compare")))
-    } else if string_eq_p(style, str_lit("1")) {
-        str_lit("(quote %env:use)")
-    } else {
-        str_lit("(quote %env:macro)")
-    }, kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::nil()))))))
-}
-
-// The phase-1 program of a request, or `` of one malformed.
-pub fn phase1_program(request: Str) -> Str {
-    let nl = phase1_line_end(request, 0i64);
-    let head = phase1_words(string_chars(substring(request, int_lit(0), i64_to_int(nl))), nil::<char>(), nil::<Str>());
-    let kind = if null_p(head) {
-        str_lit("")
-    } else {
-        car(head)
-    };
-    let n = if (string_eq_p(kind, str_lit("%forms")) && i64_eq(size(head), 2i64)) {
-        string_to_i64(car(cdr(head)))
-    } else if (string_eq_p(kind, str_lit("%define")) && i64_eq(size(head), 3i64)) {
-        string_to_i64(car(cdr(cdr(head))))
-    } else if (string_eq_p(kind, str_lit("%apply")) && i64_eq(size(head), 5i64)) {
-        string_to_i64(car(cdr(cdr(cdr(cdr(head))))))
-    } else {
-        the::<i64>(-1i64)
-    };
-    if i64_lt(n, 0i64) {
-        str_lit("")
-    } else {
-        let fs = phase1_forms_from(request, i64_plus(nl, 1i64), n, nil::<Str>());
-        let rest = substring(request, i64_to_int(fs.1), string_length(request));
-        let base = string_append(phase1_prelude(), string_append(str_lit("\n"), string_list_append(map(lambda1s(move |f: Str| {
-            string_append(f, str_lit("\n"))
-        }), fs.0))));
-        if string_eq_p(kind, str_lit("%forms")) {
-            base
-        } else if string_eq_p(kind, str_lit("%define")) {
-            string_append(base, phase1_defined(car(cdr(head)), rest))
-        } else {
-            let len = string_to_i64(car(cdr(cdr(cdr(head)))));
-            let cut = if i64_gt(len, string_length_i64(rest)) {
-                string_length_i64(rest)
-            } else {
-                len
-            };
-            string_list_append(kayak_rt::heap_cons(base, kayak_rt::heap_cons(phase1_defined(car(cdr(head)), substring(rest, int_lit(0), i64_to_int(cut))), kayak_rt::heap_cons(phase1_called(car(cdr(head)), car(cdr(cdr(head))), substring(rest, i64_to_int(cut), string_length(rest))), kayak_rt::nil()))))
-        }
-    }
-}
-
-pub fn phase1_colon(mut s: Str, mut i: i64) -> i64 {
-    loop {
-        if i64_gt_eq(i64_plus(i, 1i64), string_length_i64(s)) {
-            return the::<i64>(-1i64);
-        } else if (char_eq_p(string_ref_i64(s, i), ':') && char_eq_p(string_ref_i64(s, i64_plus(i, 1i64)), ' ')) {
-            return i;
-        } else {
-            i = i64_plus(i, 1i64);
-            continue;
-        }
-    }
-}
-
 // A refusal's message, its place in the phase-1 program, which no one
 // wrote, taken off.
+#[inline]
 pub fn phase1_why(m: Str) -> Str {
-    let m = engine_said(m);
-    if has_prefix_p(m, str_lit("%phase1:")) {
-        let at = phase1_colon(m, 8i64);
-        if i64_lt(at, 0i64) {
-            m
-        } else {
-            substring(m, i64_to_int(i64_plus(at, 2i64)), string_length(m))
-        }
-    } else {
-        m
-    }
+    phase1_unplaced(engine_said(m))
 }
 
 pub fn phase1_run(mut ns: List<i64>, mut last: Str) -> Str {
@@ -26273,6 +26117,15 @@ pub fn phase1_run(mut ns: List<i64>, mut last: Str) -> Str {
     }
 }
 
+// A procedural macro's transformer's request answered (C446; Fixpt's
+// `procedural::asked`, `phase1.rs`): its phase-1 namespace a program of
+// its own, Fixpt's prelude (`phase1-prelude`) and the `begin-for-syntax`
+// forms in force, in the standard environment alone; the transformer, of
+// `%define` and `%apply`, defined at its style's type, Fixpt's
+// `procedural::helpers` around it; and, of `%apply`, called on the use's
+// datum, as `phase1::call_transformer` calls it. Checked and run as any
+// program: `=` and the call's value as `write` writes it (`#u`, of the
+// others), or `!` and why its check refused it or its run failed.
 pub fn phase1_answer(request: Str) -> Str {
     let text = phase1_program(request);
     if string_eq_p(text, str_lit("")) {

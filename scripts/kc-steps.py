@@ -155,19 +155,22 @@ def expansions():
     # An expansion that makes a request not answered yet runs once more
     # when it is: cold, the `define-syntax`'s (`%define`) and `f`'s
     # (`%apply`) each twice; a use's operand edited, a new `%apply`.
+    # The transformer compiled by kc (C447), its phase-1 program a file of
+    # the database: cold, its 7 definitions' code and the call's; a use's
+    # operand edited, the new call's code alone, the transformer's kept.
     if os.path.exists(db):
         os.remove(db)
-    for text, want, why in [(PROCEDURAL % "n", (6, 4), "procedural, cold"),
-                            (PROCEDURAL % "n", (0, 0), "procedural, the same"),
-                            (PROCEDURAL % "(+ n 1)", (2, 1), "procedural, a use's operand edited")]:
+    for text, want, why in [(PROCEDURAL % "n", (6, 4, 8), "procedural, cold"),
+                            (PROCEDURAL % "n", (0, 0, 0), "procedural, the same"),
+                            (PROCEDURAL % "(+ n 1)", (2, 1, 1), "procedural, a use's operand edited")]:
         open(p, "w").write(text)
         r = run([KC, "--db", db, "--stats", "--check", p])
         got = ran(r.stderr) or []
-        n = (got.count("expansion"), got.count("macros-for"))
+        n = (got.count("expansion"), got.count("macros-for"), got.count("asm-item"))
         if r.returncode != 0:
             wrong.append("expansions: %s: kc --check: %s" % (why, r.stderr.strip()))
         elif n != want:
-            wrong.append("expansions: %s: ran %d expansions and %d macros-for, not %d and %d" % (why, n[0], n[1], want[0], want[1]))
+            wrong.append("expansions: %s: ran %d expansions, %d macros-for and %d asm-items, not %d, %d and %d" % ((why,) + n + want))
     return wrong
 
 

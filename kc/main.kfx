@@ -8,7 +8,7 @@
                                      procedure an object of its own, made
                                      once; linked only if its objects are
                                      new; RT the runtime's library
-                                     (target/release/libkayak_kcrt.a)
+                                     (libkayak_kcrt.a beside kc)
    kc [--db DB] serve                requests, a line each, on the
                                      standard input (C415)
    kc [--db DB] --expanded-located FILE
@@ -180,38 +180,6 @@
                 (unknown u (string-append (car argv) " ended, how is not known"))))
             (failed e (string-append "cannot run " (string-append (car argv) (string-append ": " (extract e detail))))))))
 
-      "A procedural macro's transformer's request (C446), answered by the
-       engine beside kc (`kayak-fx26 --phase1`, fx26/main.kfx), which checks
-       and runs FX-26 as Fixpt's runtime does: its answer, `=` and what it
-       gave, or `!` and why. Of the request's text alone, so kept as the
-       input `phase1 REQUEST`, and asked once."
-      (define phase1-asked (subr driving (string) string)
-        (lambda (request)
-          (let ((engine (tagcase (read-symlink "/proc/self/exe")
-                          (target t (string-append (directory-of t) "/kayak-fx26"))
-                          (failed e "kayak-fx26"))))
-            (tagcase (process-start (strings-at-io (list engine "--phase1" request)) "")
-              (started p
-                (let* ((how (process-exit p)) (out (process-output p))
-                       (n (string-length out))
-                       (said (if (and (> n 0) (char=? (string-ref out (- n 1)) #\newline)) (substring out 0 (- n 1)) out)))
-                  (tagcase how
-                    (exited c (if (and (= c 0) (> (string-length said) 0)) said (string-append "!the transformers' run: " said)))
-                    (signalled g "!the transformers' run was signalled")
-                    (unknown u "!the transformers' run ended, how is not known"))))
-              (failed e (string-append "!the transformers' run: cannot run " (string-append engine (string-append ": " (extract e detail)))))))))
-
-      "`kc-load-file!`, each transformer's request it needs answered and set
-       (C446), until it needs none."
-      (define-rec
-        (load-answered! (subr driving (db string string) unit)
-          (lambda (d file text)
-            (let ((need (kc-load-file! d kc-run file text)))
-              (if (string=? need "")
-                  #u
-                  (begin (db-set! d (key1 "phase1" need) (phase1-asked need) 0)
-                         (load-answered! d file text)))))))
-
       (define-rec
         (object-names (subr kfx (sexps (listof string acyclic)) (listof string acyclic))
           (lambda (os acc)
@@ -284,18 +252,120 @@
                       assembled
                       (let ((linked (run-command (append (list "cc" "-o" exe)
                                                          (append (map (lambda ((n string)) (string-append dir (string-append "/" (string-append n ".o")))) names)
-                                                                 (list rt "-lgcc_s" "-lutil" "-lrt" "-lpthread" "-lm" "-ldl" "-lc")))
+                                                                 ;; The runtime shared (C447), found where it is.
+                                                                 (if (has-suffix? rt ".so")
+                                                                     (list rt (string-append "-Wl,-rpath," (directory-of rt)))
+                                                                     (list rt "-lgcc_s" "-lutil" "-lrt" "-lpthread" "-lm" "-ldl" "-lc"))))
                                                  "")))
                         (if (string=? linked "") (begin (write-text record manifest) "") linked))))))))
 
-      (define request (subr driving (db string string string string) answer)
-        (lambda (d what file out rt)
+      "Where a procedural macro's transformer is built, and on what runtime
+       (C447): beside the database, `DB.phase1/`, where there is one, so that
+       a transformer built once is built no more; else a directory of this
+       run's own, taken away at its end. The runtime the shared one
+       (`libkayak_kcrt.so`) where it is beside the static one."
+      (define-datatype phase1-at (phase1-at string string))
+
+      "A request's file's name in the database, of the fingerprint of what
+       it defines (`phase1-parts`): each transformer a file of its own, its
+       items kept, so that only a use's call is new at each use."
+      (define phase1-name (subr kfx (string) string)
+        (lambda (defs)
+          (let ((fp ((with queries fnv-string) defs (with queries fnv-offset))))
+            (if (i64< fp 0) (string-append "n" (i64->string (i64- 0 fp))) (i64->string fp)))))
+
+      "The last line of a run's output that is not empty."
+      (define-rec
+        (last-line (subr kfx ((listof string acyclic) string) string)
+          (lambda (ls last)
+            (cond ((null? ls) last)
+                  ((string=? (car ls) "") (last-line (cdr ls) last))
+                  (else (last-line (cdr ls) (car ls)))))))
+
+      (define-rec
+        (lines-of (subr kfx ((listof char acyclic) (listof char acyclic) (listof string acyclic)) (listof string acyclic))
+          (lambda (cs line acc)
+            (cond ((null? cs) (reverse (cons (list->string (reverse line)) acc)))
+                  ((char=? (car cs) #\newline) (lines-of (cdr cs) nil (cons (list->string (reverse line)) acc)))
+                  (else (lines-of (cdr cs) (cons (car cs) line) acc))))))
+
+      "A procedural macro's transformer's request (C446), answered by kc
+       itself (C447): its phase-1 program (`phase1-parts`,
+       fx26/macros-phase1.kfx) a file of the database, checked, compiled to
+       native code and built as any program, each of its items a query, so
+       that a transformer's definitions are compiled once and a use's call
+       alone is new; then run. Its answer, `=` and the value of its last
+       expression as `write` writes it (`#u` of none), or `!` and why its
+       check refused it or its run failed. Of the request's text alone, so
+       kept as the input `phase1 REQUEST`, and asked once."
+      (define phase1-asked (subr driving (db phase1-at string) string)
+        (lambda (d at request)
+          (tagcase at
+            (phase1-at (dir rt)
+              (let* ((ps (phase1-parts request)) (defs (extract ps 1)))
+                (if (string=? defs "")
+                    "!a malformed transformer request"
+                    (let* ((name (phase1-name defs))
+                           (path (string-append "%phase1-" (string-append name ".fx")))
+                           (need (kc-load-file! d kc-run path (string-append defs (extract ps 2)))))
+                      (if (not (string=? need ""))
+                          "!kc: not yet: a phase-1 form that uses a procedural macro"
+                          (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" path)))))
+                            (if (not (string=? refused ""))
+                                (string-append "!" (phase1-unplaced refused))
+                                (let* ((exe (string-append dir (string-append "/t" name)))
+                                       (built (build d path exe rt)))
+                                  (if (not (string=? built ""))
+                                      (string-append "!kc: the transformer's build: " built)
+                                      (tagcase (process-start (strings-at-io (list exe)) "")
+                                        (started p
+                                          (let* ((how (process-exit p))
+                                                 (last (last-line (lines-of (string-chars (process-output p)) nil nil) "")))
+                                            (tagcase how
+                                              (exited c
+                                                (cond ((= c 0) (string-append "=" (if (string=? last "") "#u" last)))
+                                                      ((has-prefix? last "evaluation failed: ") (string-append "!" (after-prefix last "evaluation failed: ")))
+                                                      (else (string-append "!the transformer's run: " last))))
+                                              (signalled g "!the transformer's run was signalled")
+                                              (unknown u "!the transformer's run ended, how is not known"))))
+                                        (failed e (string-append "!the transformer's run: cannot run " (string-append exe (string-append ": " (extract e detail))))))))))))))))))
+
+      "`kc-load-file!`, each transformer's request it needs answered and set
+       (C446), until it needs none."
+      (define-rec
+        (load-answered! (subr driving (db phase1-at string string) unit)
+          (lambda (d at file text)
+            (let ((need (kc-load-file! d kc-run file text)))
+              (if (string=? need "")
+                  #u
+                  (begin (db-set! d (key1 "phase1" need) (phase1-asked d at need) 0)
+                         (load-answered! d at file text)))))))
+
+      "Where this run builds transformers (`phase1-at`): `DB.phase1`, or
+       `/tmp/kc-phase1-PID`, PID this process's."
+      (define phase1-dir (subr driving (string) string)
+        (lambda (dbp)
+          (if (not (string=? dbp ""))
+              (string-append dbp ".phase1")
+              (tagcase (read-symlink "/proc/self")
+                (target t (string-append "/tmp/kc-phase1-" t))
+                (failed e "/tmp/kc-phase1")))))
+
+      "This run's own transformers' directory, if it made one, taken away."
+      (define phase1-done (subr driving (string) unit)
+        (lambda (dbp)
+          (if (or (not (string=? dbp "")) (null? (listed (phase1-dir dbp))))
+              #u
+              (begin (run-command (list "rm" "-rf" (phase1-dir dbp)) "") #u))))
+
+      (define request (subr driving (db phase1-at string string string) answer)
+        (lambda (d at what file out)
           "`what` (`check`, `asm`, `rust`, `build`) of `file`, its output to
            `out`: the file read, its forms set (`kc-load-file!`), checked, and, if
            it passes, its code asked for, or built (on the runtime `rt`)."
-          (let ((before (db-runs d)))
+          (let ((before (db-runs d)) (rt (tagcase at (phase1-at (dir r) r))))
             (begin
-              (load-answered! d file (read-text file))
+              (load-answered! d at file (read-text file))
               (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" file)))))
                 (begin
                   ;; Written only if it is new (C417): an output as it was is left as
@@ -320,8 +390,8 @@
         (lambda (s) (tagcase (write-out (string-append s "\n")) (done u #u) (failed e #u))))
 
       (define-rec
-        (serve (subr driving (db string bool string) int)
-          (lambda (d dbp stats rt)
+        (serve (subr driving (db string bool phase1-at) int)
+          (lambda (d dbp stats at)
             "Requests until the input ends, or `quit`."
             (tagcase (read-line)
               (line s
@@ -329,34 +399,45 @@
                        (n (size ws)))
                   (cond ((and (i64= n 1) (string=? (car ws) "quit")) (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) 0))
                         ((and (i64= n 1) (string=? (car ws) "save"))
-                         (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) (said "ok 0") (serve d dbp stats rt)))
+                         (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) (said "ok 0") (serve d dbp stats at)))
                         ((or (and (i64= n 2) (string=? (car ws) "check"))
                              (and (i64= n 3) (or (string=? (car ws) "asm") (string=? (car ws) "rust") (string=? (car ws) "build"))))
-                         (tagcase (request d (car ws) (car (cdr ws)) (if (i64= n 3) (car (cdr (cdr ws))) "") rt)
+                         (tagcase (request d at (car ws) (car (cdr ws)) (if (i64= n 3) (car (cdr (cdr ws))) ""))
                            (answer (no msg k names)
                              (begin
                                (said (string-list-append (list (if no "refused " "ok ") (i64->string k)
                                                                (if no (string-append " " (one-line (string-chars msg) nil)) "")
                                                                (if stats (string-append "\t" names) ""))))
-                               (serve d dbp stats rt)))))
-                        (else (begin (said (string-append "error not a request: " s)) (serve d dbp stats rt))))))
+                               (serve d dbp stats at)))))
+                        (else (begin (said (string-append "error not a request: " s)) (serve d dbp stats at))))))
               (eof u (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) 0))
               (failed e (begin (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp)) 1)))))))
 
     (define kc-main (subr driving () int)
       (lambda ()
-        (tagcase (opts-of (the (listof string acyclic) (args)) "" #f "target/release/libkayak_kcrt.a" nil)
-          (opts (dbp stats rt rest)
-            (let ((d (if (string=? dbp "") (db-make) (db-of-files (read-text-or-none dbp) (read-text-or-none (string-append dbp ".payload")) kc-whose))))
+        (tagcase (opts-of (the (listof string acyclic) (args)) "" #f "" nil)
+          (opts (dbp stats rt0 rest)
+            (let* ((d (if (string=? dbp "") (db-make) (db-of-files (read-text-or-none dbp) (read-text-or-none (string-append dbp ".payload")) kc-whose)))
+                   ;; The runtime, where not given, the one beside this kc (C447).
+                   (rt (if (not (string=? rt0 ""))
+                           rt0
+                           (tagcase (read-symlink "/proc/self/exe")
+                             (target x (string-append (directory-of x) "/libkayak_kcrt.a"))
+                             (failed e "target/release/libkayak_kcrt.a"))))
+                   ;; A transformer's program linked to the runtime shared, where
+                   ;; it is beside this kc: a link a sixth of the static one's (C447).
+                   (shared (string-append (directory-of rt) "/libkayak_kcrt.so"))
+                   (at (phase1-at (phase1-dir dbp) (if (exists? shared) shared rt)))
+                   (status
               (cond ((null? rest)
                      (fail-with "usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | serve)" 2))
-                    ((string=? (car rest) "serve") (serve d dbp stats rt))
+                    ((string=? (car rest) "serve") (serve d dbp stats at))
                     ;; The program as kc expands it, a form at a time (C445),
                     ;; located, as the engine's `--expanded-located` writes it.
                     ((and (string=? (car rest) "--expanded-located") (not (null? (cdr rest))))
                      (let ((file (car (cdr rest))))
                        (begin
-                         (load-answered! d file (read-text file))
+                         (load-answered! d at file (read-text file))
                          (tagcase (write-out (string-list-append (kc-expanded-lines d kc-run file))) (done u #u) (failed e #u))
                          (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
                          0)))
@@ -368,15 +449,16 @@
                              (fail-with (string-append "not an option: " what) 2)
                              #u)
                          (if (and (not (string=? what "--check")) (null? (cdr (cdr rest)))) (fail-with "an OUT is wanted" 2) #u)
-                         (tagcase (request d (cond ((string=? what "--check") "check") ((string=? what "--rust") "rust") ((string=? what "build") "build") (else "asm")) file
-                                           (if (string=? what "--check") "" (car (cdr (cdr rest)))) rt)
+                         (tagcase (request d at (cond ((string=? what "--check") "check") ((string=? what "--rust") "rust") ((string=? what "build") "build") (else "asm")) file
+                                           (if (string=? what "--check") "" (car (cdr (cdr rest)))))
                            (answer (no msg k names)
                              (begin
                                (if stats (tagcase (write-err (string-append "kc: " (string-append (i64->string k) (string-append " query bodies ran:" (string-append names "\n")))))
                                            (done u #u) (failed e #u))
                                    #u)
                                (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
-                               (if no (begin (tagcase (write-err (string-append msg "\n")) (done u #u) (failed e #u)) 1) 0)))))))))))))))
+                               (if no (begin (tagcase (write-err (string-append msg "\n")) (done u #u) (failed e #u)) 1) 0))))))))))
+              (begin (phase1-done dbp) status))))))))
 
 (import kc-driver (effect driving))
 

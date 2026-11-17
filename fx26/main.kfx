@@ -268,96 +268,10 @@ stderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,
 and where the time went.
 ")
 
-"A procedural macro's transformer's request answered (C446; Fixpt's
- `procedural::asked`, `phase1.rs`): its phase-1 namespace a program of
- its own, Fixpt's prelude (`phase1-prelude`) and the `begin-for-syntax`
- forms in force, in the standard environment alone; the transformer, of
- `%define` and `%apply`, defined at its style's type, Fixpt's
- `procedural::helpers` around it; and, of `%apply`, called on the use's
- datum, as `phase1::call_transformer` calls it. Checked and run as any
- program: `=` and the call's value as `write` writes it (`#u`, of the
- others), or `!` and why its check refused it or its run failed."
-(define-rec
-  (phase1-line-end (subr kfx (string i64) i64)
-    (lambda (s i)
-      (cond ((i64>= i (string-length-i64 s)) i)
-            ((char=? (string-ref-i64 s i) #\newline) i)
-            (else (phase1-line-end s (i64+ i 1)))))))
-(define-rec
-  (phase1-words (subr kfx ((listof char acyclic) (listof char acyclic) strings) strings)
-    (lambda (cs w out)
-      (cond ((null? cs) (reverse (if (null? w) out (cons (list->string (reverse w)) out))))
-            ((char=? (car cs) #\space) (phase1-words (cdr cs) nil (if (null? w) out (cons (list->string (reverse w)) out))))
-            (else (phase1-words (cdr cs) (cons (car cs) w) out))))))
-"A request's `n` forms from `i`, each its length on a line and its text:
- them, and where the rest begins."
-(define-rec
-  (phase1-forms-from (subr kfx (string i64 i64 strings) (tupleof strings i64))
-    (lambda (s i n out)
-      (if (i64<= n 0)
-          (tuple (reverse out) i)
-          (let* ((nl (phase1-line-end s i))
-                 (len (string->i64 (substring s (i64->int i) (i64->int nl))))
-                 (from (i64+ nl 1))
-                 (to (let ((t (i64+ from len))) (if (i64> t (string-length-i64 s)) (string-length-i64 s) t))))
-            (phase1-forms-from s to (i64- n 1) (cons (substring s (i64->int from) (i64->int to)) out)))))))
-(define phase1-type (subr kfx (string) string)
-  (lambda (style)
-    (if (string=? style "0")
-        "(subr (maxeff (read @globals) spin) (datum (subr pure (symbol) symbol) (subr spin (symbol symbol) bool)) datum)"
-        "(subr (maxeff (read @globals) spin) (datum symbol) datum)")))
-(define phase1-defined (subr kfx (string string) string)
-  (lambda (style code)
-    (string-list-append
-      (list "(define %transformer " (phase1-type style) "\n"
-            "(let ((make-syntactic-closure %make-syntactic-closure) (identifier? %identifier?) (identifier=? %identifier=?)) "
-            code "))\n"))))
-(define phase1-called (subr kfx (string string string) string)
-  (lambda (style tag form)
-    (string-list-append
-      (list "(%transformer (quote " form ") "
-            (cond ((string=? style "0") (string-append "(%er-renamer (string->symbol " (string-append (string-append "\"" (string-append tag "\"")) ")) %er-compare")))
-                  ((string=? style "1") "(quote %env:use)")
-                  (else "(quote %env:macro)"))
-            ")\n"))))
-"The phase-1 program of a request, or `` of one malformed."
-(define phase1-program (subr kfx (string) string)
-  (lambda (request)
-    (let* ((nl (phase1-line-end request 0))
-           (head (phase1-words (string-chars (substring request 0 (i64->int nl))) nil nil))
-           (kind (if (null? head) "" (car head)))
-           (n (cond ((and (string=? kind "%forms") (i64= (size head) 2)) (string->i64 (car (cdr head))))
-                    ((and (string=? kind "%define") (i64= (size head) 3)) (string->i64 (car (cdr (cdr head)))))
-                    ((and (string=? kind "%apply") (i64= (size head) 5)) (string->i64 (car (cdr (cdr (cdr (cdr head)))))))
-                    (else (the i64 -1)))))
-      (if (i64< n 0)
-          ""
-          (let* ((fs (phase1-forms-from request (i64+ nl 1) n nil))
-                 (rest (substring request (i64->int (extract fs 2)) (string-length request)))
-                 (base (string-append phase1-prelude (string-append "\n" (string-list-append (map (lambda ((f string)) (string-append f "\n")) (extract fs 1)))))))
-            (cond ((string=? kind "%forms") base)
-                  ((string=? kind "%define") (string-append base (phase1-defined (car (cdr head)) rest)))
-                  (else
-                   (let* ((len (string->i64 (car (cdr (cdr (cdr head))))))
-                          (cut (if (i64> len (string-length-i64 rest)) (string-length-i64 rest) len)))
-                     (string-list-append
-                       (list base (phase1-defined (car (cdr head)) (substring rest 0 (i64->int cut)))
-                             (phase1-called (car (cdr head)) (car (cdr (cdr head))) (substring rest (i64->int cut) (string-length rest)))))))))))))
-(define-rec
-  (phase1-colon (subr kfx (string i64) i64)
-    (lambda (s i)
-      (cond ((i64>= (i64+ i 1) (string-length-i64 s)) (the i64 -1))
-            ((and (char=? (string-ref-i64 s i) #\:) (char=? (string-ref-i64 s (i64+ i 1)) #\space)) i)
-            (else (phase1-colon s (i64+ i 1)))))))
 "A refusal's message, its place in the phase-1 program, which no one
  wrote, taken off."
 (define phase1-why (subr kfx (string) string)
-  (lambda (m)
-    (let ((m (engine-said m)))
-      (if (has-prefix? m "%phase1:")
-          (let ((at (phase1-colon m 8)))
-            (if (i64< at 0) m (substring m (i64->int (i64+ at 2)) (string-length m))))
-          m))))
+  (lambda (m) (phase1-unplaced (engine-said m))))
 (define-rec
   (phase1-run (subr running ((listof i64 acyclic) string) string)
     (lambda (ns last)
@@ -369,6 +283,15 @@ and where the time went.
             (else
              (let ((w (run 0 (car ns) 0 w-nil 0 0 0)))
                (if (get engine-failed) (string-append "!" (failure-taken!)) (phase1-run (cdr ns) (string-append "=" (show-word w))))))))))
+"A procedural macro's transformer's request answered (C446; Fixpt's
+ `procedural::asked`, `phase1.rs`): its phase-1 namespace a program of
+ its own, Fixpt's prelude (`phase1-prelude`) and the `begin-for-syntax`
+ forms in force, in the standard environment alone; the transformer, of
+ `%define` and `%apply`, defined at its style's type, Fixpt's
+ `procedural::helpers` around it; and, of `%apply`, called on the use's
+ datum, as `phase1::call_transformer` calls it. Checked and run as any
+ program: `=` and the call's value as `write` writes it (`#u`, of the
+ others), or `!` and why its check refused it or its run failed."
 (define phase1-answer (subr running (string) string)
   (lambda (request)
     (let ((text (phase1-program request)))

@@ -1544,12 +1544,18 @@ Twobit-style optimizations in KFX.
   done, C446, each transformer's request (Fixpt's `%forms`, `%define`,
   `%apply`) answered by the engine's `--phase1` (prelude, phase-1 forms,
   the transformer checked at its style's type and run, a process of its
-  own), in kc an input `phase1 REQUEST`, the expansion asking again; not
+  own), in kc an input `phase1 REQUEST`, the expansion asking again; in kc
+  answered by kc's own native code (C447), the request's phase-1 program
+  a file of the database, its forms queries, built and run; not
   yet in the REPL (its heap is live: a request there is said not yet), nor
-  a transformer's answer a vector; kc's own native code for transformers,
-  when kc compiles `datum`, `typecase` and the prelude's forms, in place of
-  the engine's; an expansion run again for each new request (a form of k
-  procedural uses, k+1 runs: Fixpt's would suspend instead); the driver's lines (each list's, met; an atom's,
+  a transformer's answer a vector; each use's call linked (a program of
+  its own): given its use at run time, a use would be a run alone, once
+  kc's code reads a datum; a typecase of a keyword, vector and the rest,
+  and a dotted datum, in kc not yet; an expansion run again for each new request (a form of k
+  procedural uses, k+1 runs: Fixpt's would suspend instead); kc's
+  `DB.phase1/` objects no longer used not pruned, nor a `/tmp/kc-phase1-PID`
+  of a run a `not yet` ended; a `phase1` answer kept across a change to
+  kc's runtime (`kayak-kcrt`, in no identity), which can change its words; the driver's lines (each list's, met; an atom's,
   the last list's before it).
 - A loaded file's type named as one of the program's (the expander's
   `part`, lib/db.kfx's datatype `part`, C445): one type in the Rust kfx
@@ -1623,10 +1629,9 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   names it reads (TODO §51); a macro's checks (a typed one's hidden
   definitions) checked with the program; a file's macros
   (`import-with-syntax`), loads, not yet; procedural macros and
-  `begin-for-syntax` (C446), their transformers run by the engine, in a
-  process each request: by kc's own native code once it compiles them, a
-  transformer then a query's compiled item (its check, its code), and a
-  request's answer kc's run of it. Step 14
+  `begin-for-syntax` (C446), their transformers compiled by kc and run
+  (C447): a request's phase-1 program a file of the database, each
+  transformer's items queries, a use's call the one new item. Step 14
   (the effects that need the runtime) not done before it: the macro
   programs kc takes are those its back ends take.
 - Models (`docs/research/models.md`): exhaustive checking (Java 17+ for

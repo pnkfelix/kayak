@@ -76,6 +76,8 @@ pub mod vshow;
 pub use vshow::*;
 pub mod phase1_prelude;
 pub use phase1_prelude::*;
+pub mod macros_phase1;
+pub use macros_phase1::*;
 pub mod main;
 pub use main::*;
 pub mod repl;

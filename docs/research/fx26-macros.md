@@ -130,8 +130,9 @@ global a use makes) is refused, not yet.
 
 **Procedural macros (C446), in kc**: a form's expansion reads each
 transformer's answer it needs as an input, `phase1 REQUEST`; one not
-set yet, the query says `(needs REQUEST)`, the driver answers it (the
-engine's `--phase1`) and asks again. A procedural macro's definition
+set yet, the query says `(needs REQUEST)`, the driver answers it (by
+kc's own native code, C447: the request's phase-1 program a file of the
+database, its forms queries, built and run) and asks again. A procedural macro's definition
 needs the `begin-for-syntax` forms before it too (`wforsyntax`), which
 its replay replays first.
 
@@ -177,9 +178,10 @@ agreeing, and the passing lists only grow.
    the transformer at its style's type, the call, checked and run as a
    program, in a process of its own (the engine's heap and machine are
    one, the program's). kc keeps each answer as an input, `phase1
-   REQUEST`, so a request is run once per database. Later, kc's own
-   native code in the engine's place (when kc compiles what transformers
-   use), a transformer then a compiled item like any other.
+   REQUEST`, so a request is run once per database. kc answers it with
+   its own native code (C447): the phase-1 program a file of its
+   database, a transformer compiled items like any other, a use's call the
+   one new item at each use.
 6. **The rest of the refusals**: `include`, `module-parameters`, `hide`,
    keyword constructors, `type-at`, `allof` by conversion, the tail; then
    the 105 differing lines.

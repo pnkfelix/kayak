@@ -28,7 +28,10 @@ use super::*;
 // phase1 REQUEST        a procedural macro's transformer's request's
 // answer (C446; `%forms`, `%define`, `%apply`, as
 // Fixpt's expander asks its runtime), `` until the
-// driver sets it: of the request's text alone
+// driver sets it: of the request's text alone;
+// the driver answers it by kc's own native code
+// (C447), the request's phase-1 program a file of
+// this database (main.kfx, `phase1-asked`)
 //
 // The queries:
 //

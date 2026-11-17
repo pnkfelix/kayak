@@ -1,0 +1,93 @@
+"macros-phase1.kfx: a procedural macro's transformer's request (C446;
+ Fixpt's `procedural::asked`, `phase1.rs`) as the phase-1 program that
+ answers it, Fixpt's prelude (`phase1-prelude`) first: the engine's
+ (`--phase1`, fx26/main.kfx) and kc's (kc/main.kfx, C447), each of which
+ checks and runs it its own way."
+
+(define-rec
+  (phase1-line-end (subr kfx (string i64) i64)
+    (lambda (s i)
+      (cond ((i64>= i (string-length-i64 s)) i)
+            ((char=? (string-ref-i64 s i) #\newline) i)
+            (else (phase1-line-end s (i64+ i 1)))))))
+(define-rec
+  (phase1-words (subr kfx ((listof char acyclic) (listof char acyclic) strings) strings)
+    (lambda (cs w out)
+      (cond ((null? cs) (reverse (if (null? w) out (cons (list->string (reverse w)) out))))
+            ((char=? (car cs) #\space) (phase1-words (cdr cs) nil (if (null? w) out (cons (list->string (reverse w)) out))))
+            (else (phase1-words (cdr cs) (cons (car cs) w) out))))))
+"A request's `n` forms from `i`, each its length on a line and its text:
+ them, and where the rest begins."
+(define-rec
+  (phase1-forms-from (subr kfx (string i64 i64 strings) (tupleof strings i64))
+    (lambda (s i n out)
+      (if (i64<= n 0)
+          (tuple (reverse out) i)
+          (let* ((nl (phase1-line-end s i))
+                 (len (string->i64 (substring s (i64->int i) (i64->int nl))))
+                 (from (i64+ nl 1))
+                 (to (let ((t (i64+ from len))) (if (i64> t (string-length-i64 s)) (string-length-i64 s) t))))
+            (phase1-forms-from s to (i64- n 1) (cons (substring s (i64->int from) (i64->int to)) out)))))))
+(define phase1-type (subr kfx (string) string)
+  (lambda (style)
+    (if (string=? style "0")
+        "(subr (maxeff (read @globals) spin) (datum (subr pure (symbol) symbol) (subr spin (symbol symbol) bool)) datum)"
+        "(subr (maxeff (read @globals) spin) (datum symbol) datum)")))
+(define phase1-defined (subr kfx (string string) string)
+  (lambda (style code)
+    (string-list-append
+      (list "(define %transformer " (phase1-type style) "\n"
+            "(let ((make-syntactic-closure %make-syntactic-closure) (identifier? %identifier?) (identifier=? %identifier=?)) "
+            code "))\n"))))
+(define phase1-called (subr kfx (string string string) string)
+  (lambda (style tag form)
+    (string-list-append
+      (list "(%transformer (quote " form ") "
+            (cond ((string=? style "0") (string-append "(%er-renamer (string->symbol " (string-append (string-append "\"" (string-append tag "\"")) ")) %er-compare")))
+                  ((string=? style "1") "(quote %env:use)")
+                  (else "(quote %env:macro)"))
+            ")\n"))))
+"The phase-1 program of a request, in two parts: what it defines (the
+ prelude, the phase-1 forms, the transformer), and, of `%apply`, the call
+ of the transformer on the use (`` of the others); `` and `` of one
+ malformed."
+(define phase1-parts (subr kfx (string) (tupleof string string))
+  (lambda (request)
+    (let* ((nl (phase1-line-end request 0))
+           (head (phase1-words (string-chars (substring request 0 (i64->int nl))) nil nil))
+           (kind (if (null? head) "" (car head)))
+           (n (cond ((and (string=? kind "%forms") (i64= (size head) 2)) (string->i64 (car (cdr head))))
+                    ((and (string=? kind "%define") (i64= (size head) 3)) (string->i64 (car (cdr (cdr head)))))
+                    ((and (string=? kind "%apply") (i64= (size head) 5)) (string->i64 (car (cdr (cdr (cdr (cdr head)))))))
+                    (else (the i64 -1)))))
+      (if (i64< n 0)
+          (tuple "" "")
+          (let* ((fs (phase1-forms-from request (i64+ nl 1) n nil))
+                 (rest (substring request (i64->int (extract fs 2)) (string-length request)))
+                 (base (string-append phase1-prelude (string-append "\n" (string-list-append (map (lambda ((f string)) (string-append f "\n")) (extract fs 1)))))))
+            (cond ((string=? kind "%forms") (tuple base ""))
+                  ((string=? kind "%define") (tuple (string-append base (phase1-defined (car (cdr head)) rest)) ""))
+                  (else
+                   (let* ((len (string->i64 (car (cdr (cdr (cdr head))))))
+                          (cut (if (i64> len (string-length-i64 rest)) (string-length-i64 rest) len)))
+                     (tuple (string-append base (phase1-defined (car (cdr head)) (substring rest 0 (i64->int cut))))
+                            (phase1-called (car (cdr head)) (car (cdr (cdr head))) (substring rest (i64->int cut) (string-length rest))))))))))))
+"The phase-1 program of a request, or `` of one malformed."
+(define phase1-program (subr kfx (string) string)
+  (lambda (request)
+    (let ((ps (phase1-parts request))) (string-append (extract ps 1) (extract ps 2)))))
+(define-rec
+  (phase1-colon (subr kfx (string i64) i64)
+    (lambda (s i)
+      (cond ((i64>= (i64+ i 1) (string-length-i64 s)) (the i64 -1))
+            ((and (char=? (string-ref-i64 s i) #\:) (char=? (string-ref-i64 s (i64+ i 1)) #\space)) i)
+            (else (phase1-colon s (i64+ i 1)))))))
+"A refusal's message, its place in the phase-1 program (`%phase1...:LINE:
+ `, after kc's checker's `kfx: `), which no one wrote, taken off."
+(define phase1-unplaced (subr kfx (string) string)
+  (lambda (m0)
+    (let ((m (if (has-prefix? m0 "kfx: %phase1") (after-prefix m0 "kfx: ") m0)))
+    (if (has-prefix? m "%phase1")
+        (let ((at (phase1-colon m 7)))
+          (if (i64< at 0) m (substring m (i64->int (i64+ at 2)) (string-length m))))
+        m))))

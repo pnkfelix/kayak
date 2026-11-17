@@ -119,14 +119,14 @@
                           (cons (string-list-append (list bad ":\n    movl $" (i64->string what) ", %edi\n    call kc_fail\n")) fs)
                           px))))))
 
-      (define x64-comparisons (listof string acyclic) (list "=" "<" "<=" ">" ">=" "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?"))
+      (define x64-comparisons (listof string acyclic) (list "=" "<" "<=" ">" ">=" "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?" "symbol=?"))
 
       (define x64-condition (subr kfx (string) string)
         (lambda (n)
           "The condition code of a comparison, its first argument in `%rax`, its
            second in `%rcx`: characters compare as their words do, the code above
            the same low bits."
-          (cond ((or (string=? n "=") (string=? n "char=?") (string=? n "eq?")) "e")
+          (cond ((or (string=? n "=") (string=? n "char=?") (string=? n "eq?") (string=? n "symbol=?")) "e")
                 ((or (string=? n "<") (string=? n "char<?")) "l")
                 ((or (string=? n "<=") (string=? n "char<=?")) "le")
                 ((or (string=? n ">") (string=? n "char>?")) "g")
@@ -703,6 +703,13 @@
                   ((string=? n "string->symbol") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_intern"))
                   ((string=? n "string?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_string"))
                   ((string=? n "symbol?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_symbol"))
+                  ;; What a datum is (C447): a fixnum, tag 0; a character, its low
+                  ;; byte 67 (kind 8, tag 3); a boolean, 3 or 11; a procedure, a
+                  ;; closure, the runtime's to say.
+                  ((string=? n "int?") (x64-boolean-if (x64-emit c "testq $7, %rax") "e"))
+                  ((string=? n "char?") (x64-boolean-if (x64-emit c "cmpb $67, %al") "e"))
+                  ((string=? n "bool?") (x64-boolean-if (x64-emit (x64-emit (x64-emit c "movq %rax, %rdx") "andq $-9, %rdx") "cmpq $3, %rdx") "e"))
+                  ((string=? n "procedure?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_procedure"))
                   (else (begin (error (string-append "kc: the native back end has no primitive " n)) c)))))
 
         (x64-emit-binary (subr kfx (x64-code string) x64-code)
@@ -787,6 +794,8 @@
                   ((string=? n "string=?") (x64-calling c "kc_string_eq"))
                   ((string=? n "string<?") (x64-calling c "kc_string_lt"))
                   ((string=? n "string-append") (x64-calling c "kc_string_append"))
+                  ;; A quasiquote's `,@` (C447): the list copied onto the rest.
+                  ((string=? n "append") (x64-calling c "kc_append"))
                   ((string=? n "max") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovl %rcx, %rax"))
                   ((string=? n "min") (x64-emit (x64-emit c "cmpq %rcx, %rax") "cmovg %rcx, %rax"))
                   ((or (string=? n "quotient") (string=? n "remainder") (string=? n "modulo"))

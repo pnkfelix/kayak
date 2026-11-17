@@ -12940,3 +12940,66 @@ macros into the demand driven model quite directly".
   operand edited, 2.
 - **The full check**: beyond KFX, the engine agrees with Fixpt on 411 of
   its programs (391 before), its checker refusing 62 (82).
+
+## C447. A procedural macro's transformer compiled by kc, its phase-1 program queries (2026-11-17)
+
+The user, on C446's report ("kc can't run them with its own native code
+yet: it doesn't compile datum or typecase"): "you aren't done. This sound
+important." So kc answers each transformer's request itself, behind the
+same input (`phase1 REQUEST`, C446); the engine's process is gone from kc.
+- **A request's phase-1 program is a file of kc's database.** The program
+  the engine built (Fixpt's prelude, the phase-1 forms, the transformer at
+  its style's type, the use's call) is now `phase1-parts`, in a file both
+  units load (`fx26/macros-phase1.kfx`), in two parts: what it defines, and
+  the call. kc's driver (`phase1-asked`) loads it as a file named by the
+  fingerprint of the definitions (`%phase1-FP.fx`), so each transformer is
+  a file of its own whose forms are queries as any program's (`checked`,
+  `l0-item`, `asm-item`, `objects`), builds it with `kc build`, runs it, and
+  takes its last line: `=` and the value, `=#u` of none, or `!` and why
+  (Fixpt's words, `evaluation failed: ...` taken off; a refusal's place in
+  the program no one wrote taken off, `phase1-unplaced`). A use's call is
+  the one new form at each use: its code assembled and linked, the
+  transformer's kept. That is the wiring the user had in mind (C446): the
+  compilation of a transformer is demand-driven, in the same graph as the
+  program that uses it.
+- **What kc compiles now**: a quoted datum of any kind (its pairs made as
+  `cons`es when met: `l0-quoted`); `quasiquote`, as the checker reads it
+  (C79): `,e`, `,@e` (the runtime's `kc_append`, a copy), nesting kept
+  (`l0-quasi`); `typecase` (int, char, bool, nil, pair, string, symbol,
+  procedure), `if`s on the shape's predicate, each arm's name a `let`
+  (`l0-typecase-as-if`); `int?`, `char?`, `bool?`, `procedure?`,
+  `symbol=?` (symbols interned, so `eq?`); `(list)`. No change to the
+  checker: kc's front end was already FX-26's. Not yet: a typecase of a
+  keyword, a vector and the others, a dotted datum.
+- **The runtime shared, for transformers**: `kc build` links each program
+  against `libkayak_kcrt.a`, 23 MB, 121 ms a link; a transformer's
+  program links against the same crate built as a `cdylib` too
+  (`libkayak_kcrt.so` beside kc, its directory the run path), 19 ms. A
+  user's program is still linked static. Where it is built: `DB.phase1/`
+  beside a database (kept, so a transformer built once is built no
+  more), else `/tmp/kc-phase1-PID`, taken away at the run's end. Without
+  `--rt`, the runtime is the one beside kc, not one under the working
+  directory.
+- **What it costs**: a cold run, kc against the engine's in-process
+  `--expanded-located`: `aif-er.fx` 0.18 s (0.08), `returns-its-input.fx`
+  0.12 s (0.06), `twice-sc.fx` 0.25 s (0.10), `contract-defn.fx` 0.33 s
+  (0.13); before the shared runtime, 0.53, 0.35, 0.71, 0.88. With a
+  database: the same file again, 0.00 s (no request runs); a use's operand
+  edited, 0.09 s, 11 query bodies (the new call's `l0-item` and `asm-item`
+  one each), one assembler, one link, one run. Each use still links (one
+  call a form of the program); a transformer given its use at run time
+  would make each use a run alone, but kc's code has no reader yet.
+- **Found**: kc's message where a transformer fails is Fixpt's (`car or
+  cdr of a non-pair`), the engine's its own (`car of nil`):
+  `procedural/transformer-fails.fx` now KNOWN in `kc-expanded.py` (WORDS),
+  as kc's being the right one. The engine's words are kept: two REPL
+  transcripts state them.
+- **Checks**: `kc-expanded.py`, 258 of 269 as the engine, 11 known (one
+  more, WORDS). `tests/kc/step15/`: 4 more (a quoted datum, a quasiquote,
+  a typecase, a transformer that takes its use apart by `typecase`), each
+  Fixpt's value. `kc-steps.py`'s procedural edits now count `asm-item`s
+  too: cold 8 (the prelude's 6, the transformer, the call), the same 0, a
+  use's operand edited 1.
+- **The full check**: all passed; the engine's comparisons as before
+  (beyond KFX, 411 of Fixpt's programs agree, 62 its checker refuses), the
+  REPL sessions as before.

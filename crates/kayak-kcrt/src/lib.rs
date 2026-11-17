@@ -270,6 +270,30 @@ pub extern "C" fn kc_is_symbol(v: u64) -> u64 {
     boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_SYMBOL)
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_is_procedure(v: u64) -> u64 {
+    boolean(v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_CLOSURE)
+}
+
+/// `a`'s pairs copied, the last's cdr `b` (C447: a quasiquote's `,@`), in
+/// this runtime's memory; `a` not a list fails as `cdr` of a non-pair does.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_append(a: u64, b: u64) -> u64 {
+    let mut cars = Vec::new();
+    let mut rest = a;
+    while rest != null() {
+        if rest & TAG_MASK != TAG_PAIR {
+            kc_fail(4);
+        }
+        let (car, cdr) = pair(rest);
+        cars.push(car);
+        rest = cdr;
+    }
+    cars.iter()
+        .rev()
+        .fold(b, |tail, &car| made(vec![car, tail]) + TAG_PAIR)
+}
+
 /// An array's index past its end, or below 0 (C422): kc's words, in a
 /// string's way; Fixpt's machines each say it their own way.
 #[unsafe(no_mangle)]
