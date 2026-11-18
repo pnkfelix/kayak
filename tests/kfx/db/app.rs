@@ -160,6 +160,17 @@ pub fn sum_lens(mut d: Db, mut ns: List<Str>, mut acc: i64) -> i64 {
     }
 }
 
+pub fn long_text(mut n: i64, mut acc: Str) -> Str {
+    loop {
+        if i64_lt_eq(n, 0i64) {
+            return acc;
+        } else {
+            (n, acc) = (i64_minus(n, 10i64), string_append(acc, str_lit("0123456789")));
+            continue;
+        }
+    }
+}
+
 // An ask of `total`: its value and the bodies it ran.
 pub fn asked(d: Db, what: Str) -> Str {
     let before = db_runs(d);
@@ -182,13 +193,19 @@ pub fn main() -> Str {
         db_set_x(d, k_of(str_lit("file b")), str_lit("hello!"), 0i64);
         asked(d, str_lit("longer"))
     };
+    let sides = {
+        db_side_put_x(d, str_lit("short"), str_lit("kept λ"));
+        db_side_put_x(d, str_lit("long"), long_text(5000i64, str_lit("")));
+        ()
+    };
     let d2 = reread(d, str_lit("test"));
+    let side = string_append(str_lit("side="), string_append(db_side(d2, str_lit("short")), string_append(str_lit(","), i64_to_string(string_length_i64(db_side(d2, str_lit("long")))))));
     let read_back = asked(d2, str_lit("read-back"));
     let edited = {
         db_set_x(d2, k_of(str_lit("file a")), str_lit("abcd"), 0i64);
         asked(d2, str_lit("edited"))
     };
     let other = string_append(str_lit("another's-keys="), i64_to_string(size(db_keys(reread(d, str_lit("another"))))));
-    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(other, kayak_rt::nil()))))))))))))))
+    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(other, kayak_rt::nil()))))))))))))))))
 }
 

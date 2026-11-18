@@ -68,6 +68,10 @@
     (lambda (d ns acc)
       (if (null? ns) acc (sum-lens d (cdr ns) (i64+ acc (string->i64-of (db-get d run (k-of (string-append "len " (car ns)))))))))))
 
+(define-rec
+  (long-text (subr kfx (i64 string) string)
+    (lambda (n acc) (if (i64<= n 0) acc (long-text (i64- n 10) (string-append acc "0123456789"))))))
+
 "An ask of `total`: its value and the bodies it ran."
 (define asked (subr qe (db string) string)
   (lambda (d what)
@@ -85,8 +89,13 @@
                (again (asked d "again"))
                (same (begin (db-set! d (k-of "file a") "abc" 0) (asked d "same-length")))
                (longer (begin (db-set! d (k-of "file b") "hello!" 0) (asked d "longer")))
+               ;; A side value kept, read back (C473: its fingerprint the
+               ;; graph's, or it is not believed): a short one, in its
+               ;; shard; a long one, a file of its own.
+               (sides (begin (db-side-put! d "short" "kept λ") (db-side-put! d "long" (long-text 5000 "")) #u))
                (d2 (reread d "test"))
+               (side (string-append "side=" (string-append (db-side d2 "short") (string-append "," (i64->string (string-length-i64 (db-side d2 "long")))))))
                (read-back (asked d2 "read-back"))
                (edited (begin (db-set! d2 (k-of "file a") "abcd" 0) (asked d2 "edited")))
                (other (string-append "another's-keys=" (i64->string (size (db-keys (reread d "another")))))))
-          (string-list-append (list first " " again " " same " " longer " " read-back " " edited " " other)))))))
+          (string-list-append (list first " " again " " same " " longer " " side " " read-back " " edited " " other)))))))

@@ -64,9 +64,12 @@
 
 "A value as a node keeps it (C472): its text, made in this run and not
  yet in a file; its text, as its file has it (read, or written); in its
- file, not read yet (the node's number, which names the file); or none, a
- value the database was not asked to keep, made again when it is read."
-(define-datatype value (v-text string) (v-read string) (v-file i64) (v-none))
+ file, not read yet (the node's number, which names the file); in its
+ shard's file, a small one (C473): the shard's number, its offset in the
+ shard's values and length, and whether it is escaped there (past ASCII),
+ cut out when it is read; or none, a value the database was not asked to
+ keep, made again when it is read."
+(define-datatype value (v-text string) (v-read string) (v-file i64) (v-at i64 i64 i64 bool) (v-none))
 
 "A node: its key; whether it is an input; the revision it was verified
  in; the one its value changed in; its value's fingerprint; what it read,
@@ -120,6 +123,11 @@
 (define-type runner (subr qe (db sexp) string))
 
 (define durabilities i64 4)
+
+"A node's number (C472): its shard's number times `shard-span`, and its
+ place within the shard; so that a number a node read names its shard."
+(define shard-span i64 16777216)
+(define shard-of-number (subr kfx (i64) i64) (lambda (i) (i64-quotient i shard-span)))
 
 ;;; ------------------------------------------------------------ keys
 
@@ -391,8 +399,14 @@
                      (p (sc-ws s (db-nth ns 5) n))
                      (deps (labels-scanned s (i64+ p 1) n nil))
                      (v (sc-ws s (i64+ (sc-close s (i64+ p 1) n) 1) n))
-                     ;; `file` (C472): its value in the file its number names.
-                     (val (if (i64= (sc-char s v n) 102) (v-file k) (v-none))))
+                     ;; `file` (C472): its value in the file its number names;
+                     ;; `(at O L)`, `(atx O L)` (C473), in the shard's values.
+                     (val (cond ((i64= (sc-char s v n) 102) (v-file k))
+                                ((i64= (sc-char s v n) 40)
+                                 (let* ((x (i64= (sc-char s (i64+ v 3) n) 120))
+                                        (os (sc-ints s (i64+ v (if x 4 3)) n 2 nil)))
+                                   (v-at (shard-of-number k) (db-nth os 0) (db-nth os 1) x)))
+                                (else (v-none)))))
                 (node key (i64= (db-nth ns 0) 1) (db-nth ns 1) (db-nth ns 2) (db-nth ns 3) deps (db-nth ns 4) val)))))))))
 
 "Reading them back: the graph scanned by offset (C417), never made a list
@@ -564,12 +578,13 @@
 (define value-checked (subr kfx (string i64) (listof string acyclic))
   (lambda (x fp) (if (i64= ((with queries fnv-string) x (with queries fnv-offset)) fp) (list x) nil)))
 
+"Where a shard's values begin in its file's text (C473): after its first
+ line, `(kayak-shard 3 NEXT LENGTH)`."
+(define shard-values-start (subr kfx (string) i64)
+  (lambda (t) (i64+ (sc-close t 0 (string-length-i64 t)) 2)))
+
 ;;; ------------------------------------------------------------ the shards
 
-"A node's number (C472): its shard's number times `shard-span`, and its
- place within the shard; so that a number a node read names its shard."
-(define shard-span i64 16777216)
-(define shard-of-number (subr kfx (i64) i64) (lambda (i) (i64-quotient i shard-span)))
 
 "A key's group, which its shard is of (C472): its first argument, a
  file's path for most of kc's queries, so that one program's nodes are in
@@ -652,7 +667,8 @@
                     (begin
                       (sm-set! d n (shard h slot (if ok text "") next #t dirty))
                       (if ok
-                          (let ((k0 (sc-ws text (i64+ (sc-close text (string-length-i64 hd) m) 1) m)))
+                          ;; Its values (C473), then `(keys`.
+                          (let ((k0 (sc-ws text (i64+ (shard-values-start text) (db-nth (sc-ints text (string-length-i64 hd) m 2 nil) 1)) m)))
                             ;; `(keys`, then its records; `(nodes`, then theirs.
                             (tagcase (keys-scanned! d text (i64+ k0 5) m (am-none) -1)
                               (scanned (top e) (nodes-scanned! d text (i64+ (sc-ws text e m) 6) m))))
@@ -763,8 +779,43 @@
 
 (define db-dirty? (subr qe (db) bool) (lambda (d) (get (extract d dirty))))
 
-"A node's value as text: kept, read from its file, or `` if none is kept
- (a reader makes it again first, `db-node-read!`)."
+(define-rec
+  (ascii-escaped (subr kfx ((listof char acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (cs acc)
+      "A value's characters as the payload keeps them, the newest first."
+      (if (null? cs)
+          acc
+          (let ((k (char->i64 (car cs))))
+            (ascii-escaped (cdr cs)
+                           (cons (cond ((char=? (car cs) #\\) "\\\\")
+                                       ((i64> k 127) (string-append "\\u{" (string-append (hex-of k "") "}")))
+                                       (else (list->string (list (car cs)))))
+                                 acc)))))))
+
+(define-rec
+  (ascii-only? (subr kfx ((listof char acyclic)) bool)
+    (lambda (cs) (cond ((null? cs) #t) ((i64> (char->i64 (car cs)) 127) #f) (else (ascii-only? (cdr cs)))))))
+
+(define payload-text (subr kfx (string) string)
+  (lambda (x) (if (ascii-only? (string-chars x)) x (string-list-append (reverse (ascii-escaped (string-chars x) nil))))))
+
+(define-rec
+  (ascii-unescaped (subr kfx ((listof char acyclic) (listof char acyclic)) string)
+    (lambda (cs acc)
+      (cond ((null? cs) (list->string (reverse acc)))
+            ((and (char=? (car cs) #\\) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\)) (ascii-unescaped (cdr (cdr cs)) (cons #\\ acc)))
+            ((and (char=? (car cs) #\\) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\u))
+             (ascii-code (cdr (cdr (cdr cs))) 0 acc))
+            (else (ascii-unescaped (cdr cs) (cons (car cs) acc))))))
+  (ascii-code (subr kfx ((listof char acyclic) i64 (listof char acyclic)) string)
+    (lambda (cs n acc)
+      (cond ((null? cs) (list->string (reverse acc)))
+            ((char=? (car cs) #\}) (ascii-unescaped (cdr cs) (cons (i64->char n) acc)))
+            (else (let ((k (char->i64 (car cs))))
+                    (ascii-code (cdr cs) (i64+ (i64* n 16) (if (i64< k 58) (i64- k 48) (i64- k 87))) acc)))))))
+
+"A node's value as text: kept, read from its file or its shard's, or `` if
+ none is kept (a reader makes it again first, `db-node-read!`)."
 (define node-value-in (subr qe (db node) string)
   (lambda (d n)
     (tagcase (node-kept n)
@@ -773,6 +824,11 @@
       (v-file (i)
         (let ((x (value-checked ((get (extract d reads)) (value-file i)) (node-fp n))))
           (if (null? x) "" (car x))))
+      (v-at (sh o len esc)
+        (let* ((t (shard-text (db-shard d sh)))
+               (b (i64+ (shard-values-start t) o))
+               (x (substring t (i64->int b) (i64->int (i64+ b len)))))
+          (if esc (ascii-unescaped (string-chars x) nil) x)))
       (v-none () ""))))
 
 (define node-value (subr qe (db node) string)
@@ -792,7 +848,9 @@
 (define db-side-put! (subr qe (db string string) unit)
   (lambda (d k text)
     (let ((key (key1 "%side" k)))
-      (db-put! d (db-id d key) (node key #t 0 0 0 nil 0 (v-text text))))))
+      ;; Its fingerprint its text's (C473): a value read from a file is
+      ;; believed only if its fingerprint is the graph's.
+      (db-put! d (db-id d key) (node key #t 0 0 ((with queries fnv-string) text (with queries fnv-offset)) nil 0 (v-text text))))))
 
 "Input `k` set to `text`, of durability `du`: a new revision if its value
  is new. Of a key no node is of (C449), no new revision: nothing has read
@@ -947,18 +1005,24 @@
    SLOT NEXT) ...))`, whose it is (a compiler's identity), the
    durabilities' revisions, and each shard, by number, its group's hash,
    the slot its file is in, and its next number;
- - a shard's file, `gN.SLOT`: `(kayak-shard 3 NEXT)`, then `(keys #I=KEY
-   ...)`, each key labelled by its number where it is written, each text
+ - a shard's file, `gN.SLOT`: `(kayak-shard 3 NEXT LENGTH)`, then its
+   values of `inline-most` characters or fewer (C473), one after another,
+   `LENGTH` in all, each written with each `\` `\\` and each character
+   past ASCII `\u{HEX}` if it has one past ASCII, and marked so; then
+   `(keys #I=KEY ...)`, each key labelled by its number where it is written, each text
    in them written more than once (a path) labelled where first written;
    then `(nodes (#I# INPUT VERIFIED CHANGED FINGERPRINT DURABILITY (#M#
    ...) VALUE) ...)`, each node's key and what it read by number, its
-   value `file` or `none`; each record `(LEN ...)`, stepped over unread
+   value `(at OFFSET LENGTH)` (or `atx`, escaped) in the shard's values,
+   `file`, or `none`; each record `(LEN ...)`, stepped over unread
    until its node is asked for (C417). ASCII alone, so that an offset is a
    character's. A shard of which a node changed is written to the other
    of its two slots, and the head, written last, names the slot: a save
    cut short leaves the files the old head names as they were;
- - a value's file, `vI`, its node's number: its text, as it is, read when
-   it is asked for and believed if its fingerprint is the graph's.
+ - a longer value's file, `vI`, its node's number: its text, as it is,
+   read when it is asked for and believed if its fingerprint is the
+   graph's. Small values are not files of their own, since each file
+   written is flushed to the disk (FX-26's `write-file`, C473).
 
  A key whose value `keep` says is not to be kept (a whole program's output,
  made again from its parts, which are kept) is written `none`: its node,
@@ -1009,44 +1073,84 @@
 
 "A shard's records made: its keys', its nodes', the values' files to
  write; the texts seen in keys, and the next label."
-(define-datatype made-files (made-files (listof string acyclic) (listof string acyclic) (listof db-file acyclic) kmap i64))
+"The most characters a value kept in its shard's file has (C473): one
+ longer is a file of its own, as the expander's maker's code is; one so
+ short is not, since each file written is flushed to the disk (FX-26's
+ `write-file`), which a cold build of a program of a thousand procedures,
+ a file a value, paid five seconds for."
+(define inline-most i64 4096)
+
+"A shard's records made: its keys', its nodes', the values' own files to
+ write, and its values kept in it, the newest first; the texts seen in
+ keys, the next label, and the values' length so far."
+(define-datatype made-files (made-files (listof string acyclic) (listof string acyclic) (listof db-file acyclic) (listof string acyclic) kmap i64 i64))
+
+"Where a node's value goes: in the shard, its text as there and whether
+ escaped; in a file of its own, a new one's text to write, or none (it is
+ there); or nowhere."
+(define-datatype placed (in-shard string bool) (in-file (listof string acyclic)) (nowhere))
+
+(define value-placed (subr qe (db node bool) placed)
+  (lambda (d n kept)
+    (if (not kept)
+        (nowhere)
+        (tagcase (node-kept n)
+          (v-none () (nowhere))
+          (v-file (i) (in-file nil))
+          (v-read (t) (in-file nil))
+          (v-at (sh o l e)
+            (let* ((t (shard-text (db-shard d sh))) (b (i64+ (shard-values-start t) o)))
+              (in-shard (substring t (i64->int b) (i64->int (i64+ b l))) e)))
+          (v-text (t)
+            (if (i64> (string-length-i64 t) inline-most)
+                (in-file (list t))
+                (in-shard (payload-text t) (not (ascii-only? (string-chars t))))))))))
 
 (define-rec
-  (nodes-files (subr qe (db (listof i64 acyclic) (subr kfx (sexp) bool) made-files) made-files)
-    (lambda (d is keep m)
-      "Each node of `is`, its key into the keys, its record into the nodes, its
-       value, made in this run and kept, a file to write (and as the file
-       has it after)."
+  (nodes-files (subr qe (db i64 (listof i64 acyclic) (subr kfx (sexp) bool) made-files) made-files)
+    (lambda (d sh is keep m)
+      "Each node of shard `sh` of `is`, its key into the keys, its record
+       into the nodes, its value into the shard's values or a file of its
+       own (C473), and as they have it after."
       (if (null? is)
           m
           (tagcase m
-            (made-files (keys nodes files seen labels)
+            (made-files (keys nodes files payload seen labels at)
               (if (null? (db-node-at d (car is)))
-                  (nodes-files d (cdr is) keep m)
+                  (nodes-files d sh (cdr is) keep m)
               (let ((n (car (db-node-at d (car is)))))
                 (tagcase (key-written (node-key n) seen labels (list (string-append "#" (string-append (i64->string (car is)) "="))))
                   (keyed-out (key-parts seen2 labels2)
-                    (let* ((kept (or (node-input? n) (keep (node-key n))))
-                           (made (tagcase (node-kept n) (v-text (t) (if kept (list t) nil)) (else other nil)))
-                           (filed (and kept (tagcase (node-kept n) (v-none () #f) (else other #t)))))
+                    (let* ((p (value-placed d n (or (node-input? n) (keep (node-key n)))))
+                           (after (tagcase p
+                                    (in-shard (raw e) (list (v-at sh at (string-length-i64 raw) e)))
+                                    (in-file (ts) (if (null? ts) nil (list (v-read (car ts)))))
+                                    (nowhere () nil)))
+                           (said (tagcase p
+                                   (in-shard (raw e) (string-list-append (list (if e "(atx " "(at ") (i64->string at) " " (i64->string (string-length-i64 raw)) ")")))
+                                   (in-file (ts) "file")
+                                   (nowhere () "none"))))
                       (begin
-                        (if (null? made)
+                        (if (null? after)
                             #u
                             (tagcase n
                               (node (k inp v c f ds du val)
-                                (set (extract d nodes) (im-put (get (extract d nodes)) (car is) (node k inp v c f ds du (v-read (car made))))))))
-                        (nodes-files d (cdr is) keep
+                                (set (extract d nodes) (im-put (get (extract d nodes)) (car is) (node k inp v c f ds du (car after)))))))
+                        (nodes-files d sh (cdr is) keep
                           (made-files (cons (length-first (string-append (string-list-append (reverse key-parts)) ")")) keys)
                                       (cons (length-first (string-list-append
                                               (list "#" (i64->string (car is)) "# " (if (node-input? n) "1 " "0 ")
                                                     (i64->string (node-verified n)) " " (i64->string (node-changed n)) " "
                                                     (i64->string (node-fp n)) " " (i64->string (node-durability n)) " ("
                                                     (string-list-append (reverse (labels-text (node-deps n) nil))) ") "
-                                                    (if filed "file" "none")
-                                                    ")")))
+                                                    said ")")))
                                             nodes)
-                                      (if (null? made) files (cons (db-file (value-file (car is)) (car made)) files))
-                                      seen2 labels2))))))))))))))
+                                      (tagcase p
+                                        (in-file (ts) (if (null? ts) files (cons (db-file (value-file (car is)) (car ts)) files)))
+                                        (else other files))
+                                      (tagcase p (in-shard (raw e) (cons raw payload)) (else other payload))
+                                      seen2 labels2
+                                      (tagcase p (in-shard (raw e) (i64+ at (string-length-i64 raw))) (else other at))))))))))))))))
 
 (define-rec
   (numbers-text (subr kfx ((listof i64 acyclic)) (listof string acyclic))
@@ -1073,11 +1177,11 @@
               (if (not dirty)
                   (shards-saved d (cdr ns) keep values graphs
                                 (cons (string-list-append (list " (" h " " (i64->string slot) " " (i64->string next) ")")) heads))
-                  (tagcase (nodes-files d (numbers-from (i64* (car ns) shard-span) 0 next nil) keep (made-files nil nil nil (km-none) 0))
-                    (made-files (keys nodes files seen labels)
+                  (tagcase (nodes-files d (car ns) (numbers-from (i64* (car ns) shard-span) 0 next nil) keep (made-files nil nil nil nil (km-none) 0 0))
+                    (made-files (keys nodes files payload seen labels at)
                       (let* ((to (if (i64= slot 0) (the i64 1) (the i64 0)))
                              (t (string-list-append
-                                  (append (list "(kayak-shard 3 " (i64->string next) ")\n(keys")
+                                  (append (list "(kayak-shard 3 " (i64->string next) " " (i64->string at) ")\n" (string-list-append (reverse payload)) "\n(keys")
                                     (append (reverse keys)
                                       (append (list ")\n(nodes") (append (reverse nodes) (list ")\n"))))))))
                         (begin

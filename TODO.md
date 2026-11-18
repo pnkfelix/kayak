@@ -1964,6 +1964,15 @@ of it chosen in C448–C464:
     one, each read when asked for and written when changed; each value a
     file of its own. A run beside the expander: 0.012 s. Left: the head
     lists every shard (small: a line each), read and written whole.
+    Then (C473) a value of 4096 characters or fewer kept in its shard's
+    file, since FX-26's `write-file` flushes each file to the disk (a
+    cold build of 1000 procedures, a file a value, 6.2 s, not 0.8 s).
+    Left: each larger value written is flushed too (an edit of the
+    1000-procedure bench writes five files, C471 two: about 25 ms more).
+    Asked of Fixpt (the user, 2026-11-18): an atomic `write-file` that
+    does not flush, for files whose loss is harmless (a value file is
+    believed only if its fingerprint is the graph's); then kayak's value
+    files and shards use it, the head alone flushed.
 
 Order: 1 and 7, each a step of its own size, before kc grows more; 3 a
 table the process shares now (which is right under any design: kcrt's

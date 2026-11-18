@@ -14356,3 +14356,47 @@ program built warm runs no body, in 0.25 s. kc-steps' one database for
 the sweep again (C471's database of its own for the expander's program
 taken away). Left (TODO §55 item 12): the head lists every shard, read
 and written whole, a line each.
+
+## C473. Small values in their shard's file; side values fingerprinted (2026-11-18)
+
+Found at C472's commit: its kc-bench rows (1000 procedures) against
+C471's, cold 6188 ms (809), a body edit 395 ms (304). FX-26's
+`write-file` replaces a file "written beside it, flushed to the disk,
+and renamed over it" (Fixpt's `docs/fx26.md`; kayak-rt's
+`write_file_bytes`, `sync_all`): a file a value made a cold build pay a
+flush for each of its 3014 nodes, about 1.8 ms each. The user, of three
+ways (small values inline; a non-flushing write, Fixpt's first; a
+shard's values packed): "All of these are worth discussing. First give
+me the prompt to hand to Fixpt team for non-flushing writes. Then while
+they work on that, you implement inline storage of small values." The
+prompt asked Fixpt for an atomic `write-file` that does not flush
+(`write-file-unflushed`, or any shape Fixpt prefers), for files whose
+loss is harmless.
+
+What changed (`lib/db.kfx`):
+- **Inline values**: a value of `inline-most` (4096) characters or fewer
+  is kept in its shard's file, after its first line, `(kayak-shard 3 NEXT
+  LENGTH)`, the values one after another, each record's `(at OFFSET
+  LENGTH)` (`atx`, escaped past ASCII, as C417's payload was); cut out
+  when read. A longer one, a file of its own as in C472 (the expander's
+  maker's code, a program's text, the checker's memos).
+- **Side values fingerprinted**: `db-side-put!` made its node with
+  fingerprint 0; C472 believes a value read from a file only if its
+  fingerprint is the graph's, so the checker's memos (a side value, 392
+  KB at 1000 procedures) were read, not believed, and every run checked
+  the program whole again: a comment's edit 0.28 s, C471's kc 0.21 s, in
+  turn on one machine. Now its text's. tests/kfx/db's program keeps a
+  short side value and a long one across a save and a read back
+  (`side=kept λ,5000`; before the fix, none).
+
+Measured (one machine, C471's kc built beside, in turn): a comment's
+edit, 0.25 s against C471's 0.21 s, the same CPU (439 samples against
+447); the rest the flushes, five files against two (the program's text
+and the memos, each changed by every edit, and two shards and the
+head). kc-bench (the machine some 12% slower than at C471's rows, Fixpt's
+column 730 ms, not 650): cold 917 ms, a body edit 352, a comment 286.
+Left (TODO §55 item 12): Fixpt's non-flushing write, then each file but
+the head written so.
+- **The full check**: all passed in 376.2 s; kc-steps 361 of 361 in
+  123.3 s (C472's 251.9, C471's 512.1 cold), each built again warm, no
+  body run; kc-objects 478, 0 differ; corpus 107 agree; nextest 5503.
