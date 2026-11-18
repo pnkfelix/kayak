@@ -63,7 +63,7 @@ fn arena_of<T: 'static>() -> &'static Arena<T> {
 
 /// `v`, in the heap, by bumping.
 #[inline]
-pub fn heap_alloc<T: 'static>(v: T) -> &'static T {
+pub fn heap_alloc<T: 'static>(v: T) -> crate::Handle<'static, T> {
     crate::stats::note::<T>(std::mem::size_of::<T>());
     arena_of::<T>().alloc(v)
 }
@@ -93,7 +93,7 @@ mod tests {
         r.set(8);
         assert_eq!(xs.unwrap().car + xs.unwrap().cdr.unwrap().car, 3);
         assert_eq!((r.get(), s.get(), ys.unwrap().car), (8, true, "a"));
-        let many: Vec<&i64> = (0..1000).map(heap_alloc).collect();
+        let many: Vec<crate::Handle<'static, i64>> = (0..1000).map(heap_alloc).collect();
         assert!(many.iter().enumerate().all(|(i, v)| **v == i as i64));
     }
 }

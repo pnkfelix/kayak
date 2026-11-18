@@ -144,7 +144,7 @@ pub async fn unit_loads_read(mut rt: Drt, mut dir: Str, mut todo: Strings, mut d
     loop {
         if null_p(todo) {
             return Ok(done);
-        } else if any_p(lambda1s(move |s: &'static Filed| {
+        } else if any_p(lambda1s(move |s: kayak_rt::Handle<'static, Filed>| {
             let tagcase_ = s;
             match *tagcase_ {
                 Filed::Filed(n, t) => {
@@ -170,7 +170,7 @@ pub async fn unit_loads_read(mut rt: Drt, mut dir: Str, mut todo: Strings, mut d
 pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result<Sources, Unwind> {
     loop {
         if null_p(lines) {
-            return Ok(nil::<&'static Source>());
+            return Ok(nil::<kayak_rt::Handle<'static, Source>>());
         } else {
             let line = line_trimmed(car(lines));
             if (string_eq_p(line, str_lit("")) || has_prefix_p(line, str_lit(";")) || string_eq_p(line, str_lit("--syscalls"))) {
@@ -179,14 +179,14 @@ pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result
             } else {
                 let path = path_joined(dir, line);
                 let text = kayak_rt::suspend::body(read_text(rt, path)).await?;
-                return Ok(kayak_rt::heap_cons(source(stem(path), text), onto(map(lambda1s(move |x: &'static Filed| {
+                return Ok(kayak_rt::heap_cons(source(stem(path), text), onto(map(lambda1s(move |x: kayak_rt::Handle<'static, Filed>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Filed::Filed(n, t) => {
                             source(string_append(str_lit("%load:"), n), t)
                         }
                     }
-                }), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit("")), nil::<&'static Filed>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
+                }), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit("")), nil::<kayak_rt::Handle<'static, Filed>>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
             }
         }
     }
@@ -221,7 +221,7 @@ pub async fn loads_read(mut rt: Drt, mut todo: Strings, mut done: Fileds) -> Res
     loop {
         if null_p(todo) {
             return Ok(done);
-        } else if any_p(lambda1s(move |s: &'static Filed| {
+        } else if any_p(lambda1s(move |s: kayak_rt::Handle<'static, Filed>| {
             let tagcase_ = s;
             match *tagcase_ {
                 Filed::Filed(n, t) => {
@@ -240,7 +240,7 @@ pub async fn loads_read(mut rt: Drt, mut todo: Strings, mut done: Fileds) -> Res
 }
 
 pub async fn loaded_for(rt: Drt, file: Str, text: Str) -> Result<Fileds, Unwind> {
-    Ok(kayak_rt::suspend::body(loads_read(rt, load_paths_all(read_all(text, file, 1i64), directory_of(file)), nil::<&'static Filed>())).await?)
+    Ok(kayak_rt::suspend::body(loads_read(rt, load_paths_all(read_all(text, file, 1i64), directory_of(file)), nil::<kayak_rt::Handle<'static, Filed>>())).await?)
 }
 
 // Whether a manifest says its program is a runtime's own, which may
@@ -288,7 +288,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
                 queries::memos_of_text(t, compiler_identity())
             } else {
                 let other = tagcase_;
-                nil::<&'static Memo>()
+                nil::<kayak_rt::Handle<'static, Memo>>()
             }
         };
         let tagcase_ = compile_units_memo(program, old, runtime_unit_p(text));

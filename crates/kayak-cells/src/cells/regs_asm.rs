@@ -11,7 +11,7 @@ use super::*;
 // it goes to, and `save`'s and `pop`'s operand the frame's size, known
 // once the body is done.
 pub enum Ritem {
-    RiOp(Str, List<&'static Opnd>),
+    RiOp(Str, List<kayak_rt::Handle<'static, Opnd>>),
     RiFrame(Str),
     RiLabel(i64),
     RiBranch(Str, i64),
@@ -19,31 +19,31 @@ pub enum Ritem {
     RiPos(i64),
 }
 
-pub fn ri_op(f0: Str, f1: List<&'static Opnd>) -> &'static Ritem {
+pub fn ri_op(f0: Str, f1: List<kayak_rt::Handle<'static, Opnd>>) -> kayak_rt::Handle<'static, Ritem> {
     kayak_rt::heap_alloc(Ritem::RiOp(f0, f1))
 }
 
-pub fn ri_frame(f0: Str) -> &'static Ritem {
+pub fn ri_frame(f0: Str) -> kayak_rt::Handle<'static, Ritem> {
     kayak_rt::heap_alloc(Ritem::RiFrame(f0))
 }
 
-pub fn ri_label(f0: i64) -> &'static Ritem {
+pub fn ri_label(f0: i64) -> kayak_rt::Handle<'static, Ritem> {
     kayak_rt::heap_alloc(Ritem::RiLabel(f0))
 }
 
-pub fn ri_branch(f0: Str, f1: i64) -> &'static Ritem {
+pub fn ri_branch(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Ritem> {
     kayak_rt::heap_alloc(Ritem::RiBranch(f0, f1))
 }
 
-pub fn ri_guard(f0: Str, f1: i64, f2: i64) -> &'static Ritem {
+pub fn ri_guard(f0: Str, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Ritem> {
     kayak_rt::heap_alloc(Ritem::RiGuard(f0, f1, f2))
 }
 
-pub fn ri_pos(f0: i64) -> &'static Ritem {
+pub fn ri_pos(f0: i64) -> kayak_rt::Handle<'static, Ritem> {
     kayak_rt::heap_alloc(Ritem::RiPos(f0))
 }
 
-pub type Ritems = List<&'static Ritem>;
+pub type Ritems = List<kayak_rt::Handle<'static, Ritem>>;
 
 pub fn rop_index(mut xs: List<Str>, mut n: Str, mut i: i64) -> i64 {
     loop {
@@ -58,7 +58,7 @@ pub fn rop_index(mut xs: List<Str>, mut n: Str, mut i: i64) -> i64 {
     }
 }
 
-pub fn ritem_size(x: &'static Ritem) -> i64 {
+pub fn ritem_size(x: kayak_rt::Handle<'static, Ritem>) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
         Ritem::RiOp(name, os) => {
@@ -93,7 +93,7 @@ pub fn ritems_size(mut xs: Ritems, mut n: i64) -> i64 {
     }
 }
 
-pub fn rplaces_of(mut xs: Ritems, mut at: i64, mut acc: List<&'static LabelAt>) -> List<&'static LabelAt> {
+pub fn rplaces_of(mut xs: Ritems, mut at: i64, mut acc: List<kayak_rt::Handle<'static, LabelAt>>) -> List<kayak_rt::Handle<'static, LabelAt>> {
     loop {
         if null_p(xs) {
             return acc;
@@ -133,7 +133,7 @@ pub fn rline(at: i64, text: Str) -> Str {
 
 // An operand as register code lists it: a word as a constant, as its
 // cell is shown (`#word "NAME"`, C259); any other as the stack code's.
-pub fn ropnd_text(o: &'static Opnd) -> Str {
+pub fn ropnd_text(o: kayak_rt::Handle<'static, Opnd>) -> Str {
     let tagcase_ = o;
     match *tagcase_ {
         Opnd::OLit(l) => {
@@ -155,7 +155,7 @@ pub fn ropnd_text(o: &'static Opnd) -> Str {
     }
 }
 
-pub fn rop_text(name: Str, os: List<&'static Opnd>) -> Str {
+pub fn rop_text(name: Str, os: List<kayak_rt::Handle<'static, Opnd>>) -> Str {
     if string_eq_p(name, str_lit("lambda")) {
         string_append(str_lit("lambda "), string_append(opnd_text(car(os)), string_append(str_lit(" over "), opnd_text(second_opnd(os)))))
     } else {
@@ -169,7 +169,7 @@ pub fn rop_text(name: Str, os: List<&'static Opnd>) -> Str {
 
 // A word's register code's lines, and the words they name, in order;
 // `frame` the frame's size.
-pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<&'static LabelAt>, mut frame: i64, mut out: Strings, mut named: Strings) -> &'static Wsaid {
+pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>, mut frame: i64, mut out: Strings, mut named: Strings) -> kayak_rt::Handle<'static, Wsaid> {
     loop {
         if null_p(xs) {
             return wsaid(put_sep_lines(reverse(out)), reverse(named));
@@ -212,14 +212,14 @@ pub enum Rcode {
     Rcode(Ritems, i64),
 }
 
-pub fn rcode(f0: Ritems, f1: i64) -> &'static Rcode {
+pub fn rcode(f0: Ritems, f1: i64) -> kayak_rt::Handle<'static, Rcode> {
     kayak_rt::heap_alloc(Rcode::Rcode(f0, f1))
 }
 
 // Its line table (C249): `; regs at FILE CELL:POS …`, each where an
 // expression's code begins and its source position, as the stack code's
 // (`line-table`); none if none.
-pub fn rtable_entries(mut xs: Ritems, mut at: i64, mut acc: List<&'static Tentry>) -> List<&'static Tentry> {
+pub fn rtable_entries(mut xs: Ritems, mut at: i64, mut acc: List<kayak_rt::Handle<'static, Tentry>>) -> List<kayak_rt::Handle<'static, Tentry>> {
     loop {
         if null_p(xs) {
             return acc;
@@ -262,11 +262,11 @@ pub fn rtable_entries(mut xs: Ritems, mut at: i64, mut acc: List<&'static Tentry
     }
 }
 
-pub fn rcode_line_table(rc: &'static Rcode) -> Str {
+pub fn rcode_line_table(rc: kayak_rt::Handle<'static, Rcode>) -> Str {
     let tagcase_ = rc;
     match *tagcase_ {
         Rcode::Rcode(xs, frame) => {
-            let es = entries_shown(rtable_entries(xs, 0i64, nil::<&'static Tentry>()), nil::<Str>());
+            let es = entries_shown(rtable_entries(xs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()), nil::<Str>());
             if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
                 str_lit("")
             } else {
@@ -278,11 +278,11 @@ pub fn rcode_line_table(rc: &'static Rcode) -> Str {
 
 // Its lines as the listing writes them, after its word's cells, and the
 // words it names.
-pub fn rcode_said(rc: &'static Rcode) -> &'static Wsaid {
+pub fn rcode_said(rc: kayak_rt::Handle<'static, Rcode>) -> kayak_rt::Handle<'static, Wsaid> {
     let tagcase_ = rc;
     match *tagcase_ {
         Rcode::Rcode(xs, frame) => {
-            let tagcase_ = rlines_of(xs, 0i64, rplaces_of(xs, 0i64, nil::<&'static LabelAt>()), frame, nil::<Str>(), nil::<Str>());
+            let tagcase_ = rlines_of(xs, 0i64, rplaces_of(xs, 0i64, nil::<kayak_rt::Handle<'static, LabelAt>>()), frame, nil::<Str>(), nil::<Str>());
             match *tagcase_ {
                 Wsaid::Wsaid(text, named) => {
                     wsaid(string_append(str_lit("  its register code ("), string_append(i64_to_string(ritems_size(xs, 0i64)), string_append(str_lit(" cells, not compiled):\n"), text))), named)

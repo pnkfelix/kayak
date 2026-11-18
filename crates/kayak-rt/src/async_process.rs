@@ -229,7 +229,7 @@ fn start<M: 'static, F: Future<Output = ()> + 'static>(
     on_failure: Option<Box<dyn Fn(String)>>,
     body: impl FnOnce(Inbox<M>) -> F,
 ) -> Addr<M> {
-    let mb: Addr<M> = crate::alloc(MailboxBox {
+    let mb: Addr<M> = crate::leak(MailboxBox {
         queue: Mutex::new(VecDeque::new()),
     });
     let Some(cx) = crate::suspend::task_cx() else {

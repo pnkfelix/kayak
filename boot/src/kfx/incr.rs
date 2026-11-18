@@ -21,7 +21,7 @@ pub enum Emitted {
     Emitted(Chars, Memos),
 }
 
-pub fn emitted(f0: Chars, f1: Memos) -> &'static Emitted {
+pub fn emitted(f0: Chars, f1: Memos) -> kayak_rt::Handle<'static, Emitted> {
     kayak_rt::heap_alloc(Emitted::Emitted(f0, f1))
 }
 
@@ -29,10 +29,10 @@ pub fn emitted(f0: Chars, f1: Memos) -> &'static Emitted {
 // emitter's context by name (each name's entries in it, fingerprinted),
 // and what it reads by no name (its locals).
 pub enum Ereads {
-    Ereads(&'static Fmap, i64),
+    Ereads(kayak_rt::Handle<'static, Fmap>, i64),
 }
 
-pub fn ereads(f0: &'static Fmap, f1: i64) -> &'static Ereads {
+pub fn ereads(f0: kayak_rt::Handle<'static, Fmap>, f1: i64) -> kayak_rt::Handle<'static, Ereads> {
     kayak_rt::heap_alloc(Ereads::Ereads(f0, f1))
 }
 
@@ -52,7 +52,7 @@ pub mod incremental {
     // The context's fingerprint: everything in it but the facts, which are
     // taken form by form.
     #[inline]
-    pub fn typed_text(x: &'static Typed) -> Str {
+    pub fn typed_text(x: kayak_rt::Handle<'static, Typed>) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
             Typed::Typed(n, t) => {
@@ -64,7 +64,7 @@ pub mod incremental {
     /// What the emitter reads of a module's item from outside it: a value's
     /// name, its type, and whether it is a procedure; a type's whole text; a
     /// hidden item's, marked; not a body (C91).
-    pub fn item_signature(f: &'static Sexp) -> Strings {
+    pub fn item_signature(f: kayak_rt::Handle<'static, Sexp>) -> Strings {
         let xs = items(f);
         if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
             if module_def_p(f) {
@@ -81,7 +81,7 @@ pub mod incremental {
                 })), kayak_rt::nil()))
             }
         } else if head_is_p(f, str_lit("define-rec")) {
-            map(lambda1s(move |b: &'static Sexp| {
+            map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                 string_append(show_sexp(car(items(b))), show_sexp(second(items(b))))
             }), cdr(xs))
         } else if head_is_p(f, str_lit("hide")) {
@@ -109,7 +109,7 @@ pub mod incremental {
     /// A module the emitter keeps, as its fingerprint sees it: its items'
     /// signatures, not their bodies, so that an edit inside a body leaves
     /// every other form's memo (C91).
-    pub fn module_entry_strings(x: &'static Typed) -> Strings {
+    pub fn module_entry_strings(x: kayak_rt::Handle<'static, Typed>) -> Strings {
         let tagcase_ = x;
         match *tagcase_ {
             Typed::Typed(n, t) => {
@@ -149,7 +149,7 @@ pub mod incremental {
     /// A module's items, as `put-tops-memo` writes forms: `text` the module's
     /// own, from offset `start` to `end`. An item the compiler made (no place
     /// in the module's text) is keyed by its printed form.
-    pub fn put_items_memo(mut c: &'static Ctx, mut fs: Facts, mut global: &'static Ereads, mut old: Memos, mut its: Sexps, mut text: Str, mut start: i64, mut end: i64, mut acc: Chars, mut made: Memos) -> &'static Emitted {
+    pub fn put_items_memo(mut c: kayak_rt::Handle<'static, Ctx>, mut fs: Facts, mut global: kayak_rt::Handle<'static, Ereads>, mut old: Memos, mut its: Sexps, mut text: Str, mut start: i64, mut end: i64, mut acc: Chars, mut made: Memos) -> kayak_rt::Handle<'static, Emitted> {
         loop {
             if null_p(its) {
                 return emitted(acc, made);
@@ -206,18 +206,18 @@ pub mod incremental {
         }
     }
 
-    pub fn ctx_fingerprint(c: &'static Ctx) -> i64 {
+    pub fn ctx_fingerprint(c: kayak_rt::Handle<'static, Ctx>) -> i64 {
         let tagcase_ = c;
         match *tagcase_ {
             Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("tags"), map(lambda1s(move |t: &'static Tagof| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("tags"), map(lambda1s(move |t: kayak_rt::Handle<'static, Tagof>| {
                     let tagcase_ = t;
                     match *tagcase_ {
                         Tagof::Tagof(n, d) => {
                             string_append(n, string_append(str_lit(" "), d))
                         }
                     }
-                }), ts)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("constants"), ks), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("locals"), ls), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("typeds"), map(&typed_text, xs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("families"), map(lambda1s(move |f: &'static Family| {
+                }), ts)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("constants"), ks), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("locals"), ls), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("typeds"), map(&typed_text, xs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("families"), map(lambda1s(move |f: kayak_rt::Handle<'static, Family>| {
                     let tagcase_ = f;
                     match *tagcase_ {
                         Family::Family(n, d, kinds) => {
@@ -237,13 +237,13 @@ pub mod incremental {
     /// name it is found by, so that a form's Rust is keyed by the names
     /// it mentions, not the whole context, as `ctx-fingerprint` keyed it;
     /// a module's entries under each of the words of their keys.
-    pub fn emit_reads(c: &'static Ctx, h: i64) -> &'static Ereads {
+    pub fn emit_reads(c: kayak_rt::Handle<'static, Ctx>, h: i64) -> kayak_rt::Handle<'static, Ereads> {
         let tagcase_ = c;
         match *tagcase_ {
             Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 ereads(entries_put(concat(kayak_rt::heap_cons(map(lambda1s(move |n: Str| {
                     the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("datatype"), kayak_rt::nil())))
-                }), ds), kayak_rt::heap_cons(concat(map(lambda1s(move |t: &'static Tagof| {
+                }), ds), kayak_rt::heap_cons(concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tagof>| {
                     let tagcase_ = t;
                     match *tagcase_ {
                         Tagof::Tagof(n, d) => {
@@ -252,14 +252,14 @@ pub mod incremental {
                     }
                 }), ts)), kayak_rt::heap_cons(map(lambda1s(move |n: Str| {
                     the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("constant"), kayak_rt::nil())))
-                }), ks), kayak_rt::heap_cons(map(lambda1s(move |x: &'static Typed| {
+                }), ks), kayak_rt::heap_cons(map(lambda1s(move |x: kayak_rt::Handle<'static, Typed>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Typed::Typed(n, t) => {
                             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(typed_text(x), kayak_rt::nil())))
                         }
                     }
-                }), xs), kayak_rt::heap_cons(map(lambda1s(move |f: &'static Family| {
+                }), xs), kayak_rt::heap_cons(map(lambda1s(move |f: kayak_rt::Handle<'static, Family>| {
                     let tagcase_ = f;
                     match *tagcase_ {
                         Family::Family(n, d, kinds) => {
@@ -270,14 +270,14 @@ pub mod incremental {
                             }, words_of(kinds)), kayak_rt::nil())))
                         }
                     }
-                }), ms), kayak_rt::heap_cons(map(lambda1s(move |x: &'static Typed| {
+                }), ms), kayak_rt::heap_cons(map(lambda1s(move |x: kayak_rt::Handle<'static, Typed>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Typed::Typed(n, t) => {
                             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(string_append(str_lit("effect "), typed_text(x)), kayak_rt::nil())))
                         }
                     }
-                }), es), kayak_rt::heap_cons(concat(map(lambda1s(move |x: &'static Typed| {
+                }), es), kayak_rt::heap_cons(concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Typed>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Typed::Typed(n, body) => {
@@ -293,7 +293,7 @@ pub mod incremental {
     }
 
     /// Each `(name text)` of `es`, in order, folded into its name's fingerprint.
-    pub fn entries_put(mut es: List<Strings>, mut t: &'static Fmap) -> &'static Fmap {
+    pub fn entries_put(mut es: List<Strings>, mut t: kayak_rt::Handle<'static, Fmap>) -> kayak_rt::Handle<'static, Fmap> {
         loop {
             if null_p(es) {
                 return t;
@@ -309,7 +309,7 @@ pub mod incremental {
 
     /// What `form`'s Rust reads of the emitter's context, `r`.
     #[inline]
-    pub fn emit_key(r: &'static Ereads, form: &'static Sexp) -> i64 {
+    pub fn emit_key(r: kayak_rt::Handle<'static, Ereads>, form: kayak_rt::Handle<'static, Sexp>) -> i64 {
         let tagcase_ = r;
         match *tagcase_ {
             Ereads::Ereads(idx, h) => {
@@ -321,7 +321,7 @@ pub mod incremental {
     /// Onto `h`, each name's entries' fingerprint, for each name in `es`
     /// as it comes: the text says which names, in which order, so the
     /// names themselves are not taken again, nor made a set.
-    pub fn emitted_walk(mut es: Sexps, mut idx: &'static Fmap, mut h: i64) -> i64 {
+    pub fn emitted_walk(mut es: Sexps, mut idx: kayak_rt::Handle<'static, Fmap>, mut h: i64) -> i64 {
         loop {
             if null_p(es) {
                 return h;
@@ -349,7 +349,7 @@ pub mod incremental {
     pub fn facts_of_file(mut fs: Facts, mut file: Str) -> Facts {
         loop {
             if null_p(fs) {
-                return nil::<&'static Fact>();
+                return nil::<kayak_rt::Handle<'static, Fact>>();
             } else if {
                 let tagcase_ = car(fs);
                 match *tagcase_ {
@@ -369,7 +369,7 @@ pub mod incremental {
     /// As `put-tops` (emit-tops.kfx) does, each definition's Rust its memo's
     /// if it has one. `fs` the file's facts; `global` the context's
     /// fingerprint; `old` the memos given.
-    pub fn put_tops_memo(mut c: &'static Ctx, mut fs: Facts, mut global: &'static Ereads, mut old: Memos, mut forms: Sexps, mut texts: Strings, mut starts: List<i64>, mut acc: Chars, mut made: Memos) -> &'static Emitted {
+    pub fn put_tops_memo(mut c: kayak_rt::Handle<'static, Ctx>, mut fs: Facts, mut global: kayak_rt::Handle<'static, Ereads>, mut old: Memos, mut forms: Sexps, mut texts: Strings, mut starts: List<i64>, mut acc: Chars, mut made: Memos) -> kayak_rt::Handle<'static, Emitted> {
         loop {
             if null_p(forms) {
                 return emitted(acc, made);

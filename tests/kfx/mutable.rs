@@ -96,12 +96,12 @@ pub enum Counter {
     Counter(Str, Ref<i64>),
 }
 
-pub fn counter(f0: Str, f1: Ref<i64>) -> &'static Counter {
+pub fn counter(f0: Str, f1: Ref<i64>) -> kayak_rt::Handle<'static, Counter> {
     kayak_rt::heap_alloc(Counter::Counter(f0, f1))
 }
 
 #[inline]
-pub fn bump_x(k: &'static Counter) -> i64 {
+pub fn bump_x(k: kayak_rt::Handle<'static, Counter>) -> i64 {
     let tagcase_ = k;
     match *tagcase_ {
         Counter::Counter(name, cell) => {

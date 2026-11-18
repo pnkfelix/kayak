@@ -114,7 +114,7 @@ pub(crate) fn bytes_of(v: Vec<u8>) -> Bytes {
 
 /// Bytes kept in region `r`'s arena (C267).
 fn bytes_in<'r, R: Holds<BytesCells>>(r: &'r R, v: Vec<u8>) -> BytesAt<'r> {
-    BytesAt(r.arena().alloc(cells_of(v)))
+    BytesAt(r.arena().alloc(cells_of(v)).to_ref())
 }
 
 fn index(n: Int, what: &str) -> usize {

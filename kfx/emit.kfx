@@ -1585,9 +1585,11 @@
 
     (define type-path (subr kfx (ctx string string) string)
       (lambda (c m t)
-        "Module `m`'s type `t`, from outside it: a datatype's a reference."
-        (string-append (if (string-member? (string-append m (string-append ".." t)) (ctx-datatypes c)) "&'static " "")
-                       (string-append (if (string=? m "Self") m (module-path c m)) (string-append "::" (camel t))))))
+        "Module `m`'s type `t`, from outside it: a datatype's a handle (C478)."
+        (let ((path (string-append (if (string=? m "Self") m (module-path c m)) (string-append "::" (camel t)))))
+          (if (string-member? (string-append m (string-append ".." t)) (ctx-datatypes c))
+              (string-append "kayak_rt::Handle<'static, " (string-append path ">"))
+              path))))
 
     (define-rec
       (places-used (subr kfx (sexp) strings)
@@ -1700,7 +1702,8 @@
                                                 "" 1))
                                acc))
                     ((not (null? (dotted s))) (put (type-path c (car (dotted s)) (car (cdr (dotted s)))) acc))
-                    ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
+                    ;; A datatype's value, a handle of the heap's (C478).
+                    ((string-member? s (ctx-datatypes c)) (put ">" (put (camel s) (put "kayak_rt::Handle<'static, " acc))))
                     ((not (null? (desc-type c s (ctx-locals c)))) (put-type c (car (desc-type c s (ctx-locals c))) acc))
                     ((not (string=? (opener (string-append "%type " s) (ctx-locals c)) ""))
                      (put (type-path c (opener (string-append "%type " s) (ctx-locals c)) s) acc))
@@ -1856,14 +1859,16 @@
                          (let* ((lived (if datatype (lived-of c n) nil))
                                 (dlives (if (null? lived) nil (lived-arguments c (cdr (items (car (items (car lived))))) (items (second (items (car lived)))) (cdr xs))))
                                 (acc (cond ((not datatype) acc)
-                                           ((null? dlives) (put "&'static " acc))
-                                           (else (put " " (put (car dlives) (put "&" acc))))))
+                                           ;; A handle (C478), the heap's or a region's.
+                                           ((null? dlives) (put "kayak_rt::Handle<'static, " acc))
+                                           (else (put ", " (put (car dlives) (put "kayak_rt::Handle<" acc))))))
                                 (acc (put (camel n) acc))
                                 (args (type-arguments (cdr xs) kinds))
                                 (lives (if (null? (module-body c (string-append "%abbreviation " n))) dlives (region-arguments c (cdr xs) kinds)))
                                 (places (if (null? (module-body c (string-append "%abbreviation " n))) nil (used-place-arguments c n (cdr xs) kinds)))
                                 (parts (onto lives (onto (map (lambda ((t sexp)) (rev->string (put-type c t nil))) args) places))))
-                           (if (null? parts) acc (put (string-append "<" (string-append (words-of-sep parts ", ") ">")) acc)))))))
+                           (let ((acc (if (null? parts) acc (put (string-append "<" (string-append (words-of-sep parts ", ") ">")) acc))))
+                             (if datatype (put ">" acc) acc)))))))
                     (else (error (string-append "kfx: a type KFX-0 does not have: " (show-sexp t))))))
             (else other (error (string-append "kfx: a type KFX-0 does not have: " (show-sexp t)))))))
 
@@ -3359,8 +3364,10 @@
                 ((string=? kind "bytes") "BytesCells")
                 ((string=? kind "data")
                  "A datatype's value (C270): its enum, at the place's lifetime, not
-                  a reference to one."
-                 (let ((r (rev->string (put-type c t nil)))) (after-prefix r (string-append "&" (string-append life " ")))))
+                  a handle of one (C478: `kayak_rt::Handle<'r, D>`'s `D`)."
+                 (let* ((r (rev->string (put-type c t nil)))
+                        (inner (after-prefix r (string-append "kayak_rt::Handle<" (string-append life ", ")))))
+                   (substring inner 0 (- (string-length inner) 1))))
                 ((string=? kind "ref") (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">")))
                 ((not (null? (typed-flat c t)))
                  (string-append "TBloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil))

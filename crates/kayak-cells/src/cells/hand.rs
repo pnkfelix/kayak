@@ -1133,23 +1133,23 @@ pub enum HandItem {
     AlignOdd(Int),
 }
 
-pub fn ins(f0: Int) -> &'static HandItem {
+pub fn ins(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
     kayak_rt::heap_alloc(HandItem::Ins(f0))
 }
 
-pub fn jump(f0: Int, f1: Int, f2: Int) -> &'static HandItem {
+pub fn jump(f0: Int, f1: Int, f2: Int) -> kayak_rt::Handle<'static, HandItem> {
     kayak_rt::heap_alloc(HandItem::Jump(f0, f1, f2))
 }
 
-pub fn label_here(f0: Int) -> &'static HandItem {
+pub fn label_here(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
     kayak_rt::heap_alloc(HandItem::LabelHere(f0))
 }
 
-pub fn offset_of(f0: Int) -> &'static HandItem {
+pub fn offset_of(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
     kayak_rt::heap_alloc(HandItem::OffsetOf(f0))
 }
 
-pub fn align_odd(f0: Int) -> &'static HandItem {
+pub fn align_odd(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
     kayak_rt::heap_alloc(HandItem::AlignOdd(f0))
 }
 
@@ -1191,19 +1191,19 @@ pub fn arm_nop() -> Int {
 }
 
 #[inline]
-pub fn hand_items() -> Ref<List<&'static HandItem>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static HandItem>>);
+pub fn hand_items() -> Ref<List<kayak_rt::Handle<'static, HandItem>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, HandItem>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static HandItem>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, HandItem>>())
     })
 }
 
 // Data, placed before the code: 8 bytes an entry.
 #[inline]
-pub fn hand_data() -> Ref<List<&'static HandItem>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static HandItem>>);
+pub fn hand_data() -> Ref<List<kayak_rt::Handle<'static, HandItem>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, HandItem>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static HandItem>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, HandItem>>())
     })
 }
 
@@ -1263,7 +1263,7 @@ pub fn align_odd_x() -> () {
 }
 
 #[inline]
-pub fn d_x(i: &'static HandItem) -> () {
+pub fn d_x(i: kayak_rt::Handle<'static, HandItem>) -> () {
     set(hand_data(), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(i, get(hand_data()))))
 }
 
@@ -1279,7 +1279,7 @@ pub fn arm_adr(d: Int, bytes: Int) -> Int {
 }
 
 /// Each label's place, in instructions, in `ls`; how many there are.
-pub fn placed_x(mut xs: List<&'static HandItem>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
+pub fn placed_x(mut xs: List<kayak_rt::Handle<'static, HandItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
     loop {
         if null_p(xs) {
             return at;
@@ -1323,7 +1323,7 @@ pub fn r#where(ls: FlatArray<i64>, l: Int) -> Int {
 
 /// Item `x`, at `at`, encoded; a jump to where its label is, an offset
 /// its label's in bytes.
-pub fn encoded(x: &'static HandItem, at: Int, ls: FlatArray<i64>) -> Int {
+pub fn encoded(x: kayak_rt::Handle<'static, HandItem>, at: Int, ls: FlatArray<i64>) -> Int {
     let tagcase_ = x;
     match *tagcase_ {
         HandItem::Ins(w) => {
@@ -2686,15 +2686,15 @@ pub enum Span {
     Span(Str, Int, Int, i64, bool, Int),
 }
 
-pub fn span(f0: Str, f1: Int, f2: Int, f3: i64, f4: bool, f5: Int) -> &'static Span {
+pub fn span(f0: Str, f1: Int, f2: Int, f3: i64, f4: bool, f5: Int) -> kayak_rt::Handle<'static, Span> {
     kayak_rt::heap_alloc(Span::Span(f0, f1, f2, f3, f4, f5))
 }
 
 #[inline]
-pub fn word_spans() -> Ref<List<&'static Span>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Span>>);
+pub fn word_spans() -> Ref<List<kayak_rt::Handle<'static, Span>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Span>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Span>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Span>>())
     })
 }
 
@@ -2755,7 +2755,7 @@ pub fn register_name(rw: i64, tier: Str) -> Str {
     string_append(twin_name(rw), tier)
 }
 
-pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<&'static Span>) -> () {
+pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<kayak_rt::Handle<'static, Span>>) -> () {
     loop {
         if null_p(ss) {
             return ();
@@ -2776,7 +2776,7 @@ pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss
                         note_code(_plus(at, from), _minus(to, from), string_append(str_lit("fx26 "), name))
                     } else {
                         let cs = string_chars(table);
-                        let es = cposes(after_char(cs, ' '), nil::<&'static Cpos>());
+                        let es = cposes(after_char(cs, ' '), nil::<kayak_rt::Handle<'static, Cpos>>());
                         let pairs = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, i64_plus(1i64, size(es))), 0i64));
                         let n = lines_paired_x(es, pairs, at, ls, scale, base, from, to, 0i64);
                         note_code_lines(_plus(at, from), _minus(to, from), string_append(str_lit("fx26 "), name), list_to_string(chars_before_char(cs, ' ')), pairs, i64_to_int(n))
@@ -2793,7 +2793,7 @@ pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss
 /// code is in the span, `from` to `to`, its address and its position,
 /// into `pairs`: how many. Tier 6's span starts past `args`, and an
 /// instruction fused into the one before has no code of its own.
-pub fn lines_paired_x(mut es: List<&'static Cpos>, mut pairs: FlatArray<i64>, mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut base: Int, mut from: Int, mut to: Int, mut n: i64) -> i64 {
+pub fn lines_paired_x(mut es: List<kayak_rt::Handle<'static, Cpos>>, mut pairs: FlatArray<i64>, mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut base: Int, mut from: Int, mut to: Int, mut n: i64) -> i64 {
     loop {
         if (null_p(es) || i64_gt(i64_star(2i64, i64_plus(n, 1i64)), flatarray_length_i64(pairs))) {
             return n;
@@ -2822,7 +2822,7 @@ pub fn lines_paired_x(mut es: List<&'static Cpos>, mut pairs: FlatArray<i64>, mu
     }
 }
 
-pub fn spans_first(mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<&'static Span>, mut least: Int) -> Int {
+pub fn spans_first(mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<kayak_rt::Handle<'static, Span>>, mut least: Int) -> Int {
     loop {
         if null_p(ss) {
             return least;
@@ -2850,7 +2850,7 @@ pub fn code_named_x(ls: FlatArray<i64>, scale: Int, bytes: Int, what: Str) -> ()
     let (at, ss) = (last_sealed(), get(word_spans()));
     note_code(at, spans_first(ls, scale, ss, bytes), what);
     spans_noted_x(at, ls, scale, ss);
-    set(word_spans(), nil::<&'static Span>())
+    set(word_spans(), nil::<kayak_rt::Handle<'static, Span>>())
 }
 
 /// Word `w` compiled; `rt` the label of its table of where to resume.
@@ -4305,7 +4305,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
 
 /// Each register word that is its word's twin, compiled, word `s` on;
 /// its entry made `r-count + s`. Their tables' labels, the last first.
-pub fn registers_compiled_x(mut rs: List<&'static NamedSlot>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+pub fn registers_compiled_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>, mut s: Int, mut rts: List<Int>) -> List<Int> {
     loop {
         if null_p(rs) {
             return rts;
@@ -4328,7 +4328,7 @@ pub fn registers_compiled_x(mut rs: List<&'static NamedSlot>, mut s: Int, mut rt
 /// Each of the listing's words whose entry is `docol`, compiled, word
 /// `s` on; its entry made `r-count + s`. Their tables' labels, the last
 /// first.
-pub fn words_compiled_x(mut ws: List<&'static NamedSlot>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+pub fn words_compiled_x(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut s: Int, mut rts: List<Int>) -> List<Int> {
     loop {
         if null_p(ws) {
             return rts;
@@ -4359,7 +4359,7 @@ pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
 
 /// Each item placed, at instruction `at` on; the first that did not
 /// encode, as its place, or -1.
-pub fn all_put_x(mut b: &'static Bloblet<()>, mut xs: List<&'static HandItem>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
+pub fn all_put_x(mut b: &'static Bloblet<()>, mut xs: List<kayak_rt::Handle<'static, HandItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
     loop {
         if null_p(xs) {
             return int_lit(-1);
@@ -4397,7 +4397,7 @@ pub fn all_put_x(mut b: &'static Bloblet<()>, mut xs: List<&'static HandItem>, m
 }
 
 /// The table of the words' tables, word 0's first (`rts` the last first).
-pub fn words_table(mut rts: List<Int>, mut acc: List<&'static HandItem>) -> List<&'static HandItem> {
+pub fn words_table(mut rts: List<Int>, mut acc: List<kayak_rt::Handle<'static, HandItem>>) -> List<kayak_rt::Handle<'static, HandItem>> {
     loop {
         if null_p(rts) {
             return acc;
@@ -4439,8 +4439,8 @@ pub fn hand_code_arm64_x() -> kayak_rt::Sum {
     if not(null_p(get(hand_made()))) {
         kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made") }, "made", car(get(hand_made())))
     } else {
-        set(hand_items(), nil::<&'static HandItem>());
-        set(hand_data(), nil::<&'static HandItem>());
+        set(hand_items(), nil::<kayak_rt::Handle<'static, HandItem>>());
+        set(hand_data(), nil::<kayak_rt::Handle<'static, HandItem>>());
         set(hand_labels(), int_lit(0));
         set(l_start(), label_x());
         set(l_entry(), label_x());
@@ -4452,7 +4452,7 @@ pub fn hand_code_arm64_x() -> kayak_rt::Sum {
         materialize_x(get(l_materialize()));
         let rts = the::<List<Int>>(nil::<Int>());
         let u = set(words_compiled(), count_of(rts, int_lit(0)));
-        let its = the::<List<&'static HandItem>>(kayak_rt::heap_cons(label_here(get(l_start())), kayak_rt::heap_cons(jump(j_b(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(label_here(get(l_words())), kayak_rt::heap_cons(ins(_star(int_lit(8), count_of(rts, int_lit(0)))), kayak_rt::heap_cons(ins(int_lit(0)), append(words_table(rts, nil::<&'static HandItem>()), append(reverse(get(hand_data())), reverse(get(hand_items())))))))))));
+        let its = the::<List<kayak_rt::Handle<'static, HandItem>>>(kayak_rt::heap_cons(label_here(get(l_start())), kayak_rt::heap_cons(jump(j_b(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(label_here(get(l_words())), kayak_rt::heap_cons(ins(_star(int_lit(8), count_of(rts, int_lit(0)))), kayak_rt::heap_cons(ins(int_lit(0)), append(words_table(rts, nil::<kayak_rt::Handle<'static, HandItem>>()), append(reverse(get(hand_data())), reverse(get(hand_items())))))))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
         let count = placed_x(its, int_lit(0), ls);
         let b = the::<&'static Bloblet<()>>(make_bloblet(_star(int_lit(4), count), ()));

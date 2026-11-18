@@ -25,7 +25,7 @@ pub fn index_of(mut x: Str, mut xs: Strings, mut i: i64) -> i64 {
 // `(with termination (terminates? ...))`.
 /// Whether data at `r` is acyclic: `acyclic`, or frozen into a place so
 /// (C206, `(acyclic p)`).
-pub fn acyclic_region_p(r: &'static Ty) -> bool {
+pub fn acyclic_region_p(r: kayak_rt::Handle<'static, Ty>) -> bool {
     let tagcase_ = r;
     match *tagcase_ {
         Ty::TyRconst(n) => {
@@ -74,36 +74,36 @@ pub mod termination {
         IntOf(i64, i64),
     }
 
-    pub fn part(f0: i64, f1: bool, f2: Tys) -> &'static Tracked {
+    pub fn part(f0: i64, f1: bool, f2: Tys) -> kayak_rt::Handle<'static, Tracked> {
         kayak_rt::heap_alloc(Tracked::Part(f0, f1, f2))
     }
 
-    pub fn int_of(f0: i64, f1: i64) -> &'static Tracked {
+    pub fn int_of(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Tracked> {
         kayak_rt::heap_alloc(Tracked::IntOf(f0, f1))
     }
 
-    pub type Trackeds = List<&'static Tracked>;
+    pub type Trackeds = List<kayak_rt::Handle<'static, Tracked>>;
 
     pub enum Known {
         Known(Str, Trackeds),
     }
 
-    pub fn known(f0: Str, f1: Trackeds) -> &'static Known {
+    pub fn known(f0: Str, f1: Trackeds) -> kayak_rt::Handle<'static, Known> {
         kayak_rt::heap_alloc(Known::Known(f0, f1))
     }
 
-    pub type Knowns = List<&'static Known>;
+    pub type Knowns = List<kayak_rt::Handle<'static, Known>>;
 
     // A parameter, bounded below (`#t`) or above.
     pub enum Guard {
         Guard(i64, bool),
     }
 
-    pub fn guard(f0: i64, f1: bool) -> &'static Guard {
+    pub fn guard(f0: i64, f1: bool) -> kayak_rt::Handle<'static, Guard> {
         kayak_rt::heap_alloc(Guard::Guard(f0, f1))
     }
 
-    pub type Guards = List<&'static Guard>;
+    pub type Guards = List<kayak_rt::Handle<'static, Guard>>;
 
     // A size-change graph's edge: slots `3p + m`, `m` the measure (0 parts,
     // 1 down, 2 up), and whether it is strict.
@@ -111,51 +111,51 @@ pub mod termination {
         Edge(i64, i64, bool),
     }
 
-    pub fn edge(f0: i64, f1: i64, f2: bool) -> &'static Edge {
+    pub fn edge(f0: i64, f1: i64, f2: bool) -> kayak_rt::Handle<'static, Edge> {
         kayak_rt::heap_alloc(Edge::Edge(f0, f1, f2))
     }
 
-    pub type Edges = List<&'static Edge>;
+    pub type Edges = List<kayak_rt::Handle<'static, Edge>>;
 
     pub enum Scall {
         Scall(i64, i64, Edges),
     }
 
-    pub fn scall(f0: i64, f1: i64, f2: Edges) -> &'static Scall {
+    pub fn scall(f0: i64, f1: i64, f2: Edges) -> kayak_rt::Handle<'static, Scall> {
         kayak_rt::heap_alloc(Scall::Scall(f0, f1, f2))
     }
 
-    pub type Scalls = List<&'static Scall>;
+    pub type Scalls = List<kayak_rt::Handle<'static, Scall>>;
 
     // A call's arguments: each the caller's parameter passed on unchanged, or -1.
     pub enum Passing {
         Passing(i64, i64, I64s),
     }
 
-    pub fn passing(f0: i64, f1: i64, f2: I64s) -> &'static Passing {
+    pub fn passing(f0: i64, f1: i64, f2: I64s) -> kayak_rt::Handle<'static, Passing> {
         kayak_rt::heap_alloc(Passing::Passing(f0, f1, f2))
     }
 
-    pub type Passings = List<&'static Passing>;
+    pub type Passings = List<kayak_rt::Handle<'static, Passing>>;
 
     pub enum Slot {
         Slot(i64, i64),
     }
 
-    pub fn slot(f0: i64, f1: i64) -> &'static Slot {
+    pub fn slot(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Slot> {
         kayak_rt::heap_alloc(Slot::Slot(f0, f1))
     }
 
-    pub type Slots = List<&'static Slot>;
+    pub type Slots = List<kayak_rt::Handle<'static, Slot>>;
 
     // The walk's context: the program's names; the members; the member walked;
     // the names bound on the way down; the guards; its `nat` parameters; the
     // parameters every call passes on unchanged.
     pub enum Wc {
-        Wc(&'static Cv, Strings, i64, Knowns, Guards, I64s, Slots),
+        Wc(kayak_rt::Handle<'static, Cv>, Strings, i64, Knowns, Guards, I64s, Slots),
     }
 
-    pub fn wc(f0: &'static Cv, f1: Strings, f2: i64, f3: Knowns, f4: Guards, f5: I64s, f6: Slots) -> &'static Wc {
+    pub fn wc(f0: kayak_rt::Handle<'static, Cv>, f1: Strings, f2: i64, f3: Knowns, f4: Guards, f5: I64s, f6: Slots) -> kayak_rt::Handle<'static, Wc> {
         kayak_rt::heap_alloc(Wc::Wc(f0, f1, f2, f3, f4, f5, f6))
     }
 
@@ -165,14 +165,14 @@ pub mod termination {
         Ws(Scalls, Passings, bool),
     }
 
-    pub fn ws(f0: Scalls, f1: Passings, f2: bool) -> &'static Ws {
+    pub fn ws(f0: Scalls, f1: Passings, f2: bool) -> kayak_rt::Handle<'static, Ws> {
         kayak_rt::heap_alloc(Ws::Ws(f0, f1, f2))
     }
 
     pub fn nth_ty(mut ts: Tys, mut i: i64) -> Tys {
         loop {
             if null_p(ts) {
-                return nil::<&'static Ty>();
+                return nil::<kayak_rt::Handle<'static, Ty>>();
             } else if i64_eq(i, 0i64) {
                 return the::<Tys>(kayak_rt::heap_cons(car(ts), kayak_rt::nil()));
             } else {
@@ -185,7 +185,7 @@ pub mod termination {
     pub fn bound_of(mut n: Str, mut ks: Knowns) -> List<Trackeds> {
         loop {
             if null_p(ks) {
-                return nil::<List<&'static termination::Tracked>>();
+                return nil::<List<kayak_rt::Handle<'static, termination::Tracked>>>();
             } else if {
                 let tagcase_ = car(ks);
                 match *tagcase_ {
@@ -208,7 +208,7 @@ pub mod termination {
     }
 
     #[inline]
-    pub fn wc_bound(c: &'static Wc, n: Str) -> List<Trackeds> {
+    pub fn wc_bound(c: kayak_rt::Handle<'static, Wc>, n: Str) -> List<Trackeds> {
         let tagcase_ = c;
         match *tagcase_ {
             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
@@ -218,7 +218,7 @@ pub mod termination {
     }
 
     /// The member `n` names here, unless something on the way down hid it; or -1.
-    pub fn wc_member(c: &'static Wc, n: Str) -> i64 {
+    pub fn wc_member(c: kayak_rt::Handle<'static, Wc>, n: Str) -> i64 {
         let tagcase_ = c;
         match *tagcase_ {
             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
@@ -233,7 +233,7 @@ pub mod termination {
 
     /// Whether `e` names a generative type's conversion (C428): no
     /// local or member hides it, and the type is generative.
-    pub fn conversion_p(c: &'static Wc, e: &'static Sexp) -> bool {
+    pub fn conversion_p(c: kayak_rt::Handle<'static, Wc>, e: kayak_rt::Handle<'static, Sexp>) -> bool {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Sym(n, at_file, at_pos) => {
@@ -242,7 +242,7 @@ pub mod termination {
                     Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
                         (null_p(bound_of(n, sc)) && not(string_member_p(n, ms)) && {
                             let t = conversion_of(v, n);
-                            (not(string_eq_p(t, str_lit(""))) && generative_p(v, ty_data(t, nil::<&'static Ty>())))
+                            (not(string_eq_p(t, str_lit(""))) && generative_p(v, ty_data(t, nil::<kayak_rt::Handle<'static, Ty>>())))
                         })
                     }
                 }
@@ -255,7 +255,7 @@ pub mod termination {
     }
 
     /// The primitive `e` names, if it names one: no local hides it.
-    pub fn std_op(c: &'static Wc, e: &'static Sexp) -> Str {
+    pub fn std_op(c: kayak_rt::Handle<'static, Wc>, e: kayak_rt::Handle<'static, Sexp>) -> Str {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Sym(n, at_file, at_pos) => {
@@ -290,7 +290,7 @@ pub mod termination {
     }
 
     /// A literal's value, if FX-26's size-change check knows it: in [-2^60, 2^60).
-    pub fn literal_of(e: &'static Sexp) -> I64s {
+    pub fn literal_of(e: kayak_rt::Handle<'static, Sexp>) -> I64s {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Num(k, text, pos) => {
@@ -319,19 +319,19 @@ pub mod termination {
 
     /// Each integer known, `k` more; one that would overflow known no longer.
     pub fn shifted(ts: Trackeds, k: i64) -> Trackeds {
-        concat(map(lambda1s(move |t: &'static Tracked| {
+        concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Tracked::IntOf(p, o) => {
                     if overflows_p(o, k) {
-                        nil::<&'static termination::Tracked>()
+                        nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                     } else {
                         the::<Trackeds>(kayak_rt::heap_cons(int_of(p, i64_plus(o, k)), kayak_rt::nil()))
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    nil::<&'static termination::Tracked>()
+                    nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                 }
             }
         }), ts))
@@ -340,7 +340,7 @@ pub mod termination {
     /// The pair at `acyclic` a value of type `t` is taken apart as (C77): a
     /// pair, or a union's pair member, as `datum`'s: a `car` or `cdr` that
     /// returns took it apart, and it was made before what holds it.
-    pub fn acyclic_pair(t: &'static Ty) -> Tys {
+    pub fn acyclic_pair(t: kayak_rt::Handle<'static, Ty>) -> Tys {
         let ps = {
             let tagcase_ = t;
             match *tagcase_ {
@@ -353,7 +353,7 @@ pub mod termination {
                 }
                 _ => {
                     let other = tagcase_;
-                    nil::<&'static Ty>()
+                    nil::<kayak_rt::Handle<'static, Ty>>()
                 }
             }
         };
@@ -371,19 +371,19 @@ pub mod termination {
         }) {
             ps
         } else {
-            nil::<&'static Ty>()
+            nil::<kayak_rt::Handle<'static, Ty>>()
         }
     }
 
     /// What is known of `e`'s value.
-    pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
+    pub fn tracked_of(mut c: kayak_rt::Handle<'static, Wc>, mut e: kayak_rt::Handle<'static, Sexp>) -> Trackeds {
         loop {
             let tagcase_ = e;
             match *tagcase_ {
                 Sexp::Sym(n, at_file, at_pos) => {
                     let b = wc_bound(c, n);
                     if null_p(b) {
-                        return nil::<&'static termination::Tracked>();
+                        return nil::<kayak_rt::Handle<'static, termination::Tracked>>();
                     } else {
                         return car(b);
                     }
@@ -397,11 +397,11 @@ pub mod termination {
                         // A generative type's conversion, the identity (C179; Fixpt's
                         // terminate.rs): what is known of its argument, its type
                         // not, so that a `tagcase` still proves parts and a `car` not.
-                        return map(lambda1s(move |t: &'static Tracked| {
+                        return map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
                             let tagcase_ = t;
                             match *tagcase_ {
                                 Tracked::Part(p, strict, ty) => {
-                                    part(p, strict, nil::<&'static Ty>())
+                                    part(p, strict, nil::<kayak_rt::Handle<'static, Ty>>())
                                 }
                                 _ => {
                                     let other = tagcase_;
@@ -410,12 +410,12 @@ pub mod termination {
                             }
                         }), tracked_of(c, second(xs)));
                     } else if ((string_eq_p(op, str_lit("car")) || string_eq_p(op, str_lit("cdr"))) && i64_eq(size(xs), 2i64)) {
-                        return concat(map(lambda1s(move |t: &'static Tracked| {
+                        return concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
                             let tagcase_ = t;
                             match *tagcase_ {
                                 Tracked::Part(p, strict, ty) => {
                                     if null_p(ty) {
-                                        nil::<&'static termination::Tracked>()
+                                        nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                                     } else {
                                         let tagcase_ = car(ty);
                                         match *tagcase_ {
@@ -427,7 +427,7 @@ pub mod termination {
                                                         car(ty)
                                                     }, kayak_rt::nil()))), kayak_rt::nil()))
                                                 } else {
-                                                    nil::<&'static termination::Tracked>()
+                                                    nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                                                 }
                                             }
                                             _ => {
@@ -441,7 +441,7 @@ pub mod termination {
                                                 } else {
                                                     let pr = acyclic_pair(car(ty));
                                                     if null_p(pr) {
-                                                        nil::<&'static termination::Tracked>()
+                                                        nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                                                     } else {
                                                         let tagcase_ = car(pr);
                                                         match *tagcase_ {
@@ -454,7 +454,7 @@ pub mod termination {
                                                             }
                                                             _ => {
                                                                 let other2 = tagcase_;
-                                                                nil::<&'static termination::Tracked>()
+                                                                nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                                                             }
                                                         }
                                                     }
@@ -465,7 +465,7 @@ pub mod termination {
                                 }
                                 _ => {
                                     let other = tagcase_;
-                                    nil::<&'static termination::Tracked>()
+                                    nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                                 }
                             }
                         }), tracked_of(c, second(xs))));
@@ -473,15 +473,15 @@ pub mod termination {
                         // A product's field, `(extract e l)` (C358; Fixpt's terminate.rs): of
                         // a part, a part, strictly smaller, a product being immutable
                         // and in no region; its type not known here.
-                        return concat(map(lambda1s(move |t: &'static Tracked| {
+                        return concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
                             let tagcase_ = t;
                             match *tagcase_ {
                                 Tracked::Part(p, strict, ty) => {
-                                    the::<Trackeds>(kayak_rt::heap_cons(part(p, true, nil::<&'static Ty>()), kayak_rt::nil()))
+                                    the::<Trackeds>(kayak_rt::heap_cons(part(p, true, nil::<kayak_rt::Handle<'static, Ty>>()), kayak_rt::nil()))
                                 }
                                 _ => {
                                     let other = tagcase_;
-                                    nil::<&'static termination::Tracked>()
+                                    nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                                 }
                             }
                         }), tracked_of(c, second(xs))));
@@ -491,22 +491,22 @@ pub mod termination {
                             if string_eq_p(op, str_lit("+")) {
                                 return shifted(tracked_of(c, a), car(literal_of(b)));
                             } else if i64_eq(car(literal_of(b)), -9223372036854775808i64) {
-                                return nil::<&'static termination::Tracked>();
+                                return nil::<kayak_rt::Handle<'static, termination::Tracked>>();
                             } else {
                                 return shifted(tracked_of(c, a), i64_minus(0i64, car(literal_of(b))));
                             }
                         } else if (string_eq_p(op, str_lit("+")) && not(null_p(literal_of(a)))) {
                             return shifted(tracked_of(c, b), car(literal_of(a)));
                         } else {
-                            return nil::<&'static termination::Tracked>();
+                            return nil::<kayak_rt::Handle<'static, termination::Tracked>>();
                         }
                     } else {
-                        return nil::<&'static termination::Tracked>();
+                        return nil::<kayak_rt::Handle<'static, termination::Tracked>>();
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    return nil::<&'static termination::Tracked>();
+                    return nil::<kayak_rt::Handle<'static, termination::Tracked>>();
                 }
             }
         }
@@ -516,7 +516,7 @@ pub mod termination {
     /// bound outside it, a parameter passed on unchanged, or a string's
     /// or an array's length (C179, as Fixpt's terminate.rs), or the sum or
     /// difference of such.
-    pub fn fixed_p(mut c: &'static Wc, mut e: &'static Sexp) -> bool {
+    pub fn fixed_p(mut c: kayak_rt::Handle<'static, Wc>, mut e: kayak_rt::Handle<'static, Sexp>) -> bool {
         loop {
             let tagcase_ = c;
             match *tagcase_ {
@@ -531,11 +531,11 @@ pub mod termination {
                             if null_p(b) {
                                 return not(string_member_p(n, ms));
                             } else {
-                                return any_p(lambda1s(move |t: &'static Tracked| {
+                                return any_p(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
                                     let tagcase_ = t;
                                     match *tagcase_ {
                                         Tracked::Part(p, strict, ty) => {
-                                            (not(strict) && any_p(lambda1s(move |x: &'static Slot| {
+                                            (not(strict) && any_p(lambda1s(move |x: kayak_rt::Handle<'static, Slot>| {
                                                 let tagcase_ = x;
                                                 match *tagcase_ {
                                                     Slot::Slot(i, j) => {
@@ -558,7 +558,7 @@ pub mod termination {
                                 e = third(xs);
                                 continue;
                             } else if (((string_eq_p(op, str_lit("string-length")) || string_eq_p(op, str_lit("array-length"))) && i64_eq(size(xs), 2i64)) || ((string_eq_p(op, str_lit("+")) || string_eq_p(op, str_lit("-"))) && i64_eq(size(xs), 3i64))) {
-                                return not(any_p(lambda1s(move |a: &'static Sexp| {
+                                return not(any_p(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
                                     not(fixed_p(c, a))
                                 }), cdr(xs)));
                             } else {
@@ -588,9 +588,9 @@ pub mod termination {
         }
     }
 
-    pub fn guards_on(c: &'static Wc, x: &'static Sexp, other: &'static Sexp, bounds: List<bool>) -> Guards {
+    pub fn guards_on(c: kayak_rt::Handle<'static, Wc>, x: kayak_rt::Handle<'static, Sexp>, other: kayak_rt::Handle<'static, Sexp>, bounds: List<bool>) -> Guards {
         if fixed_p(c, other) {
-            concat(map(lambda1s(move |t: &'static Tracked| {
+            concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
                 let tagcase_ = t;
                 match *tagcase_ {
                     Tracked::IntOf(p, o) => {
@@ -600,17 +600,17 @@ pub mod termination {
                     }
                     _ => {
                         let other = tagcase_;
-                        nil::<&'static termination::Guard>()
+                        nil::<kayak_rt::Handle<'static, termination::Guard>>()
                     }
                 }
             }), tracked_of(c, x)))
         } else {
-            nil::<&'static termination::Guard>()
+            nil::<kayak_rt::Handle<'static, termination::Guard>>()
         }
     }
 
     /// The bounds on parameters that `test` having the value `holds` shows.
-    pub fn facts_of(mut c: &'static Wc, mut test: &'static Sexp, mut holds: bool) -> Guards {
+    pub fn facts_of(mut c: kayak_rt::Handle<'static, Wc>, mut test: kayak_rt::Handle<'static, Sexp>, mut holds: bool) -> Guards {
         loop {
             let tagcase_ = test;
             match *tagcase_ {
@@ -624,26 +624,26 @@ pub mod termination {
                             not(b)
                         }), bounds_put(op, holds))));
                     } else if (sym_is_p(car(xs), str_lit("and")) && holds && i64_gt(size(xs), 2i64)) {
-                        return concat(map(lambda1s(move |a: &'static Sexp| {
+                        return concat(map(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
                             facts_of(c, a, true)
                         }), cdr(xs)));
                     } else if (sym_is_p(car(xs), str_lit("or")) && not(holds) && i64_gt(size(xs), 2i64)) {
-                        return concat(map(lambda1s(move |a: &'static Sexp| {
+                        return concat(map(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
                             facts_of(c, a, false)
                         }), cdr(xs)));
                     } else {
-                        return nil::<&'static termination::Guard>();
+                        return nil::<kayak_rt::Handle<'static, termination::Guard>>();
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    return nil::<&'static termination::Guard>();
+                    return nil::<kayak_rt::Handle<'static, termination::Guard>>();
                 }
             }
         }
     }
 
-    pub fn in_scope(c: &'static Wc, more: Knowns) -> &'static Wc {
+    pub fn in_scope(c: kayak_rt::Handle<'static, Wc>, more: Knowns) -> kayak_rt::Handle<'static, Wc> {
         let tagcase_ = c;
         match *tagcase_ {
             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
@@ -653,13 +653,13 @@ pub mod termination {
     }
 
     #[inline]
-    pub fn hiding(c: &'static Wc, names: Strings) -> &'static Wc {
+    pub fn hiding(c: kayak_rt::Handle<'static, Wc>, names: Strings) -> kayak_rt::Handle<'static, Wc> {
         in_scope(c, map(lambda1s(move |n: Str| {
-            known(n, nil::<&'static termination::Tracked>())
+            known(n, nil::<kayak_rt::Handle<'static, termination::Tracked>>())
         }), names))
     }
 
-    pub fn guarded(c: &'static Wc, more: Guards) -> &'static Wc {
+    pub fn guarded(c: kayak_rt::Handle<'static, Wc>, more: Guards) -> kayak_rt::Handle<'static, Wc> {
         let tagcase_ = c;
         match *tagcase_ {
             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
@@ -668,11 +668,11 @@ pub mod termination {
         }
     }
 
-    pub fn has_bound_p(c: &'static Wc, p: i64, lower: bool) -> bool {
+    pub fn has_bound_p(c: kayak_rt::Handle<'static, Wc>, p: i64, lower: bool) -> bool {
         let tagcase_ = c;
         match *tagcase_ {
             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
-                (any_p(lambda1s(move |g: &'static Guard| {
+                (any_p(lambda1s(move |g: kayak_rt::Handle<'static, Guard>| {
                     let tagcase_ = g;
                     match *tagcase_ {
                         Guard::Guard(q, b) => {
@@ -707,7 +707,7 @@ pub mod termination {
     }
 
     /// The edges to argument `q`, from what is known of it.
-    pub fn arg_edges(mut c: &'static Wc, mut q: i64, mut ts: Trackeds, mut g: Edges) -> Edges {
+    pub fn arg_edges(mut c: kayak_rt::Handle<'static, Wc>, mut q: i64, mut ts: Trackeds, mut g: Edges) -> Edges {
         loop {
             if null_p(ts) {
                 return g;
@@ -743,7 +743,7 @@ pub mod termination {
         }
     }
 
-    pub fn args_edges(mut c: &'static Wc, mut args: Sexps, mut q: i64, mut g: Edges) -> Edges {
+    pub fn args_edges(mut c: kayak_rt::Handle<'static, Wc>, mut args: Sexps, mut q: i64, mut g: Edges) -> Edges {
         loop {
             if null_p(args) {
                 return g;
@@ -754,8 +754,8 @@ pub mod termination {
         }
     }
 
-    pub fn passed_on(c: &'static Wc, a: &'static Sexp) -> i64 {
-        let unchanged = concat(map(lambda1s(move |t: &'static Tracked| {
+    pub fn passed_on(c: kayak_rt::Handle<'static, Wc>, a: kayak_rt::Handle<'static, Sexp>) -> i64 {
+        let unchanged = concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Tracked::Part(p, strict, ty) => {
@@ -778,14 +778,14 @@ pub mod termination {
         }
     }
 
-    pub fn call_found(c: &'static Wc, st: &'static Ws, to: i64, args: Sexps) -> &'static Ws {
+    pub fn call_found(c: kayak_rt::Handle<'static, Wc>, st: kayak_rt::Handle<'static, Ws>, to: i64, args: Sexps) -> kayak_rt::Handle<'static, Ws> {
         let tagcase_ = c;
         match *tagcase_ {
             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
                 let tagcase_ = st;
                 match *tagcase_ {
                     Ws::Ws(calls, passed, escaped) => {
-                        ws(kayak_rt::heap_cons(scall(cur, to, args_edges(c, args, 0i64, nil::<&'static termination::Edge>())), calls), kayak_rt::heap_cons(passing(cur, to, map(lambda1s(move |a: &'static Sexp| {
+                        ws(kayak_rt::heap_cons(scall(cur, to, args_edges(c, args, 0i64, nil::<kayak_rt::Handle<'static, termination::Edge>>())), calls), kayak_rt::heap_cons(passing(cur, to, map(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
                             passed_on(c, a)
                         }), args)), passed), escaped)
                     }
@@ -795,7 +795,7 @@ pub mod termination {
     }
 
     #[inline]
-    pub fn escaping(st: &'static Ws) -> &'static Ws {
+    pub fn escaping(st: kayak_rt::Handle<'static, Ws>) -> kayak_rt::Handle<'static, Ws> {
         let tagcase_ = st;
         match *tagcase_ {
             Ws::Ws(calls, passed, escaped) => {
@@ -805,7 +805,7 @@ pub mod termination {
     }
 
     pub fn param_names(params: Sexps) -> Strings {
-        map(lambda1s(move |p: &'static Sexp| {
+        map(lambda1s(move |p: kayak_rt::Handle<'static, Sexp>| {
             let tagcase_ = p;
             match *tagcase_ {
                 Sexp::Sym(n, at_file, at_pos) => {
@@ -824,37 +824,37 @@ pub mod termination {
 
     /// What an arm of a `tagcase` on `whole` binds for its field `i`: a part,
     /// strictly smaller, of the type the variant says if the whole's is known.
-    pub fn variant_part(v: &'static Cv, whole: Trackeds, tag: Str, i: i64) -> Trackeds {
-        concat(map(lambda1s(move |t: &'static Tracked| {
+    pub fn variant_part(v: kayak_rt::Handle<'static, Cv>, whole: Trackeds, tag: Str, i: i64) -> Trackeds {
+        concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Tracked::Part(p, strict, ty) => {
                     the::<Trackeds>(kayak_rt::heap_cons(part(p, true, if null_p(ty) {
-                        nil::<&'static Ty>()
+                        nil::<kayak_rt::Handle<'static, Ty>>()
                     } else {
                         let tagcase_ = car(ty);
                         match *tagcase_ {
                             Ty::TyData(d, args) => {
                                 let found = find_family(d, cv_dts(v));
                                 if kayak_rt::value::null_p(found) {
-                                    nil::<&'static Ty>()
+                                    nil::<kayak_rt::Handle<'static, Ty>>()
                                 } else {
-                                    let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
+                                    let tagcase_ = kayak_rt::value::unbox_other::<kayak_rt::Handle<'static, Dt>>(found);
                                     match *tagcase_ {
                                         Dt::Dt(n, ps, vs) => {
-                                            let fs = concat(map(lambda1s(move |x: &'static Variant| {
+                                            let fs = concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Variant>| {
                                                 let tagcase_ = x;
                                                 match *tagcase_ {
                                                     Variant::Variant(vt, ft) => {
                                                         if string_eq_p(vt, tag) {
                                                             ft
                                                         } else {
-                                                            nil::<&'static Ty>()
+                                                            nil::<kayak_rt::Handle<'static, Ty>>()
                                                         }
                                                     }
                                                 }
                                             }), vs));
-                                            map(lambda1s(move |f: &'static Ty| {
+                                            map(lambda1s(move |f: kayak_rt::Handle<'static, Ty>| {
                                                 substitute(ps, args, f)
                                             }), nth_ty(fs, i))
                                         }
@@ -863,20 +863,20 @@ pub mod termination {
                             }
                             _ => {
                                 let other = tagcase_;
-                                nil::<&'static Ty>()
+                                nil::<kayak_rt::Handle<'static, Ty>>()
                             }
                         }
                     }), kayak_rt::nil()))
                 }
                 _ => {
                     let other = tagcase_;
-                    nil::<&'static termination::Tracked>()
+                    nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                 }
             }
         }), whole))
     }
 
-    pub fn walk_all(mut c: &'static Wc, mut st: &'static Ws, mut es: Sexps) -> &'static Ws {
+    pub fn walk_all(mut c: kayak_rt::Handle<'static, Wc>, mut st: kayak_rt::Handle<'static, Ws>, mut es: Sexps) -> kayak_rt::Handle<'static, Ws> {
         loop {
             if null_p(es) {
                 return st;
@@ -887,7 +887,7 @@ pub mod termination {
         }
     }
 
-    pub fn walk_exp(mut c: &'static Wc, mut st: &'static Ws, mut e: &'static Sexp) -> &'static Ws {
+    pub fn walk_exp(mut c: kayak_rt::Handle<'static, Wc>, mut st: kayak_rt::Handle<'static, Ws>, mut e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Ws> {
         loop {
             let tagcase_ = e;
             match *tagcase_ {
@@ -922,11 +922,11 @@ pub mod termination {
                     } else if string_eq_p(h, str_lit("module")) {
                         // A module made as a value (C170): its items' values walked as a
                         // `let*`'s would be, its types not.
-                        return walk_all(c, st, concat(map(lambda1s(move |f: &'static Sexp| {
+                        return walk_all(c, st, concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
                             if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_gt(size(items(f)), 2i64)) {
                                 the::<Sexps>(kayak_rt::heap_cons(last(items(f)), kayak_rt::nil()))
                             } else {
-                                nil::<&'static Sexp>()
+                                nil::<kayak_rt::Handle<'static, Sexp>>()
                             }
                         }), cdr(xs))));
                     } else if (not(well_formed_p(h, cdr(xs))) || ((string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("the"))) && i64_lt(size(xs), 3i64))) {
@@ -937,14 +937,14 @@ pub mod termination {
                     } else if string_eq_p(h, str_lit("cond")) {
                         return walk_clauses(c, st, cdr(xs));
                     } else if string_eq_p(h, str_lit("case")) {
-                        return walk_all(c, walk_exp(c, st, second(xs)), concat(map(lambda1s(move |arm: &'static Sexp| {
+                        return walk_all(c, walk_exp(c, st, second(xs)), concat(map(lambda1s(move |arm: kayak_rt::Handle<'static, Sexp>| {
                             cdr(items(arm))
                         }), cdr(cdr(xs)))));
                     } else if string_eq_p(h, str_lit("tagcase")) {
                         return walk_arms(c, walk_exp(c, st, second(xs)), tracked_of(c, second(xs)), cdr(cdr(xs)));
                     } else if string_eq_p(h, str_lit("typecase")) {
                         // Each arm's name the value tested, as it is (C77).
-                        return walk_all(c, walk_exp(c, st, second(xs)), map(lambda1s(move |arm: &'static Sexp| {
+                        return walk_all(c, walk_exp(c, st, second(xs)), map(lambda1s(move |arm: kayak_rt::Handle<'static, Sexp>| {
                             let a = items(arm);
                             if i64_eq(size(a), 3i64) {
                                 lst(kayak_rt::heap_cons(sym(str_lit("let"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(a), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(third(a), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
@@ -953,19 +953,19 @@ pub mod termination {
                             }
                         }), cdr(cdr(xs))));
                     } else if string_eq_p(h, str_lit("let")) {
-                        let st = walk_all(c, st, map(lambda1s(move |b: &'static Sexp| {
+                        let st = walk_all(c, st, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                             second(items(b))
                         }), items(second(xs))));
-                        return walk_all(in_scope(c, map(lambda1s(move |b: &'static Sexp| {
+                        return walk_all(in_scope(c, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                             known(sym_name(car(items(b))), tracked_of(c, second(items(b))))
                         }), items(second(xs)))), st, cdr(cdr(xs)));
                     } else if string_eq_p(h, str_lit("let*")) {
                         return walk_let_star(c, st, items(second(xs)), cdr(cdr(xs)));
                     } else if string_eq_p(h, str_lit("letrec")) {
-                        let c = hiding(c, map(lambda1s(move |b: &'static Sexp| {
+                        let c = hiding(c, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                             sym_name(car(items(b)))
                         }), items(second(xs))));
-                        return walk_all(c, walk_all(c, st, map(lambda1s(move |b: &'static Sexp| {
+                        return walk_all(c, walk_all(c, st, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                             third(items(b))
                         }), items(second(xs)))), cdr(cdr(xs)));
                     } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
@@ -994,7 +994,7 @@ pub mod termination {
                         let tagcase_ = c;
                         match *tagcase_ {
                             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
-                                return walk_all(hiding(c, map(lambda1s(move |b: &'static Bind| {
+                                return walk_all(hiding(c, map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
                                     let tagcase_ = b;
                                     match *tagcase_ {
                                         Bind::Bind(n, t, w) => {
@@ -1022,7 +1022,7 @@ pub mod termination {
 
     /// A `cond`, as the `if`s FX-26 reads it as: each clause's body under its
     /// test, and every clause after it under the test failing.
-    pub fn walk_clauses(c: &'static Wc, st: &'static Ws, clauses: Sexps) -> &'static Ws {
+    pub fn walk_clauses(c: kayak_rt::Handle<'static, Wc>, st: kayak_rt::Handle<'static, Ws>, clauses: Sexps) -> kayak_rt::Handle<'static, Ws> {
         if null_p(clauses) {
             st
         } else {
@@ -1036,14 +1036,14 @@ pub mod termination {
         }
     }
 
-    pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, mut arms: Sexps) -> &'static Ws {
+    pub fn walk_arms(mut c: kayak_rt::Handle<'static, Wc>, mut st: kayak_rt::Handle<'static, Ws>, mut whole: Trackeds, mut arms: Sexps) -> kayak_rt::Handle<'static, Ws> {
         loop {
             if null_p(arms) {
                 return st;
             } else {
                 let arm = items(car(arms));
                 (st, arms) = (if sym_is_p(car(arm), str_lit("else")) {
-                    walk_all(in_scope(c, the::<Knowns>(kayak_rt::heap_cons(known(sym_name(second(arm)), concat(map(lambda1s(move |t: &'static Tracked| {
+                    walk_all(in_scope(c, the::<Knowns>(kayak_rt::heap_cons(known(sym_name(second(arm)), concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
                         let tagcase_ = t;
                         match *tagcase_ {
                             Tracked::Part(p, s, ty) => {
@@ -1051,7 +1051,7 @@ pub mod termination {
                             }
                             _ => {
                                 let other = tagcase_;
-                                nil::<&'static termination::Tracked>()
+                                nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                             }
                         }
                     }), whole))), kayak_rt::nil()))), st, cdr(cdr(arm)))
@@ -1061,15 +1061,15 @@ pub mod termination {
                         match *tagcase_ {
                             Sexp::Sym(x, at_file, at_pos) => {
                                 // A sum's member, bound whole: a part, its type not known here.
-                                the::<Knowns>(kayak_rt::heap_cons(known(x, concat(map(lambda1s(move |t: &'static Tracked| {
+                                the::<Knowns>(kayak_rt::heap_cons(known(x, concat(map(lambda1s(move |t: kayak_rt::Handle<'static, Tracked>| {
                                     let tagcase_ = t;
                                     match *tagcase_ {
                                         Tracked::Part(p, s, ty) => {
-                                            the::<Trackeds>(kayak_rt::heap_cons(part(p, true, nil::<&'static Ty>()), kayak_rt::nil()))
+                                            the::<Trackeds>(kayak_rt::heap_cons(part(p, true, nil::<kayak_rt::Handle<'static, Ty>>()), kayak_rt::nil()))
                                         }
                                         _ => {
                                             let other = tagcase_;
-                                            nil::<&'static termination::Tracked>()
+                                            nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                                         }
                                     }
                                 }), whole))), kayak_rt::nil()))
@@ -1086,9 +1086,9 @@ pub mod termination {
         }
     }
 
-    pub fn fields_known(c: &'static Wc, whole: Trackeds, tag: Str, names: Sexps, i: i64) -> Knowns {
+    pub fn fields_known(c: kayak_rt::Handle<'static, Wc>, whole: Trackeds, tag: Str, names: Sexps, i: i64) -> Knowns {
         if null_p(names) {
-            nil::<&'static termination::Known>()
+            nil::<kayak_rt::Handle<'static, termination::Known>>()
         } else {
             let tagcase_ = c;
             match *tagcase_ {
@@ -1099,7 +1099,7 @@ pub mod termination {
         }
     }
 
-    pub fn walk_let_star(mut c: &'static Wc, mut st: &'static Ws, mut bindings: Sexps, mut body: Sexps) -> &'static Ws {
+    pub fn walk_let_star(mut c: kayak_rt::Handle<'static, Wc>, mut st: kayak_rt::Handle<'static, Ws>, mut bindings: Sexps, mut body: Sexps) -> kayak_rt::Handle<'static, Ws> {
         loop {
             if null_p(bindings) {
                 return walk_all(c, st, body);
@@ -1116,30 +1116,30 @@ pub mod termination {
         RecMember(Str, Strings, Tys, Sexps),
     }
 
-    pub fn rec_member(f0: Str, f1: Strings, f2: Tys, f3: Sexps) -> &'static RecMember {
+    pub fn rec_member(f0: Str, f1: Strings, f2: Tys, f3: Sexps) -> kayak_rt::Handle<'static, RecMember> {
         kayak_rt::heap_alloc(RecMember::RecMember(f0, f1, f2, f3))
     }
 
-    pub type RecMembers = List<&'static RecMember>;
+    pub type RecMembers = List<kayak_rt::Handle<'static, RecMember>>;
 
     /// A definition's lambda, under a `plambda`: as a list of one, or none.
-    pub fn lambda_of(e: &'static Sexp) -> Sexps {
+    pub fn lambda_of(e: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         if head_is_p(e, str_lit("plambda")) {
             if head_is_p(third(items(e)), str_lit("lambda")) {
                 the::<Sexps>(kayak_rt::heap_cons(third(items(e)), kayak_rt::nil()))
             } else {
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         } else if head_is_p(e, str_lit("lambda")) {
             the::<Sexps>(kayak_rt::heap_cons(e, kayak_rt::nil()))
         } else {
-            nil::<&'static Sexp>()
+            nil::<kayak_rt::Handle<'static, Sexp>>()
         }
     }
 
     pub fn param_knowns(names: Strings, ts: Tys, j: i64) -> Knowns {
         if (null_p(names) || null_p(ts)) {
-            nil::<&'static termination::Known>()
+            nil::<kayak_rt::Handle<'static, termination::Known>>()
         } else {
             kayak_rt::heap_cons(known(car(names), kayak_rt::heap_cons(part(j, false, the::<Tys>(kayak_rt::heap_cons(car(ts), kayak_rt::nil()))), {
                 let tagcase_ = car(ts);
@@ -1152,7 +1152,7 @@ pub mod termination {
                     }
                     _ => {
                         let other = tagcase_;
-                        nil::<&'static termination::Tracked>()
+                        nil::<kayak_rt::Handle<'static, termination::Tracked>>()
                     }
                 }
             })), param_knowns(cdr(names), cdr(ts), i64_plus(j, 1i64)))
@@ -1183,7 +1183,7 @@ pub mod termination {
         }
     }
 
-    pub fn walk_rec_members(mut v: &'static Cv, mut names: Strings, mut ms: RecMembers, mut i: i64, mut inv: Slots, mut st: &'static Ws) -> &'static Ws {
+    pub fn walk_rec_members(mut v: kayak_rt::Handle<'static, Cv>, mut names: Strings, mut ms: RecMembers, mut i: i64, mut inv: Slots, mut st: kayak_rt::Handle<'static, Ws>) -> kayak_rt::Handle<'static, Ws> {
         loop {
             if null_p(ms) {
                 return st;
@@ -1200,7 +1200,7 @@ pub mod termination {
                 let tagcase_ = car(ms);
                 match *tagcase_ {
                     RecMember::RecMember(n, ps, ts, body) => {
-                        (ms, i, st) = (cdr(ms), i64_plus(i, 1i64), walk_all(wc(v, names, i, param_knowns(ps, ts, 0i64), nil::<&'static termination::Guard>(), nat_params(ts, 0i64), inv), st, body));
+                        (ms, i, st) = (cdr(ms), i64_plus(i, 1i64), walk_all(wc(v, names, i, param_knowns(ps, ts, 0i64), nil::<kayak_rt::Handle<'static, termination::Guard>>(), nat_params(ts, 0i64), inv), st, body));
                         continue;
                     }
                 }
@@ -1209,7 +1209,7 @@ pub mod termination {
     }
 
     pub fn slot_in_p(i: i64, j: i64, inv: Slots) -> bool {
-        any_p(lambda1s(move |x: &'static Slot| {
+        any_p(lambda1s(move |x: kayak_rt::Handle<'static, Slot>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Slot::Slot(a, b) => {
@@ -1234,11 +1234,11 @@ pub mod termination {
 
     /// The slots every call passes on unchanged, of those still thought so.
     pub fn kept_slots(inv: Slots, passed: Passings) -> Slots {
-        concat(map(lambda1s(move |x: &'static Slot| {
+        concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Slot>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Slot::Slot(to, j) => {
-                    if any_p(lambda1s(move |p: &'static Passing| {
+                    if any_p(lambda1s(move |p: kayak_rt::Handle<'static, Passing>| {
                         let tagcase_ = p;
                         match *tagcase_ {
                             Passing::Passing(f, t, args) => {
@@ -1249,7 +1249,7 @@ pub mod termination {
                             }
                         }
                     }), passed) {
-                        nil::<&'static termination::Slot>()
+                        nil::<kayak_rt::Handle<'static, termination::Slot>>()
                     } else {
                         the::<Slots>(kayak_rt::heap_cons(x, kayak_rt::nil()))
                     }
@@ -1272,7 +1272,7 @@ pub mod termination {
 
     pub fn all_slots(ms: RecMembers, i: i64) -> Slots {
         if null_p(ms) {
-            nil::<&'static termination::Slot>()
+            nil::<kayak_rt::Handle<'static, termination::Slot>>()
         } else {
             let tagcase_ = car(ms);
             match *tagcase_ {
@@ -1327,7 +1327,7 @@ pub mod termination {
 
     #[inline]
     pub fn compose(a: Edges, b: Edges) -> Edges {
-        fold_edges(a, b, nil::<&'static termination::Edge>())
+        fold_edges(a, b, nil::<kayak_rt::Handle<'static, termination::Edge>>())
     }
 
     pub fn edges_eq_p(mut a: Edges, mut b: Edges) -> bool {
@@ -1359,7 +1359,7 @@ pub mod termination {
         }
     }
 
-    pub fn scall_eq_p(a: &'static Scall, b: &'static Scall) -> bool {
+    pub fn scall_eq_p(a: kayak_rt::Handle<'static, Scall>, b: kayak_rt::Handle<'static, Scall>) -> bool {
         let tagcase_ = a;
         match *tagcase_ {
             Scall::Scall(f, g, es) => {
@@ -1384,19 +1384,19 @@ pub mod termination {
         if null_p(todo) {
             all
         } else if i64_gt(size(all), most_graphs()) {
-            nil::<&'static termination::Scall>()
+            nil::<kayak_rt::Handle<'static, termination::Scall>>()
         } else {
             let tagcase_ = car(todo);
             match *tagcase_ {
                 Scall::Scall(f, g, a) => {
-                    close_over(calls, all, cdr(todo), f, a, concat(map(lambda1s(move |x: &'static Scall| {
+                    close_over(calls, all, cdr(todo), f, a, concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Scall>| {
                         let tagcase_ = x;
                         match *tagcase_ {
                             Scall::Scall(g2, h, b) => {
                                 if i64_eq(g2, g) {
                                     the::<Scalls>(kayak_rt::heap_cons(x, kayak_rt::nil()))
                                 } else {
-                                    nil::<&'static termination::Scall>()
+                                    nil::<kayak_rt::Handle<'static, termination::Scall>>()
                                 }
                             }
                         }
@@ -1415,7 +1415,7 @@ pub mod termination {
                 match *tagcase_ {
                     Scall::Scall(g, h, b) => {
                         let c = scall(f, h, compose(a, b));
-                        if any_p(lambda1s(move |x: &'static Scall| {
+                        if any_p(lambda1s(move |x: kayak_rt::Handle<'static, Scall>| {
                             scall_eq_p(x, c)
                         }), all) {
                             nexts = cdr(nexts);
@@ -1435,11 +1435,11 @@ pub mod termination {
     /// call none of each other ends too, as Fixpt has it (C179).
     pub fn ends_p(calls: Scalls) -> bool {
         let all = paths(calls, calls, calls);
-        not(any_p(lambda1s(move |x: &'static Scall| {
+        not(any_p(lambda1s(move |x: kayak_rt::Handle<'static, Scall>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Scall::Scall(f, g, a) => {
-                    (i64_eq(f, g) && edges_eq_p(compose(a, a), a) && not(any_p(lambda1s(move |e: &'static Edge| {
+                    (i64_eq(f, g) && edges_eq_p(compose(a, a), a) && not(any_p(lambda1s(move |e: kayak_rt::Handle<'static, Edge>| {
                         let tagcase_ = e;
                         match *tagcase_ {
                             Edge::Edge(p, q, s) => {
@@ -1454,7 +1454,7 @@ pub mod termination {
 
     pub fn rec_members_of(names: Strings, types: Tys, lambdas: Sexps) -> RecMembers {
         if null_p(names) {
-            nil::<&'static termination::RecMember>()
+            nil::<kayak_rt::Handle<'static, termination::RecMember>>()
         } else {
             kayak_rt::heap_cons(rec_member(car(names), param_names(items(second(items(car(lambdas))))), {
                 let tagcase_ = car(types);
@@ -1464,7 +1464,7 @@ pub mod termination {
                     }
                     _ => {
                         let other = tagcase_;
-                        nil::<&'static Ty>()
+                        nil::<kayak_rt::Handle<'static, Ty>>()
                     }
                 }
             }, cdr(cdr(items(car(lambdas))))), rec_members_of(cdr(names), cdr(types), cdr(lambdas)))
@@ -1475,10 +1475,10 @@ pub mod termination {
     /// lambdas. A member not a lambda, or named other than as a call's
     /// operator, and it does not. A member of an `allof`'s type, judged at
     /// each of its members' (C358; Fixpt's U1).
-    pub fn terminates_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) -> bool {
+    pub fn terminates_p(v: kayak_rt::Handle<'static, Cv>, names: Strings, types: Tys, defined: Sexps) -> bool {
         let at = allof_at(types, 0i64);
         if i64_gt_eq(at, 0i64) {
-            all_p(lambda1s(move |m: &'static Ty| {
+            all_p(lambda1s(move |m: kayak_rt::Handle<'static, Ty>| {
                 terminates_p(v, names, types_put(types, at, m), defined)
             }), {
                 let tagcase_ = types_nth(types, at);
@@ -1488,7 +1488,7 @@ pub mod termination {
                     }
                     _ => {
                         let other = tagcase_;
-                        nil::<&'static Ty>()
+                        nil::<kayak_rt::Handle<'static, Ty>>()
                     }
                 }
             })
@@ -1521,9 +1521,9 @@ pub mod termination {
         }
     }
 
-    pub fn types_put(ts: Tys, i: i64, m: &'static Ty) -> Tys {
+    pub fn types_put(ts: Tys, i: i64, m: kayak_rt::Handle<'static, Ty>) -> Tys {
         if null_p(ts) {
-            nil::<&'static Ty>()
+            nil::<kayak_rt::Handle<'static, Ty>>()
         } else if i64_eq(i, 0i64) {
             kayak_rt::heap_cons(m, cdr(ts))
         } else {
@@ -1531,7 +1531,7 @@ pub mod termination {
         }
     }
 
-    pub fn types_nth(mut ts: Tys, mut i: i64) -> &'static Ty {
+    pub fn types_nth(mut ts: Tys, mut i: i64) -> kayak_rt::Handle<'static, Ty> {
         loop {
             if null_p(ts) {
                 return ty_void();
@@ -1544,7 +1544,7 @@ pub mod termination {
         }
     }
 
-    pub fn terminates_plain_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) -> bool {
+    pub fn terminates_plain_p(v: kayak_rt::Handle<'static, Cv>, names: Strings, types: Tys, defined: Sexps) -> bool {
         let lambdas = map(&lambda_of, defined);
         if any_p(lambda1s(move |l: Sexps| {
             null_p(l)
@@ -1554,7 +1554,7 @@ pub mod termination {
             let ms = rec_members_of(names, types, map(lambda1s(move |l: Sexps| {
                 car(l)
             }), lambdas));
-            let w1 = walk_rec_members(v, names, ms, 0i64, nil::<&'static termination::Slot>(), ws(nil::<&'static termination::Scall>(), nil::<&'static termination::Passing>(), false));
+            let w1 = walk_rec_members(v, names, ms, 0i64, nil::<kayak_rt::Handle<'static, termination::Slot>>(), ws(nil::<kayak_rt::Handle<'static, termination::Scall>>(), nil::<kayak_rt::Handle<'static, termination::Passing>>(), false));
             if {
                 let tagcase_ = w1;
                 match *tagcase_ {
@@ -1576,7 +1576,7 @@ pub mod termination {
                 let w2 = if null_p(inv) {
                     w1
                 } else {
-                    walk_rec_members(v, names, ms, 0i64, inv, ws(nil::<&'static termination::Scall>(), nil::<&'static termination::Passing>(), false))
+                    walk_rec_members(v, names, ms, 0i64, inv, ws(nil::<kayak_rt::Handle<'static, termination::Scall>>(), nil::<kayak_rt::Handle<'static, termination::Passing>>(), false))
                 };
                 (not({
                     let tagcase_ = w2;

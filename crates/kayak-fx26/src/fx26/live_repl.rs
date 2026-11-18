@@ -54,23 +54,23 @@ pub enum Request {
     Limited(i64),
 }
 
-pub fn entry_given(f0: i64, f1: Str, f2: Str, f3: bool) -> &'static Request {
+pub fn entry_given(f0: i64, f1: Str, f2: Str, f3: bool) -> kayak_rt::Handle<'static, Request> {
     kayak_rt::heap_alloc(Request::EntryGiven(f0, f1, f2, f3))
 }
 
-pub fn draft_given(f0: i64, f1: Str, f2: Str) -> &'static Request {
+pub fn draft_given(f0: i64, f1: Str, f2: Str) -> kayak_rt::Handle<'static, Request> {
     kayak_rt::heap_alloc(Request::DraftGiven(f0, f1, f2))
 }
 
-pub fn draft_dropped() -> &'static Request {
+pub fn draft_dropped() -> kayak_rt::Handle<'static, Request> {
     kayak_rt::heap_alloc(Request::DraftDropped())
 }
 
-pub fn cancelled(f0: i64) -> &'static Request {
+pub fn cancelled(f0: i64) -> kayak_rt::Handle<'static, Request> {
     kayak_rt::heap_alloc(Request::Cancelled(f0))
 }
 
-pub fn limited(f0: i64) -> &'static Request {
+pub fn limited(f0: i64) -> kayak_rt::Handle<'static, Request> {
     kayak_rt::heap_alloc(Request::Limited(f0))
 }
 
@@ -79,11 +79,11 @@ pub enum News {
     DraftNews(i64, Str, bool),
 }
 
-pub fn entry_news(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> &'static News {
+pub fn entry_news(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> kayak_rt::Handle<'static, News> {
     kayak_rt::heap_alloc(News::EntryNews(f0, f1, f2, f3, f4, f5, f6, f7))
 }
 
-pub fn draft_news(f0: i64, f1: Str, f2: bool) -> &'static News {
+pub fn draft_news(f0: i64, f1: Str, f2: bool) -> kayak_rt::Handle<'static, News> {
     kayak_rt::heap_alloc(News::DraftNews(f0, f1, f2))
 }
 
@@ -302,7 +302,7 @@ pub mod session {
     /// it was before the engine said one rather than failing, for the Rust
     /// to catch (`machine-refused!`).
     #[inline]
-    pub fn numbered_or_failed_x(tops: List<&'static Top>) -> List<i64> {
+    pub fn numbered_or_failed_x(tops: List<kayak_rt::Handle<'static, Top>>) -> List<i64> {
         let ns = number_tops_x(tops);
         failure_raised_x();
         ns
@@ -376,18 +376,18 @@ pub mod session {
     }
 
     #[inline]
-    pub fn requests() -> Ref<List<&'static Request>> {
-        kayak_rt::kept_constant!(ONCE: Ref<List<&'static Request>>);
+    pub fn requests() -> Ref<List<kayak_rt::Handle<'static, Request>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Request>>>);
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<&'static Request>())
+            kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Request>>())
         })
     }
 
     #[inline]
-    pub fn news_out() -> Ref<List<&'static News>> {
-        kayak_rt::kept_constant!(ONCE: Ref<List<&'static News>>);
+    pub fn news_out() -> Ref<List<kayak_rt::Handle<'static, News>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, News>>>);
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<&'static News>())
+            kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, News>>())
         })
     }
 
@@ -408,7 +408,7 @@ pub mod session {
     }
 
     #[inline]
-    pub fn asked_x(r: &'static Request) -> () {
+    pub fn asked_x(r: kayak_rt::Handle<'static, Request>) -> () {
         set(requests(), kayak_rt::heap_cons(r, get(requests())))
     }
 
@@ -711,7 +711,7 @@ pub mod session {
     }
 
     #[inline]
-    pub fn definition_form_p(f: &'static Sexp) -> bool {
+    pub fn definition_form_p(f: kayak_rt::Handle<'static, Sexp>) -> bool {
         any_p(lambda1s(move |h: Str| {
             head_is_p(f, h)
         }), kayak_rt::heap_cons(str_lit("define"), kayak_rt::heap_cons(str_lit("define*"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("define-type"), kayak_rt::heap_cons(str_lit("define-datatype"), kayak_rt::heap_cons(str_lit("define-generative"), kayak_rt::heap_cons(str_lit("define-effect"), kayak_rt::nil()))))))))
@@ -760,7 +760,7 @@ pub mod session {
     }
 
     // Reading what was typed: the `%k` an entry names.
-    pub fn named_results(x: &'static Sexp) -> List<i64> {
+    pub fn named_results(x: kayak_rt::Handle<'static, Sexp>) -> List<i64> {
         let tagcase_ = x;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
@@ -1263,7 +1263,7 @@ pub mod session {
 
     // Completion: the name before the cursor, among the checker's.
     pub fn known_names() -> Strings {
-        concat(map(lambda1s(move |b: &'static Bind| {
+        concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
@@ -1569,7 +1569,7 @@ pub mod session {
         MadeEntry(Str, Str, bool, List<i64>),
     }
 
-    pub fn made_entry(f0: Str, f1: Str, f2: bool, f3: List<i64>) -> &'static MadeEntry {
+    pub fn made_entry(f0: Str, f1: Str, f2: bool, f3: List<i64>) -> kayak_rt::Handle<'static, MadeEntry> {
         kayak_rt::heap_alloc(MadeEntry::MadeEntry(f0, f1, f2, f3))
     }
 
@@ -1577,7 +1577,7 @@ pub mod session {
     /// expression's value `%k`'s, the global bound at its type: what is
     /// written after its value (the last expression's), and the lines of
     /// the definitions.
-    pub fn entry_forms(mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut tops: List<i64>) -> &'static MadeEntry {
+    pub fn entry_forms(mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut tops: List<i64>) -> kayak_rt::Handle<'static, MadeEntry> {
         loop {
             if null_p(forms) {
                 return made_entry(typed, defined, quiet, tops);
@@ -1642,7 +1642,7 @@ pub mod session {
     }
 
     /// The checker's environment with `name` a global of `form`'s type.
-    pub fn result_bound(v: &'static Cv, form: &'static Sexp, name: Str) -> &'static Cv {
+    pub fn result_bound(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, name: Str) -> kayak_rt::Handle<'static, Cv> {
         let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
@@ -1652,7 +1652,7 @@ pub mod session {
     }
 
     #[inline]
-    pub fn expression_effects(v: &'static Cv, form: &'static Sexp) -> Strings {
+    pub fn expression_effects(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Strings {
         let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
@@ -1737,9 +1737,9 @@ pub mod session {
     }
 
     /// Each entry as it is now, its output since taken, for the front.
-    pub fn entries_news(es: List<Entry>) -> List<&'static News> {
+    pub fn entries_news(es: List<Entry>) -> List<kayak_rt::Handle<'static, News>> {
         if null_p(es) {
-            nil::<&'static News>()
+            nil::<kayak_rt::Handle<'static, News>>()
         } else {
             let e = car(es);
             let out = get(e.9);
@@ -2026,11 +2026,11 @@ pub mod session {
         ClosedOff(Str, i64, List<i64>, bool),
     }
 
-    pub fn not_closable() -> &'static Closing {
+    pub fn not_closable() -> kayak_rt::Handle<'static, Closing> {
         kayak_rt::heap_alloc(Closing::NotClosable())
     }
 
-    pub fn closed_off(f0: Str, f1: i64, f2: List<i64>, f3: bool) -> &'static Closing {
+    pub fn closed_off(f0: Str, f1: i64, f2: List<i64>, f3: bool) -> kayak_rt::Handle<'static, Closing> {
         kayak_rt::heap_alloc(Closing::ClosedOff(f0, f1, f2, f3))
     }
 
@@ -2039,11 +2039,11 @@ pub mod session {
         Scanned(List<i64>, bool),
     }
 
-    pub fn unbalanced() -> &'static Scan {
+    pub fn unbalanced() -> kayak_rt::Handle<'static, Scan> {
         kayak_rt::heap_alloc(Scan::Unbalanced())
     }
 
-    pub fn scanned(f0: List<i64>, f1: bool) -> &'static Scan {
+    pub fn scanned(f0: List<i64>, f1: bool) -> kayak_rt::Handle<'static, Scan> {
         kayak_rt::heap_alloc(Scan::Scanned(f0, f1))
     }
 
@@ -2124,7 +2124,7 @@ pub mod session {
 
     /// Where the lists still open begin, the innermost first; and whether the
     /// text ends in a comment. A list closed that was never opened: none.
-    pub fn open_lists(mut cs: List<char>, mut i: i64, mut open: List<i64>, mut str: bool, mut comment: bool) -> &'static Scan {
+    pub fn open_lists(mut cs: List<char>, mut i: i64, mut open: List<i64>, mut str: bool, mut comment: bool) -> kayak_rt::Handle<'static, Scan> {
         loop {
             if null_p(cs) {
                 return scanned(open, comment);
@@ -2185,7 +2185,7 @@ pub mod session {
     /// its lists closed; where that stops being the draft, the lists it
     /// closed, and whether the draft was finished (nothing left out or
     /// closed).
-    pub fn closed_text(text: Str) -> &'static Closing {
+    pub fn closed_text(text: Str) -> kayak_rt::Handle<'static, Closing> {
         let kept = before_quotes(text, kept_end(string_chars(text), 0i64, -1i64, false, -1i64));
         let typed = cut(text, 0i64, kept);
         let tagcase_ = open_lists(string_chars(typed), 0i64, nil::<i64>(), false, false);
@@ -2341,7 +2341,7 @@ pub mod session {
             let typed = trimmed_end(cut(text, 0i64, kept));
             let inner = program_read(string_append(cut(text, car(open), kept), str_lit(")")), str_lit("<hint>"), 1i64);
             let xs = if null_p(inner) {
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             } else {
                 items(car(inner))
             };
@@ -2490,7 +2490,7 @@ pub mod session {
         }
     }
 
-    pub fn checked_all(mut v: &'static Cv, mut forms: Sexps) -> &'static Cv {
+    pub fn checked_all(mut v: kayak_rt::Handle<'static, Cv>, mut forms: Sexps) -> kayak_rt::Handle<'static, Cv> {
         loop {
             if null_p(forms) {
                 return v;
@@ -2502,7 +2502,7 @@ pub mod session {
     }
 
     /// What the REPL writes of each definition among `forms`.
-    pub fn definition_lines(mut v: &'static Cv, mut forms: Sexps) -> Strings {
+    pub fn definition_lines(mut v: kayak_rt::Handle<'static, Cv>, mut forms: Sexps) -> Strings {
         loop {
             if null_p(forms) {
                 return nil::<Str>();
@@ -2551,7 +2551,7 @@ pub mod session {
         }
     }
 
-    pub fn expression_speculated_x(form: &'static Sexp) -> () {
+    pub fn expression_speculated_x(form: kayak_rt::Handle<'static, Sexp>) -> () {
         let r#type = form_type(get(repl_cv()), form);
         let effects = expression_effects(get(repl_cv()), form);
         let waiting = unfinished_of(named_results(form));
@@ -3040,16 +3040,16 @@ pub mod session {
 
     /// The front's requests not yet sent, the oldest first.
     #[inline]
-    pub fn requests_x() -> List<&'static Request> {
+    pub fn requests_x() -> List<kayak_rt::Handle<'static, Request>> {
         let rs = get(requests());
-        set(requests(), nil::<&'static Request>());
-        reversed_onto(rs, nil::<&'static Request>())
+        set(requests(), nil::<kayak_rt::Handle<'static, Request>>());
+        reversed_onto(rs, nil::<kayak_rt::Handle<'static, Request>>())
     }
 
     /// On the machine's side, a request from the front. An entry given is
     /// checked again here, after those before it, as there; a refusal fails,
     /// and the Rust gives it to `machine-refused!`.
-    pub fn request_x(r: &'static Request, now: i64) -> () {
+    pub fn request_x(r: kayak_rt::Handle<'static, Request>, now: i64) -> () {
         let tagcase_ = r;
         match *tagcase_ {
             Request::EntryGiven(k, text, label, timed) => {
@@ -3092,18 +3092,18 @@ pub mod session {
     /// entry whose state or line changed, or that wrote; then the draft's
     /// run's outcome. What was sent of an entry is kept as its `drawn`,
     /// which this side draws nothing to.
-    pub fn news_taken_x(now: i64) -> List<&'static News> {
+    pub fn news_taken_x(now: i64) -> List<kayak_rt::Handle<'static, News>> {
         let (es, drafts) = (entries_where(lambda1(move |e: Entry| {
             (i64_gt(e.0, 0i64) && (not(string_eq_p(get(e.9), str_lit(""))) || not(string_eq_p(entry_key(e), get(e.13)))))
         }), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())), get(news_out()));
-        set(news_out(), nil::<&'static News>());
-        onto(entries_news(es), reversed_onto(drafts, nil::<&'static News>()))
+        set(news_out(), nil::<kayak_rt::Handle<'static, News>>());
+        onto(entries_news(es), reversed_onto(drafts, nil::<kayak_rt::Handle<'static, News>>()))
     }
 
     /// On the front's side, news from the machine: an entry's state, line
     /// and output; the draft's run's outcome, if that run is still the
     /// draft's.
-    pub fn news_x(n: &'static News, now: i64) -> () {
+    pub fn news_x(n: kayak_rt::Handle<'static, News>, now: i64) -> () {
         let tagcase_ = n;
         match *tagcase_ {
             News::EntryNews(k, state, shown, out, began, ended, steps, collected) => {

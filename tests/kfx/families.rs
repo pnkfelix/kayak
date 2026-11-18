@@ -7,30 +7,30 @@ use kayak_rt::*;
 
 pub enum Rose<'r, T: Copy + 'static> {
     Leaf(T),
-    Node(ListAt<'r, &'r Rose<'r, T>>),
+    Node(ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>),
 }
 
-pub fn leaf<'r, T: Copy + 'static>(f0: T) -> &'r Rose<'r, T> {
+pub fn leaf<'r, T: Copy + 'static>(f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     kayak_rt::alloc(Rose::Leaf(f0))
 }
 
-pub fn leaf_heap<T: Copy + 'static>(f0: T) -> &'static Rose<'static, T> {
+pub fn leaf_heap<T: Copy + 'static>(f0: T) -> kayak_rt::Handle<'static, Rose<'static, T>> {
     kayak_rt::heap_alloc(Rose::Leaf(f0))
 }
 
-pub fn leaf_in<'r, T: Copy + 'static, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: T) -> &'r Rose<'r, T> {
+pub fn leaf_in<'r, T: Copy + 'static, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     place_.arena().alloc(Rose::Leaf(f0))
 }
 
-pub fn node<'r, T: Copy + 'static>(f0: ListAt<'r, &'r Rose<'r, T>>) -> &'r Rose<'r, T> {
+pub fn node<'r, T: Copy + 'static>(f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     kayak_rt::alloc(Rose::Node(f0))
 }
 
-pub fn node_heap<T: Copy + 'static>(f0: List<&'static Rose<'static, T>>) -> &'static Rose<'static, T> {
+pub fn node_heap<T: Copy + 'static>(f0: List<kayak_rt::Handle<'static, Rose<'static, T>>>) -> kayak_rt::Handle<'static, Rose<'static, T>> {
     kayak_rt::heap_alloc(Rose::Node(f0))
 }
 
-pub fn node_in<'r, T: Copy + 'static, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: ListAt<'r, &'r Rose<'r, T>>) -> &'r Rose<'r, T> {
+pub fn node_in<'r, T: Copy + 'static, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     place_.arena().alloc(Rose::Node(f0))
 }
 
@@ -39,11 +39,11 @@ pub enum Option<A: Copy + 'static> {
     Some(A),
 }
 
-pub fn none<A: Copy + 'static>() -> &'static Option<A> {
+pub fn none<A: Copy + 'static>() -> kayak_rt::Handle<'static, Option<A>> {
     kayak_rt::heap_alloc(Option::None())
 }
 
-pub fn some<A: Copy + 'static>(f0: A) -> &'static Option<A> {
+pub fn some<A: Copy + 'static>(f0: A) -> kayak_rt::Handle<'static, Option<A>> {
     kayak_rt::heap_alloc(Option::Some(f0))
 }
 
@@ -51,7 +51,7 @@ pub enum Both<A: Copy + 'static, B: Copy + 'static> {
     Both(A, B),
 }
 
-pub fn both<A: Copy + 'static, B: Copy + 'static>(f0: A, f1: B) -> &'static Both<A, B> {
+pub fn both<A: Copy + 'static, B: Copy + 'static>(f0: A, f1: B) -> kayak_rt::Handle<'static, Both<A, B>> {
     kayak_rt::heap_alloc(Both::Both(f0, f1))
 }
 
@@ -60,7 +60,7 @@ pub type Stack<T> = List<T>;
 pub type Ints = Stack<i64>;
 
 #[inline]
-pub fn total(x: &'static Rose<'static, i64>) -> i64 {
+pub fn total(x: kayak_rt::Handle<'static, Rose<'static, i64>>) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
         Rose::Leaf(n) => {
@@ -73,7 +73,7 @@ pub fn total(x: &'static Rose<'static, i64>) -> i64 {
 }
 
 #[inline]
-pub fn total_all(ks: List<&'static Rose<'static, i64>>) -> i64 {
+pub fn total_all(ks: List<kayak_rt::Handle<'static, Rose<'static, i64>>>) -> i64 {
     if null_p(ks) {
         0i64
     } else {
@@ -82,7 +82,7 @@ pub fn total_all(ks: List<&'static Rose<'static, i64>>) -> i64 {
 }
 
 #[inline]
-pub fn first<A: Copy + 'static>(xs: Stack<A>) -> &'static Option<A> {
+pub fn first<A: Copy + 'static>(xs: Stack<A>) -> kayak_rt::Handle<'static, Option<A>> {
     if null_p(xs) {
         none::<A>()
     } else {
@@ -91,7 +91,7 @@ pub fn first<A: Copy + 'static>(xs: Stack<A>) -> &'static Option<A> {
 }
 
 #[inline]
-pub fn or_else<A: Copy + 'static>(o: &'static Option<A>, d: A) -> A {
+pub fn or_else<A: Copy + 'static>(o: kayak_rt::Handle<'static, Option<A>>, d: A) -> A {
     let tagcase_ = o;
     match *tagcase_ {
         Option::None() => {
@@ -104,7 +104,7 @@ pub fn or_else<A: Copy + 'static>(o: &'static Option<A>, d: A) -> A {
 }
 
 #[inline]
-pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: &'static Both<A, B>) -> &'static Both<B, A> {
+pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: kayak_rt::Handle<'static, Both<A, B>>) -> kayak_rt::Handle<'static, Both<B, A>> {
     let tagcase_ = p;
     match *tagcase_ {
         Both::Both(x, y) => {
@@ -114,10 +114,10 @@ pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: &'static Both<A, B>) -> &'s
 }
 
 pub fn main() -> Str {
-    let kids = the::<List<&'static Rose<'static, i64>>>(kayak_rt::heap_cons(leaf_heap(1i64), kayak_rt::heap_cons(leaf_heap(2i64), kayak_rt::nil())));
-    let tree = the::<&'static Rose<'static, i64>>(node_heap(kayak_rt::heap_cons(node_heap(kids), kayak_rt::heap_cons(leaf_heap(4i64), nil::<&'static Rose<'static, i64>>()))));
+    let kids = the::<List<kayak_rt::Handle<'static, Rose<'static, i64>>>>(kayak_rt::heap_cons(leaf_heap(1i64), kayak_rt::heap_cons(leaf_heap(2i64), kayak_rt::nil())));
+    let tree = the::<kayak_rt::Handle<'static, Rose<'static, i64>>>(node_heap(kayak_rt::heap_cons(node_heap(kids), kayak_rt::heap_cons(leaf_heap(4i64), nil::<kayak_rt::Handle<'static, Rose<'static, i64>>>()))));
     let xs = the::<Ints>(kayak_rt::heap_cons(7i64, kayak_rt::heap_cons(8i64, kayak_rt::heap_cons(9i64, kayak_rt::nil()))));
-    let p = the::<&'static Both<Str, i64>>(both(str_lit("x"), 5i64));
+    let p = the::<kayak_rt::Handle<'static, Both<Str, i64>>>(both(str_lit("x"), 5i64));
     string_append(i64_to_string(total(tree)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(xs), 0i64)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(the::<Ints>(nil::<i64>())), -1i64)), string_append(str_lit(" "), {
         let tagcase_ = swap(p);
         match *tagcase_ {

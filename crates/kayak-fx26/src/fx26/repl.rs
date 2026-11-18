@@ -13,10 +13,10 @@ use super::*;
 // many forms; the globals' names are the machine's (`machine-globals`,
 // vstage.kfx), which a session's add to too (C311).
 #[inline]
-pub fn repl_cv() -> Ref<&'static Cv> {
-    kayak_rt::kept_constant!(ONCE: Ref<&'static Cv>);
+pub fn repl_cv() -> Ref<kayak_rt::Handle<'static, Cv>> {
+    kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Handle<'static, Cv>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>()))
+        kayak_rt::heap_new(cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>()))
     })
 }
 
@@ -136,7 +136,7 @@ pub fn new_names(mut names: Strings, mut known: Strings) -> Strings {
 }
 
 pub fn repl_start_x() -> () {
-    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+    let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
     load_x(nil::<Str>());
     set(repl_cv(), with_binds(empty, prim_binds(empty)))
 }
@@ -153,7 +153,7 @@ pub fn machine_modules() -> Ref<Strings> {
 
 /// The modules' entries, `form`'s too, if it defines one.
 #[inline]
-pub fn entry_modules_x(form: &'static Sexp) -> Strings {
+pub fn entry_modules_x(form: kayak_rt::Handle<'static, Sexp>) -> Strings {
     set(machine_modules(), onto(get(machine_modules()), module_words(kayak_rt::heap_cons(form, kayak_rt::nil()), get(machine_modules()))));
     get(machine_modules())
 }
@@ -161,8 +161,8 @@ pub fn entry_modules_x(form: &'static Sexp) -> Strings {
 /// What the checker noted of the forms read from `file`, as the lowering
 /// reads it (`with-entries`): a `stage`'s type (C311), a `with`'s module
 /// (C213), a flat's layout (C215). The machine lowers with them.
-pub fn entry_facts(v: &'static Cv, file: Str) -> Strings {
-    with_entries(filter(lambda1s(move |f: &'static Fact| {
+pub fn entry_facts(v: kayak_rt::Handle<'static, Cv>, file: Str) -> Strings {
+    with_entries(filter(lambda1s(move |f: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(fl, pos, what) => {
@@ -174,7 +174,7 @@ pub fn entry_facts(v: &'static Cv, file: Str) -> Strings {
 
 /// The checker's environment after `form`, its types and datatypes
 /// declared first, as `check-program` declares a program's.
-pub fn checked_form(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+pub fn checked_form(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Cv> {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, pos, ix, mk) => {
@@ -237,7 +237,7 @@ pub fn checked_form(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
 
 /// What the REPL writes of a form: an expression's type and effect, a
 /// definition's name and type.
-pub fn form_type(v: &'static Cv, form: &'static Sexp) -> Str {
+pub fn form_type(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Str {
     if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
         let n = binder_name(second(items(form)));
         let found = scope_bind(n, v);

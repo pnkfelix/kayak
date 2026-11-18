@@ -14,7 +14,7 @@ pub enum Source {
     Source(Str, Str),
 }
 
-pub fn source(f0: Str, f1: Str) -> &'static Source {
+pub fn source(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Source> {
     kayak_rt::heap_alloc(Source::Source(f0, f1))
 }
 
@@ -22,17 +22,17 @@ pub enum Output {
     Output(Str, Str),
 }
 
-pub fn output(f0: Str, f1: Str) -> &'static Output {
+pub fn output(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Output> {
     kayak_rt::heap_alloc(Output::Output(f0, f1))
 }
 
-pub type Sources = List<&'static Source>;
+pub type Sources = List<kayak_rt::Handle<'static, Source>>;
 
-pub type Outputs = List<&'static Output>;
+pub type Outputs = List<kayak_rt::Handle<'static, Output>>;
 
 /// A program checked, then KFX's restrictions (restrict.kfx, C60).
 #[inline]
-pub fn restrict_checked(checked: &'static Verdict, forms: Sexps) -> &'static Verdict {
+pub fn restrict_checked(checked: kayak_rt::Handle<'static, Verdict>, forms: Sexps) -> kayak_rt::Handle<'static, Verdict> {
     restrictions::restrict(forms, verdict_facts(checked));
     checked
 }
@@ -73,12 +73,12 @@ pub fn moded_facts(fs: Facts, r#async: bool) -> Facts {
     if r#async {
         kayak_rt::heap_cons(fact(str_lit(""), -1i64, str_lit("async-mode")), fs)
     } else {
-        sync_facts(fs, nil::<&'static Fact>())
+        sync_facts(fs, nil::<kayak_rt::Handle<'static, Fact>>())
     }
 }
 
 /// `c` with the facts `more` too, its index made again.
-pub fn ctx_with_facts(c: &'static Ctx, more: Facts) -> &'static Ctx {
+pub fn ctx_with_facts(c: kayak_rt::Handle<'static, Ctx>, more: Facts) -> kayak_rt::Handle<'static, Ctx> {
     if null_p(more) {
         c
     } else {
@@ -94,7 +94,7 @@ pub fn ctx_with_facts(c: &'static Ctx, more: Facts) -> &'static Ctx {
 
 /// In the async mode, `c` with its recursion groups' facts (C379), then its
 /// leaves' (C377): procedures kept synchronous.
-pub fn leafed(c: &'static Ctx, forms: Sexps, r#async: bool) -> &'static Ctx {
+pub fn leafed(c: kayak_rt::Handle<'static, Ctx>, forms: Sexps, r#async: bool) -> kayak_rt::Handle<'static, Ctx> {
     if not(r#async) {
         c
     } else {
@@ -109,7 +109,7 @@ pub fn compile_named(file: Str, src: Str, loaded: Fileds, r#async: bool) -> Str 
     let forms = with_loads(read_all(src, file, 1i64), file, loaded);
     let checked = restrict_checked(check_program(forms), forms);
     let fs = moded_facts(verdict_facts(checked), r#async);
-    let c = leafed(emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), fs, fidx_of(fs), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>())), forms, r#async);
+    let c = leafed(emitter::collect(forms, ctx(nil::<Str>(), nil::<kayak_rt::Handle<'static, Tagof>>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), fs, fidx_of(fs), nil::<kayak_rt::Handle<'static, Family>>(), nil::<kayak_rt::Handle<'static, Typed>>(), nil::<kayak_rt::Handle<'static, Typed>>())), forms, r#async);
     rev_to_string(writing::put_module_impls(c, writing::put_tops(c, forms, writing::put_shapes(c, forms, false, put(header(), nil::<char>())))))
 }
 
@@ -118,14 +118,14 @@ pub fn compile_named(file: Str, src: Str, loaded: Fileds, r#async: bool) -> Str 
 pub fn compile_toplevel(file: Str, src: Str, loaded: Fileds) -> Str {
     let forms = with_loads(read_all(src, file, 1i64), file, loaded);
     let checked = restrict_checked(check_program(forms), forms);
-    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), fidx_of(verdict_facts(checked)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
+    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<kayak_rt::Handle<'static, Tagof>>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), fidx_of(verdict_facts(checked)), nil::<kayak_rt::Handle<'static, Family>>(), nil::<kayak_rt::Handle<'static, Typed>>(), nil::<kayak_rt::Handle<'static, Typed>>()));
     rev_to_string(writing::put_toplevel(c, forms, writing::put_module_impls(c, writing::put_tops(emitter::with_locals(c, kayak_rt::heap_cons(str_lit("%toplevel"), kayak_rt::nil())), forms, writing::put_shapes(c, forms, true, put(header(), nil::<char>()))))))
 }
 
 /// A KFX-0 program of one file, as one file of Rust.
 #[inline]
 pub fn compile(src: Str) -> Str {
-    compile_named(str_lit("the program"), src, nil::<&'static Filed>(), false)
+    compile_named(str_lit("the program"), src, nil::<kayak_rt::Handle<'static, Filed>>(), false)
 }
 
 // Programs of several files. A program is files in order, as a manifest
@@ -139,7 +139,7 @@ pub fn compile(src: Str) -> Str {
 /// A file's forms, the modules made in place defined before theirs (C90),
 /// the files it loads `loaded`'s (C443).
 #[inline]
-pub fn source_forms(s: &'static Source, loaded: Fileds) -> Sexps {
+pub fn source_forms(s: kayak_rt::Handle<'static, Source>, loaded: Fileds) -> Sexps {
     let tagcase_ = s;
     match *tagcase_ {
         Source::Source(name, text) => {
@@ -150,9 +150,9 @@ pub fn source_forms(s: &'static Source, loaded: Fileds) -> Sexps {
 
 // Each of a unit's files' forms (C444), the loads of those before it shared
 // with it (`with-loads-known`).
-pub fn units_forms(ss: Sources, loaded: Fileds, known: Keyeds) -> List<List<&'static Sexp>> {
+pub fn units_forms(ss: Sources, loaded: Fileds, known: Keyeds) -> List<List<kayak_rt::Handle<'static, Sexp>>> {
     if null_p(ss) {
-        nil::<List<&'static Sexp>>()
+        nil::<List<kayak_rt::Handle<'static, Sexp>>>()
     } else {
         let tagcase_ = car(ss);
         match *tagcase_ {
@@ -172,14 +172,14 @@ pub fn units_forms(ss: Sources, loaded: Fileds, known: Keyeds) -> List<List<&'st
 // `%load:PATH`, its path from the manifest's directory, as its files' are;
 // and the unit's own files, the rest.
 pub fn unit_loaded(ss: Sources) -> Fileds {
-    concat(map(lambda1s(move |s: &'static Source| {
+    concat(map(lambda1s(move |s: kayak_rt::Handle<'static, Source>| {
         let tagcase_ = s;
         match *tagcase_ {
             Source::Source(n, t) => {
                 if has_prefix_p(n, str_lit("%load:")) {
                     the::<Fileds>(kayak_rt::heap_cons(filed(after_prefix(n, str_lit("%load:")), t), kayak_rt::nil()))
                 } else {
-                    nil::<&'static Filed>()
+                    nil::<kayak_rt::Handle<'static, Filed>>()
                 }
             }
         }
@@ -188,7 +188,7 @@ pub fn unit_loaded(ss: Sources) -> Fileds {
 
 #[inline]
 pub fn unit_files(ss: Sources) -> Sources {
-    filter(lambda1s(move |s: &'static Source| {
+    filter(lambda1s(move |s: kayak_rt::Handle<'static, Source>| {
         let tagcase_ = s;
         match *tagcase_ {
             Source::Source(n, t) => {
@@ -223,12 +223,12 @@ pub fn put_mods(ss: Sources, acc: Chars) -> Chars {
 
 // Each file's forms, read once (C364): each was read again for its module's
 // Rust, and with memos for its forms' texts too.
-pub type SourcesForms = List<List<&'static Sexp>>;
+pub type SourcesForms = List<List<kayak_rt::Handle<'static, Sexp>>>;
 
 /// Each file's module, its forms `fss`'s.
-pub fn modules_put(c: &'static Ctx, ss: Sources, fss: SourcesForms) -> Outputs {
+pub fn modules_put(c: kayak_rt::Handle<'static, Ctx>, ss: Sources, fss: SourcesForms) -> Outputs {
     if null_p(ss) {
-        nil::<&'static Output>()
+        nil::<kayak_rt::Handle<'static, Output>>()
     } else {
         let tagcase_ = car(ss);
         match *tagcase_ {
@@ -246,11 +246,11 @@ pub fn modules_put(c: &'static Ctx, ss: Sources, fss: SourcesForms) -> Outputs {
 pub fn compile_units_as(ss: Sources, runtime: bool, r#async: bool) -> Outputs {
     let loaded = unit_loaded(ss);
     let ss = unit_files(ss);
-    let fss = units_forms(ss, loaded, nil::<&'static Keyed>());
+    let fss = units_forms(ss, loaded, nil::<kayak_rt::Handle<'static, Keyed>>());
     let forms = concat(fss);
     let checked = restrict_checked(check_program_as(forms, runtime), forms);
     let fs = moded_facts(verdict_facts(checked), r#async);
-    let c = leafed(emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), fs, fidx_of(fs), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>())), forms, r#async);
+    let c = leafed(emitter::collect(forms, ctx(nil::<Str>(), nil::<kayak_rt::Handle<'static, Tagof>>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), fs, fidx_of(fs), nil::<kayak_rt::Handle<'static, Family>>(), nil::<kayak_rt::Handle<'static, Typed>>(), nil::<kayak_rt::Handle<'static, Typed>>())), forms, r#async);
     let modules = modules_put(c, ss, fss);
     onto(modules, kayak_rt::heap_cons(output(str_lit("mod.rs"), rev_to_string(writing::put_module_impls(c, writing::put_shapes(c, forms, false, put_mods(ss, put(str_lit("// Generated by kfx: the program's modules (PLAN.md, section 1).\n\n"), nil::<char>())))))), kayak_rt::nil()))
 }
@@ -267,21 +267,21 @@ pub enum Compiled {
     Compiled(Outputs, Memos),
 }
 
-pub fn compiled(f0: Outputs, f1: Memos) -> &'static Compiled {
+pub fn compiled(f0: Outputs, f1: Memos) -> kayak_rt::Handle<'static, Compiled> {
     kayak_rt::heap_alloc(Compiled::Compiled(f0, f1))
 }
 
-pub fn memo_modules(mut c: &'static Ctx, mut fs: Facts, mut global: &'static Ereads, mut old: Memos, mut ss: Sources, mut fss: SourcesForms, mut outs: Outputs, mut made: Memos) -> &'static Compiled {
+pub fn memo_modules(mut c: kayak_rt::Handle<'static, Ctx>, mut fs: Facts, mut global: kayak_rt::Handle<'static, Ereads>, mut old: Memos, mut ss: Sources, mut fss: SourcesForms, mut outs: Outputs, mut made: Memos) -> kayak_rt::Handle<'static, Compiled> {
     loop {
         if null_p(ss) {
-            return compiled(reverse_outputs(outs, nil::<&'static Output>()), made);
+            return compiled(reverse_outputs(outs, nil::<kayak_rt::Handle<'static, Output>>()), made);
         } else {
             let tagcase_ = car(ss);
             match *tagcase_ {
                 Source::Source(name, text) => {
                     let file = string_append(name, str_lit(".kfx"));
                     let forms = car(fss);
-                    let starts = map(lambda1s(move |f: &'static Sexp| {
+                    let starts = map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
                         datum_pos(f)
                     }), forms);
                     let texts = incremental::form_texts(text, string_length_i64(text), starts);
@@ -317,7 +317,7 @@ pub fn sources_texts(ss: Sources, fss: SourcesForms) -> Strings {
         let tagcase_ = car(ss);
         match *tagcase_ {
             Source::Source(name, text) => {
-                onto(incremental::form_texts(text, string_length_i64(text), map(lambda1s(move |f: &'static Sexp| {
+                onto(incremental::form_texts(text, string_length_i64(text), map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
                     datum_pos(f)
                 }), car(fss))), sources_texts(cdr(ss), cdr(fss)))
             }
@@ -325,10 +325,10 @@ pub fn sources_texts(ss: Sources, fss: SourcesForms) -> Strings {
     }
 }
 
-pub fn compile_units_memo(ss0: Sources, old: Memos, runtime: bool) -> &'static Compiled {
+pub fn compile_units_memo(ss0: Sources, old: Memos, runtime: bool) -> kayak_rt::Handle<'static, Compiled> {
     let loaded = unit_loaded(ss0);
     let ss = unit_files(ss0);
-    let fss = units_forms(ss, loaded, nil::<&'static Keyed>());
+    let fss = units_forms(ss, loaded, nil::<kayak_rt::Handle<'static, Keyed>>());
     let forms = concat(fss);
     let texts = sources_texts(ss, fss);
     let tagcase_ = {
@@ -345,8 +345,8 @@ pub fn compile_units_memo(ss0: Sources, old: Memos, runtime: bool) -> &'static C
     };
     match *tagcase_ {
         CheckedMemo::CheckedMemo(done, found, checks) => {
-            let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), found, cv_facts(done), fidx_of(cv_facts(done)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
-            let tagcase_ = memo_modules(c, cv_facts(done), incremental::emit_reads(c, 0i64), old, ss, fss, nil::<&'static Output>(), checks);
+            let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<kayak_rt::Handle<'static, Tagof>>(), nil::<Str>(), nil::<Str>(), found, cv_facts(done), fidx_of(cv_facts(done)), nil::<kayak_rt::Handle<'static, Family>>(), nil::<kayak_rt::Handle<'static, Typed>>(), nil::<kayak_rt::Handle<'static, Typed>>()));
+            let tagcase_ = memo_modules(c, cv_facts(done), incremental::emit_reads(c, 0i64), old, ss, fss, nil::<kayak_rt::Handle<'static, Output>>(), checks);
             match *tagcase_ {
                 Compiled::Compiled(modules, made) => {
                     compiled(onto(modules, kayak_rt::heap_cons(output(str_lit("mod.rs"), rev_to_string(writing::put_module_impls(c, writing::put_shapes(c, forms, false, put_mods(ss, put(str_lit("// Generated by kfx: the program's modules (PLAN.md, section 1).\n\n"), nil::<char>())))))), kayak_rt::nil())), made)

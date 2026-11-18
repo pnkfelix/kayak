@@ -138,7 +138,7 @@ pub fn w_escaped_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: Re
 
 // A literal as `lit-text` writes it; a quoted node as its label says
 // (`q-written!`, the reaches counted first).
-pub fn w_lit_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, l: &'static Lit) -> () {
+pub fn w_lit_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, l: kayak_rt::Handle<'static, Lit>) -> () {
     let tagcase_ = l;
     match *tagcase_ {
         Lit::LInt(k) => {
@@ -200,7 +200,7 @@ pub fn w_lit_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byte
     }
 }
 
-pub fn w_lits_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut ls: List<&'static Lit>) -> () {
+pub fn w_lits_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut ls: List<kayak_rt::Handle<'static, Lit>>) -> () {
     loop {
         if null_p(ls) {
             return ();
@@ -215,7 +215,7 @@ pub fn w_lits_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt
 
 // An operand as the stack code's lines write it (`opnd-text`), and as
 // register code's do (`ropnd-text`: a word as its cell is shown).
-pub fn w_opnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: &'static Opnd) -> () {
+pub fn w_opnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::Handle<'static, Opnd>) -> () {
     let tagcase_ = o;
     match *tagcase_ {
         Opnd::OInt(k) => {
@@ -237,7 +237,7 @@ pub fn w_opnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
     }
 }
 
-pub fn w_ropnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: &'static Opnd) -> () {
+pub fn w_ropnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::Handle<'static, Opnd>) -> () {
     let tagcase_ = o;
     match *tagcase_ {
         Opnd::OLit(l) => {
@@ -262,7 +262,7 @@ pub fn w_ropnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, By
 }
 
 // Operands, a space before each.
-pub fn w_opnds_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut os: List<&'static Opnd>, mut regs: bool) -> () {
+pub fn w_opnds_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut os: List<kayak_rt::Handle<'static, Opnd>>, mut regs: bool) -> () {
     loop {
         if null_p(os) {
             return ();
@@ -280,7 +280,7 @@ pub fn w_opnds_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefA
 }
 
 // An instruction's text (`ins-text`; register code's, `rop-text`, `regs`).
-pub fn w_ins_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, r: Str, os: List<&'static Opnd>, regs: bool) -> () {
+pub fn w_ins_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, r: Str, os: List<kayak_rt::Handle<'static, Opnd>>, regs: bool) -> () {
     if string_eq_p(r, if regs {
         str_lit("lambda")
     } else {
@@ -306,7 +306,7 @@ pub fn w_at_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Bytes
 }
 
 // A word's lines (`lines-of-items`), each then a newline.
-pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<&'static LabelAt>) -> () {
+pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -348,7 +348,7 @@ pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefA
 }
 
 // Register code's lines (`rlines-of`), each then a newline.
-pub fn w_rlines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<&'static LabelAt>, mut frame: i64) -> () {
+pub fn w_rlines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>, mut frame: i64) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -402,7 +402,7 @@ pub fn w_rlines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: Ref
 }
 
 // A line table's entries, `CELL:POS`, apart by spaces, the oldest first.
-pub fn w_entries_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut es: List<&'static Tentry>, mut first: bool) -> () {
+pub fn w_entries_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut es: List<kayak_rt::Handle<'static, Tentry>>, mut first: bool) -> () {
     loop {
         if null_p(es) {
             return ();
@@ -430,7 +430,7 @@ pub fn w_entries_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: Re
 
 // A line table (`line-table`, `rcode-line-table`): `HEAD FILE ENTRIES`
 // and a newline; none if no entries, or no file.
-pub fn w_table_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, head: Str, es: List<&'static Tentry>) -> () {
+pub fn w_table_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, head: Str, es: List<kayak_rt::Handle<'static, Tentry>>) -> () {
     if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
         ()
     } else {
@@ -450,7 +450,7 @@ pub fn w_word_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
     w_str_x(p, b, n, str_lit(" ("));
     w_i64_x(p, b, n, cells_of(xs, 0i64));
     w_str_x(p, b, n, str_lit(" cells, cellular):\n"));
-    w_lines_x(p, b, n, xs, 0i64, places_of(xs, 0i64, nil::<&'static LabelAt>()));
+    w_lines_x(p, b, n, xs, 0i64, places_of(xs, 0i64, nil::<kayak_rt::Handle<'static, LabelAt>>()));
     {
         let rc = reg_code_of(get(cg_reg_codes()), name);
         if null_p(rc) {
@@ -462,13 +462,13 @@ pub fn w_word_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
                     w_str_x(p, b, n, str_lit("  its register code ("));
                     w_i64_x(p, b, n, ritems_size(rs, 0i64));
                     w_str_x(p, b, n, str_lit(" cells, not compiled):\n"));
-                    w_rlines_x(p, b, n, rs, 0i64, rplaces_of(rs, 0i64, nil::<&'static LabelAt>()), frame);
-                    w_table_x(p, b, n, str_lit("; regs at "), rtable_entries(rs, 0i64, nil::<&'static Tentry>()))
+                    w_rlines_x(p, b, n, rs, 0i64, rplaces_of(rs, 0i64, nil::<kayak_rt::Handle<'static, LabelAt>>()), frame);
+                    w_table_x(p, b, n, str_lit("; regs at "), rtable_entries(rs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()))
                 }
             }
         }
     };
-    w_table_x(p, b, n, str_lit("; at "), table_entries(xs, 0i64, nil::<&'static Tentry>()))
+    w_table_x(p, b, n, str_lit("; at "), table_entries(xs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()))
 }
 
 // A word's text, written in a place of its own, freed once it is made one
@@ -480,7 +480,7 @@ pub fn word_written(name: Str, xs: Citems) -> Str {
         impl<'r> Holds<std::cell::Cell<BytesAt<'r>>> for Region_R<'r> { fn arena(&self) -> &Arena<std::cell::Cell<BytesAt<'r>>> { &self.a0 } }
         impl<'r> Holds<BytesCells> for Region_R<'r> { fn arena(&self) -> &Arena<BytesCells> { &self.a1 } }
         impl<'r> Holds<std::cell::Cell<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<std::cell::Cell<i64>> { &self.a2 } }
-        fn letrena__r<'r>(r: &'r Region_R<'r>, name: Str, xs: List<&'static Item>) -> Str {
+        fn letrena__r<'r>(r: &'r Region_R<'r>, name: Str, xs: List<kayak_rt::Handle<'static, Item>>) -> Str {
             let (b, n) = (the::<RefAt<'r, BytesAt<'r>>>(rnew(r, the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4096), 0u8)))), the::<RefAt<'r, i64>>(rnew(r, 0i64)));
             w_word_x(r, b, n, name, xs);
             let tagcase_ = utf8_to_string(the::<BytesAt<'r>>(bytevector_copy_in(r, get(b), int_lit(0), i64_to_int(get(n)))));
@@ -546,7 +546,7 @@ pub fn ritems_named(mut xs: Ritems, mut acc: Strings) -> Strings {
 
 // The words listed, in order, from `program`, as `disasm.rs` walks them:
 // the words a word names pushed in order, the last pushed next.
-pub fn words_listed(mut todo: Strings, mut seen: Strings, mut out: List<&'static Word>) -> List<&'static Word> {
+pub fn words_listed(mut todo: Strings, mut seen: Strings, mut out: List<kayak_rt::Handle<'static, Word>>) -> List<kayak_rt::Handle<'static, Word>> {
     loop {
         if null_p(todo) {
             return reverse(out);
@@ -584,7 +584,7 @@ pub fn words_listed(mut todo: Strings, mut seen: Strings, mut out: List<&'static
 // Each quoted node's reaches counted, in the order the listing writes
 // them (`q-marks`' order): each word's cells' literals, then its register
 // code's, each literal's parts in order.
-pub fn lit_reached_x(mut l: &'static Lit) -> () {
+pub fn lit_reached_x(mut l: kayak_rt::Handle<'static, Lit>) -> () {
     loop {
         let tagcase_ = l;
         match *tagcase_ {
@@ -607,7 +607,7 @@ pub fn lit_reached_x(mut l: &'static Lit) -> () {
     }
 }
 
-pub fn lits_reached_x(mut ls: List<&'static Lit>) -> () {
+pub fn lits_reached_x(mut ls: List<kayak_rt::Handle<'static, Lit>>) -> () {
     loop {
         if null_p(ls) {
             return ();
@@ -619,7 +619,7 @@ pub fn lits_reached_x(mut ls: List<&'static Lit>) -> () {
     }
 }
 
-pub fn opnds_reached_x(mut os: List<&'static Opnd>) -> () {
+pub fn opnds_reached_x(mut os: List<kayak_rt::Handle<'static, Opnd>>) -> () {
     loop {
         if null_p(os) {
             return ();
@@ -688,7 +688,7 @@ pub fn ritems_reached_x(mut xs: Ritems) -> () {
     }
 }
 
-pub fn words_reached_x(mut ws: List<&'static Word>) -> () {
+pub fn words_reached_x(mut ws: List<kayak_rt::Handle<'static, Word>>) -> () {
     loop {
         if null_p(ws) {
             return ();
@@ -718,7 +718,7 @@ pub fn words_reached_x(mut ws: List<&'static Word>) -> () {
     }
 }
 
-pub fn words_written(ws: List<&'static Word>) -> Strings {
+pub fn words_written(ws: List<kayak_rt::Handle<'static, Word>>) -> Strings {
     if null_p(ws) {
         nil::<Str>()
     } else {
@@ -735,12 +735,12 @@ pub fn words_written(ws: List<&'static Word>) -> Strings {
 // The listing, a word's text each, in order (C266, C268): the quoted
 // nodes' reaches counted across all the words first, then each written.
 pub fn cells_listing() -> Strings {
-    let ws = words_listed(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), nil::<&'static Word>());
+    let ws = words_listed(kayak_rt::heap_cons(str_lit("program"), kayak_rt::nil()), nil::<Str>(), nil::<kayak_rt::Handle<'static, Word>>());
     if null_p(get(cg_qnodes())) {
         ()
     } else {
-        set(cg_qreached(), nil::<&'static Qseen>());
-        set(cg_qlabels(), nil::<&'static Qseen>());
+        set(cg_qreached(), nil::<kayak_rt::Handle<'static, Qseen>>());
+        set(cg_qlabels(), nil::<kayak_rt::Handle<'static, Qseen>>());
         set(cg_qnext(), 0i64);
         words_reached_x(ws)
     };

@@ -54,72 +54,72 @@ pub mod kc_driver {
     }
 
     #[inline]
-    pub fn q_form() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_form() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_front::q_form
     }
 
     #[inline]
-    pub fn q_position() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_position() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_front::q_position
     }
 
     #[inline]
-    pub fn q_interface() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_interface() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_front::q_interface
     }
 
     #[inline]
-    pub fn q_checked() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_checked() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_front::q_checked
     }
 
     #[inline]
-    pub fn q_type() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_type() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_front::q_type
     }
 
     #[inline]
-    pub fn q_kfx() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_kfx() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_front::q_kfx
     }
 
     #[inline]
-    pub fn q_l0_item() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_l0_item() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_l0::q_l0_item
     }
 
     #[inline]
-    pub fn q_rust_item() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_rust_item() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_rust::q_rust_item
     }
 
     #[inline]
-    pub fn q_rust() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_rust() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_rust::q_rust
     }
 
     #[inline]
-    pub fn q_asm_item() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_asm_item() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_x64::q_asm_item
     }
 
     #[inline]
-    pub fn q_asm() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_asm() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_x64::q_asm
     }
 
     #[inline]
-    pub fn q_asm_entry() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_asm_entry() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_x64::q_asm_entry
     }
 
     #[inline]
-    pub fn q_objects() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_objects() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_x64::q_objects
     }
 
     #[inline]
-    pub fn x64_object_text() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+    pub fn x64_object_text() -> &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> Str + Send + Sync) {
         &kc_x64::x64_object_text
     }
 
@@ -154,12 +154,12 @@ pub mod kc_driver {
     }
 
     #[inline]
-    pub fn native_sealed() -> &'static dyn Fn(List<i64>, i64) -> &'static kc_native::RunImage {
+    pub fn native_sealed() -> &'static dyn Fn(List<i64>, i64) -> kayak_rt::Handle<'static, kc_native::RunImage> {
         &kc_native::native_sealed
     }
 
     #[inline]
-    pub fn native_call() -> &'static dyn Fn(&'static kc_native::RunImage, bool, Str) -> Str {
+    pub fn native_call() -> &'static dyn Fn(kayak_rt::Handle<'static, kc_native::RunImage>, bool, Str) -> Str {
         &kc_native::native_call
     }
 
@@ -169,89 +169,89 @@ pub mod kc_driver {
     }
 
     #[inline]
-    pub fn native_freed() -> &'static dyn Fn(&'static kc_native::RunImage) -> () {
+    pub fn native_freed() -> &'static dyn Fn(kayak_rt::Handle<'static, kc_native::RunImage>) -> () {
         &kc_native::native_freed
     }
 
-    pub type RunImage = &'static kc_native::RunImage;
+    pub type RunImage = kayak_rt::Handle<'static, kc_native::RunImage>;
 
     #[inline]
-    pub fn kc_load_file_x() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str, List<&'static Filed>) -> () {
+    pub fn kc_load_file_x() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str, List<kayak_rt::Handle<'static, Filed>>) -> () {
         &kc_expand::kc_load_file_x
     }
 
     #[inline]
-    pub fn kc_expanded_lines() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str) -> List<Str> {
+    pub fn kc_expanded_lines() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str) -> List<Str> {
         &kc_expand::kc_expanded_lines
     }
 
     #[inline]
-    pub fn q_expansion() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_expansion() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_expansion
     }
 
     #[inline]
-    pub fn q_macros_for() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_macros_for() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_macros_for
     }
 
     #[inline]
-    pub fn q_macro_in() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str, Str) -> Str {
+    pub fn q_macro_in() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str, Str) -> Str {
         &kc_expand::q_macro_in
     }
 
     #[inline]
-    pub fn q_global_in() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str, Str) -> Str {
+    pub fn q_global_in() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str, Str) -> Str {
         &kc_expand::q_global_in
     }
 
     #[inline]
-    pub fn q_entry() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str, Str) -> Str {
+    pub fn q_entry() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str, Str) -> Str {
         &kc_expand::q_entry
     }
 
     #[inline]
-    pub fn q_written() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_written() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_written
     }
 
     #[inline]
-    pub fn q_wseen() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_wseen() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_wseen
     }
 
     #[inline]
-    pub fn q_wpos() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_wpos() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_wpos
     }
 
     #[inline]
-    pub fn q_wkeys() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_wkeys() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_wkeys
     }
 
     #[inline]
-    pub fn q_syntax_at() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_syntax_at() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_syntax_at
     }
 
     #[inline]
-    pub fn q_defines_at() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_defines_at() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_defines_at
     }
 
     #[inline]
-    pub fn q_wnames() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_wnames() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_wnames
     }
 
     #[inline]
-    pub fn q_wforsyntax() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_wforsyntax() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_expand::q_wforsyntax
     }
 
     #[inline]
-    pub fn q_expanded() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> Str {
+    pub fn q_expanded() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> Str {
         &kc_front::q_expanded
     }
 
@@ -330,7 +330,7 @@ pub mod kc_driver {
         loop {
             if null_p(todo) {
                 return done;
-            } else if any_p(lambda1s(move |s: &'static Filed| {
+            } else if any_p(lambda1s(move |s: kayak_rt::Handle<'static, Filed>| {
                 let tagcase_ = s;
                 match *tagcase_ {
                     Filed::Filed(n, t) => {
@@ -351,7 +351,7 @@ pub mod kc_driver {
     // `file` read, and what it loads, and its inputs set (`kc-load-file!`).
     pub fn kc_read_file_x(d: Db, run: Runner, file: Str) -> () {
         let text = read_text(file);
-        kc_load_file_x()(d, run, file, text, loads_read(load_paths_all(read_all(text, file, 1i64), directory_of(file)), nil::<&'static Filed>()))
+        kc_load_file_x()(d, run, file, text, loads_read(load_paths_all(read_all(text, file, 1i64), directory_of(file)), nil::<kayak_rt::Handle<'static, Filed>>()))
     }
 
     pub fn read_text_or_none(path: Str) -> Str {
@@ -425,12 +425,12 @@ pub mod kc_driver {
                 ()
             } else { unreachable!() }
         };
-        files_written(dbp, db_saved(d, kc_whose(), lambda1s(move |k: &'static Sexp| {
+        files_written(dbp, db_saved(d, kc_whose(), lambda1s(move |k: kayak_rt::Handle<'static, Sexp>| {
             not((string_eq_p(key_query(k), str_lit("asm")) || string_eq_p(key_query(k), str_lit("rust"))))
         })))
     }
 
-    pub fn files_written(mut dbp: Str, mut fs: List<&'static DbFile>) -> () {
+    pub fn files_written(mut dbp: Str, mut fs: List<kayak_rt::Handle<'static, DbFile>>) -> () {
         loop {
             if null_p(fs) {
                 return ();
@@ -730,7 +730,7 @@ pub mod kc_driver {
         P1(List<RunImage>, Str),
     }
 
-    pub fn p1(f0: List<RunImage>, f1: Str) -> &'static P1 {
+    pub fn p1(f0: List<RunImage>, f1: Str) -> kayak_rt::Handle<'static, P1> {
         kayak_rt::heap_alloc(P1::P1(f0, f1))
     }
 
@@ -738,22 +738,22 @@ pub mod kc_driver {
         NamedSealed(Str, RunImage),
     }
 
-    pub fn named_sealed(f0: Str, f1: RunImage) -> &'static NamedSealed {
+    pub fn named_sealed(f0: Str, f1: RunImage) -> kayak_rt::Handle<'static, NamedSealed> {
         kayak_rt::heap_alloc(NamedSealed::NamedSealed(f0, f1))
     }
 
     #[inline]
-    pub fn transformers() -> Ref<List<&'static NamedSealed>> {
-        kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSealed>>);
+    pub fn transformers() -> Ref<List<kayak_rt::Handle<'static, NamedSealed>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSealed>>>);
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<&'static kc_driver::NamedSealed>())
+            kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, kc_driver::NamedSealed>>())
         })
     }
 
-    pub fn sealed_named(mut ns: List<&'static NamedSealed>, mut name: Str) -> List<RunImage> {
+    pub fn sealed_named(mut ns: List<kayak_rt::Handle<'static, NamedSealed>>, mut name: Str) -> List<RunImage> {
         loop {
             if null_p(ns) {
-                return nil::<&'static kc_native::RunImage>();
+                return nil::<kayak_rt::Handle<'static, kc_native::RunImage>>();
             } else if {
                 let tagcase_ = car(ns);
                 match *tagcase_ {
@@ -775,9 +775,9 @@ pub mod kc_driver {
         }
     }
 
-    pub fn named_without(ns: List<&'static NamedSealed>, name: Str) -> List<&'static NamedSealed> {
+    pub fn named_without(ns: List<kayak_rt::Handle<'static, NamedSealed>>, name: Str) -> List<kayak_rt::Handle<'static, NamedSealed>> {
         if null_p(ns) {
-            nil::<&'static kc_driver::NamedSealed>()
+            nil::<kayak_rt::Handle<'static, kc_driver::NamedSealed>>()
         } else if {
             let tagcase_ = car(ns);
             match *tagcase_ {
@@ -793,10 +793,10 @@ pub mod kc_driver {
     }
 
     /// The first `k` kept; the rest's images freed.
-    pub fn named_kept(mut ns: List<&'static NamedSealed>, mut k: i64) -> List<&'static NamedSealed> {
+    pub fn named_kept(mut ns: List<kayak_rt::Handle<'static, NamedSealed>>, mut k: i64) -> List<kayak_rt::Handle<'static, NamedSealed>> {
         loop {
             if null_p(ns) {
-                return nil::<&'static kc_driver::NamedSealed>();
+                return nil::<kayak_rt::Handle<'static, kc_driver::NamedSealed>>();
             } else if i64_eq(k, 0i64) {
                 {
                     let tagcase_ = car(ns);
@@ -820,18 +820,18 @@ pub mod kc_driver {
     }
 
     // A phase-1 program's image, sealed now, kept by none.
-    pub fn phase1_image(d: Db, run: Runner, name: Str, program: Str) -> &'static P1 {
+    pub fn phase1_image(d: Db, run: Runner, name: Str, program: Str) -> kayak_rt::Handle<'static, P1> {
         let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
-        kc_load_file_x()(d, run, path, program, nil::<&'static Filed>());
+        kc_load_file_x()(d, run, path, program, nil::<kayak_rt::Handle<'static, Filed>>());
         let refused = kc_refusal()(db_get(d, run, key1(str_lit("checked"), path)));
         if not(string_eq_p(refused, str_lit(""))) {
-            p1(nil::<&'static kc_native::RunImage>(), string_append(str_lit("!"), phase1_unplaced(refused)))
+            p1(nil::<kayak_rt::Handle<'static, kc_native::RunImage>>(), string_append(str_lit("!"), phase1_unplaced(refused)))
         } else {
             p1(kayak_rt::heap_cons(native_sealed()(asm_image()(string_append(x64_run_support()(native_routines()(x64_services())), db_get(d, run, key1(str_lit("asm"), path)))), the::<i64>(8388608i64)), kayak_rt::nil()), str_lit(""))
         }
     }
 
-    pub fn phase1_sealed(d: Db, run: Runner, program: Str) -> &'static P1 {
+    pub fn phase1_sealed(d: Db, run: Runner, program: Str) -> kayak_rt::Handle<'static, P1> {
         let name = phase1_name(program);
         let had = sealed_named(get(transformers()), name);
         if not(null_p(had)) {
@@ -934,7 +934,7 @@ pub mod kc_driver {
     }
 
     // Every query, by name.
-    pub fn kc_run(d: Db, k: &'static Sexp) -> Str {
+    pub fn kc_run(d: Db, k: kayak_rt::Handle<'static, Sexp>) -> Str {
         let (q, a, b) = (key_query(k), key_arg(k, 0i64), key_arg(k, 1i64));
         if string_eq_p(q, str_lit("checked")) {
             q_checked()(d, &kc_run, a, b)
@@ -1011,11 +1011,11 @@ pub mod kc_driver {
         Opts(Str, bool, Str, List<Str>),
     }
 
-    pub fn opts(f0: Str, f1: bool, f2: Str, f3: List<Str>) -> &'static Opts {
+    pub fn opts(f0: Str, f1: bool, f2: Str, f3: List<Str>) -> kayak_rt::Handle<'static, Opts> {
         kayak_rt::heap_alloc(Opts::Opts(f0, f1, f2, f3))
     }
 
-    pub fn opts_of(mut r#as: List<Str>, mut db: Str, mut stats: bool, mut rt: Str, mut rest: List<Str>) -> &'static Opts {
+    pub fn opts_of(mut r#as: List<Str>, mut db: Str, mut stats: bool, mut rt: Str, mut rest: List<Str>) -> kayak_rt::Handle<'static, Opts> {
         loop {
             if null_p(r#as) {
                 return opts(db, stats, rt, reverse(rest));
@@ -1041,7 +1041,7 @@ pub mod kc_driver {
         Answer(bool, Str, i64, Str),
     }
 
-    pub fn answer(f0: bool, f1: Str, f2: i64, f3: Str) -> &'static Answer {
+    pub fn answer(f0: bool, f1: Str, f2: i64, f3: Str) -> kayak_rt::Handle<'static, Answer> {
         kayak_rt::heap_alloc(Answer::Answer(f0, f1, f2, f3))
     }
 
@@ -1092,7 +1092,7 @@ pub mod kc_driver {
     /// `what` (`check`, `asm`, `rust`, `build`) of `file`, its output to
     /// `out`: the file read, its forms set (`kc-load-file!`), checked, and, if
     /// it passes, its code asked for, or built (on the runtime `rt`).
-    pub fn request(d: Db, at: Str, what: Str, file: Str, out: Str) -> &'static Answer {
+    pub fn request(d: Db, at: Str, what: Str, file: Str, out: Str) -> kayak_rt::Handle<'static, Answer> {
         let (before, rt) = (db_runs(d), at);
         kc_read_file_x(d, &kc_run, file);
         let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), file)));

@@ -29,6 +29,13 @@ impl<T> Identity for &Cell<T> {
     }
 }
 
+/// A ref, a handle of a cell (C478): its cell's address.
+impl<T> Identity for crate::Handle<'_, Cell<T>> {
+    fn address(self) -> usize {
+        std::ptr::from_ref(self.to_ref()) as usize
+    }
+}
+
 impl<T: Copy> Identity for Array<T> {
     fn address(self) -> usize {
         self.0.as_ptr() as usize
@@ -54,7 +61,7 @@ impl<K> Clone for IdentityOf<K> {
 impl<K> Copy for IdentityOf<K> {}
 
 /// `ref-identity`.
-pub fn ref_identity<'a, T>() -> IdentityOf<&'a Cell<T>> {
+pub fn ref_identity<'a, T>() -> IdentityOf<crate::Handle<'a, Cell<T>>> {
     IdentityOf(PhantomData)
 }
 
@@ -99,7 +106,7 @@ pub type EqTable<K, V> = EqTableAt<'static, K, V>;
 
 /// `make-eqtable`.
 pub fn make_eqtable<'t, K: Identity + 't, V: Copy + 't>(_: IdentityOf<K>) -> EqTableAt<'t, K, V> {
-    crate::alloc(EqTableBox {
+    crate::leak(EqTableBox {
         entries: RefCell::new(HashMap::default()),
     })
 }
@@ -140,7 +147,7 @@ mod tests {
     fn by_address() {
         let a = crate::heap_new(1i64);
         let b = crate::heap_new(1i64);
-        let t: EqTable<&Cell<i64>, i64> = make_eqtable(ref_identity());
+        let t: EqTable<crate::Handle<'_, Cell<i64>>, i64> = make_eqtable(ref_identity());
         eqtable_set_x(t, a, 10);
         eqtable_set_x(t, b, 20);
         eqtable_set_x(t, a, 30);

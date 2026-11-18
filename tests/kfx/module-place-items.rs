@@ -85,7 +85,7 @@ pub mod parser_in {
             tag: std::cell::Cell::new(None),
             tries: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
-        });
+        }).to_ref();
         maker_st.tag.set(Some(make_continuation_prompt_tag()));
         maker_st.tries.set(Some(new(0i64)));
         maker_st

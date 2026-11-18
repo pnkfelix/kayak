@@ -515,7 +515,7 @@ pub enum Activation {
     Activation(i64, i64, i64),
 }
 
-pub fn activation(f0: i64, f1: i64, f2: i64) -> &'static Activation {
+pub fn activation(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Activation> {
     kayak_rt::heap_alloc(Activation::Activation(f0, f1, f2))
 }
 
@@ -560,14 +560,14 @@ pub fn env_within_p(mut outer: i64, mut e: i64, mut depth: i64) -> bool {
 // lambda's have come one after another (`n`), and the runs finished, the
 // first 17 kept (last first), and how many.
 pub enum Walked {
-    Walked(List<&'static Activation>, i64),
+    Walked(List<kayak_rt::Handle<'static, Activation>>, i64),
 }
 
-pub fn walked(f0: List<&'static Activation>, f1: i64) -> &'static Walked {
+pub fn walked(f0: List<kayak_rt::Handle<'static, Activation>>, f1: i64) -> kayak_rt::Handle<'static, Walked> {
     kayak_rt::heap_alloc(Walked::Walked(f0, f1))
 }
 
-pub fn activations(mut owner: i64, mut env: i64, mut n: i64, mut k: i64, mut acc: List<&'static Activation>, mut runs: i64) -> &'static Walked {
+pub fn activations(mut owner: i64, mut env: i64, mut n: i64, mut k: i64, mut acc: List<kayak_rt::Handle<'static, Activation>>, mut runs: i64) -> kayak_rt::Handle<'static, Walked> {
     loop {
         if i64_eq(k, w_nil()) {
             if i64_lt(owner, 0i64) {
@@ -604,7 +604,7 @@ pub fn activations(mut owner: i64, mut env: i64, mut n: i64, mut k: i64, mut acc
     }
 }
 
-pub fn activations_reversed(mut xs: List<&'static Activation>, mut acc: List<&'static Activation>) -> List<&'static Activation> {
+pub fn activations_reversed(mut xs: List<kayak_rt::Handle<'static, Activation>>, mut acc: List<kayak_rt::Handle<'static, Activation>>) -> List<kayak_rt::Handle<'static, Activation>> {
     loop {
         if null_p(xs) {
             return acc;
@@ -615,7 +615,7 @@ pub fn activations_reversed(mut xs: List<&'static Activation>, mut acc: List<&'s
     }
 }
 
-pub fn trace_lines(xs: List<&'static Activation>, shown: i64, runs: i64) -> List<Str> {
+pub fn trace_lines(xs: List<kayak_rt::Handle<'static, Activation>>, shown: i64, runs: i64) -> List<Str> {
     if null_p(xs) {
         nil::<Str>()
     } else if i64_gt_eq(shown, 16i64) {
@@ -638,10 +638,10 @@ pub fn trace_lines(xs: List<&'static Activation>, shown: i64, runs: i64) -> List
 /// yet; `w-failed`.
 pub fn stopped_x(node: i64, env: i64, k: i64) -> i64 {
     if null_p(get(engine_trace())) {
-        let tagcase_ = activations(node_owner(node), env, 1i64, k, nil::<&'static Activation>(), 0i64);
+        let tagcase_ = activations(node_owner(node), env, 1i64, k, nil::<kayak_rt::Handle<'static, Activation>>(), 0i64);
         match *tagcase_ {
             Walked::Walked(acc, runs) => {
-                set(engine_trace(), trace_lines(activations_reversed(acc, nil::<&'static Activation>()), 0i64, runs))
+                set(engine_trace(), trace_lines(activations_reversed(acc, nil::<kayak_rt::Handle<'static, Activation>>()), 0i64, runs))
             }
         }
     } else {

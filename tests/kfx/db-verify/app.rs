@@ -42,7 +42,7 @@ pub fn k_words(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> Lis
     }
 }
 
-pub fn k_of(s: Str) -> &'static Sexp {
+pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
     let ws = k_words(string_chars(s), nil::<char>(), nil::<Str>());
     if null_p(cdr(ws)) {
         lst(kayak_rt::heap_cons(sym(car(ws), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
@@ -52,7 +52,7 @@ pub fn k_of(s: Str) -> &'static Sexp {
 }
 
 #[inline]
-pub fn k_text(k: &'static Sexp) -> Str {
+pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
     if string_eq_p(key_arg(k, 0i64), str_lit("")) {
         key_query(k)
     } else {
@@ -60,7 +60,7 @@ pub fn k_text(k: &'static Sexp) -> Str {
     }
 }
 
-pub fn file_in(mut fs: List<&'static DbFile>, mut name: Str, mut before: Reader) -> Str {
+pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, mut before: Reader) -> Str {
     loop {
         if null_p(fs) {
             return before(name);
@@ -86,7 +86,7 @@ pub fn file_in(mut fs: List<&'static DbFile>, mut name: Str, mut before: Reader)
 }
 
 pub fn reread(d: Db, whose: Str) -> Db {
-    let fs = db_saved(d, str_lit("test"), lambda1s(move |k: &'static Sexp| {
+    let fs = db_saved(d, str_lit("test"), lambda1s(move |k: kayak_rt::Handle<'static, Sexp>| {
         true
     }));
     let before = db_reader(d);
@@ -124,7 +124,7 @@ pub fn key_after(mut cs: List<char>) -> Str {
     }
 }
 
-pub fn run(d: Db, key: &'static Sexp) -> Str {
+pub fn run(d: Db, key: kayak_rt::Handle<'static, Sexp>) -> Str {
     let k = k_text(key);
     let h = string_ref_i64(k, 0i64);
     if char_eq_p(h, 'm') {
@@ -215,11 +215,11 @@ pub enum Tally {
     Tally(i64, i64, i64),
 }
 
-pub fn tally(f0: i64, f1: i64, f2: i64) -> &'static Tally {
+pub fn tally(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Tally> {
     kayak_rt::heap_alloc(Tally::Tally(f0, f1, f2))
 }
 
-pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: &'static Tally) -> &'static Tally {
+pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: kayak_rt::Handle<'static, Tally>) -> kayak_rt::Handle<'static, Tally> {
     if i64_eq(n, 0i64) {
         acc
     } else {

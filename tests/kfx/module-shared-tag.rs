@@ -12,11 +12,11 @@ pub enum Point {
     Origin(),
 }
 
-pub fn pt(f0: i64, f1: i64) -> &'static Point {
+pub fn pt(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Point> {
     kayak_rt::heap_alloc(Point::Pt(f0, f1))
 }
 
-pub fn origin() -> &'static Point {
+pub fn origin() -> kayak_rt::Handle<'static, Point> {
     kayak_rt::heap_alloc(Point::Origin())
 }
 
@@ -28,16 +28,16 @@ pub mod m {
         Nowhere(),
     }
 
-    pub fn pt(f0: i64) -> &'static Place {
+    pub fn pt(f0: i64) -> kayak_rt::Handle<'static, Place> {
         kayak_rt::heap_alloc(Place::Pt(f0))
     }
 
-    pub fn nowhere() -> &'static Place {
+    pub fn nowhere() -> kayak_rt::Handle<'static, Place> {
         kayak_rt::heap_alloc(Place::Nowhere())
     }
 
     #[inline]
-    pub fn r#where(p: &'static Place) -> i64 {
+    pub fn r#where(p: kayak_rt::Handle<'static, Place>) -> i64 {
         let tagcase_ = p;
         match *tagcase_ {
             Place::Pt(k) => {
@@ -50,13 +50,13 @@ pub mod m {
     }
 
     #[inline]
-    pub fn here(k: i64) -> &'static Place {
+    pub fn here(k: i64) -> kayak_rt::Handle<'static, Place> {
         pt(k)
     }
 }
 
 #[inline]
-pub fn across(p: &'static Point) -> i64 {
+pub fn across(p: kayak_rt::Handle<'static, Point>) -> i64 {
     let tagcase_ = p;
     match *tagcase_ {
         Point::Pt(x, y) => {

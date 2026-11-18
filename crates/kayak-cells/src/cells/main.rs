@@ -117,7 +117,7 @@ pub fn after_dashes(mut r#as: Strings) -> Strings {
 // and the words that ran the most, on the standard error. A cell's line is
 // that of the last entry of its word's line table at or before it, its
 // position read in the table's file.
-pub fn pos_at(mut es: List<&'static Cpos>, mut cell: i64, mut had: i64) -> i64 {
+pub fn pos_at(mut es: List<kayak_rt::Handle<'static, Cpos>>, mut cell: i64, mut had: i64) -> i64 {
     loop {
         if null_p(es) {
             return had;
@@ -187,7 +187,7 @@ pub fn line_of(mut starts: FlatArray<i64>, mut pos: i64, mut lo: i64, mut hi: i6
 
 /// Word `w`'s counts, each added to its line's in `into` (key: line +
 /// 1), or if `exact` its position's (key: position + 1).
-pub fn word_lines_x(mut t: FlatArray<i64>, mut w: i64, mut es: List<&'static Cpos>, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>, mut i: i64) -> FlatArray<i64> {
+pub fn word_lines_x(mut t: FlatArray<i64>, mut w: i64, mut es: List<kayak_rt::Handle<'static, Cpos>>, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>, mut i: i64) -> FlatArray<i64> {
     loop {
         if i64_gt_eq(i, tally_slots(t)) {
             return into;
@@ -208,7 +208,7 @@ pub fn word_lines_x(mut t: FlatArray<i64>, mut w: i64, mut es: List<&'static Cpo
     }
 }
 
-pub fn lines_tallied_x(mut ts: List<&'static Ltext>, mut file: Str, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>) -> FlatArray<i64> {
+pub fn lines_tallied_x(mut ts: List<kayak_rt::Handle<'static, Ltext>>, mut file: Str, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>) -> FlatArray<i64> {
     loop {
         if null_p(ts) {
             return into;
@@ -221,7 +221,7 @@ pub fn lines_tallied_x(mut ts: List<&'static Ltext>, mut file: Str, mut starts: 
                     (ts, into) = (cdr(ts), if (i64_eq(w, 0i64) || not(string_eq_p(list_to_string(chars_before_char(cs, ' ')), file))) {
                         into
                     } else {
-                        word_lines_x(get(profile()), w, cposes(after_char(cs, ' '), nil::<&'static Cpos>()), starts, exact, into, 0i64)
+                        word_lines_x(get(profile()), w, cposes(after_char(cs, ' '), nil::<kayak_rt::Handle<'static, Cpos>>()), starts, exact, into, 0i64)
                     });
                     continue;
                 }
@@ -320,7 +320,7 @@ pub fn cut(mut cs: Chars, mut n: i64, mut acc: Chars) -> Str {
     }
 }
 
-pub fn word_name_of(mut ws: List<&'static NamedSlot>, mut w: i64) -> Str {
+pub fn word_name_of(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut w: i64) -> Str {
     loop {
         if null_p(ws) {
             return string_append(str_lit("(word at "), string_append(i64_to_string(w), str_lit(")")));

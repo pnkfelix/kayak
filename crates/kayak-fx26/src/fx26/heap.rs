@@ -284,23 +284,23 @@ pub enum Cblock {
     Cblock(i64, i64),
 }
 
-pub fn cblock(f0: i64, f1: i64) -> &'static Cblock {
+pub fn cblock(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Cblock> {
     kayak_rt::heap_alloc(Cblock::Cblock(f0, f1))
 }
 
 #[inline]
-pub fn code_frees() -> Ref<List<&'static Cblock>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+pub fn code_frees() -> Ref<List<kayak_rt::Handle<'static, Cblock>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Cblock>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Cblock>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Cblock>>())
     })
 }
 
 #[inline]
-pub fn stub_free() -> Ref<List<&'static Cblock>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+pub fn stub_free() -> Ref<List<kayak_rt::Handle<'static, Cblock>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Cblock>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Cblock>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Cblock>>())
     })
 }
 
@@ -327,10 +327,10 @@ pub fn vlambda_word() -> Ref<i64> {
 }
 
 #[inline]
-pub fn adapter_words() -> Ref<List<&'static Cblock>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cblock>>);
+pub fn adapter_words() -> Ref<List<kayak_rt::Handle<'static, Cblock>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Cblock>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Cblock>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Cblock>>())
     })
 }
 
@@ -785,23 +785,23 @@ pub enum NamedSlot {
     NamedSlot(Str, i64),
 }
 
-pub fn named_slot(f0: Str, f1: i64) -> &'static NamedSlot {
+pub fn named_slot(f0: Str, f1: i64) -> kayak_rt::Handle<'static, NamedSlot> {
     kayak_rt::heap_alloc(NamedSlot::NamedSlot(f0, f1))
 }
 
 #[inline]
-pub fn symbols() -> Ref<List<&'static NamedSlot>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
+pub fn symbols() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static NamedSlot>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
     })
 }
 
 #[inline]
-pub fn named_globals() -> Ref<List<&'static NamedSlot>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
+pub fn named_globals() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static NamedSlot>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
     })
 }
 
@@ -825,7 +825,7 @@ pub fn named_count() -> Ref<i64> {
     })
 }
 
-pub fn named_x(n: Str, v: i64) -> &'static NamedSlot {
+pub fn named_x(n: Str, v: i64) -> kayak_rt::Handle<'static, NamedSlot> {
     let (i, m) = (get(named_count()), get(named_values()));
     if i64_lt(i, flatarray_length_i64(m)) {
         ()
@@ -840,7 +840,7 @@ pub fn named_x(n: Str, v: i64) -> &'static NamedSlot {
 }
 
 #[inline]
-pub fn named_value(x: &'static NamedSlot) -> i64 {
+pub fn named_value(x: kayak_rt::Handle<'static, NamedSlot>) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
         NamedSlot::NamedSlot(m, i) => {
@@ -849,7 +849,7 @@ pub fn named_value(x: &'static NamedSlot) -> i64 {
     }
 }
 
-pub fn lookup(mut xs: List<&'static NamedSlot>, mut n: Str) -> i64 {
+pub fn lookup(mut xs: List<kayak_rt::Handle<'static, NamedSlot>>, mut n: Str) -> i64 {
     loop {
         if null_p(xs) {
             return 0i64;
@@ -1309,7 +1309,7 @@ pub fn code_free_block_x(j: i64, n: i64) -> () {
 /// made, 0 if none); a free run at the end the part's top again; the
 /// free list `frees` made anew (Fixpt's sweep of its code area); the
 /// stubbed part's if `stubbed`, else the native part's.
-pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<&'static Cblock>, mut stubbed: bool) -> () {
+pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<kayak_rt::Handle<'static, Cblock>>, mut stubbed: bool) -> () {
     loop {
         if i64_gt_eq(j, if stubbed {
             get(stub_top())
@@ -1357,9 +1357,9 @@ pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<&'st
 
 /// The free list, the first block of `n` words or more taken
 /// (`code-fit-at`), what is left of it free.
-pub fn code_fit_x(bs: List<&'static Cblock>, n: i64) -> List<&'static Cblock> {
+pub fn code_fit_x(bs: List<kayak_rt::Handle<'static, Cblock>>, n: i64) -> List<kayak_rt::Handle<'static, Cblock>> {
     if null_p(bs) {
-        nil::<&'static Cblock>()
+        nil::<kayak_rt::Handle<'static, Cblock>>()
     } else {
         let tagcase_ = car(bs);
         match *tagcase_ {
@@ -1452,9 +1452,9 @@ pub fn make_code_word_x(name: Str, n: i64, entry: i64) -> i64 {
     }
 }
 
-pub fn adapters_forwarded_x(ws: List<&'static Cblock>) -> List<&'static Cblock> {
+pub fn adapters_forwarded_x(ws: List<kayak_rt::Handle<'static, Cblock>>) -> List<kayak_rt::Handle<'static, Cblock>> {
     if null_p(ws) {
-        nil::<&'static Cblock>()
+        nil::<kayak_rt::Handle<'static, Cblock>>()
     } else {
         let tagcase_ = car(ws);
         match *tagcase_ {
@@ -1496,8 +1496,8 @@ pub fn collect_end_x() -> () {
     weak_moved_x(get(weak_seen()));
     set(weak_seen(), nil::<i64>());
     if get(code_on()) {
-        code_swept_x(get(stub_lo()), 0i64, 0i64, nil::<&'static Cblock>(), true);
-        code_swept_x(get(code_lo()), 0i64, 0i64, nil::<&'static Cblock>(), false)
+        code_swept_x(get(stub_lo()), 0i64, 0i64, nil::<kayak_rt::Handle<'static, Cblock>>(), true);
+        code_swept_x(get(code_lo()), 0i64, 0i64, nil::<kayak_rt::Handle<'static, Cblock>>(), false)
     } else {
         ()
     };

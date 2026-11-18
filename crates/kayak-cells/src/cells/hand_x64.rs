@@ -931,23 +931,23 @@ pub enum XItem {
     Xa(Int),
 }
 
-pub fn xb(f0: List<Int>) -> &'static XItem {
+pub fn xb(f0: List<Int>) -> kayak_rt::Handle<'static, XItem> {
     kayak_rt::heap_alloc(XItem::Xb(f0))
 }
 
-pub fn xj(f0: Int, f1: Int, f2: Int) -> &'static XItem {
+pub fn xj(f0: Int, f1: Int, f2: Int) -> kayak_rt::Handle<'static, XItem> {
     kayak_rt::heap_alloc(XItem::Xj(f0, f1, f2))
 }
 
-pub fn xl(f0: Int) -> &'static XItem {
+pub fn xl(f0: Int) -> kayak_rt::Handle<'static, XItem> {
     kayak_rt::heap_alloc(XItem::Xl(f0))
 }
 
-pub fn xo(f0: Int) -> &'static XItem {
+pub fn xo(f0: Int) -> kayak_rt::Handle<'static, XItem> {
     kayak_rt::heap_alloc(XItem::Xo(f0))
 }
 
-pub fn xa(f0: Int) -> &'static XItem {
+pub fn xa(f0: Int) -> kayak_rt::Handle<'static, XItem> {
     kayak_rt::heap_alloc(XItem::Xa(f0))
 }
 
@@ -972,10 +972,10 @@ pub fn y_call() -> Int {
 }
 
 #[inline]
-pub fn y_items() -> Ref<List<&'static XItem>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static XItem>>);
+pub fn y_items() -> Ref<List<kayak_rt::Handle<'static, XItem>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, XItem>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static XItem>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, XItem>>())
     })
 }
 
@@ -1015,15 +1015,15 @@ pub enum Ystub {
     Ystub(Int, Int),
 }
 
-pub fn ystub(f0: Int, f1: Int) -> &'static Ystub {
+pub fn ystub(f0: Int, f1: Int) -> kayak_rt::Handle<'static, Ystub> {
     kayak_rt::heap_alloc(Ystub::Ystub(f0, f1))
 }
 
 #[inline]
-pub fn y_stubs() -> Ref<List<&'static Ystub>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ystub>>);
+pub fn y_stubs() -> Ref<List<kayak_rt::Handle<'static, Ystub>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Ystub>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Ystub>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Ystub>>())
     })
 }
 
@@ -1082,7 +1082,7 @@ pub fn yadr_x(r: Int, l: Int) -> () {
 }
 
 /// Each stub a word's conditional jumps to the machine took: its far jump.
-pub fn y_stubs_flushed_x(mut ss: List<&'static Ystub>) -> () {
+pub fn y_stubs_flushed_x(mut ss: List<kayak_rt::Handle<'static, Ystub>>) -> () {
     loop {
         if null_p(ss) {
             return ();
@@ -1103,7 +1103,7 @@ pub fn y_stubs_flushed_x(mut ss: List<&'static Ystub>) -> () {
 #[inline]
 pub fn y_stubs_done_x() -> () {
     let ss = get(y_stubs());
-    set(y_stubs(), nil::<&'static Ystub>());
+    set(y_stubs(), nil::<kayak_rt::Handle<'static, Ystub>>());
     y_stubs_flushed_x(ss)
 }
 
@@ -1123,10 +1123,10 @@ pub fn ycall_x(l: Int) -> () {
 
 // Data, 8 bytes an entry: the machine's before its code, a word's after its own (C343).
 #[inline]
-pub fn y_data() -> Ref<List<&'static XItem>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static XItem>>);
+pub fn y_data() -> Ref<List<kayak_rt::Handle<'static, XItem>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, XItem>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static XItem>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, XItem>>())
     })
 }
 
@@ -1156,7 +1156,7 @@ pub fn y_length(mut bs: List<Int>, mut n: Int) -> Int {
     }
 }
 
-pub fn y_size(x: &'static XItem, at: Int) -> Int {
+pub fn y_size(x: kayak_rt::Handle<'static, XItem>, at: Int) -> Int {
     let tagcase_ = x;
     match *tagcase_ {
         XItem::Xb(bs) => {
@@ -1184,7 +1184,7 @@ pub fn y_size(x: &'static XItem, at: Int) -> Int {
 }
 
 /// Each label's place, in bytes, in `ls`; how many bytes there are.
-pub fn y_placed_x(mut xs: List<&'static XItem>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
+pub fn y_placed_x(mut xs: List<kayak_rt::Handle<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
     loop {
         if null_p(xs) {
             return at;
@@ -1207,7 +1207,7 @@ pub fn y_placed_x(mut xs: List<&'static XItem>, mut at: Int, mut ls: FlatArray<i
 }
 
 /// Item `x`, at byte `at`: a jump by its label's distance from its end.
-pub fn y_encoded(x: &'static XItem, at: Int, ls: FlatArray<i64>) -> List<Int> {
+pub fn y_encoded(x: kayak_rt::Handle<'static, XItem>, at: Int, ls: FlatArray<i64>) -> List<Int> {
     let tagcase_ = x;
     match *tagcase_ {
         XItem::Xb(bs) => {
@@ -3625,7 +3625,7 @@ pub fn y_bytes_x(mut b: &'static Bloblet<()>, mut bs: List<Int>, mut at: Int) ->
 }
 
 /// Each item placed, at byte `at` on.
-pub fn y_all_put_x(mut b: &'static Bloblet<()>, mut xs: List<&'static XItem>, mut at: Int, mut ls: FlatArray<i64>) -> () {
+pub fn y_all_put_x(mut b: &'static Bloblet<()>, mut xs: List<kayak_rt::Handle<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -3667,7 +3667,7 @@ pub fn y_word_bytes_x(mut ws: FlatArray<i64>, mut bs: List<Int>, mut at: Int) ->
     }
 }
 
-pub fn y_word_put_x(mut ws: FlatArray<i64>, mut xs: List<&'static XItem>, mut at: Int, mut ls: FlatArray<i64>) -> () {
+pub fn y_word_put_x(mut ws: FlatArray<i64>, mut xs: List<kayak_rt::Handle<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -3693,16 +3693,16 @@ pub fn code_words_set_x(mut j: i64, mut ws: FlatArray<i64>, mut i: i64, mut n: i
 /// Word `w`'s code, just emitted (`rt` its table's label), a code
 /// bloblet, and `w`'s entry: whether the code area had room for it.
 pub fn word_code_x(w: i64, rt: Int) -> bool {
-    let its = the::<List<&'static XItem>>(kayak_rt::heap_cons(xb((&x86::x86_le8)(int_lit(0))), append(reverse(get(y_items())), kayak_rt::heap_cons(xa(int_lit(0)), reverse(get(y_data()))))));
+    let its = the::<List<kayak_rt::Handle<'static, XItem>>>(kayak_rt::heap_cons(xb((&x86::x86_le8)(int_lit(0))), append(reverse(get(y_items())), kayak_rt::heap_cons(xa(int_lit(0)), reverse(get(y_data()))))));
     let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
     let nw = i64_quotient(i64_plus(int_to_i64(y_placed_x(its, int_lit(0), ls)), 7i64), 8i64);
     let ws = the::<FlatArray<i64>>(make_flatarray_i64(nw, 0i64));
     let u = y_word_put_x(ws, its, int_lit(0), ls);
     let j = code_alloc_x(i64_plus(nw, 1i64));
-    set(y_items(), nil::<&'static XItem>());
-    set(y_data(), nil::<&'static XItem>());
+    set(y_items(), nil::<kayak_rt::Handle<'static, XItem>>());
+    set(y_data(), nil::<kayak_rt::Handle<'static, XItem>>());
     if i64_lt(j, 0i64) {
-        set(word_spans(), nil::<&'static Span>());
+        set(word_spans(), nil::<kayak_rt::Handle<'static, Span>>());
         false
     } else {
         flatarray_set_i64_x(ws, 0i64, i64_minus(int_to_i64(r#where(ls, rt)), 8i64));
@@ -3710,7 +3710,7 @@ pub fn word_code_x(w: i64, rt: Int) -> bool {
         code_words_set_x(i64_plus(j, 1i64), ws, 0i64, nw);
         code_flush(get(code_space()), i64_to_int(i64_plus(j, 1i64)), i64_to_int(nw));
         spans_noted_x(i64_to_int(i64_plus(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(j, 1i64))), get(code_distance()))), ls, int_lit(1), get(word_spans()));
-        set(word_spans(), nil::<&'static Span>());
+        set(word_spans(), nil::<kayak_rt::Handle<'static, Span>>());
         slot_set_x(w, f_entry(), i64_or(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(j, 2i64))), t_bloblet()));
         true
     }
@@ -3720,9 +3720,9 @@ pub fn word_code_x(w: i64, rt: Int) -> bool {
 /// `--direct`), if `regs`, else its cells'.
 pub fn yword_made_x(w: i64, regs: bool) -> bool {
     set(hand_labels(), get(y_machine_labels()));
-    set(y_items(), nil::<&'static XItem>());
-    set(y_data(), nil::<&'static XItem>());
-    set(word_spans(), nil::<&'static Span>());
+    set(y_items(), nil::<kayak_rt::Handle<'static, XItem>>());
+    set(y_data(), nil::<kayak_rt::Handle<'static, XItem>>());
+    set(word_spans(), nil::<kayak_rt::Handle<'static, Span>>());
     let rt = label_x();
     if regs {
         yregister_compiled_x(w, i64_to_int(cells_in(w, f_cell0())), rt)
@@ -3734,7 +3734,7 @@ pub fn yword_made_x(w: i64, regs: bool) -> bool {
 }
 
 /// hand.kfx's `registers-compiled!`, each by `yword-made!`: how many.
-pub fn yregisters_compiled_x(mut rs: List<&'static NamedSlot>, mut k: Int) -> Int {
+pub fn yregisters_compiled_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: Int) -> Int {
     loop {
         if null_p(rs) {
             return k;
@@ -3756,7 +3756,7 @@ pub fn yregisters_compiled_x(mut rs: List<&'static NamedSlot>, mut k: Int) -> In
 }
 
 /// hand.kfx's `words-compiled!`, each by `yword-made!`: how many.
-pub fn ywords_compiled_x(mut ws: List<&'static NamedSlot>, mut k: Int) -> Int {
+pub fn ywords_compiled_x(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: Int) -> Int {
     loop {
         if null_p(ws) {
             return k;
@@ -3785,8 +3785,8 @@ pub fn hand_code_x64_x() -> kayak_rt::Sum {
     if not(null_p(get(hand_made()))) {
         kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made") }, "made", car(get(hand_made())))
     } else {
-        set(y_items(), nil::<&'static XItem>());
-        set(y_data(), nil::<&'static XItem>());
+        set(y_items(), nil::<kayak_rt::Handle<'static, XItem>>());
+        set(y_data(), nil::<kayak_rt::Handle<'static, XItem>>());
         set(hand_labels(), int_lit(0));
         set(l_start(), label_x());
         set(l_entry(), label_x());
@@ -3806,7 +3806,7 @@ pub fn hand_code_x64_x() -> kayak_rt::Sum {
         ybind_x(get(l_exports()));
         y_exports_written_x(get(y_exports()), int_lit(0));
         yresume_x();
-        let its = the::<List<&'static XItem>>(kayak_rt::heap_cons(xl(get(l_start())), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), get(l_entry())), append(reverse(get(y_data())), reverse(get(y_items()))))));
+        let its = the::<List<kayak_rt::Handle<'static, XItem>>>(kayak_rt::heap_cons(xl(get(l_start())), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), get(l_entry())), append(reverse(get(y_data())), reverse(get(y_items()))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
         let count = y_placed_x(its, int_lit(0), ls);
         let b = the::<&'static Bloblet<()>>(make_bloblet(count, ()));
@@ -3831,7 +3831,7 @@ pub fn hand_code_x64_x() -> kayak_rt::Sum {
 // listing's were, each to its own code, where the machine is x86_64's and
 // made, with `--compiled`: they are the first of the lists of words, past
 // the counts they had.
-pub fn words_counted(mut ns: List<&'static NamedSlot>, mut k: i64) -> i64 {
+pub fn words_counted(mut ns: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: i64) -> i64 {
     loop {
         if null_p(ns) {
             return k;
@@ -3842,7 +3842,7 @@ pub fn words_counted(mut ns: List<&'static NamedSlot>, mut k: i64) -> i64 {
     }
 }
 
-pub fn named_first(mut ns: List<&'static NamedSlot>, mut k: i64, mut acc: List<&'static NamedSlot>) -> List<&'static NamedSlot> {
+pub fn named_first(mut ns: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: i64, mut acc: List<kayak_rt::Handle<'static, NamedSlot>>) -> List<kayak_rt::Handle<'static, NamedSlot>> {
     loop {
         if (i64_lt_eq(k, 0i64) || null_p(ns)) {
             return acc;
@@ -3857,8 +3857,8 @@ pub fn words_read_compiled_x(had_words: i64, had_regs: i64) -> () {
     if (get(hand_compiled()) && get(code_on()) && _gt(get(y_machine_labels()), int_lit(0))) {
         let ws = get(words());
         let rs = get(register_words());
-        let k = ywords_compiled_x(named_first(ws, i64_minus(words_counted(ws, 0i64), had_words), nil::<&'static NamedSlot>()), get(words_compiled()));
-        set(words_compiled(), yregisters_compiled_x(named_first(rs, i64_minus(words_counted(rs, 0i64), had_regs), nil::<&'static NamedSlot>()), k))
+        let k = ywords_compiled_x(named_first(ws, i64_minus(words_counted(ws, 0i64), had_words), nil::<kayak_rt::Handle<'static, NamedSlot>>()), get(words_compiled()));
+        set(words_compiled(), yregisters_compiled_x(named_first(rs, i64_minus(words_counted(rs, 0i64), had_regs), nil::<kayak_rt::Handle<'static, NamedSlot>>()), k))
     } else {
         ()
     }

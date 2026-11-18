@@ -92,24 +92,24 @@ pub mod made__load__0__fx26_convention {
     pub enum CvSx {
         CxName(Str),
         CxInt(Int),
-        CxList(List<&'static CvSx>),
+        CxList(List<kayak_rt::Handle<'static, CvSx>>),
     }
 
-    pub fn cx_name(f0: Str) -> &'static CvSx {
+    pub fn cx_name(f0: Str) -> kayak_rt::Handle<'static, CvSx> {
         kayak_rt::heap_alloc(CvSx::CxName(f0))
     }
 
-    pub fn cx_int(f0: Int) -> &'static CvSx {
+    pub fn cx_int(f0: Int) -> kayak_rt::Handle<'static, CvSx> {
         kayak_rt::heap_alloc(CvSx::CxInt(f0))
     }
 
-    pub fn cx_list(f0: List<&'static CvSx>) -> &'static CvSx {
+    pub fn cx_list(f0: List<kayak_rt::Handle<'static, CvSx>>) -> kayak_rt::Handle<'static, CvSx> {
         kayak_rt::heap_alloc(CvSx::CxList(f0))
     }
 
-    pub type CvSxs = List<&'static CvSx>;
+    pub type CvSxs = List<kayak_rt::Handle<'static, CvSx>>;
 
-    pub type CvAt = Product_1x_2at<&'static CvSx, Int>;
+    pub type CvAt = Product_1x_2at<kayak_rt::Handle<'static, CvSx>, Int>;
 
     pub type CvSxsAt = Product_2xs_2at<CvSxs, Int>;
 
@@ -194,7 +194,7 @@ pub mod cv {
         }
     }
 
-    pub fn cv_atom(a: Str) -> &'static CvSx {
+    pub fn cv_atom(a: Str) -> kayak_rt::Handle<'static, CvSx> {
         let neg = (_gt(string_length(a), int_lit(1)) && char_eq_p(string_ref(a, int_lit(0)), '-'));
         let n = if _eq(string_length(a), int_lit(0)) {
             int_lit(-1)
@@ -216,7 +216,7 @@ pub mod cv {
 
     pub fn cv_read_at(t: Str, i: Int) -> CvAt {
         if _gt_eq(i, string_length(t)) {
-            Product_1x_2at(cx_list(nil::<&'static made__load__0__fx26_convention::CvSx>()), i)
+            Product_1x_2at(cx_list(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>()), i)
         } else if char_eq_p(cv_ch(t, i), '(') {
             let r = cv_read_items(t, _plus(i, int_lit(1)));
             Product_1x_2at(cx_list(r.0), r.1)
@@ -229,9 +229,9 @@ pub mod cv {
     pub fn cv_read_items(mut t: Str, mut i: Int) -> CvSxsAt {
         loop {
             if _gt_eq(i, string_length(t)) {
-                return Product_2xs_2at(nil::<&'static made__load__0__fx26_convention::CvSx>(), i);
+                return Product_2xs_2at(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>(), i);
             } else if char_eq_p(cv_ch(t, i), ')') {
-                return Product_2xs_2at(nil::<&'static made__load__0__fx26_convention::CvSx>(), _plus(i, int_lit(1)));
+                return Product_2xs_2at(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>(), _plus(i, int_lit(1)));
             } else if char_eq_p(cv_ch(t, i), ' ') {
                 i = _plus(i, int_lit(1));
                 continue;
@@ -244,7 +244,7 @@ pub mod cv {
     }
 
     #[inline]
-    pub fn cx_items(x: &'static CvSx) -> CvSxs {
+    pub fn cx_items(x: kayak_rt::Handle<'static, CvSx>) -> CvSxs {
         let tagcase_ = x;
         match *tagcase_ {
             made__load__0__fx26_convention::CvSx::CxList(xs) => {
@@ -252,13 +252,13 @@ pub mod cv {
             }
             _ => {
                 let y = tagcase_;
-                nil::<&'static made__load__0__fx26_convention::CvSx>()
+                nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>()
             }
         }
     }
 
     #[inline]
-    pub fn cx_name_of(x: &'static CvSx) -> Str {
+    pub fn cx_name_of(x: kayak_rt::Handle<'static, CvSx>) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
             made__load__0__fx26_convention::CvSx::CxName(n) => {
@@ -272,7 +272,7 @@ pub mod cv {
     }
 
     #[inline]
-    pub fn cx_int_of(x: &'static CvSx) -> Int {
+    pub fn cx_int_of(x: kayak_rt::Handle<'static, CvSx>) -> Int {
         let tagcase_ = x;
         match *tagcase_ {
             made__load__0__fx26_convention::CvSx::CxInt(n) => {
@@ -286,7 +286,7 @@ pub mod cv {
     }
 
     #[inline]
-    pub fn cx_role(x: &'static CvSx) -> Str {
+    pub fn cx_role(x: kayak_rt::Handle<'static, CvSx>) -> Str {
         let xs = cx_items(x);
         if null_p(xs) {
             str_lit("")
@@ -298,7 +298,7 @@ pub mod cv {
     pub fn cx_get(mut xs: CvSxs, mut role: Str) -> CvSxs {
         loop {
             if null_p(xs) {
-                return nil::<&'static made__load__0__fx26_convention::CvSx>();
+                return nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>();
             } else if string_eq_p(cx_role(car(xs)), role) {
                 return cdr(cx_items(car(xs)));
             } else {
@@ -321,10 +321,10 @@ pub mod cv {
         }
     }
 
-    pub fn cx_nth(mut xs: CvSxs, mut k: Int) -> &'static CvSx {
+    pub fn cx_nth(mut xs: CvSxs, mut k: Int) -> kayak_rt::Handle<'static, CvSx> {
         loop {
             if null_p(xs) {
-                return cx_list(nil::<&'static made__load__0__fx26_convention::CvSx>());
+                return cx_list(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>());
             } else if _eq(k, int_lit(0)) {
                 return car(xs);
             } else {
@@ -367,7 +367,7 @@ pub mod cv {
         }
     }
 
-    pub fn cx_reg(st: CvSxs, x: &'static CvSx) -> Int {
+    pub fn cx_reg(st: CvSxs, x: kayak_rt::Handle<'static, CvSx>) -> Int {
         let n = cx_name_of(x);
         if string_eq_p(cx_role(x), str_lit("state")) {
             _plus(cv_in_state(), cx_int_at(st, cx_name_of(cx_nth(cx_items(x), int_lit(1)))))
@@ -432,10 +432,10 @@ pub mod cv {
         }
     }
 
-    pub fn cx_find(mut xs: CvSxs, mut role: Str) -> &'static CvSx {
+    pub fn cx_find(mut xs: CvSxs, mut role: Str) -> kayak_rt::Handle<'static, CvSx> {
         loop {
             if null_p(xs) {
-                return cx_list(nil::<&'static made__load__0__fx26_convention::CvSx>());
+                return cx_list(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>());
             } else if string_eq_p(cx_role(car(xs)), role) {
                 return car(xs);
             } else {
@@ -780,7 +780,7 @@ pub mod cv {
 
     pub fn cv_parse_all(ts: CvStrs) -> CvSxs {
         if null_p(ts) {
-            nil::<&'static made__load__0__fx26_convention::CvSx>()
+            nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>()
         } else {
             the::<CvSxs>(kayak_rt::heap_cons(cv_read_at(car(ts), int_lit(0)).0, cv_parse_all(cdr(ts))))
         }

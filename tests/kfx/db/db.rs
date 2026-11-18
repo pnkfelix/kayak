@@ -77,23 +77,23 @@ pub enum Value {
     VNone(),
 }
 
-pub fn v_text(f0: Str) -> &'static Value {
+pub fn v_text(f0: Str) -> kayak_rt::Handle<'static, Value> {
     kayak_rt::heap_alloc(Value::VText(f0))
 }
 
-pub fn v_read(f0: Str) -> &'static Value {
+pub fn v_read(f0: Str) -> kayak_rt::Handle<'static, Value> {
     kayak_rt::heap_alloc(Value::VRead(f0))
 }
 
-pub fn v_file(f0: i64) -> &'static Value {
+pub fn v_file(f0: i64) -> kayak_rt::Handle<'static, Value> {
     kayak_rt::heap_alloc(Value::VFile(f0))
 }
 
-pub fn v_at(f0: i64, f1: i64, f2: i64, f3: bool) -> &'static Value {
+pub fn v_at(f0: i64, f1: i64, f2: i64, f3: bool) -> kayak_rt::Handle<'static, Value> {
     kayak_rt::heap_alloc(Value::VAt(f0, f1, f2, f3))
 }
 
-pub fn v_none() -> &'static Value {
+pub fn v_none() -> kayak_rt::Handle<'static, Value> {
     kayak_rt::heap_alloc(Value::VNone())
 }
 
@@ -102,10 +102,10 @@ pub fn v_none() -> &'static Value {
 // in order, by number; the least durability of that (an input's, its own);
 // its value.
 pub enum Node {
-    Node(&'static Sexp, bool, i64, i64, i64, List<i64>, i64, &'static Value),
+    Node(kayak_rt::Handle<'static, Sexp>, bool, i64, i64, i64, List<i64>, i64, kayak_rt::Handle<'static, Value>),
 }
 
-pub fn node(f0: &'static Sexp, f1: bool, f2: i64, f3: i64, f4: i64, f5: List<i64>, f6: i64, f7: &'static Value) -> &'static Node {
+pub fn node(f0: kayak_rt::Handle<'static, Sexp>, f1: bool, f2: i64, f3: i64, f4: i64, f5: List<i64>, f6: i64, f7: kayak_rt::Handle<'static, Value>) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::Node(f0, f1, f2, f3, f4, f5, f6, f7))
 }
 
@@ -113,27 +113,27 @@ pub fn node(f0: &'static Sexp, f1: bool, f2: i64, f3: i64, f4: i64, f5: List<i64
 // `lib/query.kfx`'s `fmap`.
 pub enum Imap {
     ImNone(),
-    ImNode(&'static Imap, i64, &'static Node, i64, &'static Imap),
+    ImNode(kayak_rt::Handle<'static, Imap>, i64, kayak_rt::Handle<'static, Node>, i64, kayak_rt::Handle<'static, Imap>),
 }
 
-pub fn im_none() -> &'static Imap {
+pub fn im_none() -> kayak_rt::Handle<'static, Imap> {
     kayak_rt::heap_alloc(Imap::ImNone())
 }
 
-pub fn im_node(f0: &'static Imap, f1: i64, f2: &'static Node, f3: i64, f4: &'static Imap) -> &'static Imap {
+pub fn im_node(f0: kayak_rt::Handle<'static, Imap>, f1: i64, f2: kayak_rt::Handle<'static, Node>, f3: i64, f4: kayak_rt::Handle<'static, Imap>) -> kayak_rt::Handle<'static, Imap> {
     kayak_rt::heap_alloc(Imap::ImNode(f0, f1, f2, f3, f4))
 }
 
 pub enum Kmap {
     KmNone(),
-    KmNode(&'static Kmap, Str, i64, i64, &'static Kmap),
+    KmNode(kayak_rt::Handle<'static, Kmap>, Str, i64, i64, kayak_rt::Handle<'static, Kmap>),
 }
 
-pub fn km_none() -> &'static Kmap {
+pub fn km_none() -> kayak_rt::Handle<'static, Kmap> {
     kayak_rt::heap_alloc(Kmap::KmNone())
 }
 
-pub fn km_node(f0: &'static Kmap, f1: Str, f2: i64, f3: i64, f4: &'static Kmap) -> &'static Kmap {
+pub fn km_node(f0: kayak_rt::Handle<'static, Kmap>, f1: Str, f2: i64, f3: i64, f4: kayak_rt::Handle<'static, Kmap>) -> kayak_rt::Handle<'static, Kmap> {
     kayak_rt::heap_alloc(Kmap::KmNode(f0, f1, f2, f3, f4))
 }
 
@@ -143,7 +143,7 @@ pub enum Frame {
     Frame(i64, List<i64>, i64),
 }
 
-pub fn frame(f0: i64, f1: List<i64>, f2: i64) -> &'static Frame {
+pub fn frame(f0: i64, f1: List<i64>, f2: i64) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::Frame(f0, f1, f2))
 }
 
@@ -157,20 +157,20 @@ pub enum Shard {
     Shard(Str, i64, Str, i64, bool, bool),
 }
 
-pub fn shard(f0: Str, f1: i64, f2: Str, f3: i64, f4: bool, f5: bool) -> &'static Shard {
+pub fn shard(f0: Str, f1: i64, f2: Str, f3: i64, f4: bool, f5: bool) -> kayak_rt::Handle<'static, Shard> {
     kayak_rt::heap_alloc(Shard::Shard(f0, f1, f2, f3, f4, f5))
 }
 
 pub enum Smap {
     SmNone(),
-    SmNode(&'static Smap, i64, &'static Shard, i64, &'static Smap),
+    SmNode(kayak_rt::Handle<'static, Smap>, i64, kayak_rt::Handle<'static, Shard>, i64, kayak_rt::Handle<'static, Smap>),
 }
 
-pub fn sm_none() -> &'static Smap {
+pub fn sm_none() -> kayak_rt::Handle<'static, Smap> {
     kayak_rt::heap_alloc(Smap::SmNone())
 }
 
-pub fn sm_node(f0: &'static Smap, f1: i64, f2: &'static Shard, f3: i64, f4: &'static Smap) -> &'static Smap {
+pub fn sm_node(f0: kayak_rt::Handle<'static, Smap>, f1: i64, f2: kayak_rt::Handle<'static, Shard>, f3: i64, f4: kayak_rt::Handle<'static, Smap>) -> kayak_rt::Handle<'static, Smap> {
     kayak_rt::heap_alloc(Smap::SmNode(f0, f1, f2, f3, f4))
 }
 
@@ -184,10 +184,10 @@ pub type Reader = &'static dyn Fn(Str) -> Str;
 // queries being run, the innermost first; for each durability, 0 to 3, the
 // revision an input of it or more last changed in; how many times a body
 // has run, and whose (for tests and measures).
-pub type Db = Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<Reader>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<Sexps>>;
+pub type Db = Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<Reader>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<Sexps>>;
 
 // What runs a query: given the database and a key, its value.
-pub type Runner = &'static dyn Fn(Db, &'static Sexp) -> Str;
+pub type Runner = &'static dyn Fn(Db, kayak_rt::Handle<'static, Sexp>) -> Str;
 
 #[inline]
 pub fn durabilities() -> i64 {
@@ -208,17 +208,17 @@ pub fn shard_of_number(i: i64) -> i64 {
 
 // A key of a query of one argument, or two: `(NAME "A")`, `(NAME "A" "B")`.
 #[inline]
-pub fn key1(q: Str, a: Str) -> &'static Sexp {
+pub fn key1(q: Str, a: Str) -> kayak_rt::Handle<'static, Sexp> {
     lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), kayak_rt::heap_cons(str(a, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
 }
 
 #[inline]
-pub fn key2(q: Str, a: Str, b: Str) -> &'static Sexp {
+pub fn key2(q: Str, a: Str, b: Str) -> kayak_rt::Handle<'static, Sexp> {
     lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), kayak_rt::heap_cons(str(a, str_lit(""), 0i64), kayak_rt::heap_cons(str(b, str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
 }
 
 // A key's query's name, and its argument `i` (from 0) as text.
-pub fn key_query(k: &'static Sexp) -> Str {
+pub fn key_query(k: kayak_rt::Handle<'static, Sexp>) -> Str {
     let tagcase_ = k;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
@@ -248,7 +248,7 @@ pub fn key_query(k: &'static Sexp) -> Str {
 }
 
 #[inline]
-pub fn key_arg(k: &'static Sexp, i: i64) -> Str {
+pub fn key_arg(k: kayak_rt::Handle<'static, Sexp>, i: i64) -> Str {
     let tagcase_ = k;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
@@ -366,7 +366,7 @@ pub fn str_text(s: Str) -> Str {
     }
 }
 
-pub fn key_text(k: &'static Sexp) -> Str {
+pub fn key_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
     let tagcase_ = k;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
@@ -399,7 +399,7 @@ pub fn keys_text(xs: Sexps) -> Str {
 }
 
 #[inline]
-pub fn im_height(t: &'static Imap) -> i64 {
+pub fn im_height(t: kayak_rt::Handle<'static, Imap>) -> i64 {
     let tagcase_ = t;
     match *tagcase_ {
         Imap::ImNone() => {
@@ -411,7 +411,7 @@ pub fn im_height(t: &'static Imap) -> i64 {
     }
 }
 
-pub fn im_make(l: &'static Imap, k: i64, x: &'static Node, r: &'static Imap) -> &'static Imap {
+pub fn im_make(l: kayak_rt::Handle<'static, Imap>, k: i64, x: kayak_rt::Handle<'static, Node>, r: kayak_rt::Handle<'static, Imap>) -> kayak_rt::Handle<'static, Imap> {
     im_node(l, k, x, i64_plus(1i64, {
         let (a, b) = (im_height(l), im_height(r));
         if i64_gt(a, b) {
@@ -422,7 +422,7 @@ pub fn im_make(l: &'static Imap, k: i64, x: &'static Node, r: &'static Imap) -> 
     }), r)
 }
 
-pub fn im_balanced(l: &'static Imap, k: i64, x: &'static Node, r: &'static Imap) -> &'static Imap {
+pub fn im_balanced(l: kayak_rt::Handle<'static, Imap>, k: i64, x: kayak_rt::Handle<'static, Node>, r: kayak_rt::Handle<'static, Imap>) -> kayak_rt::Handle<'static, Imap> {
     let (hl, hr) = (im_height(l), im_height(r));
     if i64_gt(hl, i64_plus(hr, 1i64)) {
         let tagcase_ = l;
@@ -473,7 +473,7 @@ pub fn im_balanced(l: &'static Imap, k: i64, x: &'static Node, r: &'static Imap)
     }
 }
 
-pub fn im_put(t: &'static Imap, n: i64, x: &'static Node) -> &'static Imap {
+pub fn im_put(t: kayak_rt::Handle<'static, Imap>, n: i64, x: kayak_rt::Handle<'static, Node>) -> kayak_rt::Handle<'static, Imap> {
     let tagcase_ = t;
     match *tagcase_ {
         Imap::ImNone() => {
@@ -492,12 +492,12 @@ pub fn im_put(t: &'static Imap, n: i64, x: &'static Node) -> &'static Imap {
 }
 
 /// `n`'s node, as a list of one, or none.
-pub fn im_get(mut t: &'static Imap, mut n: i64) -> List<&'static Node> {
+pub fn im_get(mut t: kayak_rt::Handle<'static, Imap>, mut n: i64) -> List<kayak_rt::Handle<'static, Node>> {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
             Imap::ImNone() => {
-                return nil::<&'static Node>();
+                return nil::<kayak_rt::Handle<'static, Node>>();
             }
             Imap::ImNode(l, k, x, h, r) => {
                 if i64_eq(n, k) {
@@ -515,7 +515,7 @@ pub fn im_get(mut t: &'static Imap, mut n: i64) -> List<&'static Node> {
 }
 
 /// The numbers, in order, onto `acc`.
-pub fn im_list(mut t: &'static Imap, mut acc: List<i64>) -> List<i64> {
+pub fn im_list(mut t: kayak_rt::Handle<'static, Imap>, mut acc: List<i64>) -> List<i64> {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
@@ -531,7 +531,7 @@ pub fn im_list(mut t: &'static Imap, mut acc: List<i64>) -> List<i64> {
 }
 
 #[inline]
-pub fn km_height(t: &'static Kmap) -> i64 {
+pub fn km_height(t: kayak_rt::Handle<'static, Kmap>) -> i64 {
     let tagcase_ = t;
     match *tagcase_ {
         Kmap::KmNone() => {
@@ -543,7 +543,7 @@ pub fn km_height(t: &'static Kmap) -> i64 {
     }
 }
 
-pub fn km_make(l: &'static Kmap, k: Str, x: i64, r: &'static Kmap) -> &'static Kmap {
+pub fn km_make(l: kayak_rt::Handle<'static, Kmap>, k: Str, x: i64, r: kayak_rt::Handle<'static, Kmap>) -> kayak_rt::Handle<'static, Kmap> {
     km_node(l, k, x, i64_plus(1i64, {
         let (a, b) = (km_height(l), km_height(r));
         if i64_gt(a, b) {
@@ -554,7 +554,7 @@ pub fn km_make(l: &'static Kmap, k: Str, x: i64, r: &'static Kmap) -> &'static K
     }), r)
 }
 
-pub fn km_balanced(l: &'static Kmap, k: Str, x: i64, r: &'static Kmap) -> &'static Kmap {
+pub fn km_balanced(l: kayak_rt::Handle<'static, Kmap>, k: Str, x: i64, r: kayak_rt::Handle<'static, Kmap>) -> kayak_rt::Handle<'static, Kmap> {
     let (hl, hr) = (km_height(l), km_height(r));
     if i64_gt(hl, i64_plus(hr, 1i64)) {
         let tagcase_ = l;
@@ -605,7 +605,7 @@ pub fn km_balanced(l: &'static Kmap, k: Str, x: i64, r: &'static Kmap) -> &'stat
     }
 }
 
-pub fn km_put(t: &'static Kmap, n: Str, x: i64) -> &'static Kmap {
+pub fn km_put(t: kayak_rt::Handle<'static, Kmap>, n: Str, x: i64) -> kayak_rt::Handle<'static, Kmap> {
     let tagcase_ = t;
     match *tagcase_ {
         Kmap::KmNone() => {
@@ -624,7 +624,7 @@ pub fn km_put(t: &'static Kmap, n: Str, x: i64) -> &'static Kmap {
 }
 
 /// `n`'s number; -1 if it has none.
-pub fn km_get(mut t: &'static Kmap, mut n: Str) -> i64 {
+pub fn km_get(mut t: kayak_rt::Handle<'static, Kmap>, mut n: Str) -> i64 {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
@@ -647,7 +647,7 @@ pub fn km_get(mut t: &'static Kmap, mut n: Str) -> i64 {
 }
 
 #[inline]
-pub fn node_key(n: &'static Node) -> &'static Sexp {
+pub fn node_key(n: kayak_rt::Handle<'static, Node>) -> kayak_rt::Handle<'static, Sexp> {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -657,7 +657,7 @@ pub fn node_key(n: &'static Node) -> &'static Sexp {
 }
 
 #[inline]
-pub fn node_input_p(n: &'static Node) -> bool {
+pub fn node_input_p(n: kayak_rt::Handle<'static, Node>) -> bool {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -667,7 +667,7 @@ pub fn node_input_p(n: &'static Node) -> bool {
 }
 
 #[inline]
-pub fn node_verified(n: &'static Node) -> i64 {
+pub fn node_verified(n: kayak_rt::Handle<'static, Node>) -> i64 {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -677,7 +677,7 @@ pub fn node_verified(n: &'static Node) -> i64 {
 }
 
 #[inline]
-pub fn node_changed(n: &'static Node) -> i64 {
+pub fn node_changed(n: kayak_rt::Handle<'static, Node>) -> i64 {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -687,7 +687,7 @@ pub fn node_changed(n: &'static Node) -> i64 {
 }
 
 #[inline]
-pub fn node_fp(n: &'static Node) -> i64 {
+pub fn node_fp(n: kayak_rt::Handle<'static, Node>) -> i64 {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -697,7 +697,7 @@ pub fn node_fp(n: &'static Node) -> i64 {
 }
 
 #[inline]
-pub fn node_deps(n: &'static Node) -> List<i64> {
+pub fn node_deps(n: kayak_rt::Handle<'static, Node>) -> List<i64> {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -707,7 +707,7 @@ pub fn node_deps(n: &'static Node) -> List<i64> {
 }
 
 #[inline]
-pub fn node_durability(n: &'static Node) -> i64 {
+pub fn node_durability(n: kayak_rt::Handle<'static, Node>) -> i64 {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -717,7 +717,7 @@ pub fn node_durability(n: &'static Node) -> i64 {
 }
 
 #[inline]
-pub fn node_kept(n: &'static Node) -> &'static Value {
+pub fn node_kept(n: kayak_rt::Handle<'static, Node>) -> kayak_rt::Handle<'static, Value> {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -727,7 +727,7 @@ pub fn node_kept(n: &'static Node) -> &'static Value {
 }
 
 #[inline]
-pub fn node_verified_at(n: &'static Node, r: i64) -> &'static Node {
+pub fn node_verified_at(n: kayak_rt::Handle<'static, Node>, r: i64) -> kayak_rt::Handle<'static, Node> {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -737,7 +737,7 @@ pub fn node_verified_at(n: &'static Node, r: i64) -> &'static Node {
 }
 
 #[inline]
-pub fn node_reverified(n: &'static Node, r: i64, d: i64) -> &'static Node {
+pub fn node_reverified(n: kayak_rt::Handle<'static, Node>, r: i64, d: i64) -> kayak_rt::Handle<'static, Node> {
     let tagcase_ = n;
     match *tagcase_ {
         Node::Node(k, i, v, c, f, ds, du, x) => {
@@ -747,7 +747,7 @@ pub fn node_reverified(n: &'static Node, r: i64, d: i64) -> &'static Node {
 }
 
 #[inline]
-pub fn node_has_value_p(n: &'static Node) -> bool {
+pub fn node_has_value_p(n: kayak_rt::Handle<'static, Node>) -> bool {
     let tagcase_ = node_kept(n);
     match *tagcase_ {
         Value::VNone() => {
@@ -795,7 +795,7 @@ pub fn zeros(n: i64) -> List<i64> {
     }
 }
 
-pub fn id_in_p(mut k: i64, mut fs: List<&'static Frame>) -> bool {
+pub fn id_in_p(mut k: i64, mut fs: List<kayak_rt::Handle<'static, Frame>>) -> bool {
     loop {
         if null_p(fs) {
             return false;
@@ -820,7 +820,7 @@ pub enum Scanned {
     Scanned(i64, i64),
 }
 
-pub fn scanned(f0: i64, f1: i64) -> &'static Scanned {
+pub fn scanned(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Scanned> {
     kayak_rt::heap_alloc(Scanned::Scanned(f0, f1))
 }
 
@@ -857,7 +857,7 @@ pub fn sc_close(mut s: Str, mut i: i64, mut n: i64) -> i64 {
     }
 }
 
-pub fn sc_digits(mut s: Str, mut i: i64, mut n: i64, mut acc: i64) -> &'static Scanned {
+pub fn sc_digits(mut s: Str, mut i: i64, mut n: i64, mut acc: i64) -> kayak_rt::Handle<'static, Scanned> {
     loop {
         let c = sc_char(s, i, n);
         if (i64_gt_eq(c, 48i64) && i64_lt_eq(c, 57i64)) {
@@ -870,7 +870,7 @@ pub fn sc_digits(mut s: Str, mut i: i64, mut n: i64, mut acc: i64) -> &'static S
 }
 
 // The number at `i`, after any spaces; and where it ends.
-pub fn sc_int(s: Str, i: i64, n: i64) -> &'static Scanned {
+pub fn sc_int(s: Str, i: i64, n: i64) -> kayak_rt::Handle<'static, Scanned> {
     let i = sc_ws(s, i, n);
     if i64_eq(sc_char(s, i, n), 45i64) {
         let tagcase_ = sc_digits(s, i64_plus(i, 1i64), n, 0i64);
@@ -917,7 +917,7 @@ pub fn sc_ints(mut s: Str, mut i: i64, mut n: i64, mut count: i64, mut acc: List
 
 // A node's record of the graph at offset `i` (C417): `(LEN #N# INPUT
 // VERIFIED CHANGED FINGERPRINT DURABILITY (#M# ...) VALUE)`, its key `key`.
-pub fn node_record(s: Str, i: i64, key: &'static Sexp) -> &'static Node {
+pub fn node_record(s: Str, i: i64, key: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Node> {
     let n = string_length_i64(s);
     let tagcase_ = sc_int(s, i64_plus(i, 1i64), n);
     match *tagcase_ {
@@ -954,44 +954,44 @@ pub fn node_record(s: Str, i: i64, key: &'static Sexp) -> &'static Node {
 // character's. A key's text, by which it is interned, is made of its parts as
 // written, which the writer wrote as `key-text` writes them.
 pub enum Atom {
-    Atom(&'static Sexp, Str),
+    Atom(kayak_rt::Handle<'static, Sexp>, Str),
 }
 
-pub fn atom(f0: &'static Sexp, f1: Str) -> &'static Atom {
+pub fn atom(f0: kayak_rt::Handle<'static, Sexp>, f1: Str) -> kayak_rt::Handle<'static, Atom> {
     kayak_rt::heap_alloc(Atom::Atom(f0, f1))
 }
 
 pub enum Amap {
     AmNone(),
-    AmNode(&'static Amap, i64, &'static Atom, i64, &'static Amap),
+    AmNode(kayak_rt::Handle<'static, Amap>, i64, kayak_rt::Handle<'static, Atom>, i64, kayak_rt::Handle<'static, Amap>),
 }
 
-pub fn am_none() -> &'static Amap {
+pub fn am_none() -> kayak_rt::Handle<'static, Amap> {
     kayak_rt::heap_alloc(Amap::AmNone())
 }
 
-pub fn am_node(f0: &'static Amap, f1: i64, f2: &'static Atom, f3: i64, f4: &'static Amap) -> &'static Amap {
+pub fn am_node(f0: kayak_rt::Handle<'static, Amap>, f1: i64, f2: kayak_rt::Handle<'static, Atom>, f3: i64, f4: kayak_rt::Handle<'static, Amap>) -> kayak_rt::Handle<'static, Amap> {
     kayak_rt::heap_alloc(Amap::AmNode(f0, f1, f2, f3, f4))
 }
 
 pub enum Part {
-    Part(&'static Sexp, Str, &'static Amap, i64),
+    Part(kayak_rt::Handle<'static, Sexp>, Str, kayak_rt::Handle<'static, Amap>, i64),
 }
 
-pub fn part(f0: &'static Sexp, f1: Str, f2: &'static Amap, f3: i64) -> &'static Part {
+pub fn part(f0: kayak_rt::Handle<'static, Sexp>, f1: Str, f2: kayak_rt::Handle<'static, Amap>, f3: i64) -> kayak_rt::Handle<'static, Part> {
     kayak_rt::heap_alloc(Part::Part(f0, f1, f2, f3))
 }
 
 pub enum Parts {
-    Parts(Sexps, List<Str>, &'static Amap, i64),
+    Parts(Sexps, List<Str>, kayak_rt::Handle<'static, Amap>, i64),
 }
 
-pub fn parts(f0: Sexps, f1: List<Str>, f2: &'static Amap, f3: i64) -> &'static Parts {
+pub fn parts(f0: Sexps, f1: List<Str>, f2: kayak_rt::Handle<'static, Amap>, f3: i64) -> kayak_rt::Handle<'static, Parts> {
     kayak_rt::heap_alloc(Parts::Parts(f0, f1, f2, f3))
 }
 
 #[inline]
-pub fn am_height(t: &'static Amap) -> i64 {
+pub fn am_height(t: kayak_rt::Handle<'static, Amap>) -> i64 {
     let tagcase_ = t;
     match *tagcase_ {
         Amap::AmNone() => {
@@ -1003,7 +1003,7 @@ pub fn am_height(t: &'static Amap) -> i64 {
     }
 }
 
-pub fn am_make(l: &'static Amap, k: i64, x: &'static Atom, r: &'static Amap) -> &'static Amap {
+pub fn am_make(l: kayak_rt::Handle<'static, Amap>, k: i64, x: kayak_rt::Handle<'static, Atom>, r: kayak_rt::Handle<'static, Amap>) -> kayak_rt::Handle<'static, Amap> {
     am_node(l, k, x, i64_plus(1i64, {
         let (a, b) = (am_height(l), am_height(r));
         if i64_gt(a, b) {
@@ -1014,7 +1014,7 @@ pub fn am_make(l: &'static Amap, k: i64, x: &'static Atom, r: &'static Amap) -> 
     }), r)
 }
 
-pub fn am_balanced(l: &'static Amap, k: i64, x: &'static Atom, r: &'static Amap) -> &'static Amap {
+pub fn am_balanced(l: kayak_rt::Handle<'static, Amap>, k: i64, x: kayak_rt::Handle<'static, Atom>, r: kayak_rt::Handle<'static, Amap>) -> kayak_rt::Handle<'static, Amap> {
     let (hl, hr) = (am_height(l), am_height(r));
     if i64_gt(hl, i64_plus(hr, 1i64)) {
         let tagcase_ = l;
@@ -1065,7 +1065,7 @@ pub fn am_balanced(l: &'static Amap, k: i64, x: &'static Atom, r: &'static Amap)
     }
 }
 
-pub fn am_put(t: &'static Amap, n: i64, x: &'static Atom) -> &'static Amap {
+pub fn am_put(t: kayak_rt::Handle<'static, Amap>, n: i64, x: kayak_rt::Handle<'static, Atom>) -> kayak_rt::Handle<'static, Amap> {
     let tagcase_ = t;
     match *tagcase_ {
         Amap::AmNone() => {
@@ -1083,12 +1083,12 @@ pub fn am_put(t: &'static Amap, n: i64, x: &'static Atom) -> &'static Amap {
     }
 }
 
-pub fn am_get(mut t: &'static Amap, mut n: i64) -> List<&'static Atom> {
+pub fn am_get(mut t: kayak_rt::Handle<'static, Amap>, mut n: i64) -> List<kayak_rt::Handle<'static, Atom>> {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
             Amap::AmNone() => {
-                return nil::<&'static Atom>();
+                return nil::<kayak_rt::Handle<'static, Atom>>();
             }
             Amap::AmNode(l, k, x, h, r) => {
                 if i64_eq(n, k) {
@@ -1107,7 +1107,7 @@ pub fn am_get(mut t: &'static Amap, mut n: i64) -> List<&'static Atom> {
 
 /// From inside a string's quotes: whether a `\` is in it (1), and where
 /// its closing quote is.
-pub fn sc_str_end(mut s: Str, mut i: i64, mut n: i64, mut esc: i64) -> &'static Scanned {
+pub fn sc_str_end(mut s: Str, mut i: i64, mut n: i64, mut esc: i64) -> kayak_rt::Handle<'static, Scanned> {
     loop {
         let c = sc_char(s, i, n);
         if i64_lt(c, 0i64) {
@@ -1169,7 +1169,7 @@ pub fn str_code(mut cs: List<char>, mut n: i64, mut acc: List<char>) -> Str {
 
 // A string at `i` (its opening quote): itself, its text as written, and where
 // it ends.
-pub fn sc_str(s: Str, i: i64, n: i64, atoms: &'static Amap) -> &'static Part {
+pub fn sc_str(s: Str, i: i64, n: i64, atoms: kayak_rt::Handle<'static, Amap>) -> kayak_rt::Handle<'static, Part> {
     let tagcase_ = sc_str_end(s, i64_plus(i, 1i64), n, 0i64);
     match *tagcase_ {
         Scanned::Scanned(esc, e) => {
@@ -1197,7 +1197,7 @@ pub fn sc_name_end(mut s: Str, mut i: i64, mut n: i64) -> i64 {
 
 /// One part of a key: a string, labelled where first written and named by
 /// its label after; a number; or a name.
-pub fn sc_part(s: Str, i: i64, n: i64, atoms: &'static Amap) -> &'static Part {
+pub fn sc_part(s: Str, i: i64, n: i64, atoms: kayak_rt::Handle<'static, Amap>) -> kayak_rt::Handle<'static, Part> {
     let i = sc_ws(s, i, n);
     let c = sc_char(s, i, n);
     if i64_eq(c, 35i64) {
@@ -1244,7 +1244,7 @@ pub fn sc_part(s: Str, i: i64, n: i64, atoms: &'static Amap) -> &'static Part {
 }
 
 /// A key's parts to its `)`, the newest first.
-pub fn sc_parts(s: Str, i: i64, n: i64, atoms: &'static Amap, xs: Sexps, ts: List<Str>) -> &'static Parts {
+pub fn sc_parts(s: Str, i: i64, n: i64, atoms: kayak_rt::Handle<'static, Amap>, xs: Sexps, ts: List<Str>) -> kayak_rt::Handle<'static, Parts> {
     let i = sc_ws(s, i, n);
     if i64_eq(sc_char(s, i, n), 41i64) {
         parts(xs, ts, atoms, i64_plus(i, 1i64))
@@ -1275,7 +1275,7 @@ pub fn texts_spaced(mut ts: List<Str>, mut acc: List<Str>) -> List<Str> {
 
 /// Each record `(LEN #N=(KEY ...))` of the keys, to its `)`; the greatest
 /// number, and where the keys end.
-pub fn keys_scanned_x(d: Db, s: Str, i: i64, n: i64, atoms: &'static Amap, top: i64) -> &'static Scanned {
+pub fn keys_scanned_x(d: Db, s: Str, i: i64, n: i64, atoms: kayak_rt::Handle<'static, Amap>, top: i64) -> kayak_rt::Handle<'static, Scanned> {
     let i = sc_ws(s, i, n);
     if not(i64_eq(sc_char(s, i, n), 40i64)) {
         scanned(top, i64_plus(i, 1i64))
@@ -1288,7 +1288,7 @@ pub fn keys_scanned_x(d: Db, s: Str, i: i64, n: i64, atoms: &'static Amap, top: 
                 let tagcase_ = sc_digits(s, i64_plus(b, 1i64), n, 0i64);
                 match *tagcase_ {
                     Scanned::Scanned(k, e) => {
-                        let tagcase_ = sc_parts(s, i64_plus(e, 2i64), n, atoms, nil::<&'static Sexp>(), nil::<Str>());
+                        let tagcase_ = sc_parts(s, i64_plus(e, 2i64), n, atoms, nil::<kayak_rt::Handle<'static, Sexp>>(), nil::<Str>());
                         match *tagcase_ {
                             Parts::Parts(xs, ts, atoms2, e2) => {
                                 let (key, text) = (lst(reverse(xs), str_lit(""), 0i64, 0i64), string_append(str_lit("("), string_append(string_list_append(texts_spaced(ts, nil::<Str>())), str_lit(")"))));
@@ -1355,7 +1355,7 @@ pub fn shard_values_start(t: Str) -> i64 {
 // one shard, and a run reads the shards of what it reads; else its query's
 // name. And the group's hash, by which the head names its shard.
 #[inline]
-pub fn key_group(k: &'static Sexp) -> Str {
+pub fn key_group(k: kayak_rt::Handle<'static, Sexp>) -> Str {
     let a = key_arg(k, 0i64);
     if string_eq_p(a, str_lit("")) {
         key_query(k)
@@ -1370,7 +1370,7 @@ pub fn group_hash(g: Str) -> Str {
 }
 
 #[inline]
-pub fn shard_text(x: &'static Shard) -> Str {
+pub fn shard_text(x: kayak_rt::Handle<'static, Shard>) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
         Shard::Shard(h, slot, text, next, loaded, dirty) => {
@@ -1380,7 +1380,7 @@ pub fn shard_text(x: &'static Shard) -> Str {
 }
 
 #[inline]
-pub fn sm_height(t: &'static Smap) -> i64 {
+pub fn sm_height(t: kayak_rt::Handle<'static, Smap>) -> i64 {
     let tagcase_ = t;
     match *tagcase_ {
         Smap::SmNone() => {
@@ -1392,7 +1392,7 @@ pub fn sm_height(t: &'static Smap) -> i64 {
     }
 }
 
-pub fn sm_make(l: &'static Smap, k: i64, x: &'static Shard, r: &'static Smap) -> &'static Smap {
+pub fn sm_make(l: kayak_rt::Handle<'static, Smap>, k: i64, x: kayak_rt::Handle<'static, Shard>, r: kayak_rt::Handle<'static, Smap>) -> kayak_rt::Handle<'static, Smap> {
     sm_node(l, k, x, i64_plus(1i64, {
         let (a, b) = (sm_height(l), sm_height(r));
         if i64_gt(a, b) {
@@ -1403,7 +1403,7 @@ pub fn sm_make(l: &'static Smap, k: i64, x: &'static Shard, r: &'static Smap) ->
     }), r)
 }
 
-pub fn sm_balanced(l: &'static Smap, k: i64, x: &'static Shard, r: &'static Smap) -> &'static Smap {
+pub fn sm_balanced(l: kayak_rt::Handle<'static, Smap>, k: i64, x: kayak_rt::Handle<'static, Shard>, r: kayak_rt::Handle<'static, Smap>) -> kayak_rt::Handle<'static, Smap> {
     let (hl, hr) = (sm_height(l), sm_height(r));
     if i64_gt(hl, i64_plus(hr, 1i64)) {
         let tagcase_ = l;
@@ -1454,7 +1454,7 @@ pub fn sm_balanced(l: &'static Smap, k: i64, x: &'static Shard, r: &'static Smap
     }
 }
 
-pub fn sm_put(t: &'static Smap, n: i64, x: &'static Shard) -> &'static Smap {
+pub fn sm_put(t: kayak_rt::Handle<'static, Smap>, n: i64, x: kayak_rt::Handle<'static, Shard>) -> kayak_rt::Handle<'static, Smap> {
     let tagcase_ = t;
     match *tagcase_ {
         Smap::SmNone() => {
@@ -1472,12 +1472,12 @@ pub fn sm_put(t: &'static Smap, n: i64, x: &'static Shard) -> &'static Smap {
     }
 }
 
-pub fn sm_get(mut t: &'static Smap, mut n: i64) -> List<&'static Shard> {
+pub fn sm_get(mut t: kayak_rt::Handle<'static, Smap>, mut n: i64) -> List<kayak_rt::Handle<'static, Shard>> {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
             Smap::SmNone() => {
-                return nil::<&'static Shard>();
+                return nil::<kayak_rt::Handle<'static, Shard>>();
             }
             Smap::SmNode(l, k, x, h, r) => {
                 if i64_eq(n, k) {
@@ -1495,12 +1495,12 @@ pub fn sm_get(mut t: &'static Smap, mut n: i64) -> List<&'static Shard> {
 }
 
 #[inline]
-pub fn sm_set_x(d: Db, n: i64, x: &'static Shard) -> () {
+pub fn sm_set_x(d: Db, n: i64, x: kayak_rt::Handle<'static, Shard>) -> () {
     set(d.3, sm_put(get(d.3), n, x))
 }
 
 // Shard `n`, which the database has (each number made is of one).
-pub fn db_shard(d: Db, n: i64) -> &'static Shard {
+pub fn db_shard(d: Db, n: i64) -> kayak_rt::Handle<'static, Shard> {
     let x = sm_get(get(d.3), n);
     if null_p(x) {
         error(str_lit("kayak-db: no such shard"));
@@ -1614,9 +1614,9 @@ pub fn db_node_read_x(d: Db, i: i64) -> () {
 }
 
 pub fn db_make() -> Db {
-    Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<&'static Imap>>(kayak_rt::heap_new(im_none())), the::<Ref<&'static Kmap>>(kayak_rt::heap_new(km_none())), the::<Ref<&'static Smap>>(kayak_rt::heap_new(sm_none())), the::<Ref<&'static Kmap>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Reader>>(kayak_rt::heap_new(lambda1(move |name: Str| {
+    Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<kayak_rt::Handle<'static, Imap>>>(kayak_rt::heap_new(im_none())), the::<Ref<kayak_rt::Handle<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<kayak_rt::Handle<'static, Smap>>>(kayak_rt::heap_new(sm_none())), the::<Ref<kayak_rt::Handle<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Reader>>(kayak_rt::heap_new(lambda1(move |name: Str| {
         str_lit("")
-    }))), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<&'static Frame>>>(kayak_rt::heap_new(nil::<&'static Frame>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<&'static Sexp>())))
+    }))), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<kayak_rt::Handle<'static, Frame>>>>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Frame>>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Sexp>>())))
 }
 
 #[inline]
@@ -1638,7 +1638,7 @@ pub fn db_ran(d: Db) -> Sexps {
 
 // A key's number (C472): its shard's, read first if it is not; made, in its
 // shard, the first time the key is met.
-pub fn db_id(d: Db, k: &'static Sexp) -> i64 {
+pub fn db_id(d: Db, k: kayak_rt::Handle<'static, Sexp>) -> i64 {
     let t = key_text(k);
     let i = km_get(get(d.2), t);
     if i64_gt_eq(i, 0i64) {
@@ -1666,7 +1666,7 @@ pub fn db_id(d: Db, k: &'static Sexp) -> i64 {
 // record noted, C417: its revision verified -1, its record's offset in the
 // graph as its revision of change) read from its record the first time it is
 // asked for; one whose key has no record, none.
-pub fn db_node_at(d: Db, i: i64) -> List<&'static Node> {
+pub fn db_node_at(d: Db, i: i64) -> List<kayak_rt::Handle<'static, Node>> {
     let n = {
         db_shard_read_x(d, shard_of_number(i));
         im_get(get(d.1), i)
@@ -1675,7 +1675,7 @@ pub fn db_node_at(d: Db, i: i64) -> List<&'static Node> {
         n
     } else {
         if i64_lt(node_changed(car(n)), 0i64) {
-            nil::<&'static Node>()
+            nil::<kayak_rt::Handle<'static, Node>>()
         } else {
             let x = node_record(shard_text(db_shard(d, shard_of_number(i))), node_changed(car(n)), node_key(car(n)));
             set(d.1, im_put(get(d.1), i, x));
@@ -1685,11 +1685,11 @@ pub fn db_node_at(d: Db, i: i64) -> List<&'static Node> {
 }
 
 #[inline]
-pub fn db_node(d: Db, k: &'static Sexp) -> List<&'static Node> {
+pub fn db_node(d: Db, k: kayak_rt::Handle<'static, Sexp>) -> List<kayak_rt::Handle<'static, Node>> {
     db_node_at(d, db_id(d, k))
 }
 
-pub fn db_put_x(d: Db, i: i64, n: &'static Node) -> () {
+pub fn db_put_x(d: Db, i: i64, n: kayak_rt::Handle<'static, Node>) -> () {
     set(d.7, true);
     {
         let tagcase_ = db_shard(d, shard_of_number(i));
@@ -1793,7 +1793,7 @@ pub fn ascii_code(mut cs: List<char>, mut n: i64, mut acc: List<char>) -> Str {
 
 // A node's value as text: kept, read from its file or its shard's, or `` if
 // none is kept (a reader makes it again first, `db-node-read!`).
-pub fn node_value_in(d: Db, n: &'static Node) -> Str {
+pub fn node_value_in(d: Db, n: kayak_rt::Handle<'static, Node>) -> Str {
     let tagcase_ = node_kept(n);
     match *tagcase_ {
         Value::VText(s) => {
@@ -1827,7 +1827,7 @@ pub fn node_value_in(d: Db, n: &'static Node) -> Str {
 }
 
 #[inline]
-pub fn node_value(d: Db, n: &'static Node) -> Str {
+pub fn node_value(d: Db, n: kayak_rt::Handle<'static, Node>) -> Str {
     node_value_in(d, n)
 }
 
@@ -1858,7 +1858,7 @@ pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
 // has asked for (a transformer's phase-1 file, `phase1 REQUEST`) without
 // sending every node to be verified again. Not in `models/db.qnt` yet,
 // whose inputs all are from the first.
-pub fn db_set_x(d: Db, k: &'static Sexp, text: Str, du: i64) -> () {
+pub fn db_set_x(d: Db, k: kayak_rt::Handle<'static, Sexp>, text: Str, du: i64) -> () {
     let fp = (&queries::fnv_string)(text, queries::fnv_offset());
     let i = db_id(d, k);
     let old = db_node_at(d, i);
@@ -1899,7 +1899,7 @@ pub fn note_read_x(d: Db, i: i64, du: i64) -> () {
 }
 
 /// `k`'s value, current, and that the query being run read it.
-pub fn db_get(d: Db, run: Runner, k: &'static Sexp) -> Str {
+pub fn db_get(d: Db, run: Runner, k: kayak_rt::Handle<'static, Sexp>) -> Str {
     let i = db_id(d, k);
     if id_in_p(i, get(d.8)) {
         error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
@@ -1921,7 +1921,7 @@ pub fn db_get(d: Db, run: Runner, k: &'static Sexp) -> Str {
 /// `k`'s value, made current (`db-made-current`); one of a query whose
 /// value was not kept (C417) made again: its fingerprint the one it had,
 /// nothing that read it runs.
-pub fn db_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> Str {
+pub fn db_current(d: Db, run: Runner, i: i64, k: kayak_rt::Handle<'static, Sexp>) -> Str {
     db_made_current(d, run, i, k);
     db_node_read_x(d, i);
     let n = db_node_at(d, i);
@@ -1934,7 +1934,7 @@ pub fn db_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> Str {
 
 /// `k` made current, its value not read: an input as set; a query
 /// verified, or run again.
-pub fn db_made_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> () {
+pub fn db_made_current(d: Db, run: Runner, i: i64, k: kayak_rt::Handle<'static, Sexp>) -> () {
     let (old, r) = (db_node_at(d, i), get(d.0));
     if null_p(old) {
         db_execute(d, run, i, k, old);
@@ -1986,7 +1986,7 @@ pub fn db_reads_durability(mut d: Db, mut run: Runner, mut is: List<i64>, mut si
 
 /// `k`'s query run, its reads recorded; its value's fingerprint the
 /// same as `old`'s, its revision of change kept (early cutoff).
-pub fn db_execute(d: Db, run: Runner, i: i64, k: &'static Sexp, old: List<&'static Node>) -> Str {
+pub fn db_execute(d: Db, run: Runner, i: i64, k: kayak_rt::Handle<'static, Sexp>, old: List<kayak_rt::Handle<'static, Node>>) -> Str {
     set(d.8, kayak_rt::heap_cons(frame(i, nil::<i64>(), i64_minus(durabilities(), 1i64)), get(d.8)));
     let x = run(d, k);
     let fr = car(get(d.8));
@@ -2016,7 +2016,7 @@ pub fn db_execute(d: Db, run: Runner, i: i64, k: &'static Sexp, old: List<&'stat
 // node's revision of change moves when its fingerprint does, early cutoff);
 // the value neither read nor made. For a query of what has been made by
 // name of its content (`kc build`'s objects).
-pub fn db_get_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
+pub fn db_get_fingerprint(d: Db, run: Runner, k: kayak_rt::Handle<'static, Sexp>) -> i64 {
     let i = db_id(d, k);
     if id_in_p(i, get(d.8)) {
         error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
@@ -2032,7 +2032,7 @@ pub fn db_get_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
 // `k` made current, and its value's fingerprint, its value neither read nor
 // made (C417): so that a client holding a value already (a file it wrote)
 // may know it is as it was.
-pub fn db_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
+pub fn db_fingerprint(d: Db, run: Runner, k: kayak_rt::Handle<'static, Sexp>) -> i64 {
     let i = db_id(d, k);
     db_made_current(d, run, i, k);
     node_fp(car(db_node_at(d, i)))
@@ -2078,21 +2078,21 @@ pub enum DbFile {
     DbFile(Str, Str),
 }
 
-pub fn db_file(f0: Str, f1: Str) -> &'static DbFile {
+pub fn db_file(f0: Str, f1: Str) -> kayak_rt::Handle<'static, DbFile> {
     kayak_rt::heap_alloc(DbFile::DbFile(f0, f1))
 }
 
 pub enum KeyedOut {
-    KeyedOut(List<Str>, &'static Kmap, i64),
+    KeyedOut(List<Str>, kayak_rt::Handle<'static, Kmap>, i64),
 }
 
-pub fn keyed_out(f0: List<Str>, f1: &'static Kmap, f2: i64) -> &'static KeyedOut {
+pub fn keyed_out(f0: List<Str>, f1: kayak_rt::Handle<'static, Kmap>, f2: i64) -> kayak_rt::Handle<'static, KeyedOut> {
     kayak_rt::heap_alloc(KeyedOut::KeyedOut(f0, f1, f2))
 }
 
 /// Key `k` as text onto `acc` (newest first), each text in it seen
 /// before by its label, each seen first labelled, from `n`.
-pub fn key_written(k: &'static Sexp, seen: &'static Kmap, n: i64, acc: List<Str>) -> &'static KeyedOut {
+pub fn key_written(k: kayak_rt::Handle<'static, Sexp>, seen: kayak_rt::Handle<'static, Kmap>, n: i64, acc: List<Str>) -> kayak_rt::Handle<'static, KeyedOut> {
     let tagcase_ = k;
     match *tagcase_ {
         Sexp::Str(s, f, p) => {
@@ -2118,7 +2118,7 @@ pub fn key_written(k: &'static Sexp, seen: &'static Kmap, n: i64, acc: List<Str>
     }
 }
 
-pub fn keys_written(mut xs: Sexps, mut seen: &'static Kmap, mut n: i64, mut acc: List<Str>) -> &'static KeyedOut {
+pub fn keys_written(mut xs: Sexps, mut seen: kayak_rt::Handle<'static, Kmap>, mut n: i64, mut acc: List<Str>) -> kayak_rt::Handle<'static, KeyedOut> {
     loop {
         if null_p(xs) {
             return keyed_out(acc, seen, n);
@@ -2178,10 +2178,10 @@ pub fn inline_most() -> i64 {
 // write, and its values kept in it, the newest first; the texts seen in
 // keys, the next label, and the values' length so far.
 pub enum MadeFiles {
-    MadeFiles(List<Str>, List<Str>, List<&'static DbFile>, List<Str>, &'static Kmap, i64, i64),
+    MadeFiles(List<Str>, List<Str>, List<kayak_rt::Handle<'static, DbFile>>, List<Str>, kayak_rt::Handle<'static, Kmap>, i64, i64),
 }
 
-pub fn made_files(f0: List<Str>, f1: List<Str>, f2: List<&'static DbFile>, f3: List<Str>, f4: &'static Kmap, f5: i64, f6: i64) -> &'static MadeFiles {
+pub fn made_files(f0: List<Str>, f1: List<Str>, f2: List<kayak_rt::Handle<'static, DbFile>>, f3: List<Str>, f4: kayak_rt::Handle<'static, Kmap>, f5: i64, f6: i64) -> kayak_rt::Handle<'static, MadeFiles> {
     kayak_rt::heap_alloc(MadeFiles::MadeFiles(f0, f1, f2, f3, f4, f5, f6))
 }
 
@@ -2194,19 +2194,19 @@ pub enum Placed {
     Nowhere(),
 }
 
-pub fn in_shard(f0: Str, f1: bool) -> &'static Placed {
+pub fn in_shard(f0: Str, f1: bool) -> kayak_rt::Handle<'static, Placed> {
     kayak_rt::heap_alloc(Placed::InShard(f0, f1))
 }
 
-pub fn in_file(f0: List<Str>) -> &'static Placed {
+pub fn in_file(f0: List<Str>) -> kayak_rt::Handle<'static, Placed> {
     kayak_rt::heap_alloc(Placed::InFile(f0))
 }
 
-pub fn nowhere() -> &'static Placed {
+pub fn nowhere() -> kayak_rt::Handle<'static, Placed> {
     kayak_rt::heap_alloc(Placed::Nowhere())
 }
 
-pub fn value_placed(d: Db, n: &'static Node, kept: bool) -> &'static Placed {
+pub fn value_placed(d: Db, n: kayak_rt::Handle<'static, Node>, kept: bool) -> kayak_rt::Handle<'static, Placed> {
     if not(kept) {
         nowhere()
     } else {
@@ -2240,7 +2240,7 @@ pub fn value_placed(d: Db, n: &'static Node, kept: bool) -> &'static Placed {
 /// Each node of shard `sh` of `is`, its key into the keys, its record
 /// into the nodes, its value into the shard's values or a file of its
 /// own (C473), and as they have it after.
-pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync), mut m: &'static MadeFiles) -> &'static MadeFiles {
+pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> bool + Send + Sync), mut m: kayak_rt::Handle<'static, MadeFiles>) -> kayak_rt::Handle<'static, MadeFiles> {
     loop {
         if null_p(is) {
             return m;
@@ -2265,13 +2265,13 @@ pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: &'static
                                         }
                                         Placed::InFile(ts) => {
                                             if null_p(ts) {
-                                                nil::<&'static Value>()
+                                                nil::<kayak_rt::Handle<'static, Value>>()
                                             } else {
                                                 kayak_rt::heap_cons(v_read(car(ts)), kayak_rt::nil())
                                             }
                                         }
                                         Placed::Nowhere() => {
-                                            nil::<&'static Value>()
+                                            nil::<kayak_rt::Handle<'static, Value>>()
                                         }
                                     }
                                 };
@@ -2375,7 +2375,7 @@ pub fn numbers_from(mut base: i64, mut k: i64, mut n: i64, mut acc: List<i64>) -
     }
 }
 
-pub fn sm_numbers(mut t: &'static Smap, mut acc: List<i64>) -> List<i64> {
+pub fn sm_numbers(mut t: kayak_rt::Handle<'static, Smap>, mut acc: List<i64>) -> List<i64> {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
@@ -2392,7 +2392,7 @@ pub fn sm_numbers(mut t: &'static Smap, mut acc: List<i64>) -> List<i64> {
 
 /// Each shard of `ns`: if a node of it changed, its file written to its
 /// other slot, and its values' files; its line of the head.
-pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync), mut values: List<&'static DbFile>, mut graphs: List<&'static DbFile>, mut heads: List<Str>) -> Product_11_12_13<List<&'static DbFile>, List<&'static DbFile>, List<Str>> {
+pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> bool + Send + Sync), mut values: List<kayak_rt::Handle<'static, DbFile>>, mut graphs: List<kayak_rt::Handle<'static, DbFile>>, mut heads: List<Str>) -> Product_11_12_13<List<kayak_rt::Handle<'static, DbFile>>, List<kayak_rt::Handle<'static, DbFile>>, List<Str>> {
     loop {
         if null_p(ns) {
             return Product_11_12_13(values, graphs, reverse(heads));
@@ -2404,7 +2404,7 @@ pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: &'static (dyn Fn(&'s
                         (ns, heads) = (cdr(ns), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(slot), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), heads));
                         continue;
                     } else {
-                        let tagcase_ = nodes_files(d, car(ns), numbers_from(i64_star(car(ns), shard_span()), 0i64, next, nil::<i64>()), keep, made_files(nil::<Str>(), nil::<Str>(), nil::<&'static DbFile>(), nil::<Str>(), km_none(), 0i64, 0i64));
+                        let tagcase_ = nodes_files(d, car(ns), numbers_from(i64_star(car(ns), shard_span()), 0i64, next, nil::<i64>()), keep, made_files(nil::<Str>(), nil::<Str>(), nil::<kayak_rt::Handle<'static, DbFile>>(), nil::<Str>(), km_none(), 0i64, 0i64));
                         match *tagcase_ {
                             MadeFiles::MadeFiles(keys, nodes, files, payload, seen, labels, at) => {
                                 let to = if i64_eq(slot, 0i64) {
@@ -2429,8 +2429,8 @@ pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: &'static (dyn Fn(&'s
 // saved, `whose` it is, `keep` saying of a query's key whether its value is
 // kept, in the order to write them: the values', the shards', the head
 // last. Its nodes after are as those files have them.
-pub fn db_saved(d: Db, whose: Str, keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync)) -> List<&'static DbFile> {
-    let r = shards_saved(d, sm_numbers(get(d.3), nil::<i64>()), keep, nil::<&'static DbFile>(), nil::<&'static DbFile>(), nil::<Str>());
+pub fn db_saved(d: Db, whose: Str, keep: &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> bool + Send + Sync)) -> List<kayak_rt::Handle<'static, DbFile>> {
+    let r = shards_saved(d, sm_numbers(get(d.3), nil::<i64>()), keep, nil::<kayak_rt::Handle<'static, DbFile>>(), nil::<kayak_rt::Handle<'static, DbFile>>(), nil::<Str>());
     set(d.7, false);
     onto(r.0, onto(r.1, kayak_rt::heap_cons(db_file(str_lit(""), string_list_append(append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::nil()))))))), append(cdr(numbers_text(get(d.9))), append(kayak_rt::heap_cons(str_lit(") ("), kayak_rt::nil()), append(r.2, kayak_rt::heap_cons(str_lit("))\n"), kayak_rt::nil()))))))), kayak_rt::nil())))
 }
@@ -2496,7 +2496,7 @@ pub fn db_opened(rd: Reader, whose: Str) -> Db {
 }
 
 // The keys the database has nodes of, in order of number.
-pub fn im_keys(mut t: &'static Imap, mut acc: Sexps) -> Sexps {
+pub fn im_keys(mut t: kayak_rt::Handle<'static, Imap>, mut acc: Sexps) -> Sexps {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
@@ -2526,6 +2526,6 @@ pub fn shards_read_x(mut d: Db, mut ns: List<i64>) -> () {
 #[inline]
 pub fn db_keys(d: Db) -> Sexps {
     shards_read_x(d, sm_numbers(get(d.3), nil::<i64>()));
-    im_keys(get(d.1), nil::<&'static Sexp>())
+    im_keys(get(d.1), nil::<kayak_rt::Handle<'static, Sexp>>())
 }
 

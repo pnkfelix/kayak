@@ -11,18 +11,18 @@ pub enum Shape {
     Rect(i64, i64),
 }
 
-pub fn circle(f0: i64) -> &'static Shape {
+pub fn circle(f0: i64) -> kayak_rt::Handle<'static, Shape> {
     kayak_rt::heap_alloc(Shape::Circle(f0))
 }
 
-pub fn rect(f0: i64, f1: i64) -> &'static Shape {
+pub fn rect(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Shape> {
     kayak_rt::heap_alloc(Shape::Rect(f0, f1))
 }
 
-pub type Shapes = List<&'static Shape>;
+pub type Shapes = List<kayak_rt::Handle<'static, Shape>>;
 
 #[inline]
-pub fn area(s: &'static Shape) -> i64 {
+pub fn area(s: kayak_rt::Handle<'static, Shape>) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
         Shape::Circle(r) => {

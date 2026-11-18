@@ -10,14 +10,14 @@ pub type Ints = List<i64>;
 
 pub enum Tree {
     Leaf(Int),
-    Node(&'static Tree, &'static Tree),
+    Node(kayak_rt::Handle<'static, Tree>, kayak_rt::Handle<'static, Tree>),
 }
 
-pub fn leaf(f0: Int) -> &'static Tree {
+pub fn leaf(f0: Int) -> kayak_rt::Handle<'static, Tree> {
     kayak_rt::heap_alloc(Tree::Leaf(f0))
 }
 
-pub fn node(f0: &'static Tree, f1: &'static Tree) -> &'static Tree {
+pub fn node(f0: kayak_rt::Handle<'static, Tree>, f1: kayak_rt::Handle<'static, Tree>) -> kayak_rt::Handle<'static, Tree> {
     kayak_rt::heap_alloc(Tree::Node(f0, f1))
 }
 
@@ -69,9 +69,9 @@ pub fn sum_to(top: Int) -> Int {
 }
 
 // A tree, by its arms' fields; and Ackermann's function, by two measures.
-pub fn total(t: &'static Tree) -> Int {
-    let walk__knot = knot::<&'static (dyn Fn(&'static Tree) -> Int + Send + Sync)>();
-    let walk = lambda1s(move |t: &'static Tree| {
+pub fn total(t: kayak_rt::Handle<'static, Tree>) -> Int {
+    let walk__knot = knot::<&'static (dyn Fn(kayak_rt::Handle<'static, Tree>) -> Int + Send + Sync)>();
+    let walk = lambda1s(move |t: kayak_rt::Handle<'static, Tree>| {
         let tagcase_ = t;
         match *tagcase_ {
             Tree::Leaf(n) => {

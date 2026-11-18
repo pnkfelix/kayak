@@ -55,7 +55,7 @@ pub mod builder_in {
     pub fn maker_state<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P) -> &'p BuilderState<'p, Place_P> {
         let maker_st: &'p BuilderState<'p, Place_P> = kayak_rt::alloc(BuilderState {
             phantom_: std::marker::PhantomData,
-        });
+        }).to_ref();
         maker_st
     }
 }

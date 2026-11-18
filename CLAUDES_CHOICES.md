@@ -14596,3 +14596,58 @@ collecting at each allocation. Some 4 to 6 steps; it serves every KFX
 program built to Rust (kfx, kc, the engine, tier 1; `kc serve`, which
 grows without bound now), and is no road to K8's incremental, shared
 heap.
+
+## C478. Handles for kayak-rt's heap: `Handle<'r, T>` for `&'r T` (2026-11-18)
+
+The user, after C477's weighing of a collector for kayak-rt (its values
+`&'static` references, no stack maps): "Could we take an intermediate step
+of replacing the current `&'static T` uses with Handle<T> that we borrow
+from, just to try to contain this problem?"; then "Yep do this now".
+Reviewed first: kayak-rt's references were written in few places: its
+aliases (`ListAt`, `RefAt`), its allocations (`heap_alloc`, the regions'
+arenas, `alloc`), and kfx's emitter's three datatype sites (`type-path`,
+`put-type`'s datatype and family arms) and constructors (`put-define`'s
+`-> &'at D`); the 6834 `&'static` of kc's Rust all theirs.
+
+What changed:
+- **`kayak_rt::Handle<'r, T: ?Sized>`** (`handle.rs`): a reference and
+  nothing more (the same size, `Copy`, `Deref` to `T`), made only by the
+  heap's and the regions' allocations (`made`, the crate's); `to_ref` the
+  reference, `same` identity. Of a lifetime, so a region's (`'r`) and the
+  heap's (`'static`) one type as before: code generic in `'r` serves both.
+- **kayak-rt**: `ListAt` and `RefAt` hold handles; `heap_alloc`, an
+  arena's `alloc` and `alloc` give them; what is kayak-rt's own
+  (continuations, mailboxes, equality tables, closures, bloblets, sums)
+  by `leak`, a reference, as before. A ref's identity, the equality
+  table's key, its handle's (`Identity`, `ref_identity`).
+- **kfx's emitter**: a datatype's value `kayak_rt::Handle<'static, D>` (a
+  region's, `Handle<'r, D<'r, ...>>`); its constructors return one; a
+  module maker's state a reference of its handle (`to_ref`). `match
+  *tagcase_` reads through `Deref`, unchanged.
+  A datatype of a region's (C270, C271), found by the check's first run
+  (the corpus's `data-region.rs`, which no other Rust has): its heap twin
+  and its `_in` maker return handles too, and its arena's element is the
+  handle's datatype (`held-rust`, which had cut the `&'r ` off the
+  reference's text, and so cut `kayak_rt::Handle`'s first four characters).
+  And the engine's hand-written REPL front (`rust_repl.rs`, built with
+  `rust-repl` alone), whose `Req` and `New` name generated datatypes:
+  handles. Lang items: `to_ref` an emitter call (63). kayak-rt's traits a reference
+  had, a handle has too: `Show` (Fixpt's programs' Rust shows a
+  datatype's value), a ref's `ToValue` and `Shaped`.
+- **The bootstrap**: `boot/src/kfx`, written by the old emitter, did not
+  build on the new kayak-rt. The old kfx (a worktree at C477) made
+  generation 1 from the new sources, still of references; generation 1,
+  built there, made generation 2, of handles, which builds here; then
+  `regen.sh --all`, at the fixed point at once. The corpus's Rust blessed
+  again.
+
+Measured: an edit's build of the 1000-procedure bench 0.27 to 0.28 s
+(C476's 0.28), its memory as it was: a handle costs nothing. kc's Rust:
+7929 type mentions handles, 345 references left (closures' `&'static dyn
+Fn`, a bloblet's). Left (TODO §54): closures, bloblets, flat arrays;
+then a generated `Trace`; then a collector.
+- **The full check**: all passed in 394.2 s, its fifth run (the first
+  four stopped at the corpus's region datatypes, the engine's REPL front,
+  the lang items, Fixpt's programs' `Show`); Fixpt running the compiler
+  makes the same Rust; selfhost on tier 1 147 s; the async build; nextest
+  5596; kc-steps 362 of 362.

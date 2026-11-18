@@ -64,12 +64,12 @@ pub enum Op {
     Op(Str, &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)),
 }
 
-pub fn op(f0: Str, f1: &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)) -> &'static Op {
+pub fn op(f0: Str, f1: &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)) -> kayak_rt::Handle<'static, Op> {
     kayak_rt::heap_alloc(Op::Op(f0, f1))
 }
 
 #[inline]
-pub fn apply_op(o: &'static Op, a: i64, b: i64) -> Str {
+pub fn apply_op(o: kayak_rt::Handle<'static, Op>, a: i64, b: i64) -> Str {
     let tagcase_ = o;
     match *tagcase_ {
         Op::Op(name, f) => {

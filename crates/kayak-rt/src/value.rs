@@ -199,18 +199,25 @@ impl<T: Copy + 'static> ToValue for &'static std::cell::Cell<T> {
     }
 }
 
+/// A ref, a handle of a cell (C478), as its cell's reference.
+impl<T: Copy + 'static> ToValue for crate::Handle<'static, std::cell::Cell<T>> {
+    fn to_value(self) -> Value {
+        other(self.to_ref(), Shape::Box)
+    }
+}
+
 /// A member of another shape (a datatype's value, a sum, a product, a
 /// reference, a procedure, an array) given for its union: behind `Any`,
 /// its shape kept beside it.
 pub fn other<T: Any + Copy>(x: T, shape: Shape) -> Value {
-    Value::Other(crate::alloc(x), shape)
+    Value::Other(crate::leak(x), shape)
 }
 
 /// A list given for its union: `nil`, or its pair, seen as a union's.
 pub fn list<T: ToValue + Copy + 'static>(xs: List<T>) -> Value {
     match xs {
         None => Value::Nil,
-        Some(p) => Value::Pair(p),
+        Some(p) => Value::Pair(p.to_ref()),
     }
 }
 
@@ -231,7 +238,7 @@ pub fn boxed_list<T: ToValue + Copy>(xs: List<T>) -> List<Value> {
 
 /// `cons` where a pair of a union is wanted, its parts boxed.
 pub fn cons<A: ToValue, B: ToValue>(a: A, b: B) -> Value {
-    Value::Pair(crate::alloc(ValuePair(a.to_value(), b.to_value())))
+    Value::Pair(crate::leak(ValuePair(a.to_value(), b.to_value())))
 }
 
 /// A quasiquote's `,@xs`: the list's elements, boxed, before `rest`.
@@ -282,7 +289,7 @@ pub fn unbox_list<T: 'static>(v: Value) -> List<T> {
     match v {
         Value::Nil => None,
         Value::Pair(p) => match p.as_any().downcast_ref::<Cons<'static, T>>() {
-            Some(c) => Some(c),
+            Some(c) => Some(crate::Handle::made(c)),
             None => not_held(),
         },
         _ => not_held(),
@@ -346,6 +353,12 @@ impl<T> Shaped for ListAt<'_, T> {
 }
 
 impl<T> Shaped for &std::cell::Cell<T> {
+    fn shape(&self) -> Shape {
+        Shape::Box
+    }
+}
+
+impl<T> Shaped for crate::Handle<'_, std::cell::Cell<T>> {
     fn shape(&self) -> Shape {
         Shape::Box
     }

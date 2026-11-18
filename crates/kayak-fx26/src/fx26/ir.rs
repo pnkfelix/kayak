@@ -97,113 +97,113 @@ pub enum Val {
     VBool(bool),
     VUnit(),
     VNil(),
-    VPair(Ref<&'static Val>, Ref<&'static Val>),
-    VRef(Ref<&'static Val>),
-    VSum(Str, &'static Val),
-    VProduct(Strings, Array<&'static Val>),
-    VData(Str, Array<&'static Val>),
-    VArray(Array<&'static Val>),
+    VPair(Ref<kayak_rt::Handle<'static, Val>>, Ref<kayak_rt::Handle<'static, Val>>),
+    VRef(Ref<kayak_rt::Handle<'static, Val>>),
+    VSum(Str, kayak_rt::Handle<'static, Val>),
+    VProduct(Strings, Array<kayak_rt::Handle<'static, Val>>),
+    VData(Str, Array<kayak_rt::Handle<'static, Val>>),
+    VArray(Array<kayak_rt::Handle<'static, Val>>),
     VBytes(Bytes),
-    VFlat(Array<&'static Val>),
-    VProc(i64, &'static Ir, List<Array<&'static Val>>),
+    VFlat(Array<kayak_rt::Handle<'static, Val>>),
+    VProc(i64, kayak_rt::Handle<'static, Ir>, List<Array<kayak_rt::Handle<'static, Val>>>),
     VPrim(Str, i64),
     VCtor(Str, i64),
-    VCont(List<&'static Frame>, Ref<bool>, bool),
-    VDatum(&'static Sexp),
+    VCont(List<kayak_rt::Handle<'static, Frame>>, Ref<bool>, bool),
+    VDatum(kayak_rt::Handle<'static, Sexp>),
     VRep(Str),
 }
 
-pub fn v_int(f0: Int) -> &'static Val {
+pub fn v_int(f0: Int) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VInt(f0))
 }
 
-pub fn v_real(f0: f64) -> &'static Val {
+pub fn v_real(f0: f64) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VReal(f0))
 }
 
-pub fn v_char(f0: char) -> &'static Val {
+pub fn v_char(f0: char) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VChar(f0))
 }
 
-pub fn v_string(f0: Str) -> &'static Val {
+pub fn v_string(f0: Str) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VString(f0))
 }
 
-pub fn v_symbol(f0: Symbol) -> &'static Val {
+pub fn v_symbol(f0: Symbol) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VSymbol(f0))
 }
 
-pub fn v_bool(f0: bool) -> &'static Val {
+pub fn v_bool(f0: bool) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VBool(f0))
 }
 
-pub fn v_unit() -> &'static Val {
+pub fn v_unit() -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VUnit())
 }
 
-pub fn v_nil() -> &'static Val {
+pub fn v_nil() -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VNil())
 }
 
-pub fn v_pair(f0: Ref<&'static Val>, f1: Ref<&'static Val>) -> &'static Val {
+pub fn v_pair(f0: Ref<kayak_rt::Handle<'static, Val>>, f1: Ref<kayak_rt::Handle<'static, Val>>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VPair(f0, f1))
 }
 
-pub fn v_ref(f0: Ref<&'static Val>) -> &'static Val {
+pub fn v_ref(f0: Ref<kayak_rt::Handle<'static, Val>>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VRef(f0))
 }
 
-pub fn v_sum(f0: Str, f1: &'static Val) -> &'static Val {
+pub fn v_sum(f0: Str, f1: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VSum(f0, f1))
 }
 
-pub fn v_product(f0: Strings, f1: Array<&'static Val>) -> &'static Val {
+pub fn v_product(f0: Strings, f1: Array<kayak_rt::Handle<'static, Val>>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VProduct(f0, f1))
 }
 
-pub fn v_data(f0: Str, f1: Array<&'static Val>) -> &'static Val {
+pub fn v_data(f0: Str, f1: Array<kayak_rt::Handle<'static, Val>>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VData(f0, f1))
 }
 
-pub fn v_array(f0: Array<&'static Val>) -> &'static Val {
+pub fn v_array(f0: Array<kayak_rt::Handle<'static, Val>>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VArray(f0))
 }
 
-pub fn v_bytes(f0: Bytes) -> &'static Val {
+pub fn v_bytes(f0: Bytes) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VBytes(f0))
 }
 
-pub fn v_flat(f0: Array<&'static Val>) -> &'static Val {
+pub fn v_flat(f0: Array<kayak_rt::Handle<'static, Val>>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VFlat(f0))
 }
 
-pub fn v_proc(f0: i64, f1: &'static Ir, f2: List<Array<&'static Val>>) -> &'static Val {
+pub fn v_proc(f0: i64, f1: kayak_rt::Handle<'static, Ir>, f2: List<Array<kayak_rt::Handle<'static, Val>>>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VProc(f0, f1, f2))
 }
 
-pub fn v_prim(f0: Str, f1: i64) -> &'static Val {
+pub fn v_prim(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VPrim(f0, f1))
 }
 
-pub fn v_ctor(f0: Str, f1: i64) -> &'static Val {
+pub fn v_ctor(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VCtor(f0, f1))
 }
 
-pub fn v_cont(f0: List<&'static Frame>, f1: Ref<bool>, f2: bool) -> &'static Val {
+pub fn v_cont(f0: List<kayak_rt::Handle<'static, Frame>>, f1: Ref<bool>, f2: bool) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VCont(f0, f1, f2))
 }
 
-pub fn v_datum(f0: &'static Sexp) -> &'static Val {
+pub fn v_datum(f0: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VDatum(f0))
 }
 
-pub fn v_rep(f0: Str) -> &'static Val {
+pub fn v_rep(f0: Str) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VRep(f0))
 }
 
-pub type Vals = List<&'static Val>;
+pub type Vals = List<kayak_rt::Handle<'static, Val>>;
 
-pub type Env = List<Array<&'static Val>>;
+pub type Env = List<Array<kayak_rt::Handle<'static, Val>>>;
 
 // The IR: names resolved. A local is a frame's depth and slot; a global,
 // an index into the globals; a primitive call names its primitive. `let`
@@ -213,80 +213,80 @@ pub type Env = List<Array<&'static Val>>;
 // one, and where it is written (`file:line`), for a failure's backtrace
 // (TODO §29).
 pub enum Ir {
-    ILit(&'static Val),
+    ILit(kayak_rt::Handle<'static, Val>),
     ILocal(i64, i64),
     IGlobal(i64, Str),
-    ILambda(i64, &'static Ir, Str, Str),
-    ICall(&'static Ir, List<&'static Ir>),
-    IIf(&'static Ir, &'static Ir, &'static Ir),
-    ISeq(List<&'static Ir>),
-    ILet(List<&'static Ir>, &'static Ir),
-    ILetrec(List<&'static Ir>, &'static Ir),
-    IDefine(i64, &'static Ir),
-    ISum(Str, &'static Ir),
-    IProduct(Strings, List<&'static Ir>),
-    IField(i64, &'static Ir),
-    ITagcase(&'static Ir, List<&'static Arm>, &'static Ir),
-    IPrompt(&'static Ir, &'static Ir, &'static Ir),
+    ILambda(i64, kayak_rt::Handle<'static, Ir>, Str, Str),
+    ICall(kayak_rt::Handle<'static, Ir>, List<kayak_rt::Handle<'static, Ir>>),
+    IIf(kayak_rt::Handle<'static, Ir>, kayak_rt::Handle<'static, Ir>, kayak_rt::Handle<'static, Ir>),
+    ISeq(List<kayak_rt::Handle<'static, Ir>>),
+    ILet(List<kayak_rt::Handle<'static, Ir>>, kayak_rt::Handle<'static, Ir>),
+    ILetrec(List<kayak_rt::Handle<'static, Ir>>, kayak_rt::Handle<'static, Ir>),
+    IDefine(i64, kayak_rt::Handle<'static, Ir>),
+    ISum(Str, kayak_rt::Handle<'static, Ir>),
+    IProduct(Strings, List<kayak_rt::Handle<'static, Ir>>),
+    IField(i64, kayak_rt::Handle<'static, Ir>),
+    ITagcase(kayak_rt::Handle<'static, Ir>, List<kayak_rt::Handle<'static, Arm>>, kayak_rt::Handle<'static, Ir>),
+    IPrompt(kayak_rt::Handle<'static, Ir>, kayak_rt::Handle<'static, Ir>, kayak_rt::Handle<'static, Ir>),
 }
 
-pub fn i_lit(f0: &'static Val) -> &'static Ir {
+pub fn i_lit(f0: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ILit(f0))
 }
 
-pub fn i_local(f0: i64, f1: i64) -> &'static Ir {
+pub fn i_local(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ILocal(f0, f1))
 }
 
-pub fn i_global(f0: i64, f1: Str) -> &'static Ir {
+pub fn i_global(f0: i64, f1: Str) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::IGlobal(f0, f1))
 }
 
-pub fn i_lambda(f0: i64, f1: &'static Ir, f2: Str, f3: Str) -> &'static Ir {
+pub fn i_lambda(f0: i64, f1: kayak_rt::Handle<'static, Ir>, f2: Str, f3: Str) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ILambda(f0, f1, f2, f3))
 }
 
-pub fn i_call(f0: &'static Ir, f1: List<&'static Ir>) -> &'static Ir {
+pub fn i_call(f0: kayak_rt::Handle<'static, Ir>, f1: List<kayak_rt::Handle<'static, Ir>>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ICall(f0, f1))
 }
 
-pub fn i_if(f0: &'static Ir, f1: &'static Ir, f2: &'static Ir) -> &'static Ir {
+pub fn i_if(f0: kayak_rt::Handle<'static, Ir>, f1: kayak_rt::Handle<'static, Ir>, f2: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::IIf(f0, f1, f2))
 }
 
-pub fn i_seq(f0: List<&'static Ir>) -> &'static Ir {
+pub fn i_seq(f0: List<kayak_rt::Handle<'static, Ir>>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ISeq(f0))
 }
 
-pub fn i_let(f0: List<&'static Ir>, f1: &'static Ir) -> &'static Ir {
+pub fn i_let(f0: List<kayak_rt::Handle<'static, Ir>>, f1: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ILet(f0, f1))
 }
 
-pub fn i_letrec(f0: List<&'static Ir>, f1: &'static Ir) -> &'static Ir {
+pub fn i_letrec(f0: List<kayak_rt::Handle<'static, Ir>>, f1: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ILetrec(f0, f1))
 }
 
-pub fn i_define(f0: i64, f1: &'static Ir) -> &'static Ir {
+pub fn i_define(f0: i64, f1: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::IDefine(f0, f1))
 }
 
-pub fn i_sum(f0: Str, f1: &'static Ir) -> &'static Ir {
+pub fn i_sum(f0: Str, f1: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ISum(f0, f1))
 }
 
-pub fn i_product(f0: Strings, f1: List<&'static Ir>) -> &'static Ir {
+pub fn i_product(f0: Strings, f1: List<kayak_rt::Handle<'static, Ir>>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::IProduct(f0, f1))
 }
 
-pub fn i_field(f0: i64, f1: &'static Ir) -> &'static Ir {
+pub fn i_field(f0: i64, f1: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::IField(f0, f1))
 }
 
-pub fn i_tagcase(f0: &'static Ir, f1: List<&'static Arm>, f2: &'static Ir) -> &'static Ir {
+pub fn i_tagcase(f0: kayak_rt::Handle<'static, Ir>, f1: List<kayak_rt::Handle<'static, Arm>>, f2: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ITagcase(f0, f1, f2))
 }
 
-pub fn i_prompt(f0: &'static Ir, f1: &'static Ir, f2: &'static Ir) -> &'static Ir {
+pub fn i_prompt(f0: kayak_rt::Handle<'static, Ir>, f1: kayak_rt::Handle<'static, Ir>, f2: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::IPrompt(f0, f1, f2))
 }
 
@@ -294,98 +294,98 @@ pub fn i_prompt(f0: &'static Ir, f1: &'static Ir, f2: &'static Ir) -> &'static I
 // or a sum's product's, taken apart), or -1 if it binds the value whole;
 // and its body. The default arm binds the value.
 pub enum Arm {
-    Arm(Str, i64, &'static Ir),
+    Arm(Str, i64, kayak_rt::Handle<'static, Ir>),
 }
 
-pub fn arm(f0: Str, f1: i64, f2: &'static Ir) -> &'static Arm {
+pub fn arm(f0: Str, f1: i64, f2: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Arm> {
     kayak_rt::heap_alloc(Arm::Arm(f0, f1, f2))
 }
 
-pub type Irs = List<&'static Ir>;
+pub type Irs = List<kayak_rt::Handle<'static, Ir>>;
 
 // What is done with values once all are found, left to right.
 pub enum Todo {
     TCall(),
-    TLet(&'static Ir),
+    TLet(kayak_rt::Handle<'static, Ir>),
     TProduct(Strings),
 }
 
-pub fn t_call() -> &'static Todo {
+pub fn t_call() -> kayak_rt::Handle<'static, Todo> {
     kayak_rt::heap_alloc(Todo::TCall())
 }
 
-pub fn t_let(f0: &'static Ir) -> &'static Todo {
+pub fn t_let(f0: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Todo> {
     kayak_rt::heap_alloc(Todo::TLet(f0))
 }
 
-pub fn t_product(f0: Strings) -> &'static Todo {
+pub fn t_product(f0: Strings) -> kayak_rt::Handle<'static, Todo> {
     kayak_rt::heap_alloc(Todo::TProduct(f0))
 }
 
 // A frame of the continuation: what is left of an expression once its
 // part being evaluated has a value.
 pub enum Frame {
-    KIf(&'static Ir, &'static Ir, Env),
+    KIf(kayak_rt::Handle<'static, Ir>, kayak_rt::Handle<'static, Ir>, Env),
     KSeq(Irs, Env),
-    KList(Vals, Irs, Env, &'static Todo),
-    KLetrec(Array<&'static Val>, i64, Irs, &'static Ir, Env),
+    KList(Vals, Irs, Env, kayak_rt::Handle<'static, Todo>),
+    KLetrec(Array<kayak_rt::Handle<'static, Val>>, i64, Irs, kayak_rt::Handle<'static, Ir>, Env),
     KDefine(i64),
     KSumTag(Str),
     KExtract(Str),
-    KTagcase(List<&'static Arm>, &'static Ir, Env),
-    KPromptTag(&'static Ir, &'static Ir, Env),
-    KPromptHandler(&'static Val, &'static Ir, Env),
-    KPrompt(i64, &'static Val),
+    KTagcase(List<kayak_rt::Handle<'static, Arm>>, kayak_rt::Handle<'static, Ir>, Env),
+    KPromptTag(kayak_rt::Handle<'static, Ir>, kayak_rt::Handle<'static, Ir>, Env),
+    KPromptHandler(kayak_rt::Handle<'static, Val>, kayak_rt::Handle<'static, Ir>, Env),
+    KPrompt(i64, kayak_rt::Handle<'static, Val>),
     KAbort(i64),
 }
 
-pub fn k_if(f0: &'static Ir, f1: &'static Ir, f2: Env) -> &'static Frame {
+pub fn k_if(f0: kayak_rt::Handle<'static, Ir>, f1: kayak_rt::Handle<'static, Ir>, f2: Env) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KIf(f0, f1, f2))
 }
 
-pub fn k_seq(f0: Irs, f1: Env) -> &'static Frame {
+pub fn k_seq(f0: Irs, f1: Env) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KSeq(f0, f1))
 }
 
-pub fn k_list(f0: Vals, f1: Irs, f2: Env, f3: &'static Todo) -> &'static Frame {
+pub fn k_list(f0: Vals, f1: Irs, f2: Env, f3: kayak_rt::Handle<'static, Todo>) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KList(f0, f1, f2, f3))
 }
 
-pub fn k_letrec(f0: Array<&'static Val>, f1: i64, f2: Irs, f3: &'static Ir, f4: Env) -> &'static Frame {
+pub fn k_letrec(f0: Array<kayak_rt::Handle<'static, Val>>, f1: i64, f2: Irs, f3: kayak_rt::Handle<'static, Ir>, f4: Env) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KLetrec(f0, f1, f2, f3, f4))
 }
 
-pub fn k_define(f0: i64) -> &'static Frame {
+pub fn k_define(f0: i64) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KDefine(f0))
 }
 
-pub fn k_sum_tag(f0: Str) -> &'static Frame {
+pub fn k_sum_tag(f0: Str) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KSumTag(f0))
 }
 
-pub fn k_extract(f0: Str) -> &'static Frame {
+pub fn k_extract(f0: Str) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KExtract(f0))
 }
 
-pub fn k_tagcase(f0: List<&'static Arm>, f1: &'static Ir, f2: Env) -> &'static Frame {
+pub fn k_tagcase(f0: List<kayak_rt::Handle<'static, Arm>>, f1: kayak_rt::Handle<'static, Ir>, f2: Env) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KTagcase(f0, f1, f2))
 }
 
-pub fn k_prompt_tag(f0: &'static Ir, f1: &'static Ir, f2: Env) -> &'static Frame {
+pub fn k_prompt_tag(f0: kayak_rt::Handle<'static, Ir>, f1: kayak_rt::Handle<'static, Ir>, f2: Env) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KPromptTag(f0, f1, f2))
 }
 
-pub fn k_prompt_handler(f0: &'static Val, f1: &'static Ir, f2: Env) -> &'static Frame {
+pub fn k_prompt_handler(f0: kayak_rt::Handle<'static, Val>, f1: kayak_rt::Handle<'static, Ir>, f2: Env) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KPromptHandler(f0, f1, f2))
 }
 
-pub fn k_prompt(f0: i64, f1: &'static Val) -> &'static Frame {
+pub fn k_prompt(f0: i64, f1: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KPrompt(f0, f1))
 }
 
-pub fn k_abort(f0: i64) -> &'static Frame {
+pub fn k_abort(f0: i64) -> kayak_rt::Handle<'static, Frame> {
     kayak_rt::heap_alloc(Frame::KAbort(f0))
 }
 
-pub type Frames = List<&'static Frame>;
+pub type Frames = List<kayak_rt::Handle<'static, Frame>>;
 

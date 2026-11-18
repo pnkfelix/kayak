@@ -1869,6 +1869,16 @@ over its 1664 definitions, 335 of them refused:
   kayak-rt, conservative and not moving (every value a `&'static`, no
   stack maps), 4 to 6 steps, its errors use-after-free a stress mode
   finds; for every KFX program built to Rust, not toward K8's heap.
+- **Handles for kayak-rt's heap, toward a collector** (C478; the user's
+  intermediate step, after C477's weighing): every datatype's value, list
+  pair and ref of KFX's Rust is a `kayak_rt::Handle<'r, T>` (7929 of kc's
+  type mentions), made only by the heap's and regions' allocations. Left
+  as references: closures (`&'static dyn Fn`, 345 in kc), bloblets, flat
+  arrays (`Array` a newtype already, its field public), kayak-rt's own
+  objects (`leak`: continuations, mailboxes, tables). Then: a `Trace` the
+  emitter writes for each datatype (its handles, precisely); then a
+  collector, the Rust stack conservative and the heap precise
+  (Bartlett's mostly-copying), its stress mode at every allocation.
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
   edit's build at 1000 procedures 154 MB, kept for the run (kayak-rt has
   no collector), half its time the kernel's page faults. Left, largest

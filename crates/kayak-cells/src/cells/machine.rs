@@ -2307,17 +2307,17 @@ pub enum Ran {
     RanFailed(Str),
 }
 
-pub fn ran_answer(f0: i64) -> &'static Ran {
+pub fn ran_answer(f0: i64) -> kayak_rt::Handle<'static, Ran> {
     kayak_rt::heap_alloc(Ran::RanAnswer(f0))
 }
 
-pub fn ran_failed(f0: Str) -> &'static Ran {
+pub fn ran_failed(f0: Str) -> kayak_rt::Handle<'static, Ran> {
     kayak_rt::heap_alloc(Ran::RanFailed(f0))
 }
 
 /// Word `w` run with an empty stack, at most `steps` instructions (Fixpt's
 /// `run_word`): what it leaves on top, or why it failed.
-pub fn run_word_x(w: i64, steps: i64) -> &'static Ran {
+pub fn run_word_x(w: i64, steps: i64) -> kayak_rt::Handle<'static, Ran> {
     set(dsp(), 0i64);
     set(rsp(), 0i64);
     set(cur(), v_false());

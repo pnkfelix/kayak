@@ -105,16 +105,16 @@ pub mod geometry {
         Rect(i64, i64),
     }
 
-    pub fn circle(f0: i64) -> &'static Shape {
+    pub fn circle(f0: i64) -> kayak_rt::Handle<'static, Shape> {
         kayak_rt::heap_alloc(Shape::Circle(f0))
     }
 
-    pub fn rect(f0: i64, f1: i64) -> &'static Shape {
+    pub fn rect(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Shape> {
         kayak_rt::heap_alloc(Shape::Rect(f0, f1))
     }
 
     #[inline]
-    pub fn area(s: &'static Shape) -> i64 {
+    pub fn area(s: kayak_rt::Handle<'static, Shape>) -> i64 {
         let tagcase_ = s;
         match *tagcase_ {
             Shape::Circle(r) => {
@@ -191,10 +191,10 @@ pub mod both {
     }
 }
 
-pub type Shape = &'static geometry::Shape;
+pub type Shape = kayak_rt::Handle<'static, geometry::Shape>;
 
 #[inline]
-pub fn rect() -> &'static (dyn Fn(i64, i64) -> &'static geometry::Shape + Send + Sync) {
+pub fn rect() -> &'static (dyn Fn(i64, i64) -> kayak_rt::Handle<'static, geometry::Shape> + Send + Sync) {
     &geometry::rect
 }
 

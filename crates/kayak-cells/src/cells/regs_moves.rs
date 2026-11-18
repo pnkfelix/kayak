@@ -17,30 +17,30 @@ pub enum Rconst {
     RcBool(bool),
     RcChar(char),
     RcNil(),
-    RcData(&'static Lit),
+    RcData(kayak_rt::Handle<'static, Lit>),
 }
 
-pub fn rc_int(f0: Int) -> &'static Rconst {
+pub fn rc_int(f0: Int) -> kayak_rt::Handle<'static, Rconst> {
     kayak_rt::heap_alloc(Rconst::RcInt(f0))
 }
 
-pub fn rc_bool(f0: bool) -> &'static Rconst {
+pub fn rc_bool(f0: bool) -> kayak_rt::Handle<'static, Rconst> {
     kayak_rt::heap_alloc(Rconst::RcBool(f0))
 }
 
-pub fn rc_char(f0: char) -> &'static Rconst {
+pub fn rc_char(f0: char) -> kayak_rt::Handle<'static, Rconst> {
     kayak_rt::heap_alloc(Rconst::RcChar(f0))
 }
 
-pub fn rc_nil() -> &'static Rconst {
+pub fn rc_nil() -> kayak_rt::Handle<'static, Rconst> {
     kayak_rt::heap_alloc(Rconst::RcNil())
 }
 
-pub fn rc_data(f0: &'static Lit) -> &'static Rconst {
+pub fn rc_data(f0: kayak_rt::Handle<'static, Lit>) -> kayak_rt::Handle<'static, Rconst> {
     kayak_rt::heap_alloc(Rconst::RcData(f0))
 }
 
-pub fn rconst_lit(c: &'static Rconst) -> &'static Lit {
+pub fn rconst_lit(c: kayak_rt::Handle<'static, Rconst>) -> kayak_rt::Handle<'static, Lit> {
     let tagcase_ = c;
     match *tagcase_ {
         Rconst::RcInt(n) => {
@@ -72,53 +72,53 @@ pub enum Rloc {
     RlGlobal(Str),
     RlLoop(),
     RlPending(i64),
-    RlConst(&'static Rconst),
-    RlTest(Str, List<&'static Rloc>, bool),
+    RlConst(kayak_rt::Handle<'static, Rconst>),
+    RlTest(Str, List<kayak_rt::Handle<'static, Rloc>>, bool),
     RlSeen(i64),
-    RlJoin(List<&'static Rloc>, i64),
+    RlJoin(List<kayak_rt::Handle<'static, Rloc>>, i64),
 }
 
-pub fn rl_reg(f0: i64) -> &'static Rloc {
+pub fn rl_reg(f0: i64) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlReg(f0))
 }
 
-pub fn rl_slot(f0: i64) -> &'static Rloc {
+pub fn rl_slot(f0: i64) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlSlot(f0))
 }
 
-pub fn rl_free(f0: i64) -> &'static Rloc {
+pub fn rl_free(f0: i64) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlFree(f0))
 }
 
-pub fn rl_global(f0: Str) -> &'static Rloc {
+pub fn rl_global(f0: Str) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlGlobal(f0))
 }
 
-pub fn rl_loop() -> &'static Rloc {
+pub fn rl_loop() -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlLoop())
 }
 
-pub fn rl_pending(f0: i64) -> &'static Rloc {
+pub fn rl_pending(f0: i64) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlPending(f0))
 }
 
-pub fn rl_const(f0: &'static Rconst) -> &'static Rloc {
+pub fn rl_const(f0: kayak_rt::Handle<'static, Rconst>) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlConst(f0))
 }
 
-pub fn rl_test(f0: Str, f1: List<&'static Rloc>, f2: bool) -> &'static Rloc {
+pub fn rl_test(f0: Str, f1: List<kayak_rt::Handle<'static, Rloc>>, f2: bool) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlTest(f0, f1, f2))
 }
 
-pub fn rl_seen(f0: i64) -> &'static Rloc {
+pub fn rl_seen(f0: i64) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlSeen(f0))
 }
 
-pub fn rl_join(f0: List<&'static Rloc>, f1: i64) -> &'static Rloc {
+pub fn rl_join(f0: List<kayak_rt::Handle<'static, Rloc>>, f1: i64) -> kayak_rt::Handle<'static, Rloc> {
     kayak_rt::heap_alloc(Rloc::RlJoin(f0, f1))
 }
 
-pub type Rlocs = List<&'static Rloc>;
+pub type Rlocs = List<kayak_rt::Handle<'static, Rloc>>;
 
 // What a body sees, said in its environment by names no program has
 // (C252): `%genv`, the globals it sees, as many as were defined (an
@@ -141,17 +141,17 @@ pub fn inlining_name(g: Str) -> Str {
 }
 
 pub enum Rbind {
-    Rbind(Str, &'static Rloc),
+    Rbind(Str, kayak_rt::Handle<'static, Rloc>),
 }
 
-pub fn rbind(f0: Str, f1: &'static Rloc) -> &'static Rbind {
+pub fn rbind(f0: Str, f1: kayak_rt::Handle<'static, Rloc>) -> kayak_rt::Handle<'static, Rbind> {
     kayak_rt::heap_alloc(Rbind::Rbind(f0, f1))
 }
 
-pub type Renv = List<&'static Rbind>;
+pub type Renv = List<kayak_rt::Handle<'static, Rbind>>;
 
 #[inline]
-pub fn r_bind(n: Str, l: &'static Rloc, env: Renv) -> Renv {
+pub fn r_bind(n: Str, l: kayak_rt::Handle<'static, Rloc>, env: Renv) -> Renv {
     kayak_rt::heap_cons(rbind(n, l), env)
 }
 
@@ -159,7 +159,7 @@ pub fn r_bind(n: Str, l: &'static Rloc, env: Renv) -> Renv {
 pub fn r_local_loc(mut env: Renv, mut n: Str) -> Rlocs {
     loop {
         if null_p(env) {
-            return nil::<&'static Rloc>();
+            return nil::<kayak_rt::Handle<'static, Rloc>>();
         } else if {
             let tagcase_ = car(env);
             match *tagcase_ {
@@ -205,14 +205,14 @@ pub enum Rmove {
     Rmove(i64, i64),
 }
 
-pub fn rmove(f0: i64, f1: i64) -> &'static Rmove {
+pub fn rmove(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Rmove> {
     kayak_rt::heap_alloc(Rmove::Rmove(f0, f1))
 }
 
-pub type Rmoves = List<&'static Rmove>;
+pub type Rmoves = List<kayak_rt::Handle<'static, Rmove>>;
 
 #[inline]
-pub fn move_from(m: &'static Rmove) -> i64 {
+pub fn move_from(m: kayak_rt::Handle<'static, Rmove>) -> i64 {
     let tagcase_ = m;
     match *tagcase_ {
         Rmove::Rmove(s, d) => {
@@ -222,7 +222,7 @@ pub fn move_from(m: &'static Rmove) -> i64 {
 }
 
 #[inline]
-pub fn move_to(m: &'static Rmove) -> i64 {
+pub fn move_to(m: kayak_rt::Handle<'static, Rmove>) -> i64 {
     let tagcase_ = m;
     match *tagcase_ {
         Rmove::Rmove(s, d) => {
@@ -231,7 +231,7 @@ pub fn move_to(m: &'static Rmove) -> i64 {
     }
 }
 
-pub fn move_item(m: &'static Rmove) -> &'static Ritem {
+pub fn move_item(m: kayak_rt::Handle<'static, Rmove>) -> kayak_rt::Handle<'static, Ritem> {
     let tagcase_ = m;
     match *tagcase_ {
         Rmove::Rmove(s, d) => {
@@ -273,7 +273,7 @@ pub fn free_move(mut all: Rmoves, mut ms: Rmoves, mut k: i64) -> i64 {
     }
 }
 
-pub fn nth_move(mut ms: Rmoves, mut k: i64) -> &'static Rmove {
+pub fn nth_move(mut ms: Rmoves, mut k: i64) -> kayak_rt::Handle<'static, Rmove> {
     loop {
         if i64_eq(k, 0i64) {
             return car(ms);
@@ -286,7 +286,7 @@ pub fn nth_move(mut ms: Rmoves, mut k: i64) -> &'static Rmove {
 
 pub fn drop_move(ms: Rmoves, k: i64, i: i64) -> Rmoves {
     if null_p(ms) {
-        nil::<&'static Rmove>()
+        nil::<kayak_rt::Handle<'static, Rmove>>()
     } else if i64_eq(i, k) {
         cdr(ms)
     } else {
@@ -297,7 +297,7 @@ pub fn drop_move(ms: Rmoves, k: i64, i: i64) -> Rmoves {
 /// `ms`, those reading register `d` reading RESULT instead.
 pub fn reread(ms: Rmoves, d: i64) -> Rmoves {
     if null_p(ms) {
-        nil::<&'static Rmove>()
+        nil::<kayak_rt::Handle<'static, Rmove>>()
     } else {
         kayak_rt::heap_cons(if i64_eq(move_from(car(ms)), d) {
             rmove(0i64, move_to(car(ms)))

@@ -7,14 +7,14 @@ use kayak_rt::*;
 
 pub enum Tree {
     Leaf(),
-    Node(&'static Tree, i64, &'static Tree),
+    Node(kayak_rt::Handle<'static, Tree>, i64, kayak_rt::Handle<'static, Tree>),
 }
 
-pub fn leaf() -> &'static Tree {
+pub fn leaf() -> kayak_rt::Handle<'static, Tree> {
     kayak_rt::heap_alloc(Tree::Leaf())
 }
 
-pub fn node(f0: &'static Tree, f1: i64, f2: &'static Tree) -> &'static Tree {
+pub fn node(f0: kayak_rt::Handle<'static, Tree>, f1: i64, f2: kayak_rt::Handle<'static, Tree>) -> kayak_rt::Handle<'static, Tree> {
     kayak_rt::heap_alloc(Tree::Node(f0, f1, f2))
 }
 
@@ -24,19 +24,19 @@ pub enum Shape {
     Dot(),
 }
 
-pub fn circle(f0: i64) -> &'static Shape {
+pub fn circle(f0: i64) -> kayak_rt::Handle<'static, Shape> {
     kayak_rt::heap_alloc(Shape::Circle(f0))
 }
 
-pub fn rect(f0: i64, f1: i64) -> &'static Shape {
+pub fn rect(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Shape> {
     kayak_rt::heap_alloc(Shape::Rect(f0, f1))
 }
 
-pub fn dot() -> &'static Shape {
+pub fn dot() -> kayak_rt::Handle<'static, Shape> {
     kayak_rt::heap_alloc(Shape::Dot())
 }
 
-pub fn insert(k: i64, t: &'static Tree) -> &'static Tree {
+pub fn insert(k: i64, t: kayak_rt::Handle<'static, Tree>) -> kayak_rt::Handle<'static, Tree> {
     let tagcase_ = t;
     match *tagcase_ {
         Tree::Leaf() => {
@@ -54,7 +54,7 @@ pub fn insert(k: i64, t: &'static Tree) -> &'static Tree {
     }
 }
 
-pub fn in_order(mut t: &'static Tree, mut rest: Str) -> Str {
+pub fn in_order(mut t: kayak_rt::Handle<'static, Tree>, mut rest: Str) -> Str {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
@@ -69,7 +69,7 @@ pub fn in_order(mut t: &'static Tree, mut rest: Str) -> Str {
     }
 }
 
-pub fn area(s: &'static Shape) -> i64 {
+pub fn area(s: kayak_rt::Handle<'static, Shape>) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
         Shape::Circle(r) => {

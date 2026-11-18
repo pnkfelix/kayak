@@ -48,7 +48,7 @@ pub fn make_escape_tag<A, H>() -> Tag<A, H> {
 pub fn unwind<A, H: 'static>(tag: Tag<A, H>, payload: H) -> Unwind {
     Unwind {
         tag: tag.id,
-        payload: crate::alloc(payload),
+        payload: crate::leak(payload),
     }
 }
 

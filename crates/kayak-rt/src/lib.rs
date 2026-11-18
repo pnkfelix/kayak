@@ -18,6 +18,7 @@ mod eqtable;
 mod escape;
 mod fixed;
 mod float;
+mod handle;
 mod heap;
 mod int;
 pub mod marks;
@@ -41,6 +42,7 @@ pub use eqtable::*;
 pub use escape::*;
 pub use fixed::*;
 pub use float::*;
+pub use handle::Handle;
 pub use heap::*;
 pub use int::*;
 /// For a runtime's binary whose heap native code allocates in (C227).
@@ -93,7 +95,7 @@ impl std::fmt::Debug for Str {
 /// `(ref T R)`: a cell, which any alias may read and write, as FX-26's may;
 /// in a `letrena`'s region, `RefAt<'r, T>`, borrowed from its arena, and
 /// in the heap, which is never freed, `Ref<T>`.
-pub type RefAt<'r, T> = &'r Cell<T>;
+pub type RefAt<'r, T> = Handle<'r, Cell<T>>;
 pub type Ref<T> = RefAt<'static, T>;
 
 /// `(flatarrayof T R)`: a flat array, raw elements in a row, each a cell.
@@ -109,15 +111,24 @@ pub struct Cons<'r, T> {
 
 /// `(listof T R)`: `nil`, or a pair whose tail is the list again; in a
 /// `letrena`'s region, `ListAt<'r, T>`, and in the heap, `List<T>`.
-pub type ListAt<'r, T> = Option<&'r Cons<'r, T>>;
+pub type ListAt<'r, T> = Option<Handle<'r, Cons<'r, T>>>;
 pub type List<T> = ListAt<'static, T>;
 
 /// Allocation: the heap is never freed, so what it holds lives as long as
 /// anything wants, `'static` or a region's `'r`.
 #[inline]
-pub fn alloc<'a, T: 'a>(v: T) -> &'a T {
+pub fn leak<'a, T: 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());
     Box::leak(Box::new(v))
+}
+
+/// A KFX value allocated, as a handle (C478): a datatype's, a pair, a
+/// cell; what is kayak-rt's own (a continuation, a mailbox, a closure, so
+/// far) by `leak`, a reference.
+#[inline]
+pub fn alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
+    stats::note::<T>(std::mem::size_of::<T>());
+    Handle::made(Box::leak(Box::new(v)))
 }
 
 /// The bytes the next strings are copied into: a string's text is never
@@ -272,27 +283,27 @@ fn quiet_hook() {
 
 #[inline]
 pub fn lambda0<'a, R>(f: impl Fn() -> R + 'a) -> &'a dyn Fn() -> R {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda1<'a, A, R>(f: impl Fn(A) -> R + 'a) -> &'a dyn Fn(A) -> R {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda2<'a, A, B, R>(f: impl Fn(A, B) -> R + 'a) -> &'a dyn Fn(A, B) -> R {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda3<'a, A, B, C, R>(f: impl Fn(A, B, C) -> R + 'a) -> &'a dyn Fn(A, B, C) -> R {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda4<'a, A, B, C, D, R>(f: impl Fn(A, B, C, D) -> R + 'a) -> &'a dyn Fn(A, B, C, D) -> R {
-    alloc(f)
+    leak(f)
 }
 
 /// A procedure of an effect a process may have (C102): its closure
@@ -300,35 +311,35 @@ pub fn lambda4<'a, A, B, C, D, R>(f: impl Fn(A, B, C, D) -> R + 'a) -> &'a dyn F
 /// held on another thread.
 #[inline]
 pub fn lambda0s<'a, R>(f: impl Fn() -> R + Send + Sync + 'a) -> &'a (dyn Fn() -> R + Send + Sync) {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda1s<'a, A, R>(
     f: impl Fn(A) -> R + Send + Sync + 'a,
 ) -> &'a (dyn Fn(A) -> R + Send + Sync) {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda2s<'a, A, B, R>(
     f: impl Fn(A, B) -> R + Send + Sync + 'a,
 ) -> &'a (dyn Fn(A, B) -> R + Send + Sync) {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda3s<'a, A, B, C, R>(
     f: impl Fn(A, B, C) -> R + Send + Sync + 'a,
 ) -> &'a (dyn Fn(A, B, C) -> R + Send + Sync) {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda4s<'a, A, B, C, D, R>(
     f: impl Fn(A, B, C, D) -> R + Send + Sync + 'a,
 ) -> &'a (dyn Fn(A, B, C, D) -> R + Send + Sync) {
-    alloc(f)
+    leak(f)
 }
 
 /// Of five, as a primitive of five lifted to a value is in the emitter's
@@ -337,14 +348,14 @@ pub fn lambda4s<'a, A, B, C, D, R>(
 pub fn lambda5<'a, A, B, C, D, E, R>(
     f: impl Fn(A, B, C, D, E) -> R + 'a,
 ) -> &'a dyn Fn(A, B, C, D, E) -> R {
-    alloc(f)
+    leak(f)
 }
 
 #[inline]
 pub fn lambda5s<'a, A, B, C, D, E, R>(
     f: impl Fn(A, B, C, D, E) -> R + Send + Sync + 'a,
 ) -> &'a (dyn Fn(A, B, C, D, E) -> R + Send + Sync) {
-    alloc(f)
+    leak(f)
 }
 
 /// A `letrec`'s knot: a procedure's place, empty until the procedure is
@@ -371,7 +382,7 @@ impl<T: Copy> Knot<T> {
 
 #[inline]
 pub fn knot<'a, T: Copy + 'a>() -> &'a Knot<T> {
-    alloc(Knot(std::sync::OnceLock::new()))
+    leak(Knot(std::sync::OnceLock::new()))
 }
 
 // Lists.

@@ -185,20 +185,20 @@ pub enum Iline {
     Iline(i64, Chars),
 }
 
-pub fn iline(f0: i64, f1: Chars) -> &'static Iline {
+pub fn iline(f0: i64, f1: Chars) -> kayak_rt::Handle<'static, Iline> {
     kayak_rt::heap_alloc(Iline::Iline(f0, f1))
 }
 
 pub enum Block {
-    Block(Str, i64, i64, List<&'static Iline>),
+    Block(Str, i64, i64, List<kayak_rt::Handle<'static, Iline>>),
 }
 
-pub fn block(f0: Str, f1: i64, f2: i64, f3: List<&'static Iline>) -> &'static Block {
+pub fn block(f0: Str, f1: i64, f2: i64, f3: List<kayak_rt::Handle<'static, Iline>>) -> kayak_rt::Handle<'static, Block> {
     kayak_rt::heap_alloc(Block::Block(f0, f1, f2, f3))
 }
 
 /// `word NAME (N cells, cellular):` or `(N cells, the routine R):`.
-pub fn header_block(cs: Chars) -> &'static Block {
+pub fn header_block(cs: Chars) -> kayak_rt::Handle<'static, Block> {
     let rest = chars_dropped(cs, 5i64);
     let name = list_to_string(chars_before_char(rest, ' '));
     let inside = after_char(rest, open_paren());
@@ -211,16 +211,16 @@ pub fn header_block(cs: Chars) -> &'static Block {
         match listing_error(string_append(str_lit("a word of no kind tier 1 runs: "), list_to_string(cs))) {};
         0i64
     });
-    block(name, n, entry, nil::<&'static Iline>())
+    block(name, n, entry, nil::<kayak_rt::Handle<'static, Iline>>())
 }
 
 /// The blocks of a listing's lines, newest last. `mode`: 0 in a word's
 /// cells, 1 in its register code (each instruction kept at `-2 - AT`),
 /// 2 in what else is listed of it, passed over.
-pub fn blocks(mut ls: List<Chars>, mut out: List<&'static Block>, mut mode: i64) -> List<&'static Block> {
+pub fn blocks(mut ls: List<Chars>, mut out: List<kayak_rt::Handle<'static, Block>>, mut mode: i64) -> List<kayak_rt::Handle<'static, Block>> {
     loop {
         if null_p(ls) {
-            return the::<List<&'static Block>>(reverse(out));
+            return the::<List<kayak_rt::Handle<'static, Block>>>(reverse(out));
         } else {
             let l = car(ls);
             if starts_p(l, string_chars(str_lit("word "))) {
@@ -228,7 +228,7 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<&'static Block>, mut mode: i64)
                 continue;
             } else if starts_p(l, string_chars(str_lit("; the compilers disagree"))) {
                 match listing_error(str_lit("the compilers disagree")) {};
-                return nil::<&'static Block>();
+                return nil::<kayak_rt::Handle<'static, Block>>();
             } else if (null_p(l) || char_eq_p(car(l), ';')) {
                 (ls, mode) = (cdr(ls), 0i64);
                 continue;
@@ -247,7 +247,7 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<&'static Block>, mut mode: i64)
                 let text = spaces_dropped(after_char(t, colon()));
                 if contains_p(text, string_chars(str_lit("…"))) {
                     match listing_error(str_lit("a literal cut short")) {};
-                    return nil::<&'static Block>();
+                    return nil::<kayak_rt::Handle<'static, Block>>();
                 } else {
                     (ls, out) = (cdr(ls), {
                         let tagcase_ = car(out);
@@ -275,24 +275,24 @@ pub enum Ltext {
     Ltext(Str, Str),
 }
 
-pub fn ltext(f0: Str, f1: Str) -> &'static Ltext {
+pub fn ltext(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Ltext> {
     kayak_rt::heap_alloc(Ltext::Ltext(f0, f1))
 }
 
 #[inline]
-pub fn line_tables() -> Ref<List<&'static Ltext>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ltext>>);
+pub fn line_tables() -> Ref<List<kayak_rt::Handle<'static, Ltext>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Ltext>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Ltext>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Ltext>>())
     })
 }
 
 // Its register code's, `; regs at FILE INSTRUCTION:POS …` (C249).
 #[inline]
-pub fn reg_line_tables() -> Ref<List<&'static Ltext>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Ltext>>);
+pub fn reg_line_tables() -> Ref<List<kayak_rt::Handle<'static, Ltext>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Ltext>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Ltext>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Ltext>>())
     })
 }
 
@@ -323,11 +323,11 @@ pub enum Cpos {
     Cpos(i64, i64),
 }
 
-pub fn cpos(f0: i64, f1: i64) -> &'static Cpos {
+pub fn cpos(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Cpos> {
     kayak_rt::heap_alloc(Cpos::Cpos(f0, f1))
 }
 
-pub fn cposes(cs: Chars, out: List<&'static Cpos>) -> List<&'static Cpos> {
+pub fn cposes(cs: Chars, out: List<kayak_rt::Handle<'static, Cpos>>) -> List<kayak_rt::Handle<'static, Cpos>> {
     let cs = spaces_dropped(cs);
     if null_p(cs) {
         reverse(out)
@@ -339,7 +339,7 @@ pub fn cposes(cs: Chars, out: List<&'static Cpos>) -> List<&'static Cpos> {
 
 /// The rest of word `n`'s `; at` line, "" if none: the first listed of
 /// a name listed again, the one its word is made from.
-pub fn table_named(mut ts: List<&'static Ltext>, mut n: Str, mut had: Str) -> Str {
+pub fn table_named(mut ts: List<kayak_rt::Handle<'static, Ltext>>, mut n: Str, mut had: Str) -> Str {
     loop {
         if null_p(ts) {
             return had;
@@ -361,10 +361,10 @@ pub fn table_named(mut ts: List<&'static Ltext>, mut n: Str, mut had: Str) -> St
 
 // The words, by name.
 #[inline]
-pub fn words() -> Ref<List<&'static NamedSlot>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
+pub fn words() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static NamedSlot>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
     })
 }
 
@@ -430,15 +430,15 @@ pub enum Lab {
     Lab(i64, i64),
 }
 
-pub fn lab(f0: i64, f1: i64) -> &'static Lab {
+pub fn lab(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Lab> {
     kayak_rt::heap_alloc(Lab::Lab(f0, f1))
 }
 
 #[inline]
-pub fn labels() -> Ref<List<&'static Lab>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Lab>>);
+pub fn labels() -> Ref<List<kayak_rt::Handle<'static, Lab>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Lab>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Lab>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Lab>>())
     })
 }
 
@@ -448,7 +448,7 @@ pub enum Lgot {
     Lgot(i64, Chars),
 }
 
-pub fn lgot(f0: i64, f1: Chars) -> &'static Lgot {
+pub fn lgot(f0: i64, f1: Chars) -> kayak_rt::Handle<'static, Lgot> {
     kayak_rt::heap_alloc(Lgot::Lgot(f0, f1))
 }
 
@@ -456,7 +456,7 @@ pub enum Gint {
     Gint(Int, Chars),
 }
 
-pub fn gint(f0: Int, f1: Chars) -> &'static Gint {
+pub fn gint(f0: Int, f1: Chars) -> kayak_rt::Handle<'static, Gint> {
     kayak_rt::heap_alloc(Gint::Gint(f0, f1))
 }
 
@@ -464,7 +464,7 @@ pub enum Gtext {
     Gtext(Str, Chars),
 }
 
-pub fn gtext(f0: Str, f1: Chars) -> &'static Gtext {
+pub fn gtext(f0: Str, f1: Chars) -> kayak_rt::Handle<'static, Gtext> {
     kayak_rt::heap_alloc(Gtext::Gtext(f0, f1))
 }
 
@@ -472,11 +472,11 @@ pub enum Gall {
     Gall(List<i64>, Chars),
 }
 
-pub fn gall(f0: List<i64>, f1: Chars) -> &'static Gall {
+pub fn gall(f0: List<i64>, f1: Chars) -> kayak_rt::Handle<'static, Gall> {
     kayak_rt::heap_alloc(Gall::Gall(f0, f1))
 }
 
-pub fn label_value(mut ls: List<&'static Lab>, mut n: i64) -> i64 {
+pub fn label_value(mut ls: List<kayak_rt::Handle<'static, Lab>>, mut n: i64) -> i64 {
     loop {
         if null_p(ls) {
             return 0i64;
@@ -518,7 +518,7 @@ pub fn hex_digit_value(c: char) -> i64 {
     }
 }
 
-pub fn hex_int(mut cs: Chars, mut acc: Int) -> &'static Gint {
+pub fn hex_int(mut cs: Chars, mut acc: Int) -> kayak_rt::Handle<'static, Gint> {
     loop {
         if (not(null_p(cs)) && i64_gt_eq(hex_digit_value(car(cs)), 0i64)) {
             (cs, acc) = (cdr(cs), _plus(_star(acc, int_lit(16)), i64_to_int(hex_digit_value(car(cs)))));
@@ -529,7 +529,7 @@ pub fn hex_int(mut cs: Chars, mut acc: Int) -> &'static Gint {
     }
 }
 
-pub fn decimal_int(mut cs: Chars, mut acc: Int) -> &'static Gint {
+pub fn decimal_int(mut cs: Chars, mut acc: Int) -> kayak_rt::Handle<'static, Gint> {
     loop {
         if (not(null_p(cs)) && char_numeric_p(car(cs))) {
             (cs, acc) = (cdr(cs), _plus(_star(acc, int_lit(10)), i64_to_int(i64_minus(char_to_i64(car(cs)), 48i64))));
@@ -540,7 +540,7 @@ pub fn decimal_int(mut cs: Chars, mut acc: Int) -> &'static Gint {
     }
 }
 
-pub fn signed_int(cs: Chars) -> &'static Gint {
+pub fn signed_int(cs: Chars) -> kayak_rt::Handle<'static, Gint> {
     if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
         let tagcase_ = decimal_int(cdr(cs), int_lit(0));
         match *tagcase_ {
@@ -556,7 +556,7 @@ pub fn signed_int(cs: Chars) -> &'static Gint {
 /// A string's or a symbol's characters up to `q`: one that is not
 /// printable ASCII, or is `q` or a backslash, written by its code in hex,
 /// after a backslash and an `x`, before a `;`.
-pub fn escaped_text(mut cs: Chars, mut q: char, mut acc: Chars) -> &'static Gtext {
+pub fn escaped_text(mut cs: Chars, mut q: char, mut acc: Chars) -> kayak_rt::Handle<'static, Gtext> {
     loop {
         if null_p(cs) {
             match listing_error(str_lit("a literal's text runs to the end")) {};
@@ -735,7 +735,7 @@ pub fn bytevector_literal_x(xs: List<i64>) -> i64 {
 }
 
 /// One literal, from the start of `cs`.
-pub fn lit_datum(cs: Chars) -> &'static Lgot {
+pub fn lit_datum(cs: Chars) -> kayak_rt::Handle<'static, Lgot> {
     if null_p(cs) {
         match listing_error(str_lit("a literal is missing")) {};
         lgot(0i64, nil::<char>())
@@ -910,7 +910,7 @@ pub fn lit_datum(cs: Chars) -> &'static Lgot {
 }
 
 /// A pair's `car . cdr)`, into pair `p`, made already.
-pub fn pair_rest(cs: Chars, p: i64) -> &'static Lgot {
+pub fn pair_rest(cs: Chars, p: i64) -> kayak_rt::Handle<'static, Lgot> {
     let tagcase_ = lit_datum(cs);
     match *tagcase_ {
         Lgot::Lgot(a, rest) => {
@@ -927,7 +927,7 @@ pub fn pair_rest(cs: Chars, p: i64) -> &'static Lgot {
 }
 
 /// Literals a space apart, to a `)`.
-pub fn lit_items(cs: Chars, acc: List<i64>) -> &'static Gall {
+pub fn lit_items(cs: Chars, acc: List<i64>) -> kayak_rt::Handle<'static, Gall> {
     let cs = spaces_dropped(cs);
     if null_p(cs) {
         match listing_error(str_lit("a literal's items run to the end")) {};
@@ -948,10 +948,10 @@ pub fn lit_items(cs: Chars, acc: List<i64>) -> &'static Gall {
 // its free values, so it is taken as a closure of none, one for each word,
 // and its word checked to read none (`free-read?`) once all are made.
 #[inline]
-pub fn literals() -> Ref<List<&'static NamedSlot>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
+pub fn literals() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static NamedSlot>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
     })
 }
 
@@ -989,7 +989,7 @@ pub fn free_read_p(mut w: i64, mut k: i64) -> bool {
     }
 }
 
-pub fn literals_checked_x(mut ls: List<&'static NamedSlot>) -> () {
+pub fn literals_checked_x(mut ls: List<kayak_rt::Handle<'static, NamedSlot>>) -> () {
     loop {
         if null_p(ls) {
             return ();
@@ -1034,10 +1034,10 @@ pub fn literal(cs: Chars) -> i64 {
 // Fixpt's `make_register_word` makes one: its entry -1 here (Fixpt's 0,
 // not compiled, is `docol` to tier 1), its twin the word.
 #[inline]
-pub fn register_words() -> Ref<List<&'static NamedSlot>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static NamedSlot>>);
+pub fn register_words() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static NamedSlot>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
     })
 }
 
@@ -1152,7 +1152,7 @@ pub fn cell_set_x(w: i64, at: i64, v: i64) -> () {
     slot_set_x(w, i64_plus(f_cell0(), at), v)
 }
 
-pub fn instruction_x(w: i64, rw: i64, il: &'static Iline) -> () {
+pub fn instruction_x(w: i64, rw: i64, il: kayak_rt::Handle<'static, Iline>) -> () {
     let tagcase_ = il;
     match *tagcase_ {
         Iline::Iline(at, text) => {
@@ -1245,7 +1245,7 @@ pub fn unlabelled(mut cs: Chars, mut acc: Chars) -> Chars {
     }
 }
 
-pub fn ilines_eq_p(mut a: List<&'static Iline>, mut b: List<&'static Iline>) -> bool {
+pub fn ilines_eq_p(mut a: List<kayak_rt::Handle<'static, Iline>>, mut b: List<kayak_rt::Handle<'static, Iline>>) -> bool {
     loop {
         if null_p(a) {
             return null_p(b);
@@ -1274,10 +1274,10 @@ pub fn ilines_eq_p(mut a: List<&'static Iline>, mut b: List<&'static Iline>) -> 
     }
 }
 
-pub fn block_named(mut bs: List<&'static Block>, mut n: Str) -> List<&'static Block> {
+pub fn block_named(mut bs: List<kayak_rt::Handle<'static, Block>>, mut n: Str) -> List<kayak_rt::Handle<'static, Block>> {
     loop {
         if null_p(bs) {
-            return nil::<&'static Block>();
+            return nil::<kayak_rt::Handle<'static, Block>>();
         } else if {
             let tagcase_ = car(bs);
             match *tagcase_ {
@@ -1286,7 +1286,7 @@ pub fn block_named(mut bs: List<&'static Block>, mut n: Str) -> List<&'static Bl
                 }
             }
         } {
-            return the::<List<&'static Block>>(kayak_rt::heap_cons(car(bs), kayak_rt::nil()));
+            return the::<List<kayak_rt::Handle<'static, Block>>>(kayak_rt::heap_cons(car(bs), kayak_rt::nil()));
         } else {
             bs = cdr(bs);
             continue;
@@ -1297,10 +1297,10 @@ pub fn block_named(mut bs: List<&'static Block>, mut n: Str) -> List<&'static Bl
 /// The blocks, a word listed twice, cell for cell the same, once (C122:
 /// a word reached two ways is listed each time, as words are compared
 /// by no program, its two copies are one); two that differ, refused.
-pub fn distinct_blocks(mut bs: List<&'static Block>, mut seen: List<&'static Block>) -> List<&'static Block> {
+pub fn distinct_blocks(mut bs: List<kayak_rt::Handle<'static, Block>>, mut seen: List<kayak_rt::Handle<'static, Block>>) -> List<kayak_rt::Handle<'static, Block>> {
     loop {
         if null_p(bs) {
-            return the::<List<&'static Block>>(reverse(seen));
+            return the::<List<kayak_rt::Handle<'static, Block>>>(reverse(seen));
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {
@@ -1321,7 +1321,7 @@ pub fn distinct_blocks(mut bs: List<&'static Block>, mut seen: List<&'static Blo
                         continue;
                     } else {
                         match listing_error(string_append(str_lit("two words are named "), n)) {};
-                        return nil::<&'static Block>();
+                        return nil::<kayak_rt::Handle<'static, Block>>();
                     }
                 }
             }
@@ -1330,7 +1330,7 @@ pub fn distinct_blocks(mut bs: List<&'static Block>, mut seen: List<&'static Blo
 }
 
 /// How many cells a word's register code has: past its last instruction.
-pub fn register_cells(mut is: List<&'static Iline>, mut n: i64) -> i64 {
+pub fn register_cells(mut is: List<kayak_rt::Handle<'static, Iline>>, mut n: i64) -> i64 {
     loop {
         if null_p(is) {
             return n;
@@ -1375,7 +1375,7 @@ pub fn make_register_word_x(name: Str, twin: i64, n: i64) -> i64 {
 /// Each register word its word's twin (`--regs`), where tier 1 runs it:
 /// one entered with its arguments in registers, at most `REGS` of them
 /// (Fixpt runs the others, `vargs` and more, as stack code too).
-pub fn twins_linked_x(mut rs: List<&'static NamedSlot>) -> () {
+pub fn twins_linked_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>) -> () {
     loop {
         if null_p(rs) {
             return ();
@@ -1395,7 +1395,7 @@ pub fn twins_linked_x(mut rs: List<&'static NamedSlot>) -> () {
 }
 
 /// Each block's word, made, its cells not yet written.
-pub fn words_made_x(mut bs: List<&'static Block>) -> () {
+pub fn words_made_x(mut bs: List<kayak_rt::Handle<'static, Block>>) -> () {
     loop {
         if null_p(bs) {
             return ();
@@ -1424,7 +1424,7 @@ pub fn words_made_x(mut bs: List<&'static Block>) -> () {
     }
 }
 
-pub fn cells_written_x(mut w: i64, mut rw: i64, mut is: List<&'static Iline>) -> () {
+pub fn cells_written_x(mut w: i64, mut rw: i64, mut is: List<kayak_rt::Handle<'static, Iline>>) -> () {
     loop {
         if null_p(is) {
             return ();
@@ -1438,7 +1438,7 @@ pub fn cells_written_x(mut w: i64, mut rw: i64, mut is: List<&'static Iline>) ->
 
 /// A word listed again: its literals read, for the labels they make, and
 /// dropped.
-pub fn literals_read_x(mut is: List<&'static Iline>) -> () {
+pub fn literals_read_x(mut is: List<kayak_rt::Handle<'static, Iline>>) -> () {
     loop {
         if null_p(is) {
             return ();
@@ -1467,7 +1467,7 @@ pub fn literals_read_x(mut is: List<&'static Iline>) -> () {
 /// Every block's cells, in the listing's order, so that a label is made
 /// where Fixpt writes it first: a word's first listing written into it,
 /// a later one's literals only read.
-pub fn blocks_written_x(mut bs: List<&'static Block>, mut seen: Strings) -> () {
+pub fn blocks_written_x(mut bs: List<kayak_rt::Handle<'static, Block>>, mut seen: Strings) -> () {
     loop {
         if null_p(bs) {
             return ();
@@ -1475,7 +1475,7 @@ pub fn blocks_written_x(mut bs: List<&'static Block>, mut seen: Strings) -> () {
             let tagcase_ = car(bs);
             match *tagcase_ {
                 Block::Block(n, c, e, is) => {
-                    let is = the::<List<&'static Iline>>(reverse(is));
+                    let is = the::<List<kayak_rt::Handle<'static, Iline>>>(reverse(is));
                     if string_member_p(n, seen) {
                         literals_read_x(is)
                     } else {
@@ -1493,8 +1493,8 @@ pub fn blocks_written_x(mut bs: List<&'static Block>, mut seen: Strings) -> () {
 pub fn listing_words_x(text: Str) -> i64 {
     let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
     let u = tables_read_x(ls, str_lit(""));
-    let all = blocks(ls, nil::<&'static Block>(), 0i64);
-    let bs = distinct_blocks(all, nil::<&'static Block>());
+    let all = blocks(ls, nil::<kayak_rt::Handle<'static, Block>>(), 0i64);
+    let bs = distinct_blocks(all, nil::<kayak_rt::Handle<'static, Block>>());
     words_made_x(bs);
     blocks_written_x(all, nil::<Str>());
     literals_checked_x(get(literals()));
@@ -1514,10 +1514,10 @@ pub fn listing_words_x(text: Str) -> i64 {
 
 /// The blocks of `bs` whose words the heap has none of yet; the names it
 /// has, onto `had`, in what is returned's place: see `listing-added!`.
-pub fn blocks_named_anew(mut bs: List<&'static Block>, mut out: List<&'static Block>, mut had: Strings) -> List<&'static Block> {
+pub fn blocks_named_anew(mut bs: List<kayak_rt::Handle<'static, Block>>, mut out: List<kayak_rt::Handle<'static, Block>>, mut had: Strings) -> List<kayak_rt::Handle<'static, Block>> {
     loop {
         if null_p(bs) {
-            return the::<List<&'static Block>>(reverse(out));
+            return the::<List<kayak_rt::Handle<'static, Block>>>(reverse(out));
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {
@@ -1535,7 +1535,7 @@ pub fn blocks_named_anew(mut bs: List<&'static Block>, mut out: List<&'static Bl
     }
 }
 
-pub fn names_had(mut bs: List<&'static Block>, mut acc: Strings) -> Strings {
+pub fn names_had(mut bs: List<kayak_rt::Handle<'static, Block>>, mut acc: Strings) -> Strings {
     loop {
         if null_p(bs) {
             return acc;
@@ -1562,10 +1562,10 @@ pub fn names_had(mut bs: List<&'static Block>, mut acc: Strings) -> Strings {
 pub fn listing_added_x(text: Str) -> () {
     let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
     let u = tables_read_x(ls, str_lit(""));
-    let all = blocks(ls, nil::<&'static Block>(), 0i64);
-    let bs = distinct_blocks(all, nil::<&'static Block>());
+    let all = blocks(ls, nil::<kayak_rt::Handle<'static, Block>>(), 0i64);
+    let bs = distinct_blocks(all, nil::<kayak_rt::Handle<'static, Block>>());
     let had = names_had(bs, nil::<Str>());
-    words_made_x(blocks_named_anew(bs, nil::<&'static Block>(), nil::<Str>()));
+    words_made_x(blocks_named_anew(bs, nil::<kayak_rt::Handle<'static, Block>>(), nil::<Str>()));
     blocks_written_x(all, had);
     literals_checked_x(get(literals()));
     if get(regs_on()) {

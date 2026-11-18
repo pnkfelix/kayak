@@ -1037,6 +1037,7 @@
 (emitter-call "tag_hash" kayak)
 (emitter-call "tags_apart_from_runtime" kayak)
 (emitter-call "the" kayak)
+(emitter-call "to_ref" kayak)
 (emitter-call "unreachable_unwind" kayak)
 (emitter-call "unwind" kayak)
 (emitter-call "variant" kayak)

@@ -12,7 +12,7 @@ use super::*;
 // written, which is all of its place the reader keeps. The conversions keep
 // no state: the expander keeps the places it meets in its own.
 #[inline]
-pub fn bridge_unsupported(e: &'static Sexp) -> Void {
+pub fn bridge_unsupported(e: kayak_rt::Handle<'static, Sexp>) -> Void {
     error(string_append(str_lit("kfx: a number KFX's reader read that the expander takes not yet: "), show_sexp(e)))
 }
 
@@ -35,7 +35,7 @@ pub fn bridge_node(k: Int, f: Str, l: i64, p: i64, d: kayak_rt::value::Value) ->
 
 /// The reader's datum as a located one; `#t` and `#f`, as Fixpt's reader
 /// reads them, booleans (kfx's, names).
-pub fn sexp_located(e: &'static Sexp) -> kayak_rt::value::Value {
+pub fn sexp_located(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::value::Value {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
@@ -121,9 +121,9 @@ pub fn bridge_string(d: kayak_rt::value::Value) -> Str {
 }
 
 /// A datum, as the reader would have read it, at `f`, `l`, `p`.
-pub fn datum_sexp(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> &'static Sexp {
+pub fn datum_sexp(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> kayak_rt::Handle<'static, Sexp> {
     if kayak_rt::value::null_p(d) {
-        lst(nil::<&'static Sexp>(), f, l, p)
+        lst(nil::<kayak_rt::Handle<'static, Sexp>>(), f, l, p)
     } else if symbol_p(d) {
         sym(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)), f, p)
     } else if int_p(d) {
@@ -147,7 +147,7 @@ pub fn datum_sexp(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> &'static
 
 pub fn datum_sexps(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> Sexps {
     if kayak_rt::value::null_p(d) {
-        nil::<&'static Sexp>()
+        nil::<kayak_rt::Handle<'static, Sexp>>()
     } else if kayak_rt::value::pair_p(d) {
         let x = kayak_rt::value::car(d);
         kayak_rt::heap_cons(datum_sexp(x, f, l, p), datum_sexps(kayak_rt::value::cdr(d), f, l, p))
@@ -157,7 +157,7 @@ pub fn datum_sexps(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> Sexps {
 }
 
 /// A located datum as the reader's, where it says.
-pub fn located_sexp(n: kayak_rt::value::Value) -> &'static Sexp {
+pub fn located_sexp(n: kayak_rt::value::Value) -> kayak_rt::Handle<'static, Sexp> {
     let (f, l, p) = (bridge_string(bridge_nth(n, int_lit(1))), bridge_int(bridge_nth(n, int_lit(2))), bridge_int(bridge_nth(n, int_lit(3))));
     if i64_eq(bridge_int(bridge_nth(n, int_lit(0))), 1i64) {
         lst(located_sexps(bridge_after(n, int_lit(4))), f, l, p)
@@ -171,7 +171,7 @@ pub fn located_sexps(d: kayak_rt::value::Value) -> Sexps {
     if kayak_rt::value::pair_p(d) {
         kayak_rt::heap_cons(located_sexp(kayak_rt::value::car(d)), located_sexps(kayak_rt::value::cdr(d)))
     } else {
-        nil::<&'static Sexp>()
+        nil::<kayak_rt::Handle<'static, Sexp>>()
     }
 }
 

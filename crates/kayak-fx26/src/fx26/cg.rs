@@ -1530,127 +1530,127 @@ pub enum Cx {
     XFloat(Int, i64),
     XSym(Str, i64),
     XUnit(i64),
-    XLambda(Strings, &'static Cx, i64),
-    XApp(&'static Cx, List<&'static Cx>, i64),
-    XIf(&'static Cx, &'static Cx, &'static Cx, i64),
-    XLet(List<&'static Cbind>, &'static Cx, i64),
-    XLetrec(List<&'static Cbind>, &'static Cx, i64),
-    XBegin(List<&'static Cx>, i64),
-    XProj(&'static Cx, i64),
-    XProduct(List<&'static Cbind>, i64),
-    XExtract(&'static Cx, i64, i64),
-    XSum(Str, &'static Cx, i64),
-    XTagcase(&'static Cx, List<&'static Carm>, List<&'static Cbind>, i64, i64),
-    XPrompt(&'static Cx, &'static Cx, &'static Cx, i64),
-    XBloblet(Str, i64, List<&'static Cx>, i64),
-    XRegion(i64, Str, &'static Cx, i64),
-    XRlambda(&'static Cx, &'static Cx, i64),
-    XModule(List<&'static Cmem>, i64),
-    XWith(&'static Cx, Strings, List<i64>, &'static Cx, i64),
-    XReshape(&'static Cx, Paths, i64),
+    XLambda(Strings, kayak_rt::Handle<'static, Cx>, i64),
+    XApp(kayak_rt::Handle<'static, Cx>, List<kayak_rt::Handle<'static, Cx>>, i64),
+    XIf(kayak_rt::Handle<'static, Cx>, kayak_rt::Handle<'static, Cx>, kayak_rt::Handle<'static, Cx>, i64),
+    XLet(List<kayak_rt::Handle<'static, Cbind>>, kayak_rt::Handle<'static, Cx>, i64),
+    XLetrec(List<kayak_rt::Handle<'static, Cbind>>, kayak_rt::Handle<'static, Cx>, i64),
+    XBegin(List<kayak_rt::Handle<'static, Cx>>, i64),
+    XProj(kayak_rt::Handle<'static, Cx>, i64),
+    XProduct(List<kayak_rt::Handle<'static, Cbind>>, i64),
+    XExtract(kayak_rt::Handle<'static, Cx>, i64, i64),
+    XSum(Str, kayak_rt::Handle<'static, Cx>, i64),
+    XTagcase(kayak_rt::Handle<'static, Cx>, List<kayak_rt::Handle<'static, Carm>>, List<kayak_rt::Handle<'static, Cbind>>, i64, i64),
+    XPrompt(kayak_rt::Handle<'static, Cx>, kayak_rt::Handle<'static, Cx>, kayak_rt::Handle<'static, Cx>, i64),
+    XBloblet(Str, i64, List<kayak_rt::Handle<'static, Cx>>, i64),
+    XRegion(i64, Str, kayak_rt::Handle<'static, Cx>, i64),
+    XRlambda(kayak_rt::Handle<'static, Cx>, kayak_rt::Handle<'static, Cx>, i64),
+    XModule(List<kayak_rt::Handle<'static, Cmem>>, i64),
+    XWith(kayak_rt::Handle<'static, Cx>, Strings, List<i64>, kayak_rt::Handle<'static, Cx>, i64),
+    XReshape(kayak_rt::Handle<'static, Cx>, Paths, i64),
 }
 
-pub fn x_var(f0: Str, f1: i64) -> &'static Cx {
+pub fn x_var(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XVar(f0, f1))
 }
 
-pub fn x_int(f0: Int, f1: i64) -> &'static Cx {
+pub fn x_int(f0: Int, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XInt(f0, f1))
 }
 
-pub fn x_bool(f0: bool, f1: i64) -> &'static Cx {
+pub fn x_bool(f0: bool, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XBool(f0, f1))
 }
 
-pub fn x_str(f0: Str, f1: i64) -> &'static Cx {
+pub fn x_str(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XStr(f0, f1))
 }
 
-pub fn x_char(f0: char, f1: i64) -> &'static Cx {
+pub fn x_char(f0: char, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XChar(f0, f1))
 }
 
-pub fn x_float(f0: Int, f1: i64) -> &'static Cx {
+pub fn x_float(f0: Int, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XFloat(f0, f1))
 }
 
-pub fn x_sym(f0: Str, f1: i64) -> &'static Cx {
+pub fn x_sym(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XSym(f0, f1))
 }
 
-pub fn x_unit(f0: i64) -> &'static Cx {
+pub fn x_unit(f0: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XUnit(f0))
 }
 
-pub fn x_lambda(f0: Strings, f1: &'static Cx, f2: i64) -> &'static Cx {
+pub fn x_lambda(f0: Strings, f1: kayak_rt::Handle<'static, Cx>, f2: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XLambda(f0, f1, f2))
 }
 
-pub fn x_app(f0: &'static Cx, f1: List<&'static Cx>, f2: i64) -> &'static Cx {
+pub fn x_app(f0: kayak_rt::Handle<'static, Cx>, f1: List<kayak_rt::Handle<'static, Cx>>, f2: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XApp(f0, f1, f2))
 }
 
-pub fn x_if(f0: &'static Cx, f1: &'static Cx, f2: &'static Cx, f3: i64) -> &'static Cx {
+pub fn x_if(f0: kayak_rt::Handle<'static, Cx>, f1: kayak_rt::Handle<'static, Cx>, f2: kayak_rt::Handle<'static, Cx>, f3: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XIf(f0, f1, f2, f3))
 }
 
-pub fn x_let(f0: List<&'static Cbind>, f1: &'static Cx, f2: i64) -> &'static Cx {
+pub fn x_let(f0: List<kayak_rt::Handle<'static, Cbind>>, f1: kayak_rt::Handle<'static, Cx>, f2: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XLet(f0, f1, f2))
 }
 
-pub fn x_letrec(f0: List<&'static Cbind>, f1: &'static Cx, f2: i64) -> &'static Cx {
+pub fn x_letrec(f0: List<kayak_rt::Handle<'static, Cbind>>, f1: kayak_rt::Handle<'static, Cx>, f2: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XLetrec(f0, f1, f2))
 }
 
-pub fn x_begin(f0: List<&'static Cx>, f1: i64) -> &'static Cx {
+pub fn x_begin(f0: List<kayak_rt::Handle<'static, Cx>>, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XBegin(f0, f1))
 }
 
-pub fn x_proj(f0: &'static Cx, f1: i64) -> &'static Cx {
+pub fn x_proj(f0: kayak_rt::Handle<'static, Cx>, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XProj(f0, f1))
 }
 
-pub fn x_product(f0: List<&'static Cbind>, f1: i64) -> &'static Cx {
+pub fn x_product(f0: List<kayak_rt::Handle<'static, Cbind>>, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XProduct(f0, f1))
 }
 
-pub fn x_extract(f0: &'static Cx, f1: i64, f2: i64) -> &'static Cx {
+pub fn x_extract(f0: kayak_rt::Handle<'static, Cx>, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XExtract(f0, f1, f2))
 }
 
-pub fn x_sum(f0: Str, f1: &'static Cx, f2: i64) -> &'static Cx {
+pub fn x_sum(f0: Str, f1: kayak_rt::Handle<'static, Cx>, f2: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XSum(f0, f1, f2))
 }
 
-pub fn x_tagcase(f0: &'static Cx, f1: List<&'static Carm>, f2: List<&'static Cbind>, f3: i64, f4: i64) -> &'static Cx {
+pub fn x_tagcase(f0: kayak_rt::Handle<'static, Cx>, f1: List<kayak_rt::Handle<'static, Carm>>, f2: List<kayak_rt::Handle<'static, Cbind>>, f3: i64, f4: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XTagcase(f0, f1, f2, f3, f4))
 }
 
-pub fn x_prompt(f0: &'static Cx, f1: &'static Cx, f2: &'static Cx, f3: i64) -> &'static Cx {
+pub fn x_prompt(f0: kayak_rt::Handle<'static, Cx>, f1: kayak_rt::Handle<'static, Cx>, f2: kayak_rt::Handle<'static, Cx>, f3: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XPrompt(f0, f1, f2, f3))
 }
 
-pub fn x_bloblet(f0: Str, f1: i64, f2: List<&'static Cx>, f3: i64) -> &'static Cx {
+pub fn x_bloblet(f0: Str, f1: i64, f2: List<kayak_rt::Handle<'static, Cx>>, f3: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XBloblet(f0, f1, f2, f3))
 }
 
-pub fn x_region(f0: i64, f1: Str, f2: &'static Cx, f3: i64) -> &'static Cx {
+pub fn x_region(f0: i64, f1: Str, f2: kayak_rt::Handle<'static, Cx>, f3: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XRegion(f0, f1, f2, f3))
 }
 
-pub fn x_rlambda(f0: &'static Cx, f1: &'static Cx, f2: i64) -> &'static Cx {
+pub fn x_rlambda(f0: kayak_rt::Handle<'static, Cx>, f1: kayak_rt::Handle<'static, Cx>, f2: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XRlambda(f0, f1, f2))
 }
 
-pub fn x_module(f0: List<&'static Cmem>, f1: i64) -> &'static Cx {
+pub fn x_module(f0: List<kayak_rt::Handle<'static, Cmem>>, f1: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XModule(f0, f1))
 }
 
-pub fn x_with(f0: &'static Cx, f1: Strings, f2: List<i64>, f3: &'static Cx, f4: i64) -> &'static Cx {
+pub fn x_with(f0: kayak_rt::Handle<'static, Cx>, f1: Strings, f2: List<i64>, f3: kayak_rt::Handle<'static, Cx>, f4: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XWith(f0, f1, f2, f3, f4))
 }
 
-pub fn x_reshape(f0: &'static Cx, f1: Paths, f2: i64) -> &'static Cx {
+pub fn x_reshape(f0: kayak_rt::Handle<'static, Cx>, f1: Paths, f2: i64) -> kayak_rt::Handle<'static, Cx> {
     kayak_rt::heap_alloc(Cx::XReshape(f0, f1, f2))
 }
 
@@ -1660,15 +1660,15 @@ pub fn x_reshape(f0: &'static Cx, f1: Paths, f2: i64) -> &'static Cx {
 // gives; 1 is hidden, in the module's own product but not its type; 0 in
 // neither, an abstract type's conversion, or a name an `include` gives.
 pub enum Cmem {
-    Cmem(Str, &'static Cx, i64, bool, i64),
+    Cmem(Str, kayak_rt::Handle<'static, Cx>, i64, bool, i64),
 }
 
-pub fn cmem(f0: Str, f1: &'static Cx, f2: i64, f3: bool, f4: i64) -> &'static Cmem {
+pub fn cmem(f0: Str, f1: kayak_rt::Handle<'static, Cx>, f2: i64, f3: bool, f4: i64) -> kayak_rt::Handle<'static, Cmem> {
     kayak_rt::heap_alloc(Cmem::Cmem(f0, f1, f2, f3, f4))
 }
 
 #[inline]
-pub fn cmem_name(i: &'static Cmem) -> Str {
+pub fn cmem_name(i: kayak_rt::Handle<'static, Cmem>) -> Str {
     let tagcase_ = i;
     match *tagcase_ {
         Cmem::Cmem(n, x, k, l, a) => {
@@ -1678,7 +1678,7 @@ pub fn cmem_name(i: &'static Cmem) -> Str {
 }
 
 #[inline]
-pub fn cmem_value(i: &'static Cmem) -> &'static Cx {
+pub fn cmem_value(i: kayak_rt::Handle<'static, Cmem>) -> kayak_rt::Handle<'static, Cx> {
     let tagcase_ = i;
     match *tagcase_ {
         Cmem::Cmem(n, x, k, l, a) => {
@@ -1688,7 +1688,7 @@ pub fn cmem_value(i: &'static Cmem) -> &'static Cx {
 }
 
 #[inline]
-pub fn cmem_kind(i: &'static Cmem) -> i64 {
+pub fn cmem_kind(i: kayak_rt::Handle<'static, Cmem>) -> i64 {
     let tagcase_ = i;
     match *tagcase_ {
         Cmem::Cmem(n, x, k, l, a) => {
@@ -1704,53 +1704,53 @@ pub type Paths = List<List<i64>>;
 // A binding: a name and its expression (a `let`'s, a `letrec`'s, a
 // product's field, a `tagcase`'s `else`).
 pub enum Cbind {
-    Cbind(Str, &'static Cx),
+    Cbind(Str, kayak_rt::Handle<'static, Cx>),
 }
 
-pub fn cbind(f0: Str, f1: &'static Cx) -> &'static Cbind {
+pub fn cbind(f0: Str, f1: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Cbind> {
     kayak_rt::heap_alloc(Cbind::Cbind(f0, f1))
 }
 
 // A `tagcase` arm: its tag, whether it takes a product apart, the names it
 // binds, its body.
 pub enum Carm {
-    Carm(Str, bool, Strings, &'static Cx),
+    Carm(Str, bool, Strings, kayak_rt::Handle<'static, Cx>),
 }
 
-pub fn carm(f0: Str, f1: bool, f2: Strings, f3: &'static Cx) -> &'static Carm {
+pub fn carm(f0: Str, f1: bool, f2: Strings, f3: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Carm> {
     kayak_rt::heap_alloc(Carm::Carm(f0, f1, f2, f3))
 }
 
-pub type Cxs = List<&'static Cx>;
+pub type Cxs = List<kayak_rt::Handle<'static, Cx>>;
 
-pub type Cbinds = List<&'static Cbind>;
+pub type Cbinds = List<kayak_rt::Handle<'static, Cbind>>;
 
 // A top-level form: a definition, with whether it is written with a type;
 // a `define-rec`; an expression; or a form that makes no code.
 pub enum Ctop {
-    TDefine(Str, bool, &'static Cx),
+    TDefine(Str, bool, kayak_rt::Handle<'static, Cx>),
     TDefineRec(Cbinds),
-    TExp(&'static Cx),
+    TExp(kayak_rt::Handle<'static, Cx>),
     TNone(),
 }
 
-pub fn t_define(f0: Str, f1: bool, f2: &'static Cx) -> &'static Ctop {
+pub fn t_define(f0: Str, f1: bool, f2: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Ctop> {
     kayak_rt::heap_alloc(Ctop::TDefine(f0, f1, f2))
 }
 
-pub fn t_define_rec(f0: Cbinds) -> &'static Ctop {
+pub fn t_define_rec(f0: Cbinds) -> kayak_rt::Handle<'static, Ctop> {
     kayak_rt::heap_alloc(Ctop::TDefineRec(f0))
 }
 
-pub fn t_exp(f0: &'static Cx) -> &'static Ctop {
+pub fn t_exp(f0: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Ctop> {
     kayak_rt::heap_alloc(Ctop::TExp(f0))
 }
 
-pub fn t_none() -> &'static Ctop {
+pub fn t_none() -> kayak_rt::Handle<'static, Ctop> {
     kayak_rt::heap_alloc(Ctop::TNone())
 }
 
-pub fn cx_start(x: &'static Cx) -> i64 {
+pub fn cx_start(x: kayak_rt::Handle<'static, Cx>) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
         Cx::XVar(n, a) => {
@@ -1837,18 +1837,18 @@ pub fn cx_start(x: &'static Cx) -> i64 {
 // A lambda's parameters, body, and region (an `rlambda`'s, one or none), if
 // `x` is one; else none.
 pub enum Lparts {
-    Lparts(Strings, &'static Cx, List<&'static Cx>),
+    Lparts(Strings, kayak_rt::Handle<'static, Cx>, List<kayak_rt::Handle<'static, Cx>>),
 }
 
-pub fn lparts(f0: Strings, f1: &'static Cx, f2: List<&'static Cx>) -> &'static Lparts {
+pub fn lparts(f0: Strings, f1: kayak_rt::Handle<'static, Cx>, f2: List<kayak_rt::Handle<'static, Cx>>) -> kayak_rt::Handle<'static, Lparts> {
     kayak_rt::heap_alloc(Lparts::Lparts(f0, f1, f2))
 }
 
-pub fn lambda_of(x: &'static Cx) -> List<&'static Lparts> {
+pub fn lambda_of(x: kayak_rt::Handle<'static, Cx>) -> List<kayak_rt::Handle<'static, Lparts>> {
     let tagcase_ = x;
     match *tagcase_ {
         Cx::XLambda(ps, body, a) => {
-            kayak_rt::heap_cons(lparts(ps, body, nil::<&'static Cx>()), kayak_rt::nil())
+            kayak_rt::heap_cons(lparts(ps, body, nil::<kayak_rt::Handle<'static, Cx>>()), kayak_rt::nil())
         }
         Cx::XRlambda(r, l, a) => {
             let tagcase_ = l;
@@ -1858,19 +1858,19 @@ pub fn lambda_of(x: &'static Cx) -> List<&'static Lparts> {
                 }
                 _ => {
                     let y = tagcase_;
-                    nil::<&'static Lparts>()
+                    nil::<kayak_rt::Handle<'static, Lparts>>()
                 }
             }
         }
         _ => {
             let y = tagcase_;
-            nil::<&'static Lparts>()
+            nil::<kayak_rt::Handle<'static, Lparts>>()
         }
     }
 }
 
 // Where a lambda is (an `rlambda`'s, its lambda), -1 if `x` is none.
-pub fn lambda_at(x: &'static Cx) -> i64 {
+pub fn lambda_at(x: kayak_rt::Handle<'static, Cx>) -> i64 {
     let tagcase_ = x;
     match *tagcase_ {
         Cx::XLambda(ps, body, a) => {
@@ -1901,19 +1901,19 @@ pub enum Dpos {
     Dpos(i64, i64),
 }
 
-pub fn dpos(f0: i64, f1: i64) -> &'static Dpos {
+pub fn dpos(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Dpos> {
     kayak_rt::heap_alloc(Dpos::Dpos(f0, f1))
 }
 
 #[inline]
-pub fn cg_define_at() -> Ref<List<&'static Dpos>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Dpos>>);
+pub fn cg_define_at() -> Ref<List<kayak_rt::Handle<'static, Dpos>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Dpos>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Dpos>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Dpos>>())
     })
 }
 
-pub fn define_at(mut ds: List<&'static Dpos>, mut a: i64) -> i64 {
+pub fn define_at(mut ds: List<kayak_rt::Handle<'static, Dpos>>, mut a: i64) -> i64 {
     loop {
         if null_p(ds) {
             return -1i64;
@@ -1967,7 +1967,7 @@ pub fn c_bound_names(mut bs: Cbinds, mut bound: Strings) -> Strings {
 
 #[inline]
 pub fn c_bound_exps(bs: Cbinds) -> Cxs {
-    map(lambda1s(move |b: &'static Cbind| {
+    map(lambda1s(move |b: kayak_rt::Handle<'static, Cbind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Cbind::Cbind(n, x) => {
@@ -1994,14 +1994,14 @@ pub fn c_names(mut ns: Strings, mut bound: Strings) -> Strings {
 // A standard name, whatever a program binds it to (Fixpt's `(with #%fx
 // name)`, C221): what a quote builds with.
 #[inline]
-pub fn std_var(n: Str, a: i64) -> &'static Cx {
+pub fn std_var(n: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
     x_var(string_append(str_lit("#%fx:"), n), a)
 }
 
 // A keyword, `#:n` (C294): as Fixpt's parsers write it, `symbol->keyword` of
 // the symbol `n`, in quoted data too.
 #[inline]
-pub fn keyword_x(n: Str, a: i64) -> &'static Cx {
+pub fn keyword_x(n: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
     x_app(std_var(str_lit("symbol->keyword"), a), kayak_rt::heap_cons(x_sym(after_prefix(n, str_lit("#:")), a), kayak_rt::nil()), a)
 }
 
@@ -2009,7 +2009,7 @@ pub fn keyword_x(n: Str, a: i64) -> &'static Cx {
 // its `with`, which its register code takes for no operation done in line
 // (C248).
 #[inline]
-pub fn std_written_var(n: Str, a: i64) -> &'static Cx {
+pub fn std_written_var(n: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
     x_var(string_append(str_lit("#%fx!:"), n), a)
 }
 
@@ -2055,7 +2055,7 @@ pub fn c_free_all(mut es: Cxs, mut bound: Strings, mut acc: Strings) -> Strings 
     }
 }
 
-pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strings {
+pub fn c_free(mut x: kayak_rt::Handle<'static, Cx>, mut bound: Strings, mut acc: Strings) -> Strings {
     loop {
         let tagcase_ = x;
         match *tagcase_ {
@@ -2143,7 +2143,7 @@ pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strin
     }
 }
 
-pub fn c_free_arms(mut arms: List<&'static Carm>, mut bound: Strings, mut acc: Strings) -> Strings {
+pub fn c_free_arms(mut arms: List<kayak_rt::Handle<'static, Carm>>, mut bound: Strings, mut acc: Strings) -> Strings {
     loop {
         if null_p(arms) {
             return acc;
@@ -2174,12 +2174,12 @@ pub fn c_free_else(els: Cbinds, bound: Strings, acc: Strings) -> Strings {
 }
 
 #[inline]
-pub fn c_mentions_p(x: &'static Cx, n: Str) -> bool {
+pub fn c_mentions_p(x: kayak_rt::Handle<'static, Cx>, n: Str) -> bool {
     string_member_p(n, c_free(x, nil::<Str>(), nil::<Str>()))
 }
 
 #[inline]
-pub fn c_free_names(x: &'static Cx) -> Strings {
+pub fn c_free_names(x: kayak_rt::Handle<'static, Cx>) -> Strings {
     c_free(x, nil::<Str>(), nil::<Str>())
 }
 
@@ -2188,7 +2188,7 @@ pub fn c_free_names(x: &'static Cx) -> Strings {
 pub fn cg_facts() -> Ref<Facts> {
     kayak_rt::kept_constant!(ONCE: Ref<Facts>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Fact>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Fact>>())
     })
 }
 
@@ -2286,7 +2286,7 @@ pub fn cg_at() -> Ref<i64> {
 pub fn cg_convert_facts() -> Ref<Facts> {
     kayak_rt::kept_constant!(ONCE: Ref<Facts>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Fact>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Fact>>())
     })
 }
 
@@ -2297,7 +2297,7 @@ pub fn cg_convert_facts() -> Ref<Facts> {
 pub fn cg_module_facts() -> Ref<Facts> {
     kayak_rt::kept_constant!(ONCE: Ref<Facts>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Fact>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Fact>>())
     })
 }
 
@@ -2328,7 +2328,7 @@ pub fn cg_native_calls() -> Ref<List<i64>> {
 pub fn cg_call_facts() -> Ref<Facts> {
     kayak_rt::kept_constant!(ONCE: Ref<Facts>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Fact>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Fact>>())
     })
 }
 
@@ -2352,7 +2352,7 @@ pub enum Clayout {
     Clayout(Str, Strings),
 }
 
-pub fn clayout(f0: Str, f1: Strings) -> &'static Clayout {
+pub fn clayout(f0: Str, f1: Strings) -> kayak_rt::Handle<'static, Clayout> {
     kayak_rt::heap_alloc(Clayout::Clayout(f0, f1))
 }
 
@@ -2361,7 +2361,7 @@ pub enum Cinc {
     Cinc(Str, bool, i64),
 }
 
-pub fn cinc(f0: Str, f1: bool, f2: i64) -> &'static Cinc {
+pub fn cinc(f0: Str, f1: bool, f2: i64) -> kayak_rt::Handle<'static, Cinc> {
     kayak_rt::heap_alloc(Cinc::Cinc(f0, f1, f2))
 }
 
@@ -2369,25 +2369,25 @@ pub fn cinc(f0: Str, f1: bool, f2: i64) -> &'static Cinc {
 // `made--P`, and defines it before the module, C90), by name: each is made
 // in place again, as Fixpt makes it.
 pub enum Cmade {
-    Cmade(Str, &'static Cx),
+    Cmade(Str, kayak_rt::Handle<'static, Cx>),
 }
 
-pub fn cmade(f0: Str, f1: &'static Cx) -> &'static Cmade {
+pub fn cmade(f0: Str, f1: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Cmade> {
     kayak_rt::heap_alloc(Cmade::Cmade(f0, f1))
 }
 
 #[inline]
-pub fn cg_made() -> Ref<List<&'static Cmade>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cmade>>);
+pub fn cg_made() -> Ref<List<kayak_rt::Handle<'static, Cmade>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Cmade>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Cmade>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Cmade>>())
     })
 }
 
-pub fn made_module(mut ms: List<&'static Cmade>, mut n: Str) -> Cxs {
+pub fn made_module(mut ms: List<kayak_rt::Handle<'static, Cmade>>, mut n: Str) -> Cxs {
     loop {
         if null_p(ms) {
-            return nil::<&'static Cx>();
+            return nil::<kayak_rt::Handle<'static, Cx>>();
         } else if {
             let tagcase_ = car(ms);
             match *tagcase_ {
@@ -2415,8 +2415,8 @@ pub fn made_module(mut ms: List<&'static Cmade>, mut n: Str) -> Cxs {
 /// (%loaded path %instance ...) ...)` (C216): made again where it is
 /// included, an instance each time, as Fixpt makes one each time its
 /// maker is called (`modules/load-parameters.fx`).
-pub fn instance_load_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("module")) && i64_gt_eq(size(items(e)), 2i64) && head_is_p(second(items(e)), str_lit("%loaded")) && any_p(lambda1s(move |x: &'static Sexp| {
+pub fn instance_load_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
+    (head_is_p(e, str_lit("module")) && i64_gt_eq(size(items(e)), 2i64) && head_is_p(second(items(e)), str_lit("%loaded")) && any_p(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
         sym_is_p(x, str_lit("%instance"))
     }), items(second(items(e)))))
 }
@@ -2427,10 +2427,10 @@ pub fn made_here_name_p(n: Str) -> bool {
 }
 
 #[inline]
-pub fn cg_layouts() -> Ref<List<&'static Clayout>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Clayout>>);
+pub fn cg_layouts() -> Ref<List<kayak_rt::Handle<'static, Clayout>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Clayout>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Clayout>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Clayout>>())
     })
 }
 
@@ -2438,14 +2438,14 @@ pub fn cg_layouts() -> Ref<List<&'static Clayout>> {
 // by a hidden name of their place: the values the checker noted each gives
 // (`with-spec`).
 #[inline]
-pub fn cg_included() -> Ref<List<&'static Clayout>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Clayout>>);
+pub fn cg_included() -> Ref<List<kayak_rt::Handle<'static, Clayout>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Clayout>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Clayout>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Clayout>>())
     })
 }
 
-pub fn layout_in(mut ls: List<&'static Clayout>, mut n: Str) -> List<Strings> {
+pub fn layout_in(mut ls: List<kayak_rt::Handle<'static, Clayout>>, mut n: Str) -> List<Strings> {
     loop {
         if null_p(ls) {
             return nil::<List<Str>>();
@@ -2577,14 +2577,14 @@ pub fn cg_fixnum_p(n: Int) -> bool {
 }
 
 #[inline]
-pub fn call2(f: Str, x: &'static Cx, y: &'static Cx, a: i64) -> &'static Cx {
+pub fn call2(f: Str, x: kayak_rt::Handle<'static, Cx>, y: kayak_rt::Handle<'static, Cx>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     x_app(x_var(f, a), kayak_rt::heap_cons(x, kayak_rt::heap_cons(y, kayak_rt::nil())), a)
 }
 
 // An integer literal past a fixnum, as arithmetic on fixnums: `(- 0 x)` for
 // a negative; else, in base 10⁹, `(+ (* rest 1000000000) last)`, `rest`
 // again so until it is a fixnum (Fixpt's `big-literal`).
-pub fn big_peel(mut n: Int, mut limbs: List<Int>, mut a: i64) -> &'static Cx {
+pub fn big_peel(mut n: Int, mut limbs: List<Int>, mut a: i64) -> kayak_rt::Handle<'static, Cx> {
     loop {
         if cg_fixnum_p(n) {
             return big_build(x_int(n, a), limbs, a);
@@ -2595,7 +2595,7 @@ pub fn big_peel(mut n: Int, mut limbs: List<Int>, mut a: i64) -> &'static Cx {
     }
 }
 
-pub fn big_build(mut acc: &'static Cx, mut limbs: List<Int>, mut a: i64) -> &'static Cx {
+pub fn big_build(mut acc: kayak_rt::Handle<'static, Cx>, mut limbs: List<Int>, mut a: i64) -> kayak_rt::Handle<'static, Cx> {
     loop {
         if null_p(limbs) {
             return acc;
@@ -2606,7 +2606,7 @@ pub fn big_build(mut acc: &'static Cx, mut limbs: List<Int>, mut a: i64) -> &'st
     }
 }
 
-pub fn big_literal(v: Int, a: i64) -> &'static Cx {
+pub fn big_literal(v: Int, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if cg_fixnum_p(v) {
         x_int(v, a)
     } else if _lt(v, int_lit(0)) {
@@ -2630,15 +2630,15 @@ pub fn dt_vars(i: i64, n: i64) -> Strings {
 
 pub fn dt_fields(xs: Strings, i: i64, a: i64) -> Cbinds {
     if null_p(xs) {
-        nil::<&'static Cbind>()
+        nil::<kayak_rt::Handle<'static, Cbind>>()
     } else {
         kayak_rt::heap_cons(cbind(i64_to_string(i), x_var(car(xs), a)), dt_fields(cdr(xs), i64_plus(i, 1i64), a))
     }
 }
 
-pub fn dt_constructors(vs: Sexps, a: i64) -> List<&'static Ctop> {
+pub fn dt_constructors(vs: Sexps, a: i64) -> List<kayak_rt::Handle<'static, Ctop>> {
     if null_p(vs) {
-        nil::<&'static Ctop>()
+        nil::<kayak_rt::Handle<'static, Ctop>>()
     } else {
         let parts = items(car(vs));
         let tag = sym_name(car(parts));
@@ -2650,7 +2650,7 @@ pub fn dt_constructors(vs: Sexps, a: i64) -> List<&'static Ctop> {
 
 // A `case` datum's kind (Fixpt's `case-kind`): 0 an integer, 1 a
 // character, 2 a string, 3 a symbol, 4 a boolean, -1 none of these.
-pub fn case_kind(d: &'static Sexp) -> i64 {
+pub fn case_kind(d: kayak_rt::Handle<'static, Sexp>) -> i64 {
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Num(k, f, p) => {
@@ -2715,15 +2715,15 @@ pub fn case_tree_from(k: i64, direct: bool) -> i64 {
 // datum's test, the value it sorts by (the integer, or the runtime's hash
 // of the string or symbol), and its clause.
 pub enum Ckey {
-    Ckey(&'static Cx, i64, i64),
+    Ckey(kayak_rt::Handle<'static, Cx>, i64, i64),
 }
 
-pub fn ckey(f0: &'static Cx, f1: i64, f2: i64) -> &'static Ckey {
+pub fn ckey(f0: kayak_rt::Handle<'static, Cx>, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Ckey> {
     kayak_rt::heap_alloc(Ckey::Ckey(f0, f1, f2))
 }
 
 #[inline]
-pub fn ckey_at(e: &'static Ckey) -> i64 {
+pub fn ckey_at(e: kayak_rt::Handle<'static, Ckey>) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
         Ckey::Ckey(t, v, c) => {
@@ -2732,7 +2732,7 @@ pub fn ckey_at(e: &'static Ckey) -> i64 {
     }
 }
 
-pub fn case_sort_key(k: i64, d: &'static Sexp) -> i64 {
+pub fn case_sort_key(k: i64, d: kayak_rt::Handle<'static, Sexp>) -> i64 {
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Num(n, f, p) => {
@@ -2772,7 +2772,7 @@ pub fn case_all_keyed_p(mut k: i64, mut clauses: Sexps) -> bool {
             if null_p(cdr(clauses)) {
                 return true;
             } else {
-                if not(any_p(lambda1s(move |d: &'static Sexp| {
+                if not(any_p(lambda1s(move |d: kayak_rt::Handle<'static, Sexp>| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Sexp::Num(n, f, p) => {
@@ -2795,7 +2795,7 @@ pub fn case_all_keyed_p(mut k: i64, mut clauses: Sexps) -> bool {
 }
 
 // `e` into `sorted`, after those of no greater value: a stable sort.
-pub fn case_insert(e: &'static Ckey, sorted: List<&'static Ckey>) -> List<&'static Ckey> {
+pub fn case_insert(e: kayak_rt::Handle<'static, Ckey>, sorted: List<kayak_rt::Handle<'static, Ckey>>) -> List<kayak_rt::Handle<'static, Ckey>> {
     if (null_p(sorted) || i64_lt(ckey_at(e), ckey_at(car(sorted)))) {
         kayak_rt::heap_cons(e, sorted)
     } else {
@@ -2803,7 +2803,7 @@ pub fn case_insert(e: &'static Ckey, sorted: List<&'static Ckey>) -> List<&'stat
     }
 }
 
-pub fn case_sort(mut es: List<&'static Ckey>, mut sorted: List<&'static Ckey>) -> List<&'static Ckey> {
+pub fn case_sort(mut es: List<kayak_rt::Handle<'static, Ckey>>, mut sorted: List<kayak_rt::Handle<'static, Ckey>>) -> List<kayak_rt::Handle<'static, Ckey>> {
     loop {
         if null_p(es) {
             return sorted;
@@ -2814,7 +2814,7 @@ pub fn case_sort(mut es: List<&'static Ckey>, mut sorted: List<&'static Ckey>) -
     }
 }
 
-pub fn case_key_nth(mut es: List<&'static Ckey>, mut i: i64) -> i64 {
+pub fn case_key_nth(mut es: List<kayak_rt::Handle<'static, Ckey>>, mut i: i64) -> i64 {
     loop {
         if i64_eq(i, 0i64) {
             return ckey_at(car(es));
@@ -2826,15 +2826,15 @@ pub fn case_key_nth(mut es: List<&'static Ckey>, mut i: i64) -> i64 {
 }
 
 #[inline]
-pub fn case_take(es: List<&'static Ckey>, k: i64) -> List<&'static Ckey> {
+pub fn case_take(es: List<kayak_rt::Handle<'static, Ckey>>, k: i64) -> List<kayak_rt::Handle<'static, Ckey>> {
     if i64_eq(k, 0i64) {
-        nil::<&'static Ckey>()
+        nil::<kayak_rt::Handle<'static, Ckey>>()
     } else {
         kayak_rt::heap_cons(car(es), case_take(cdr(es), i64_minus(k, 1i64)))
     }
 }
 
-pub fn case_drop(mut es: List<&'static Ckey>, mut k: i64) -> List<&'static Ckey> {
+pub fn case_drop(mut es: List<kayak_rt::Handle<'static, Ckey>>, mut k: i64) -> List<kayak_rt::Handle<'static, Ckey>> {
     loop {
         if i64_eq(k, 0i64) {
             return es;
@@ -2845,7 +2845,7 @@ pub fn case_drop(mut es: List<&'static Ckey>, mut k: i64) -> List<&'static Ckey>
     }
 }
 
-pub fn case_mid_up(mut es: List<&'static Ckey>, mut mid: i64, mut n: i64) -> i64 {
+pub fn case_mid_up(mut es: List<kayak_rt::Handle<'static, Ckey>>, mut mid: i64, mut n: i64) -> i64 {
     loop {
         if (i64_lt(mid, n) && i64_gt(mid, 0i64) && i64_eq(case_key_nth(es, mid), case_key_nth(es, i64_minus(mid, 1i64)))) {
             mid = i64_plus(mid, 1i64);
@@ -2856,7 +2856,7 @@ pub fn case_mid_up(mut es: List<&'static Ckey>, mut mid: i64, mut n: i64) -> i64
     }
 }
 
-pub fn case_mid_down(mut es: List<&'static Ckey>, mut mid: i64) -> i64 {
+pub fn case_mid_down(mut es: List<kayak_rt::Handle<'static, Ckey>>, mut mid: i64) -> i64 {
     loop {
         if (i64_gt(mid, 0i64) && i64_eq(case_key_nth(es, mid), case_key_nth(es, i64_minus(mid, 1i64)))) {
             mid = i64_minus(mid, 1i64);
@@ -2869,7 +2869,7 @@ pub fn case_mid_down(mut es: List<&'static Ckey>, mut mid: i64) -> i64 {
 
 // Where to halve `n` sorted entries: nearest the middle, between unequal
 // values (0 if none).
-pub fn case_mid(es: List<&'static Ckey>, n: i64) -> i64 {
+pub fn case_mid(es: List<kayak_rt::Handle<'static, Ckey>>, n: i64) -> i64 {
     let up = case_mid_up(es, i64_quotient(n, 2i64), n);
     if i64_eq(up, n) {
         case_mid_down(es, i64_quotient(n, 2i64))
@@ -2878,7 +2878,7 @@ pub fn case_mid(es: List<&'static Ckey>, n: i64) -> i64 {
     }
 }
 
-pub fn case_body_at(mut es: Cxs, mut i: i64) -> &'static Cx {
+pub fn case_body_at(mut es: Cxs, mut i: i64) -> kayak_rt::Handle<'static, Cx> {
     loop {
         if i64_eq(i, 0i64) {
             return car(es);
@@ -2891,7 +2891,7 @@ pub fn case_body_at(mut es: Cxs, mut i: i64) -> &'static Cx {
 
 /// The entries' tests in turn, each giving its clause (or, `whole`, its
 /// body); `m` (or `els`) for none.
-pub fn case_leaf(es: List<&'static Ckey>, m: i64, bodies: Cxs, whole: bool, els: &'static Cx, a: i64) -> &'static Cx {
+pub fn case_leaf(es: List<kayak_rt::Handle<'static, Ckey>>, m: i64, bodies: Cxs, whole: bool, els: kayak_rt::Handle<'static, Cx>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if (null_p(es) && not(whole)) {
         x_int(i64_to_int(m), a)
     } else if null_p(es) {
@@ -2911,7 +2911,7 @@ pub fn case_leaf(es: List<&'static Ckey>, m: i64, bodies: Cxs, whole: bool, els:
 }
 
 /// The clause of sorted entries, `by` halved against their values.
-pub fn case_index(by: &'static Cx, es: List<&'static Ckey>, n: i64, m: i64, bodies: Cxs, whole: bool, els: &'static Cx, a: i64) -> &'static Cx {
+pub fn case_index(by: kayak_rt::Handle<'static, Cx>, es: List<kayak_rt::Handle<'static, Ckey>>, n: i64, m: i64, bodies: Cxs, whole: bool, els: kayak_rt::Handle<'static, Cx>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if i64_lt_eq(n, 3i64) {
         case_leaf(es, m, bodies, whole, els, a)
     } else {
@@ -2925,7 +2925,7 @@ pub fn case_index(by: &'static Cx, es: List<&'static Ckey>, n: i64, m: i64, bodi
 }
 
 /// The body of index `lo`..`hi` that `i` names, by halving.
-pub fn case_pick(i: &'static Cx, bodies: Cxs, lo: i64, hi: i64, a: i64) -> &'static Cx {
+pub fn case_pick(i: kayak_rt::Handle<'static, Cx>, bodies: Cxs, lo: i64, hi: i64, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if i64_eq(lo, hi) {
         case_body_at(bodies, lo)
     } else {
@@ -3088,13 +3088,13 @@ pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
 /// `(confirm-length x k (n body) else)` as Fixpt's parser makes them (C217):
 /// the value bound once, to a variable named for what the form does not
 /// mention; tested; the name bound to it certified.
-pub fn confirmed(e: &'static Sexp, base: Str, test: Str, cert: Str, with_k: bool) -> &'static Sexp {
+pub fn confirmed(e: kayak_rt::Handle<'static, Sexp>, base: Str, test: Str, cert: Str, with_k: bool) -> kayak_rt::Handle<'static, Sexp> {
     let xs = cdr(items(e));
     let t = fresh_for(base, e);
     let k = if with_k {
         the::<Sexps>(kayak_rt::heap_cons(second(xs), kayak_rt::nil()))
     } else {
-        nil::<&'static Sexp>()
+        nil::<kayak_rt::Handle<'static, Sexp>>()
     };
     let arm = items(if with_k {
         third(xs)
@@ -3109,7 +3109,7 @@ pub fn confirmed(e: &'static Sexp, base: Str, test: Str, cert: Str, with_k: bool
     sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(car(xs), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("if")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(test), kayak_rt::heap_cons(sy(t), k))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(arm), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(cert), kayak_rt::heap_cons(sy(t), k))), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(second(arm), kayak_rt::nil())))), kayak_rt::heap_cons(els, kayak_rt::nil()))))), kayak_rt::nil()))))
 }
 
-pub fn generative_conversions(e: &'static Sexp, a: i64) -> List<&'static Ctop> {
+pub fn generative_conversions(e: kayak_rt::Handle<'static, Sexp>, a: i64) -> List<kayak_rt::Handle<'static, Ctop>> {
     kayak_rt::heap_cons(t_define(generative_seal(e), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::heap_cons(t_define(generative_unseal(e), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::nil()))
 }
 
@@ -3123,7 +3123,7 @@ pub fn cg_module_type() -> Ref<Strings> {
 }
 
 // Whether `x` is a module made where it is written.
-pub fn module_made_p(x: &'static Cx) -> bool {
+pub fn module_made_p(x: kayak_rt::Handle<'static, Cx>) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
         Cx::XModule(its, a) => {
@@ -3150,7 +3150,7 @@ pub fn module_made_p(x: &'static Cx) -> bool {
 
 // `n`, if `x` is a module made here, or one named (a load's), its values'
 // names noted, for a `with` of it.
-pub fn note_layout_x(n: Str, x: &'static Cx) -> () {
+pub fn note_layout_x(n: Str, x: kayak_rt::Handle<'static, Cx>) -> () {
     if module_made_p(x) {
         set(cg_layouts(), kayak_rt::heap_cons(clayout(n, get(cg_module_type())), get(cg_layouts())))
     } else if {
@@ -3183,7 +3183,7 @@ pub fn note_layout_x(n: Str, x: &'static Cx) -> () {
 // `x` in an `include`'s `(with %include …)` where item `a` is (Fixpt's
 // `in-includes`), which binds nothing here, its names bound once already:
 // a lambda's body, so that its word is named for the item's place.
-pub fn in_includes(x: &'static Cx, a: i64) -> &'static Cx {
+pub fn in_includes(x: kayak_rt::Handle<'static, Cx>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let tagcase_ = x;
     match *tagcase_ {
         Cx::XLambda(ps, body, b) => {
@@ -3197,7 +3197,7 @@ pub fn in_includes(x: &'static Cx, a: i64) -> &'static Cx {
 }
 
 // Member `i` so, if it is a value of an item.
-pub fn member_in_includes(i: &'static Cmem) -> &'static Cmem {
+pub fn member_in_includes(i: kayak_rt::Handle<'static, Cmem>) -> kayak_rt::Handle<'static, Cmem> {
     let tagcase_ = i;
     match *tagcase_ {
         Cmem::Cmem(n, x, k, l, a) => {
@@ -3213,7 +3213,7 @@ pub fn member_in_includes(i: &'static Cmem) -> &'static Cmem {
 // The names `xs` (the included values, in order) members `its` use, each
 // once, in order: for each member, those it uses in `xs`'s order (Fixpt's
 // `c-included-names`).
-pub fn included_used(mut its: List<&'static Cmem>, mut xs: Strings, mut acc: Strings) -> Strings {
+pub fn included_used(mut its: List<kayak_rt::Handle<'static, Cmem>>, mut xs: Strings, mut acc: Strings) -> Strings {
     loop {
         if null_p(its) {
             return reverse(acc);
@@ -3256,7 +3256,7 @@ pub fn put_sep_words(ss: Strings) -> Str {
 
 // An arm's label: a name, or a flat sum's number, as its digits (C221).
 #[inline]
-pub fn arm_label(x: &'static Sexp) -> Str {
+pub fn arm_label(x: kayak_rt::Handle<'static, Sexp>) -> Str {
     let tagcase_ = x;
     match *tagcase_ {
         Sexp::Num(k, f, p) => {
@@ -3272,34 +3272,34 @@ pub fn arm_label(x: &'static Sexp) -> Str {
 // Quasiquotes' shapes (C221, Fixpt's parser.fx): `(form e)`'s `e`, as a
 // list of none or one; whether a list is dotted, its items before the dot
 // and its tail; the depth a list's items after its head are at.
-pub fn q_unquote_of(x: &'static Sexp, form: Str) -> Sexps {
+pub fn q_unquote_of(x: kayak_rt::Handle<'static, Sexp>, form: Str) -> Sexps {
     let tagcase_ = x;
     match *tagcase_ {
         Sexp::Lst(ys, f, l, p) => {
             if (i64_eq(size(ys), 2i64) && sym_is_p(car(ys), form)) {
                 cdr(ys)
             } else {
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
         _ => {
             let other = tagcase_;
-            nil::<&'static Sexp>()
+            nil::<kayak_rt::Handle<'static, Sexp>>()
         }
     }
 }
 
 #[inline]
-pub fn q_unquoted(x: &'static Sexp, depth: i64) -> Sexps {
+pub fn q_unquoted(x: kayak_rt::Handle<'static, Sexp>, depth: i64) -> Sexps {
     if i64_eq(depth, 1i64) {
         q_unquote_of(x, str_lit("unquote"))
     } else {
-        nil::<&'static Sexp>()
+        nil::<kayak_rt::Handle<'static, Sexp>>()
     }
 }
 
 #[inline]
-pub fn q_compound_p(x: &'static Sexp) -> bool {
+pub fn q_compound_p(x: kayak_rt::Handle<'static, Sexp>) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
         Sexp::Lst(ys, f, l, p) => {
@@ -3328,13 +3328,13 @@ pub fn q_dotted_p(mut ys: Sexps) -> bool {
 #[inline]
 pub fn q_before_dot(ys: Sexps) -> Sexps {
     if sym_is_p(car(ys), str_lit(".")) {
-        nil::<&'static Sexp>()
+        nil::<kayak_rt::Handle<'static, Sexp>>()
     } else {
         kayak_rt::heap_cons(car(ys), q_before_dot(cdr(ys)))
     }
 }
 
-pub fn q_dot_tail(mut ys: Sexps) -> &'static Sexp {
+pub fn q_dot_tail(mut ys: Sexps) -> kayak_rt::Handle<'static, Sexp> {
     loop {
         if sym_is_p(car(ys), str_lit(".")) {
             return second(ys);
@@ -3363,7 +3363,7 @@ pub fn q_inner(items: Sexps, depth: i64) -> i64 {
 }
 
 /// Whether no `unquote` or `unquote-splicing` at depth 1 is in `x`.
-pub fn q_free_p(mut x: &'static Sexp, mut depth: i64) -> bool {
+pub fn q_free_p(mut x: kayak_rt::Handle<'static, Sexp>, mut depth: i64) -> bool {
     loop {
         if null_p(q_unquoted(x, depth)) {
             let tagcase_ = x;
@@ -3401,7 +3401,7 @@ pub fn q_items_free_p(mut items: Sexps, mut depth: i64, mut inner: i64) -> bool 
             if null_p(if i64_eq(depth, 1i64) {
                 q_unquote_of(car(items), str_lit("unquote-splicing"))
             } else {
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }) {
                 if q_free_p(car(items), depth) {
                     (items, depth) = (cdr(items), inner);
@@ -3425,11 +3425,11 @@ pub enum Gfirst {
     Gfirst(Str, i64),
 }
 
-pub fn gfirst(f0: Str, f1: i64) -> &'static Gfirst {
+pub fn gfirst(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Gfirst> {
     kayak_rt::heap_alloc(Gfirst::Gfirst(f0, f1))
 }
 
-pub type Gbucket = List<&'static Gfirst>;
+pub type Gbucket = List<kayak_rt::Handle<'static, Gfirst>>;
 
 #[inline]
 pub fn global_buckets() -> Int {
@@ -3440,7 +3440,7 @@ pub fn global_buckets() -> Int {
 pub fn cg_global_table() -> Ref<Array<Gbucket>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<Gbucket>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(make_array(global_buckets(), the::<Gbucket>(nil::<&'static Gfirst>())))
+        kayak_rt::heap_new(make_array(global_buckets(), the::<Gbucket>(nil::<kayak_rt::Handle<'static, Gfirst>>())))
     })
 }
 
@@ -3494,7 +3494,7 @@ pub fn global_p(n: Str) -> bool {
 }
 
 /// `e`, converted where the checker found it converted (C230).
-pub fn parse_x(e: &'static Sexp) -> &'static Cx {
+pub fn parse_x(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Cx> {
     let x = parse_x_as_is(e);
     if null_p(get(cg_convert_facts())) {
         x
@@ -3506,7 +3506,7 @@ pub fn parse_x(e: &'static Sexp) -> &'static Cx {
 /// `x` given to `%fx26-convert` with `k`, what Fixpt's compiler gives it
 /// (`exp_unnoted`): an adapter, if `x` is of the other convention. As
 /// it is, if `k` is empty.
-pub fn converted_x(k: Str, x: &'static Cx, a: i64) -> &'static Cx {
+pub fn converted_x(k: Str, x: kayak_rt::Handle<'static, Cx>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if string_eq_p(k, str_lit("")) {
         x
     } else {
@@ -3514,7 +3514,7 @@ pub fn converted_x(k: Str, x: &'static Cx, a: i64) -> &'static Cx {
     }
 }
 
-pub fn parse_x_as_is(e: &'static Sexp) -> &'static Cx {
+pub fn parse_x_as_is(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Cx> {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Num(k, f, p) => {
@@ -3574,7 +3574,7 @@ pub fn parse_x_as_is(e: &'static Sexp) -> &'static Cx {
 /// The top level's `n`, at `p`: the plain name where the checker noted it
 /// so, else marked (`top-marked?`).
 #[inline]
-pub fn toplevel_x(n: Str, f: Str, p: i64) -> &'static Cx {
+pub fn toplevel_x(n: Str, f: Str, p: i64) -> kayak_rt::Handle<'static, Cx> {
     if fact_noted_p(get(cg_facts()), f, p, str_lit("toplevel-plain")) {
         x_var(n, p)
     } else {
@@ -3585,7 +3585,7 @@ pub fn toplevel_x(n: Str, f: Str, p: i64) -> &'static Cx {
 #[inline]
 pub fn parse_xs(es: Sexps) -> Cxs {
     if null_p(es) {
-        nil::<&'static Cx>()
+        nil::<kayak_rt::Handle<'static, Cx>>()
     } else {
         kayak_rt::heap_cons(parse_x(car(es)), parse_xs(cdr(es)))
     }
@@ -3593,7 +3593,7 @@ pub fn parse_xs(es: Sexps) -> Cxs {
 
 /// One or more expressions, an implicit `begin` where the form starts.
 #[inline]
-pub fn parse_body(forms: Sexps, a: i64) -> &'static Cx {
+pub fn parse_body(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if null_p(cdr(forms)) {
         parse_x(car(forms))
     } else {
@@ -3601,7 +3601,7 @@ pub fn parse_body(forms: Sexps, a: i64) -> &'static Cx {
     }
 }
 
-pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut f: Str, mut a: i64) -> &'static Cx {
+pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Sexp>, mut f: Str, mut a: i64) -> kayak_rt::Handle<'static, Cx> {
     loop {
         if string_eq_p(h, str_lit("lambda")) {
             return x_lambda(map(&binder_name, items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
@@ -3637,9 +3637,9 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut f: Str, m
             let given = if i64_gt_eq(size(xs), 3i64) {
                 cdr(items(third(xs)))
             } else {
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             };
-            let prod = lst(kayak_rt::heap_cons(sym(str_lit("product"), f, a), map2(lambda2s(move |x: &'static Sexp, k: i64| {
+            let prod = lst(kayak_rt::heap_cons(sym(str_lit("product"), f, a), map2(lambda2s(move |x: kayak_rt::Handle<'static, Sexp>, k: i64| {
                 lst(kayak_rt::heap_cons(num(k, i64_to_string(k), a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, 1i64, a)
             }), given, counting(1i64, i64_plus(size(given), 1i64)))), f, 1i64, a);
             return x_app(x_var(str_lit("%kayak-reify"), a), kayak_rt::heap_cons(parse_x(prod), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-given ")), a), kayak_rt::nil()))), a);
@@ -3831,7 +3831,7 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut f: Str, m
 /// A bloblet's or a blobref's operation (Fixpt's `e-bloblet`), and what
 /// the checker found it takes (C152): a field's index, written; a new
 /// blobref's size; a scalar's layout, an array's, a flat sum's.
-pub fn parse_bloblet(op: Str, args: Sexps, f: Str, a: i64) -> &'static Cx {
+pub fn parse_bloblet(op: Str, args: Sexps, f: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if (string_eq_p(op, str_lit("bloblet-ref")) || string_eq_p(op, str_lit("bloblet-set!"))) {
         x_bloblet(op, {
             let tagcase_ = second(args);
@@ -3847,14 +3847,14 @@ pub fn parse_bloblet(op: Str, args: Sexps, f: Str, a: i64) -> &'static Cx {
         }, kayak_rt::heap_cons(parse_x(car(args)), if string_eq_p(op, str_lit("bloblet-set!")) {
             kayak_rt::heap_cons(parse_x(third(args)), kayak_rt::nil())
         } else {
-            nil::<&'static Cx>()
+            nil::<kayak_rt::Handle<'static, Cx>>()
         }), a)
     } else {
         x_bloblet(op, blob_operand(op, f, a), parse_xs(args), a)
     }
 }
 
-pub fn parse_case(xs: Sexps, a: i64) -> &'static Cx {
+pub fn parse_case(xs: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let clauses = cdr(xs);
     let k = if null_p(cdr(clauses)) {
         the::<i64>(-1i64)
@@ -3888,8 +3888,8 @@ pub fn parse_case(xs: Sexps, a: i64) -> &'static Cx {
     }
 }
 
-pub fn case_tree(kv: &'static Cx, xs: Sexps, k: i64, a: i64) -> &'static Cx {
-    let sorted = case_sort(case_entries(kv, k, cdr(xs), 0i64), nil::<&'static Ckey>());
+pub fn case_tree(kv: kayak_rt::Handle<'static, Cx>, xs: Sexps, k: i64, a: i64) -> kayak_rt::Handle<'static, Cx> {
+    let sorted = case_sort(case_entries(kv, k, cdr(xs), 0i64), nil::<kayak_rt::Handle<'static, Ckey>>());
     let bodies = case_bodies(cdr(xs));
     let m = i64_minus(size(bodies), 1i64);
     let by = if i64_eq(k, 0i64) {
@@ -3927,15 +3927,15 @@ pub fn case_tree(kv: &'static Cx, xs: Sexps, k: i64, a: i64) -> &'static Cx {
     }
 }
 
-pub fn case_entries(kv: &'static Cx, k: i64, clauses: Sexps, c: i64) -> List<&'static Ckey> {
+pub fn case_entries(kv: kayak_rt::Handle<'static, Cx>, k: i64, clauses: Sexps, c: i64) -> List<kayak_rt::Handle<'static, Ckey>> {
     if null_p(cdr(clauses)) {
-        nil::<&'static Ckey>()
+        nil::<kayak_rt::Handle<'static, Ckey>>()
     } else {
         case_entries_of(kv, k, items(car(items(car(clauses)))), c, case_entries(kv, k, cdr(clauses), i64_plus(c, 1i64)))
     }
 }
 
-pub fn case_entries_of(kv: &'static Cx, k: i64, data: Sexps, c: i64, rest: List<&'static Ckey>) -> List<&'static Ckey> {
+pub fn case_entries_of(kv: kayak_rt::Handle<'static, Cx>, k: i64, data: Sexps, c: i64, rest: List<kayak_rt::Handle<'static, Ckey>>) -> List<kayak_rt::Handle<'static, Ckey>> {
     if null_p(data) {
         rest
     } else {
@@ -3945,13 +3945,13 @@ pub fn case_entries_of(kv: &'static Cx, k: i64, data: Sexps, c: i64, rest: List<
 
 pub fn case_bodies(clauses: Sexps) -> Cxs {
     if null_p(clauses) {
-        nil::<&'static Cx>()
+        nil::<kayak_rt::Handle<'static, Cx>>()
     } else {
         kayak_rt::heap_cons(parse_body(cdr(items(car(clauses))), datum_pos(car(clauses))), case_bodies(cdr(clauses)))
     }
 }
 
-pub fn parse_case_arms(kv: &'static Cx, clauses: Sexps) -> &'static Cx {
+pub fn parse_case_arms(kv: kayak_rt::Handle<'static, Cx>, clauses: Sexps) -> kayak_rt::Handle<'static, Cx> {
     let c = car(clauses);
     let parts = items(c);
     let ca = datum_pos(c);
@@ -3962,7 +3962,7 @@ pub fn parse_case_arms(kv: &'static Cx, clauses: Sexps) -> &'static Cx {
     }
 }
 
-pub fn parse_case_tests(kv: &'static Cx, data: Sexps, ca: i64) -> &'static Cx {
+pub fn parse_case_tests(kv: kayak_rt::Handle<'static, Cx>, data: Sexps, ca: i64) -> kayak_rt::Handle<'static, Cx> {
     let t = parse_case_test(kv, car(data));
     if null_p(cdr(data)) {
         t
@@ -3971,7 +3971,7 @@ pub fn parse_case_tests(kv: &'static Cx, data: Sexps, ca: i64) -> &'static Cx {
     }
 }
 
-pub fn parse_case_test(kv: &'static Cx, d: &'static Sexp) -> &'static Cx {
+pub fn parse_case_test(kv: kayak_rt::Handle<'static, Cx>, d: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Cx> {
     let at = datum_pos(d);
     let k = case_kind(d);
     let eq = if i64_eq(k, 0i64) {
@@ -3993,7 +3993,7 @@ pub fn parse_case_test(kv: &'static Cx, d: &'static Sexp) -> &'static Cx {
     x_app(std_var(eq, at), kayak_rt::heap_cons(kv, kayak_rt::heap_cons(lit, kayak_rt::nil())), at)
 }
 
-pub fn parse_typecase(xs: Sexps, a: i64) -> &'static Cx {
+pub fn parse_typecase(xs: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if case_direct_p(xs) {
         parse_typecase_arms(cdr(xs), sym_name(car(xs)), a)
     } else {
@@ -4001,7 +4001,7 @@ pub fn parse_typecase(xs: Sexps, a: i64) -> &'static Cx {
     }
 }
 
-pub fn parse_typecase_arms(arms: Sexps, tmp: Str, a: i64) -> &'static Cx {
+pub fn parse_typecase_arms(arms: Sexps, tmp: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let parts = items(car(arms));
     if null_p(cdr(arms)) {
         if i64_eq(size(parts), 3i64) {
@@ -4017,7 +4017,7 @@ pub fn parse_typecase_arms(arms: Sexps, tmp: Str, a: i64) -> &'static Cx {
 #[inline]
 pub fn parse_args(es: Sexps) -> Cxs {
     if null_p(es) {
-        nil::<&'static Cx>()
+        nil::<kayak_rt::Handle<'static, Cx>>()
     } else {
         kayak_rt::heap_cons(parse_arg(car(es)), parse_args(cdr(es)))
     }
@@ -4026,7 +4026,7 @@ pub fn parse_args(es: Sexps) -> Cxs {
 /// An argument; a module given where a module type is wanted made one of
 /// that type, its values those the type names, in its order (Fixpt's
 /// `k-reshapes`), unless it is so already.
-pub fn parse_arg(e: &'static Sexp) -> &'static Cx {
+pub fn parse_arg(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Cx> {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
@@ -4072,7 +4072,7 @@ pub fn parse_arg(e: &'static Sexp) -> &'static Cx {
 }
 
 pub fn module_fact_p(a: i64, what: Str) -> bool {
-    any_p(lambda1s(move |x: &'static Fact| {
+    any_p(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, w) => {
@@ -4085,7 +4085,7 @@ pub fn module_fact_p(a: i64, what: Str) -> bool {
 /// `(with m body …)`: `m`'s values bound in the body, those it names. A
 /// module parameter's are its type's, as the checker said; else `m` is
 /// a module whose items were read.
-pub fn parse_with(m: &'static Sexp, body: &'static Cx, f: Str, a: i64) -> &'static Cx {
+pub fn parse_with(m: kayak_rt::Handle<'static, Sexp>, body: kayak_rt::Handle<'static, Cx>, f: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let (spec, known) = (fact_text(get(cg_module_facts()), f, a, str_lit("with-spec ")), {
         let tagcase_ = m;
         match *tagcase_ {
@@ -4109,7 +4109,7 @@ pub fn parse_with(m: &'static Sexp, body: &'static Cx, f: Str, a: i64) -> &'stat
 }
 
 #[inline]
-pub fn with_layout(m: &'static Sexp, ns: Strings, body: &'static Cx, a: i64) -> &'static Cx {
+pub fn with_layout(m: kayak_rt::Handle<'static, Sexp>, ns: Strings, body: kayak_rt::Handle<'static, Cx>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     x_with(parse_x(m), ns, indices_from(0i64, size(ns)), body, a)
 }
 
@@ -4120,14 +4120,14 @@ pub fn with_layout(m: &'static Sexp, ns: Strings, body: &'static Cx, a: i64) -> 
 /// its own members; then, if its type is not that, one of its type:
 /// the values of the modules it includes but hides, then its own that
 /// it gives.
-pub fn parse_module(forms: Sexps, a: i64) -> &'static Cx {
+pub fn parse_module(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let outer = get(cg_layouts());
     let incs = includes_of(forms, false);
     let own = parse_items(forms, 2i64);
-    let own_names = map(&cmem_name, filter(lambda1s(move |i: &'static Cmem| {
+    let own_names = map(&cmem_name, filter(lambda1s(move |i: kayak_rt::Handle<'static, Cmem>| {
         i64_gt(cmem_kind(i), 0i64)
     }), own));
-    let given = map(&cmem_name, filter(lambda1s(move |i: &'static Cmem| {
+    let given = map(&cmem_name, filter(lambda1s(move |i: kayak_rt::Handle<'static, Cmem>| {
         i64_eq(cmem_kind(i), 2i64)
     }), own));
     set(cg_layouts(), outer);
@@ -4173,7 +4173,7 @@ pub fn parse_module(forms: Sexps, a: i64) -> &'static Cx {
         let shown = included_values(incs, false);
         let inside = map(&member_in_includes, own);
         let used = included_used(inside, inc_type, nil::<Str>());
-        let its = the::<List<&'static Cmem>>(kayak_rt::heap_cons(cmem(str_lit("%include"), include_module(incs, at), 1i64, false, at), onto(map(lambda1s(move |n: Str| {
+        let its = the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit("%include"), include_module(incs, at), 1i64, false, at), onto(map(lambda1s(move |n: Str| {
             cmem(n, x_extract(x_var(str_lit("%include"), at), index_in(n, inc_type, 0i64), at), 0i64, false, at)
         }), used), inside)));
         let mine = the::<Strings>(kayak_rt::heap_cons(str_lit("%include"), own_names));
@@ -4189,7 +4189,7 @@ pub fn parse_module(forms: Sexps, a: i64) -> &'static Cx {
 /// A module made where a module's type is wanted, of the values that type
 /// names, in its order (the checker's `module-arg` there, C216; Fixpt's
 /// `k-reshape-at`): made, then reshaped, unless it is so already.
-pub fn module_narrowed(x: &'static Cx, f: Str, a: i64) -> &'static Cx {
+pub fn module_narrowed(x: kayak_rt::Handle<'static, Cx>, f: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let (want, have) = ({
         let arg = fact_text(get(cg_module_facts()), f, a, str_lit("module-arg "));
         if string_eq_p(arg, str_lit("")) {
@@ -4211,7 +4211,7 @@ pub fn module_narrowed(x: &'static Cx, f: Str, a: i64) -> &'static Cx {
 /// `(extend e0 e1)` (FX-91's): a module of `e0`, then `e1`, which sees
 /// `e0`'s values, in a `with` of it; then, of its type, `e0`'s values,
 /// `e1`'s in their place where both give one, then `e1`'s others.
-pub fn parse_extend(e0: &'static Sexp, e1: &'static Sexp, a: i64) -> &'static Cx {
+pub fn parse_extend(e0: kayak_rt::Handle<'static, Sexp>, e1: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let l0 = included_layout(sym_name(e0));
     let x1 = {
         let tagcase_ = e1;
@@ -4253,7 +4253,7 @@ pub fn parse_extend(e0: &'static Sexp, e1: &'static Sexp, a: i64) -> &'static Cx
         not(string_member_p(n, l0))
     }), l1);
     set(cg_module_type(), onto(l0, more));
-    x_reshape(x_module(the::<List<&'static Cmem>>(kayak_rt::heap_cons(cmem(str_lit("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit("%extended"), seen, 1i64, false, a), kayak_rt::nil()))), a), onto(map(lambda1s(move |n: Str| {
+    x_reshape(x_module(the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit("%extended"), seen, 1i64, false, a), kayak_rt::nil()))), a), onto(map(lambda1s(move |n: Str| {
         if string_member_p(n, l1) {
             the::<List<i64>>(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil())))
         } else {
@@ -4267,13 +4267,13 @@ pub fn parse_extend(e0: &'static Sexp, e1: &'static Sexp, a: i64) -> &'static Cx
 /// `%include`: the modules included, each a member of it; then, of its
 /// type, each of their values in turn.
 #[inline]
-pub fn include_module(incs: List<&'static Cinc>, at: i64) -> &'static Cx {
+pub fn include_module(incs: List<kayak_rt::Handle<'static, Cinc>>, at: i64) -> kayak_rt::Handle<'static, Cx> {
     x_reshape(x_module(include_members(incs, 0i64), at), include_paths(incs, 0i64), at)
 }
 
-pub fn include_members(incs: List<&'static Cinc>, k: i64) -> List<&'static Cmem> {
+pub fn include_members(incs: List<kayak_rt::Handle<'static, Cinc>>, k: i64) -> List<kayak_rt::Handle<'static, Cmem>> {
     if null_p(incs) {
-        nil::<&'static Cmem>()
+        nil::<kayak_rt::Handle<'static, Cmem>>()
     } else {
         let tagcase_ = car(incs);
         match *tagcase_ {
@@ -4295,7 +4295,7 @@ pub fn include_members(incs: List<&'static Cinc>, k: i64) -> List<&'static Cmem>
     }
 }
 
-pub fn include_paths(incs: List<&'static Cinc>, k: i64) -> Paths {
+pub fn include_paths(incs: List<kayak_rt::Handle<'static, Cinc>>, k: i64) -> Paths {
     if null_p(incs) {
         nil::<List<i64>>()
     } else {
@@ -4315,7 +4315,7 @@ pub fn include_paths(incs: List<&'static Cinc>, k: i64) -> Paths {
 
 /// The values of the modules included, in order, of those hidden too if
 /// `hidden`.
-pub fn included_values(incs: List<&'static Cinc>, hidden: bool) -> Strings {
+pub fn included_values(incs: List<kayak_rt::Handle<'static, Cinc>>, hidden: bool) -> Strings {
     if null_p(incs) {
         nil::<Str>()
     } else {
@@ -4347,10 +4347,10 @@ pub fn included_layout(m: Str) -> Strings {
 }
 
 /// A module's `include`s, in order, those in a `hide` hidden.
-pub fn includes_of(mut forms: Sexps, mut hidden: bool) -> List<&'static Cinc> {
+pub fn includes_of(mut forms: Sexps, mut hidden: bool) -> List<kayak_rt::Handle<'static, Cinc>> {
     loop {
         if null_p(forms) {
-            return nil::<&'static Cinc>();
+            return nil::<kayak_rt::Handle<'static, Cinc>>();
         } else {
             let f = car(forms);
             if (head_is_p(f, str_lit("include")) && i64_eq(size(items(f)), 2i64) && not({
@@ -4380,7 +4380,7 @@ pub fn includes_of(mut forms: Sexps, mut hidden: bool) -> List<&'static Cinc> {
                     return kayak_rt::heap_cons(cinc(sym_name(second(items(f))), hidden, datum_pos(f)), includes_of(cdr(forms), hidden));
                 } else {
                     match cg_fail(str_lit("not yet: an include with exceptions")) {};
-                    return nil::<&'static Cinc>();
+                    return nil::<kayak_rt::Handle<'static, Cinc>>();
                 }
             } else if head_is_p(f, str_lit("hide")) {
                 return onto(includes_of(cdr(items(f)), true), includes_of(cdr(forms), hidden));
@@ -4395,15 +4395,15 @@ pub fn includes_of(mut forms: Sexps, mut hidden: bool) -> List<&'static Cinc> {
 /// A module's members, in order, each a value; those of a `hide` of kind
 /// 1, hidden.
 #[inline]
-pub fn parse_items(forms: Sexps, kind: i64) -> List<&'static Cmem> {
+pub fn parse_items(forms: Sexps, kind: i64) -> List<kayak_rt::Handle<'static, Cmem>> {
     if null_p(forms) {
-        nil::<&'static Cmem>()
+        nil::<kayak_rt::Handle<'static, Cmem>>()
     } else {
         onto(parse_item(car(forms), kind), parse_items(cdr(forms), kind))
     }
 }
 
-pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
+pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_rt::Handle<'static, Cmem>> {
     let h = {
         let tagcase_ = e;
         match *tagcase_ {
@@ -4443,7 +4443,7 @@ pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
     } else if string_eq_p(h, str_lit("define-rec")) {
         parse_rec_members(cdr(items(e)), kind)
     } else if string_eq_p(h, str_lit("define-generative")) {
-        map(lambda1s(move |t: &'static Ctop| {
+        map(lambda1s(move |t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Ctop::TDefine(n, typed, x) => {
@@ -4456,7 +4456,7 @@ pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
             }
         }), generative_conversions(e, datum_pos(e)))
     } else if string_eq_p(h, str_lit("define-datatype")) {
-        map(lambda1s(move |t: &'static Ctop| {
+        map(lambda1s(move |t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Ctop::TDefine(n, typed, x) => {
@@ -4469,7 +4469,7 @@ pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
             }
         }), dt_constructors(cdr(cdr(items(e))), datum_pos(e)))
     } else if string_eq_p(h, str_lit("import")) {
-        map(lambda1s(move |t: &'static Ctop| {
+        map(lambda1s(move |t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Ctop::TDefine(n, typed, x) => {
@@ -4484,7 +4484,7 @@ pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
     } else if string_eq_p(h, str_lit("hide")) {
         parse_items(cdr(items(e)), 1i64)
     } else if (string_eq_p(h, str_lit("define-type")) || string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-convention")) || string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%loaded"))) {
-        nil::<&'static Cmem>()
+        nil::<kayak_rt::Handle<'static, Cmem>>()
     } else if {
         let tagcase_ = e;
         match *tagcase_ {
@@ -4497,18 +4497,18 @@ pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
             }
         }
     } {
-        nil::<&'static Cmem>()
+        nil::<kayak_rt::Handle<'static, Cmem>>()
     } else {
         match cg_fail(string_append(str_lit("not yet: a module's "), h)) {};
-        nil::<&'static Cmem>()
+        nil::<kayak_rt::Handle<'static, Cmem>>()
     }
 }
 
 /// A `define-rec`'s members, each `(name type expression)`, each where
 /// its binding is.
-pub fn parse_rec_members(bs: Sexps, kind: i64) -> List<&'static Cmem> {
+pub fn parse_rec_members(bs: Sexps, kind: i64) -> List<kayak_rt::Handle<'static, Cmem>> {
     if null_p(bs) {
-        nil::<&'static Cmem>()
+        nil::<kayak_rt::Handle<'static, Cmem>>()
     } else {
         let x = parse_x(third(items(car(bs))));
         kayak_rt::heap_cons(cmem(sym_name(car(items(car(bs)))), x, kind, not(null_p(lambda_of(x))), datum_pos(car(bs))), parse_rec_members(cdr(bs), kind))
@@ -4518,14 +4518,14 @@ pub fn parse_rec_members(bs: Sexps, kind: i64) -> List<&'static Cmem> {
 /// `(import m x …)`: each value `x` defined as `(with m x)`; `(type t
 /// …)` and `(effect e …)` name no value.
 #[inline]
-pub fn imports(e: &'static Sexp) -> List<&'static Ctop> {
+pub fn imports(e: kayak_rt::Handle<'static, Sexp>) -> List<kayak_rt::Handle<'static, Ctop>> {
     import_names(second(items(e)), cdr(cdr(items(e))), datum_pos(e))
 }
 
-pub fn import_names(mut m: &'static Sexp, mut xs: Sexps, mut a: i64) -> List<&'static Ctop> {
+pub fn import_names(mut m: kayak_rt::Handle<'static, Sexp>, mut xs: Sexps, mut a: i64) -> List<kayak_rt::Handle<'static, Ctop>> {
     loop {
         if null_p(xs) {
-            return nil::<&'static Ctop>();
+            return nil::<kayak_rt::Handle<'static, Ctop>>();
         } else if {
             let tagcase_ = car(xs);
             match *tagcase_ {
@@ -4545,7 +4545,7 @@ pub fn import_names(mut m: &'static Sexp, mut xs: Sexps, mut a: i64) -> List<&'s
                 }
                 _ => {
                     let other = tagcase_;
-                    return nil::<&'static Ctop>();
+                    return nil::<kayak_rt::Handle<'static, Ctop>>();
                 }
             }
         } else {
@@ -4557,7 +4557,7 @@ pub fn import_names(mut m: &'static Sexp, mut xs: Sexps, mut a: i64) -> List<&'s
 
 pub fn parse_binds(bs: Sexps) -> Cbinds {
     if null_p(bs) {
-        nil::<&'static Cbind>()
+        nil::<kayak_rt::Handle<'static, Cbind>>()
     } else {
         kayak_rt::heap_cons(cbind(sym_name(car(items(car(bs)))), parse_x(second(items(car(bs))))), parse_binds(cdr(bs)))
     }
@@ -4566,7 +4566,7 @@ pub fn parse_binds(bs: Sexps) -> Cbinds {
 /// A `letrec`'s or `define-rec`'s bindings, `(name type expression)`.
 pub fn parse_typed_binds(bs: Sexps) -> Cbinds {
     if null_p(bs) {
-        nil::<&'static Cbind>()
+        nil::<kayak_rt::Handle<'static, Cbind>>()
     } else {
         kayak_rt::heap_cons(cbind(sym_name(car(items(car(bs)))), parse_x(car(cdr(cdr(items(car(bs))))))), parse_typed_binds(cdr(bs)))
     }
@@ -4575,14 +4575,14 @@ pub fn parse_typed_binds(bs: Sexps) -> Cbinds {
 /// A product's fields, `(label expression)`, in order.
 pub fn parse_fields(fs: Sexps) -> Cbinds {
     if null_p(fs) {
-        nil::<&'static Cbind>()
+        nil::<kayak_rt::Handle<'static, Cbind>>()
     } else {
         kayak_rt::heap_cons(cbind(label_of(car(items(car(fs)))), parse_x(second(items(car(fs))))), parse_fields(cdr(fs)))
     }
 }
 
 /// `let*`: nested one-binding `let`s, each where its binding starts.
-pub fn parse_let_star(bs: Sexps, body: &'static Cx) -> &'static Cx {
+pub fn parse_let_star(bs: Sexps, body: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Cx> {
     if null_p(bs) {
         body
     } else {
@@ -4591,7 +4591,7 @@ pub fn parse_let_star(bs: Sexps, body: &'static Cx) -> &'static Cx {
 }
 
 /// `cond`: nested `if`s, each where its clause starts.
-pub fn parse_cond(clauses: Sexps, a: i64) -> &'static Cx {
+pub fn parse_cond(clauses: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let c = car(clauses);
     let parts = items(c);
     if null_p(cdr(clauses)) {
@@ -4601,7 +4601,7 @@ pub fn parse_cond(clauses: Sexps, a: i64) -> &'static Cx {
     }
 }
 
-pub fn parse_and(xs: Sexps, a: i64) -> &'static Cx {
+pub fn parse_and(xs: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if null_p(xs) {
         x_bool(true, a)
     } else if null_p(cdr(xs)) {
@@ -4613,7 +4613,7 @@ pub fn parse_and(xs: Sexps, a: i64) -> &'static Cx {
     }
 }
 
-pub fn parse_or(xs: Sexps, a: i64) -> &'static Cx {
+pub fn parse_or(xs: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if null_p(xs) {
         x_bool(false, a)
     } else if null_p(cdr(xs)) {
@@ -4628,7 +4628,7 @@ pub fn parse_or(xs: Sexps, a: i64) -> &'static Cx {
 /// A quoted datum, as Fixpt's quote rewrite writes it: a symbol, an atom
 /// as itself; a list of `cons` and `nil`, a dotted one's tail its last,
 /// a vector `list->vector` of its items' list, interned whole.
-pub fn parse_quoted(d: &'static Sexp, a: i64) -> &'static Cx {
+pub fn parse_quoted(d: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
@@ -4656,7 +4656,7 @@ pub fn parse_quoted(d: &'static Sexp, a: i64) -> &'static Cx {
     }
 }
 
-pub fn quoted_list(ys: Sexps, a: i64) -> &'static Cx {
+pub fn quoted_list(ys: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if null_p(ys) {
         std_var(str_lit("nil"), a)
     } else if ({
@@ -4677,7 +4677,7 @@ pub fn quoted_list(ys: Sexps, a: i64) -> &'static Cx {
     }
 }
 
-pub fn quoted_item(d: &'static Sexp, a: i64) -> &'static Cx {
+pub fn quoted_item(d: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
@@ -4716,7 +4716,7 @@ pub fn quoted_item(d: &'static Sexp, a: i64) -> &'static Cx {
     }
 }
 
-pub fn quasi_in(x: &'static Sexp, depth: i64) -> &'static Cx {
+pub fn quasi_in(x: kayak_rt::Handle<'static, Sexp>, depth: i64) -> kayak_rt::Handle<'static, Cx> {
     let u = q_unquoted(x, depth);
     let a = datum_pos(x);
     let mark = (null_p(u) && i64_gt_eq(depth, 1i64) && q_compound_p(x) && q_free_p(x, depth));
@@ -4771,11 +4771,11 @@ pub fn quasi_in(x: &'static Sexp, depth: i64) -> &'static Cx {
     }
 }
 
-pub fn q_items(items: Sexps, dotted: bool, tail: &'static Sexp, depth: i64, a: i64) -> &'static Cx {
+pub fn q_items(items: Sexps, dotted: bool, tail: kayak_rt::Handle<'static, Sexp>, depth: i64, a: i64) -> kayak_rt::Handle<'static, Cx> {
     q_onto(items, dotted, tail, depth, (i64_gt_eq(depth, 1i64) && (not(dotted) || q_free_p(tail, depth))), depth, q_inner(items, depth), true, a)
 }
 
-pub fn q_plain(items: Sexps, dotted: bool, tail: &'static Sexp, a: i64) -> &'static Cx {
+pub fn q_plain(items: Sexps, dotted: bool, tail: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if null_p(items) {
         if dotted {
             quasi_in(tail, -1i64)
@@ -4787,7 +4787,7 @@ pub fn q_plain(items: Sexps, dotted: bool, tail: &'static Sexp, a: i64) -> &'sta
     }
 }
 
-pub fn q_onto(items: Sexps, dotted: bool, tail: &'static Sexp, ldepth: i64, free_tail: bool, depth: i64, inner: i64, first: bool, a: i64) -> &'static Cx {
+pub fn q_onto(items: Sexps, dotted: bool, tail: kayak_rt::Handle<'static, Sexp>, ldepth: i64, free_tail: bool, depth: i64, inner: i64, first: bool, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if null_p(items) {
         if dotted {
             quasi_in(tail, ldepth)
@@ -4800,7 +4800,7 @@ pub fn q_onto(items: Sexps, dotted: bool, tail: &'static Sexp, ldepth: i64, free
         let (rest, spliced) = (q_onto(cdr(items), dotted, tail, ldepth, free_tail, inner, inner, false, a), if i64_eq(depth, 1i64) {
             q_unquote_of(car(items), str_lit("unquote-splicing"))
         } else {
-            nil::<&'static Sexp>()
+            nil::<kayak_rt::Handle<'static, Sexp>>()
         });
         if null_p(spliced) {
             x_app(std_var(str_lit("cons"), a), kayak_rt::heap_cons(quasi_in(car(items), depth), kayak_rt::heap_cons(rest, kayak_rt::nil())), a)
@@ -4812,9 +4812,9 @@ pub fn q_onto(items: Sexps, dotted: bool, tail: &'static Sexp, ldepth: i64, free
 
 /// A `tagcase`'s arms before its `else`: `(tag name body …)` or
 /// `(tag (name …) body …)`.
-pub fn parse_arms(arms: Sexps) -> List<&'static Carm> {
+pub fn parse_arms(arms: Sexps) -> List<kayak_rt::Handle<'static, Carm>> {
     if (null_p(arms) || head_is_p(car(arms), str_lit("else"))) {
-        nil::<&'static Carm>()
+        nil::<kayak_rt::Handle<'static, Carm>>()
     } else {
         let parts = items(car(arms));
         let b = second(parts);
@@ -4836,7 +4836,7 @@ pub fn parse_arms(arms: Sexps) -> List<&'static Carm> {
 pub fn parse_else(mut arms: Sexps) -> Cbinds {
     loop {
         if null_p(arms) {
-            return nil::<&'static Cbind>();
+            return nil::<kayak_rt::Handle<'static, Cbind>>();
         } else if head_is_p(car(arms), str_lit("else")) {
             let parts = items(car(arms));
             return kayak_rt::heap_cons(cbind(sym_name(second(parts)), parse_body(cdr(cdr(parts)), datum_pos(car(arms)))), kayak_rt::nil());
@@ -4847,16 +4847,16 @@ pub fn parse_else(mut arms: Sexps) -> Cbinds {
     }
 }
 
-pub fn parse_syscall_tops(ds: Sexps) -> List<&'static Ctop> {
+pub fn parse_syscall_tops(ds: Sexps) -> List<kayak_rt::Handle<'static, Ctop>> {
     if null_p(ds) {
-        nil::<&'static Ctop>()
+        nil::<kayak_rt::Handle<'static, Ctop>>()
     } else {
         let d = items(car(ds));
         kayak_rt::heap_cons(t_define(sym_name(second(d)), false, parse_x(third(d))), parse_syscall_tops(cdr(ds)))
     }
 }
 
-pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
+pub fn parse_top(e: kayak_rt::Handle<'static, Sexp>) -> List<kayak_rt::Handle<'static, Ctop>> {
     let h = {
         let tagcase_ = e;
         match *tagcase_ {
@@ -4898,7 +4898,7 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
             third(xs)
         })) && module_made_p(x)) {
             set(cg_made(), kayak_rt::heap_cons(cmade(n, x), get(cg_made())));
-            nil::<&'static Ctop>()
+            nil::<kayak_rt::Handle<'static, Ctop>>()
         } else {
             if (typed && i64_gt_eq(lambda_at(x), 0i64)) {
                 set(cg_define_at(), kayak_rt::heap_cons(dpos(lambda_at(x), datum_pos(e)), get(cg_define_at())))
@@ -4910,7 +4910,7 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
     } else if string_eq_p(h, str_lit("define-rec")) {
         kayak_rt::heap_cons(t_define_rec(parse_typed_binds(cdr(items(e)))), kayak_rt::nil())
     } else if (string_eq_p(h, str_lit("define-type")) || string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-convention"))) {
-        nil::<&'static Ctop>()
+        nil::<kayak_rt::Handle<'static, Ctop>>()
     } else if string_eq_p(h, str_lit("define-datatype")) {
         dt_constructors(cdr(cdr(items(e))), datum_pos(e))
     } else if string_eq_p(h, str_lit("define-generative")) {
@@ -4919,7 +4919,7 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
         imports(e)
     } else if string_eq_p(h, str_lit("include")) {
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
-        nil::<&'static Ctop>()
+        nil::<kayak_rt::Handle<'static, Ctop>>()
     } else if (string_eq_p(h, str_lit("define-syscall")) || string_eq_p(h, str_lit("define-optional-syscall"))) {
         parse_syscall_tops(syscall_definitions(e, spaced_words(fact_text(get(cg_facts()), datum_file(e), datum_pos(e), str_lit("syscall ")))))
     } else {
@@ -4937,57 +4937,57 @@ pub enum Lit {
     LChar(char),
     LF64(Int),
     LSym(Str),
-    LPair(&'static Lit, &'static Lit),
+    LPair(kayak_rt::Handle<'static, Lit>, kayak_rt::Handle<'static, Lit>),
     LWord(Str),
     LQuoted(i64),
-    LFrozen(Str, List<&'static Lit>),
+    LFrozen(Str, List<kayak_rt::Handle<'static, Lit>>),
 }
 
-pub fn l_int(f0: Int) -> &'static Lit {
+pub fn l_int(f0: Int) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LInt(f0))
 }
 
-pub fn l_bool(f0: bool) -> &'static Lit {
+pub fn l_bool(f0: bool) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LBool(f0))
 }
 
-pub fn l_unit() -> &'static Lit {
+pub fn l_unit() -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LUnit())
 }
 
-pub fn l_nil() -> &'static Lit {
+pub fn l_nil() -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LNil())
 }
 
-pub fn l_str(f0: Str) -> &'static Lit {
+pub fn l_str(f0: Str) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LStr(f0))
 }
 
-pub fn l_char(f0: char) -> &'static Lit {
+pub fn l_char(f0: char) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LChar(f0))
 }
 
-pub fn l_f64(f0: Int) -> &'static Lit {
+pub fn l_f64(f0: Int) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LF64(f0))
 }
 
-pub fn l_sym(f0: Str) -> &'static Lit {
+pub fn l_sym(f0: Str) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LSym(f0))
 }
 
-pub fn l_pair(f0: &'static Lit, f1: &'static Lit) -> &'static Lit {
+pub fn l_pair(f0: kayak_rt::Handle<'static, Lit>, f1: kayak_rt::Handle<'static, Lit>) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LPair(f0, f1))
 }
 
-pub fn l_word(f0: Str) -> &'static Lit {
+pub fn l_word(f0: Str) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LWord(f0))
 }
 
-pub fn l_quoted(f0: i64) -> &'static Lit {
+pub fn l_quoted(f0: i64) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LQuoted(f0))
 }
 
-pub fn l_frozen(f0: Str, f1: List<&'static Lit>) -> &'static Lit {
+pub fn l_frozen(f0: Str, f1: List<kayak_rt::Handle<'static, Lit>>) -> kayak_rt::Handle<'static, Lit> {
     kayak_rt::heap_alloc(Lit::LFrozen(f0, f1))
 }
 
@@ -4995,63 +4995,63 @@ pub fn l_frozen(f0: Str, f1: List<&'static Lit>) -> &'static Lit {
 // global (by its name), a runtime primitive (by its name).
 pub enum Opnd {
     OInt(i64),
-    OLit(&'static Lit),
+    OLit(kayak_rt::Handle<'static, Lit>),
     OWord(Str),
     OGlobal(Str),
     OPrim(Str),
 }
 
-pub fn o_int(f0: i64) -> &'static Opnd {
+pub fn o_int(f0: i64) -> kayak_rt::Handle<'static, Opnd> {
     kayak_rt::heap_alloc(Opnd::OInt(f0))
 }
 
-pub fn o_lit(f0: &'static Lit) -> &'static Opnd {
+pub fn o_lit(f0: kayak_rt::Handle<'static, Lit>) -> kayak_rt::Handle<'static, Opnd> {
     kayak_rt::heap_alloc(Opnd::OLit(f0))
 }
 
-pub fn o_word(f0: Str) -> &'static Opnd {
+pub fn o_word(f0: Str) -> kayak_rt::Handle<'static, Opnd> {
     kayak_rt::heap_alloc(Opnd::OWord(f0))
 }
 
-pub fn o_global(f0: Str) -> &'static Opnd {
+pub fn o_global(f0: Str) -> kayak_rt::Handle<'static, Opnd> {
     kayak_rt::heap_alloc(Opnd::OGlobal(f0))
 }
 
-pub fn o_prim(f0: Str) -> &'static Opnd {
+pub fn o_prim(f0: Str) -> kayak_rt::Handle<'static, Opnd> {
     kayak_rt::heap_alloc(Opnd::OPrim(f0))
 }
 
 // One item of a word being built: an instruction (a routine and its
 // operands), a label, or a branch to one (Fixpt's `item`).
 pub enum Item {
-    ItIns(Str, List<&'static Opnd>),
+    ItIns(Str, List<kayak_rt::Handle<'static, Opnd>>),
     ItLabel(i64),
     ItBranch(i64),
     ItZbranch(i64),
     ItPos(i64),
 }
 
-pub fn it_ins(f0: Str, f1: List<&'static Opnd>) -> &'static Item {
+pub fn it_ins(f0: Str, f1: List<kayak_rt::Handle<'static, Opnd>>) -> kayak_rt::Handle<'static, Item> {
     kayak_rt::heap_alloc(Item::ItIns(f0, f1))
 }
 
-pub fn it_label(f0: i64) -> &'static Item {
+pub fn it_label(f0: i64) -> kayak_rt::Handle<'static, Item> {
     kayak_rt::heap_alloc(Item::ItLabel(f0))
 }
 
-pub fn it_branch(f0: i64) -> &'static Item {
+pub fn it_branch(f0: i64) -> kayak_rt::Handle<'static, Item> {
     kayak_rt::heap_alloc(Item::ItBranch(f0))
 }
 
-pub fn it_zbranch(f0: i64) -> &'static Item {
+pub fn it_zbranch(f0: i64) -> kayak_rt::Handle<'static, Item> {
     kayak_rt::heap_alloc(Item::ItZbranch(f0))
 }
 
-pub fn it_pos(f0: i64) -> &'static Item {
+pub fn it_pos(f0: i64) -> kayak_rt::Handle<'static, Item> {
     kayak_rt::heap_alloc(Item::ItPos(f0))
 }
 
-pub type Citems = List<&'static Item>;
+pub type Citems = List<kayak_rt::Handle<'static, Item>>;
 
 pub type Code = Ref<Citems>;
 
@@ -5060,7 +5060,7 @@ pub enum Word {
     Word(Str, Citems),
 }
 
-pub fn word(f0: Str, f1: Citems) -> &'static Word {
+pub fn word(f0: Str, f1: Citems) -> kayak_rt::Handle<'static, Word> {
     kayak_rt::heap_alloc(Word::Word(f0, f1))
 }
 
@@ -5085,10 +5085,10 @@ pub fn shown_name(n: Str) -> Str {
 
 // The program's words, the newest first.
 #[inline]
-pub fn cg_words() -> Ref<List<&'static Word>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Word>>);
+pub fn cg_words() -> Ref<List<kayak_rt::Handle<'static, Word>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Word>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Word>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Word>>())
     })
 }
 
@@ -5108,22 +5108,22 @@ pub fn c_fresh() -> i64 {
 }
 
 #[inline]
-pub fn c_emit(c: Code, i: &'static Item) -> () {
+pub fn c_emit(c: Code, i: kayak_rt::Handle<'static, Item>) -> () {
     set(c, kayak_rt::heap_cons(i, get(c)))
 }
 
 #[inline]
 pub fn c_op(c: Code, r: Str) -> () {
-    c_emit(c, it_ins(r, nil::<&'static Opnd>()))
+    c_emit(c, it_ins(r, nil::<kayak_rt::Handle<'static, Opnd>>()))
 }
 
 #[inline]
-pub fn c_op1(c: Code, r: Str, x: &'static Opnd) -> () {
+pub fn c_op1(c: Code, r: Str, x: kayak_rt::Handle<'static, Opnd>) -> () {
     c_emit(c, it_ins(r, kayak_rt::heap_cons(x, kayak_rt::nil())))
 }
 
 #[inline]
-pub fn c_lit(c: Code, x: &'static Lit) -> () {
+pub fn c_lit(c: Code, x: kayak_rt::Handle<'static, Lit>) -> () {
     c_op1(c, str_lit("lit"), o_lit(x))
 }
 
@@ -5163,7 +5163,7 @@ pub fn c_fits(c: Code, size: i64) -> () {
 }
 
 #[inline]
-pub fn second_cx(xs: Cxs) -> &'static Cx {
+pub fn second_cx(xs: Cxs) -> kayak_rt::Handle<'static, Cx> {
     car(cdr(xs))
 }
 
@@ -5284,22 +5284,22 @@ pub fn q_close() -> Str {
 }
 
 pub enum Qnode {
-    Qnode(i64, &'static Lit, &'static Lit),
+    Qnode(i64, kayak_rt::Handle<'static, Lit>, kayak_rt::Handle<'static, Lit>),
 }
 
-pub fn qnode(f0: i64, f1: &'static Lit, f2: &'static Lit) -> &'static Qnode {
+pub fn qnode(f0: i64, f1: kayak_rt::Handle<'static, Lit>, f2: kayak_rt::Handle<'static, Lit>) -> kayak_rt::Handle<'static, Qnode> {
     kayak_rt::heap_alloc(Qnode::Qnode(f0, f1, f2))
 }
 
 #[inline]
-pub fn cg_qnodes() -> Ref<List<&'static Qnode>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qnode>>);
+pub fn cg_qnodes() -> Ref<List<kayak_rt::Handle<'static, Qnode>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Qnode>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Qnode>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Qnode>>())
     })
 }
 
-pub fn lit_text(l: &'static Lit) -> Str {
+pub fn lit_text(l: kayak_rt::Handle<'static, Lit>) -> Str {
     let tagcase_ = l;
     match *tagcase_ {
         Lit::LInt(n) => {
@@ -5346,7 +5346,7 @@ pub fn lit_text(l: &'static Lit) -> Str {
 }
 
 #[inline]
-pub fn lits_text(ls: List<&'static Lit>) -> Str {
+pub fn lits_text(ls: List<kayak_rt::Handle<'static, Lit>>) -> Str {
     if null_p(ls) {
         str_lit("")
     } else {
@@ -5354,7 +5354,7 @@ pub fn lits_text(ls: List<&'static Lit>) -> Str {
     }
 }
 
-pub fn item_size(i: &'static Item) -> i64 {
+pub fn item_size(i: kayak_rt::Handle<'static, Item>) -> i64 {
     let tagcase_ = i;
     match *tagcase_ {
         Item::ItIns(r, os) => {
@@ -5380,11 +5380,11 @@ pub enum LabelAt {
     LabelAt(i64, i64),
 }
 
-pub fn label_at(f0: i64, f1: i64) -> &'static LabelAt {
+pub fn label_at(f0: i64, f1: i64) -> kayak_rt::Handle<'static, LabelAt> {
     kayak_rt::heap_alloc(LabelAt::LabelAt(f0, f1))
 }
 
-pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<&'static LabelAt>) -> List<&'static LabelAt> {
+pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<kayak_rt::Handle<'static, LabelAt>>) -> List<kayak_rt::Handle<'static, LabelAt>> {
     loop {
         if null_p(xs) {
             return acc;
@@ -5406,7 +5406,7 @@ pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<&'static LabelAt>) -
     }
 }
 
-pub fn place_at(mut ps: List<&'static LabelAt>, mut n: i64) -> i64 {
+pub fn place_at(mut ps: List<kayak_rt::Handle<'static, LabelAt>>, mut n: i64) -> i64 {
     loop {
         if null_p(ps) {
             return -1i64;
@@ -5453,7 +5453,7 @@ pub fn padded(n: i64) -> Str {
 }
 
 #[inline]
-pub fn second_opnd(os: List<&'static Opnd>) -> &'static Opnd {
+pub fn second_opnd(os: List<kayak_rt::Handle<'static, Opnd>>) -> kayak_rt::Handle<'static, Opnd> {
     car(cdr(os))
 }
 
@@ -5467,7 +5467,7 @@ pub fn put_sep_lines(ss: Strings) -> Str {
     string_list_append(strings_after(ss, str_lit("\n")))
 }
 
-pub fn opnd_text(o: &'static Opnd) -> Str {
+pub fn opnd_text(o: kayak_rt::Handle<'static, Opnd>) -> Str {
     let tagcase_ = o;
     match *tagcase_ {
         Opnd::OInt(n) => {
@@ -5488,7 +5488,7 @@ pub fn opnd_text(o: &'static Opnd) -> Str {
     }
 }
 
-pub fn words_said(os: List<&'static Opnd>) -> Strings {
+pub fn words_said(os: List<kayak_rt::Handle<'static, Opnd>>) -> Strings {
     if null_p(os) {
         nil::<Str>()
     } else {
@@ -5519,7 +5519,7 @@ pub fn words_said(os: List<&'static Opnd>) -> Strings {
     }
 }
 
-pub fn ins_text(r: Str, os: List<&'static Opnd>) -> Str {
+pub fn ins_text(r: Str, os: List<kayak_rt::Handle<'static, Opnd>>) -> Str {
     if string_eq_p(r, str_lit("closure")) {
         string_append(str_lit("closure "), string_append(opnd_text(car(os)), string_append(str_lit(" over "), opnd_text(second_opnd(os)))))
     } else {
@@ -5536,11 +5536,11 @@ pub enum Wsaid {
     Wsaid(Str, Strings),
 }
 
-pub fn wsaid(f0: Str, f1: Strings) -> &'static Wsaid {
+pub fn wsaid(f0: Str, f1: Strings) -> kayak_rt::Handle<'static, Wsaid> {
     kayak_rt::heap_alloc(Wsaid::Wsaid(f0, f1))
 }
 
-pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static LabelAt>, mut out: Strings, mut named: Strings) -> &'static Wsaid {
+pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>, mut out: Strings, mut named: Strings) -> kayak_rt::Handle<'static, Wsaid> {
     loop {
         if null_p(xs) {
             return wsaid(put_sep_lines(reverse(out)), reverse(named));
@@ -5577,7 +5577,7 @@ pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static LabelAt
 // A word's lines, as the listing writes them.
 #[inline]
 pub fn word_text(xs: Citems) -> Str {
-    let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static LabelAt>()), nil::<Str>(), nil::<Str>());
+    let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<kayak_rt::Handle<'static, LabelAt>>()), nil::<Str>(), nil::<Str>());
     match *tagcase_ {
         Wsaid::Wsaid(text, named) => {
             text
@@ -5600,7 +5600,7 @@ pub fn listed_as_p(m: Str, name: Str) -> bool {
 
 /// Its text, `ys`'s lines, made only where a word of its name is found
 /// (C265): it had been made for every word.
-pub fn c_named(mut ws: List<&'static Word>, mut name: Str, mut ys: Citems, mut k: i64) -> i64 {
+pub fn c_named(mut ws: List<kayak_rt::Handle<'static, Word>>, mut name: Str, mut ys: Citems, mut k: i64) -> i64 {
     loop {
         if null_p(ws) {
             return k;
@@ -5666,47 +5666,47 @@ pub enum Loc {
     AtLoop(),
 }
 
-pub fn at_slot(f0: i64) -> &'static Loc {
+pub fn at_slot(f0: i64) -> kayak_rt::Handle<'static, Loc> {
     kayak_rt::heap_alloc(Loc::AtSlot(f0))
 }
 
-pub fn at_free(f0: i64) -> &'static Loc {
+pub fn at_free(f0: i64) -> kayak_rt::Handle<'static, Loc> {
     kayak_rt::heap_alloc(Loc::AtFree(f0))
 }
 
-pub fn at_global(f0: Str) -> &'static Loc {
+pub fn at_global(f0: Str) -> kayak_rt::Handle<'static, Loc> {
     kayak_rt::heap_alloc(Loc::AtGlobal(f0))
 }
 
-pub fn at_pending(f0: i64) -> &'static Loc {
+pub fn at_pending(f0: i64) -> kayak_rt::Handle<'static, Loc> {
     kayak_rt::heap_alloc(Loc::AtPending(f0))
 }
 
-pub fn at_loop() -> &'static Loc {
+pub fn at_loop() -> kayak_rt::Handle<'static, Loc> {
     kayak_rt::heap_alloc(Loc::AtLoop())
 }
 
 pub enum Centry {
-    Centry(Str, &'static Loc),
+    Centry(Str, kayak_rt::Handle<'static, Loc>),
 }
 
-pub fn centry(f0: Str, f1: &'static Loc) -> &'static Centry {
+pub fn centry(f0: Str, f1: kayak_rt::Handle<'static, Loc>) -> kayak_rt::Handle<'static, Centry> {
     kayak_rt::heap_alloc(Centry::Centry(f0, f1))
 }
 
-pub type Cenv = List<&'static Centry>;
+pub type Cenv = List<kayak_rt::Handle<'static, Centry>>;
 
-pub type Found = List<&'static Loc>;
+pub type Found = List<kayak_rt::Handle<'static, Loc>>;
 
 #[inline]
-pub fn c_extend(n: Str, l: &'static Loc, e: Cenv) -> Cenv {
+pub fn c_extend(n: Str, l: kayak_rt::Handle<'static, Loc>, e: Cenv) -> Cenv {
     kayak_rt::heap_cons(centry(n, l), e)
 }
 
 pub fn c_find(mut e: Cenv, mut n: Str) -> Found {
     loop {
         if null_p(e) {
-            return nil::<&'static Loc>();
+            return nil::<kayak_rt::Handle<'static, Loc>>();
         } else if {
             let tagcase_ = car(e);
             match *tagcase_ {
@@ -5746,7 +5746,7 @@ pub fn globals_count() -> i64 {
 pub fn globals_reset_x() -> () {
     set(cg_globals(), nil::<Str>());
     set(cg_global_count(), 0i64);
-    set(cg_global_table(), make_array(global_buckets(), the::<Gbucket>(nil::<&'static Gfirst>())))
+    set(cg_global_table(), make_array(global_buckets(), the::<Gbucket>(nil::<kayak_rt::Handle<'static, Gfirst>>())))
 }
 
 // A session's names (C340), each with its global's full name,
@@ -5777,7 +5777,7 @@ pub fn alias_of(mut al: List<Strings>, mut n: Str) -> Str {
 // globals; none means standard.
 pub fn c_where(e: Cenv, n: Str) -> Found {
     let l = if top_marked_p(n) {
-        nil::<&'static Loc>()
+        nil::<kayak_rt::Handle<'static, Loc>>()
     } else {
         c_find(e, n)
     };
@@ -5785,7 +5785,7 @@ pub fn c_where(e: Cenv, n: Str) -> Found {
         if global_p(after_prefix(n, str_lit("#%top:"))) {
             kayak_rt::heap_cons(at_global(after_prefix(n, str_lit("#%top:"))), kayak_rt::nil())
         } else {
-            nil::<&'static Loc>()
+            nil::<kayak_rt::Handle<'static, Loc>>()
         }
     } else if not(null_p(l)) {
         l
@@ -5794,11 +5794,11 @@ pub fn c_where(e: Cenv, n: Str) -> Found {
     } else if global_p(n) {
         kayak_rt::heap_cons(at_global(n), kayak_rt::nil())
     } else {
-        nil::<&'static Loc>()
+        nil::<kayak_rt::Handle<'static, Loc>>()
     }
 }
 
-pub fn c_load(c: Code, l: &'static Loc) -> () {
+pub fn c_load(c: Code, l: kayak_rt::Handle<'static, Loc>) -> () {
     let tagcase_ = l;
     match *tagcase_ {
         Loc::AtSlot(i) => {
@@ -5820,7 +5820,7 @@ pub fn c_load(c: Code, l: &'static Loc) -> () {
 }
 
 #[inline]
-pub fn c_loop_p(l: &'static Loc) -> bool {
+pub fn c_loop_p(l: kayak_rt::Handle<'static, Loc>) -> bool {
     let tagcase_ = l;
     match *tagcase_ {
         Loc::AtLoop() => {
@@ -5834,7 +5834,7 @@ pub fn c_loop_p(l: &'static Loc) -> bool {
 }
 
 #[inline]
-pub fn c_global_p(l: &'static Loc) -> bool {
+pub fn c_global_p(l: kayak_rt::Handle<'static, Loc>) -> bool {
     let tagcase_ = l;
     match *tagcase_ {
         Loc::AtGlobal(g) => {
@@ -5855,7 +5855,7 @@ pub fn c_count<A: Copy + 'static>(xs: List<A>) -> i64 {
 // Whether every use of `f` in `x` is a call with `n` arguments: where
 // `loops` asks, in tail position, which the compiler makes a loop; else in
 // any position, and in lambdas inside too, so that `f` is never a value.
-pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, mut loops: bool) -> bool {
+pub fn c_calls_only(mut x: kayak_rt::Handle<'static, Cx>, mut f: Str, mut n: i64, mut tail: bool, mut loops: bool) -> bool {
     loop {
         let tagcase_ = x;
         match *tagcase_ {
@@ -5983,7 +5983,7 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
 }
 
 #[inline]
-pub fn c_calls_only_inside(x: &'static Cx, f: Str, n: i64, loops: bool) -> bool {
+pub fn c_calls_only_inside(x: kayak_rt::Handle<'static, Cx>, f: Str, n: i64, loops: bool) -> bool {
     if loops {
         not(c_mentions_p(x, f))
     } else {
@@ -6023,7 +6023,7 @@ pub fn c_calls_only_begin(mut es: Cxs, mut f: Str, mut n: i64, mut tail: bool, m
     }
 }
 
-pub fn c_calls_only_arms(mut arms: List<&'static Carm>, mut f: Str, mut n: i64, mut tail: bool, mut loops: bool) -> bool {
+pub fn c_calls_only_arms(mut arms: List<kayak_rt::Handle<'static, Carm>>, mut f: Str, mut n: i64, mut tail: bool, mut loops: bool) -> bool {
     loop {
         if null_p(arms) {
             return true;
@@ -6057,7 +6057,7 @@ pub fn c_calls_only_else(els: Cbinds, f: Str, n: i64, tail: bool, loops: bool) -
 }
 
 #[inline]
-pub fn c_loops_only(x: &'static Cx, f: Str, n: i64, tail: bool) -> bool {
+pub fn c_loops_only(x: kayak_rt::Handle<'static, Cx>, f: Str, n: i64, tail: bool) -> bool {
     c_calls_only(x, f, n, tail, true)
 }
 
@@ -6065,10 +6065,10 @@ pub fn c_loops_only(x: &'static Cx, f: Str, n: i64, tail: bool) -> bool {
 // call of `c-this-name`, still bound at `c-this-loc`, is a loop.
 // `c-this-params` is -1 when the word is no such procedure's.
 pub enum This {
-    This(Str, &'static Loc, i64),
+    This(Str, kayak_rt::Handle<'static, Loc>, i64),
 }
 
-pub fn this(f0: Str, f1: &'static Loc, f2: i64) -> &'static This {
+pub fn this(f0: Str, f1: kayak_rt::Handle<'static, Loc>, f2: i64) -> kayak_rt::Handle<'static, This> {
     kayak_rt::heap_alloc(This::This(f0, f1, f2))
 }
 
@@ -6081,8 +6081,8 @@ pub fn c_this_name() -> Ref<Str> {
 }
 
 #[inline]
-pub fn c_this_loc() -> Ref<&'static Loc> {
-    kayak_rt::kept_constant!(ONCE: Ref<&'static Loc>);
+pub fn c_this_loc() -> Ref<kayak_rt::Handle<'static, Loc>> {
+    kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Handle<'static, Loc>>);
     once(&ONCE, || {
         kayak_rt::heap_new(at_loop())
     })
@@ -6105,11 +6105,11 @@ pub fn c_this_start() -> Ref<i64> {
 }
 
 #[inline]
-pub fn c_this_saved() -> &'static This {
+pub fn c_this_saved() -> kayak_rt::Handle<'static, This> {
     this(get(c_this_name()), get(c_this_loc()), get(c_this_params()))
 }
 
-pub fn c_this_enter_x(me: &'static This, start: i64) -> () {
+pub fn c_this_enter_x(me: kayak_rt::Handle<'static, This>, start: i64) -> () {
     let tagcase_ = me;
     match *tagcase_ {
         This::This(n, l, k) => {
@@ -6124,7 +6124,7 @@ pub fn c_this_enter_x(me: &'static This, start: i64) -> () {
 // Whether `l` is where the procedure being compiled is bound: its loop, or
 // the free value holding its closure, or a top-level definition's own
 // global.
-pub fn c_this_loc_p(l: &'static Loc, me: &'static Loc) -> bool {
+pub fn c_this_loc_p(l: kayak_rt::Handle<'static, Loc>, me: kayak_rt::Handle<'static, Loc>) -> bool {
     let tagcase_ = me;
     match *tagcase_ {
         Loc::AtLoop() => {
@@ -6152,7 +6152,7 @@ pub fn c_this_loc_p(l: &'static Loc, me: &'static Loc) -> bool {
     }
 }
 
-pub fn c_self_call_p(f: &'static Cx, args: Cxs, e: Cenv, tail: bool) -> bool {
+pub fn c_self_call_p(f: kayak_rt::Handle<'static, Cx>, args: Cxs, e: Cenv, tail: bool) -> bool {
     (tail && i64_gt_eq(get(c_this_params()), 0i64) && {
         let tagcase_ = f;
         match *tagcase_ {
@@ -6227,18 +6227,18 @@ pub fn c_take(r: Ref<Strings>) -> Strings {
 // where the checker's facts of it are. `cg-defining` and `cg-lambda-at` are
 // the next lambda's, taken by it.
 pub enum Twin {
-    Twin(Str, Strings, &'static Cx, Cenv, List<&'static This>, Str, i64),
+    Twin(Str, Strings, kayak_rt::Handle<'static, Cx>, Cenv, List<kayak_rt::Handle<'static, This>>, Str, i64),
 }
 
-pub fn twin(f0: Str, f1: Strings, f2: &'static Cx, f3: Cenv, f4: List<&'static This>, f5: Str, f6: i64) -> &'static Twin {
+pub fn twin(f0: Str, f1: Strings, f2: kayak_rt::Handle<'static, Cx>, f3: Cenv, f4: List<kayak_rt::Handle<'static, This>>, f5: Str, f6: i64) -> kayak_rt::Handle<'static, Twin> {
     kayak_rt::heap_alloc(Twin::Twin(f0, f1, f2, f3, f4, f5, f6))
 }
 
 #[inline]
-pub fn cg_twins() -> Ref<List<&'static Twin>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Twin>>);
+pub fn cg_twins() -> Ref<List<kayak_rt::Handle<'static, Twin>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Twin>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Twin>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Twin>>())
     })
 }
 
@@ -6250,15 +6250,15 @@ pub enum Lword {
     Lword(i64, Strings, Strings, Str, Strings),
 }
 
-pub fn lword(f0: i64, f1: Strings, f2: Strings, f3: Str, f4: Strings) -> &'static Lword {
+pub fn lword(f0: i64, f1: Strings, f2: Strings, f3: Str, f4: Strings) -> kayak_rt::Handle<'static, Lword> {
     kayak_rt::heap_alloc(Lword::Lword(f0, f1, f2, f3, f4))
 }
 
 #[inline]
-pub fn cg_form_lambdas() -> Ref<List<&'static Lword>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Lword>>);
+pub fn cg_form_lambdas() -> Ref<List<kayak_rt::Handle<'static, Lword>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Lword>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Lword>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Lword>>())
     })
 }
 
@@ -6270,15 +6270,15 @@ pub enum Stwin {
     Stwin(Str, Str, i64),
 }
 
-pub fn stwin(f0: Str, f1: Str, f2: i64) -> &'static Stwin {
+pub fn stwin(f0: Str, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Stwin> {
     kayak_rt::heap_alloc(Stwin::Stwin(f0, f1, f2))
 }
 
 #[inline]
-pub fn cg_standard_twins() -> Ref<List<&'static Stwin>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Stwin>>);
+pub fn cg_standard_twins() -> Ref<List<kayak_rt::Handle<'static, Stwin>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Stwin>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Stwin>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Stwin>>())
     })
 }
 
@@ -6322,7 +6322,7 @@ pub fn c_word_base(named: Strings, own: Strings, bound: Strings) -> Str {
 }
 
 #[inline]
-pub fn c_word_symbol(base: Str, named: Strings, body: &'static Cx) -> Str {
+pub fn c_word_symbol(base: Str, named: Strings, body: kayak_rt::Handle<'static, Cx>) -> Str {
     if null_p(named) {
         string_append(base, string_append(str_lit("@"), filed_place_written(cx_start(body))))
     } else {
@@ -6350,7 +6350,7 @@ pub fn std_primitive(n: Str) -> Str {
 // (`primitives`, check-defs.kfx): the parameters of its `subr`, under a
 // `poly` if it is one; -1 for none (C234: `bitwise-not` as a value, Fixpt's
 // `stubs.fx`).
-pub fn subr_params(mut t: &'static Sexp) -> i64 {
+pub fn subr_params(mut t: kayak_rt::Handle<'static, Sexp>) -> i64 {
     loop {
         if head_is_p(t, str_lit("poly")) {
             t = car(cdr(cdr(items(t))));
@@ -6383,7 +6383,7 @@ pub fn std_arity_in(mut ps: Sexps, mut n: Str) -> i64 {
 pub fn cg_primitive_forms() -> Ref<List<Sexps>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<Sexps>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<List<&'static Sexp>>())
+        kayak_rt::heap_new(nil::<List<kayak_rt::Handle<'static, Sexp>>>())
     })
 }
 
@@ -6624,7 +6624,7 @@ pub fn c_standard_word(name: Str) -> Str {
     if string_member_p(name, get(cg_standard_words())) {
         name
     } else {
-        let (n, body) = (c_arity(name), the::<Code>(kayak_rt::heap_new(nil::<&'static Item>())));
+        let (n, body) = (c_arity(name), the::<Code>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Item>>())));
         if c_vsubr_p(name) {
             c_op1(body, str_lit("slot"), o_int(0i64));
             c_standard_on(c_vsubr_list_op(name), 1i64, body)
@@ -6664,7 +6664,7 @@ pub fn c_standard_value(name: Str, c: Code) -> () {
 
 // The standard operation `f` names, if it is a name bound nowhere else;
 // else "".
-pub fn c_standard_name(f: &'static Cx, e: Cenv) -> Str {
+pub fn c_standard_name(f: kayak_rt::Handle<'static, Cx>, e: Cenv) -> Str {
     let tagcase_ = f;
     match *tagcase_ {
         Cx::XVar(n, a) => {
@@ -6685,7 +6685,7 @@ pub fn c_standard_name(f: &'static Cx, e: Cenv) -> Str {
 
 // The datum a quote builds, as a literal, where it is made of literals and
 // symbols: none, or one.
-pub fn c_quoted_cell(x: &'static Cx) -> List<&'static Lit> {
+pub fn c_quoted_cell(x: kayak_rt::Handle<'static, Cx>) -> List<kayak_rt::Handle<'static, Lit>> {
     let tagcase_ = x;
     match *tagcase_ {
         Cx::XInt(n, a) => {
@@ -6704,7 +6704,7 @@ pub fn c_quoted_cell(x: &'static Cx) -> List<&'static Lit> {
             if string_eq_p(std_named(n), str_lit("nil")) {
                 kayak_rt::heap_cons(l_nil(), kayak_rt::nil())
             } else {
-                nil::<&'static Lit>()
+                nil::<kayak_rt::Handle<'static, Lit>>()
             }
         }
         Cx::XApp(f, args, a) => {
@@ -6722,23 +6722,23 @@ pub fn c_quoted_cell(x: &'static Cx) -> List<&'static Lit> {
             } && i64_eq(size(args), 2i64)) {
                 let (h, t) = (c_quoted_cell(car(args)), c_quoted_cell(car(cdr(args))));
                 if (null_p(h) || null_p(t)) {
-                    nil::<&'static Lit>()
+                    nil::<kayak_rt::Handle<'static, Lit>>()
                 } else {
                     kayak_rt::heap_cons(l_pair(car(h), car(t)), kayak_rt::nil())
                 }
             } else {
-                nil::<&'static Lit>()
+                nil::<kayak_rt::Handle<'static, Lit>>()
             }
         }
         _ => {
             let y = tagcase_;
-            nil::<&'static Lit>()
+            nil::<kayak_rt::Handle<'static, Lit>>()
         }
     }
 }
 
 /// Two literals of a quote made now the same: equal atoms, or the same node.
-pub fn lit_same_p(a: &'static Lit, b: &'static Lit) -> bool {
+pub fn lit_same_p(a: kayak_rt::Handle<'static, Lit>, b: kayak_rt::Handle<'static, Lit>) -> bool {
     let tagcase_ = a;
     match *tagcase_ {
         Lit::LInt(n) => {
@@ -6836,7 +6836,7 @@ pub fn lit_same_p(a: &'static Lit, b: &'static Lit) -> bool {
     }
 }
 
-pub fn qnode_found(mut ns: List<&'static Qnode>, mut a: &'static Lit, mut d: &'static Lit) -> i64 {
+pub fn qnode_found(mut ns: List<kayak_rt::Handle<'static, Qnode>>, mut a: kayak_rt::Handle<'static, Lit>, mut d: kayak_rt::Handle<'static, Lit>) -> i64 {
     loop {
         if null_p(ns) {
             return -1i64;
@@ -6858,7 +6858,7 @@ pub fn qnode_found(mut ns: List<&'static Qnode>, mut a: &'static Lit, mut d: &'s
 
 /// Quote `l`'s pairs interned, bottom up: each the node of its car and
 /// cdr, made if there is none.
-pub fn quoted_interned(l: &'static Lit) -> &'static Lit {
+pub fn quoted_interned(l: kayak_rt::Handle<'static, Lit>) -> kayak_rt::Handle<'static, Lit> {
     let tagcase_ = l;
     match *tagcase_ {
         Lit::LPair(a, d) => {
@@ -6887,18 +6887,18 @@ pub enum Patch {
     Patch(i64, i64),
 }
 
-pub fn patch(f0: i64, f1: i64) -> &'static Patch {
+pub fn patch(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Patch> {
     kayak_rt::heap_alloc(Patch::Patch(f0, f1))
 }
 
-pub type Patches = List<&'static Patch>;
+pub type Patches = List<kayak_rt::Handle<'static, Patch>>;
 
 // A lambda's word, and the names its closure captures, in order.
 pub enum Cclosing {
     Cclosing(Str, Strings),
 }
 
-pub fn cclosing(f0: Str, f1: Strings) -> &'static Cclosing {
+pub fn cclosing(f0: Str, f1: Strings) -> kayak_rt::Handle<'static, Cclosing> {
     kayak_rt::heap_alloc(Cclosing::Cclosing(f0, f1))
 }
 
@@ -6956,7 +6956,7 @@ pub fn c_own_of(ps: Strings, own0: Strings) -> Strings {
 // it, where `e` has it, a global, or else its loop.
 pub fn c_own_scope(own: Strings, fv: Strings, e: Cenv) -> Cenv {
     if (null_p(own) || string_member_p(car(own), fv)) {
-        nil::<&'static Centry>()
+        nil::<kayak_rt::Handle<'static, Centry>>()
     } else {
         let l = c_where(e, car(own));
         kayak_rt::heap_cons(centry(car(own), if (not(null_p(l)) && c_global_p(car(l))) {
@@ -6968,9 +6968,9 @@ pub fn c_own_scope(own: Strings, fv: Strings, e: Cenv) -> Cenv {
 }
 
 #[inline]
-pub fn c_this_of(own: Strings, inner: Cenv, n: i64) -> List<&'static This> {
+pub fn c_this_of(own: Strings, inner: Cenv, n: i64) -> List<kayak_rt::Handle<'static, This>> {
     if null_p(own) {
-        nil::<&'static This>()
+        nil::<kayak_rt::Handle<'static, This>>()
     } else {
         kayak_rt::heap_cons(this(car(own), car(c_find(inner, car(own))), n), kayak_rt::nil())
     }
@@ -6980,7 +6980,7 @@ pub fn c_this_of(own: Strings, inner: Cenv, n: i64) -> List<&'static This> {
 // on; a sibling not made yet is a placeholder, and one of the patches.
 pub fn c_push_all(xs: Strings, e: Cenv, j: i64, c: Code) -> Patches {
     if null_p(xs) {
-        nil::<&'static Patch>()
+        nil::<kayak_rt::Handle<'static, Patch>>()
     } else {
         let pending = {
             let tagcase_ = car(c_find(e, car(xs)));
@@ -7029,7 +7029,7 @@ pub fn c_members(mut ns: Strings, mut e: Cenv, mut sum_slot: i64, mut slot: i64,
 
 // Binding `i`'s scope while it is made: each sibling pending, and itself a
 // loop if it only calls itself in loops.
-pub fn c_letrec_own(mut bs: Cbinds, mut e: Cenv, mut depth: i64, mut k: i64, mut i: i64, mut body: &'static Cx, mut nps: i64) -> Cenv {
+pub fn c_letrec_own(mut bs: Cbinds, mut e: Cenv, mut depth: i64, mut k: i64, mut i: i64, mut body: kayak_rt::Handle<'static, Cx>, mut nps: i64) -> Cenv {
     loop {
         if null_p(bs) {
             return e;
@@ -7103,13 +7103,13 @@ pub enum Wait {
     Wait(i64, i64, i64),
 }
 
-pub fn wait(f0: i64, f1: i64, f2: i64) -> &'static Wait {
+pub fn wait(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Wait> {
     kayak_rt::heap_alloc(Wait::Wait(f0, f1, f2))
 }
 
-pub fn c_module_slots(its: List<&'static Cmem>, d: i64) -> Cenv {
+pub fn c_module_slots(its: List<kayak_rt::Handle<'static, Cmem>>, d: i64) -> Cenv {
     if null_p(its) {
-        nil::<&'static Centry>()
+        nil::<kayak_rt::Handle<'static, Centry>>()
     } else {
         kayak_rt::heap_cons(centry(cmem_name(car(its)), at_slot(d)), c_module_slots(cdr(its), i64_plus(d, 1i64)))
     }
@@ -7117,7 +7117,7 @@ pub fn c_module_slots(its: List<&'static Cmem>, d: i64) -> Cenv {
 
 // Whether `x` names any of `later`'s.
 #[inline]
-pub fn c_names_any_p(x: &'static Cx, later: Cenv) -> bool {
+pub fn c_names_any_p(x: kayak_rt::Handle<'static, Cx>, later: Cenv) -> bool {
     any_p(lambda1s(move |n: Str| {
         not(null_p(c_find(later, n)))
     }), c_free(x, nil::<Str>(), nil::<Str>()))
@@ -7125,7 +7125,7 @@ pub fn c_names_any_p(x: &'static Cx, later: Cenv) -> bool {
 
 // Item `n`'s lambda's scope while it is made: each of `later` pending, and
 // itself a loop if it only calls itself in loops.
-pub fn c_module_own(mut n: Str, mut e: Cenv, mut later: Cenv, mut body: &'static Cx, mut nps: i64) -> Cenv {
+pub fn c_module_own(mut n: Str, mut e: Cenv, mut later: Cenv, mut body: kayak_rt::Handle<'static, Cx>, mut nps: i64) -> Cenv {
     loop {
         if null_p(later) {
             return e;
@@ -7156,7 +7156,7 @@ pub fn c_module_own(mut n: Str, mut e: Cenv, mut later: Cenv, mut body: &'static
 }
 
 // Each closure of `ws` waiting for slot `d`, given it.
-pub fn c_give_waiting(mut c: Code, mut ws: List<&'static Wait>, mut d: i64) -> () {
+pub fn c_give_waiting(mut c: Code, mut ws: List<kayak_rt::Handle<'static, Wait>>, mut d: i64) -> () {
     loop {
         if null_p(ws) {
             return ();
@@ -7229,7 +7229,7 @@ pub fn c_exps(es: Cxs, e: Cenv, depth: i64, c: Code) -> i64 {
 
 /// Expression `x` compiled, where its code begins noted, and where
 /// the code after it, its parent's again, does (C245).
-pub fn c_exp(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+pub fn c_exp(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
     let (p, outer) = (cx_start(x), get(cg_at()));
     if i64_gt(p, 0i64) {
         c_emit(c, it_pos(p));
@@ -7246,12 +7246,12 @@ pub fn c_exp(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
     }
 }
 
-pub fn c_exp_at(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
     let tagcase_ = x;
     match *tagcase_ {
         Cx::XVar(n, a) => {
             let l = if std_marked_p(n) {
-                nil::<&'static Loc>()
+                nil::<kayak_rt::Handle<'static, Loc>>()
             } else {
                 c_where(e, n)
             };
@@ -7296,7 +7296,7 @@ pub fn c_exp_at(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () 
         }
         Cx::XLambda(ps, body, a) => {
             set(cg_lambda_at(), a);
-            c_lambda(ps, body, e, depth, c, nil::<Str>(), nil::<&'static Cx>());
+            c_lambda(ps, body, e, depth, c, nil::<Str>(), nil::<kayak_rt::Handle<'static, Cx>>());
             c_done(c, tail)
         }
         Cx::XRlambda(r, l, a) => {
@@ -7320,7 +7320,7 @@ pub fn c_exp_at(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () 
         Cx::XPrompt(t, body, h, a) => {
             c_exp(t, e, depth, c, false);
             c_exp(h, e, i64_plus(depth, 1i64), c, false);
-            c_lambda(nil::<Str>(), body, e, i64_plus(depth, 2i64), c, nil::<Str>(), nil::<&'static Cx>());
+            c_lambda(nil::<Str>(), body, e, i64_plus(depth, 2i64), c, nil::<Str>(), nil::<kayak_rt::Handle<'static, Cx>>());
             c_op(c, str_lit("prompt"));
             c_done(c, tail)
         }
@@ -7343,7 +7343,7 @@ pub fn c_exp_at(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () 
             match *tagcase_ {
                 Cx::XLambda(ps, body, b) => {
                     if i64_eq(size(ps), size(args)) {
-                        c_let(map2(lambda2s(move |p: Str, y: &'static Cx| {
+                        c_let(map2(lambda2s(move |p: Str, y: kayak_rt::Handle<'static, Cx>| {
                             cbind(p, y)
                         }), ps, args), body, e, depth, c, tail)
                     } else {
@@ -7505,7 +7505,7 @@ pub fn c_bloblet(op: Str, i: i64, xs: Cxs, e: Cenv, depth: i64, c: Code) -> () {
     }
 }
 
-pub fn c_with_fields(mut m: &'static Cx, mut ns: Strings, mut ks: List<i64>, mut fv: Strings, mut outer: Cenv, mut inner: Cenv, mut depth: i64, mut c: Code) -> Cenv {
+pub fn c_with_fields(mut m: kayak_rt::Handle<'static, Cx>, mut ns: Strings, mut ks: List<i64>, mut fv: Strings, mut outer: Cenv, mut inner: Cenv, mut depth: i64, mut c: Code) -> Cenv {
     loop {
         if null_p(ns) {
             return inner;
@@ -7521,9 +7521,9 @@ pub fn c_with_fields(mut m: &'static Cx, mut ns: Strings, mut ks: List<i64>, mut
     }
 }
 
-pub fn c_module(its: List<&'static Cmem>, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+pub fn c_module(its: List<kayak_rt::Handle<'static, Cmem>>, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
     let later = c_module_slots(its, depth);
-    let given = c_module_make(its, e, depth, later, nil::<&'static Wait>(), nil::<i64>(), c);
+    let given = c_module_make(its, e, depth, later, nil::<kayak_rt::Handle<'static, Wait>>(), nil::<i64>(), c);
     c_int(c, 37i64);
     c_slots_load(c, reverse(given));
     c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(given)));
@@ -7531,7 +7531,7 @@ pub fn c_module(its: List<&'static Cmem>, e: Cenv, depth: i64, c: Code, tail: bo
     c_unbind(c, depth, size(its), tail)
 }
 
-pub fn c_module_make(mut its: List<&'static Cmem>, mut e: Cenv, mut d: i64, mut later: List<&'static Centry>, mut ws: List<&'static Wait>, mut given: List<i64>, mut c: Code) -> List<i64> {
+pub fn c_module_make(mut its: List<kayak_rt::Handle<'static, Cmem>>, mut e: Cenv, mut d: i64, mut later: List<kayak_rt::Handle<'static, Centry>>, mut ws: List<kayak_rt::Handle<'static, Wait>>, mut given: List<i64>, mut c: Code) -> List<i64> {
     loop {
         if null_p(its) {
             return given;
@@ -7551,9 +7551,9 @@ pub fn c_module_make(mut its: List<&'static Cmem>, mut e: Cenv, mut d: i64, mut 
                         set(c_bind_name(), kayak_rt::heap_cons(n, kayak_rt::nil()));
                         c_exp(x, e, d, c, false);
                         set(c_bind_name(), nil::<Str>());
-                        the::<Patches>(nil::<&'static Patch>())
+                        the::<Patches>(nil::<kayak_rt::Handle<'static, Patch>>())
                     };
-                    let waits = onto(ws, map(lambda1s(move |p: &'static Patch| {
+                    let waits = onto(ws, map(lambda1s(move |p: kayak_rt::Handle<'static, Patch>| {
                         let tagcase_ = p;
                         match *tagcase_ {
                             Patch::Patch(j, s) => {
@@ -7609,14 +7609,14 @@ pub fn c_let_bind(mut bs: Cbinds, mut outer: Cenv, mut inner: Cenv, mut depth: i
     }
 }
 
-pub fn c_let(bs: Cbinds, body: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+pub fn c_let(bs: Cbinds, body: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
     let inner = c_let_bind(bs, e, e, depth, c);
     let n = size(bs);
     c_exp(body, inner, i64_plus(depth, n), c, tail);
     c_unbind(c, depth, n, tail)
 }
 
-pub fn c_letrec(bs: Cbinds, body: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+pub fn c_letrec(bs: Cbinds, body: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
     let made = c_letrec_make(bs, bs, e, depth, 0i64, c);
     let n = size(bs);
     c_letrec_patch(made, depth, 0i64, c);
@@ -7626,14 +7626,14 @@ pub fn c_letrec(bs: Cbinds, body: &'static Cx, e: Cenv, depth: i64, c: Code, tai
 
 pub fn c_letrec_make(all: Cbinds, bs: Cbinds, e: Cenv, depth: i64, i: i64, c: Code) -> List<Patches> {
     if null_p(bs) {
-        nil::<List<&'static Patch>>()
+        nil::<List<kayak_rt::Handle<'static, Patch>>>()
     } else {
         let tagcase_ = car(bs);
         match *tagcase_ {
             Cbind::Cbind(name, x) => {
                 if null_p(lambda_of(x)) {
                     match cg_fail(str_lit("a letrec binds only lambdas")) {};
-                    nil::<List<&'static Patch>>()
+                    nil::<List<kayak_rt::Handle<'static, Patch>>>()
                 } else {
                     let tagcase_ = car(lambda_of(x));
                     match *tagcase_ {
@@ -7652,7 +7652,7 @@ pub fn c_letrec_make(all: Cbinds, bs: Cbinds, e: Cenv, depth: i64, i: i64, c: Co
     }
 }
 
-pub fn c_lambda(ps: Strings, body: &'static Cx, e: Cenv, depth: i64, c: Code, own0: Strings, region: Cxs) -> Patches {
+pub fn c_lambda(ps: Strings, body: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, own0: Strings, region: Cxs) -> Patches {
     if null_p(region) {
         ()
     } else {
@@ -7673,7 +7673,7 @@ pub fn c_lambda(ps: Strings, body: &'static Cx, e: Cenv, depth: i64, c: Code, ow
     }
 }
 
-pub fn c_lambda_word(ps: Strings, body: &'static Cx, e: Cenv, own0: Strings) -> &'static Cclosing {
+pub fn c_lambda_word(ps: Strings, body: kayak_rt::Handle<'static, Cx>, e: Cenv, own0: Strings) -> kayak_rt::Handle<'static, Cclosing> {
     let named = c_take(c_word_name());
     let defining = c_take(cg_defining());
     let at = {
@@ -7686,7 +7686,7 @@ pub fn c_lambda_word(ps: Strings, body: &'static Cx, e: Cenv, own0: Strings) -> 
     let own = c_own_of(ps, own0);
     let inner = c_inner_env(fv, c_param_env(ps, 0i64, c_own_scope(own, fv, e)), 0i64);
     let n = size(ps);
-    let body_code = the::<Code>(kayak_rt::heap_new(nil::<&'static Item>()));
+    let body_code = the::<Code>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Item>>()));
     let outer = c_this_saved();
     let outer_start = get(c_this_start());
     let me = c_this_of(own, inner, n);
@@ -7713,7 +7713,7 @@ pub fn c_lambda_word(ps: Strings, body: &'static Cx, e: Cenv, own0: Strings) -> 
     cclosing(w, fv)
 }
 
-pub fn c_app(f: &'static Cx, args: Cxs, e: Cenv, depth: i64, c: Code, tail: bool, a: i64) -> () {
+pub fn c_app(f: kayak_rt::Handle<'static, Cx>, args: Cxs, e: Cenv, depth: i64, c: Code, tail: bool, a: i64) -> () {
     if c_self_call_p(f, args, e, tail) {
         c_exps(args, e, depth, c);
         c_loop_stores(c, i64_minus(get(c_this_params()), 1i64));
@@ -7757,7 +7757,7 @@ pub fn c_app(f: &'static Cx, args: Cxs, e: Cenv, depth: i64, c: Code, tail: bool
     }
 }
 
-pub fn c_flat_arms(mut arms: List<&'static Carm>, mut els: Cbinds, mut k: i64, mut e: Cenv, mut depth: i64, mut c: Code, mut tail: bool, mut end: i64) -> () {
+pub fn c_flat_arms(mut arms: List<kayak_rt::Handle<'static, Carm>>, mut els: Cbinds, mut k: i64, mut e: Cenv, mut depth: i64, mut c: Code, mut tail: bool, mut end: i64) -> () {
     loop {
         if null_p(arms) {
             if null_p(els) {
@@ -7805,7 +7805,7 @@ pub fn c_flat_arms(mut arms: List<&'static Carm>, mut els: Cbinds, mut k: i64, m
     }
 }
 
-pub fn c_arms(mut arms: List<&'static Carm>, mut els: Cbinds, mut e: Cenv, mut depth: i64, mut c: Code, mut tail: bool, mut end: i64) -> () {
+pub fn c_arms(mut arms: List<kayak_rt::Handle<'static, Carm>>, mut els: Cbinds, mut e: Cenv, mut depth: i64, mut c: Code, mut tail: bool, mut end: i64) -> () {
     loop {
         if null_p(arms) {
             if null_p(els) {
@@ -7876,7 +7876,7 @@ pub fn c_push_global_x(n: Str) -> () {
 // The next lambda's word named for global `n`, when `x`, its definition, is
 // a lambda.
 #[inline]
-pub fn c_name_for_x(n: Str, x: &'static Cx) -> () {
+pub fn c_name_for_x(n: Str, x: kayak_rt::Handle<'static, Cx>) -> () {
     let tagcase_ = x;
     match *tagcase_ {
         Cx::XLambda(ps, body, a) => {
@@ -7908,16 +7908,16 @@ pub fn c_rec_globals_x(mut bs: Cbinds) -> () {
 
 // Each form's tops, with its file (C366).
 pub enum Ftops {
-    Ftops(Str, List<&'static Ctop>),
+    Ftops(Str, List<kayak_rt::Handle<'static, Ctop>>),
 }
 
-pub fn ftops(f0: Str, f1: List<&'static Ctop>) -> &'static Ftops {
+pub fn ftops(f0: Str, f1: List<kayak_rt::Handle<'static, Ctop>>) -> kayak_rt::Handle<'static, Ftops> {
     kayak_rt::heap_alloc(Ftops::Ftops(f0, f1))
 }
 
-pub fn parse_tops_filed(fs: Sexps) -> List<&'static Ftops> {
+pub fn parse_tops_filed(fs: Sexps) -> List<kayak_rt::Handle<'static, Ftops>> {
     if null_p(fs) {
-        nil::<&'static Ftops>()
+        nil::<kayak_rt::Handle<'static, Ftops>>()
     } else {
         let t = parse_top(car(fs));
         kayak_rt::heap_cons(ftops(datum_file(car(fs)), t), parse_tops_filed(cdr(fs)))
@@ -7933,13 +7933,13 @@ pub enum Tentry {
     Tentry(i64, i64),
 }
 
-pub fn tentry(f0: i64, f1: i64) -> &'static Tentry {
+pub fn tentry(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Tentry> {
     kayak_rt::heap_alloc(Tentry::Tentry(f0, f1))
 }
 
 /// The entries, newest first: one where the position changes, the
 /// last of those at one cell.
-pub fn table_entries(mut xs: Citems, mut at: i64, mut acc: List<&'static Tentry>) -> List<&'static Tentry> {
+pub fn table_entries(mut xs: Citems, mut at: i64, mut acc: List<kayak_rt::Handle<'static, Tentry>>) -> List<kayak_rt::Handle<'static, Tentry>> {
     loop {
         if null_p(xs) {
             return acc;
@@ -7982,7 +7982,7 @@ pub fn table_entries(mut xs: Citems, mut at: i64, mut acc: List<&'static Tentry>
     }
 }
 
-pub fn entries_shown(mut es: List<&'static Tentry>, mut out: Strings) -> Strings {
+pub fn entries_shown(mut es: List<kayak_rt::Handle<'static, Tentry>>, mut out: Strings) -> Strings {
     loop {
         if null_p(es) {
             return out;
@@ -8006,7 +8006,7 @@ pub fn spaced(ss: Strings) -> Str {
 }
 
 pub fn line_table(xs: Citems) -> Str {
-    let es = entries_shown(table_entries(xs, 0i64, nil::<&'static Tentry>()), nil::<Str>());
+    let es = entries_shown(table_entries(xs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()), nil::<Str>());
     if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
         str_lit("")
     } else {

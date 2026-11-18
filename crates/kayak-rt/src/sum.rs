@@ -238,7 +238,8 @@ pub fn sum_new<T: 'static>(tag: u64, name: &'static str, payload: T) -> Sum {
             payload_type: TypeId::of::<T>,
         },
         payload,
-    });
+    })
+    .to_ref();
     &cell.head
 }
 

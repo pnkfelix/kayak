@@ -247,7 +247,7 @@ pub type ICell<T> = &'static ICellBox<T>;
 
 /// `(make-icell)`: in the heap, wherever it was asked for, as FX-26's is.
 pub fn make_icell<T>() -> ICell<T> {
-    crate::alloc(ICellBox {
+    crate::leak(ICellBox {
         value: Mutex::new(None),
     })
 }
@@ -489,7 +489,7 @@ pub fn spawn_monitored<W: Send + 'static, M: Send + 'static>(
 
 /// A process of group `group` on a thread of its own.
 fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + 'static) -> Addr<M> {
-    let mb: Addr<M> = crate::alloc(MailboxBox {
+    let mb: Addr<M> = crate::leak(MailboxBox {
         queue: Mutex::new(VecDeque::new()),
     });
     let group: &'static Group = Box::leak(Box::new(group));

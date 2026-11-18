@@ -28,63 +28,63 @@ pub enum Node {
     NPrompt(i64, i64, i64),
 }
 
-pub fn n_lit(f0: i64) -> &'static Node {
+pub fn n_lit(f0: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NLit(f0))
 }
 
-pub fn n_local(f0: i64, f1: i64) -> &'static Node {
+pub fn n_local(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NLocal(f0, f1))
 }
 
-pub fn n_global(f0: i64) -> &'static Node {
+pub fn n_global(f0: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NGlobal(f0))
 }
 
-pub fn n_lambda(f0: i64, f1: i64) -> &'static Node {
+pub fn n_lambda(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NLambda(f0, f1))
 }
 
-pub fn n_call(f0: i64, f1: i64) -> &'static Node {
+pub fn n_call(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NCall(f0, f1))
 }
 
-pub fn n_if(f0: i64, f1: i64, f2: i64) -> &'static Node {
+pub fn n_if(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NIf(f0, f1, f2))
 }
 
-pub fn n_seq(f0: i64, f1: i64) -> &'static Node {
+pub fn n_seq(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NSeq(f0, f1))
 }
 
-pub fn n_let(f0: i64, f1: i64, f2: i64) -> &'static Node {
+pub fn n_let(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NLet(f0, f1, f2))
 }
 
-pub fn n_letrec(f0: i64, f1: i64, f2: i64) -> &'static Node {
+pub fn n_letrec(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NLetrec(f0, f1, f2))
 }
 
-pub fn n_define(f0: i64, f1: i64) -> &'static Node {
+pub fn n_define(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NDefine(f0, f1))
 }
 
-pub fn n_sum(f0: i64, f1: i64) -> &'static Node {
+pub fn n_sum(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NSum(f0, f1))
 }
 
-pub fn n_product(f0: i64, f1: i64, f2: i64) -> &'static Node {
+pub fn n_product(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NProduct(f0, f1, f2))
 }
 
-pub fn n_field(f0: i64, f1: i64) -> &'static Node {
+pub fn n_field(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NField(f0, f1))
 }
 
-pub fn n_tagcase(f0: i64, f1: i64, f2: i64, f3: i64) -> &'static Node {
+pub fn n_tagcase(f0: i64, f1: i64, f2: i64, f3: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NTagcase(f0, f1, f2, f3))
 }
 
-pub fn n_prompt(f0: i64, f1: i64, f2: i64) -> &'static Node {
+pub fn n_prompt(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NPrompt(f0, f1, f2))
 }
 
@@ -94,13 +94,13 @@ pub enum Armx {
     Armx(i64, i64, i64),
 }
 
-pub fn armx(f0: i64, f1: i64, f2: i64) -> &'static Armx {
+pub fn armx(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Armx> {
     kayak_rt::heap_alloc(Armx::Armx(f0, f1, f2))
 }
 
 #[inline]
-pub fn nodes() -> Ref<Array<&'static Node>> {
-    kayak_rt::kept_constant!(ONCE: Ref<Array<&'static Node>>);
+pub fn nodes() -> Ref<Array<kayak_rt::Handle<'static, Node>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<Array<kayak_rt::Handle<'static, Node>>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_array(int_lit(1024), n_lit(0i64)))
     })
@@ -131,8 +131,8 @@ pub fn kid_count() -> Ref<i64> {
 }
 
 #[inline]
-pub fn armxs() -> Ref<Array<&'static Armx>> {
-    kayak_rt::kept_constant!(ONCE: Ref<Array<&'static Armx>>);
+pub fn armxs() -> Ref<Array<kayak_rt::Handle<'static, Armx>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<Array<kayak_rt::Handle<'static, Armx>>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_array(int_lit(64), armx(0i64, 0i64, 0i64)))
     })
@@ -184,7 +184,7 @@ pub fn constant_count() -> Ref<i64> {
     })
 }
 
-pub fn nodes_copied_x(mut from: Array<&'static Node>, mut to: Array<&'static Node>, mut i: i64, mut n: i64) -> () {
+pub fn nodes_copied_x(mut from: Array<kayak_rt::Handle<'static, Node>>, mut to: Array<kayak_rt::Handle<'static, Node>>, mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {
             return ();
@@ -196,7 +196,7 @@ pub fn nodes_copied_x(mut from: Array<&'static Node>, mut to: Array<&'static Nod
     }
 }
 
-pub fn armxs_copied_x(mut from: Array<&'static Armx>, mut to: Array<&'static Armx>, mut i: i64, mut n: i64) -> () {
+pub fn armxs_copied_x(mut from: Array<kayak_rt::Handle<'static, Armx>>, mut to: Array<kayak_rt::Handle<'static, Armx>>, mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {
             return ();
@@ -232,10 +232,10 @@ pub fn strings_copied_x(mut from: Array<Str>, mut to: Array<Str>, mut i: i64, mu
     }
 }
 
-pub fn add_node_x(x: &'static Node) -> i64 {
+pub fn add_node_x(x: kayak_rt::Handle<'static, Node>) -> i64 {
     let n = get(node_count());
     if i64_gt_eq(n, int_to_i64(array_length(get(nodes())))) {
-        let (bigger, os, ws) = (the::<Array<&'static Node>>(make_array(i64_to_int(i64_star(n, 2i64)), n_lit(0i64))), the::<FlatArray<i64>>(make_flatarray_i64(i64_star(n, 2i64), -1i64)), the::<Array<Str>>(make_array(i64_to_int(i64_star(n, 2i64)), str_lit(""))));
+        let (bigger, os, ws) = (the::<Array<kayak_rt::Handle<'static, Node>>>(make_array(i64_to_int(i64_star(n, 2i64)), n_lit(0i64))), the::<FlatArray<i64>>(make_flatarray_i64(i64_star(n, 2i64), -1i64)), the::<Array<Str>>(make_array(i64_to_int(i64_star(n, 2i64)), str_lit(""))));
         nodes_copied_x(get(nodes()), bigger, 0i64, n);
         set(nodes(), bigger);
         words_copied_x(get(owners()), os, 0i64, n);
@@ -264,10 +264,10 @@ pub fn add_kid_x(k: i64) -> i64 {
     n
 }
 
-pub fn add_armx_x(a: &'static Armx) -> i64 {
+pub fn add_armx_x(a: kayak_rt::Handle<'static, Armx>) -> i64 {
     let n = get(armx_count());
     if i64_gt_eq(n, int_to_i64(array_length(get(armxs())))) {
-        let bigger = the::<Array<&'static Armx>>(make_array(i64_to_int(i64_star(n, 2i64)), armx(0i64, 0i64, 0i64)));
+        let bigger = the::<Array<kayak_rt::Handle<'static, Armx>>>(make_array(i64_to_int(i64_star(n, 2i64)), armx(0i64, 0i64, 0i64)));
         armxs_copied_x(get(armxs()), bigger, 0i64, n);
         set(armxs(), bigger)
     } else {
@@ -334,7 +334,7 @@ pub fn node_owner(i: i64) -> i64 {
 }
 
 #[inline]
-pub fn node_at(i: i64) -> &'static Node {
+pub fn node_at(i: i64) -> kayak_rt::Handle<'static, Node> {
     array_ref(get(nodes()), i64_to_int(i))
 }
 
@@ -344,7 +344,7 @@ pub fn kid_at(i: i64) -> i64 {
 }
 
 #[inline]
-pub fn armx_at(i: i64) -> &'static Armx {
+pub fn armx_at(i: i64) -> kayak_rt::Handle<'static, Armx> {
     array_ref(get(armxs()), i64_to_int(i))
 }
 
@@ -430,7 +430,7 @@ pub fn kfx_bytes_word_x(bv: Bytes) -> i64 {
 }
 
 /// A literal's word, its object made in the heap if it is one.
-pub fn literal_word_x(v: &'static Val) -> i64 {
+pub fn literal_word_x(v: kayak_rt::Handle<'static, Val>) -> i64 {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VInt(n) => {
@@ -499,19 +499,19 @@ pub enum Quoted {
     Quoted(Str, i64),
 }
 
-pub fn quoted(f0: Str, f1: i64) -> &'static Quoted {
+pub fn quoted(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Quoted> {
     kayak_rt::heap_alloc(Quoted::Quoted(f0, f1))
 }
 
 #[inline]
-pub fn quoteds() -> Ref<List<&'static Quoted>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Quoted>>);
+pub fn quoteds() -> Ref<List<kayak_rt::Handle<'static, Quoted>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Quoted>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Quoted>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Quoted>>())
     })
 }
 
-pub fn found_quoted(mut key: Str, mut qs: List<&'static Quoted>) -> i64 {
+pub fn found_quoted(mut key: Str, mut qs: List<kayak_rt::Handle<'static, Quoted>>) -> i64 {
     loop {
         if null_p(qs) {
             return -1i64;
@@ -537,7 +537,7 @@ pub fn found_quoted(mut key: Str, mut qs: List<&'static Quoted>) -> i64 {
 }
 
 /// A quoted datum's constant: its own, or an equal one's.
-pub fn quoted_constant_x(d: &'static Sexp) -> i64 {
+pub fn quoted_constant_x(d: kayak_rt::Handle<'static, Sexp>) -> i64 {
     let key = show_sexp(d);
     let found = found_quoted(key, get(quoteds()));
     if i64_gt_eq(found, 0i64) {
@@ -626,7 +626,7 @@ pub fn label_numbers_x(ls: Strings) -> List<i64> {
     }
 }
 
-pub fn armxs_placed_x(mut xs: List<&'static Armx>) -> () {
+pub fn armxs_placed_x(mut xs: List<kayak_rt::Handle<'static, Armx>>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -639,14 +639,14 @@ pub fn armxs_placed_x(mut xs: List<&'static Armx>) -> () {
 }
 
 #[inline]
-pub fn place_armxs_x(xs: List<&'static Armx>) -> i64 {
+pub fn place_armxs_x(xs: List<kayak_rt::Handle<'static, Armx>>) -> i64 {
     let at = get(armx_count());
     armxs_placed_x(xs);
     at
 }
 
 /// `e`, numbered: its node's number, its children's before it.
-pub fn number_x(e: &'static Ir) -> i64 {
+pub fn number_x(e: kayak_rt::Handle<'static, Ir>) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
         Ir::ILit(v) => {
@@ -739,12 +739,12 @@ pub fn number_x(e: &'static Ir) -> i64 {
 
 /// Each of `es` numbered, then their numbers a range of `kids`: its start.
 #[inline]
-pub fn number_all_x(es: List<&'static Ir>) -> i64 {
+pub fn number_all_x(es: List<kayak_rt::Handle<'static, Ir>>) -> i64 {
     kids_of_x(numbers_x(es))
 }
 
 #[inline]
-pub fn numbers_x(es: List<&'static Ir>) -> List<i64> {
+pub fn numbers_x(es: List<kayak_rt::Handle<'static, Ir>>) -> List<i64> {
     if null_p(es) {
         nil::<i64>()
     } else {
@@ -754,14 +754,14 @@ pub fn numbers_x(es: List<&'static Ir>) -> List<i64> {
 }
 
 #[inline]
-pub fn arms_numbered_x(arms: List<&'static Arm>) -> i64 {
+pub fn arms_numbered_x(arms: List<kayak_rt::Handle<'static, Arm>>) -> i64 {
     let made = arm_entries_x(arms);
     place_armxs_x(made)
 }
 
-pub fn arm_entries_x(arms: List<&'static Arm>) -> List<&'static Armx> {
+pub fn arm_entries_x(arms: List<kayak_rt::Handle<'static, Arm>>) -> List<kayak_rt::Handle<'static, Armx>> {
     if null_p(arms) {
-        nil::<&'static Armx>()
+        nil::<kayak_rt::Handle<'static, Armx>>()
     } else {
         let tagcase_ = car(arms);
         match *tagcase_ {

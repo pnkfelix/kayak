@@ -72,7 +72,7 @@ impl Drop for Pushed {
 
 /// `(with-mark key v body)`: `body` run with `v` the newest mark of `key`.
 pub fn with_mark<T: 'static, A>(key: MarkKey<T>, v: T, body: impl FnOnce() -> A) -> A {
-    let _pushed = Pushed::new(key.id, crate::alloc(v));
+    let _pushed = Pushed::new(key.id, crate::leak(v));
     body()
 }
 
@@ -99,7 +99,7 @@ pub fn with_mark_async<T: 'static, A: 'static>(
 ) -> crate::suspend::Body<A> {
     Box::pin(Marked {
         key: key.id,
-        value: crate::alloc(v),
+        value: crate::leak(v),
         body: Box::pin(body()),
     })
 }

@@ -132,19 +132,19 @@ pub mod kc_native {
         Sized(i64, HeapArray),
     }
 
-    pub fn sized(f0: i64, f1: HeapArray) -> &'static Sized {
+    pub fn sized(f0: i64, f1: HeapArray) -> kayak_rt::Handle<'static, Sized> {
         kayak_rt::heap_alloc(Sized::Sized(f0, f1))
     }
 
     #[inline]
-    pub fn heaps() -> Ref<List<&'static Sized>> {
-        kayak_rt::kept_constant!(ONCE: Ref<List<&'static Sized>>);
+    pub fn heaps() -> Ref<List<kayak_rt::Handle<'static, Sized>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Sized>>>);
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<&'static kc_native::Sized>())
+            kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, kc_native::Sized>>())
         })
     }
 
-    pub fn heap_in(mut hs: List<&'static Sized>, mut words: i64) -> List<HeapArray> {
+    pub fn heap_in(mut hs: List<kayak_rt::Handle<'static, Sized>>, mut words: i64) -> List<HeapArray> {
         loop {
             if null_p(hs) {
                 return nil::<FlatArray<i64>>();
@@ -189,11 +189,11 @@ pub mod kc_native {
         RunImage(&'static dyn Fn(HeapArray) -> i64, HeapArray, Int),
     }
 
-    pub fn run_image(f0: &'static dyn Fn(HeapArray) -> i64, f1: HeapArray, f2: Int) -> &'static RunImage {
+    pub fn run_image(f0: &'static dyn Fn(HeapArray) -> i64, f1: HeapArray, f2: Int) -> kayak_rt::Handle<'static, RunImage> {
         kayak_rt::heap_alloc(RunImage::RunImage(f0, f1, f2))
     }
 
-    pub fn native_sealed(image: List<i64>, words: i64) -> &'static RunImage {
+    pub fn native_sealed(image: List<i64>, words: i64) -> kayak_rt::Handle<'static, RunImage> {
         let h = heap_of(words);
         let b = the::<Code>(make_bloblet(i64_to_int(size(image)), (std::cell::Cell::new(h),)));
         bytes_put_x(b, int_lit(0), image);
@@ -207,7 +207,7 @@ pub mod kc_native {
     // nothing reaches; kayak-rt collects nothing, so kc says when. Called
     // after, it fails, never runs.
     #[inline]
-    pub fn native_freed(s: &'static RunImage) -> () {
+    pub fn native_freed(s: kayak_rt::Handle<'static, RunImage>) -> () {
         let tagcase_ = s;
         match *tagcase_ {
             RunImage::RunImage(f, h, at) => {
@@ -221,7 +221,7 @@ pub mod kc_native {
     // transformer called on `INPUT` (its expansion's tag, a line, and the
     // use), as a built one's `--apply`. ``, or the words of the failure it
     // ended in. What it wrote, `native-output`.
-    pub fn native_call(s: &'static RunImage, apply: bool, input: Str) -> Str {
+    pub fn native_call(s: kayak_rt::Handle<'static, RunImage>, apply: bool, input: Str) -> Str {
         let tagcase_ = s;
         match *tagcase_ {
             RunImage::RunImage(f, h, at) => {

@@ -121,10 +121,10 @@ pub fn session_global_x(k: i64, n: Str, w: i64) -> i64 {
 /// `m`'s values each defined in the session, `(define x (with
 /// stage-module x))`, its global holding `m`'s: a product, its values in
 /// its type's order (C328), `ns`, from `i`.
-pub fn seeded(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut ns: Strings, mut i: i64) -> &'static Sess {
+pub fn seeded(mut k: i64, mut v: kayak_rt::Handle<'static, Cv>, mut gl: Sglobals, mut m: i64, mut ns: Strings, mut i: i64) -> kayak_rt::Handle<'static, Sess> {
     loop {
         if null_p(ns) {
-            return sess(v, gl, nil::<&'static Defn>(), 0i64);
+            return sess(v, gl, nil::<kayak_rt::Handle<'static, Defn>>(), 0i64);
         } else {
             let n = car(ns);
             let form = lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("with"), stage_file(), 0i64), kayak_rt::heap_cons(sym(str_lit("stage-module"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x()), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
@@ -138,7 +138,7 @@ pub fn seeded(mut k: i64, mut v: &'static Cv, mut gl: Sglobals, mut m: i64, mut 
 
 /// The index of session `sw`'s state, made first if it has none, of
 /// module type `mt`.
-pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
+pub fn session_state_x(sw: i64, mt: kayak_rt::Handle<'static, Ty>) -> i64 {
     let k = fixnum_value(obj_ref(sw, 1i64));
     if i64_gt_eq(k, 0i64) {
         k
@@ -151,7 +151,7 @@ pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
         }), rp_abs), mt);
         let v = module_types_opened(with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit("stage-module"), scheme(nil::<Str>(), mt), str_lit("global")), session_marks())), mt);
         let gm = session_global_x(k2, str_lit("stage-module"), m);
-        let vals = map(&mitem_name, filter(lambda1s(move |x: &'static Ty| {
+        let vals = map(&mitem_name, filter(lambda1s(move |x: kayak_rt::Handle<'static, Ty>| {
             string_eq_p(mitem_kind(x), str_lit("%val"))
         }), mtype_items(mt)));
         let made = seeded(k2, v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals, 0i64);
@@ -162,7 +162,7 @@ pub fn session_state_x(sw: i64, mt: &'static Ty) -> i64 {
 }
 
 /// Procedure `lam`, lowered at the top, a closure over nothing.
-pub fn thunk_word_x(lam: &'static Ir) -> i64 {
+pub fn thunk_word_x(lam: kayak_rt::Handle<'static, Ir>) -> i64 {
     let l = number_x(lam);
     let e = alloc_x(ob_env(), 2i64);
     let p = alloc_x(ob_proc(), 2i64);
@@ -181,7 +181,7 @@ pub fn session_scope() -> Scope {
 /// An expression in session `k`: `(sum ok (sum expression p))`, `p` the
 /// procedure that evaluates it, checked at `t`, `(subr E () R)`; or why
 /// not.
-pub fn session_expression_x(k: i64, st: &'static Sess, code: &'static Sexp, t: &'static Ty) -> i64 {
+pub fn session_expression_x(k: i64, st: kayak_rt::Handle<'static, Sess>, code: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>) -> i64 {
     let tagcase_ = st;
     match *tagcase_ {
         Sess::Sess(v, gl, ds, g) => {
@@ -253,7 +253,7 @@ pub fn session_run_x(sw: i64, code: i64, given: i64, rep: i64, names: i64) -> i6
 }
 
 /// A form run by a commit: its global given its initializer's value.
-pub fn run_ir(gs: Strings, r: &'static Runs) -> &'static Ir {
+pub fn run_ir(gs: Strings, r: kayak_rt::Handle<'static, Runs>) -> kayak_rt::Handle<'static, Ir> {
     let tagcase_ = r;
     match *tagcase_ {
         Runs::Runs(i, form) => {
@@ -305,19 +305,19 @@ pub fn ready_word_x(sw: i64, d: i64, decision: i64) -> i64 {
                         } else {
                             kayak_rt::heap_cons(sglobal(name, i), gl)
                         };
-                        let kept = filter(lambda1s(move |x: &'static Defn| {
+                        let kept = filter(lambda1s(move |x: kayak_rt::Handle<'static, Defn>| {
                             not(string_member_p(name, defn_names(x)))
                         }), ds);
                         let again = if (needed && string_eq_p(how, str_lit("rerun"))) {
-                            session_reruns(v2, gl2, users_of(kept, kayak_rt::heap_cons(name, kayak_rt::nil())), name, nil::<&'static Runs>())
+                            session_reruns(v2, gl2, users_of(kept, kayak_rt::heap_cons(name, kayak_rt::nil())), name, nil::<kayak_rt::Handle<'static, Runs>>())
                         } else {
-                            rerun_made(v2, gl2, nil::<&'static Runs>())
+                            rerun_made(v2, gl2, nil::<kayak_rt::Handle<'static, Runs>>())
                         };
                         let tagcase_ = again;
                         match *tagcase_ {
                             RerunMade::RerunMade(v3, gl3, more) => {
                                 let gs = session_gs(gl3, cv_facts(v3));
-                                let body = i_seq(onto(map(lambda1s(move |r: &'static Runs| {
+                                let body = i_seq(onto(map(lambda1s(move |r: kayak_rt::Handle<'static, Runs>| {
                                     run_ir(gs, r)
                                 }), kayak_rt::heap_cons(runs(i, form), more)), kayak_rt::heap_cons(i_lit(v_unit()), kayak_rt::nil())));
                                 let p = thunk_word_x(i_lambda(0i64, body, str_lit(""), str_lit("")));

@@ -20,7 +20,7 @@ pub fn c_rec_fill_x(mut bs: Cbinds, mut c: Code) -> () {
                 Cbind::Cbind(n, x) => {
                     c_name_for_x(n, x);
                     set(cg_lambda_at(), lambda_at(x));
-                    c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
+                    c_exp(x, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, false);
                     regs_form_twins_x();
                     r_note_constant_x(n, x);
                     c_op1(c, str_lit("global!"), o_global(n));
@@ -35,9 +35,9 @@ pub fn c_rec_fill_x(mut bs: Cbinds, mut c: Code) -> () {
 
 // A global defined by a form not a lambda's, or by an untyped one: its
 // value made, its words' twins, its global set.
-pub fn c_define_value_x(n: Str, x: &'static Cx, c: Code) -> () {
+pub fn c_define_value_x(n: Str, x: kayak_rt::Handle<'static, Cx>, c: Code) -> () {
     set(cg_form_writes(), nil::<Str>());
-    c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
+    c_exp(x, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, false);
     regs_form_twins_x();
     c_push_global_x(n);
     r_note_constant_x(n, x);
@@ -48,7 +48,7 @@ pub fn c_define_value_x(n: Str, x: &'static Cx, c: Code) -> () {
 // Each form in turn; the last expression's value is left on the stack.
 // After each, the twins of the words it made, as Fixpt's form loop makes
 // them, the globals it writes counted (C248).
-pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> bool {
+pub fn c_tops(mut ts: List<kayak_rt::Handle<'static, Ctop>>, mut c: Code, mut has_value: bool) -> bool {
     loop {
         if null_p(ts) {
             return has_value;
@@ -72,7 +72,7 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
                                     set(cg_lambda_at(), a);
                                     set(cg_form_writes(), kayak_rt::heap_cons(n, kayak_rt::nil()));
                                     r_note_constant_x(n, x);
-                                    c_lambda(ps, body, nil::<&'static Centry>(), 0i64, c, nil::<Str>(), nil::<&'static Cx>());
+                                    c_lambda(ps, body, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, nil::<Str>(), nil::<kayak_rt::Handle<'static, Cx>>());
                                     regs_form_twins_x();
                                     r_note_inline_x(n, ps, body, a);
                                     c_op1(c, str_lit("global!"), o_global(n));
@@ -97,7 +97,7 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
                         ()
                     };
                     c_rec_globals_x(bs);
-                    set(cg_form_writes(), map(lambda1s(move |b: &'static Cbind| {
+                    set(cg_form_writes(), map(lambda1s(move |b: kayak_rt::Handle<'static, Cbind>| {
                         let tagcase_ = b;
                         match *tagcase_ {
                             Cbind::Cbind(n, x) => {
@@ -116,7 +116,7 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
                         ()
                     };
                     set(cg_form_writes(), nil::<Str>());
-                    c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
+                    c_exp(x, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, false);
                     regs_form_twins_x();
                     (ts, has_value) = (cdr(ts), true);
                     continue;
@@ -132,7 +132,7 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
 
 /// Each form's tops in turn, as `c-tops`, its file the form's file
 /// (C366).
-pub fn c_filed(mut fts: List<&'static Ftops>, mut c: Code, mut has_value: bool) -> bool {
+pub fn c_filed(mut fts: List<kayak_rt::Handle<'static, Ftops>>, mut c: Code, mut has_value: bool) -> bool {
     loop {
         if null_p(fts) {
             return has_value;
@@ -152,7 +152,7 @@ pub fn c_filed(mut fts: List<&'static Ftops>, mut c: Code, mut has_value: bool) 
 // A program's one word, which runs it and leaves the value of its last
 // expression (unit, if it has none), and the words it makes.
 pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
-    let c = the::<Code>(kayak_rt::heap_new(nil::<&'static Item>()));
+    let c = the::<Code>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Item>>()));
     set(cg_facts(), fs);
     set(cg_source(), if null_p(forms) {
         str_lit("")
@@ -161,8 +161,8 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     });
     set(cg_form_file(), get(cg_source()));
     set(cg_files(), nil::<Str>());
-    set(cg_qnodes(), nil::<&'static Qnode>());
-    set(cg_convert_facts(), filter(lambda1s(move |x: &'static Fact| {
+    set(cg_qnodes(), nil::<kayak_rt::Handle<'static, Qnode>>());
+    set(cg_convert_facts(), filter(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
@@ -172,7 +172,7 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     }), fs));
     set(cg_fx_calls(), nil::<i64>());
     set(cg_native_calls(), nil::<i64>());
-    set(cg_module_facts(), filter(lambda1s(move |x: &'static Fact| {
+    set(cg_module_facts(), filter(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
@@ -180,12 +180,12 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
             }
         }
     }), fs));
-    set(cg_layouts(), nil::<&'static Clayout>());
-    set(cg_included(), nil::<&'static Clayout>());
-    set(cg_made(), nil::<&'static Cmade>());
-    set(cg_words(), nil::<&'static Word>());
+    set(cg_layouts(), nil::<kayak_rt::Handle<'static, Clayout>>());
+    set(cg_included(), nil::<kayak_rt::Handle<'static, Clayout>>());
+    set(cg_made(), nil::<kayak_rt::Handle<'static, Cmade>>());
+    set(cg_words(), nil::<kayak_rt::Handle<'static, Word>>());
     globals_reset_x();
-    set(cg_call_facts(), filter(lambda1s(move |x: &'static Fact| {
+    set(cg_call_facts(), filter(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
@@ -195,20 +195,20 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     }), fs));
     set(cg_standard_words(), nil::<Str>());
     set(c_this_params(), -1i64);
-    set(cg_twins(), nil::<&'static Twin>());
+    set(cg_twins(), nil::<kayak_rt::Handle<'static, Twin>>());
     set(cg_defining(), nil::<Str>());
     set(cg_lambda_at(), -1i64);
-    set(cg_define_at(), nil::<&'static Dpos>());
-    set(cg_writes(), nil::<&'static Gwrites>());
+    set(cg_define_at(), nil::<kayak_rt::Handle<'static, Dpos>>());
+    set(cg_writes(), nil::<kayak_rt::Handle<'static, Gwrites>>());
     set(cg_form_writes(), nil::<Str>());
-    set(cg_reg_codes(), nil::<&'static Rnamed>());
-    set(cg_inlines(), nil::<&'static Rinline>());
-    set(cg_unrolls(), nil::<&'static Rinline>());
-    set(cg_specials(), nil::<&'static Rspecial>());
-    set(cg_copies(), nil::<&'static Rcopy>());
-    set(cg_consts(), nil::<&'static Rgconst>());
-    set(cg_form_lambdas(), nil::<&'static Lword>());
-    set(cg_standard_twins(), nil::<&'static Stwin>());
+    set(cg_reg_codes(), nil::<kayak_rt::Handle<'static, Rnamed>>());
+    set(cg_inlines(), nil::<kayak_rt::Handle<'static, Rinline>>());
+    set(cg_unrolls(), nil::<kayak_rt::Handle<'static, Rinline>>());
+    set(cg_specials(), nil::<kayak_rt::Handle<'static, Rspecial>>());
+    set(cg_copies(), nil::<kayak_rt::Handle<'static, Rcopy>>());
+    set(cg_consts(), nil::<kayak_rt::Handle<'static, Rgconst>>());
+    set(cg_form_lambdas(), nil::<kayak_rt::Handle<'static, Lword>>());
+    set(cg_standard_twins(), nil::<kayak_rt::Handle<'static, Stwin>>());
     if c_filed(parse_tops_filed(forms), c, false) {
         ()
     } else {
@@ -230,10 +230,10 @@ pub fn cells_of(mut xs: Citems, mut n: i64) -> i64 {
     }
 }
 
-pub fn word_named(mut ws: List<&'static Word>, mut n: Str) -> List<&'static Word> {
+pub fn word_named(mut ws: List<kayak_rt::Handle<'static, Word>>, mut n: Str) -> List<kayak_rt::Handle<'static, Word>> {
     loop {
         if null_p(ws) {
-            return nil::<&'static Word>();
+            return nil::<kayak_rt::Handle<'static, Word>>();
         } else if {
             let tagcase_ = car(ws);
             match *tagcase_ {
@@ -259,23 +259,23 @@ pub enum Qseen {
     Qseen(i64, i64),
 }
 
-pub fn qseen(f0: i64, f1: i64) -> &'static Qseen {
+pub fn qseen(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Qseen> {
     kayak_rt::heap_alloc(Qseen::Qseen(f0, f1))
 }
 
 #[inline]
-pub fn cg_qreached() -> Ref<List<&'static Qseen>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qseen>>);
+pub fn cg_qreached() -> Ref<List<kayak_rt::Handle<'static, Qseen>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Qseen>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Qseen>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Qseen>>())
     })
 }
 
 #[inline]
-pub fn cg_qlabels() -> Ref<List<&'static Qseen>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Qseen>>);
+pub fn cg_qlabels() -> Ref<List<kayak_rt::Handle<'static, Qseen>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Qseen>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Qseen>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Qseen>>())
     })
 }
 
@@ -287,7 +287,7 @@ pub fn cg_qnext() -> Ref<i64> {
     })
 }
 
-pub fn qseen_of(mut ss: List<&'static Qseen>, mut n: i64) -> i64 {
+pub fn qseen_of(mut ss: List<kayak_rt::Handle<'static, Qseen>>, mut n: i64) -> i64 {
     loop {
         if null_p(ss) {
             return 0i64;
@@ -307,10 +307,10 @@ pub fn qseen_of(mut ss: List<&'static Qseen>, mut n: i64) -> i64 {
     }
 }
 
-pub fn qnode_parts(mut ns: List<&'static Qnode>, mut n: i64) -> List<&'static Lit> {
+pub fn qnode_parts(mut ns: List<kayak_rt::Handle<'static, Qnode>>, mut n: i64) -> List<kayak_rt::Handle<'static, Lit>> {
     loop {
         if null_p(ns) {
-            return nil::<&'static Lit>();
+            return nil::<kayak_rt::Handle<'static, Lit>>();
         } else {
             let tagcase_ = car(ns);
             match *tagcase_ {
@@ -327,7 +327,7 @@ pub fn qnode_parts(mut ns: List<&'static Qnode>, mut n: i64) -> List<&'static Li
     }
 }
 
-pub fn q_reached_x(mut l: &'static Lit) -> () {
+pub fn q_reached_x(mut l: kayak_rt::Handle<'static, Lit>) -> () {
     loop {
         let tagcase_ = l;
         match *tagcase_ {
@@ -351,7 +351,7 @@ pub fn q_reached_x(mut l: &'static Lit) -> () {
     }
 }
 
-pub fn q_written_x(l: &'static Lit) -> Str {
+pub fn q_written_x(l: kayak_rt::Handle<'static, Lit>) -> Str {
     let tagcase_ = l;
     match *tagcase_ {
         Lit::LQuoted(n) => {
@@ -375,7 +375,7 @@ pub fn q_written_x(l: &'static Lit) -> Str {
 }
 
 #[inline]
-pub fn q_pair_text(ps: List<&'static Lit>) -> Str {
+pub fn q_pair_text(ps: List<kayak_rt::Handle<'static, Lit>>) -> Str {
     string_append(str_lit("("), string_append(q_written_x(car(ps)), string_append(str_lit(" . "), string_append(q_written_x(car(cdr(ps))), str_lit(")")))))
 }
 

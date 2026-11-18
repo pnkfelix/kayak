@@ -39,7 +39,7 @@ pub mod made__load__0__process_load_place {
         let maker_st: &'p MadeLoad0ProcessLoadPlaceFaceState<'p, Place_P> = kayak_rt::alloc(MadeLoad0ProcessLoadPlaceFaceState {
             n: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
-        });
+        }).to_ref();
         maker_st.n.set(Some(new(0i64)));
         maker_st
     }

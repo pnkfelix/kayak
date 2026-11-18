@@ -137,15 +137,15 @@ pub enum CodePlace {
     CodePlace(i64, i64),
 }
 
-pub fn code_place(f0: i64, f1: i64) -> &'static CodePlace {
+pub fn code_place(f0: i64, f1: i64) -> kayak_rt::Handle<'static, CodePlace> {
     kayak_rt::heap_alloc(CodePlace::CodePlace(f0, f1))
 }
 
 #[inline]
-pub fn stage_spans() -> Ref<List<&'static CodePlace>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static CodePlace>>);
+pub fn stage_spans() -> Ref<List<kayak_rt::Handle<'static, CodePlace>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, CodePlace>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static CodePlace>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, CodePlace>>())
     })
 }
 
@@ -193,7 +193,7 @@ pub fn char_length(c: char) -> i64 {
 }
 
 /// A datum's word as the reader would have read it, each part placed.
-pub fn word_sexp(w: i64) -> &'static Sexp {
+pub fn word_sexp(w: i64) -> kayak_rt::Handle<'static, Sexp> {
     let p = get(stage_off());
     let x = if is_fixnum_p(w) {
         stage_past_x(string_length_i64(i64_to_string(fix_val(w))));
@@ -209,7 +209,7 @@ pub fn word_sexp(w: i64) -> &'static Sexp {
         sym(str_lit("#u"), stage_file(), p)
     } else if i64_eq(w, v_null()) {
         stage_past_x(2i64);
-        lst(nil::<&'static Sexp>(), stage_file(), 1i64, p)
+        lst(nil::<kayak_rt::Handle<'static, Sexp>>(), stage_file(), 1i64, p)
     } else if is_kind_p(w, k_keyword()) {
         let n = string_append(str_lit("#:"), symbol_text(slot_of(w, 2i64)));
         stage_past_x(string_length_i64(n));
@@ -247,7 +247,7 @@ pub fn word_sexp(w: i64) -> &'static Sexp {
 
 pub fn pair_sexps(w: i64, first: bool) -> Sexps {
     if i64_eq(w, v_null()) {
-        nil::<&'static Sexp>()
+        nil::<kayak_rt::Handle<'static, Sexp>>()
     } else if is_pair_p(w) {
         if first {
             ()
@@ -264,16 +264,16 @@ pub fn pair_sexps(w: i64, first: bool) -> Sexps {
 }
 
 /// The code `w`, a datum, placed past a base of its own.
-pub fn code_sexp_x(w: i64) -> &'static Sexp {
+pub fn code_sexp_x(w: i64) -> kayak_rt::Handle<'static, Sexp> {
     set(stage_base(), get(stage_off()));
-    set(stage_spans(), nil::<&'static CodePlace>());
+    set(stage_spans(), nil::<kayak_rt::Handle<'static, CodePlace>>());
     let x = word_sexp(w);
     stage_past_x(1i64);
     x
 }
 
 /// Where the part placed at `p` ends; -1 if no part is.
-pub fn span_end(mut ss: List<&'static CodePlace>, mut p: i64) -> i64 {
+pub fn span_end(mut ss: List<kayak_rt::Handle<'static, CodePlace>>, mut p: i64) -> i64 {
     loop {
         if null_p(ss) {
             return -1i64;
@@ -300,7 +300,7 @@ pub fn span_end(mut ss: List<&'static CodePlace>, mut p: i64) -> i64 {
 
 /// The place a refusal at `p` is in the code: its part's, from the code's
 /// start; the whole code where kayak's own (wrapping it) is refused.
-pub fn code_span(p: i64) -> &'static CodePlace {
+pub fn code_span(p: i64) -> kayak_rt::Handle<'static, CodePlace> {
     let whole = code_place(0i64, i64_minus(span_end(get(stage_spans()), get(stage_base())), get(stage_base())));
     if i64_lt(p, 0i64) {
         whole
@@ -316,16 +316,16 @@ pub fn code_span(p: i64) -> &'static CodePlace {
 
 // What the staged code is checked as: `(lambda (stage-module) (lambda ()
 // (with stage-module CODE)))`, against `(subr pure (M) (subr E () R))`.
-pub fn staged_thunk(code: &'static Sexp) -> &'static Sexp {
+pub fn staged_thunk(code: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
     let (s, l) = (lambda1(move |n: Str| {
         sym(n, stage_file(), stage_at_x())
     }), lambda1(move |xs: Sexps| {
         lst(xs, stage_file(), 1i64, stage_at_x())
     }));
-    l(kayak_rt::heap_cons(s(str_lit("lambda")), kayak_rt::heap_cons(l(nil::<&'static Sexp>()), kayak_rt::heap_cons(l(kayak_rt::heap_cons(s(str_lit("with")), kayak_rt::heap_cons(s(str_lit("stage-module")), kayak_rt::heap_cons(code, kayak_rt::nil())))), kayak_rt::nil()))))
+    l(kayak_rt::heap_cons(s(str_lit("lambda")), kayak_rt::heap_cons(l(nil::<kayak_rt::Handle<'static, Sexp>>()), kayak_rt::heap_cons(l(kayak_rt::heap_cons(s(str_lit("with")), kayak_rt::heap_cons(s(str_lit("stage-module")), kayak_rt::heap_cons(code, kayak_rt::nil())))), kayak_rt::nil()))))
 }
 
-pub fn staged_program(thunk: &'static Sexp) -> &'static Sexp {
+pub fn staged_program(thunk: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
     let (s, l) = (lambda1(move |n: Str| {
         sym(n, stage_file(), stage_at_x())
     }), lambda1(move |xs: Sexps| {
@@ -336,14 +336,14 @@ pub fn staged_program(thunk: &'static Sexp) -> &'static Sexp {
 
 // The checker's environment a stage's code is checked in: the standard
 // one alone, nothing of the program's but the module given.
-pub fn stage_cv() -> &'static Cv {
-    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("staged code"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+pub fn stage_cv() -> kayak_rt::Handle<'static, Cv> {
+    let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("staged code"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
     with_binds(empty, prim_binds(empty))
 }
 
 // The check: its state, whose facts the lowering reads; a refusal fails.
 #[inline]
-pub fn stage_checked(prog: &'static Sexp, t: &'static Ty) -> &'static St {
+pub fn stage_checked(prog: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>) -> kayak_rt::Handle<'static, St> {
     let tagcase_ = (&expressions::check)(at(stage_cv(), str_lit("staged code"), nil::<Str>()), new_state(), prog, t);
     match *tagcase_ {
         Res::Res(u, es, s) => {
@@ -353,7 +353,7 @@ pub fn stage_checked(prog: &'static Sexp, t: &'static Ty) -> &'static St {
 }
 
 #[inline]
-pub fn stage_verdict(prog: &'static Sexp, t: &'static Ty) -> Str {
+pub fn stage_verdict(prog: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>) -> Str {
     stage_checked(prog, t);
     str_lit("")
 }
@@ -420,7 +420,7 @@ pub fn refusal_said(m: Str) -> Str {
 
 /// The check by a worker, whose watcher, a relay of one message, puts what
 /// it is sent where this waits: `` if it passed, else the refusal.
-pub fn stage_worked(prog: &'static Sexp, t: &'static Ty) -> Str {
+pub fn stage_worked(prog: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>) -> Str {
     let out = the::<ICell<Str>>(make_icell());
     let relay = the::<Addr<Str>>(kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Str>| {
         let _ = {
@@ -437,7 +437,7 @@ pub fn stage_worked(prog: &'static Sexp, t: &'static Ty) -> Str {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
-            fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<Str>, prog: &'static Sexp, t: &'static Ty) -> () {
+            fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<Str>, prog: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>) -> () {
                 kayak_rt::process::send(relay, stage_verdict(prog, t))
             }
             let r__arena = Region_R::default();
@@ -521,7 +521,7 @@ pub enum Rpe {
     Rpe(Str, RpNodes, List<Symbol>),
 }
 
-pub fn rpe(f0: Str, f1: RpNodes, f2: List<Symbol>) -> &'static Rpe {
+pub fn rpe(f0: Str, f1: RpNodes, f2: List<Symbol>) -> kayak_rt::Handle<'static, Rpe> {
     kayak_rt::heap_alloc(Rpe::Rpe(f0, f1, f2))
 }
 
@@ -572,10 +572,10 @@ pub fn rp_moved(a: RpOperand, off: Int, own: List<Symbol>, all: Strings) -> RpOp
     }
 }
 
-pub fn rp_evidence_at(mut es: List<&'static Rpe>, mut n: Str) -> List<&'static Rpe> {
+pub fn rp_evidence_at(mut es: List<kayak_rt::Handle<'static, Rpe>>, mut n: Str) -> List<kayak_rt::Handle<'static, Rpe>> {
     loop {
         if null_p(es) {
-            return nil::<&'static Rpe>();
+            return nil::<kayak_rt::Handle<'static, Rpe>>();
         } else if {
             let tagcase_ = car(es);
             match *tagcase_ {
@@ -597,13 +597,13 @@ pub enum Rpp {
     Rpp(Str, Int, RpNodes, List<Symbol>),
 }
 
-pub fn rpp(f0: Str, f1: Int, f2: RpNodes, f3: List<Symbol>) -> &'static Rpp {
+pub fn rpp(f0: Str, f1: Int, f2: RpNodes, f3: List<Symbol>) -> kayak_rt::Handle<'static, Rpp> {
     kayak_rt::heap_alloc(Rpp::Rpp(f0, f1, f2, f3))
 }
 
-pub fn rp_placed(es: List<&'static Rpe>, off: Int) -> List<&'static Rpp> {
+pub fn rp_placed(es: List<kayak_rt::Handle<'static, Rpe>>, off: Int) -> List<kayak_rt::Handle<'static, Rpp>> {
     if null_p(es) {
-        nil::<&'static Rpp>()
+        nil::<kayak_rt::Handle<'static, Rpp>>()
     } else {
         let tagcase_ = car(es);
         match *tagcase_ {
@@ -614,10 +614,10 @@ pub fn rp_placed(es: List<&'static Rpe>, off: Int) -> List<&'static Rpp> {
     }
 }
 
-pub fn rp_placed_at(mut ps: List<&'static Rpp>, mut n: Str) -> List<&'static Rpp> {
+pub fn rp_placed_at(mut ps: List<kayak_rt::Handle<'static, Rpp>>, mut n: Str) -> List<kayak_rt::Handle<'static, Rpp>> {
     loop {
         if null_p(ps) {
-            return nil::<&'static Rpp>();
+            return nil::<kayak_rt::Handle<'static, Rpp>>();
         } else if {
             let tagcase_ = car(ps);
             match *tagcase_ {
@@ -635,7 +635,7 @@ pub fn rp_placed_at(mut ps: List<&'static Rpp>, mut n: Str) -> List<&'static Rpp
 }
 
 /// What evidence is of: its root's one operand, moved.
-pub fn rp_of_evidence(p: &'static Rpp, all: Strings) -> RpOperand {
+pub fn rp_of_evidence(p: kayak_rt::Handle<'static, Rpp>, all: Strings) -> RpOperand {
     let tagcase_ = p;
     match *tagcase_ {
         Rpp::Rpp(n, off, ns, hs) => {
@@ -651,7 +651,7 @@ pub fn rp_of_evidence(p: &'static Rpp, all: Strings) -> RpOperand {
 
 /// A node's operands, each filled hole what its evidence is of; in a set,
 /// a set's members spliced.
-pub fn rp_filled_args(r#as: RpOperands, set: bool, holes: List<Symbol>, ps: List<&'static Rpp>, all: Strings, ns_all: RpNodes) -> RpOperands {
+pub fn rp_filled_args(r#as: RpOperands, set: bool, holes: List<Symbol>, ps: List<kayak_rt::Handle<'static, Rpp>>, all: Strings, ns_all: RpNodes) -> RpOperands {
     if null_p(r#as) {
         nil::<kayak_rt::Sum>()
     } else {
@@ -691,15 +691,15 @@ pub enum Rpalias {
     Rpalias(Int, RpOperand),
 }
 
-pub fn rpalias(f0: Int, f1: RpOperand) -> &'static Rpalias {
+pub fn rpalias(f0: Int, f1: RpOperand) -> kayak_rt::Handle<'static, Rpalias> {
     kayak_rt::heap_alloc(Rpalias::Rpalias(f0, f1))
 }
 
 /// Each `var` node of `before` over a hole, which `after`, the same nodes
 /// filled, fills: its slot, and its filler.
-pub fn rp_var_aliases(before: RpNodes, after: RpNodes) -> List<&'static Rpalias> {
+pub fn rp_var_aliases(before: RpNodes, after: RpNodes) -> List<kayak_rt::Handle<'static, Rpalias>> {
     if (null_p(before) || null_p(after)) {
-        nil::<&'static Rpalias>()
+        nil::<kayak_rt::Handle<'static, Rpalias>>()
     } else {
         let (rest, x) = (rp_var_aliases(cdr(before), cdr(after)), car(before));
         if (string_eq_p(symbol_to_string(x.1), str_lit("var")) && i64_eq(size(x.4), 1i64) && {
@@ -730,7 +730,7 @@ pub fn rp_var_aliases(before: RpNodes, after: RpNodes) -> List<&'static Rpalias>
     }
 }
 
-pub fn rp_aliased(mut als: List<&'static Rpalias>, mut a: RpOperand) -> RpOperand {
+pub fn rp_aliased(mut als: List<kayak_rt::Handle<'static, Rpalias>>, mut a: RpOperand) -> RpOperand {
     loop {
         let tagcase_ = a;
         let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -764,7 +764,7 @@ pub fn rp_aliased(mut als: List<&'static Rpalias>, mut a: RpOperand) -> RpOperan
 }
 
 /// Rep `main`'s nodes, its holes filled from evidence `es`.
-pub fn rp_filled(main: &'static Rexp, es: List<&'static Rpe>) -> &'static Rexp {
+pub fn rp_filled(main: kayak_rt::Handle<'static, Rexp>, es: List<kayak_rt::Handle<'static, Rpe>>) -> kayak_rt::Handle<'static, Rexp> {
     let tagcase_ = main;
     match *tagcase_ {
         Rexp::Rexp(ns, hs, root, d) => {
@@ -772,7 +772,7 @@ pub fn rp_filled(main: &'static Rexp, es: List<&'static Rpe>) -> &'static Rexp {
             let left = filter(lambda1s(move |h: Str| {
                 null_p(rp_placed_at(ps, h))
             }), hs);
-            let theirs = concat(map(lambda1s(move |p: &'static Rpp| {
+            let theirs = concat(map(lambda1s(move |p: kayak_rt::Handle<'static, Rpp>| {
                 let tagcase_ = p;
                 match *tagcase_ {
                     Rpp::Rpp(n, off, ens, ehs) => {
@@ -785,7 +785,7 @@ pub fn rp_filled(main: &'static Rexp, es: List<&'static Rpe>) -> &'static Rexp {
             let all = onto(left, filter(lambda1s(move |h: Str| {
                 not(string_member_p(h, left))
             }), theirs));
-            let moved = concat(map(lambda1s(move |p: &'static Rpp| {
+            let moved = concat(map(lambda1s(move |p: kayak_rt::Handle<'static, Rpp>| {
                 let tagcase_ = p;
                 match *tagcase_ {
                     Rpp::Rpp(n, off, ens, ehs) => {
@@ -884,9 +884,9 @@ pub fn rp_once(mut r#as: RpOperands) -> RpOperands {
 
 // Evidence's words given: each a rep's binary form, the variable it is for
 // named, in the order `names` says.
-pub fn evidence_given(prod: i64, names: Strings, i: i64) -> List<&'static Rpe> {
+pub fn evidence_given(prod: i64, names: Strings, i: i64) -> List<kayak_rt::Handle<'static, Rpe>> {
     if null_p(names) {
-        nil::<&'static Rpe>()
+        nil::<kayak_rt::Handle<'static, Rpe>>()
     } else {
         let got = (&rep_nodes)(heap_kfx_bytes(slot_of(prod, i64_plus(i, 2i64))), nil::<Str>());
         kayak_rt::heap_cons(rpe(car(names), got.0, got.1), evidence_given(prod, cdr(names), i64_plus(i, 1i64)))
@@ -903,10 +903,10 @@ pub fn fresh_regions() -> Ref<i64> {
     })
 }
 
-pub fn fresh_evidence_x(mut holes: Strings, mut named: Strings) -> List<&'static Rpe> {
+pub fn fresh_evidence_x(mut holes: Strings, mut named: Strings) -> List<kayak_rt::Handle<'static, Rpe>> {
     loop {
         if null_p(holes) {
-            return nil::<&'static Rpe>();
+            return nil::<kayak_rt::Handle<'static, Rpe>>();
         } else if (not(has_prefix_p(car(holes), str_lit("'"))) || string_member_p(car(holes), named)) {
             holes = cdr(holes);
             continue;
@@ -930,7 +930,7 @@ pub fn rep_filled_x(rep: i64, given: i64, names: Str) -> Bytes {
     let es = onto(evidence_given(given, named, 0i64), fresh_evidence_x(map(lambda1s(move |y: Symbol| {
         symbol_to_string(y)
     }), got.1), named));
-    let canonical = lambda1s(move |r: &'static Rexp| {
+    let canonical = lambda1s(move |r: kayak_rt::Handle<'static, Rexp>| {
         let tagcase_ = r;
         match *tagcase_ {
             Rexp::Rexp(ns, hs, root, d) => {
@@ -1002,25 +1002,25 @@ pub fn staged_strings_x(ns: Strings) -> i64 {
 }
 
 pub enum Defn {
-    Defn(Strings, &'static Sexp),
+    Defn(Strings, kayak_rt::Handle<'static, Sexp>),
 }
 
-pub fn defn(f0: Strings, f1: &'static Sexp) -> &'static Defn {
+pub fn defn(f0: Strings, f1: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Defn> {
     kayak_rt::heap_alloc(Defn::Defn(f0, f1))
 }
 
-pub type Defns = List<&'static Defn>;
+pub type Defns = List<kayak_rt::Handle<'static, Defn>>;
 
 pub enum RerunOut {
-    RerunOut(&'static Cv, Strings),
+    RerunOut(kayak_rt::Handle<'static, Cv>, Strings),
 }
 
-pub fn rerun_out(f0: &'static Cv, f1: Strings) -> &'static RerunOut {
+pub fn rerun_out(f0: kayak_rt::Handle<'static, Cv>, f1: Strings) -> kayak_rt::Handle<'static, RerunOut> {
     kayak_rt::heap_alloc(RerunOut::RerunOut(f0, f1))
 }
 
 #[inline]
-pub fn defn_names(d: &'static Defn) -> Strings {
+pub fn defn_names(d: kayak_rt::Handle<'static, Defn>) -> Strings {
     let tagcase_ = d;
     match *tagcase_ {
         Defn::Defn(ns, f) => {
@@ -1031,11 +1031,11 @@ pub fn defn_names(d: &'static Defn) -> Strings {
 
 /// The globals a top-level form defines: a `define`'s, a `define*`'s, a
 /// `define-rec`'s.
-pub fn defined_names_of(f: &'static Sexp) -> Strings {
+pub fn defined_names_of(f: kayak_rt::Handle<'static, Sexp>) -> Strings {
     if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_gt_eq(size(items(f)), 3i64) && not(module_def_p(f))) {
         kayak_rt::heap_cons(binder_name(second(items(f))), kayak_rt::nil())
     } else if head_is_p(f, str_lit("define-rec")) {
-        map(lambda1s(move |g: &'static Sexp| {
+        map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
             binder_name(car(items(g)))
         }), cdr(items(f)))
     } else {
@@ -1045,7 +1045,7 @@ pub fn defined_names_of(f: &'static Sexp) -> Strings {
 
 /// Whether a global of `names`, defined before, is now at a type its uses
 /// may not take.
-pub fn rerun_needed_p(old: &'static Cv, new: &'static Cv, names: Strings) -> bool {
+pub fn rerun_needed_p(old: kayak_rt::Handle<'static, Cv>, new: kayak_rt::Handle<'static, Cv>, names: Strings) -> bool {
     any_p(lambda1s(move |n: Str| {
         let (a, b) = (scope_bind(n, old), scope_bind(n, new));
         (not(null_p(a)) && not(null_p(b)) && {
@@ -1071,7 +1071,7 @@ pub fn rerun_needed_p(old: &'static Cv, new: &'static Cv, names: Strings) -> boo
 pub fn users_of(mut ds: Defns, mut used: Strings) -> Defns {
     loop {
         if null_p(ds) {
-            return nil::<&'static Defn>();
+            return nil::<kayak_rt::Handle<'static, Defn>>();
         } else if {
             let tagcase_ = car(ds);
             match *tagcase_ {
@@ -1090,11 +1090,11 @@ pub fn users_of(mut ds: Defns, mut used: Strings) -> Defns {
     }
 }
 
-pub fn broken_binds(v: &'static Cv, names: Strings) -> Binds {
+pub fn broken_binds(v: kayak_rt::Handle<'static, Cv>, names: Strings) -> Binds {
     concat(map(lambda1s(move |n: Str| {
         let b = scope_bind(n, v);
         if null_p(b) {
-            nil::<&'static Bind>()
+            nil::<kayak_rt::Handle<'static, Bind>>()
         } else {
             let tagcase_ = car(b);
             match *tagcase_ {
@@ -1111,42 +1111,42 @@ pub enum Sglobal {
     Sglobal(Str, i64),
 }
 
-pub fn sglobal(f0: Str, f1: i64) -> &'static Sglobal {
+pub fn sglobal(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Sglobal> {
     kayak_rt::heap_alloc(Sglobal::Sglobal(f0, f1))
 }
 
-pub type Sglobals = List<&'static Sglobal>;
+pub type Sglobals = List<kayak_rt::Handle<'static, Sglobal>>;
 
 // A session's state: its checker's environment, its globals (the newest
 // first), its definitions (the oldest first) and how many commits it has
 // had.
 pub enum Sess {
-    Sess(&'static Cv, Sglobals, Defns, i64),
+    Sess(kayak_rt::Handle<'static, Cv>, Sglobals, Defns, i64),
 }
 
-pub fn sess(f0: &'static Cv, f1: Sglobals, f2: Defns, f3: i64) -> &'static Sess {
+pub fn sess(f0: kayak_rt::Handle<'static, Cv>, f1: Sglobals, f2: Defns, f3: i64) -> kayak_rt::Handle<'static, Sess> {
     kayak_rt::heap_alloc(Sess::Sess(f0, f1, f2, f3))
 }
 
-pub type Sesss = List<&'static Sess>;
+pub type Sesss = List<kayak_rt::Handle<'static, Sess>>;
 
 // A pending definition: its session's index, the generation it was checked
 // at, its name, its form, its type, and whether it was committed.
 pub enum Pend {
-    Pend(i64, i64, Str, &'static Sexp, &'static Ty, bool),
+    Pend(i64, i64, Str, kayak_rt::Handle<'static, Sexp>, kayak_rt::Handle<'static, Ty>, bool),
 }
 
-pub fn pend(f0: i64, f1: i64, f2: Str, f3: &'static Sexp, f4: &'static Ty, f5: bool) -> &'static Pend {
+pub fn pend(f0: i64, f1: i64, f2: Str, f3: kayak_rt::Handle<'static, Sexp>, f4: kayak_rt::Handle<'static, Ty>, f5: bool) -> kayak_rt::Handle<'static, Pend> {
     kayak_rt::heap_alloc(Pend::Pend(f0, f1, f2, f3, f4, f5))
 }
 
-pub type Pends = List<&'static Pend>;
+pub type Pends = List<kayak_rt::Handle<'static, Pend>>;
 
 #[inline]
 pub fn sessions() -> Ref<Sesss> {
     kayak_rt::kept_constant!(ONCE: Ref<Sesss>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Sess>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Sess>>())
     })
 }
 
@@ -1154,11 +1154,11 @@ pub fn sessions() -> Ref<Sesss> {
 pub fn pendings() -> Ref<Pends> {
     kayak_rt::kept_constant!(ONCE: Ref<Pends>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Pend>())
+        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Pend>>())
     })
 }
 
-pub fn nth_sess(mut ss: Sesss, mut i: i64) -> &'static Sess {
+pub fn nth_sess(mut ss: Sesss, mut i: i64) -> kayak_rt::Handle<'static, Sess> {
     loop {
         if i64_eq(i, 0i64) {
             return car(ss);
@@ -1169,7 +1169,7 @@ pub fn nth_sess(mut ss: Sesss, mut i: i64) -> &'static Sess {
     }
 }
 
-pub fn sess_replaced(ss: Sesss, i: i64, x: &'static Sess) -> Sesss {
+pub fn sess_replaced(ss: Sesss, i: i64, x: kayak_rt::Handle<'static, Sess>) -> Sesss {
     if i64_eq(i, 0i64) {
         kayak_rt::heap_cons(x, cdr(ss))
     } else {
@@ -1177,7 +1177,7 @@ pub fn sess_replaced(ss: Sesss, i: i64, x: &'static Sess) -> Sesss {
     }
 }
 
-pub fn nth_pend(mut ps: Pends, mut i: i64) -> &'static Pend {
+pub fn nth_pend(mut ps: Pends, mut i: i64) -> kayak_rt::Handle<'static, Pend> {
     loop {
         if i64_eq(i, 0i64) {
             return car(ps);
@@ -1188,7 +1188,7 @@ pub fn nth_pend(mut ps: Pends, mut i: i64) -> &'static Pend {
     }
 }
 
-pub fn pend_replaced(ps: Pends, i: i64, x: &'static Pend) -> Pends {
+pub fn pend_replaced(ps: Pends, i: i64, x: kayak_rt::Handle<'static, Pend>) -> Pends {
     if i64_eq(i, 0i64) {
         kayak_rt::heap_cons(x, cdr(ps))
     } else {
@@ -1278,7 +1278,7 @@ pub fn session_marks() -> Binds {
 
 /// A session's definition checked, as the REPL checks a form: one written
 /// with no type, its type found (`check-untyped`).
-pub fn session_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+pub fn session_top(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Cv> {
     if untyped_p(form) {
         let tagcase_ = check_untyped(v, form);
         match *tagcase_ {
@@ -1294,8 +1294,8 @@ pub fn session_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
 /// `v` with module type `mt`'s types and effects in scope, as a `with` of
 /// the module opens them (`mtype-opened`, C315): each abstract type and
 /// description a type of its name, each effect description an effect.
-pub fn module_types_opened(v: &'static Cv, mt: &'static Ty) -> &'static Cv {
-    with_type_binds(v, concat(map(lambda1s(move |x: &'static Ty| {
+pub fn module_types_opened(v: kayak_rt::Handle<'static, Cv>, mt: kayak_rt::Handle<'static, Ty>) -> kayak_rt::Handle<'static, Cv> {
+    with_type_binds(v, concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Ty>| {
         if (string_eq_p(mitem_kind(x), str_lit("%desc")) || string_eq_p(mitem_kind(x), str_lit("%abs"))) {
             let tagcase_ = x;
             match *tagcase_ {
@@ -1304,13 +1304,13 @@ pub fn module_types_opened(v: &'static Cv, mt: &'static Ty) -> &'static Cv {
                 }
                 _ => {
                     let other = tagcase_;
-                    nil::<&'static Bind>()
+                    nil::<kayak_rt::Handle<'static, Bind>>()
                 }
             }
         } else {
-            nil::<&'static Bind>()
+            nil::<kayak_rt::Handle<'static, Bind>>()
         }
-    }), mtype_items(mt))), concat(map(lambda1s(move |x: &'static Ty| {
+    }), mtype_items(mt))), concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Ty>| {
         if string_eq_p(mitem_kind(x), str_lit("%edesc")) {
             let tagcase_ = x;
             match *tagcase_ {
@@ -1330,11 +1330,11 @@ pub fn module_types_opened(v: &'static Cv, mt: &'static Ty) -> &'static Cv {
                 }
                 _ => {
                     let other = tagcase_;
-                    nil::<&'static Effdef>()
+                    nil::<kayak_rt::Handle<'static, Effdef>>()
                 }
             }
         } else {
-            nil::<&'static Effdef>()
+            nil::<kayak_rt::Handle<'static, Effdef>>()
         }
     }), mtype_items(mt))))
 }
@@ -1350,7 +1350,7 @@ pub fn make_session_word_x(m: i64) -> i64 {
 // A check by a worker, as `stage-worked`'s: `` if it passed, else the
 // refusal. `kind` 0, `form` an expression checked against `t`; 1, a
 // top-level form.
-pub fn session_verdict(v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind: i64) -> Str {
+pub fn session_verdict(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>, kind: i64) -> Str {
     if i64_eq(kind, 0i64) {
         (&expressions::check)(at(v, str_lit("staged code"), nil::<Str>()), new_state(), form, t);
         ()
@@ -1361,7 +1361,7 @@ pub fn session_verdict(v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind
     str_lit("")
 }
 
-pub fn session_worked(v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind: i64) -> Str {
+pub fn session_worked(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>, kind: i64) -> Str {
     let out = the::<ICell<Str>>(make_icell());
     let relay = the::<Addr<Str>>(kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Str>| {
         let _ = {
@@ -1378,7 +1378,7 @@ pub fn session_worked(v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind:
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
-            fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<Str>, v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind: i64) -> () {
+            fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<Str>, v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>, kind: i64) -> () {
                 kayak_rt::process::send(relay, session_verdict(v, form, t, kind))
             }
             let r__arena = Region_R::default();
@@ -1389,13 +1389,13 @@ pub fn session_worked(v: &'static Cv, form: &'static Sexp, t: &'static Ty, kind:
 }
 
 #[inline]
-pub fn session_thunk(e: &'static Sexp) -> &'static Sexp {
-    lst(kayak_rt::heap_cons(sym(str_lit("lambda"), stage_file(), stage_at_x()), kayak_rt::heap_cons(lst(nil::<&'static Sexp>(), stage_file(), 1i64, stage_at_x()), kayak_rt::heap_cons(e, kayak_rt::nil()))), stage_file(), 1i64, stage_at_x())
+pub fn session_thunk(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
+    lst(kayak_rt::heap_cons(sym(str_lit("lambda"), stage_file(), stage_at_x()), kayak_rt::heap_cons(lst(nil::<kayak_rt::Handle<'static, Sexp>>(), stage_file(), 1i64, stage_at_x()), kayak_rt::heap_cons(e, kayak_rt::nil()))), stage_file(), 1i64, stage_at_x())
 }
 
 /// `(define name init)` or `(define name type init)`: its name and its
 /// initializer; none if neither.
-pub fn definition_parts(code: &'static Sexp) -> Sexps {
+pub fn definition_parts(code: kayak_rt::Handle<'static, Sexp>) -> Sexps {
     let xs = items(code);
     if ((i64_eq(size(xs), 3i64) || i64_eq(size(xs), 4i64)) && {
         let tagcase_ = second(xs);
@@ -1411,14 +1411,14 @@ pub fn definition_parts(code: &'static Sexp) -> Sexps {
     }) {
         kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(last(xs), kayak_rt::nil()))
     } else {
-        nil::<&'static Sexp>()
+        nil::<kayak_rt::Handle<'static, Sexp>>()
     }
 }
 
 /// A definition in session `k`, checked against it as it is, its
 /// initializer, unless a `lambda`, within `E` (`t` is `(subr E () R)`):
 /// `(sum ok (sum definition d))`, `d` pending; or why not.
-pub fn session_define_x(sw: i64, k: i64, st: &'static Sess, code: &'static Sexp, t: &'static Ty) -> i64 {
+pub fn session_define_x(sw: i64, k: i64, st: kayak_rt::Handle<'static, Sess>, code: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>) -> i64 {
     let tagcase_ = st;
     match *tagcase_ {
         Sess::Sess(v, gl, ds, g) => {
@@ -1464,7 +1464,7 @@ pub fn session_define_x(sw: i64, k: i64, st: &'static Sess, code: &'static Sexp,
                     let bounded = if head_is_p(init, str_lit("lambda")) {
                         str_lit("")
                     } else {
-                        session_worked(v, session_thunk(init), ty_proc(es, nil::<&'static Ty>(), dt), 0i64)
+                        session_worked(v, session_thunk(init), ty_proc(es, nil::<kayak_rt::Handle<'static, Ty>>(), dt), 0i64)
                     };
                     if not(string_eq_p(bounded, str_lit(""))) {
                         refused_word_x(bounded)
@@ -1483,7 +1483,7 @@ pub fn session_define_x(sw: i64, k: i64, st: &'static Sess, code: &'static Sexp,
 }
 
 #[inline]
-pub fn pending_of(d: i64) -> &'static Pend {
+pub fn pending_of(d: i64) -> kayak_rt::Handle<'static, Pend> {
     nth_pend(get(pendings()), fix_val(elt_ref(d, 1i64)))
 }
 
@@ -1561,26 +1561,26 @@ pub fn redefines_word_x(sw: i64, d: i64) -> i64 {
 
 // What a commit runs: each definition, its global and its form.
 pub enum Runs {
-    Runs(i64, &'static Sexp),
+    Runs(i64, kayak_rt::Handle<'static, Sexp>),
 }
 
-pub fn runs(f0: i64, f1: &'static Sexp) -> &'static Runs {
+pub fn runs(f0: i64, f1: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Runs> {
     kayak_rt::heap_alloc(Runs::Runs(f0, f1))
 }
 
-pub type Runss = List<&'static Runs>;
+pub type Runss = List<kayak_rt::Handle<'static, Runs>>;
 
 pub enum RerunMade {
-    RerunMade(&'static Cv, Sglobals, Runss),
+    RerunMade(kayak_rt::Handle<'static, Cv>, Sglobals, Runss),
 }
 
-pub fn rerun_made(f0: &'static Cv, f1: Sglobals, f2: Runss) -> &'static RerunMade {
+pub fn rerun_made(f0: kayak_rt::Handle<'static, Cv>, f1: Sglobals, f2: Runss) -> kayak_rt::Handle<'static, RerunMade> {
     kayak_rt::heap_alloc(RerunMade::RerunMade(f0, f1, f2))
 }
 
 /// Each user in turn checked again: each that checks run again, at its
 /// global; each that does not broken, as Fixpt says it.
-pub fn session_reruns(mut v: &'static Cv, mut gl: Sglobals, mut us: Defns, mut redefined: Str, mut made: Runss) -> &'static RerunMade {
+pub fn session_reruns(mut v: kayak_rt::Handle<'static, Cv>, mut gl: Sglobals, mut us: Defns, mut redefined: Str, mut made: Runss) -> kayak_rt::Handle<'static, RerunMade> {
     loop {
         if null_p(us) {
             return rerun_made(v, gl, made);

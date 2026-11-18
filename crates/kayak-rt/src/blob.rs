@@ -172,12 +172,12 @@ pub fn bloblet_written<W: Written>(b: W, k: usize) {
 
 /// `(make-bloblet bytes e …)`: in the heap, never freed.
 pub fn make_bloblet<'a, Fs: 'a>(bytes: Int, fields: Fs) -> &'a Bloblet<Fs> {
-    crate::alloc(Bloblet::new(bytes, fields))
+    crate::leak(Bloblet::new(bytes, fields))
 }
 
 /// `(rmake-bloblet r bytes e …)`: in the region `r`.
 pub fn rmake_bloblet<Fs, R: Holds<Bloblet<Fs>>>(r: &R, bytes: Int, fields: Fs) -> &Bloblet<Fs> {
-    r.arena().alloc(Bloblet::new(bytes, fields))
+    r.arena().alloc(Bloblet::new(bytes, fields)).to_ref()
 }
 
 pub fn bloblet_bytes<Fs>(b: &Bloblet<Fs>) -> Int {
@@ -424,7 +424,7 @@ impl<Fs, S: Flat> TBloblet<Fs, S> {
 
 /// `(make-bloblet bytes e …)` of a typed suffix.
 pub fn make_tbloblet<'a, Fs: 'a, S: Flat + 'a>(bytes: Int, fields: Fs) -> &'a TBloblet<Fs, S> {
-    crate::alloc(TBloblet::new(bytes, fields))
+    crate::leak(TBloblet::new(bytes, fields))
 }
 
 /// `(rmake-bloblet r bytes e …)` of a typed suffix.
@@ -433,7 +433,7 @@ pub fn rmake_tbloblet<Fs, S: Flat, R: Holds<TBloblet<Fs, S>>>(
     bytes: Int,
     fields: Fs,
 ) -> &TBloblet<Fs, S> {
-    r.arena().alloc(TBloblet::new(bytes, fields))
+    r.arena().alloc(TBloblet::new(bytes, fields)).to_ref()
 }
 
 impl<Fs, S> crate::Show for TBloblet<Fs, S> {

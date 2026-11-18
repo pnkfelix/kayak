@@ -45,31 +45,31 @@ pub mod kc_asm {
         OImem(i64, Str, i64),
     }
 
-    pub fn o_reg(f0: i64, f1: i64) -> &'static Opd {
+    pub fn o_reg(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Opd> {
         kayak_rt::heap_alloc(Opd::OReg(f0, f1))
     }
 
-    pub fn o_imm(f0: i64) -> &'static Opd {
+    pub fn o_imm(f0: i64) -> kayak_rt::Handle<'static, Opd> {
         kayak_rt::heap_alloc(Opd::OImm(f0))
     }
 
-    pub fn o_isym(f0: Str) -> &'static Opd {
+    pub fn o_isym(f0: Str) -> kayak_rt::Handle<'static, Opd> {
         kayak_rt::heap_alloc(Opd::OIsym(f0))
     }
 
-    pub fn o_mem(f0: i64, f1: Str, f2: i64, f3: i64, f4: i64) -> &'static Opd {
+    pub fn o_mem(f0: i64, f1: Str, f2: i64, f3: i64, f4: i64) -> kayak_rt::Handle<'static, Opd> {
         kayak_rt::heap_alloc(Opd::OMem(f0, f1, f2, f3, f4))
     }
 
-    pub fn o_sym(f0: Str) -> &'static Opd {
+    pub fn o_sym(f0: Str) -> kayak_rt::Handle<'static, Opd> {
         kayak_rt::heap_alloc(Opd::OSym(f0))
     }
 
-    pub fn o_ireg(f0: i64) -> &'static Opd {
+    pub fn o_ireg(f0: i64) -> kayak_rt::Handle<'static, Opd> {
         kayak_rt::heap_alloc(Opd::OIreg(f0))
     }
 
-    pub fn o_imem(f0: i64, f1: Str, f2: i64) -> &'static Opd {
+    pub fn o_imem(f0: i64, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Opd> {
         kayak_rt::heap_alloc(Opd::OImem(f0, f1, f2))
     }
 
@@ -87,31 +87,31 @@ pub mod kc_asm {
         PFix(i64, Str, i64, i64),
     }
 
-    pub fn p_bytes(f0: List<i64>) -> &'static Piece {
+    pub fn p_bytes(f0: List<i64>) -> kayak_rt::Handle<'static, Piece> {
         kayak_rt::heap_alloc(Piece::PBytes(f0))
     }
 
-    pub fn p_label(f0: Str) -> &'static Piece {
+    pub fn p_label(f0: Str) -> kayak_rt::Handle<'static, Piece> {
         kayak_rt::heap_alloc(Piece::PLabel(f0))
     }
 
-    pub fn p_align(f0: i64) -> &'static Piece {
+    pub fn p_align(f0: i64) -> kayak_rt::Handle<'static, Piece> {
         kayak_rt::heap_alloc(Piece::PAlign(f0))
     }
 
-    pub fn p_branch(f0: i64, f1: Str) -> &'static Piece {
+    pub fn p_branch(f0: i64, f1: Str) -> kayak_rt::Handle<'static, Piece> {
         kayak_rt::heap_alloc(Piece::PBranch(f0, f1))
     }
 
-    pub fn p_call(f0: Str) -> &'static Piece {
+    pub fn p_call(f0: Str) -> kayak_rt::Handle<'static, Piece> {
         kayak_rt::heap_alloc(Piece::PCall(f0))
     }
 
-    pub fn p_fix(f0: i64, f1: Str, f2: i64, f3: i64) -> &'static Piece {
+    pub fn p_fix(f0: i64, f1: Str, f2: i64, f3: i64) -> kayak_rt::Handle<'static, Piece> {
         kayak_rt::heap_alloc(Piece::PFix(f0, f1, f2, f3))
     }
 
-    pub type Pieces = List<&'static Piece>;
+    pub type Pieces = List<kayak_rt::Handle<'static, Piece>>;
 
     pub type Bytes = List<i64>;
 
@@ -259,7 +259,7 @@ pub mod kc_asm {
     }
 
     /// `%name`'s register.
-    pub fn reg_of(s: Str) -> &'static Opd {
+    pub fn reg_of(s: Str) -> kayak_rt::Handle<'static, Opd> {
         let n = after_prefix(s, str_lit("%"));
         if i64_gt_eq(index_in(n, regs64(), 0i64), 0i64) {
             o_reg(index_in(n, regs64(), 0i64), 64i64)
@@ -275,7 +275,7 @@ pub mod kc_asm {
     }
 
     #[inline]
-    pub fn reg_number(o: &'static Opd) -> i64 {
+    pub fn reg_number(o: kayak_rt::Handle<'static, Opd>) -> i64 {
         let tagcase_ = o;
         match *tagcase_ {
             Opd::OReg(n, w) => {
@@ -338,7 +338,7 @@ pub mod kc_asm {
     }
 
     /// `D(%b)`, `D(%b,%i,s)`, `sym(%rip)`.
-    pub fn mem_of(s: Str) -> &'static Opd {
+    pub fn mem_of(s: Str) -> kayak_rt::Handle<'static, Opd> {
         let a = cut_at(string_chars(s), '(', nil::<char>());
         let d = disp_of(a.0);
         let inside = cut_at(a.1, ')', nil::<char>()).0;
@@ -360,7 +360,7 @@ pub mod kc_asm {
         car(cdr(xs))
     }
 
-    pub fn operand_of(s: Str) -> &'static Opd {
+    pub fn operand_of(s: Str) -> kayak_rt::Handle<'static, Opd> {
         let c = string_ref(s, int_lit(0));
         if char_eq_p(c, '%') {
             reg_of(s)
@@ -462,7 +462,7 @@ pub mod kc_asm {
     // register's number or an extension), and `o`, a register or memory;
     // 64 bits if `w`; `after` the bytes that follow the operand, an
     // immediate's, for a `%rip` field's addend.
-    pub fn enc(w: bool, op: Bytes, rf: i64, o: &'static Opd, after: i64) -> Pieces {
+    pub fn enc(w: bool, op: Bytes, rf: i64, o: kayak_rt::Handle<'static, Opd>, after: i64) -> Pieces {
         let tagcase_ = o;
         match *tagcase_ {
             Opd::OReg(n, width) => {
@@ -590,7 +590,7 @@ pub mod kc_asm {
     }
 
     #[inline]
-    pub fn is_rax_p(o: &'static Opd) -> bool {
+    pub fn is_rax_p(o: kayak_rt::Handle<'static, Opd>) -> bool {
         let tagcase_ = o;
         match *tagcase_ {
             Opd::OReg(n, w) => {
@@ -604,7 +604,7 @@ pub mod kc_asm {
     }
 
     #[inline]
-    pub fn is_reg_p(o: &'static Opd) -> bool {
+    pub fn is_reg_p(o: kayak_rt::Handle<'static, Opd>) -> bool {
         let tagcase_ = o;
         match *tagcase_ {
             Opd::OReg(n, w) => {
@@ -618,7 +618,7 @@ pub mod kc_asm {
     }
 
     // An immediate's value now, or none: a number, or a symbol set before.
-    pub fn imm_known(o: &'static Opd, sets: List<Product_11_12<Str, i64>>) -> List<i64> {
+    pub fn imm_known(o: kayak_rt::Handle<'static, Opd>, sets: List<Product_11_12<Str, i64>>) -> List<i64> {
         let tagcase_ = o;
         match *tagcase_ {
             Opd::OImm(v) => {
@@ -639,7 +639,7 @@ pub mod kc_asm {
     }
 
     // An immediate of 32 bits: its bytes, or a field the set symbol fills.
-    pub fn imm32(o: &'static Opd, sets: List<Product_11_12<Str, i64>>) -> Pieces {
+    pub fn imm32(o: kayak_rt::Handle<'static, Opd>, sets: List<Product_11_12<Str, i64>>) -> Pieces {
         let k = imm_known(o, sets);
         if not(null_p(k)) {
             kayak_rt::heap_cons(p_bytes(le_bytes(car(k), 4i64)), kayak_rt::nil())
@@ -657,7 +657,7 @@ pub mod kc_asm {
         }
     }
 
-    pub fn instruction(m: Str, os: List<&'static Opd>, sets: List<Product_11_12<Str, i64>>) -> Pieces {
+    pub fn instruction(m: Str, os: List<kayak_rt::Handle<'static, Opd>>, sets: List<Product_11_12<Str, i64>>) -> Pieces {
         let (a, b) = (if null_p(os) {
             o_imm(0i64)
         } else {
@@ -849,7 +849,7 @@ pub mod kc_asm {
         Reading(List<Pieces>, i64, Strings, List<Product_11_12_13<Str, i64, i64>>, List<Product_11_12<Str, i64>>, List<Product_11_12<Str, i64>>),
     }
 
-    pub fn reading(f0: List<Pieces>, f1: i64, f2: Strings, f3: List<Product_11_12_13<Str, i64, i64>>, f4: List<Product_11_12<Str, i64>>, f5: List<Product_11_12<Str, i64>>) -> &'static Reading {
+    pub fn reading(f0: List<Pieces>, f1: i64, f2: Strings, f3: List<Product_11_12_13<Str, i64, i64>>, f4: List<Product_11_12<Str, i64>>, f5: List<Product_11_12<Str, i64>>) -> kayak_rt::Handle<'static, Reading> {
         kayak_rt::heap_alloc(Reading::Reading(f0, f1, f2, f3, f4, f5))
     }
 
@@ -874,7 +874,7 @@ pub mod kc_asm {
     }
 
     #[inline]
-    pub fn added(r: &'static Reading, ps: Pieces) -> &'static Reading {
+    pub fn added(r: kayak_rt::Handle<'static, Reading>, ps: Pieces) -> kayak_rt::Handle<'static, Reading> {
         let tagcase_ = r;
         match *tagcase_ {
             Reading::Reading(ss, cur, gs, cs, sets, labels) => {
@@ -883,7 +883,7 @@ pub mod kc_asm {
         }
     }
 
-    pub fn line_read(r: &'static Reading, line0: Str) -> &'static Reading {
+    pub fn line_read(r: kayak_rt::Handle<'static, Reading>, line0: Str) -> kayak_rt::Handle<'static, Reading> {
         let line = trimmed(line0);
         let tagcase_ = r;
         match *tagcase_ {
@@ -942,7 +942,7 @@ pub mod kc_asm {
         }
     }
 
-    pub fn lines_read(mut r: &'static Reading, mut ls: Strings) -> &'static Reading {
+    pub fn lines_read(mut r: kayak_rt::Handle<'static, Reading>, mut ls: Strings) -> kayak_rt::Handle<'static, Reading> {
         loop {
             if null_p(ls) {
                 return r;
@@ -1161,7 +1161,7 @@ pub mod kc_asm {
         Reloc(i64, i64, Str, i64),
     }
 
-    pub fn reloc(f0: i64, f1: i64, f2: Str, f3: i64) -> &'static Reloc {
+    pub fn reloc(f0: i64, f1: i64, f2: Str, f3: i64) -> kayak_rt::Handle<'static, Reloc> {
         kayak_rt::heap_alloc(Reloc::Reloc(f0, f1, f2, f3))
     }
 
@@ -1171,14 +1171,14 @@ pub mod kc_asm {
         Where(i64, i64, bool),
     }
 
-    pub fn r#where(f0: i64, f1: i64, f2: bool) -> &'static Where {
+    pub fn r#where(f0: i64, f1: i64, f2: bool) -> kayak_rt::Handle<'static, Where> {
         kayak_rt::heap_alloc(Where::Where(f0, f1, f2))
     }
 
-    pub fn where_of(mut n: Str, mut xs: List<Product_11_12_13_14<Str, i64, i64, bool>>) -> List<&'static Where> {
+    pub fn where_of(mut n: Str, mut xs: List<Product_11_12_13_14<Str, i64, i64, bool>>) -> List<kayak_rt::Handle<'static, Where>> {
         loop {
             if null_p(xs) {
-                return nil::<&'static kc_asm::Where>();
+                return nil::<kayak_rt::Handle<'static, kc_asm::Where>>();
             } else if string_eq_p(car(xs).0, n) {
                 return kayak_rt::heap_cons(r#where(car(xs).1, car(xs).2, car(xs).3), kayak_rt::nil());
             } else {
@@ -1190,16 +1190,16 @@ pub mod kc_asm {
 
     // A section made: its bytes and its relocations.
     pub enum Made {
-        Made(Bytes, List<&'static Reloc>),
+        Made(Bytes, List<kayak_rt::Handle<'static, Reloc>>),
     }
 
-    pub fn made(f0: Bytes, f1: List<&'static Reloc>) -> &'static Made {
+    pub fn made(f0: Bytes, f1: List<kayak_rt::Handle<'static, Reloc>>) -> kayak_rt::Handle<'static, Made> {
         kayak_rt::heap_alloc(Made::Made(f0, f1))
     }
 
     /// The section's bytes (`out`, reversed) and relocations, each
     /// symbol resolved as `as` resolves it (this file's head).
-    pub fn emitted(mut ps: Pieces, mut longs: List<bool>, mut sec: i64, mut off: i64, mut syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut commons: Strings, mut sets: List<Product_11_12<Str, i64>>, mut out: Bytes, mut rs: List<&'static Reloc>) -> &'static Made {
+    pub fn emitted(mut ps: Pieces, mut longs: List<bool>, mut sec: i64, mut off: i64, mut syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut commons: Strings, mut sets: List<Product_11_12<Str, i64>>, mut out: Bytes, mut rs: List<kayak_rt::Handle<'static, Reloc>>) -> kayak_rt::Handle<'static, Made> {
         loop {
             if null_p(ps) {
                 return made(reverse(out), reverse(rs));
@@ -1476,8 +1476,8 @@ pub mod kc_asm {
         concat(kayak_rt::heap_cons(u32(name), kayak_rt::heap_cons(the::<Bytes>(kayak_rt::heap_cons(info, kayak_rt::heap_cons(0i64, kayak_rt::nil()))), kayak_rt::heap_cons(u16(shndx), kayak_rt::heap_cons(u64(value), kayak_rt::heap_cons(u64(sz), kayak_rt::nil()))))))
     }
 
-    pub fn rela_bytes(rs: List<&'static Reloc>, symbols: Strings) -> Bytes {
-        concat(map(lambda1s(move |r: &'static Reloc| {
+    pub fn rela_bytes(rs: List<kayak_rt::Handle<'static, Reloc>>, symbols: Strings) -> Bytes {
+        concat(map(lambda1s(move |r: kayak_rt::Handle<'static, Reloc>| {
             let tagcase_ = r;
             match *tagcase_ {
                 Reloc::Reloc(off, r#type, s, a) => {
@@ -1577,7 +1577,7 @@ pub mod kc_asm {
     // Each of a section's relocations resolved, as a 32-bit field at its
     // offset: `S + A - P`, the image's places; an absolute one or a symbol
     // the image lacks, not yet.
-    pub fn image_fixes(mut rs: List<&'static Reloc>, mut base: i64, mut syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut commons: List<Product_11_12<Str, i64>>, mut bases: List<i64>, mut acc: List<Product_11_12<i64, i64>>) -> List<Product_11_12<i64, i64>> {
+    pub fn image_fixes(mut rs: List<kayak_rt::Handle<'static, Reloc>>, mut base: i64, mut syms: List<Product_11_12_13_14<Str, i64, i64, bool>>, mut commons: List<Product_11_12<Str, i64>>, mut bases: List<i64>, mut acc: List<Product_11_12<i64, i64>>) -> List<Product_11_12<i64, i64>> {
         loop {
             if null_p(rs) {
                 return reverse(acc);
@@ -1640,11 +1640,11 @@ pub mod kc_asm {
     // multiple of 16, every relocation resolved in it, so that it runs
     // wherever it is put whole; its bytes.
     pub fn asm_image(text: Str) -> List<i64> {
-        let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
+        let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
         match *tagcase_ {
             Reading::Reading(ss0, cur, gs, commons, sets, labels) => {
                 let ss = map(lambda1s(move |ps: Pieces| {
-                    rev_onto_pieces(ps, nil::<&'static kc_asm::Piece>())
+                    rev_onto_pieces(ps, nil::<kayak_rt::Handle<'static, kc_asm::Piece>>())
                 }), ss0);
                 let longs = map(lambda1s(move |ps: Pieces| {
                     settled(ps, branches_of(ps, nil::<bool>()))
@@ -1657,7 +1657,7 @@ pub mod kc_asm {
                 let mades = map(lambda1s(move |k: i64| {
                     emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(lambda1s(move |c: Product_11_12_13<Str, i64, i64>| {
                         c.0
-                    }), commons), sets, nil::<i64>(), nil::<&'static kc_asm::Reloc>())
+                    }), commons), sets, nil::<i64>(), nil::<kayak_rt::Handle<'static, kc_asm::Reloc>>())
                 }), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
                 let text_m = car(mades);
                 let data_m = car(cdr(mades));
@@ -1725,7 +1725,7 @@ pub mod kc_asm {
                 let b0 = aligned(i64_plus(d0, size(data)), 16i64);
                 let cs = commons_placed(the::<List<Product_11_12_13<Str, i64, i64>>>(commons), i64_plus(b0, bss_size), nil::<Product_11_12<Str, i64>>());
                 let bases = the::<List<i64>>(kayak_rt::heap_cons(t0, kayak_rt::heap_cons(d0, kayak_rt::heap_cons(b0, kayak_rt::heap_cons(r0, kayak_rt::nil())))));
-                let fix = lambda3s(move |rs: List<&'static Reloc>, base: i64, bs: Bytes| {
+                let fix = lambda3s(move |rs: List<kayak_rt::Handle<'static, Reloc>>, base: i64, bs: Bytes| {
                     patched(bs, 0i64, image_fixes(rs, base, syms, cs.0, bases, nil::<Product_11_12<i64, i64>>()), nil::<i64>())
                 });
                 concat(kayak_rt::heap_cons(fix(text_rs, t0, code), kayak_rt::heap_cons(zeros(i64_minus(r0, size(code)), nil::<i64>()), kayak_rt::heap_cons(fix(ro_rs, r0, ro), kayak_rt::heap_cons(zeros(i64_minus(d0, i64_plus(r0, size(ro))), nil::<i64>()), kayak_rt::heap_cons(fix(data_rs, d0, data), kayak_rt::heap_cons(zeros(i64_minus(cs.1, i64_plus(d0, size(data))), nil::<i64>()), kayak_rt::nil())))))))
@@ -1736,11 +1736,11 @@ pub mod kc_asm {
     // `asm-object TEXT`: the ELF relocatable object of assembly `TEXT`, its
     // bytes, as `as` makes it (this file's head).
     pub fn asm_object(text: Str) -> List<i64> {
-        let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::heap_cons(nil::<&'static kc_asm::Piece>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
+        let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
         match *tagcase_ {
             Reading::Reading(ss0, cur, gs, commons, sets, labels) => {
                 let ss = map(lambda1s(move |ps: Pieces| {
-                    rev_onto_pieces(ps, nil::<&'static kc_asm::Piece>())
+                    rev_onto_pieces(ps, nil::<kayak_rt::Handle<'static, kc_asm::Piece>>())
                 }), ss0);
                 let longs = map(lambda1s(move |ps: Pieces| {
                     settled(ps, branches_of(ps, nil::<bool>()))
@@ -1753,7 +1753,7 @@ pub mod kc_asm {
                 let mades = map(lambda1s(move |k: i64| {
                     emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(lambda1s(move |c: Product_11_12_13<Str, i64, i64>| {
                         c.0
-                    }), commons), sets, nil::<i64>(), nil::<&'static kc_asm::Reloc>())
+                    }), commons), sets, nil::<i64>(), nil::<kayak_rt::Handle<'static, kc_asm::Reloc>>())
                 }), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
                 let text_m = car(mades);
                 let data_m = car(cdr(mades));
@@ -1813,7 +1813,7 @@ pub mod kc_asm {
                 let defined = filter(lambda1s(move |x: Product_11_12_13_14<Str, i64, i64, bool>| {
                     x.3
                 }), syms);
-                let named_by_relocs = map(lambda1s(move |r: &'static Reloc| {
+                let named_by_relocs = map(lambda1s(move |r: kayak_rt::Handle<'static, Reloc>| {
                     let tagcase_ = r;
                     match *tagcase_ {
                         Reloc::Reloc(o, t, s, a) => {

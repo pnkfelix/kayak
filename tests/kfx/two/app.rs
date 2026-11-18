@@ -14,7 +14,7 @@ pub fn total(ss: Shapes) -> i64 {
     }
 }
 
-pub fn describe(s: &'static Shape) -> Str {
+pub fn describe(s: kayak_rt::Handle<'static, Shape>) -> Str {
     let tagcase_ = s;
     match *tagcase_ {
         Shape::Circle(r) => {

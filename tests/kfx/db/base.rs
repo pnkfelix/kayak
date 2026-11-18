@@ -261,14 +261,14 @@ pub fn counting(from: i64, n: i64) -> List<i64> {
 // comparisons, where a list of hundreds took as many.
 pub enum Nset {
     Nempty(),
-    Nnode(&'static Nset, Str, &'static Nset),
+    Nnode(kayak_rt::Handle<'static, Nset>, Str, kayak_rt::Handle<'static, Nset>),
 }
 
-pub fn nempty() -> &'static Nset {
+pub fn nempty() -> kayak_rt::Handle<'static, Nset> {
     kayak_rt::heap_alloc(Nset::Nempty())
 }
 
-pub fn nnode(f0: &'static Nset, f1: Str, f2: &'static Nset) -> &'static Nset {
+pub fn nnode(f0: kayak_rt::Handle<'static, Nset>, f1: Str, f2: kayak_rt::Handle<'static, Nset>) -> kayak_rt::Handle<'static, Nset> {
     kayak_rt::heap_alloc(Nset::Nnode(f0, f1, f2))
 }
 
@@ -326,7 +326,7 @@ pub fn dropped(mut xs: List<Str>, mut n: i64) -> List<Str> {
 }
 
 /// The first `n` of `xs`, sorted, as a balanced tree.
-pub fn tree_of(xs: List<Str>, n: i64) -> &'static Nset {
+pub fn tree_of(xs: List<Str>, n: i64) -> kayak_rt::Handle<'static, Nset> {
     if i64_lt_eq(n, 0i64) {
         nempty()
     } else {
@@ -337,13 +337,13 @@ pub fn tree_of(xs: List<Str>, n: i64) -> &'static Nset {
 }
 
 #[inline]
-pub fn nset_of(xs: List<Str>) -> &'static Nset {
+pub fn nset_of(xs: List<Str>) -> kayak_rt::Handle<'static, Nset> {
     let sorted = sorted_strings(xs);
     tree_of(sorted, size(sorted))
 }
 
 /// `s` with `x`, unbalanced: for what a walk has seen.
-pub fn nset_added(x: Str, s: &'static Nset) -> &'static Nset {
+pub fn nset_added(x: Str, s: kayak_rt::Handle<'static, Nset>) -> kayak_rt::Handle<'static, Nset> {
     let tagcase_ = s;
     match *tagcase_ {
         Nset::Nempty() => {
@@ -361,7 +361,7 @@ pub fn nset_added(x: Str, s: &'static Nset) -> &'static Nset {
     }
 }
 
-pub fn in_nset_p(mut x: Str, mut s: &'static Nset) -> bool {
+pub fn in_nset_p(mut x: Str, mut s: kayak_rt::Handle<'static, Nset>) -> bool {
     loop {
         let tagcase_ = s;
         match *tagcase_ {

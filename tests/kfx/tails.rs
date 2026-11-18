@@ -68,16 +68,16 @@ pub enum Step {
     Done(),
 }
 
-pub fn more(f0: i64) -> &'static Step {
+pub fn more(f0: i64) -> kayak_rt::Handle<'static, Step> {
     kayak_rt::heap_alloc(Step::More(f0))
 }
 
-pub fn done() -> &'static Step {
+pub fn done() -> kayak_rt::Handle<'static, Step> {
     kayak_rt::heap_alloc(Step::Done())
 }
 
 /// A tail call in a tagcase arm.
-pub fn drain(mut s: &'static Step, mut total: i64) -> i64 {
+pub fn drain(mut s: kayak_rt::Handle<'static, Step>, mut total: i64) -> i64 {
     loop {
         let tagcase_ = s;
         match *tagcase_ {

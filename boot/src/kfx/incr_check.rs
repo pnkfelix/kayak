@@ -9,10 +9,10 @@ use super::*;
 // addressed by a fingerprint of its text and of all the checker sees before
 // it. Fingerprints and codecs as incr.kfx's (lib/query.kfx).
 pub enum CheckedMemo {
-    CheckedMemo(&'static Cv, Typeds, Memos),
+    CheckedMemo(kayak_rt::Handle<'static, Cv>, Typeds, Memos),
 }
 
-pub fn checked_memo(f0: &'static Cv, f1: Typeds, f2: Memos) -> &'static CheckedMemo {
+pub fn checked_memo(f0: kayak_rt::Handle<'static, Cv>, f1: Typeds, f2: Memos) -> kayak_rt::Handle<'static, CheckedMemo> {
     kayak_rt::heap_alloc(CheckedMemo::CheckedMemo(f0, f1, f2))
 }
 
@@ -24,10 +24,10 @@ pub fn checked_memo(f0: &'static Cv, f1: Typeds, f2: Memos) -> &'static CheckedM
 // only adds bindings, so one of as many is the same; at a module's start
 // and end, where its list is made anew, they are made again, as asked.
 pub enum Reads {
-    Reads(&'static Fmap, &'static Fmap, &'static Fmap, Aliases, i64),
+    Reads(kayak_rt::Handle<'static, Fmap>, kayak_rt::Handle<'static, Fmap>, kayak_rt::Handle<'static, Fmap>, Aliases, i64),
 }
 
-pub fn reads(f0: &'static Fmap, f1: &'static Fmap, f2: &'static Fmap, f3: Aliases, f4: i64) -> &'static Reads {
+pub fn reads(f0: kayak_rt::Handle<'static, Fmap>, f1: kayak_rt::Handle<'static, Fmap>, f2: kayak_rt::Handle<'static, Fmap>, f3: Aliases, f4: i64) -> kayak_rt::Handle<'static, Reads> {
     kayak_rt::heap_alloc(Reads::Reads(f0, f1, f2, f3, f4))
 }
 
@@ -38,18 +38,18 @@ pub enum FactRec {
     FactRec(i64, i64, i64, Str, Str),
 }
 
-pub fn fact_rec(f0: i64, f1: i64, f2: i64, f3: Str, f4: Str) -> &'static FactRec {
+pub fn fact_rec(f0: i64, f1: i64, f2: i64, f3: Str, f4: Str) -> kayak_rt::Handle<'static, FactRec> {
     kayak_rt::heap_alloc(FactRec::FactRec(f0, f1, f2, f3, f4))
 }
 
-pub type FactRecs = List<&'static FactRec>;
+pub type FactRecs = List<kayak_rt::Handle<'static, FactRec>>;
 
 // A key, and what was learned making it.
 pub enum ReadKey {
-    ReadKey(i64, &'static Reads),
+    ReadKey(i64, kayak_rt::Handle<'static, Reads>),
 }
 
-pub fn read_key(f0: i64, f1: &'static Reads) -> &'static ReadKey {
+pub fn read_key(f0: i64, f1: kayak_rt::Handle<'static, Reads>) -> kayak_rt::Handle<'static, ReadKey> {
     kayak_rt::heap_alloc(ReadKey::ReadKey(f0, f1))
 }
 
@@ -133,7 +133,7 @@ pub mod incremental_check {
         string_append(str_lit("("), string_append(words_of(map(&quoted, ss)), str_lit(")")))
     }
 
-    pub fn ty_code(t: &'static Ty) -> Str {
+    pub fn ty_code(t: kayak_rt::Handle<'static, Ty>) -> Str {
         let tagcase_ = t;
         match *tagcase_ {
             Ty::TyI64() => {
@@ -206,7 +206,7 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn code_text(e: &'static Sexp) -> Str {
+    pub fn code_text(e: kayak_rt::Handle<'static, Sexp>) -> Str {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Str(s, f, p) => {
@@ -223,7 +223,7 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn code_number(e: &'static Sexp) -> i64 {
+    pub fn code_number(e: kayak_rt::Handle<'static, Sexp>) -> i64 {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Num(k, f, p) => {
@@ -236,7 +236,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn code_ty(e: &'static Sexp) -> &'static Ty {
+    pub fn code_ty(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Ty> {
         let xs = items(e);
         let h = sym_name(car(xs));
         if string_eq_p(h, str_lit("i64")) {
@@ -281,16 +281,16 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn code_tys(e: &'static Sexp) -> Tys {
+    pub fn code_tys(e: kayak_rt::Handle<'static, Sexp>) -> Tys {
         map(&code_ty, items(e))
     }
 
     #[inline]
-    pub fn code_strings(e: &'static Sexp) -> Strings {
+    pub fn code_strings(e: kayak_rt::Handle<'static, Sexp>) -> Strings {
         map(&code_text, items(e))
     }
 
-    pub fn bind_code(b: &'static Bind) -> Str {
+    pub fn bind_code(b: kayak_rt::Handle<'static, Bind>) -> Str {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
@@ -304,12 +304,12 @@ pub mod incremental_check {
         }
     }
 
-    pub fn code_bind(e: &'static Sexp) -> &'static Bind {
+    pub fn code_bind(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Bind> {
         let xs = items(e);
         bind(code_text(car(xs)), scheme(code_strings(second(xs)), code_ty(third(xs))), code_text(fourth(xs)))
     }
 
-    pub fn effdef_code(d: &'static Effdef) -> Str {
+    pub fn effdef_code(d: kayak_rt::Handle<'static, Effdef>) -> Str {
         let tagcase_ = d;
         match *tagcase_ {
             Effdef::Effdef(n, atoms) => {
@@ -319,14 +319,14 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn code_effdef(e: &'static Sexp) -> &'static Effdef {
+    pub fn code_effdef(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Effdef> {
         let xs = items(e);
         effdef(code_text(car(xs)), code_strings(second(xs)))
     }
 
     // A fact as text: its offset from the form's start if it is in the form's
     // file (a 1 first), else where it is (a 0 first).
-    pub fn fact_code(file: Str, start: i64, f: &'static Fact) -> Str {
+    pub fn fact_code(file: Str, start: i64, f: kayak_rt::Handle<'static, Fact>) -> Str {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(ff, p, w) => {
@@ -399,7 +399,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn code_fact(file: Str, start: i64, r: &'static FactRec) -> &'static Fact {
+    pub fn code_fact(file: Str, start: i64, r: kayak_rt::Handle<'static, FactRec>) -> kayak_rt::Handle<'static, Fact> {
         let tagcase_ = r;
         match *tagcase_ {
             FactRec::FactRec(k, a, b, ff, w) => {
@@ -445,7 +445,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn fact_code_at(file: Str, ss: List<i64>, es: List<i64>, f: &'static Fact) -> Str {
+    pub fn fact_code_at(file: Str, ss: List<i64>, es: List<i64>, f: kayak_rt::Handle<'static, Fact>) -> Str {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(ff, p, w) => {
@@ -463,7 +463,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn code_fact_at(file: Str, ss: List<i64>, r: &'static FactRec) -> &'static Fact {
+    pub fn code_fact_at(file: Str, ss: List<i64>, r: kayak_rt::Handle<'static, FactRec>) -> kayak_rt::Handle<'static, Fact> {
         let tagcase_ = r;
         match *tagcase_ {
             FactRec::FactRec(k, a, b, ff, w) => {
@@ -478,7 +478,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn typed_code(x: &'static Typed) -> Str {
+    pub fn typed_code(x: kayak_rt::Handle<'static, Typed>) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
             Typed::Typed(n, t) => {
@@ -488,7 +488,7 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn code_typed(e: &'static Sexp) -> &'static Typed {
+    pub fn code_typed(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Typed> {
         let xs = items(e);
         typed(code_text(car(xs)), second(xs))
     }
@@ -503,7 +503,7 @@ pub mod incremental_check {
 
     /// A fact the checker reads again, after the form that noted it.
     #[inline]
-    pub fn interface_fact_p(f: &'static Fact) -> bool {
+    pub fn interface_fact_p(f: kayak_rt::Handle<'static, Fact>) -> bool {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(ff, p, w) => {
@@ -518,7 +518,7 @@ pub mod incremental_check {
         Change(Str, Str),
     }
 
-    pub fn change(f0: Str, f1: Str) -> &'static Change {
+    pub fn change(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Change> {
         kayak_rt::heap_alloc(Change::Change(f0, f1))
     }
 
@@ -530,7 +530,7 @@ pub mod incremental_check {
     /// What of a change no name reaches, `ambient-of`'s, of its new effects
     /// and facts.
     pub fn ambient_text(new_effs: Effdefs, new_facts: Facts) -> Str {
-        string_list_append(kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1s(move |x: &'static Fact| {
+        string_list_append(kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Fact::Fact(ff, p, w) => {
@@ -547,11 +547,11 @@ pub mod incremental_check {
     /// Of a form's change, what a later form may read by no name it
     /// mentions (C384): effects named, and the facts the checker reads
     /// again (`interface-fact?`). The chain goes on with this alone.
-    pub fn ambient_of(before: &'static Cv, after: &'static Cv) -> Str {
+    pub fn ambient_of(before: kayak_rt::Handle<'static, Cv>, after: kayak_rt::Handle<'static, Cv>) -> Str {
         let tagcase_ = after;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at, ix, mk) => {
-                string_list_append(kayak_rt::heap_cons(words_of(map(&effdef_code, leading(es, i64_minus(size(es), size(cv_effdefs(before)))))), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1s(move |x: &'static Fact| {
+                string_list_append(kayak_rt::heap_cons(words_of(map(&effdef_code, leading(es, i64_minus(size(es), size(cv_effdefs(before)))))), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Fact::Fact(ff, p, w) => {
@@ -588,7 +588,7 @@ pub mod incremental_check {
     }
 
     /// `t` with `als`, newest first: each name's innermost abbreviation's.
-    pub fn fmap_aliases(mut t: &'static Fmap, mut als: Aliases) -> &'static Fmap {
+    pub fn fmap_aliases(mut t: kayak_rt::Handle<'static, Fmap>, mut als: Aliases) -> kayak_rt::Handle<'static, Fmap> {
         loop {
             if null_p(als) {
                 return t;
@@ -612,14 +612,14 @@ pub mod incremental_check {
 
     /// What a program's first form is checked against: nothing asked yet.
     #[inline]
-    pub fn reads_start(v: &'static Cv, chain: i64) -> &'static Reads {
+    pub fn reads_start(v: kayak_rt::Handle<'static, Cv>, chain: i64) -> kayak_rt::Handle<'static, Reads> {
         reads(fm_none(), fm_none(), fmap_aliases(fm_none(), cv_aliases(v)), cv_aliases(v), chain)
     }
 
     /// `r` after a change to `after` that only added to the bindings, and
     /// `ambient` to the chain; the abbreviations' fingerprints made again
     /// if they are other ones.
-    pub fn reads_after(r: &'static Reads, after: &'static Cv, ambient: Str) -> &'static Reads {
+    pub fn reads_after(r: kayak_rt::Handle<'static, Reads>, after: kayak_rt::Handle<'static, Cv>, ambient: Str) -> kayak_rt::Handle<'static, Reads> {
         let tagcase_ = r;
         match *tagcase_ {
             Reads::Reads(fm, cm, am, als, chain) => {
@@ -639,7 +639,7 @@ pub mod incremental_check {
     /// As `reads-after`, at a module's start or end, where the bindings are
     /// made anew: the names' fingerprints made again, as asked.
     #[inline]
-    pub fn reads_anew(r: &'static Reads, after: &'static Cv, ambient: Str) -> &'static Reads {
+    pub fn reads_anew(r: kayak_rt::Handle<'static, Reads>, after: kayak_rt::Handle<'static, Cv>, ambient: Str) -> kayak_rt::Handle<'static, Reads> {
         let tagcase_ = reads_after(r, after, ambient);
         match *tagcase_ {
             Reads::Reads(fm, cm, am, als, chain) => {
@@ -667,7 +667,7 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn keyed_key(k: &'static ReadKey) -> i64 {
+    pub fn keyed_key(k: kayak_rt::Handle<'static, ReadKey>) -> i64 {
         let tagcase_ = k;
         match *tagcase_ {
             ReadKey::ReadKey(h, r) => {
@@ -677,7 +677,7 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn keyed_reads(k: &'static ReadKey) -> &'static Reads {
+    pub fn keyed_reads(k: kayak_rt::Handle<'static, ReadKey>) -> kayak_rt::Handle<'static, Reads> {
         let tagcase_ = k;
         match *tagcase_ {
             ReadKey::ReadKey(h, r) => {
@@ -687,7 +687,7 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn reads_chain(r: &'static Reads) -> i64 {
+    pub fn reads_chain(r: kayak_rt::Handle<'static, Reads>) -> i64 {
         let tagcase_ = r;
         match *tagcase_ {
             Reads::Reads(fm, cm, am, als, chain) => {
@@ -700,7 +700,7 @@ pub mod incremental_check {
     /// and abbreviation's fingerprints (the text says which names, in
     /// which order); the bindings' made, or made longer, if they are not
     /// yet, or are more.
-    pub fn names_walk(mut es: Sexps, mut ix: &'static Bix, mut am: &'static Fmap, mut acc: &'static ReadKey) -> &'static ReadKey {
+    pub fn names_walk(mut es: Sexps, mut ix: kayak_rt::Handle<'static, Bix>, mut am: kayak_rt::Handle<'static, Fmap>, mut acc: kayak_rt::Handle<'static, ReadKey>) -> kayak_rt::Handle<'static, ReadKey> {
         loop {
             if null_p(es) {
                 return acc;
@@ -730,7 +730,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn name_read(n: Str, ix: &'static Bix, am: &'static Fmap, acc: &'static ReadKey) -> &'static ReadKey {
+    pub fn name_read(n: Str, ix: kayak_rt::Handle<'static, Bix>, am: kayak_rt::Handle<'static, Fmap>, acc: kayak_rt::Handle<'static, ReadKey>) -> kayak_rt::Handle<'static, ReadKey> {
         let tagcase_ = acc;
         match *tagcase_ {
             ReadKey::ReadKey(h, rd) => {
@@ -759,7 +759,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn reads_key(v: &'static Cv, r: &'static Reads, form: &'static Sexp, h: i64) -> &'static ReadKey {
+    pub fn reads_key(v: kayak_rt::Handle<'static, Cv>, r: kayak_rt::Handle<'static, Reads>, form: kayak_rt::Handle<'static, Sexp>, h: i64) -> kayak_rt::Handle<'static, ReadKey> {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
@@ -768,7 +768,7 @@ pub mod incremental_check {
                     Reads::Reads(fm, cm, am, als2, chain) => {
                         names_walk(kayak_rt::heap_cons(form, kayak_rt::nil()), ix, am, read_key(fnv_strings(map(&bind_code, concat(map(lambda1s(move |k: Str| {
                             if string_eq_p(k, str_lit("%toplevel")) {
-                                nil::<&'static Bind>()
+                                nil::<kayak_rt::Handle<'static, Bind>>()
                             } else {
                                 find_bind(k, mk)
                             }
@@ -779,7 +779,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn change_of(before: &'static Cv, after: &'static Cv, found: Typeds, code: &'static (dyn Fn(&'static Fact) -> Str + Send + Sync)) -> &'static Change {
+    pub fn change_of(before: kayak_rt::Handle<'static, Cv>, after: kayak_rt::Handle<'static, Cv>, found: Typeds, code: &'static (dyn Fn(kayak_rt::Handle<'static, Fact>) -> Str + Send + Sync)) -> kayak_rt::Handle<'static, Change> {
         let tagcase_ = after;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at, ix, mk) => {
@@ -793,20 +793,20 @@ pub mod incremental_check {
 
     // A memo's change made again: the checker after the form, and the types found.
     pub enum Redone {
-        Redone(&'static Cv, Typeds, Str),
+        Redone(kayak_rt::Handle<'static, Cv>, Typeds, Str),
     }
 
-    pub fn redone(f0: &'static Cv, f1: Typeds, f2: Str) -> &'static Redone {
+    pub fn redone(f0: kayak_rt::Handle<'static, Cv>, f1: Typeds, f2: Str) -> kayak_rt::Handle<'static, Redone> {
         kayak_rt::heap_alloc(Redone::Redone(f0, f1, f2))
     }
 
-    pub fn change_applied(v: &'static Cv, text: Str, uncode: &'static (dyn Fn(&'static FactRec) -> &'static Fact + Send + Sync)) -> &'static Redone {
+    pub fn change_applied(v: kayak_rt::Handle<'static, Cv>, text: Str, uncode: &'static (dyn Fn(kayak_rt::Handle<'static, FactRec>) -> kayak_rt::Handle<'static, Fact> + Send + Sync)) -> kayak_rt::Handle<'static, Redone> {
         let n = string_length_i64(text);
         let nl = char_from_memo(text, 0i64, n, '\n');
         let parts = items(car(read_all(substring(text, int_lit(0), i64_to_int(nl)), str_lit(""), 1i64)));
         let new_binds = map(&code_bind, items(car(parts)));
         let new_effs = map(&code_effdef, items(second(parts)));
-        let new_facts = map(uncode, reverse(fact_records(text, i64_plus(nl, 1i64), n, nil::<&'static FactRec>())));
+        let new_facts = map(uncode, reverse(fact_records(text, i64_plus(nl, 1i64), n, nil::<kayak_rt::Handle<'static, FactRec>>())));
         let found = map(&code_typed, items(third(parts)));
         let rest = cdr(cdr(cdr(parts)));
         let here = code_text(car(rest));
@@ -824,15 +824,15 @@ pub mod incremental_check {
     }
 
     // The context every form is checked in, before the first: its fingerprint.
-    pub fn cv_fingerprint(v: &'static Cv) -> i64 {
+    pub fn cv_fingerprint(v: kayak_rt::Handle<'static, Cv>) -> i64 {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(&bind_code, bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1s(move |d: &'static Dt| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(&bind_code, bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1s(move |d: kayak_rt::Handle<'static, Dt>| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Dt::Dt(n, ps, vs) => {
-                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1s(move |x: &'static Variant| {
+                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1s(move |x: kayak_rt::Handle<'static, Variant>| {
                                 let tagcase_ = x;
                                 match *tagcase_ {
                                     Variant::Variant(t, ts) => {
@@ -842,7 +842,7 @@ pub mod incremental_check {
                             }), vs))))
                         }
                     }
-                }), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(lambda1s(move |a: &'static Alias| {
+                }), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
                     let tagcase_ = a;
                     match *tagcase_ {
                         Alias::Alias(n, ps, body) => {
@@ -860,15 +860,15 @@ pub mod incremental_check {
     /// definition's declared type, put there before any form is
     /// checked) nor its abbreviations, which a key takes by name, so that
     /// a definition added leaves the other forms' keys as they were.
-    pub fn cv_unnamed_fingerprint(v: &'static Cv) -> i64 {
+    pub fn cv_unnamed_fingerprint(v: kayak_rt::Handle<'static, Cv>) -> i64 {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1s(move |d: &'static Dt| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1s(move |d: kayak_rt::Handle<'static, Dt>| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Dt::Dt(n, ps, vs) => {
-                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1s(move |x: &'static Variant| {
+                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1s(move |x: kayak_rt::Handle<'static, Variant>| {
                                 let tagcase_ = x;
                                 match *tagcase_ {
                                     Variant::Variant(t, ts) => {
@@ -893,12 +893,12 @@ pub mod incremental_check {
         OrderMemo(Sexps, Memos),
     }
 
-    pub fn order_memo(f0: Sexps, f1: Memos) -> &'static OrderMemo {
+    pub fn order_memo(f0: Sexps, f1: Memos) -> kayak_rt::Handle<'static, OrderMemo> {
         kayak_rt::heap_alloc(OrderMemo::OrderMemo(f0, f1))
     }
 
     #[inline]
-    pub fn order_memo_forms(o: &'static OrderMemo) -> Sexps {
+    pub fn order_memo_forms(o: kayak_rt::Handle<'static, OrderMemo>) -> Sexps {
         let tagcase_ = o;
         match *tagcase_ {
             OrderMemo::OrderMemo(fs, ms) => {
@@ -908,7 +908,7 @@ pub mod incremental_check {
     }
 
     #[inline]
-    pub fn order_memo_made(o: &'static OrderMemo) -> Memos {
+    pub fn order_memo_made(o: kayak_rt::Handle<'static, OrderMemo>) -> Memos {
         let tagcase_ = o;
         match *tagcase_ {
             OrderMemo::OrderMemo(fs, ms) => {
@@ -917,7 +917,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn module_order_memo(v: &'static Cv, forms: Sexps, text: Str, old: Memos, made: Memos) -> &'static OrderMemo {
+    pub fn module_order_memo(v: kayak_rt::Handle<'static, Cv>, forms: Sexps, text: Str, old: Memos, made: Memos) -> kayak_rt::Handle<'static, OrderMemo> {
         let key = fnv_string(text, fnv_string(str_lit("order"), fnv_offset()));
         let hit = memo_find(old, key);
         if null_p(hit) {
@@ -1006,7 +1006,7 @@ pub mod incremental_check {
 
     /// A module's items, as `check-items` (check-defs.kfx), each its memo's
     /// change if it has one, keyed by its printed form and the chain.
-    pub fn check_items_memo(v: &'static Cv, m: Str, its: Sexps, old: Memos, r: &'static Reads, found: Typeds, made: Memos, src: Str, from: i64, positions: List<i64>, end: i64) -> &'static CheckedMemo {
+    pub fn check_items_memo(v: kayak_rt::Handle<'static, Cv>, m: Str, its: Sexps, old: Memos, r: kayak_rt::Handle<'static, Reads>, found: Typeds, made: Memos, src: Str, from: i64, positions: List<i64>, end: i64) -> kayak_rt::Handle<'static, CheckedMemo> {
         if null_p(its) {
             checked_memo(v, found, made)
         } else {
@@ -1043,11 +1043,11 @@ pub mod incremental_check {
                 match *tagcase_ {
                     Memo::Memo(h, text) => {
                         let tagcase_ = change_applied(v, text, if placed {
-                            lambda1s(move |e: &'static FactRec| {
+                            lambda1s(move |e: kayak_rt::Handle<'static, FactRec>| {
                                 code_fact_at(file, ss, e)
                             })
                         } else {
-                            lambda1s(move |e: &'static FactRec| {
+                            lambda1s(move |e: kayak_rt::Handle<'static, FactRec>| {
                                 code_fact(file, start, e)
                             })
                         });
@@ -1063,11 +1063,11 @@ pub mod incremental_check {
                 match *tagcase_ {
                     Elab::Elab(v2, more) => {
                         let tagcase_ = change_of(v, v2, more, if placed {
-                            lambda1s(move |x: &'static Fact| {
+                            lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
                                 fact_code_at(file, ss, es, x)
                             })
                         } else {
-                            lambda1s(move |x: &'static Fact| {
+                            lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
                                 fact_code(file, start, x)
                             })
                         });
@@ -1082,7 +1082,7 @@ pub mod incremental_check {
         }
     }
 
-    pub fn check_tops_memo(mut v0: &'static Cv, mut forms: Sexps, mut texts: Strings, mut old: Memos, mut r: &'static Reads, mut found: Typeds, mut made: Memos) -> &'static CheckedMemo {
+    pub fn check_tops_memo(mut v0: kayak_rt::Handle<'static, Cv>, mut forms: Sexps, mut texts: Strings, mut old: Memos, mut r: kayak_rt::Handle<'static, Reads>, mut found: Typeds, mut made: Memos) -> kayak_rt::Handle<'static, CheckedMemo> {
         loop {
             if null_p(forms) {
                 return checked_memo(v0, found, made);
@@ -1106,14 +1106,14 @@ pub mod incremental_check {
                             let p = module_prep(near(v, src_file, src_line, src_pos), form);
                             let inner = prep_inner(p);
                             let ordering = module_order_memo(inner, prep_forms(p), car(texts), old, made);
-                            let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(lambda1s(move |f: &'static Sexp| {
+                            let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
                                 if null_p(item_value(f)) {
                                     the::<Strings>(kayak_rt::heap_cons(show_sexp(f), kayak_rt::nil()))
                                 } else {
                                     nil::<Str>()
                                 }
                             }), unhidden(module_written(form))))), fnv_string(str_lit("module"), reads_chain(r)));
-                            let tagcase_ = check_items_memo(inner, prep_name(p), order_memo_forms(ordering), old, reads_anew(r, inner, i64_to_string(scope)), nil::<&'static Typed>(), order_memo_made(ordering), car(texts), start, sorted_positions(map(&datum_pos, unhidden(module_written(form))), nil::<i64>()), if null_p(cdr(texts)) {
+                            let tagcase_ = check_items_memo(inner, prep_name(p), order_memo_forms(ordering), old, reads_anew(r, inner, i64_to_string(scope)), nil::<kayak_rt::Handle<'static, Typed>>(), order_memo_made(ordering), car(texts), start, sorted_positions(map(&datum_pos, unhidden(module_written(form))), nil::<i64>()), if null_p(cdr(texts)) {
                                 end_of_file()
                             } else {
                                 i64_plus(start, string_length_i64(car(texts)))
@@ -1140,7 +1140,7 @@ pub mod incremental_check {
                     let tagcase_ = car(hit);
                     match *tagcase_ {
                         Memo::Memo(h, text) => {
-                            let tagcase_ = change_applied(v, text, lambda1s(move |e: &'static FactRec| {
+                            let tagcase_ = change_applied(v, text, lambda1s(move |e: kayak_rt::Handle<'static, FactRec>| {
                                 code_fact(file, start, e)
                             }));
                             match *tagcase_ {
@@ -1165,16 +1165,16 @@ pub mod incremental_check {
                             }
                             _ => {
                                 let other = tagcase_;
-                                elab(v, nil::<&'static Typed>())
+                                elab(v, nil::<kayak_rt::Handle<'static, Typed>>())
                             }
                         }
                     } else {
-                        elab(check_top(v, form), nil::<&'static Typed>())
+                        elab(check_top(v, form), nil::<kayak_rt::Handle<'static, Typed>>())
                     };
                     let tagcase_ = done;
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            let tagcase_ = change_of(v, v2, more, lambda1s(move |x: &'static Fact| {
+                            let tagcase_ = change_of(v, v2, more, lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
                                 fact_code(file, start, x)
                             }));
                             match *tagcase_ {
@@ -1206,20 +1206,20 @@ pub mod incremental_check {
 
     /// As `check-program-as` (check-defs.kfx), with memos; the passes before
     /// the forms' run always.
-    pub fn check_program_memo(forms: Sexps, texts: Strings, old: Memos, runtime: bool) -> &'static CheckedMemo {
-        let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
-        let declared = declare_types(empty, forms, nil::<&'static Alias>());
-        let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), if runtime {
+    pub fn check_program_memo(forms: Sexps, texts: Strings, old: Memos, runtime: bool) -> kayak_rt::Handle<'static, CheckedMemo> {
+        let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
+        let declared = declare_types(empty, forms, nil::<kayak_rt::Handle<'static, Alias>>());
+        let start = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), if runtime {
             kayak_rt::heap_cons(alias(str_lit("%syscalls"), nil::<Str>(), sym(str_lit("#t"), str_lit(""), 0i64)), declared)
         } else {
             declared
-        }, nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64, bempty(), nil::<&'static Bind>());
+        }, nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
         let types = type_names_free(start, forms);
         let named = {
             let tagcase_ = start;
             match *tagcase_ {
                 Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                    cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
+                    cv(bs, datatype_names(start, forms, nil::<kayak_rt::Handle<'static, Dt>>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
                 }
             }
         };
@@ -1227,12 +1227,12 @@ pub mod incremental_check {
             let tagcase_ = named;
             match *tagcase_ {
                 Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                    cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
+                    cv(bs, declare_datatypes(named, forms, nil::<kayak_rt::Handle<'static, Dt>>()), als, es, here, group, file, line, fs, tv, at, ix, mk)
                 }
             }
         };
         let v = with_binds(typed, prim_binds(typed));
-        check_tops_memo(v, forms, texts, old, reads_start(v, cv_unnamed_fingerprint(v)), nil::<&'static Typed>(), nil::<&'static Memo>())
+        check_tops_memo(v, forms, texts, old, reads_start(v, cv_unnamed_fingerprint(v)), nil::<kayak_rt::Handle<'static, Typed>>(), nil::<kayak_rt::Handle<'static, Memo>>())
     }
 }
 

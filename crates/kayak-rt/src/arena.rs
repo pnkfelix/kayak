@@ -63,7 +63,7 @@ fn place(i: usize) -> (usize, usize) {
 impl<T> Arena<T> {
     /// `v`, kept in the arena, in the next free cell.
     #[inline]
-    pub fn alloc(&self, v: T) -> &T {
+    pub fn alloc(&self, v: T) -> crate::Handle<'_, T> {
         let i = self.used.get();
         self.used.set(i + 1);
         let (k, at) = place(i);
@@ -72,7 +72,7 @@ impl<T> Arena<T> {
         let blocks =
             self.chunks[k].get_or_init(|| (0..size / len).map(|_| OnceCell::new()).collect());
         let block = blocks[at / len].get_or_init(|| (0..len).map(|_| OnceCell::new()).collect());
-        block[at % len].get_or_init(|| v)
+        crate::Handle::made(block[at % len].get_or_init(|| v))
     }
 }
 

@@ -208,7 +208,7 @@ macro_rules! crossing_bloblet {
                     _ => fail("native code: gave what is not a bloblet of the fields wanted"),
                 };
                 let suffix: Vec<u8> = (0..bytes).map(|i| (kayak_jit::suffix_word(w, i / 8) >> (8 * (i % 8))) as u8).collect();
-                crate::alloc(Bloblet::of_native(($(std::cell::Cell::new($a::of_word(kayak_jit::slot_of(w, $i + 2))),)*), &suffix))
+                crate::leak(Bloblet::of_native(($(std::cell::Cell::new($a::of_word(kayak_jit::slot_of(w, $i + 2))),)*), &suffix))
             }
         }
     };
@@ -334,7 +334,7 @@ pub fn seal_code<'a, Fs: NativeFields + Clone + 'a>(b: &Bloblet<Fs>) -> &'a Blob
     if !kayak_jit::native_code() {
         fail("seal-code: this machine runs no native code");
     }
-    crate::alloc(b.sealed_copy())
+    crate::leak(b.sealed_copy())
 }
 
 /// A native procedure's call: its answer, or a failure, as Fixpt's machines

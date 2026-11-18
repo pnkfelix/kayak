@@ -50,42 +50,42 @@ pub mod kc_l0 {
     use super::*;
 
     #[inline]
-    pub fn form_name() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+    pub fn form_name() -> &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> Str + Send + Sync) {
         &kc_front::form_name
     }
 
     #[inline]
-    pub fn kc_form() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> &'static Sexp {
+    pub fn kc_form() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> kayak_rt::Handle<'static, Sexp> {
         &kc_front::kc_form
     }
 
     #[inline]
-    pub fn define_value() -> &'static (dyn Fn(&'static Sexp) -> &'static Sexp + Send + Sync) {
+    pub fn define_value() -> &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> + Send + Sync) {
         &kc_front::define_value
     }
 
     #[inline]
-    pub fn lambda_of() -> &'static (dyn Fn(&'static Sexp) -> List<&'static Sexp> + Send + Sync) {
+    pub fn lambda_of() -> &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> List<kayak_rt::Handle<'static, Sexp>> + Send + Sync) {
         &kc_front::lambda_of
     }
 
     #[inline]
-    pub fn kc_datum() -> &'static (dyn Fn(&'static Sexp) -> Str + Send + Sync) {
+    pub fn kc_datum() -> &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> Str + Send + Sync) {
         &kc_front::kc_datum
     }
 
     #[inline]
-    pub fn kc_scope_entry() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, i64, Str) -> &'static Sexp {
+    pub fn kc_scope_entry() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, i64, Str) -> kayak_rt::Handle<'static, Sexp> {
         &kc_front::kc_scope_entry
     }
 
     #[inline]
-    pub fn kc_position() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> i64 {
+    pub fn kc_position() -> &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, Str, Str) -> i64 {
         &kc_front::kc_position
     }
 
     #[inline]
-    pub fn type_form_p() -> &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync) {
+    pub fn type_form_p() -> &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> bool + Send + Sync) {
         &kc_front::type_form_p
     }
 
@@ -160,7 +160,7 @@ pub mod kc_l0 {
 
     /// A quoted datum's term (C447): a list's pairs made as `cons`es; an
     /// atom its constant's.
-    pub fn l0_quoted(d: &'static Sexp) -> Str {
+    pub fn l0_quoted(d: kayak_rt::Handle<'static, Sexp>) -> Str {
         let tagcase_ = d;
         match *tagcase_ {
             Sexp::Num(k, f, p) => {
@@ -217,7 +217,7 @@ pub mod kc_l0 {
         L0Bound(Str, i64),
     }
 
-    pub fn l0_bound(f0: Str, f1: i64) -> &'static L0Bound {
+    pub fn l0_bound(f0: Str, f1: i64) -> kayak_rt::Handle<'static, L0Bound> {
         kayak_rt::heap_alloc(L0Bound::L0Bound(f0, f1))
     }
 
@@ -226,21 +226,21 @@ pub mod kc_l0 {
         L0Made(Str, i64),
     }
 
-    pub fn l0_made(f0: Str, f1: i64) -> &'static L0Made {
+    pub fn l0_made(f0: Str, f1: i64) -> kayak_rt::Handle<'static, L0Made> {
         kayak_rt::heap_alloc(L0Made::L0Made(f0, f1))
     }
 
     // Parameters made: their text, the scope with them, and the next number.
     pub enum L0MadeParams {
-        L0MadeParams(Str, List<&'static L0Bound>, i64),
+        L0MadeParams(Str, List<kayak_rt::Handle<'static, L0Bound>>, i64),
     }
 
-    pub fn l0_made_params(f0: Str, f1: List<&'static L0Bound>, f2: i64) -> &'static L0MadeParams {
+    pub fn l0_made_params(f0: Str, f1: List<kayak_rt::Handle<'static, L0Bound>>, f2: i64) -> kayak_rt::Handle<'static, L0MadeParams> {
         kayak_rt::heap_alloc(L0MadeParams::L0MadeParams(f0, f1, f2))
     }
 
     /// `n`'s binder's number, or -1 if no binding form binds it.
-    pub fn l0_number_of(mut n: Str, mut env: List<&'static L0Bound>) -> i64 {
+    pub fn l0_number_of(mut n: Str, mut env: List<kayak_rt::Handle<'static, L0Bound>>) -> i64 {
         loop {
             if null_p(env) {
                 return the::<i64>(-1i64);
@@ -307,7 +307,7 @@ pub mod kc_l0 {
     // names are the program's definitions before it (`scope`), then the
     // standard ones; a reference to a global's value `(gvar NAME)`, a call of
     // a global procedure `(call NAME ARG ...)`.
-    pub fn l0_params(mut ps: Sexps, mut k: i64, mut env: List<&'static L0Bound>, mut done: List<Str>) -> &'static L0MadeParams {
+    pub fn l0_params(mut ps: Sexps, mut k: i64, mut env: List<kayak_rt::Handle<'static, L0Bound>>, mut done: List<Str>) -> kayak_rt::Handle<'static, L0MadeParams> {
         loop {
             if null_p(ps) {
                 return l0_made_params(words_of(reverse(done)), env, k);
@@ -397,7 +397,7 @@ pub mod kc_l0 {
     }
 
     pub fn l0_numbers_of(bs: Sexps) -> List<i64> {
-        map(lambda1s(move |b: &'static Sexp| {
+        map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
             let tagcase_ = car(items(b));
             match *tagcase_ {
                 Sexp::Num(k, f, p) => {
@@ -415,7 +415,7 @@ pub mod kc_l0 {
     // `(K NAME)`, but those it binds (its parameters, its `let`s); of a
     // lambda inside it, that one's free variables. Binders are numbered apart
     // in a form, so a number names one binder.
-    pub fn l0_used(t: &'static Sexp, acc: Sexps) -> Sexps {
+    pub fn l0_used(t: kayak_rt::Handle<'static, Sexp>, acc: Sexps) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -447,7 +447,7 @@ pub mod kc_l0 {
         }
     }
 
-    pub fn l0_let_bound(mut t: &'static Sexp, mut acc: List<i64>) -> List<i64> {
+    pub fn l0_let_bound(mut t: kayak_rt::Handle<'static, Sexp>, mut acc: List<i64>) -> List<i64> {
         loop {
             let tagcase_ = t;
             match *tagcase_ {
@@ -547,7 +547,7 @@ pub mod kc_l0 {
     }
 
     // `(with #%toplevel NAME)`'s name; `` of any other.
-    pub fn l0_toplevel(e: &'static Sexp) -> Str {
+    pub fn l0_toplevel(e: kayak_rt::Handle<'static, Sexp>) -> Str {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -575,7 +575,7 @@ pub mod kc_l0 {
 
     /// The term of `e`, an expression, its names bound as `env` says; the
     /// binders it makes numbered from `next`.
-    pub fn l0_of(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut e: &'static Sexp) -> &'static L0Made {
+    pub fn l0_of(mut path: Str, mut scope: Sexps, mut env: List<kayak_rt::Handle<'static, L0Bound>>, mut next: i64, mut e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, L0Made> {
         loop {
             let tagcase_ = e;
             match *tagcase_ {
@@ -682,7 +682,7 @@ pub mod kc_l0 {
                                     L0Made::L0Made(b, n1) => {
                                         let body = car(read_all(b, str_lit("l0"), 1i64));
                                         let own = l0_numbers_of(items(car(read_all(string_append(str_lit("("), string_append(ps, str_lit(")"))), str_lit("l0"), 1i64))));
-                                        let free = l0_free(reverse(l0_used(body, nil::<&'static Sexp>())), onto(own, l0_let_bound(body, nil::<i64>())), nil::<&'static Sexp>());
+                                        let free = l0_free(reverse(l0_used(body, nil::<kayak_rt::Handle<'static, Sexp>>())), onto(own, l0_let_bound(body, nil::<i64>())), nil::<kayak_rt::Handle<'static, Sexp>>());
                                         return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(lambda "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kc_datum(), free)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))), n1);
                                     }
                                 }
@@ -772,7 +772,7 @@ pub mod kc_l0 {
                         }
                     }) {
                         let bs = items(second(xs));
-                        let names = map(lambda1s(move |b: &'static Sexp| {
+                        let names = map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                             let tagcase_ = car(items(b));
                             match *tagcase_ {
                                 Sexp::Sym(n, f2, p2) => {
@@ -789,7 +789,7 @@ pub mod kc_l0 {
                         }), names), next, env, nil::<Str>());
                         match *tagcase_ {
                             L0MadeParams::L0MadeParams(ps, inner, k) => {
-                                let tagcase_ = l0_terms(path, scope, inner, k, map(lambda1s(move |b: &'static Sexp| {
+                                let tagcase_ = l0_terms(path, scope, inner, k, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                                     car(reverse(items(b)))
                                 }), bs), nil::<Str>());
                                 match *tagcase_ {
@@ -808,7 +808,7 @@ pub mod kc_l0 {
                         if not(l0_positional_p(cdr(xs), 1i64)) {
                             return l0_made(not_yet(path, str_lit("a product's fields by name")), next);
                         } else {
-                            let tagcase_ = l0_terms(path, scope, env, next, map(lambda1s(move |f: &'static Sexp| {
+                            let tagcase_ = l0_terms(path, scope, env, next, map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
                                 second(items(f))
                             }), cdr(xs)), nil::<Str>());
                             match *tagcase_ {
@@ -938,7 +938,7 @@ pub mod kc_l0 {
                                 let tagcase_ = l0_of(path, scope, env, n1, fourth(xs));
                                 match *tagcase_ {
                                     L0Made::L0Made(hd, n2) => {
-                                        let tagcase_ = l0_of(path, scope, env, n2, lst(kayak_rt::heap_cons(sym(str_lit("lambda"), f, p), kayak_rt::heap_cons(lst(nil::<&'static Sexp>(), f, l, p), kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), f, l, p));
+                                        let tagcase_ = l0_of(path, scope, env, n2, lst(kayak_rt::heap_cons(sym(str_lit("lambda"), f, p), kayak_rt::heap_cons(lst(nil::<kayak_rt::Handle<'static, Sexp>>(), f, l, p), kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), f, l, p));
                                         match *tagcase_ {
                                             L0Made::L0Made(b, n3) => {
                                                 return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prompt "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(hd, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n3);
@@ -1036,7 +1036,7 @@ pub mod kc_l0 {
     }
 
     /// Expressions' terms, in order, spaced.
-    pub fn l0_terms(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut es: Sexps, mut done: List<Str>) -> &'static L0Made {
+    pub fn l0_terms(mut path: Str, mut scope: Sexps, mut env: List<kayak_rt::Handle<'static, L0Bound>>, mut next: i64, mut es: Sexps, mut done: List<Str>) -> kayak_rt::Handle<'static, L0Made> {
         loop {
             if null_p(es) {
                 return l0_made(words_of(reverse(done)), next);
@@ -1055,7 +1055,7 @@ pub mod kc_l0 {
     /// A `tagcase`'s arms (C423): `(parts "TAG" ((K NAME) ...) BODY)` of
     /// one that takes its payload apart, a product; `(whole "TAG" (K NAME)
     /// BODY)` of one that binds it whole; `(else (K NAME) BODY)`, the sum.
-    pub fn l0_arms(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut arms: Sexps, mut done: List<Str>) -> &'static L0Made {
+    pub fn l0_arms(mut path: Str, mut scope: Sexps, mut env: List<kayak_rt::Handle<'static, L0Bound>>, mut next: i64, mut arms: Sexps, mut done: List<Str>) -> kayak_rt::Handle<'static, L0Made> {
         loop {
             if null_p(arms) {
                 return l0_made(words_of(reverse(done)), next);
@@ -1108,7 +1108,7 @@ pub mod kc_l0 {
     }
 
     /// `cond`'s clauses as `if`s; it must end with `else`, as Fixpt has it.
-    pub fn l0_cond_as_if(path: Str, clauses: Sexps, f: Str, l: i64, p: i64) -> &'static Sexp {
+    pub fn l0_cond_as_if(path: Str, clauses: Sexps, f: Str, l: i64, p: i64) -> kayak_rt::Handle<'static, Sexp> {
         if null_p(clauses) {
             sym(not_yet(path, str_lit("a cond with no else")), f, p)
         } else {
@@ -1122,7 +1122,7 @@ pub mod kc_l0 {
     }
 
     /// `case`'s clauses as `if`s on the key's binder `key`.
-    pub fn l0_case_as_if(path: Str, key: Str, clauses: Sexps, f: Str, l: i64, p: i64) -> &'static Sexp {
+    pub fn l0_case_as_if(path: Str, key: Str, clauses: Sexps, f: Str, l: i64, p: i64) -> kayak_rt::Handle<'static, Sexp> {
         if null_p(clauses) {
             sym(not_yet(path, str_lit("a case with no else")), f, p)
         } else {
@@ -1130,7 +1130,7 @@ pub mod kc_l0 {
             if sym_is_p(car(c), str_lit("else")) {
                 lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p)
             } else {
-                lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("or"), f, p), map(lambda1s(move |d: &'static Sexp| {
+                lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("or"), f, p), map(lambda1s(move |d: kayak_rt::Handle<'static, Sexp>| {
                     lst(kayak_rt::heap_cons(sym({
                         let tagcase_ = d;
                         match *tagcase_ {
@@ -1173,7 +1173,7 @@ pub mod kc_l0 {
 
     /// A `typecase`'s arms as `if`s on `x`, a local: each shape's test
     /// (`int?`, ...), its arm's name a `let` of `x`; `else`'s too.
-    pub fn l0_typecase_as_if(path: Str, x: &'static Sexp, arms: Sexps, f: Str, l: i64, p: i64) -> &'static Sexp {
+    pub fn l0_typecase_as_if(path: Str, x: kayak_rt::Handle<'static, Sexp>, arms: Sexps, f: Str, l: i64, p: i64) -> kayak_rt::Handle<'static, Sexp> {
         let a = items(car(arms));
         if sym_is_p(car(a), str_lit("else")) {
             if i64_eq(size(a), 3i64) {
@@ -1202,7 +1202,7 @@ pub mod kc_l0 {
 
     /// A quasiquoted datum's term at `depth` (C447): what it makes when met,
     /// its unquoted expressions' values in it, left to right.
-    pub fn l0_quasi(path: Str, scope: Sexps, env: List<&'static L0Bound>, next: i64, d: &'static Sexp, depth: i64) -> &'static L0Made {
+    pub fn l0_quasi(path: Str, scope: Sexps, env: List<kayak_rt::Handle<'static, L0Bound>>, next: i64, d: kayak_rt::Handle<'static, Sexp>, depth: i64) -> kayak_rt::Handle<'static, L0Made> {
         let tagcase_ = d;
         match *tagcase_ {
             Sexp::Lst(ys, f, l, p) => {
@@ -1230,7 +1230,7 @@ pub mod kc_l0 {
     }
 
     /// `(TAG d)`, `d` quasiquoted at `depth`.
-    pub fn l0_quasi_tagged(path: Str, scope: Sexps, env: List<&'static L0Bound>, next: i64, tag: Str, d: &'static Sexp, depth: i64) -> &'static L0Made {
+    pub fn l0_quasi_tagged(path: Str, scope: Sexps, env: List<kayak_rt::Handle<'static, L0Bound>>, next: i64, tag: Str, d: kayak_rt::Handle<'static, Sexp>, depth: i64) -> kayak_rt::Handle<'static, L0Made> {
         let tagcase_ = l0_quasi(path, scope, env, next, d, depth);
         match *tagcase_ {
             L0Made::L0Made(t, n1) => {
@@ -1241,7 +1241,7 @@ pub mod kc_l0 {
 
     /// A list's items, each made in turn (`done`, the newest first, each
     /// `cons` or `,@`'s `append` open), then closed onto `nil`.
-    pub fn l0_quasi_items(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut ys: Sexps, mut depth: i64, mut done: List<Str>) -> &'static L0Made {
+    pub fn l0_quasi_items(mut path: Str, mut scope: Sexps, mut env: List<kayak_rt::Handle<'static, L0Bound>>, mut next: i64, mut ys: Sexps, mut depth: i64, mut done: List<Str>) -> kayak_rt::Handle<'static, L0Made> {
         loop {
             if (null_p(ys) || (sym_is_p(car(ys), str_lit(".")) && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys))))) {
                 let tagcase_ = if null_p(ys) {
@@ -1284,7 +1284,7 @@ pub mod kc_l0 {
     /// A `let`: each binding's value made where the `let` is (`env`), its
     /// binder numbered and in scope in the body (`inner`), not in the other
     /// values; `done` the bindings made, the newest first.
-    pub fn l0_let(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut bindings: Sexps, mut body: Sexps, mut done: List<Str>, mut inner: List<&'static L0Bound>) -> &'static L0Made {
+    pub fn l0_let(mut path: Str, mut scope: Sexps, mut env: List<kayak_rt::Handle<'static, L0Bound>>, mut next: i64, mut bindings: Sexps, mut body: Sexps, mut done: List<Str>, mut inner: List<kayak_rt::Handle<'static, L0Bound>>) -> kayak_rt::Handle<'static, L0Made> {
         loop {
             if null_p(bindings) {
                 let tagcase_ = l0_seq(path, scope, inner, next, body, nil::<Str>());
@@ -1331,7 +1331,7 @@ pub mod kc_l0 {
     }
 
     /// A body, its expressions in turn: one, itself; more, `(seq ...)`.
-    pub fn l0_seq(mut path: Str, mut scope: Sexps, mut env: List<&'static L0Bound>, mut next: i64, mut es: Sexps, mut done: List<Str>) -> &'static L0Made {
+    pub fn l0_seq(mut path: Str, mut scope: Sexps, mut env: List<kayak_rt::Handle<'static, L0Bound>>, mut next: i64, mut es: Sexps, mut done: List<Str>) -> kayak_rt::Handle<'static, L0Made> {
         loop {
             if null_p(es) {
                 if (not(null_p(done)) && null_p(cdr(done))) {
@@ -1364,12 +1364,12 @@ pub mod kc_l0 {
     }
 
     /// Form `f` as an item, its names' entries `scope`; a type's, none.
-    pub fn l0_item_text(path: Str, f: &'static Sexp, scope: Sexps) -> Str {
+    pub fn l0_item_text(path: Str, f: kayak_rt::Handle<'static, Sexp>, scope: Sexps) -> Str {
         if type_form_p()(f) {
             str_lit("(none)")
         } else {
             if string_eq_p(form_name()(f), str_lit("")) {
-                let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, f);
+                let tagcase_ = l0_of(path, scope, nil::<kayak_rt::Handle<'static, kc_l0::L0Bound>>(), 0i64, f);
                 match *tagcase_ {
                     L0Made::L0Made(t, n) => {
                         string_append(str_lit("(expr "), string_append(l0_run(t, n), str_lit(")")))
@@ -1378,7 +1378,7 @@ pub mod kc_l0 {
             } else {
                 let l = lambda_of()(define_value()(f));
                 if null_p(l) {
-                    let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, define_value()(f));
+                    let tagcase_ = l0_of(path, scope, nil::<kayak_rt::Handle<'static, kc_l0::L0Bound>>(), 0i64, define_value()(f));
                     match *tagcase_ {
                         L0Made::L0Made(t, n) => {
                             string_list_append(kayak_rt::heap_cons(str_lit("(global "), kayak_rt::heap_cons(form_name()(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(l0_run(t, n), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
@@ -1386,7 +1386,7 @@ pub mod kc_l0 {
                     }
                 } else {
                     let lx = items(car(l));
-                    let tagcase_ = l0_params(items(second(lx)), 0i64, nil::<&'static kc_l0::L0Bound>(), nil::<Str>());
+                    let tagcase_ = l0_params(items(second(lx)), 0i64, nil::<kayak_rt::Handle<'static, kc_l0::L0Bound>>(), nil::<Str>());
                     match *tagcase_ {
                         L0MadeParams::L0MadeParams(ps, env, k) => {
                             let tagcase_ = l0_seq(path, scope, env, k, cdr(cdr(lx)), nil::<Str>());
@@ -1404,7 +1404,7 @@ pub mod kc_l0 {
 
     /// The item, each name it looks up that `scope` does not say added to
     /// it, one by one, from the database (C416).
-    pub fn l0_item_of(mut d: Db, mut run: Runner, mut path: Str, mut at: i64, mut f: &'static Sexp, mut scope: Sexps) -> Str {
+    pub fn l0_item_of(mut d: Db, mut run: Runner, mut path: Str, mut at: i64, mut f: kayak_rt::Handle<'static, Sexp>, mut scope: Sexps) -> Str {
         loop {
             let r = kayak_rt::attempt(|| { l0_item_text(path, f, scope) }, |m: Str| {
                 string_append(str_lit("%failed "), m)
@@ -1421,13 +1421,13 @@ pub mod kc_l0 {
         }
     }
 
-    pub fn q_l0_item(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, a_path: Str, a_key: Str) -> Str {
+    pub fn q_l0_item(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: &'static dyn Fn(Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<&'static dyn Fn(Str) -> Str>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>) -> Str, a_path: Str, a_key: Str) -> Str {
         let path = a_path;
         let key = a_key;
         let f = kc_form()(d, run, path, key);
         let at = kc_position()(d, run, path, key);
         l0_item_of(d, run, path, at, f, if (string_eq_p(form_name()(f), str_lit("")) || null_p(lambda_of()(define_value()(f)))) {
-            nil::<&'static Sexp>()
+            nil::<kayak_rt::Handle<'static, Sexp>>()
         } else {
             kayak_rt::heap_cons(car(read_all(db_get(d, run, key2(str_lit("interface"), path, key)), str_lit("scope"), 1i64)), kayak_rt::nil())
         })
@@ -1435,12 +1435,12 @@ pub mod kc_l0 {
 
     // An item of the program, as a term.
     #[inline]
-    pub fn l0_item(d: Db, run: Runner, path: Str, key: Str) -> &'static Sexp {
+    pub fn l0_item(d: Db, run: Runner, path: Str, key: Str) -> kayak_rt::Handle<'static, Sexp> {
         car(read_all(db_get(d, run, key2(str_lit("l0-item"), path, key)), str_lit("l0"), 1i64))
     }
 
     // A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`).
-    pub fn term_head(t: &'static Sexp) -> Str {
+    pub fn term_head(t: kayak_rt::Handle<'static, Sexp>) -> Str {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1465,11 +1465,11 @@ pub mod kc_l0 {
     // An item's kind (`proc`, `global`, `expr`), name, parameters (each
     // `(K NAME)`), body or term; a `(call NAME ARG ...)`'s name and arguments.
     #[inline]
-    pub fn item_kind(i: &'static Sexp) -> Str {
+    pub fn item_kind(i: kayak_rt::Handle<'static, Sexp>) -> Str {
         term_head(i)
     }
 
-    pub fn item_name(i: &'static Sexp) -> Str {
+    pub fn item_name(i: kayak_rt::Handle<'static, Sexp>) -> Str {
         let tagcase_ = i;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1496,7 +1496,7 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn item_params(i: &'static Sexp) -> Sexps {
+    pub fn item_params(i: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = i;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1504,13 +1504,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     #[inline]
-    pub fn item_body(i: &'static Sexp) -> &'static Sexp {
+    pub fn item_body(i: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
         let tagcase_ = i;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1524,12 +1524,12 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn call_name(t: &'static Sexp) -> Str {
+    pub fn call_name(t: kayak_rt::Handle<'static, Sexp>) -> Str {
         item_name(t)
     }
 
     #[inline]
-    pub fn call_args(t: &'static Sexp) -> Sexps {
+    pub fn call_args(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1537,14 +1537,14 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     // A `(var K NAME)`'s number; a `(let ...)`'s bindings, each `(K NAME E)`,
     // and body; a `(seq ...)`'s terms.
-    pub fn var_number(t: &'static Sexp) -> i64 {
+    pub fn var_number(t: kayak_rt::Handle<'static, Sexp>) -> i64 {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1567,7 +1567,7 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn let_bindings(t: &'static Sexp) -> Sexps {
+    pub fn let_bindings(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1575,13 +1575,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     #[inline]
-    pub fn let_body(t: &'static Sexp) -> &'static Sexp {
+    pub fn let_body(t: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1595,7 +1595,7 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn if_parts(t: &'static Sexp) -> Sexps {
+    pub fn if_parts(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1603,13 +1603,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     #[inline]
-    pub fn seq_terms(t: &'static Sexp) -> Sexps {
+    pub fn seq_terms(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1617,13 +1617,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     // A `(prim NAME ARG ...)`'s name, its first argument, and its arguments.
-    pub fn prim_name(t: &'static Sexp) -> Str {
+    pub fn prim_name(t: kayak_rt::Handle<'static, Sexp>) -> Str {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1646,7 +1646,7 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn prim_arg(t: &'static Sexp) -> &'static Sexp {
+    pub fn prim_arg(t: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1660,7 +1660,7 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn prim_args(t: &'static Sexp) -> Sexps {
+    pub fn prim_args(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1668,13 +1668,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     // A `(string "TEXT")`'s or `(symbol "NAME")`'s text (C421).
-    pub fn term_text(t: &'static Sexp) -> Str {
+    pub fn term_text(t: kayak_rt::Handle<'static, Sexp>) -> Str {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1700,7 +1700,7 @@ pub mod kc_l0 {
         }
     }
 
-    pub fn term_number(t: &'static Sexp) -> i64 {
+    pub fn term_number(t: kayak_rt::Handle<'static, Sexp>) -> i64 {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1731,7 +1731,7 @@ pub mod kc_l0 {
     // `(K NAME)`) and body (`item-body`); an `(app F ARG ...)`'s procedure and
     // arguments; a `(gproc NAME ARITY)`'s arity (C412).
     #[inline]
-    pub fn lambda_params(t: &'static Sexp) -> Sexps {
+    pub fn lambda_params(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1739,13 +1739,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     #[inline]
-    pub fn lambda_free(t: &'static Sexp) -> Sexps {
+    pub fn lambda_free(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1753,13 +1753,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     #[inline]
-    pub fn app_fn(t: &'static Sexp) -> &'static Sexp {
+    pub fn app_fn(t: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1773,7 +1773,7 @@ pub mod kc_l0 {
     }
 
     #[inline]
-    pub fn app_args(t: &'static Sexp) -> Sexps {
+    pub fn app_args(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1781,7 +1781,7 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
@@ -1791,7 +1791,7 @@ pub mod kc_l0 {
 
     // A `(letrec ((K NAME) ...) (VALUE ...) BODY)`'s binders and values (C426).
     #[inline]
-    pub fn letrec_binders(t: &'static Sexp) -> Sexps {
+    pub fn letrec_binders(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1799,13 +1799,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     #[inline]
-    pub fn letrec_values(t: &'static Sexp) -> Sexps {
+    pub fn letrec_values(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1813,13 +1813,13 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     #[inline]
-    pub fn tagcase_arms(t: &'static Sexp) -> Sexps {
+    pub fn tagcase_arms(t: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -1827,12 +1827,12 @@ pub mod kc_l0 {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
-    pub fn gproc_arity(t: &'static Sexp) -> i64 {
+    pub fn gproc_arity(t: kayak_rt::Handle<'static, Sexp>) -> i64 {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {

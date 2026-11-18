@@ -12,16 +12,16 @@ pub mod made__load__0__areas {
         Box(Int, Int),
     }
 
-    pub fn dot(f0: Int) -> &'static Shape {
+    pub fn dot(f0: Int) -> kayak_rt::Handle<'static, Shape> {
         kayak_rt::heap_alloc(Shape::Dot(f0))
     }
 
-    pub fn r#box(f0: Int, f1: Int) -> &'static Shape {
+    pub fn r#box(f0: Int, f1: Int) -> kayak_rt::Handle<'static, Shape> {
         kayak_rt::heap_alloc(Shape::Box(f0, f1))
     }
 
     #[inline]
-    pub fn make_box(w: Int, h: Int) -> &'static Shape {
+    pub fn make_box(w: Int, h: Int) -> kayak_rt::Handle<'static, Shape> {
         r#box(w, h)
     }
 }
@@ -35,7 +35,7 @@ pub mod made__load__1__loaded_select {
         pub use super::made__load__0__areas::{dot, r#box, make_box, Shape};
     }
 
-    pub type Shape = &'static made__load__0__areas::Shape;
+    pub type Shape = kayak_rt::Handle<'static, made__load__0__areas::Shape>;
 
     #[inline]
     pub fn area(s: Shape) -> Int {

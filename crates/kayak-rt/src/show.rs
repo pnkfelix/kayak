@@ -111,7 +111,7 @@ impl Show for Str {
 }
 
 /// A list, `(1 2 3)`; `nil`, `()`.
-impl<T: Show> Show for Option<&Cons<'_, T>> {
+impl<T: Show> Show for Option<crate::Handle<'_, Cons<'_, T>>> {
     fn show(&self, out: &mut String) {
         out.push('(');
         let mut xs = *self;
@@ -129,6 +129,13 @@ impl<T: Show> Show for Option<&Cons<'_, T>> {
 }
 
 impl<T: Show + ?Sized> Show for &T {
+    fn show(&self, out: &mut String) {
+        (**self).show(out);
+    }
+}
+
+/// A handle's value, as a reference's (C478).
+impl<T: Show + ?Sized> Show for crate::Handle<'_, T> {
     fn show(&self, out: &mut String) {
         (**self).show(out);
     }

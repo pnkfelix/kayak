@@ -24,11 +24,11 @@ pub enum Enum {
     Unsafe(),
 }
 
-pub fn r#struct(f0: i64) -> &'static Enum {
+pub fn r#struct(f0: i64) -> kayak_rt::Handle<'static, Enum> {
     kayak_rt::heap_alloc(Enum::Struct(f0))
 }
 
-pub fn r#unsafe() -> &'static Enum {
+pub fn r#unsafe() -> kayak_rt::Handle<'static, Enum> {
     kayak_rt::heap_alloc(Enum::Unsafe())
 }
 
@@ -59,7 +59,7 @@ pub fn r#where(s: As) -> i64 {
 }
 
 #[inline]
-pub fn r#const(e: &'static Enum) -> i64 {
+pub fn r#const(e: kayak_rt::Handle<'static, Enum>) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
         Enum::Struct(r#static) => {

@@ -114,7 +114,7 @@ pub mod restrictions {
     }
 
     /// The control primitive a chain of `proj`s instantiates, or none.
-    pub fn projected_control(mut e: &'static Sexp) -> Str {
+    pub fn projected_control(mut e: kayak_rt::Handle<'static, Sexp>) -> Str {
         loop {
             if head_is_p(e, str_lit("proj")) {
                 e = second(items(e));
@@ -144,7 +144,7 @@ pub mod restrictions {
     }
 
     #[inline]
-    pub fn items_of(e: &'static Sexp) -> Sexps {
+    pub fn items_of(e: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(ys, f, l, p) => {
@@ -152,32 +152,32 @@ pub mod restrictions {
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     #[inline]
-    pub fn cdr_items_of(e: &'static Sexp) -> Sexps {
+    pub fn cdr_items_of(e: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(ys, f, l, p) => {
                 if null_p(ys) {
-                    nil::<&'static Sexp>()
+                    nil::<kayak_rt::Handle<'static, Sexp>>()
                 } else {
                     cdr(ys)
                 }
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }
     }
 
     /// `e`, whose nearest list began at `line` of `file`: refused if it is
     /// what KFX does not have, else each of its parts.
-    pub fn restricted(mut e: &'static Sexp, mut file: Str, mut line: i64) -> () {
+    pub fn restricted(mut e: kayak_rt::Handle<'static, Sexp>, mut file: Str, mut line: i64) -> () {
         loop {
             let tagcase_ = e;
             match *tagcase_ {
@@ -224,7 +224,7 @@ pub mod restrictions {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Lst(bs, f2, l2, p2) => {
-                                any_p(lambda1s(move |b: &'static Sexp| {
+                                any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                                     let tagcase_ = b;
                                     match *tagcase_ {
                                         Sexp::Lst(ys, f3, l3, p3) => {
@@ -246,7 +246,7 @@ pub mod restrictions {
                         return match restriction_refused(f, l, str_lit("a convention binder, FX-26's, which KFX has not (C205)")) {};
                     } else if (i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("region")) && sym_is_p(third(xs), str_lit("distinct"))) {
                         return match restriction_refused(f, l, str_lit("a distinct region binder, FX-26's, which KFX has not yet (C204)")) {};
-                    } else if (sym_is_p(car(xs), str_lit("bloblet")) && any_p(lambda1s(move |a: &'static Sexp| {
+                    } else if (sym_is_p(car(xs), str_lit("bloblet")) && any_p(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
                         head_is_p(a, str_lit("frozen"))
                     }), cdr(xs))) {
                         return match restriction_refused(f, l, str_lit("a frozen bloblet, FX-26's, which KFX has not yet (C201)")) {};
@@ -261,7 +261,7 @@ pub mod restrictions {
                                 false
                             }
                         }
-                    } && any_p(lambda1s(move |a: &'static Sexp| {
+                    } && any_p(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
                         ((head_is_p(a, str_lit("const")) || head_is_p(a, str_lit("acyclic"))) && not(sym_is_p(second(items(a)), str_lit("heap"))))
                     }), cdr(xs))) {
                         return match restriction_refused(f, l, str_lit("data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)")) {};
@@ -276,7 +276,7 @@ pub mod restrictions {
                                 false
                             }
                         }
-                    } && any_p(lambda1s(move |a: &'static Sexp| {
+                    } && any_p(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
                         sym_is_p(a, str_lit("heap"))
                     }), cdr(xs))) {
                         return match restriction_refused(f, l, str_lit("the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)")) {};
@@ -286,7 +286,7 @@ pub mod restrictions {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Lst(bs, f2, l2, p2) => {
-                                any_p(lambda1s(move |b: &'static Sexp| {
+                                any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                                     let tagcase_ = b;
                                     match *tagcase_ {
                                         Sexp::Lst(ys, f3, l3, p3) => {
@@ -316,9 +316,9 @@ pub mod restrictions {
                         } else if ((sym_is_p(car(xs), str_lit("define-type")) || sym_is_p(car(xs), str_lit("define-generative"))) && i64_gt(size(xs), 1i64)) {
                             cdr_items_of(second(xs))
                         } else {
-                            nil::<&'static Sexp>()
+                            nil::<kayak_rt::Handle<'static, Sexp>>()
                         };
-                        any_p(lambda1s(move |b: &'static Sexp| {
+                        any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                             let tagcase_ = b;
                             match *tagcase_ {
                                 Sexp::Lst(ys, f2, l2, p2) => {
@@ -343,7 +343,7 @@ pub mod restrictions {
                         }), binders)
                     } {
                         return match restriction_refused(f, l, str_lit("a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)")) {};
-                    } else if (sym_is_p(car(xs), str_lit("define-generative")) && i64_gt(size(xs), 1i64) && any_p(lambda1s(move |b: &'static Sexp| {
+                    } else if (sym_is_p(car(xs), str_lit("define-generative")) && i64_gt(size(xs), 1i64) && any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                         let tagcase_ = b;
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -431,11 +431,11 @@ pub mod restrictions {
 
     /// Whether a type's head names a family of places alone, `(name (p
     /// place) ...)` (C274).
-    pub fn place_family_p(head: &'static Sexp) -> bool {
+    pub fn place_family_p(head: kayak_rt::Handle<'static, Sexp>) -> bool {
         let tagcase_ = head;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
-                (not(null_p(cdr(xs))) && not(any_p(lambda1s(move |b: &'static Sexp| {
+                (not(null_p(cdr(xs))) && not(any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                     not((i64_eq(size(items(b)), 2i64) && sym_is_p(second(items(b)), str_lit("place"))))
                 }), cdr(xs))))
             }
@@ -449,7 +449,7 @@ pub mod restrictions {
     /// A module type other than a `define-type`'s, FX-26's first-class
     /// modules' (C170), which KFX has not: its module types are Rust
     /// traits, named (C24).
-    pub fn moduleof_restricted(e: &'static Sexp) -> () {
+    pub fn moduleof_restricted(e: kayak_rt::Handle<'static, Sexp>) -> () {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -489,7 +489,7 @@ pub mod restrictions {
 
     /// Whether a procedure type's parameter is named, `(x : T)`, as the
     /// checker reads one (`param-name-written`).
-    pub fn param_named_p(q: &'static Sexp, types: Strings) -> bool {
+    pub fn param_named_p(q: kayak_rt::Handle<'static, Sexp>, types: Strings) -> bool {
         let tagcase_ = q;
         match *tagcase_ {
             Sexp::Lst(ys, f, l, p) => {
@@ -515,7 +515,7 @@ pub mod restrictions {
 
     /// A procedure type's specification, or its parameters named
     /// (C162), FX-26's, which KFX has not yet.
-    pub fn specs_restricted(e: &'static Sexp, types: Strings) -> () {
+    pub fn specs_restricted(e: kayak_rt::Handle<'static, Sexp>, types: Strings) -> () {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -531,7 +531,7 @@ pub mod restrictions {
                     };
                     match *tagcase_ {
                         Sexp::Lst(ps, f2, l2, p2) => {
-                            any_p(lambda1s(move |q: &'static Sexp| {
+                            any_p(lambda1s(move |q: kayak_rt::Handle<'static, Sexp>| {
                                 param_named_p(q, types)
                             }), ps)
                         }
@@ -543,7 +543,7 @@ pub mod restrictions {
                 })) {
                     match restriction_refused(f, l, str_lit("a procedure type's specification, or its parameters named, FX-26's, which KFX has not yet (C162)")) {}
                 } else {
-                    map(lambda1s(move |x: &'static Sexp| {
+                    map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
                         specs_restricted(x, types)
                     }), xs);
                     ()
@@ -562,7 +562,7 @@ pub mod restrictions {
     // Rust's or kayak-rt's own, each a KFX name (C27), none two alike
     // camel-cased. FX-26 has neither rule.
     pub fn primitive_names() -> Strings {
-        map(lambda1s(move |p: &'static Sexp| {
+        map(lambda1s(move |p: kayak_rt::Handle<'static, Sexp>| {
             sym_name(car(items(p)))
         }), onto(read_all(primitives(), str_lit(""), 1i64), read_all(prelude(), str_lit(""), 1i64)))
     }
@@ -570,9 +570,9 @@ pub mod restrictions {
     /// Each definition among `forms`, as the list that says where it is: a
     /// `define`, or a `define-rec`'s item; a module's items' are its own
     /// scope's.
-    pub fn defined_names(forms: Sexps) -> List<&'static Sexp> {
+    pub fn defined_names(forms: Sexps) -> List<kayak_rt::Handle<'static, Sexp>> {
         if null_p(forms) {
-            nil::<&'static Sexp>()
+            nil::<kayak_rt::Handle<'static, Sexp>>()
         } else {
             let f = car(forms);
             onto(if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
@@ -583,19 +583,19 @@ pub mod restrictions {
                     }
                     _ => {
                         let other = tagcase_;
-                        nil::<&'static Sexp>()
+                        nil::<kayak_rt::Handle<'static, Sexp>>()
                     }
                 }
             } else if head_is_p(f, str_lit("define-rec")) {
                 cdr(items(f))
             } else {
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }, defined_names(cdr(forms)))
         }
     }
 
     #[inline]
-    pub fn line_of(e: &'static Sexp) -> i64 {
+    pub fn line_of(e: kayak_rt::Handle<'static, Sexp>) -> i64 {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -634,8 +634,8 @@ pub mod restrictions {
         }
     }
 
-    pub fn module_own_items(f: &'static Sexp) -> Sexps {
-        concat(map(lambda1s(move |g: &'static Sexp| {
+    pub fn module_own_items(f: kayak_rt::Handle<'static, Sexp>) -> Sexps {
+        concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
             if head_is_p(g, str_lit("hide")) {
                 cdr(items(g))
             } else {
@@ -646,7 +646,7 @@ pub mod restrictions {
 
     /// The names a type mentions where a type is: not a `select`'s
     /// (another module's), a field's label, a binder, a module type's.
-    pub fn sexp_names(mut e: &'static Sexp) -> Strings {
+    pub fn sexp_names(mut e: kayak_rt::Handle<'static, Sexp>) -> Strings {
         loop {
             let tagcase_ = e;
             match *tagcase_ {
@@ -659,7 +659,7 @@ pub mod restrictions {
                     } else if (head_is_p(e, str_lit("select")) || head_is_p(e, str_lit("quote")) || head_is_p(e, str_lit("moduleof"))) {
                         return nil::<Str>();
                     } else if (head_is_p(e, str_lit("productof")) || head_is_p(e, str_lit("sumof"))) {
-                        return concat(map(lambda1s(move |g: &'static Sexp| {
+                        return concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
                             let tagcase_ = g;
                             match *tagcase_ {
                                 Sexp::Lst(ys, f2, l2, p2) => {
@@ -688,20 +688,20 @@ pub mod restrictions {
 
     /// The define-types of `forms`, and of their modules.
     pub fn abbreviations(forms: Sexps) -> Sexps {
-        concat(map(lambda1s(move |f: &'static Sexp| {
+        concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
             if (head_is_p(f, str_lit("define-type")) && i64_eq(size(items(f)), 3i64)) {
                 the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
             } else if module_def_p(f) {
-                filter(lambda1s(move |g: &'static Sexp| {
+                filter(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
                     (head_is_p(g, str_lit("define-type")) && i64_eq(size(items(g)), 3i64))
                 }), module_own_items(f))
             } else {
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             }
         }), forms))
     }
 
-    pub fn abbreviation_name(f: &'static Sexp) -> Str {
+    pub fn abbreviation_name(f: kayak_rt::Handle<'static, Sexp>) -> Str {
         let h = second(items(f));
         let tagcase_ = h;
         match *tagcase_ {
@@ -743,10 +743,10 @@ pub mod restrictions {
                 todo = cdr(todo);
                 continue;
             } else {
-                let found = filter(lambda1s(move |f: &'static Sexp| {
+                let found = filter(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
                     string_eq_p(abbreviation_name(f), car(todo))
                 }), abbrevs);
-                (todo, seen) = (onto(concat(map(lambda1s(move |f: &'static Sexp| {
+                (todo, seen) = (onto(concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
                     sexp_names(third(items(f)))
                 }), found)), cdr(todo)), kayak_rt::heap_cons(car(todo), seen));
                 continue;
@@ -755,7 +755,7 @@ pub mod restrictions {
     }
 
     /// A type as written: refused if it has a `(mu t T)`.
-    pub fn mu_in_type(t: &'static Sexp) -> () {
+    pub fn mu_in_type(t: kayak_rt::Handle<'static, Sexp>) -> () {
         let tagcase_ = t;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -787,7 +787,7 @@ pub mod restrictions {
     /// Each type written in `e` where a form has one (a definition's, a
     /// `the`'s, a binding's of `define-rec` or `letrec`): `mu` is a type's
     /// word only there, and may name a procedure elsewhere.
-    pub fn mu_written(mut e: &'static Sexp) -> () {
+    pub fn mu_written(mut e: kayak_rt::Handle<'static, Sexp>) -> () {
         loop {
             let tagcase_ = e;
             match *tagcase_ {
@@ -807,7 +807,7 @@ pub mod restrictions {
                         e = third(xs);
                         continue;
                     } else if (sym_is_p(car(xs), str_lit("define-rec")) || sym_is_p(car(xs), str_lit("letrec"))) {
-                        map(lambda1s(move |b: &'static Sexp| {
+                        map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                             let tagcase_ = b;
                             match *tagcase_ {
                                 Sexp::Lst(ys, f2, l2, p2) => {
@@ -849,11 +849,11 @@ pub mod restrictions {
 
     /// A name kayak-rt or the emitter writes, bound (C187): FX-26's, which
     /// KFX's names are not (C27).
-    pub fn reserved_bound(e: &'static Sexp) -> () {
+    pub fn reserved_bound(e: kayak_rt::Handle<'static, Sexp>) -> () {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
-                let bound = lambda1s(move |b: &'static Sexp| {
+                let bound = lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                     let tagcase_ = b;
                     match *tagcase_ {
                         Sexp::Sym(n, f2, p2) => {
@@ -922,7 +922,7 @@ pub mod restrictions {
                 } else if sym_is_p(car(xs), str_lit("define-rec")) {
                     concat(map(bound, cdr(xs)))
                 } else if (sym_is_p(car(xs), str_lit("tagcase")) || sym_is_p(car(xs), str_lit("typecase"))) {
-                    concat(map(lambda1s(move |arm: &'static Sexp| {
+                    concat(map(lambda1s(move |arm: kayak_rt::Handle<'static, Sexp>| {
                         let tagcase_ = arm;
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -952,7 +952,7 @@ pub mod restrictions {
                     }), if i64_gt(size(xs), 2i64) {
                         cdr(cdr(xs))
                     } else {
-                        nil::<&'static Sexp>()
+                        nil::<kayak_rt::Handle<'static, Sexp>>()
                     }))
                 } else {
                     nil::<Str>()
@@ -976,7 +976,7 @@ pub mod restrictions {
 
     /// Each type defined, as `FILE|NAME`, in `forms` and their modules.
     pub fn file_types(forms: Sexps) -> Strings {
-        concat(map(lambda1s(move |g: &'static Sexp| {
+        concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
             let tagcase_ = g;
             match *tagcase_ {
                 Sexp::Lst(xs, f, l, p) => {
@@ -1046,20 +1046,20 @@ pub mod restrictions {
     /// type parameter of its name camel-cased (C27, C189; the checker's
     /// once, FX-26 having no such rule): a KFX name, none a type the Rust
     /// names, none a type the program has, no two alike.
-    pub fn binders_restricted(types: Strings, e: &'static Sexp) -> () {
+    pub fn binders_restricted(types: Strings, e: kayak_rt::Handle<'static, Sexp>) -> () {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
                 let binders = if null_p(xs) {
-                    nil::<&'static Sexp>()
+                    nil::<kayak_rt::Handle<'static, Sexp>>()
                 } else if ((sym_is_p(car(xs), str_lit("poly")) || sym_is_p(car(xs), str_lit("plambda"))) && i64_gt(size(xs), 1i64)) {
                     items_of(second(xs))
                 } else if ((sym_is_p(car(xs), str_lit("define-type")) || sym_is_p(car(xs), str_lit("define-generative")) || sym_is_p(car(xs), str_lit("define-datatype"))) && i64_gt(size(xs), 1i64)) {
                     cdr_items_of(second(xs))
                 } else {
-                    nil::<&'static Sexp>()
+                    nil::<kayak_rt::Handle<'static, Sexp>>()
                 };
-                let names = concat(map(lambda1s(move |b: &'static Sexp| {
+                let names = concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
                     let tagcase_ = b;
                     match *tagcase_ {
                         Sexp::Lst(ys, f2, l2, p2) => {
@@ -1101,7 +1101,7 @@ pub mod restrictions {
                 } else if repeated_p(map(&camel, names)) {
                     match restriction_refused(f, l, str_lit("two type variables named alike in Rust (camel-cased, as `a` and `a-`)")) {}
                 } else {
-                    map(lambda1s(move |x: &'static Sexp| {
+                    map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
                         binders_restricted(types, x)
                     }), xs);
                     ()
@@ -1120,7 +1120,7 @@ pub mod restrictions {
         let abbrevs = abbreviations(forms);
         map(&mu_written, forms);
         map(&reserved_bound, forms);
-        map(lambda1s(move |f: &'static Sexp| {
+        map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
             let n = abbreviation_name(f);
             if (not(string_eq_p(n, str_lit(""))) && reaches_p(abbrevs, sexp_names(third(items(f))), nil::<Str>(), n)) {
                 let tagcase_ = f;
@@ -1206,7 +1206,7 @@ pub mod restrictions {
     pub fn names_restricted(forms: Sexps) -> () {
         let prims = primitive_names();
         names_once(defined_names(forms), nil::<Str>(), prims);
-        map(lambda1s(move |f: &'static Sexp| {
+        map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
             if module_def_p(f) {
                 names_once(defined_names(module_own_items(f)), nil::<Str>(), nil::<Str>())
             } else {
@@ -1224,15 +1224,15 @@ pub mod restrictions {
         names_restricted(forms);
         restricted_all(forms, str_lit("the program"), 0i64);
         let (types, fts) = (concat(type_scopes(forms)), file_types(forms));
-        map(lambda1s(move |f: &'static Sexp| {
+        map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
             specs_restricted(f, types)
         }), forms);
         map(&moduleof_restricted, forms);
         recursion_restricted(forms);
-        map(lambda1s(move |f: &'static Sexp| {
+        map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
             binders_restricted(fts, f)
         }), forms);
-        map(lambda1s(move |f: &'static Sexp| {
+        map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
             if (head_is_p(f, str_lit("define")) && {
                 let tagcase_ = second(items(f));
                 match *tagcase_ {

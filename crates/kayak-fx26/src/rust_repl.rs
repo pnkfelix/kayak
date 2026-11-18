@@ -28,8 +28,8 @@ const _: () = assert!(
     "kayak-fx26 needs kayak-rt without `unsafe-par`: its two threads would share one session"
 );
 
-type Req = &'static Request;
-type New = &'static News;
+type Req = kayak_rt::Handle<'static, Request>;
+type New = kayak_rt::Handle<'static, News>;
 
 thread_local! {
     static FAILURE: RefCell<String> = const { RefCell::new(String::new()) };

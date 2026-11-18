@@ -256,7 +256,7 @@ pub fn prim_arity(n: Str) -> i64 {
 // Values taken apart, a wrong shape an error: the checker has seen to it
 // that none is, but a primitive is not to trust that.
 #[inline]
-pub fn val_int(v: &'static Val) -> Int {
+pub fn val_int(v: kayak_rt::Handle<'static, Val>) -> Int {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VInt(n) => {
@@ -271,7 +271,7 @@ pub fn val_int(v: &'static Val) -> Int {
 }
 
 #[inline]
-pub fn string_of(v: &'static Val) -> Str {
+pub fn string_of(v: kayak_rt::Handle<'static, Val>) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VString(s) => {
@@ -286,7 +286,7 @@ pub fn string_of(v: &'static Val) -> Str {
 }
 
 #[inline]
-pub fn char_of(v: &'static Val) -> char {
+pub fn char_of(v: kayak_rt::Handle<'static, Val>) -> char {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VChar(c) => {
@@ -301,7 +301,7 @@ pub fn char_of(v: &'static Val) -> char {
 }
 
 #[inline]
-pub fn bool_of(v: &'static Val) -> bool {
+pub fn bool_of(v: kayak_rt::Handle<'static, Val>) -> bool {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VBool(b) => {
@@ -316,7 +316,7 @@ pub fn bool_of(v: &'static Val) -> bool {
 }
 
 #[inline]
-pub fn symbol_of(v: &'static Val) -> Symbol {
+pub fn symbol_of(v: kayak_rt::Handle<'static, Val>) -> Symbol {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VSymbol(s) => {
@@ -337,18 +337,18 @@ pub fn w64(n: Int) -> Int {
 }
 
 #[inline]
-pub fn i64_of(v: &'static Val) -> i64 {
+pub fn i64_of(v: kayak_rt::Handle<'static, Val>) -> i64 {
     int_to_i64(val_int(v))
 }
 
 #[inline]
-pub fn v_i64(n: i64) -> &'static Val {
+pub fn v_i64(n: i64) -> kayak_rt::Handle<'static, Val> {
     v_int(i64_to_int(n))
 }
 
 /// A list's elements, in order.
 #[inline]
-pub fn list_of(v: &'static Val) -> Vals {
+pub fn list_of(v: kayak_rt::Handle<'static, Val>) -> Vals {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VPair(a, d) => {
@@ -356,13 +356,13 @@ pub fn list_of(v: &'static Val) -> Vals {
         }
         _ => {
             let other = tagcase_;
-            nil::<&'static Val>()
+            nil::<kayak_rt::Handle<'static, Val>>()
         }
     }
 }
 
 #[inline]
-pub fn list_val(xs: Vals) -> &'static Val {
+pub fn list_val(xs: Vals) -> kayak_rt::Handle<'static, Val> {
     if null_p(xs) {
         v_nil()
     } else {
@@ -371,7 +371,7 @@ pub fn list_val(xs: Vals) -> &'static Val {
 }
 
 #[inline]
-pub fn chars_val(cs: List<char>) -> &'static Val {
+pub fn chars_val(cs: List<char>) -> kayak_rt::Handle<'static, Val> {
     if null_p(cs) {
         v_nil()
     } else {
@@ -380,7 +380,7 @@ pub fn chars_val(cs: List<char>) -> &'static Val {
 }
 
 #[inline]
-pub fn chars_of(v: &'static Val) -> List<char> {
+pub fn chars_of(v: kayak_rt::Handle<'static, Val>) -> List<char> {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VPair(a, d) => {
@@ -393,13 +393,13 @@ pub fn chars_of(v: &'static Val) -> List<char> {
     }
 }
 
-pub fn vals_array(xs: Vals) -> Array<&'static Val> {
-    let a = the::<Array<&'static Val>>(make_array(i64_to_int(size(xs)), v_unit()));
+pub fn vals_array(xs: Vals) -> Array<kayak_rt::Handle<'static, Val>> {
+    let a = the::<Array<kayak_rt::Handle<'static, Val>>>(make_array(i64_to_int(size(xs)), v_unit()));
     fill_array(a, 0i64, xs);
     a
 }
 
-pub fn fill_array(mut a: Array<&'static Val>, mut i: i64, mut xs: Vals) -> () {
+pub fn fill_array(mut a: Array<kayak_rt::Handle<'static, Val>>, mut i: i64, mut xs: Vals) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -411,21 +411,21 @@ pub fn fill_array(mut a: Array<&'static Val>, mut i: i64, mut xs: Vals) -> () {
     }
 }
 
-pub fn array_vals(a: Array<&'static Val>, i: i64) -> Vals {
+pub fn array_vals(a: Array<kayak_rt::Handle<'static, Val>>, i: i64) -> Vals {
     if _gt_eq(i64_to_int(i), array_length(a)) {
-        nil::<&'static Val>()
+        nil::<kayak_rt::Handle<'static, Val>>()
     } else {
         kayak_rt::heap_cons(array_ref(a, i64_to_int(i)), array_vals(a, i64_plus(i, 1i64)))
     }
 }
 
 #[inline]
-pub fn flag(b: bool) -> &'static Val {
+pub fn flag(b: bool) -> kayak_rt::Handle<'static, Val> {
     v_bool(b)
 }
 
 #[inline]
-pub fn bytes_of(v: &'static Val) -> Bytes {
+pub fn bytes_of(v: kayak_rt::Handle<'static, Val>) -> Bytes {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VBytes(b) => {
@@ -441,7 +441,7 @@ pub fn bytes_of(v: &'static Val) -> Bytes {
 
 // An I/O error as FX-26 has it: a product of its kind, a sum, and the
 // system's words.
-pub fn io_error_val(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> &'static Val {
+pub fn io_error_val(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> kayak_rt::Handle<'static, Val> {
     let kind = {
         let tagcase_ = e.0;
         let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -474,7 +474,7 @@ pub fn io_error_val(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> &'static Va
     v_product(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_sum(kind, v_unit()), kayak_rt::heap_cons(v_string(e.1), kayak_rt::nil()))))
 }
 
-pub fn terminal_val(r: kayak_rt::Sum) -> &'static Val {
+pub fn terminal_val(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
     let tagcase_ = r;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
@@ -490,7 +490,7 @@ pub fn terminal_val(r: kayak_rt::Sum) -> &'static Val {
 }
 
 #[inline]
-pub fn write_outcome(r: kayak_rt::Sum) -> &'static Val {
+pub fn write_outcome(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
     let tagcase_ = r;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
@@ -505,7 +505,7 @@ pub fn write_outcome(r: kayak_rt::Sum) -> &'static Val {
 #[inline]
 pub fn strings_vals(ss: Strings) -> Vals {
     if null_p(ss) {
-        nil::<&'static Val>()
+        nil::<kayak_rt::Handle<'static, Val>>()
     } else {
         kayak_rt::heap_cons(v_string(car(ss)), strings_vals(cdr(ss)))
     }
@@ -532,7 +532,7 @@ pub fn reverse_vals(mut xs: Vals, mut acc: Vals) -> Vals {
 }
 
 #[inline]
-pub fn real_of(v: &'static Val) -> f64 {
+pub fn real_of(v: kayak_rt::Handle<'static, Val>) -> f64 {
     let tagcase_ = v;
     match *tagcase_ {
         Val::VReal(x) => {
@@ -547,7 +547,7 @@ pub fn real_of(v: &'static Val) -> f64 {
 }
 
 /// `case`'s comparison: two atoms of one kind, by that kind's equality.
-pub fn same_atom_p(a: &'static Val, b: &'static Val) -> bool {
+pub fn same_atom_p(a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'static, Val>) -> bool {
     let tagcase_ = a;
     match *tagcase_ {
         Val::VInt(x) => {
@@ -617,7 +617,7 @@ pub fn same_atom_p(a: &'static Val, b: &'static Val) -> bool {
     }
 }
 
-pub fn fixed_prim(t: Str, op: Str, a: &'static Val, b: &'static Val) -> &'static Val {
+pub fn fixed_prim(t: Str, op: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Val> {
     let x = val_int(a);
     if string_eq_p(op, str_lit("from-int")) {
         v_int(wrapped(t, x))
@@ -666,7 +666,7 @@ pub fn fixed_prim(t: Str, op: Str, a: &'static Val, b: &'static Val) -> &'static
     }
 }
 
-pub fn f64_prim(n: Str, a: &'static Val, b: &'static Val) -> &'static Val {
+pub fn f64_prim(n: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Val> {
     let x = real_of(a);
     if string_eq_p(n, str_lit("f64->string")) {
         v_string(f64_to_string(x))
@@ -744,7 +744,7 @@ pub fn f64_prim(n: Str, a: &'static Val, b: &'static Val) -> &'static Val {
 }
 
 /// Primitive `n` of the values `xs`.
-pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
+pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
     let (a, b) = (if null_p(xs) {
         v_unit()
     } else {
@@ -937,7 +937,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
     } else if (string_eq_p(n, str_lit("length")) || string_eq_p(n, str_lit("list-length"))) {
         v_int(i64_to_int(size(list_of(a))))
     } else if string_eq_p(n, str_lit("reverse")) {
-        list_val(reverse_vals(list_of(a), nil::<&'static Val>()))
+        list_val(reverse_vals(list_of(a), nil::<kayak_rt::Handle<'static, Val>>()))
     } else if string_eq_p(n, str_lit("new")) {
         v_ref(kayak_rt::heap_new(a))
     } else if string_eq_p(n, str_lit("get")) {

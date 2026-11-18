@@ -107,13 +107,13 @@ where
     R: 'static,
     H: 'static,
 {
-    let given: &'static Cell<Option<V>> = crate::alloc(Cell::new(None));
+    let given: &'static Cell<Option<V>> = crate::leak(Cell::new(None));
     let make: Make<R, H> = Box::new(move |body| {
-        let k: &'static Cont<V, R> = crate::alloc(Cont {
+        let k: &'static Cont<V, R> = crate::leak(Cont {
             body: RefCell::new(Some(body)),
             given,
         });
-        f(crate::alloc(move |v| -> Body<R> { Box::pin(k.resume(v)) }))
+        f(crate::leak(move |v| -> Body<R> { Box::pin(k.resume(v)) }))
     });
     CAPTURE.with(|c| {
         if c.borrow().is_some() {
@@ -443,13 +443,13 @@ macro_rules! ready {
         pub fn $name<'a, $($a: 'a,)* R: 'a>(
             f: &'a (dyn Fn($($a),*) -> R + Send + Sync),
         ) -> &'a (dyn Fn($($a),*) -> FutAt<'a, R> + Send + Sync) {
-            crate::alloc(move |$($x: $a),*| boxed(std::future::ready(f($($x),*))))
+            crate::leak(move |$($x: $a),*| boxed(std::future::ready(f($($x),*))))
         }
 
         pub fn $body<'a, $($a: 'a,)* R: 'a>(
             f: &'a (dyn Fn($($a),*) -> R + Send + Sync),
         ) -> &'a (dyn Fn($($a),*) -> BodyAt<'a, R> + Send + Sync) {
-            crate::alloc(move |$($x: $a),*| body(std::future::ready(Ok(f($($x),*)))))
+            crate::leak(move |$($x: $a),*| body(std::future::ready(Ok(f($($x),*)))))
         }
     };
 }
@@ -474,8 +474,8 @@ mod tests {
     //! Fixpt's `docs/research/examples/async/ping-pong.fx` and `promise.fx`,
     //! written by hand as the emitter is to write them.
     use super::*;
+    use crate::List;
     use crate::escape::make_continuation_prompt_tag;
-    use crate::{Cons, List};
 
     fn reverse<T: Copy + 'static>(xs: List<T>) -> List<T> {
         let mut acc = None;
@@ -490,9 +490,9 @@ mod tests {
     fn list_of(xs: List<i64>) -> Vec<i64> {
         let mut v = vec![];
         let mut xs = xs;
-        while let Some(Cons { car, cdr }) = xs {
-            v.push(*car);
-            xs = *cdr;
+        while let Some(c) = xs {
+            v.push(c.car);
+            xs = c.cdr;
         }
         v
     }
@@ -559,7 +559,7 @@ mod tests {
 
     #[test]
     fn ping_pong() {
-        let g: &'static PingPong = crate::alloc(PingPong {
+        let g: &'static PingPong = crate::leak(PingPong {
             sched: make_continuation_prompt_tag(),
             queue: Cell::new(None),
             log: Cell::new(None),
@@ -598,13 +598,13 @@ mod tests {
 
     async fn suspend(g: &'static Promises, file: &'static dyn Fn(Task)) -> Result<(), Unwind> {
         abort_with_continuation(g.sched, move |k: Task| -> File {
-            crate::alloc(move || file(k))
+            crate::leak(move || file(k))
         })
         .await
     }
 
     async fn yield2(g: &'static Promises) -> Result<(), Unwind> {
-        suspend(g, crate::alloc(move |k| enqueue2(g, k))).await
+        suspend(g, crate::leak(move |k| enqueue2(g, k))).await
     }
 
     async fn await_(g: &'static Promises) -> Result<i64, Unwind> {
@@ -614,7 +614,7 @@ mod tests {
                 Promise::Pending(ws) => {
                     suspend(
                         g,
-                        crate::alloc(move |k| g.fut.set(Promise::Pending(crate::cons(k, ws)))),
+                        crate::leak(move |k| g.fut.set(Promise::Pending(crate::cons(k, ws)))),
                     )
                     .await?
                 }
@@ -663,7 +663,7 @@ mod tests {
 
     #[test]
     fn promise() {
-        let g: &'static Promises = crate::alloc(Promises {
+        let g: &'static Promises = crate::leak(Promises {
             sched: make_continuation_prompt_tag(),
             queue: Cell::new(None),
             log: Cell::new(None),
@@ -787,7 +787,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "a wait where nothing may wait")]
     fn a_wait_in_block_is_said_so() {
-        let mailbox: crate::process::Inbox<i64> = crate::alloc(crate::process::MailboxBox {
+        let mailbox: crate::process::Inbox<i64> = crate::leak(crate::process::MailboxBox {
             queue: std::sync::Mutex::new(std::collections::VecDeque::new()),
         });
         block(crate::async_process::receive(mailbox));

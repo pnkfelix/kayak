@@ -40,7 +40,7 @@ pub mod counter_in {
         let maker_st: &'p CntState<'p, Place_P> = kayak_rt::alloc(CntState {
             n: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
-        });
+        }).to_ref();
         maker_st.n.set(Some(new(0i64)));
         maker_st
     }

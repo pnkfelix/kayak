@@ -11,11 +11,11 @@ pub enum Shape {
     Rect(i64, i64),
 }
 
-pub fn sq(f0: i64) -> &'static Shape {
+pub fn sq(f0: i64) -> kayak_rt::Handle<'static, Shape> {
     kayak_rt::heap_alloc(Shape::Sq(f0))
 }
 
-pub fn rect(f0: i64, f1: i64) -> &'static Shape {
+pub fn rect(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Shape> {
     kayak_rt::heap_alloc(Shape::Rect(f0, f1))
 }
 
@@ -35,17 +35,17 @@ pub mod shapes_in {
     /// What shapes-in makes (C274): its module's items, the place given, and its
     /// values, made as it is made (C433).
     pub struct ShapesState<'p, Place_P> {
-        pub kept: std::cell::Cell<Option<RefAt<'p, List<&'static Shape>>>>,
+        pub kept: std::cell::Cell<Option<RefAt<'p, List<kayak_rt::Handle<'static, Shape>>>>>,
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
     }
 
     #[inline]
-    pub fn square(k: i64) -> &'static Shape {
+    pub fn square(k: i64) -> kayak_rt::Handle<'static, Shape> {
         sq(k)
     }
 
     #[inline]
-    pub fn area_of(s: &'static Shape) -> i64 {
+    pub fn area_of(s: kayak_rt::Handle<'static, Shape>) -> i64 {
         let tagcase_ = s;
         match *tagcase_ {
             Shape::Sq(k) => {
@@ -67,7 +67,7 @@ pub mod shapes_in {
     }
 
     #[inline]
-    pub fn total_of(xs: List<&'static Shape>) -> i64 {
+    pub fn total_of(xs: List<kayak_rt::Handle<'static, Shape>>) -> i64 {
         if null_p(xs) {
             0i64
         } else {
@@ -86,8 +86,8 @@ pub mod shapes_in {
         let maker_st: &'p ShapesState<'p, Place_P> = kayak_rt::alloc(ShapesState {
             kept: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
-        });
-        maker_st.kept.set(Some(new(nil::<&'static Shape>())));
+        }).to_ref();
+        maker_st.kept.set(Some(new(nil::<kayak_rt::Handle<'static, Shape>>())));
         maker_st
     }
 }

@@ -20,24 +20,24 @@ pub enum Memo {
     Memo(i64, Str),
 }
 
-pub fn memo(f0: i64, f1: Str) -> &'static Memo {
+pub fn memo(f0: i64, f1: Str) -> kayak_rt::Handle<'static, Memo> {
     kayak_rt::heap_alloc(Memo::Memo(f0, f1))
 }
 
-pub type Memos = List<&'static Memo>;
+pub type Memos = List<kayak_rt::Handle<'static, Memo>>;
 
 // Names and a fingerprint each (C384): a persistent AVL tree, by name, as
 // the checker's index of its bindings is (check.kfx's `bix`).
 pub enum Fmap {
     FmNone(),
-    FmNode(&'static Fmap, Str, i64, i64, &'static Fmap),
+    FmNode(kayak_rt::Handle<'static, Fmap>, Str, i64, i64, kayak_rt::Handle<'static, Fmap>),
 }
 
-pub fn fm_none() -> &'static Fmap {
+pub fn fm_none() -> kayak_rt::Handle<'static, Fmap> {
     kayak_rt::heap_alloc(Fmap::FmNone())
 }
 
-pub fn fm_node(f0: &'static Fmap, f1: Str, f2: i64, f3: i64, f4: &'static Fmap) -> &'static Fmap {
+pub fn fm_node(f0: kayak_rt::Handle<'static, Fmap>, f1: Str, f2: i64, f3: i64, f4: kayak_rt::Handle<'static, Fmap>) -> kayak_rt::Handle<'static, Fmap> {
     kayak_rt::heap_alloc(Fmap::FmNode(f0, f1, f2, f3, f4))
 }
 
@@ -134,7 +134,7 @@ pub mod queries {
     }
 
     #[inline]
-    pub fn fmap_height(t: &'static Fmap) -> i64 {
+    pub fn fmap_height(t: kayak_rt::Handle<'static, Fmap>) -> i64 {
         let tagcase_ = t;
         match *tagcase_ {
             Fmap::FmNone() => {
@@ -146,7 +146,7 @@ pub mod queries {
         }
     }
 
-    pub fn fmap_node(l: &'static Fmap, k: Str, x: i64, r: &'static Fmap) -> &'static Fmap {
+    pub fn fmap_node(l: kayak_rt::Handle<'static, Fmap>, k: Str, x: i64, r: kayak_rt::Handle<'static, Fmap>) -> kayak_rt::Handle<'static, Fmap> {
         let (hl, hr) = (fmap_height(l), fmap_height(r));
         fm_node(l, k, x, i64_plus(1i64, if i64_gt(hl, hr) {
             hl
@@ -156,7 +156,7 @@ pub mod queries {
     }
 
     /// As `bix-balanced` (check.kfx).
-    pub fn fmap_balanced(l: &'static Fmap, k: Str, x: i64, r: &'static Fmap) -> &'static Fmap {
+    pub fn fmap_balanced(l: kayak_rt::Handle<'static, Fmap>, k: Str, x: i64, r: kayak_rt::Handle<'static, Fmap>) -> kayak_rt::Handle<'static, Fmap> {
         let (hl, hr) = (fmap_height(l), fmap_height(r));
         if i64_gt(hl, i64_plus(hr, 1i64)) {
             let tagcase_ = l;
@@ -253,7 +253,7 @@ pub mod queries {
     pub fn memo_find(mut ms: Memos, mut k: i64) -> Memos {
         loop {
             if null_p(ms) {
-                return nil::<&'static Memo>();
+                return nil::<kayak_rt::Handle<'static, Memo>>();
             } else if {
                 let tagcase_ = car(ms);
                 match *tagcase_ {
@@ -270,7 +270,7 @@ pub mod queries {
         }
     }
 
-    pub fn fmap_put(t: &'static Fmap, n: Str, x: i64) -> &'static Fmap {
+    pub fn fmap_put(t: kayak_rt::Handle<'static, Fmap>, n: Str, x: i64) -> kayak_rt::Handle<'static, Fmap> {
         let tagcase_ = t;
         match *tagcase_ {
             Fmap::FmNone() => {
@@ -289,7 +289,7 @@ pub mod queries {
     }
 
     /// `n`'s fingerprint; 0 for a name with none.
-    pub fn fmap_get(mut t: &'static Fmap, mut n: Str) -> i64 {
+    pub fn fmap_get(mut t: kayak_rt::Handle<'static, Fmap>, mut n: Str) -> i64 {
         loop {
             let tagcase_ = t;
             match *tagcase_ {
@@ -325,9 +325,9 @@ pub mod queries {
         let n = string_length_i64(s);
         let h = string_length_i64(head);
         if (i64_gt_eq(n, h) && string_eq_p(substring(s, int_lit(0), i64_to_int(h)), head)) {
-            memo_records(s, h, n, nil::<&'static Memo>())
+            memo_records(s, h, n, nil::<kayak_rt::Handle<'static, Memo>>())
         } else {
-            nil::<&'static Memo>()
+            nil::<kayak_rt::Handle<'static, Memo>>()
         }
     }
 }

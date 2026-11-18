@@ -18,46 +18,46 @@ pub enum Sexp {
     Num(i64, Str, i64),
     Big(Str, Str, i64),
     Chr(char, Str, i64),
-    Lst(List<&'static Sexp>, Str, i64, i64),
+    Lst(List<kayak_rt::Handle<'static, Sexp>>, Str, i64, i64),
     Real(Str, Str, i64),
 }
 
-pub fn sym(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
+pub fn sym(f0: Str, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Sexp> {
     kayak_rt::heap_alloc(Sexp::Sym(f0, f1, f2))
 }
 
-pub fn str(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
+pub fn str(f0: Str, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Sexp> {
     kayak_rt::heap_alloc(Sexp::Str(f0, f1, f2))
 }
 
-pub fn num(f0: i64, f1: Str, f2: i64) -> &'static Sexp {
+pub fn num(f0: i64, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Sexp> {
     kayak_rt::heap_alloc(Sexp::Num(f0, f1, f2))
 }
 
-pub fn big(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
+pub fn big(f0: Str, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Sexp> {
     kayak_rt::heap_alloc(Sexp::Big(f0, f1, f2))
 }
 
-pub fn chr(f0: char, f1: Str, f2: i64) -> &'static Sexp {
+pub fn chr(f0: char, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Sexp> {
     kayak_rt::heap_alloc(Sexp::Chr(f0, f1, f2))
 }
 
-pub fn lst(f0: List<&'static Sexp>, f1: Str, f2: i64, f3: i64) -> &'static Sexp {
+pub fn lst(f0: List<kayak_rt::Handle<'static, Sexp>>, f1: Str, f2: i64, f3: i64) -> kayak_rt::Handle<'static, Sexp> {
     kayak_rt::heap_alloc(Sexp::Lst(f0, f1, f2, f3))
 }
 
-pub fn real(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
+pub fn real(f0: Str, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Sexp> {
     kayak_rt::heap_alloc(Sexp::Real(f0, f1, f2))
 }
 
-pub type Sexps = List<&'static Sexp>;
+pub type Sexps = List<kayak_rt::Handle<'static, Sexp>>;
 
 // Where reading is: the text left, its line, and its offset.
 pub enum Here {
     Here(Chars, i64, i64),
 }
 
-pub fn here(f0: Chars, f1: i64, f2: i64) -> &'static Here {
+pub fn here(f0: Chars, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Here> {
     kayak_rt::heap_alloc(Here::Here(f0, f1, f2))
 }
 
@@ -65,18 +65,18 @@ pub fn here(f0: Chars, f1: i64, f2: i64) -> &'static Here {
 // list; a token, the text after it, and its length, which a token's end
 // leaves on its line.
 pub enum Got {
-    Got(&'static Sexp, &'static Here),
+    Got(kayak_rt::Handle<'static, Sexp>, kayak_rt::Handle<'static, Here>),
 }
 
-pub fn got(f0: &'static Sexp, f1: &'static Here) -> &'static Got {
+pub fn got(f0: kayak_rt::Handle<'static, Sexp>, f1: kayak_rt::Handle<'static, Here>) -> kayak_rt::Handle<'static, Got> {
     kayak_rt::heap_alloc(Got::Got(f0, f1))
 }
 
 pub enum Gots {
-    Gots(Sexps, &'static Here),
+    Gots(Sexps, kayak_rt::Handle<'static, Here>),
 }
 
-pub fn gots(f0: Sexps, f1: &'static Here) -> &'static Gots {
+pub fn gots(f0: Sexps, f1: kayak_rt::Handle<'static, Here>) -> kayak_rt::Handle<'static, Gots> {
     kayak_rt::heap_alloc(Gots::Gots(f0, f1))
 }
 
@@ -84,7 +84,7 @@ pub enum Tok {
     Tok(Str, Chars, i64),
 }
 
-pub fn tok(f0: Str, f1: Chars, f2: i64) -> &'static Tok {
+pub fn tok(f0: Str, f1: Chars, f2: i64) -> kayak_rt::Handle<'static, Tok> {
     kayak_rt::heap_alloc(Tok::Tok(f0, f1, f2))
 }
 
@@ -95,7 +95,7 @@ pub fn read_error(file: Str, line: i64, message: Str) -> Void {
 
 /// A comment's text, to the newline that ends it, which is left. The line
 /// is not counted here, but by `skip`, which meets the newline.
-pub fn skip_line(mut cs: Chars, mut pos: i64) -> &'static Here {
+pub fn skip_line(mut cs: Chars, mut pos: i64) -> kayak_rt::Handle<'static, Here> {
     loop {
         if null_p(cs) {
             return here(cs, 0i64, pos);
@@ -110,7 +110,7 @@ pub fn skip_line(mut cs: Chars, mut pos: i64) -> &'static Here {
 
 /// Skips whitespace and comments, counting lines and characters; a `here`
 /// made only where they end (C363).
-pub fn skip_at(mut cs: Chars, mut line: i64, mut pos: i64) -> &'static Here {
+pub fn skip_at(mut cs: Chars, mut line: i64, mut pos: i64) -> kayak_rt::Handle<'static, Here> {
     loop {
         if null_p(cs) {
             return here(cs, line, pos);
@@ -135,7 +135,7 @@ pub fn skip_at(mut cs: Chars, mut line: i64, mut pos: i64) -> &'static Here {
 }
 
 #[inline]
-pub fn skip(h: &'static Here) -> &'static Here {
+pub fn skip(h: kayak_rt::Handle<'static, Here>) -> kayak_rt::Handle<'static, Here> {
     let tagcase_ = h;
     match *tagcase_ {
         Here::Here(cs, line, pos) => {
@@ -152,7 +152,7 @@ pub fn delimiter_p(c: char) -> bool {
 /// A token, `n` characters of it already read, from offset `from` of
 /// `text`, whose rest is `cs`: its text, a `substring` of `text` (C363),
 /// and `n`, how many.
-pub fn token_at(mut cs: Chars, mut text: Str, mut from: i64, mut n: i64) -> &'static Tok {
+pub fn token_at(mut cs: Chars, mut text: Str, mut from: i64, mut n: i64) -> kayak_rt::Handle<'static, Tok> {
     loop {
         if (null_p(cs) || delimiter_p(car(cs))) {
             return tok(substring(text, i64_to_int(from), i64_to_int(i64_plus(from, n))), cs, n);
@@ -184,7 +184,7 @@ pub fn unescape(c: char) -> char {
 /// R7RS's hex escape in a string (a backslash, `x41;`), after its `x`: the hex digits' value `n`,
 /// `k` of them read, up to the `;`; the rest, as a token's text, the
 /// character it names.
-pub fn hex_escape(mut cs: Chars, mut n: i64, mut k: i64) -> &'static Tok {
+pub fn hex_escape(mut cs: Chars, mut n: i64, mut k: i64) -> kayak_rt::Handle<'static, Tok> {
     loop {
         if null_p(cs) {
             return tok(str_lit(""), cs, k);
@@ -210,7 +210,7 @@ pub fn hex_escape(mut cs: Chars, mut n: i64, mut k: i64) -> &'static Tok {
 /// A string's characters, after its opening quote on line `start`, at
 /// offset `at`: its runs between escapes, `substring`s of `text` (C363),
 /// newest first, the one now from `from`.
-pub fn string_body(mut cs: Chars, mut text: Str, mut runs: Strings, mut from: i64, mut file: Str, mut start: i64, mut at: i64, mut line: i64, mut pos: i64) -> &'static Got {
+pub fn string_body(mut cs: Chars, mut text: Str, mut runs: Strings, mut from: i64, mut file: Str, mut start: i64, mut at: i64, mut line: i64, mut pos: i64) -> kayak_rt::Handle<'static, Got> {
     loop {
         if null_p(cs) {
             return match read_error(file, start, str_lit("a string is not closed")) {};
@@ -470,7 +470,7 @@ pub fn hex_value(mut cs: Chars, mut n: i64, mut file: Str, mut line: i64) -> i64
     }
 }
 
-pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
+pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> kayak_rt::Handle<'static, Sexp> {
     let cs = string_chars(s);
     if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && (char_eq_p(car(cdr(cs)), 'x') || char_eq_p(car(cdr(cs)), 'X')) && not(null_p(cdr(cdr(cs))))) {
         // A hex literal, `#x1f`, `#x-1f`, R7RS's, as FX-26 reads it.
@@ -618,7 +618,7 @@ pub fn char_named(s: Str, file: Str, line: i64) -> char {
 
 /// A datum at the start of `h`'s text, the rest of `text`, which `file`
 /// holds.
-pub fn read_datum(h: &'static Here, text: Str, file: Str) -> &'static Got {
+pub fn read_datum(h: kayak_rt::Handle<'static, Here>, text: Str, file: Str) -> kayak_rt::Handle<'static, Got> {
     let tagcase_ = h;
     match *tagcase_ {
         Here::Here(cs, line, pos) => {
@@ -698,7 +698,7 @@ pub fn read_datum(h: &'static Here, text: Str, file: Str) -> &'static Got {
     }
 }
 
-pub fn read_items(h: &'static Here, text: Str, file: Str) -> &'static Gots {
+pub fn read_items(h: kayak_rt::Handle<'static, Here>, text: Str, file: Str) -> kayak_rt::Handle<'static, Gots> {
     let h = skip(h);
     let tagcase_ = h;
     match *tagcase_ {
@@ -706,7 +706,7 @@ pub fn read_items(h: &'static Here, text: Str, file: Str) -> &'static Gots {
             if null_p(cs) {
                 match read_error(file, line, str_lit("a ( with no )")) {}
             } else if char_eq_p(car(cs), ')') {
-                gots(nil::<&'static Sexp>(), here(cdr(cs), line, i64_plus(pos, 1i64)))
+                gots(nil::<kayak_rt::Handle<'static, Sexp>>(), here(cdr(cs), line, i64_plus(pos, 1i64)))
             } else {
                 let tagcase_ = read_datum(h, text, file);
                 match *tagcase_ {
@@ -724,13 +724,13 @@ pub fn read_items(h: &'static Here, text: Str, file: Str) -> &'static Gots {
     }
 }
 
-pub fn read_from(h: &'static Here, text: Str, file: Str) -> Sexps {
+pub fn read_from(h: kayak_rt::Handle<'static, Here>, text: Str, file: Str) -> Sexps {
     let h = skip(h);
     let tagcase_ = h;
     match *tagcase_ {
         Here::Here(cs, line, pos) => {
             if null_p(cs) {
-                nil::<&'static Sexp>()
+                nil::<kayak_rt::Handle<'static, Sexp>>()
             } else {
                 let tagcase_ = read_datum(h, text, file);
                 match *tagcase_ {
@@ -760,27 +760,27 @@ pub fn read_all(text: Str, file: Str, line: i64) -> Sexps {
 // The labels made so far: an AVL tree by number.
 pub enum Labels {
     LbNone(),
-    LbNode(&'static Labels, i64, &'static Sexp, i64, &'static Labels),
+    LbNode(kayak_rt::Handle<'static, Labels>, i64, kayak_rt::Handle<'static, Sexp>, i64, kayak_rt::Handle<'static, Labels>),
 }
 
-pub fn lb_none() -> &'static Labels {
+pub fn lb_none() -> kayak_rt::Handle<'static, Labels> {
     kayak_rt::heap_alloc(Labels::LbNone())
 }
 
-pub fn lb_node(f0: &'static Labels, f1: i64, f2: &'static Sexp, f3: i64, f4: &'static Labels) -> &'static Labels {
+pub fn lb_node(f0: kayak_rt::Handle<'static, Labels>, f1: i64, f2: kayak_rt::Handle<'static, Sexp>, f3: i64, f4: kayak_rt::Handle<'static, Labels>) -> kayak_rt::Handle<'static, Labels> {
     kayak_rt::heap_alloc(Labels::LbNode(f0, f1, f2, f3, f4))
 }
 
 pub enum Resolved {
-    Resolved(Sexps, &'static Labels),
+    Resolved(Sexps, kayak_rt::Handle<'static, Labels>),
 }
 
-pub fn resolved(f0: Sexps, f1: &'static Labels) -> &'static Resolved {
+pub fn resolved(f0: Sexps, f1: kayak_rt::Handle<'static, Labels>) -> kayak_rt::Handle<'static, Resolved> {
     kayak_rt::heap_alloc(Resolved::Resolved(f0, f1))
 }
 
 #[inline]
-pub fn lb_height(t: &'static Labels) -> i64 {
+pub fn lb_height(t: kayak_rt::Handle<'static, Labels>) -> i64 {
     let tagcase_ = t;
     match *tagcase_ {
         Labels::LbNone() => {
@@ -792,7 +792,7 @@ pub fn lb_height(t: &'static Labels) -> i64 {
     }
 }
 
-pub fn lb_make(l: &'static Labels, k: i64, x: &'static Sexp, r: &'static Labels) -> &'static Labels {
+pub fn lb_make(l: kayak_rt::Handle<'static, Labels>, k: i64, x: kayak_rt::Handle<'static, Sexp>, r: kayak_rt::Handle<'static, Labels>) -> kayak_rt::Handle<'static, Labels> {
     lb_node(l, k, x, i64_plus(1i64, {
         let (a, b) = (lb_height(l), lb_height(r));
         if i64_gt(a, b) {
@@ -803,7 +803,7 @@ pub fn lb_make(l: &'static Labels, k: i64, x: &'static Sexp, r: &'static Labels)
     }), r)
 }
 
-pub fn lb_balanced(l: &'static Labels, k: i64, x: &'static Sexp, r: &'static Labels) -> &'static Labels {
+pub fn lb_balanced(l: kayak_rt::Handle<'static, Labels>, k: i64, x: kayak_rt::Handle<'static, Sexp>, r: kayak_rt::Handle<'static, Labels>) -> kayak_rt::Handle<'static, Labels> {
     let (hl, hr) = (lb_height(l), lb_height(r));
     if i64_gt(hl, i64_plus(hr, 1i64)) {
         let tagcase_ = l;
@@ -858,7 +858,7 @@ pub fn lb_balanced(l: &'static Labels, k: i64, x: &'static Sexp, r: &'static Lab
     }
 }
 
-pub fn lb_put(t: &'static Labels, k: i64, x: &'static Sexp) -> &'static Labels {
+pub fn lb_put(t: kayak_rt::Handle<'static, Labels>, k: i64, x: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Labels> {
     let tagcase_ = t;
     match *tagcase_ {
         Labels::LbNone() => {
@@ -876,12 +876,12 @@ pub fn lb_put(t: &'static Labels, k: i64, x: &'static Sexp) -> &'static Labels {
     }
 }
 
-pub fn lb_get(mut t: &'static Labels, mut k: i64) -> Sexps {
+pub fn lb_get(mut t: kayak_rt::Handle<'static, Labels>, mut k: i64) -> Sexps {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
             Labels::LbNone() => {
-                return nil::<&'static Sexp>();
+                return nil::<kayak_rt::Handle<'static, Sexp>>();
             }
             Labels::LbNode(l, j, y, h, r) => {
                 if i64_eq(k, j) {
@@ -899,7 +899,7 @@ pub fn lb_get(mut t: &'static Labels, mut k: i64) -> Sexps {
 }
 
 /// `N` of a name `#N=` (`mark` `=`) or `#N#` (`#`); -1 if it is none.
-pub fn datum_label_of(e: &'static Sexp, mark: Str) -> i64 {
+pub fn datum_label_of(e: kayak_rt::Handle<'static, Sexp>, mark: Str) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
@@ -919,7 +919,7 @@ pub fn datum_label_of(e: &'static Sexp, mark: Str) -> i64 {
 
 /// Items `xs`, each label made and each reference to one resolved, onto
 /// `acc` (newest first); and the labels after.
-pub fn labels_resolved(mut xs: Sexps, mut ls: &'static Labels, mut acc: Sexps) -> &'static Resolved {
+pub fn labels_resolved(mut xs: Sexps, mut ls: kayak_rt::Handle<'static, Labels>, mut acc: Sexps) -> kayak_rt::Handle<'static, Resolved> {
     loop {
         if null_p(xs) {
             return resolved(reverse(acc), ls);
@@ -937,7 +937,7 @@ pub fn labels_resolved(mut xs: Sexps, mut ls: &'static Labels, mut acc: Sexps) -
                 let found = lb_get(ls, r#use);
                 if null_p(found) {
                     error(string_append(str_lit("kfx: no datum is labelled #"), string_append(i64_to_string(r#use), str_lit("="))));
-                    return resolved(nil::<&'static Sexp>(), ls);
+                    return resolved(nil::<kayak_rt::Handle<'static, Sexp>>(), ls);
                 } else {
                     (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(found), acc));
                     continue;
@@ -956,11 +956,11 @@ pub fn labels_resolved(mut xs: Sexps, mut ls: &'static Labels, mut acc: Sexps) -
 }
 
 /// A datum, its labels resolved: of a list, its items'.
-pub fn datum_resolved(e: &'static Sexp, ls: &'static Labels) -> &'static Resolved {
+pub fn datum_resolved(e: kayak_rt::Handle<'static, Sexp>, ls: kayak_rt::Handle<'static, Labels>) -> kayak_rt::Handle<'static, Resolved> {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            let tagcase_ = labels_resolved(xs, ls, nil::<&'static Sexp>());
+            let tagcase_ = labels_resolved(xs, ls, nil::<kayak_rt::Handle<'static, Sexp>>());
             match *tagcase_ {
                 Resolved::Resolved(ys, ls2) => {
                     resolved(kayak_rt::heap_cons(lst(ys, f, l, p), kayak_rt::nil()), ls2)
@@ -977,7 +977,7 @@ pub fn datum_resolved(e: &'static Sexp, ls: &'static Labels) -> &'static Resolve
 /// Every datum in `text`, data of `file`, its datum labels resolved.
 #[inline]
 pub fn read_data(text: Str, file: Str) -> Sexps {
-    let tagcase_ = labels_resolved(read_all(text, file, 1i64), lb_none(), nil::<&'static Sexp>());
+    let tagcase_ = labels_resolved(read_all(text, file, 1i64), lb_none(), nil::<kayak_rt::Handle<'static, Sexp>>());
     match *tagcase_ {
         Resolved::Resolved(xs, ls) => {
             xs
@@ -987,7 +987,7 @@ pub fn read_data(text: Str, file: Str) -> Sexps {
 
 // Taking `sexp`s apart
 /// The file a datum was read from; ``, for one the compiler made.
-pub fn datum_file(e: &'static Sexp) -> Str {
+pub fn datum_file(e: kayak_rt::Handle<'static, Sexp>) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, file, pos) => {
@@ -1015,7 +1015,7 @@ pub fn datum_file(e: &'static Sexp) -> Str {
 }
 
 /// Where in its file a datum begins.
-pub fn datum_pos(e: &'static Sexp) -> i64 {
+pub fn datum_pos(e: kayak_rt::Handle<'static, Sexp>) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, file, pos) => {
@@ -1043,7 +1043,7 @@ pub fn datum_pos(e: &'static Sexp) -> i64 {
 }
 
 #[inline]
-pub fn sym_name(e: &'static Sexp) -> Str {
+pub fn sym_name(e: kayak_rt::Handle<'static, Sexp>) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(s, at_file, at_pos) => {
@@ -1057,7 +1057,7 @@ pub fn sym_name(e: &'static Sexp) -> Str {
 }
 
 #[inline]
-pub fn sym_is_p(e: &'static Sexp, s: Str) -> bool {
+pub fn sym_is_p(e: kayak_rt::Handle<'static, Sexp>, s: Str) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, at_file, at_pos) => {
@@ -1071,7 +1071,7 @@ pub fn sym_is_p(e: &'static Sexp, s: Str) -> bool {
 }
 
 #[inline]
-pub fn items(e: &'static Sexp) -> Sexps {
+pub fn items(e: kayak_rt::Handle<'static, Sexp>) -> Sexps {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
@@ -1084,7 +1084,7 @@ pub fn items(e: &'static Sexp) -> Sexps {
     }
 }
 
-pub fn head_is_p(e: &'static Sexp, s: Str) -> bool {
+pub fn head_is_p(e: kayak_rt::Handle<'static, Sexp>, s: Str) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
@@ -1100,7 +1100,7 @@ pub fn head_is_p(e: &'static Sexp, s: Str) -> bool {
 /// A type `(subr (conv C) E (T ...) R)` as `(subr E (T ...) R)`: a native
 /// procedure is in Rust as any is (C116), so past the checker no pass
 /// need know its convention.
-pub fn without_conv(t: &'static Sexp) -> &'static Sexp {
+pub fn without_conv(t: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
     let tagcase_ = t;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
@@ -1118,17 +1118,17 @@ pub fn without_conv(t: &'static Sexp) -> &'static Sexp {
 }
 
 #[inline]
-pub fn second(xs: Sexps) -> &'static Sexp {
+pub fn second(xs: Sexps) -> kayak_rt::Handle<'static, Sexp> {
     car(cdr(xs))
 }
 
 #[inline]
-pub fn third(xs: Sexps) -> &'static Sexp {
+pub fn third(xs: Sexps) -> kayak_rt::Handle<'static, Sexp> {
     car(cdr(cdr(xs)))
 }
 
 #[inline]
-pub fn fourth(xs: Sexps) -> &'static Sexp {
+pub fn fourth(xs: Sexps) -> kayak_rt::Handle<'static, Sexp> {
     car(cdr(cdr(cdr(xs))))
 }
 
@@ -1136,7 +1136,7 @@ pub fn fourth(xs: Sexps) -> &'static Sexp {
 /// as its type and representation alone, `(define-generative t T)`: its
 /// conversions' names (Fixpt cb172689, C428) are `generative-seal`'s and
 /// `generative-unseal`'s. Any other form as it is.
-pub fn generative_core(f: &'static Sexp) -> &'static Sexp {
+pub fn generative_core(f: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
     let tagcase_ = f;
     match *tagcase_ {
         Sexp::Lst(xs, fl, l, p) => {
@@ -1179,7 +1179,7 @@ pub fn keyed_name(mut xs: Sexps, mut k: Str) -> Str {
     }
 }
 
-pub fn generative_named(f: &'static Sexp, k: Str) -> Str {
+pub fn generative_named(f: kayak_rt::Handle<'static, Sexp>, k: Str) -> Str {
     let tagcase_ = f;
     match *tagcase_ {
         Sexp::Lst(xs, fl, l, p) => {
@@ -1198,19 +1198,19 @@ pub fn generative_named(f: &'static Sexp, k: Str) -> Str {
 
 /// A `define-generative`'s conversion into its type, `#:seal`'s name.
 #[inline]
-pub fn generative_seal(f: &'static Sexp) -> Str {
+pub fn generative_seal(f: kayak_rt::Handle<'static, Sexp>) -> Str {
     generative_named(f, str_lit("#:seal"))
 }
 
 /// Its conversion out of it, `#:unseal`'s.
 #[inline]
-pub fn generative_unseal(f: &'static Sexp) -> Str {
+pub fn generative_unseal(f: kayak_rt::Handle<'static, Sexp>) -> Str {
     generative_named(f, str_lit("#:unseal"))
 }
 
 /// A lambda's parameter's name: it is `x` or `(x T)`.
 #[inline]
-pub fn param_name(param: &'static Sexp) -> Str {
+pub fn param_name(param: kayak_rt::Handle<'static, Sexp>) -> Str {
     sym_name({
         let tagcase_ = param;
         match *tagcase_ {
@@ -1226,7 +1226,7 @@ pub fn param_name(param: &'static Sexp) -> Str {
 }
 
 #[inline]
-pub fn lambda_form_p(e: &'static Sexp) -> bool {
+pub fn lambda_form_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
     (head_is_p(e, str_lit("lambda")) || head_is_p(e, str_lit("plambda")))
 }
 
