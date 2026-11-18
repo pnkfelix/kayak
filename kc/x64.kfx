@@ -194,7 +194,7 @@
       (define x64-kind-of (subr kfx (string) i64)
         (lambda (n)
           (cond ((string=? n "array?") 32) ((string=? n "ref?") 10) ((string=? n "sum?") 36) ((string=? n "product?") 37)
-                ((string=? n "vector?") 3) ((string=? n "bytevector?") 4) (else 48))))
+                ((string=? n "vector?") 3) ((string=? n "bytevector?") 4) ((string=? n "f64?") 5) (else 48))))
 
       (define x64-comparisons (listof string acyclic) (list "=" "<" "<=" ">" ">=" "char=?" "char<?" "char<=?" "char>?" "char>=?" "eq?" "symbol=?"))
 
@@ -919,6 +919,16 @@
                           (c (x64-emit c "addq $8, %rax"))
                           (c (x64-emit c (string-append "jmp " loop))))
                      (x64-emit-label c done)))
+                  ;; The expander's rest (C470): what is made, in the heap by
+                  ;; kcrt; what is asked, kcrt's to say; `error`, the run failed.
+                  ((string=? n "char->string") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_char_to_string"))
+                  ((string=? n "f64->string") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_f64_to_string"))
+                  ((string=? n "datum-list->vector") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_list_to_vector"))
+                  ((string=? n "char-whitespace?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_char_whitespace"))
+                  ((string=? n "char-numeric?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_char_numeric"))
+                  ((string=? n "string-hash") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_string_hash"))
+                  ((string=? n "symbol-name-hash") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_symbol_hash"))
+                  ((string=? n "error") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_error"))
                   ((string=? n "string?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_string"))
                   ((string=? n "symbol?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_symbol"))
                   ;; What a datum is (C447): a fixnum, tag 0; a character, its low
@@ -930,7 +940,7 @@
                   ((string=? n "procedure?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_procedure"))
                   ;; A bloblet of a kind (C448; `fixpt-heap`'s `layout.rs`), the
                   ;; runtime's to say.
-                  ((string-member? n (list "array?" "ref?" "sum?" "product?" "vector?" "bytevector?" "keyword?"))
+                  ((string-member? n (list "array?" "ref?" "sum?" "product?" "vector?" "bytevector?" "keyword?" "f64?"))
                    (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi")
                                        (string-append "movl $" (string-append (i64->string (x64-kind-of n)) ", %esi")))
                              "call kc_is_kind"))
@@ -1285,6 +1295,9 @@
                   (x64-heap-routine "kc_append" "kcrt_append" 2)
                   (x64-heap-routine "kc_reverse" "kcrt_reverse" 1)
                   (x64-heap-routine "kc_int_to_string" "kcrt_int_to_string" 1)
+                  (x64-heap-routine "kc_char_to_string" "kcrt_char_to_string" 1)
+                  (x64-heap-routine "kc_f64_to_string" "kcrt_f64_to_string" 1)
+                  (x64-heap-routine "kc_list_to_vector" "kcrt_list_to_vector" 1)
                   (x64-heap-routine "kc_given" "kcrt_given" 1)
                   "    .text\n    .globl kc_apply_run\nkc_apply_run:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r15\n"
                   "    call kc_apply_address\n    testq %rax, %rax\n    jne .Lkc_apply_have\n    movl $9, %edi\n    call kc_fail\n"
@@ -1303,13 +1316,16 @@
             "kcrt_substring" "kc_symbol_to_string" "kc_is_string" "kc_is_symbol" "kc_is_procedure"
             "kc_is_kind" "kcrt_append" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_collect"
             "kcrt_given" "kc_gc_reset" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of"
-            "kcrt_reverse" "kcrt_int_to_string"))
+            "kcrt_reverse" "kcrt_int_to_string"
+            "kcrt_char_to_string" "kc_char_whitespace" "kc_char_numeric" "kc_string_hash" "kc_symbol_hash"
+            "kcrt_f64_to_string" "kcrt_list_to_vector" "kc_error"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,
        not jumped to, so that its answer is seen."
-      (define x64-failing strings (list "kc_fail" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail"))
-      (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of" "kcrt_reverse" "kcrt_int_to_string"))
+      (define x64-failing strings (list "kc_fail" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_error"))
+      (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of" "kcrt_reverse" "kcrt_int_to_string"
+                                         "kcrt_char_to_string" "kcrt_f64_to_string" "kcrt_list_to_vector"))
 
       (define-rec
         (x64-routine-stubs (subr kfx (strings i64 (listof string acyclic)) string)

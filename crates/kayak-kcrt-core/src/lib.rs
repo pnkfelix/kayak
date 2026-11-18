@@ -85,6 +85,19 @@ pub fn written(v: u64) -> String {
 /// A list as Fixpt writes it (`print.rs`'s `put`): its elements, and a
 /// tail that is not a list after ` . `.
 fn put(out: &mut String, v: u64) {
+    // A vector (C470), as Fixpt writes one: `#(`, its elements, `)`.
+    if v & TAG_MASK == TAG_BLOBLET && kind(v) == KIND_VECTOR {
+        out.push_str("#(");
+        let n = vector_length(v);
+        for k in 0..n {
+            if k > 0 {
+                out.push(' ');
+            }
+            put(out, word(v - TAG_BLOBLET - 8 * (n + 1) + 8 * k));
+        }
+        out.push(')');
+        return;
+    }
     if v & TAG_MASK != TAG_PAIR {
         out.push_str(&atom(v));
         return;
@@ -459,6 +472,160 @@ fn int_string(args: *const u64, block: *mut u64) -> Result<u64, String> {
 #[unsafe(no_mangle)]
 pub extern "C" fn kcrt_int_to_string(args: *const u64, block: *mut u64) -> u64 {
     int_string(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+// ------------------------------------------------- the expander's rest (C470)
+
+/// A character's code point (an immediate, its payload from bit 8).
+fn char_of(v: u64) -> char {
+    char::from_u32((v >> IMM_PAYLOAD_SHIFT) as u32).unwrap_or('\u{fffd}')
+}
+
+/// A fixnum of `n`.
+fn fixnum(n: i64) -> u64 {
+    (n << 3) as u64
+}
+
+/// `(char->string c)`: a string of the one character.
+fn char_string(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    string_in(block, &char_of(arg(args, 0)).to_string())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_char_to_string(args: *const u64, block: *mut u64) -> u64 {
+    char_string(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+/// `(char-whitespace? c)` and `(char-numeric? c)`, as Fixpt's: Rust's
+/// Unicode `is_whitespace` and `is_numeric` (so `½` is numeric).
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_char_whitespace(v: u64) -> u64 {
+    boolean(char_of(v).is_whitespace())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_char_numeric(v: u64) -> u64 {
+    boolean(char_of(v).is_numeric())
+}
+
+/// FNV-1a of `points`, 64 bits.
+fn fnv1a(points: impl Iterator<Item = u64>) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for c in points {
+        h ^= c;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h
+}
+
+/// `(string-hash s)`, Fixpt's `%string-hash` (`Heap::string_fnv`): FNV-1a
+/// of the code points, each a `u64`, shifted right 4 into a fixnum. Of the
+/// contents alone, never the address (TODO §55: the heap may move).
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_string_hash(v: u64) -> u64 {
+    fixnum((fnv1a(string_text(v).chars().map(|c| c as u64)) >> 4) as i64)
+}
+
+/// `(symbol-name-hash s)`, Fixpt's `%symbol-hash`: the hash kept with the
+/// symbol when it was interned (its field 1, `kc_intern`'s: FNV-1a of the
+/// name's UTF-8 bytes, its top bit cleared, wrapped to a fixnum).
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_symbol_hash(v: u64) -> u64 {
+    word(v - TAG_BLOBLET - 40 + 16)
+}
+
+const KIND_VECTOR: u64 = 3;
+
+/// A vector's element count: its header's fields, less the trailer.
+fn vector_length(v: u64) -> u64 {
+    ((header(v) >> 14) & MOST_FIELDS).saturating_sub(1)
+}
+const KIND_FLONUM: u64 = 5;
+
+/// `(f64->string x)`, Fixpt's (`num.rs`'s `format_flonum`): an integral
+/// value under 1e21 with `.0`, else Rust's shortest form, `.0` added if it
+/// has no point or exponent; `+nan.0`, `+inf.0`, `-inf.0`.
+fn flonum_text(x: f64) -> String {
+    if x.is_nan() {
+        return "+nan.0".into();
+    }
+    if x.is_infinite() {
+        return if x > 0.0 {
+            "+inf.0".into()
+        } else {
+            "-inf.0".into()
+        };
+    }
+    if x == x.trunc() && x.abs() < 1e21 {
+        format!("{x:.1}")
+    } else {
+        let s = format!("{x}");
+        if s.contains(['.', 'e', 'E']) {
+            s
+        } else {
+            format!("{s}.0")
+        }
+    }
+}
+
+/// A flonum's value: a bloblet of kind 5, its suffix the bits (Fixpt's).
+fn f64_string(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let v = arg(args, 0);
+    if v & TAG_MASK != TAG_BLOBLET || kind(v) != KIND_FLONUM {
+        return Err("kc: f64->string of a value not an f64".to_string());
+    }
+    string_in(block, &flonum_text(f64::from_bits(word(v - TAG_BLOBLET))))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_f64_to_string(args: *const u64, block: *mut u64) -> u64 {
+    f64_string(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+/// `(datum-list->vector l)`, Fixpt's `list->vector`: a vector (kind 3) of
+/// `l`'s elements, laid out as Fixpt's `alloc` lays one: the header, the
+/// elements, a trailer, the value past it; none, a header alone. The room
+/// had at once and `l` read again after; `l` not a list fails as `cdr` of
+/// a non-pair does.
+fn list_vector(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let mut n = 0;
+    let mut rest = arg(args, 0);
+    while rest != null() {
+        if rest & TAG_MASK != TAG_PAIR {
+            return Err(fail_words(4).to_string());
+        }
+        n += 1;
+        rest = pair(rest).1;
+    }
+    if n == 0 {
+        let at = gc::words(block, 1)?;
+        set(at, TAG_HEADER | (KIND_VECTOR << 3));
+        return Ok(at + 8 + TAG_BLOBLET);
+    }
+    if n + 1 > MOST_FIELDS {
+        return Err("kc: not yet: a vector of more than 262142 elements".to_string());
+    }
+    let at = gc::words(block, n + 2)?;
+    set(at, TAG_HEADER | (KIND_VECTOR << 3) | ((n + 1) << 14));
+    let mut rest = arg(args, 0);
+    for k in 0..n {
+        let (car, cdr) = pair(rest);
+        set(at + 8 * (k + 1), car);
+        rest = cdr;
+    }
+    set(at + 8 * (n + 1), TAG_TRAILER | ((n + 1) << 3));
+    Ok(at + 8 * (n + 2) + TAG_BLOBLET)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_list_to_vector(args: *const u64, block: *mut u64) -> u64 {
+    list_vector(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+/// `(error message)`, FX-26's: the run fails, saying the message.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_error(v: u64) -> u64 {
+    failed(&string_text(v))
 }
 
 // ------------------------------------------------------------ control
@@ -858,6 +1025,22 @@ extern "C" fn here_int_to_string(args: *const u64, block: *mut u64) -> u64 {
     int_string(args, block).unwrap_or_else(failed_here)
 }
 
+extern "C" fn here_char_to_string(args: *const u64, block: *mut u64) -> u64 {
+    char_string(args, block).unwrap_or_else(failed_here)
+}
+
+extern "C" fn here_f64_to_string(args: *const u64, block: *mut u64) -> u64 {
+    f64_string(args, block).unwrap_or_else(failed_here)
+}
+
+extern "C" fn here_list_to_vector(args: *const u64, block: *mut u64) -> u64 {
+    list_vector(args, block).unwrap_or_else(failed_here)
+}
+
+extern "C" fn here_error(v: u64) -> u64 {
+    failed_here(string_text(v))
+}
+
 /// The address of the routine kc's code names `name` (`kc_show`, ...), as
 /// it is called in process (`kayak:kc-routine/1`): the routine itself, or,
 /// of one that may fail, its variant that answers 0 instead of ending the
@@ -881,6 +1064,14 @@ pub fn routine(name: &str) -> u64 {
         "kcrt_append" => here_append as *const (),
         "kcrt_reverse" => here_reverse as *const (),
         "kcrt_int_to_string" => here_int_to_string as *const (),
+        "kcrt_char_to_string" => here_char_to_string as *const (),
+        "kc_char_whitespace" => kc_char_whitespace as *const (),
+        "kc_char_numeric" => kc_char_numeric as *const (),
+        "kc_string_hash" => kc_string_hash as *const (),
+        "kc_symbol_hash" => kc_symbol_hash as *const (),
+        "kcrt_f64_to_string" => here_f64_to_string as *const (),
+        "kcrt_list_to_vector" => here_list_to_vector as *const (),
+        "kc_error" => here_error as *const (),
         "kc_array_index_fail" => here_array_index_fail as *const (),
         "kc_make_array_fail" => here_make_array_fail as *const (),
         "kc_string_index_fail" => here_string_index_fail as *const (),
@@ -1006,4 +1197,34 @@ pub extern "C" fn kc_fail(what: u64) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_show(v: u64) {
     println!("{}", written(v));
+}
+
+#[cfg(test)]
+mod flonums {
+    use super::flonum_text;
+
+    /// `f64->string` (C470) as Fixpt's `format_flonum` writes each (each
+    /// string the pinned Fixpt's `f64->string`): kc's programs make no
+    /// `f64` yet, the expander's data may hold one.
+    #[test]
+    fn written_as_fixpt_writes_them() {
+        for (x, s) in [
+            (1.0, "1.0"),
+            (-0.0, "-0.0"),
+            (0.1, "0.1"),
+            (2.5, "2.5"),
+            (1e20, "100000000000000000000.0"),
+            (1e21, "1000000000000000000000.0"),
+            (
+                1.5e300,
+                "1500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0",
+            ),
+            (1e-7, "0.0000001"),
+            (f64::NAN, "+nan.0"),
+            (f64::INFINITY, "+inf.0"),
+            (f64::NEG_INFINITY, "-inf.0"),
+        ] {
+            assert_eq!(flonum_text(x), s, "{x:?}");
+        }
+    }
 }

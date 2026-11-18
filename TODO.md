@@ -1778,9 +1778,10 @@ over its 1664 definitions, 335 of them refused:
 - ~~**`i64`**: `int->i64` 39, `i64->int` 32, `i64+` 14, `i64>=` 10,
   `i64=` 9, `i64-quotient` 3, `i64<=` 2, `i64-` 2.~~ Done (C462): an
   `i64` an `int`, a fixnum (past one kc fails, Fixpt wraps).
-- **Strings and characters**: ~~`int->string` 149~~ (C462), `char->string` 11,
+- ~~**Strings and characters**: `int->string` 149 (C462), `char->string` 11,
   `char-whitespace?` 6, `char-numeric?` 7, `string-hash` 6,
-  `symbol-name-hash` 4.
+  `symbol-name-hash` 4.~~ Done (C470), with `f64`, the vector and `error`
+  below.
 - ~~**More than six**: 26 procedures' parameters, 32 calls' arguments.~~
   Done (C464): to 64, the rest in `kc_args`; and `string-append` of any
   count. The survey then: `not yet` 264 times, was 343. Left: `vlambda`,
@@ -1793,14 +1794,26 @@ over its 1664 definitions, 335 of them refused:
   The survey then: 11 items refused, were 13; `not yet` 46 times, was
   264, all of the strings' and characters', `f64`, a vector and `error`
   below.
-- **`f64`**: `f64?` 6, `f64->string` 4. **Vectors**:
-  `datum-list->vector` 4. `error` 1.
+- ~~**`f64`**: `f64?` 6, `f64->string` 4. **Vectors**:
+  `datum-list->vector` 4. `error` 1.~~ Done (C470): Fixpt's layouts (a
+  flonum kind 5, a vector kind 3) and Fixpt's hashes. kc's programs make
+  no `f64` yet (no literal, no `int->f64`), so `f64->string` is tested in
+  kcrt-core alone, against the pinned Fixpt's strings. The survey then:
+  **no item refused, no `not yet`**: kc compiles the whole expander, its
+  9.4 MB of assembly accepted by GNU `as` (1583 procedures). Step 2's
+  code generator's gaps closed; what is left of step 2 is below.
+- **kfx's reader has no `|…|` symbols** (found at C470): `kfx/read.kfx`,
+  kc's and kfx's reader, reads `'||` as the symbol of two bars, Fixpt as
+  the empty name (R7RS). The expander's source has none. To be fixed in
+  the shared reader (a kfx change: its fixpoint), and its writer to bar
+  a name that needs it.
 - **A file of a place**: kc's checker refuses `module-parameters` as a
   program (`a region KFX-0 does not have: mxp`); kc's code has one
   heap, so the place can be it.
 - Not seen by a survey of the code generator: what runs (an `int` past
-  a fixnum, which kc fails; the expander's hashes), and the expander's
-  host: its asker, the bridge's data, its files read.
+  a fixnum, which kc fails; ~~the expander's hashes~~, Fixpt's since
+  C470), and the expander's host: its asker, the bridge's data, its files
+  read.
 
 ## 55. Debts against K8: what works against parallelism (the user, 2026-11-18)
 

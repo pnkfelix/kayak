@@ -65,7 +65,11 @@
               ;; A whole continuation's capture; a key's marks (C460).
               "cwcc" "current-marks"
               ;; Lists and numbers (C462).
-              "reverse" "length" "int->string"))
+              "reverse" "length" "int->string"
+              ;; The expander's rest (C470): characters, hashes, `f64`, a
+              ;; vector, a failure of the program's words.
+              "char->string" "char-whitespace?" "char-numeric?" "string-hash" "symbol-name-hash"
+              "f64?" "f64->string" "datum-list->vector" "error"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="

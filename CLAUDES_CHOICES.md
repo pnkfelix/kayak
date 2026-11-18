@@ -14181,3 +14181,51 @@ refused item has a `not yet` before its failure. Left: `char->string`
 - **The full check**: all passed in 544.1 s; kc-steps 353 of 353, each
   built again warm, no body run (8777 bodies in its cold passes, kc's
   identity new); kc-objects 461, 0 differ; nextest 5502 passed.
+
+## C470. The expander's rest: characters, hashes, `f64`, a vector, `error` (2026-11-18)
+
+The user, on C469's proposal to take what the survey left as one step:
+"Yep sounds good" (TODO §54 step 2). Reviewed first:
+- **Fixpt**: `char->string` a string of one; `char-whitespace?` and
+  `char-numeric?` Rust's Unicode `is_whitespace` and `is_numeric`
+  (`prim.rs`), so `½` is numeric; `string-hash` FNV-1a of the code
+  points, each a `u64`, shifted right 4 (`Heap::string_fnv`);
+  `symbol-name-hash` the hash `intern` keeps in the symbol's field 1,
+  FNV-1a of the name's UTF-8 bytes, its top bit cleared, wrapped to a
+  fixnum; `f64?` a bloblet of kind 5 (`ObjType::Flonum`), its bits the
+  suffix; `f64->string` `num.rs`'s `format_flonum`; `datum-list->vector`
+  `list->vector`, a vector of kind 3 laid out by `alloc` (header,
+  elements, a trailer; none, a header alone); `error` of a string, the
+  evaluation failed with it as the message.
+- **kayak**: kcrt-core's `kc_intern` (C421, C467) already kept Fixpt's
+  hash in field 1; heap routines of C462's kind (`x64-heap-routine`,
+  the arguments in a stack block the collector moves); kind tests by
+  `kc_is_kind` (C448).
+
+What changed:
+- **kcrt-core**: `kcrt_char_to_string`, `kcrt_f64_to_string` and
+  `kcrt_list_to_vector`, which make in kc's heap and may fail;
+  `kc_char_whitespace`, `kc_char_numeric`, `kc_string_hash` (of the
+  contents, never an address: the heap may move, TODO §55) and
+  `kc_symbol_hash` (field 1); `kc_error`, which always fails; each with
+  its in-process variant. The printer writes a vector `#(…)`.
+- **l0**: the nine unary. **x64**: each a call; `f64?` `kc_is_kind` 5.
+- **Tests** (tests/kc/lists/, Fixpt's answers, every way kc-steps runs):
+  `chars.fx` (Unicode whitespace and digits, strings of characters made
+  past a 64-word heap), `hashes.fx` (literal and made strings, symbols
+  quoted and made), `vectors.fx` (empty, mixed, made in a loop past a
+  64-word heap), `error.fx`; and kcrt-core's
+  `flonums::written_as_fixpt_writes_them`, each string the pinned
+  Fixpt's `f64->string` (kc's programs make no `f64` yet).
+- **Found**: kfx's reader (`kfx/read.kfx`, kc's too) has no `|…|`
+  symbols, so `'||` is the symbol of two bars, Fixpt's the empty name:
+  TODO §54, to fix in the shared reader. `hashes.fx` takes the empty
+  name by `string->symbol`.
+
+The survey again (as C469): no item refused, no `not yet`. kc compiles
+the whole expander; its 9.4 MB of assembly, 1583 procedures, accepted by
+GNU `as`. What step 2 still holds: a file of a place (kc's checker and
+`module-parameters`), an `int` past a fixnum, and the expander's host.
+- **The full check**: all passed in 652.9 s; kc-steps 357 of 357, each
+  built again warm, no body run; kc-objects 468, 0 differ; nextest 5503
+  passed (kcrt-core's new test among them).
