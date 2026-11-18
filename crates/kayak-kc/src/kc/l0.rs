@@ -893,6 +893,27 @@ pub mod kc_l0 {
                                 }
                             }
                         }
+                    } else if (string_eq_p(h, str_lit("string-append")) && null_p(cdr(xs))) {
+                        return l0_made(str_lit("(string \"\")"), next);
+                    } else if (string_eq_p(h, str_lit("string-append")) && null_p(cdr(cdr(xs)))) {
+                        let tagcase_ = l0_of(path, scope, env, next, second(xs));
+                        match *tagcase_ {
+                            L0Made::L0Made(a, n1) => {
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim string-append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" (string \"\"))"), kayak_rt::nil())))), n1);
+                            }
+                        }
+                    } else if (string_eq_p(h, str_lit("string-append")) && i64_gt(size(xs), 3i64)) {
+                        let tagcase_ = l0_of(path, scope, env, next, second(xs));
+                        match *tagcase_ {
+                            L0Made::L0Made(a, n1) => {
+                                let tagcase_ = l0_of(path, scope, env, n1, lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p));
+                                match *tagcase_ {
+                                    L0Made::L0Made(b, n2) => {
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim string-append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n2);
+                                    }
+                                }
+                            }
+                        }
                     } else if (i64_eq(size(xs), 2i64) && (string_eq_p(h, str_lit("int->i64")) || string_eq_p(h, str_lit("i64->int")))) {
                         e = second(xs);
                         continue;

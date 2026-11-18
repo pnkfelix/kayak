@@ -13937,3 +13937,61 @@ What changed:
   all passed in 596.2 s; kc-steps 348 of 348, each built again warm, no
   body run (kc-steps 402 s, was 345: the warm pass and the new cases);
   kc-objects 451, 0 differ; nextest 5501 passed; kc-bench's rows kept.
+
+## C464. More than six arguments in kc, and `string-append` of any count (2026-11-18)
+
+The user: "Go ahead" (after C463: the survey's calls of more than six
+arguments, 39, and procedures of more than six parameters, 26); and,
+while it was made, "Is kc_args gc managed? Does it work in presence of
+continuation capture? Does it handle var args?". Reviewed first:
+- **Fixpt**: register code, Larceny's convention, passes REG1…REG7 and
+  a list of the rest in REG8, which the callee takes apart, a `cons` per
+  value past the seventh at each call (`docs/performance.md`, "More than
+  8 values in register code"). FX-26's variadic procedures (`vsubr`,
+  `vlambda`, `apply`; `docs/fx26.md`, "Variadic procedures") pass a
+  count at every call, Larceny's way; `list`, `append` and
+  `string-append` are standard `vsubr`s, a call of any count the
+  runtime's primitive.
+- **kayak**: kc's convention is its own (only formats must be Fixpt's):
+  six registers; its entry's checks (the stack's limit, `poll`'s fuel,
+  every register kept, built and in process).
+
+What changed:
+- **x64**: arguments past the sixth (to 64) in `kc_args`, a run of words
+  of the image's, the seventh first: the caller stores them, after
+  every argument is made, through the writable view; the callee, a
+  procedure or a lambda, copies them into its frame's slots on entry,
+  after its registers'. Not the collector's: nothing between the stores
+  and the copy collects (the entry's checks fail or give fuel), so they
+  are no roots, and what is left there after the copy is never read. No
+  room on a caller's stack, so a tail call of more than six is as one of
+  fewer. A capture is a call out of a body, after the copy, so a
+  continuation's frames hold the arguments, and its call is of one
+  value; an abort leaves from a body too. One image's run at a time, as
+  its other cells (`kc_prompts`, the heap) are already.
+- **l0**: `string-append` of any count, as Fixpt's `vsubr`: `""` of
+  none, a fresh copy of one, more nested.
+- **Not yet**: `vlambda`, `vsubr` and `apply`, the variadic procedures
+  a program writes; kc refuses them (the expander has none). A `vsubr`
+  is a type of its own, so each call of one is known to be one; a count
+  there alone, or the list made by the caller, is to choose then.
+- **Tests**: tests/kc/step9/many-args.fx (eight, called and in tail
+  position; a loop of nine, each round a tail call; recursion of seven;
+  a lambda of ten; a closure over the seventh; arguments that allocate,
+  past a heap of 64 words; twenty); tests/kc/control/many-args-captured.fx
+  (a continuation taken ten calls of eight deep, resumed twice, each
+  frame's seventh and eighth read after; a continuation called by a
+  lambda of seven); tests/kc/lists/string-append.fx. Fixpt's answers;
+  kc's built, in process, and with a heap of 64 words.
+- **The survey again**: no call or procedure past six left; `not yet`
+  met 264 times, was 343; 13 items refused, as before (theirs are the
+  type-level names, the strings' and characters' rest, `f64`, a vector).
+- **The full check**: all passed in 626.1 s; kc-steps 351 of 351, each
+  built again warm, no body run; kc-objects 457, 0 differ (the
+  `kc_args+N(%rip)` references across objects as `as` makes them);
+  nextest 5501 passed.
+- **The timings**: C463's rows, the snapshot check's first, recorded at
+  this check's start, were slower than C462's by hand (at 1000
+  procedures `fix-forward` 509 ms, was 299; Fixpt's column 5% slower
+  too); this check's, at C464, are C462's again (299 ms). One run, best
+  of 3, can be that far off: a trend is to be read over several steps.

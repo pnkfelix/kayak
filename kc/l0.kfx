@@ -416,6 +416,17 @@
                            (l0-made (a n1)
                              (tagcase (l0-of path scope env n1 (lst (cons (car xs) (cdr (cdr xs))) f l p))
                                (l0-made (b n2) (l0-made (string-list-append (list "(prim append " a " " b ")")) n2))))))
+                        ;; `string-append` of any count (C464), as Fixpt's `vsubr`:
+                        ;; `""` of none; one copied, onto `""`; more, nested.
+                        ((and (string=? h "string-append") (null? (cdr xs))) (l0-made "(string \"\")" next))
+                        ((and (string=? h "string-append") (null? (cdr (cdr xs))))
+                         (tagcase (l0-of path scope env next (second xs))
+                           (l0-made (a n1) (l0-made (string-list-append (list "(prim string-append " a " (string \"\"))")) n1))))
+                        ((and (string=? h "string-append") (i64> (size xs) 3))
+                         (tagcase (l0-of path scope env next (second xs))
+                           (l0-made (a n1)
+                             (tagcase (l0-of path scope env n1 (lst (cons (car xs) (cdr (cdr xs))) f l p))
+                               (l0-made (b n2) (l0-made (string-list-append (list "(prim string-append " a " " b ")")) n2))))))
                         ((and (i64= (size xs) 2) (or (string=? h "int->i64") (string=? h "i64->int")))
                          (l0-of path scope env next (second xs)))
                         ((and (i64= (size xs) 3) (not (string=? (int-op-of h i64-as-int) "")))

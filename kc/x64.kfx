@@ -233,6 +233,54 @@
       "The registers a call's arguments are given in, in order."
       (define x64-arg-registers (listof string acyclic) (list "%rdi" "%rsi" "%rdx" "%rcx" "%r8" "%r9"))
 
+      "Arguments past the sixth (C464): in `kc_args`, a run of words
+       of the image's, the seventh first, which the callee copies into its
+       frame on entry, after its registers' (`x64-loaded-args`). Nothing
+       between the caller's stores and that copy collects (the entry's
+       checks fail or give fuel, every register kept), so the words are no
+       roots; nor does a tail call need room on a caller's stack. Larceny's
+       convention, Fixpt's register code's, passes them as a list instead,
+       a `cons` each at each call; kc's convention is its own. At most
+       `x64-most-args`."
+      (define x64-most-args i64 64)
+
+      (define-rec
+        (x64-zero-quads (subr kfx (i64 (listof string acyclic)) string)
+          (lambda (n acc) (if (i64<= n 0) (string-list-append acc) (x64-zero-quads (i64- n 1) (cons "    .quad 0\n" acc))))))
+
+      (define-rec
+        (x64-spilled-args (subr kfx (x64-code i64 i64 i64) x64-code)
+          (lambda (c si k n)
+            "Arguments `k` (from 6) to `n` - 1, from the slots from `si`, stored
+             in `kc_args` through the writable view, its address in `%rcx`."
+            (if (i64>= k n)
+                c
+                (x64-spilled-args
+                  (x64-emit (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si k)) ", %rax")))
+                            (string-append "movq %rax, " (string-append (i64->string (i64- (i64* 8 (i64- k 6)) 4)) "(%rcx)")))
+                  si (i64+ k 1) n)))))
+
+      (define x64-args-passed (subr kfx (x64-code i64 i64) x64-code)
+        (lambda (c si n)
+          "The `n` arguments in the slots from `si` where the callee takes them:
+           the first six in registers, the rest in `kc_args`."
+          (x64-moved-args
+            (if (i64> n 6)
+                (x64-spilled-args (x64-emit (x64-emit c "leaq kc_args(%rip), %rcx") "subq 208(%r15), %rcx") si 6 n)
+                c)
+            x64-arg-registers si n)))
+
+      (define-rec
+        (x64-loaded-args (subr kfx (x64-code i64 i64) x64-code)
+          (lambda (c k n)
+            "Parameters `k` (from 6) to `n` - 1, from `kc_args` into their slots."
+            (if (i64>= k n)
+                c
+                (x64-loaded-args
+                  (x64-emit (x64-emit c (string-append "movq kc_args+" (string-append (i64->string (i64* 8 (i64- k 6))) "(%rip), %rax")))
+                            (string-append "movq %rax, " (x64-slot k)))
+                  (i64+ k 1) n)))))
+
       (define-rec
         (x64-moved-args (subr kfx (x64-code (listof string acyclic) i64 i64) x64-code)
           (lambda (c regs si n)
@@ -486,10 +534,10 @@
                      ;; Each argument made into a slot of its own, then moved to its
                      ;; register, and the procedure called (C407).
                      (let* ((args (call-args t)) (n (size args)))
-                       (if (i64> n 6)
-                           (begin (not-yet "" "a call of more than six arguments") c)
+                       (if (i64> n x64-most-args)
+                           (begin (not-yet "" "a call of more than 64 arguments") c)
                            (let* ((c (x64-emit-args c args si env))
-                                  (c (x64-moved-args c x64-arg-registers si n)))
+                                  (c (x64-args-passed c si n)))
                              (x64-emit c (string-append "call " (x64-proc-symbol (call-name t))))))))
                     ((string=? h "if")
                      ;; The test, a bool: #f's word to the else, all else to the then (C405).
@@ -561,12 +609,12 @@
                      ;; The procedure into slot `si`, its arguments after it, then its
                      ;; code called, the closure in `%r10` (C412).
                      (let* ((args (app-args t)) (n (size args)))
-                       (if (i64> n 6)
-                           (begin (not-yet "" "a call of more than six arguments") c)
+                       (if (i64> n x64-most-args)
+                           (begin (not-yet "" "a call of more than 64 arguments") c)
                            (let* ((c (x64-emit-expr c (app-fn t) si env))
                                   (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
                                   (c (x64-emit-args c args (i64+ si 1) env))
-                                  (c (x64-moved-args c x64-arg-registers (i64+ si 1) n))
+                                  (c (x64-args-passed c (i64+ si 1) n))
                                   (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %r10")))))
                              (x64-emit c "call *-28(%r10)")))))
                     ((string=? h "let") (x64-emit-let c (let-bindings t) (let-body t) si env env ""))
@@ -579,14 +627,14 @@
              `ret` with the failures' calls, its parameters' and free values'
              slots first; and here, a closure of it over the free values."
             (let* ((ps (lambda-params t)) (n (size ps)) (fv (lambda-free t)) (m (size fv)))
-              (if (i64> n 6)
-                  (begin (not-yet "" "a lambda of more than six parameters") c)
+              (if (i64> n x64-most-args)
+                  (begin (not-yet "" "a lambda of more than 64 parameters") c)
                   (tagcase c
                     (x64-code (ls k slots fs px)
                       (let* ((sym (string-list-append (list "kcl_" px "_" (i64->string (term-number t)))))
                              (fr (x64-label c "frame" k))
                              (inner (x64-using (x64-code nil (i64+ k 1) 0 nil px) (i64+ n m)))
-                             (inner (x64-stored-params inner x64-arg-registers 0 n))
+                             (inner (x64-loaded-args (x64-stored-params inner x64-arg-registers 0 n) 6 n))
                              (inner (x64-loaded-free inner 0 m n))
                              (env2 (x64-params-at fv n (x64-params-at ps 0 nil)))
                              (inner (x64-emit-tail inner (item-body t) (i64+ n m) env2 fr)))
@@ -673,10 +721,10 @@
                     ((string=? h "seq")
                      (let ((ts (seq-terms t)))
                        (x64-emit-tail (x64-emit-seq c (x64-but-last ts) si env) (car (reverse ts)) si env fr)))
-                    ((and (string=? h "call") (i64<= (size (call-args t)) 6))
+                    ((and (string=? h "call") (i64<= (size (call-args t)) x64-most-args))
                      (let* ((args (call-args t)) (n (size args))
                             (c (x64-emit-args c args si env))
-                            (c (x64-moved-args c x64-arg-registers si n))
+                            (c (x64-args-passed c si n))
                             (c (x64-emit c (string-append "addq $" (string-append fr ", %rsp")))))
                        (x64-emit c (string-append "jmp " (x64-proc-symbol (call-name t))))))
                     ;; A mark in tail position (C460): this frame given back first,
@@ -686,12 +734,12 @@
                             (c (x64-moved-args c x64-arg-registers si 3))
                             (c (x64-emit c (string-append "addq $" (string-append fr ", %rsp")))))
                        (x64-emit c "jmp kc_with_mark")))
-                    ((and (string=? h "app") (i64<= (size (app-args t)) 6))
+                    ((and (string=? h "app") (i64<= (size (app-args t)) x64-most-args))
                      (let* ((args (app-args t)) (n (size args))
                             (c (x64-emit-expr c (app-fn t) si env))
                             (c (x64-using (x64-emit c (string-append "movq %rax, " (x64-slot si))) (i64+ si 1)))
                             (c (x64-emit-args c args (i64+ si 1) env))
-                            (c (x64-moved-args c x64-arg-registers (i64+ si 1) n))
+                            (c (x64-args-passed c (i64+ si 1) n))
                             (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %r10"))))
                             (c (x64-emit c (string-append "addq $" (string-append fr ", %rsp")))))
                        (x64-emit c "jmp *-28(%r10)")))
@@ -1030,12 +1078,12 @@
           (cond ((string=? k "none") "(asm 0 \"\" \"\")")
                 ((string=? k "proc")
                  (let* ((ps (item-params i)) (n (size ps)))
-                   (if (i64> n 6)
-                       (not-yet path "a procedure of more than six parameters")
+                   (if (i64> n x64-most-args)
+                       (not-yet path "a procedure of more than 64 parameters")
                        ;; Its body in tail position, its frame `fr`, a symbol set to
                        ;; its size once its code is made (C413).
                        (let ((fr (string-append ".L" (string-append px "_frame"))))
-                         (tagcase (x64-emit-tail (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n)
+                         (tagcase (x64-emit-tail (x64-loaded-args (x64-stored-params (x64-using (x64-code nil 0 0 nil px) n) x64-arg-registers 0 n) 6 n)
                                                  (item-body i) n (x64-params-at ps 0 nil) fr)
                            (x64-code (ls m slots fails px2)
                              (x64-asm-item-text 0
@@ -1176,6 +1224,8 @@
                   "kc_gc:\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n"
                   "    .globl kc_prompts\nkc_prompts:\n    .quad 0\n"
                   "    .globl kc_run_base\nkc_run_base:\n    .quad 0\n"
+                  ;; Arguments past the sixth (C464, `x64-args-passed`).
+                  "    .globl kc_args\nkc_args:\n" (x64-zero-quads (i64- x64-most-args 6) nil)
                   "    .text\nkc_gc_init:\n    leaq kc_prompts(%rip), %rax\n    subq 208(%r15), %rax\n    movq $0, -4(%rax)\n    leaq 8(%rsp), %rax\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"
                   "    movq %r12, -4(%rcx)\n    movq %r13, 4(%rcx)\n    movq %rax, 12(%rcx)\n"
                   "    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 20(%rcx)\n"

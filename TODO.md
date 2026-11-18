@@ -1781,7 +1781,10 @@ over its 1664 definitions, 335 of them refused:
 - **Strings and characters**: ~~`int->string` 149~~ (C462), `char->string` 11,
   `char-whitespace?` 6, `char-numeric?` 7, `string-hash` 6,
   `symbol-name-hash` 4.
-- **More than six**: 26 procedures' parameters, 32 calls' arguments.
+- ~~**More than six**: 26 procedures' parameters, 32 calls' arguments.~~
+  Done (C464): to 64, the rest in `kc_args`; and `string-append` of any
+  count. The survey then: `not yet` 264 times, was 343. Left: `vlambda`,
+  `vsubr` and `apply`, which the expander has none of.
 - **Type-level names reached as values** (the expander's types of its
   own module system, `mu`, `union`, `export`, `import`, `rho`): `expr`
   27, `data` 26, `bvar` 24, `id` 22, `lambda` 18, `desc` 16, `label` 14,

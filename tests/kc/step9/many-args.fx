@@ -1,0 +1,42 @@
+;; => ((1 2 3 4 5 6 7 8) (8 7 6 5 4 3 2 1) 400042 506506 7879 3333 77 2009000 158)
+;; More than six arguments (C464): the seventh on in `kc_args`, copied into
+;; the callee's frame on entry. A procedure of eight called, in tail
+;; position and not; a loop of nine parameters, each round a tail call;
+;; recursion of seven deep, each frame's own; a lambda of ten, called and
+;; called in tail position; a closure over a parameter past the sixth;
+;; arguments that allocate, past a heap of 64 words, each kept; and twenty.
+(define eight (subr pure (int int int int int int int int) (listof int acyclic))
+  (lambda (a b c d e f g h) (list a b c d e f g h)))
+(define tail8 (subr (read (globals eight)) (int int int int int int int int) (listof int acyclic))
+  (lambda (a b c d e f g h) (eight h g f e d c b a)))
+(define* loop9 (subr (maxeff spin (read (globals loop9))) (int int int int int int int int int) int)
+  (lambda (n a b c d e f g acc)
+    (if (zero? n) (+ acc (+ g (* 10 f))) (loop9 (- n 1) b c d e f g a (+ acc g)))))
+(define* deep7 (subr (maxeff spin (read (globals deep7))) (int int int int int int int) int)
+  (lambda (n a b c d e g)
+    (if (zero? n) g (+ g (deep7 (- n 1) a b c d e (+ g 1))))))
+(define ten (subr pure (int) int)
+  (lambda (k)
+    (let ((f (lambda ((a int) (b int) (c int) (d int) (e int) (g int) (h int) (i int) (j int) (l int))
+               (- (+ (+ (* 1000 h) (* 100 i)) (+ (* 10 j) l)) (+ (+ a b) (+ (+ c d) (+ e g)))))))
+      (if (zero? k) (f 1 2 3 4 5 6 7 8 9 10) (f 0 0 0 0 0 0 k k k k)))))
+(define adder (subr pure (int int int int int int int) (subr pure (int) int))
+  (lambda (a b c d e f g) (lambda ((x int)) (+ x g))))
+(define lists7 (subr pure ((listof int acyclic) (listof int acyclic) (listof int acyclic) (listof int acyclic)
+                           (listof int acyclic) (listof int acyclic) (listof int acyclic)) int)
+  (lambda (a b c d e f g) (+ (+ (length a) (length g)) (car g))))
+(define* churn (subr (maxeff spin (read (globals churn lists7))) (int int) int)
+  (lambda (k acc)
+    (if (zero? k)
+        acc
+        (churn (- k 1) (+ acc (lists7 (list k) (list 1 2) (list 3) (list 4) (list 5) (list 6) (list k 7 8)))))))
+(define twenty (subr pure (int int int int int int int int int int int int int int int int int int int int) int)
+  (lambda (a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20)
+    (+ (* a7 a20) (- a19 a1))))
+`(,(eight 1 2 3 4 5 6 7 8) ,(tail8 1 2 3 4 5 6 7 8)
+  ,(loop9 100000 1 2 3 4 5 6 7 0)
+  ,(deep7 1000 1 2 3 4 5 6)
+  ,(ten 0) ,(ten 3)
+  ,((adder 1 2 3 4 5 6 70) 7)
+  ,(churn 2000 0)
+  ,(twenty 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20))
