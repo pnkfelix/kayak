@@ -824,7 +824,14 @@ pub mod writing {
             put_type(c, typ, put(str_lit("() -> "), acc))
         };
         let acc = put(str_lit(" {"), acc);
-        if loops_p {
+        if (lambda_p && not(suspends) && not(fallible) && string_eq_p(sym_name(name), str_lit("string-list-append")) && i64_eq(size(items(second(items(defined)))), 1i64)) {
+            // `string-list-append` (base.kfx; C476): its strings joined at once, one
+            // new string (kayak-rt's `strings_joined`), where its KFX joins
+            // them pairwise, a new string each round, all kept for the run (an edit
+            // build's save, 50 MB for a shard of 265 KB). The same value; the KFX
+            // the meaning, which Fixpt, tier 1 and the engine run.
+            put(str_lit(")\n}\n\n"), put(mangle(param_name(car(items(second(items(defined)))))), put(str_lit("\n    kayak_rt::strings_joined("), acc)))
+        } else if loops_p {
             let acc = put_nl(2i64, put(str_lit("loop {"), put_nl(1i64, acc)));
             let acc = if (suspends && charging_p(c)) {
                 put_charged_loop(put_stmts(inner, body, 2i64, t, nil::<char>()), 2i64, acc)

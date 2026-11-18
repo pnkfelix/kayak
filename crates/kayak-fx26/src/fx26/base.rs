@@ -195,16 +195,7 @@ pub fn string_pairs(xs: Strings) -> Strings {
 }
 
 pub fn string_list_append(mut xs: Strings) -> Str {
-    loop {
-        if null_p(xs) {
-            return str_lit("");
-        } else if null_p(cdr(xs)) {
-            return car(xs);
-        } else {
-            xs = string_pairs(xs);
-            continue;
-        }
-    }
+    kayak_rt::strings_joined(xs)
 }
 
 pub fn put_from(mut s: Str, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {

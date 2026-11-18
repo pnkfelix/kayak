@@ -218,8 +218,11 @@
 
 (define only-of? (subr kfx (chars string) bool)
   (lambda (cs allowed)
-    "Whether every character of `cs` is one of `allowed`'s."
-    (not (any? (lambda ((c char)) (not (has-char? (string-chars allowed) c))) cs))))
+    "Whether every character of `cs` is one of `allowed`'s: `allowed`'s
+     characters made once, not again for each of `cs` (C476: a list of them
+     each, the reader's most of an edit build's character lists)."
+    (let ((as (string-chars allowed)))
+      (not (any? (lambda ((c char)) (not (has-char? as c))) cs)))))
 
 (define hex-value (subr kfx (chars i64 string i64) i64)
   (lambda (cs n file line)

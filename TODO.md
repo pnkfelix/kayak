@@ -1837,6 +1837,24 @@ over its 1664 definitions, 335 of them refused:
   C470), and the expander's host: its asker, the bridge's data, its files
   read.
 
+- **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
+  edit's build at 1000 procedures 154 MB, kept for the run (kayak-rt has
+  no collector), half its time the kernel's page faults. Left, largest
+  first: the reader's lists of a text's characters (`read-all`'s
+  `string-chars`, 36 MB: to read by index), texts read more than once
+  (a form's text written then read back, `kc-load-forms!`; the memos
+  replayed whole), the database's maps copied at each change. The whole
+  answer: kc's own code on a collected heap (§54's direction).
+- **`kc build` with no linker** (parked, the user, 2026-11-18): a
+  prebuilt runner (kcrt and a loader) sealing the program's image as `kc
+  run` does (C451, C454), the image beside it or appended; no `cc`,
+  `collect2`, `ld`, `mkdir`, `rm`; one code path for a built program and
+  one run in process. Measured first (after C475): an edit's build at
+  1000 procedures 0.35 s, its processes 0.030 s (the link against the
+  shared runtime 0.024 s): 9%, so parked for kc's own 0.32 s. To settle
+  when taken: how the image travels, what becomes of objects by
+  fingerprint (C419) and kc-objects, a built program's start.
+
 - **A race in tier 1's `pselect` over processes** (found at C475's check,
   2026-11-18): `kayak/io/pselect-processes.fx`, under `--regs --compiled
   --gc-stress` on a loaded machine (7.7 s, not 0.7), gave `"0 one\nexited

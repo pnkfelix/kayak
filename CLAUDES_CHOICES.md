@@ -14514,3 +14514,48 @@ linker.
 - **The full check**, again: all passed in 283.9 s; kc-steps 362 of 362
   in 63.2 s, its database warm from the first run (no body ran);
   nextest 5596 passed, `pselect-processes` among them.
+
+## C476. What a fresh `kc` costs: frame pointers, heap statistics, and two cuts (2026-11-18)
+
+The user, after C475's measure of an edit's build at 1000 procedures (0.35
+s, its linker's processes 0.030 s): "Park linker-less in a todo and focus
+on these two" (a fresh process's cost, and the work `kc serve` does too);
+on the profile's cut-short call chains, "You can just enable frame
+pointer across the board; that's what we resorted to for Fixpt"; and, on
+220 MB allocated by one edit's build, never freed, "what the hell".
+
+Found:
+- **The time**: an edit's build 0.33 s, user 0.15, system 0.16: the
+  system's half 62,000 page faults, kc touching 240 MB, each page faulted
+  once: kayak-rt keeps every value for the run (no collector), so every
+  intermediate a run makes is memory the kernel gives it.
+- **The allocations** (kayak-rt's `heap-stats`, now reported by kc's
+  `main` too, and its samples, now naming kc's frames): 7.1 million, 220
+  MB; strings 76 MB, characters' lists 45 MB (2.8 million cells), lists
+  of strings 22 MB, the reader's 13 MB, the database's maps 11 MB. Of
+  the strings, the database's save 50 MB, writing a shard of 265 KB:
+  `string-list-append` joining its pieces pairwise, round on round, every
+  round's strings kept. Of the characters, the reader's `only-of?`,
+  which made `allowed`'s list again for each character it tested, and
+  `read-all`, which makes a text's whole list first.
+
+What changed:
+- **Frame pointers in every build** (`.cargo/config.toml`, as Fixpt's):
+  perf's call graphs walk kayak's Rust, the generated too; an edit's
+  build as fast (0.33 to 0.34 s, in turn).
+- **`string-list-append` joined at once** in Rust (kfx's emitter,
+  `put-define`: its body `kayak_rt::strings_joined(xs)`, one new string,
+  each copied once). Its KFX, pairwise (C261), stays the meaning, which
+  Fixpt, tier 1 and the engine run; only the Rust differs.
+- **`only-of?`** makes `allowed`'s characters once.
+- **Lang items**: `strings_joined` an emitter call (62); the corpus's Rust
+  of the database's tests blessed again (`base.rs`'s join, `read.rs`'s
+  `only-of?`).
+
+Measured (one machine, in turn): an edit's build 0.33 s to 0.28 s, its
+memory 240 MB to 177 MB, its page faults 62,300 to 46,500; allocations
+220 MB to 154 MB. Next: the reader by index, not a text's whole list of
+characters (36 MB left), and the texts read more than once.
+- **The full check**: all passed in 287.6 s (its third run: the first's
+  corpus wanted its Rust blessed again, the second's lang items the new
+  emitter call); kc-steps 362 of 362, warm; nextest 5596; selfhost 151 s.

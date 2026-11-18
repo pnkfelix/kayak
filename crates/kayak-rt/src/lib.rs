@@ -740,6 +740,28 @@ pub fn string_append(a: Str, b: Str) -> Str {
     str_of_parts(&[a.text, b.text])
 }
 
+/// kfx's `string-list-append` (C476; `kfx/base.kfx`): the strings of `xs`
+/// joined, in order, one new string: each copied once, where the KFX
+/// joins them pairwise, a new string each round.
+pub fn strings_joined(xs: List<Str>) -> Str {
+    let mut parts: Vec<&str> = Vec::new();
+    let mut at = xs;
+    while let Some(c) = at {
+        parts.push(c.car.text);
+        at = c.cdr;
+    }
+    match parts.len() {
+        0 => str_lit(""),
+        1 => at_one(xs),
+        _ => str_of_parts(&parts),
+    }
+}
+
+/// The one string of a list of one, itself, as the KFX gives it.
+fn at_one(xs: List<Str>) -> Str {
+    xs.expect("a list of one").car
+}
+
 /// `nat`s, which are `Int`s: a string's length in characters, a list's.
 #[inline]
 pub fn string_length(s: Str) -> Int {

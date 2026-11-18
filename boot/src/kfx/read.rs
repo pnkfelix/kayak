@@ -437,11 +437,13 @@ pub fn written_out_real_p(t: Str) -> bool {
     not((point_first_real_p(cs) || has_char_p(cs, 'e') || has_char_p(cs, 'E')))
 }
 
-/// Whether every character of `cs` is one of `allowed`'s.
-#[inline]
+/// Whether every character of `cs` is one of `allowed`'s: `allowed`'s
+/// characters made once, not again for each of `cs` (C476: a list of them
+/// each, the reader's most of an edit build's character lists).
 pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
+    let r#as = string_chars(allowed);
     not(any_p(lambda1s(move |c: char| {
-        not(has_char_p(string_chars(allowed), c))
+        not(has_char_p(r#as, c))
     }), cs))
 }
 

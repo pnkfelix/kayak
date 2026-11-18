@@ -8,6 +8,6 @@ use super::*;
 // as this compiler's, and takes none of another's. Not to be edited.
 #[inline]
 pub fn compiler_identity() -> Str {
-    str_lit("75dde01ec1c00cfc")
+    str_lit("48f110baef2a8a0b")
 }
 

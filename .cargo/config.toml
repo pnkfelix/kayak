@@ -1,0 +1,6 @@
+[build]
+# Frame pointers in every build, debug and release, as Fixpt's (C476; the
+# user, 2026-11-18): perf's call graphs (`--call-graph fp`) walk kayak's
+# Rust, the KFX compilers' generated code too, whose deep recursion cut
+# DWARF unwinding's copied stacks short. A percent or so of time.
+rustflags = ["-C", "force-frame-pointers=yes"]

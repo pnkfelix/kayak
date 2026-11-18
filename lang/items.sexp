@@ -1028,6 +1028,7 @@
 (emitter-call "spliced" kayak)
 (emitter-call "str_lit" kayak)
 (emitter-call "string_eq_p" kayak)
+(emitter-call "strings_joined" kayak)
 (emitter-call "sum_tag" kayak)
 (emitter-call "sync" kayak)
 (emitter-call "syscall_available" kayak)
