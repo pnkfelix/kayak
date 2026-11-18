@@ -221,10 +221,18 @@ fn string_words(s: &str) -> Vec<u64> {
     w
 }
 
-std::thread_local! {
-    static SYMBOLS: std::cell::RefCell<std::collections::HashMap<String, u64>> =
-        std::cell::RefCell::new(std::collections::HashMap::new());
-}
+/// The symbols, by name: the process's, one table every thread interns
+/// in (C467, TODO §55 item 3; K8), so that a name is one symbol whichever
+/// thread made it, as `symbol=?` (identity) and FX-26's processes, which
+/// send symbols, need, and as the image's cells of quoted symbols
+/// (`kcy_…`, x64.kfx's `x64-emit-symbol`), which every thread running it
+/// reads, assume. It was a thread's own. A symbol is made under the lock,
+/// so two threads interning one name at once get one. Interning is rare
+/// (once per quoted name per image, and each `string->symbol`), so a lock,
+/// not yet a cache per thread. Symbols live in kcrt's own memory, outside
+/// kc's heap, never moved; into the shared heap with §55 item 2.
+static SYMBOLS: std::sync::Mutex<Option<std::collections::HashMap<String, u64>>> =
+    std::sync::Mutex::new(None);
 
 /// A symbol of the name string `s`, the one of that name: as Fixpt's
 /// `intern` makes one, its fields its name, its hash (FNV-1a, a fixnum) and
@@ -232,8 +240,10 @@ std::thread_local! {
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_intern(s: u64) -> u64 {
     let name = string_text(s);
-    SYMBOLS.with(|t| {
-        if let Some(&v) = t.borrow().get(&name) {
+    let mut table = SYMBOLS.lock().unwrap_or_else(|e| e.into_inner());
+    let t = table.get_or_insert_with(std::collections::HashMap::new);
+    {
+        if let Some(&v) = t.get(&name) {
             return v;
         }
         let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -253,9 +263,41 @@ pub extern "C" fn kc_intern(s: u64) -> u64 {
             TAG_TRAILER | (4 << 3),
         ];
         let v = made(w) + 40 + TAG_BLOBLET;
-        t.borrow_mut().insert(name, v);
+        t.insert(name, v);
         v
-    })
+    }
+}
+
+#[cfg(test)]
+mod symbols_shared {
+    use super::*;
+
+    /// One name, one symbol, whichever thread interns it (C467, TODO §55
+    /// item 3): eight threads interning the same names at once.
+    #[test]
+    fn a_name_is_one_symbol_across_threads() {
+        let names: Vec<String> = (0..64).map(|k| format!("sym-{k}")).collect();
+        let seen: Vec<Vec<u64>> = std::thread::scope(|sc| {
+            let hs: Vec<_> = (0..8)
+                .map(|_| {
+                    sc.spawn(|| {
+                        names
+                            .iter()
+                            .map(|n| kc_intern(make_string(n)))
+                            .collect::<Vec<u64>>()
+                    })
+                })
+                .collect();
+            hs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        for s in &seen[1..] {
+            assert_eq!(s, &seen[0]);
+        }
+        // And each its own name's.
+        for (n, &v) in names.iter().zip(&seen[0]) {
+            assert_eq!(&string_text(kc_symbol_to_string(v)), n);
+        }
+    }
 }
 
 fn boolean(b: bool) -> u64 {

@@ -14096,3 +14096,35 @@ What changed:
   built again warm, no body run; kc-objects 457, 0 differ; nextest 5501
   passed. kc-bench at 1000 procedures: `body` 300 ms, `fix-forward`
   289, `add` 303, as C464's; the same bodies run.
+
+## C467. Symbols interned in one table the process shares (2026-11-18)
+
+The user: "Sure. I don't have a solution to 'A sends to B' problem that
+you posed, so for right now I'm fine with a shared synchronized intern
+table for symbols" (TODO §55 item 3; and, an idea not to dig into now,
+whether that problem has an encoding as N systems negotiating a shared
+vocabulary incrementally, which §55 item 3 keeps). Reviewed first:
+- **Fixpt**: `intern` makes a symbol, the one of its name, with a
+  global binding's slot: process-wide by design.
+- **kayak**: kcrt-core's `SYMBOLS` was a thread-local; kc's code caches
+  each quoted symbol in a cell of the image (`kcy_…`, C421), which every
+  thread running the image reads. So under threads a quoted `'foo` could
+  be one thread's symbol and that thread's `(string->symbol "foo")`
+  another's: wrong, not only unready.
+
+What changed: `SYMBOLS` is a `Mutex` over the map, the process's; a
+symbol is made under the lock, so two threads interning one name at
+once get one. Interning is rare (once per quoted name per image, and
+each `string->symbol`), so no cache per thread yet. Symbols stay in
+kcrt's own memory, outside kc's heap, never moved; into the shared heap
+with §55 item 2, hashed by name (FNV, Fixpt's) so that it may move them.
+Test: kcrt-core's `a_name_is_one_symbol_across_threads`, eight threads
+interning 64 names at once, each name one symbol; with the table keyed
+by thread instead, it fails.
+- **The full check**: all passed in 684.7 s; kc-steps 351 of 351, each
+  built again warm, no body run; kc-objects 457, 0 differ; nextest 5501
+  passed. But not the new test: kcrt-core's library says `test = false`
+  (copied in C452 from kayak-kcrt, which defines a program's `main` and
+  so cannot be a test harness; kcrt-core defines none), so nextest never
+  ran its unit tests. The test passed by hand (`cargo test -p
+  kayak-kcrt-core`); its tests turned on is C468.

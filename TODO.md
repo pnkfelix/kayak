@@ -1862,7 +1862,7 @@ of it chosen in C448–C464:
    thread stopped at a safepoint, or handed what moved. Code is apart:
    the code area (C456) does not move it, on purpose. To take with
    to-discuss 16 and §54's steps 3 to 6, which decide kc's heap.
-3. **Symbols interned per thread** (`kcrt-core`, `SYMBOLS`): one name on
+3. ~~**Symbols interned per thread**~~ (`kcrt-core`, `SYMBOLS`): one name on
    two threads two symbols, where `symbol=?` is identity and FX-26's
    symbols are transmissible: wrong under threads, not only unready.
    Unifying symbols as a thread's are promoted into the shared heap (the
@@ -1880,6 +1880,15 @@ of it chosen in C448–C464:
    Fixpt's), so the shared heap may move them (item 2); the table's
    policy for symbols nothing reaches, weak or kept, to choose. With
    item 2's shared heap, of which it is the first object.
+   Done in part (C467): one table the process shares, locked (the user:
+   "for right now I'm fine with a shared synchronized intern table"),
+   tested from eight threads; the image's cells of quoted symbols, which
+   every thread running it reads, now agree with what any thread's
+   `string->symbol` gives. Left: the cache per thread, once interning
+   shows in a profile; the symbols in the shared heap, with item 2.
+   An idea of the user's, not dug into (2026-11-18): whether "A sends
+   to B" has an encoding as a distributed-systems problem, N systems
+   collectively and incrementally negotiating a shared vocabulary.
 4. **What a run writes and its failure, per thread** (`OUTPUT`,
    `FAILURE`, `GIVEN`, kcrt-core's thread-locals): a second thread's
    never reaches the run that began it. Per run, with item 1.
