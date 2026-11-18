@@ -185,3 +185,10 @@ where it was seen and what it would take.
     expander's heap persists (step 3), a pause grows with what it keeps.
     Its design is to come to the user first: as step 6, or once the
     expander runs on kcrt and its pauses are measured?
+    And with it (K8, TODO §55 items 2 and 3, 2026-11-18): a heap per
+    thread and a shared heap, what two threads reach in the shared one,
+    a write barrier keeping it from pointing into a thread's; symbols
+    interned there. The shared heap may move (the user: a moving
+    collector there later, kept incremental), so no design here assumes
+    it does not. kc's collector today sees one thread's stack and one
+    heap. Both decide what kc's heap is, so one design for both.

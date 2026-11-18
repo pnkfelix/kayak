@@ -13995,3 +13995,59 @@ What changed:
   procedures `fix-forward` 509 ms, was 299; Fixpt's column 5% slower
   too); this check's, at C464, are C462's again (299 ms). One run, best
   of 3, can be that far off: a trend is to be read over several steps.
+
+## C465. K8, the forward-thinking runtime; and the debts against it listed (2026-11-18)
+
+The user, on C464's `kc_args` being the image's ("two threads running
+the same image at once would clash"): "Hurm. I had hoped that Kayak and
+kc were taking a more forward thinking approach to this. Can you make a
+list of all the known places where we have opted for things that
+actively work against a multi threaded program?"; then "Yes record this
+list. But also figure out where to put the overall design objective:
+Kayak is the forward thinking runtime for FX26, building in
+incrementality, scalability, asynchrony, and parallelism from the
+start".
+
+Where: PLAN.md §3, as **K8**, beside K0–K7, the invariants each step is
+held to (not a section of its own, which a step need not read); the
+opening list's item 5, "async and incremental throughout", widened to
+say parallel and scalable too, and to point at K8. What K8 asks: where a
+way that works for many threads, runs and sizes costs about what one
+for one does, that way; a choice against any of the four, taken all the
+same, a debt written in TODO §55 when it is made and said in its
+C-entry; each of the four checked where it can be. The list, TODO §55:
+ten items, kc's native side all of them (kayak-rt was built for threads,
+C101, C102), chosen in C448–C464, the worst `kayak:last-sealed/1`
+(C456), which two threads sealing at once could make free each other's
+code. And to-discuss 16 now asks the heap's design for parallelism too.
+
+What I should have done: C464's `kc_args`, like C458's `kc_prompts` and
+C460's `kc_run_base` before it, could have been a word of the `%r15`
+state block, per run, at the cost of an image cell; I took the cell.
+Items 1, 3 and 7 of §55 next, before kc grows more.
+
+Then, the user, on symbols: "isn't the right answer there to have
+thread-local portions of the heap, but: 1. objects that spans threads
+have to live on a shared heap and 2. you unify the disparate symbols
+when you promote from per-thread into the shared heap?" For objects,
+yes, and §55 item 2 now says so. For symbols, unifying at promotion
+leaves another thread's unpromoted symbol of the name apart (A's `foo`
+sent to B; B's own never promoted; two, not `eq?`), which the user
+accepted ("Your A sends to B counter example makes sense"); so symbols
+are interned in the shared heap, one table, a cache per thread (item 3).
+And: "try to avoid building in assumptions that the shared heap is
+non-moving GC ... we will just have to ensure it remains incremental":
+item 2 and to-discuss 16, which had said "a space that does not move",
+now say the shared heap may move, and what that asks (pointers into it
+updatable, no address an identity or a hash, the barrier named).
+
+And, on my "an incremental moving collector needs either a read barrier
+(Baker-style, or a Brooks forwarding pointer) or a way to update every
+reference at once": the user, "see my PhD thesis. We can accomplish
+this; the only question is whether we can bear the cost." The regional
+collector moves incrementally with a write barrier and summaries, no
+read barrier; Coopt's R5 note read the thesis, and its M12 built the
+collector (`coopt-heap`), its pauses bounded and tested, its throughput
+not yet measured. §55 item 2 now says so, and that `coopt-heap`, a fork
+kayak may take, is where kc's shared heap starts; the cost the user asks
+about is a measurement still to make.

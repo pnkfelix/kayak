@@ -26,7 +26,9 @@ kayak prototypes a bootstrappable system:
    runtime, as Fixpt's front end, written in FX-26, is built into Fixpt.
 5. **Async and incremental throughout**: the runtime asynchronous from
    the ground up, in Coopt's mindset, and the compiler too, async and
-   incremental (§6).
+   incremental (§6); and parallel and scalable as well: kayak the
+   forward-thinking runtime for FX-26, all four built in from the start
+   (K8, the user, 2026-11-18).
 6. **kayak to become FX-26's reference** (the user, 2026-10-14): the
    eventual goal is to retire Fixpt's code base, kayak then the
    definition of FX-26 and the oracle for its answers. What that asks,
@@ -302,6 +304,27 @@ marks (§16); `proj` (instantiation is inferred).
   2026-10-12), each extension a choice recorded. Where FX-26 itself lacks
   it, the case is raised with the user (§8), since it may go to the Fixpt
   team.
+- **K8. The forward-thinking runtime for FX-26** (the user, 2026-11-18):
+  kayak builds in **incrementality, scalability, asynchrony and
+  parallelism from the start**, in the compiler and in every runtime
+  (kayak-rt, and kc's code and kcrt), not as features to add later.
+  FX-26 asks for it: a program means the same whether its processes take
+  turns under one scheduler or run on threads of their own, each with a
+  heap of its own (Fixpt's `docs/fx26.md`, "Processes and `par`"), so
+  every run's state is per thread, and what processes share is frozen.
+  So:
+  - where a design admits a way that works for many threads, many runs
+    and large programs at about the cost of one that works for one, that
+    way is taken (per-run state in the `%r15` state block, not in cells
+    of the image; a table one process shares, not one per thread);
+  - a choice that works against any of the four, taken all the same (it
+    is cheaper now, or the better way needs a decision), is a debt:
+    written in `TODO.md` §55 when it is made, with what undoing it would
+    take, and said in its C-entry;
+  - each is checked where it can be: incrementality by kc-steps'
+    cutoff, expansion and warm passes (C463); its timings by kc-bench at
+    every step (C463); parallelism, once kc runs processes, by programs
+    that run them on threads of their own.
 - **K6. kayak's FX-26 agrees with Fixpt.** An FX-26 program kayak's
   runtime runs gives Fixpt's answer; kayak refuses what Fixpt refuses.
   Checked as K1 is, on Fixpt's own programs, all of them in time, not only

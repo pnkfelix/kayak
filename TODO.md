@@ -1799,3 +1799,112 @@ over its 1664 definitions, 335 of them refused:
 - Not seen by a survey of the code generator: what runs (an `int` past
   a fixnum, which kc fails; the expander's hashes), and the expander's
   host: its asker, the bridge's data, its files read.
+
+## 55. Debts against K8: what works against parallelism (the user, 2026-11-18)
+
+The user, on kc's `kc_args` (C464) being the image's, so that two
+threads running one image would clash: "I had hoped that Kayak and kc
+were taking a more forward thinking approach to this. Can you make a
+list of all the known places where we have opted for things that
+actively work against a multi threaded program?"; then "record this
+list", and the objective behind it, PLAN.md's K8. The yardstick is
+FX-26's: a program means the same whether its processes take turns or
+run on threads of their own, each with a heap of its own; they share
+frozen data and the globals' bindings, read only.
+
+kayak-rt (KFX's Rust) was built for threads (C101, C102: each process an
+OS thread, its state thread-local, `SCHED` locked, `Send` checked by
+rustc); nothing of it is on this list. kc's native side is, nearly all
+of it chosen in C448–C464:
+
+1. **A run's state in cells of the image, not per thread**
+   (`kc/x64.kfx`, `.bss`, reached `%rip`-relative): `kc_args` (C464),
+   `kc_prompts` (C458), `kc_run_base` (C460), `kc_gc` (C453),
+   `kc_heap_next` (C448). Their place is the state block `%r15` holds
+   (Fixpt's convention, kc's since C451: the stack's limit, fuel, `poll`,
+   the code's distance), one per run. Cheap; first.
+2. **One heap per run, and a collector that sees one stack**
+   (`crates/kayak-kcrt-core/src/gc.rs`, C453): Cheney's, the world
+   stopped, its roots its own stack from its pointer to the base; its
+   spaces (`SPACES`) thread-local, its block (`kc_gc`) the image's. No
+   heap can be shared between threads this way. The design (the user,
+   2026-11-18): **a heap per thread and a shared heap**, as OCaml 5's
+   domains and Erlang's processes have them. An object two threads reach
+   lives in the shared heap, so no shared object points into a thread's
+   heap: a write barrier promotes what is stored into a shared object
+   first. Each thread collects its own heap without stopping the others;
+   the shared heap is where collection must be incremental (K8). **The
+   shared heap is not assumed not to move** (the user: "we may still put
+   a moving collector there at some point; we will just have to ensure
+   it remains incremental"): so every pointer into it is one its
+   collector can update (a thread heap's, by a remembered set or as
+   roots; the symbol table's and its caches'; native code's registers at
+   safepoints), and no address is an identity or a hash. That needs no
+   read barrier: the user's thesis (Klock, *Scalable Garbage Collection
+   via Remembered Set Summarization and Refinement*, Northeastern, 2011;
+   Klock and Clinger, "Bounded-latency regional garbage collection", DLS
+   2011) moves objects incrementally, one region at a time, with bounded
+   pauses, utilization and space, by a write barrier, summaries of the
+   locations that point into a region, and snapshot marking; the user:
+   "We can accomplish this; the only question is whether we can bear the
+   cost." Coopt read it (`../coopt/docs/research/heap-regions.md`, R5)
+   and built it (M12, `coopt-heap`: its pauses bounded in work units and
+   tested, no full collection under the generational adversary), for one
+   mutator; its throughput, the cost, was planned to be measured
+   (R5 §4.6) and is not yet. Coopt's crates are kayak's forks, so
+   `coopt-heap` is the place to start. What threads add: each mutator's
+   barrier and snapshot log, each thread's stack and heap among the
+   shared regions' roots, and an evacuation's O(R) step with every
+   thread stopped at a safepoint, or handed what moved. Code is apart:
+   the code area (C456) does not move it, on purpose. To take with
+   to-discuss 16 and §54's steps 3 to 6, which decide kc's heap.
+3. **Symbols interned per thread** (`kcrt-core`, `SYMBOLS`): one name on
+   two threads two symbols, where `symbol=?` is identity and FX-26's
+   symbols are transmissible: wrong under threads, not only unready.
+   Unifying symbols as a thread's are promoted into the shared heap (the
+   user's question, 2026-11-18) fixes the one promoted, not another
+   thread's of the same name: A's `foo` sent to B, promoted, and B's own
+   `foo` never promoted, so B holds two, not `eq?`; mending that where
+   they meet (B's references rewritten, a forwarding word followed at
+   each comparison, or names compared) costs every comparison. So a
+   symbol is interned in the shared heap, in one table the process
+   shares, a concurrent map mostly read, with a cache per thread of name
+   to symbol; a comparison stays one word's. Fixpt's symbol has a global
+   binding's slot, process-wide by design; Java's `intern`, Erlang's
+   atoms and Racket's symbols are so too. A gensym, uninterned, may be a
+   thread's and promoted as any object. The symbols hash by name (FNV,
+   Fixpt's), so the shared heap may move them (item 2); the table's
+   policy for symbols nothing reaches, weak or kept, to choose. With
+   item 2's shared heap, of which it is the first object.
+4. **What a run writes and its failure, per thread** (`OUTPUT`,
+   `FAILURE`, `GIVEN`, kcrt-core's thread-locals): a second thread's
+   never reaches the run that began it. Per run, with item 1.
+5. **A built program: one state, one heap, one stack**
+   (`crates/kayak-kcrt/src/lib.rs`: one state block leaked,
+   `HEAP_WORDS`, `STACK_ROOM`). Per process, with kc's processes.
+6. **In process, a heap per size, every run of the size given it again**
+   (`kc/native.kfx`, `heaps`, C454): two runs of one size at once share
+   it. A heap per run, or a pool.
+7. **`kayak:last-sealed/1`**, the code sealed last, the process's
+   (kayak-jit's `LAST_SEALED`, kc's since C456): kc seals an image, then
+   asks where the last sealed code is, to free it later; two threads
+   sealing at once may be told each other's, and kc then frees the other
+   thread's code. `seal-code` to give the address, or the record per
+   thread. Cheap; first.
+8. **Code freed while it may run** (C456): kc frees a transformer's image
+   when its cache drops it; kayak-rt checks the code is live at entry
+   only, so a thread inside it could have it freed under it. §54's step 5
+   (code collected) to take every thread's stack as roots of code.
+9. **kc's caches, one writer assumed** (`kc/main.kfx`'s `transformers`,
+   C454, C456): harmless while `kc` and `kc serve` take one request at a
+   time; a lock, if `kc serve` takes many at once.
+10. **No concurrency in kc at all**: kc refuses `spawn`, `send`,
+    `receive`, `par`, I-cells, `pselect` and `race`; nothing above has
+    been run on threads. Each item, once done, gets a program run with
+    processes on threads of their own (K8).
+
+Order: 1 and 7, each a step of its own size, before kc grows more; 3 a
+table the process shares now (which is right under any design: kcrt's
+symbols are outside kc's heap today), moved into the shared heap with
+2; 2 with §54's heap steps and to-discuss 16; 5, 6, 8, 9 and 10 with
+kc's processes.
