@@ -21,6 +21,12 @@ pub fn words(xs: Strings) -> Str {
 pub mod counter {
     use super::*;
 
+    impl<'a> kayak_rt::Trace<'a> for T {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            kayak_rt::Trace::trace(&self.0, t);
+        }
+    }
+
     #[derive(Clone, Copy)]
     pub struct T(i64);
 

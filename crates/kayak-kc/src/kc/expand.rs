@@ -5116,7 +5116,7 @@ pub mod made__load__1__expand {
         array_set_x(get(maker_st.node_holes.get().unwrap()), i, the::<Holes>(kayak_rt::cons(h, kayak_rt::nil())))
     }
 
-    pub fn array_grown<'mxp, T: Copy + 'static, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, a: Array<T>, fill: T) -> Array<T> {
+    pub fn array_grown<'mxp, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, a: Array<T>, fill: T) -> Array<T> {
         let b = the::<Array<T>>(make_array(_star(int_lit(2), array_length(a)), fill));
         let copied__knot = knot::<&'mxp dyn Fn(Int) -> ()>();
         let copied = lambda1(move |mut i: Int| {

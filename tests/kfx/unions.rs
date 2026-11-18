@@ -82,7 +82,7 @@ pub fn none() -> MaybeInt {
 
 // A union at a type variable: a generic Rust fn, instantiated at `Value`.
 #[inline]
-pub fn pick<T: Copy + 'static>(b: bool, x: T, y: T) -> T {
+pub fn pick<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(b: bool, x: T, y: T) -> T {
     if b {
         x
     } else {

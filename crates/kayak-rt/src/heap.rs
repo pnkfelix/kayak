@@ -63,20 +63,38 @@ fn arena_of<T: 'static>() -> &'static Arena<T> {
 
 /// `v`, in the heap, by bumping.
 #[inline]
-pub fn heap_alloc<T: 'static>(v: T) -> crate::Handle<'static, T> {
+pub fn heap_alloc<T: 'static + for<'t> crate::Trace<'t>>(v: T) -> crate::Handle<'static, T> {
     crate::stats::note::<T>(std::mem::size_of::<T>());
+    #[cfg(feature = "heap-stats")]
+    {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNT: AtomicU64 = AtomicU64::new(0);
+        static EVERY: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+        let every = *EVERY.get_or_init(|| {
+            std::env::var("KAYAK_HEAP_MARK")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0)
+        });
+        let n = COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+        if every > 0 && n % every == 0 {
+            crate::census::mark(n);
+        }
+        arena_of::<T>().alloc_noting(v, crate::census::block::<T>)
+    }
+    #[cfg(not(feature = "heap-stats"))]
     arena_of::<T>().alloc(v)
 }
 
 /// `cons`, in the heap's arena of pairs.
 #[inline]
-pub fn heap_cons<T: 'static>(car: T, cdr: List<T>) -> List<T> {
+pub fn heap_cons<T: 'static + for<'t> crate::Trace<'t>>(car: T, cdr: List<T>) -> List<T> {
     Some(heap_alloc(Cons { car, cdr }))
 }
 
 /// `new`, in the heap's arena of cells.
 #[inline]
-pub fn heap_new<T: Copy + 'static>(v: T) -> Ref<T> {
+pub fn heap_new<T: Copy + 'static + for<'t> crate::Trace<'t>>(v: T) -> Ref<T> {
     heap_alloc(Cell::new(v))
 }
 

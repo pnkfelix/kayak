@@ -64,6 +64,17 @@ impl<T> Arena<T> {
     /// `v`, kept in the arena, in the next free cell.
     #[inline]
     pub fn alloc(&self, v: T) -> crate::Handle<'_, T> {
+        self.alloc_noting(v, |_, _| {})
+    }
+
+    /// `alloc`, and each block it makes told to `noted`, its first cell and
+    /// how many (C480: the heap's, for a census).
+    #[inline]
+    pub(crate) fn alloc_noting(
+        &self,
+        v: T,
+        noted: impl FnOnce(*const OnceCell<T>, usize),
+    ) -> crate::Handle<'_, T> {
         let i = self.used.get();
         self.used.set(i + 1);
         let (k, at) = place(i);
@@ -71,7 +82,14 @@ impl<T> Arena<T> {
         let len = size.min(BLOCK);
         let blocks =
             self.chunks[k].get_or_init(|| (0..size / len).map(|_| OnceCell::new()).collect());
-        let block = blocks[at / len].get_or_init(|| (0..len).map(|_| OnceCell::new()).collect());
+        let mut made = false;
+        let block = blocks[at / len].get_or_init(|| {
+            made = true;
+            (0..len).map(|_| OnceCell::new()).collect()
+        });
+        if made {
+            noted(block.as_ptr(), block.len());
+        }
         crate::Handle::made(block[at % len].get_or_init(|| v))
     }
 }

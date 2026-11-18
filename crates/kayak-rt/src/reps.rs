@@ -95,7 +95,7 @@ fn items<T: Copy>(mut l: crate::ListAt<'_, T>) -> Vec<T> {
     out
 }
 
-fn listed<T: 'static>(xs: Vec<T>) -> List<T> {
+fn listed<T: 'static + for<'t> crate::Trace<'t>>(xs: Vec<T>) -> List<T> {
     xs.into_iter().rev().fold(nil(), |acc, x| heap_cons(x, acc))
 }
 

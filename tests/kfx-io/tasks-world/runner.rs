@@ -33,23 +33,23 @@ pub type Answer = kayak_rt::Sum;
 // What a program gives its runner: an operation and its rest.
 // A program: what it does, and its answer.
 // An operation performed: the program suspended, the runner given it.
-pub async fn perform_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, o: Op) -> Result<Answer, Unwind> {
+pub async fn perform_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, o: Op) -> Result<Answer, Unwind> {
     Ok(kayak_rt::suspend::abort_with_continuation(rt, move |k: &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>| {
         Product_2op_1k(o, k)
     }).await?)
 }
 
 // The operations, as a program writes them.
-pub async fn read_line_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<Answer, Unwind> {
+pub async fn read_line_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<Answer, Unwind> {
     Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<A>(a__0, a__1))))(rt, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("read-line") }, "read-line", ()))).await?)
 }
 
-pub async fn write_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, s: Str) -> Result<(), Unwind> {
+pub async fn write_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, s: Str) -> Result<(), Unwind> {
     kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<A>(a__0, a__1))))(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
     Ok(())
 }
 
-pub async fn clock_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<i64, Unwind> {
+pub async fn clock_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<i64, Unwind> {
     let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<A>(a__0, a__1))))(rt, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("clock") }, "clock", ()))).await?;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("time") } {
@@ -71,7 +71,7 @@ pub type Log<'w> = ListAt<'w, Entry>;
 // the step, the operations' count, kept at `steps`. Its prompt does not
 // delimit (what it is given names the runner's region), so it has control
 // on `w`, as Fixpt's examples' loops have.
-pub async fn serve<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, steps: Ref<i64>, req: Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>) -> Result<A, Unwind> {
+pub async fn serve<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, steps: Ref<i64>, req: Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>) -> Result<A, Unwind> {
     let n = get(steps);
     set(steps, i64_plus(n, 1i64));
     Ok({
@@ -88,7 +88,7 @@ pub async fn serve<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn
     })
 }
 
-pub async fn run_under<A: Copy + 'static>(answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, body: &'static dyn Fn(Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
+pub async fn run_under<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, body: &'static dyn Fn(Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
     let (rt, steps) = (the::<Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>>(make_continuation_prompt_tag()), the::<Ref<i64>>(kayak_rt::heap_new(0i64)));
     Ok({
         let prompt_tag__ = rt;

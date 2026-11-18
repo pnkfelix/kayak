@@ -6067,7 +6067,7 @@ pub fn c_global_p(l: kayak_rt::Handle<'static, Loc>) -> bool {
 }
 
 #[inline]
-pub fn c_count<A: Copy + 'static>(xs: List<A>) -> i64 {
+pub fn c_count<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<A>) -> i64 {
     size(xs)
 }
 

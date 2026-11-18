@@ -60,7 +60,10 @@ impl<T: Copy> OnceSlot<T> for kayak_sync::Global<T> {
 
 /// The value `slot` keeps, made by `make` the first time.
 #[inline]
-pub fn once<T, S: OnceSlot<T> + ?Sized>(slot: &'static S, make: impl FnOnce() -> T) -> T {
+pub fn once<T: for<'t> crate::Trace<'t>, S: OnceSlot<T> + ?Sized>(
+    slot: &'static S,
+    make: impl FnOnce() -> T,
+) -> T {
     match slot.made() {
         Some(v) => v,
         None => made_first(slot, make),
@@ -69,9 +72,16 @@ pub fn once<T, S: OnceSlot<T> + ?Sized>(slot: &'static S, make: impl FnOnce() ->
 
 #[cold]
 #[inline(never)]
-fn made_first<T, S: OnceSlot<T> + ?Sized>(slot: &'static S, make: impl FnOnce() -> T) -> T {
+fn made_first<T: for<'t> crate::Trace<'t>, S: OnceSlot<T> + ?Sized>(
+    slot: &'static S,
+    make: impl FnOnce() -> T,
+) -> T {
     let mut make = Some(make);
-    slot.kept(&mut || (make.take().expect("a constant made twice"))())
+    let v = slot.kept(&mut || (make.take().expect("a constant made twice"))());
+    // A root, for a census (C480): the slot read again, its value traced.
+    #[cfg(feature = "heap-stats")]
+    crate::census::constant_of(slot);
+    v
 }
 
 /// A constant of no transmissible type, kept for each thread; or with the

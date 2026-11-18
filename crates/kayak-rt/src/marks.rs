@@ -27,6 +27,11 @@ pub struct MarkKey<T> {
     kinds: PhantomData<fn(T) -> T>,
 }
 
+/// A key: its number alone, holding nothing of the heap (C480).
+impl<'a, T> crate::Trace<'a> for MarkKey<T> {
+    fn trace(&self, _: &mut crate::Tracer<'a>) {}
+}
+
 impl<T> Clone for MarkKey<T> {
     fn clone(&self) -> Self {
         *self

@@ -108,7 +108,7 @@ pub fn build<'r#yield, Place_Yield: Holds<Cons<'r#yield, i64>>>(r#async: &'r#yie
 
 // A region named `static`, Rust's `'r#static`, and a type variable `in`.
 #[inline]
-pub fn keep<In: Copy + 'static>(x: In) -> In {
+pub fn keep<In: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: In) -> In {
     x
 }
 

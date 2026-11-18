@@ -14,6 +14,8 @@ mod array;
 pub mod async_io;
 pub mod async_process;
 mod blob;
+#[cfg(feature = "heap-stats")]
+mod census;
 mod eqtable;
 mod escape;
 mod fixed;
@@ -121,7 +123,11 @@ pub type List<T> = ListAt<'static, T>;
 #[inline]
 pub fn leak<'a, T: 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());
-    Box::leak(Box::new(v))
+    let r: &'a T = Box::leak(Box::new(v));
+    // An opaque block, for a census (C480): its size alone.
+    #[cfg(feature = "heap-stats")]
+    census::opaque(std::ptr::from_ref(r) as usize, std::mem::size_of::<T>());
+    r
 }
 
 /// A KFX value allocated, as a handle (C478): a datatype's, a pair, a
@@ -865,7 +871,15 @@ pub fn list_to_string(cs: List<char>) -> Str {
 pub fn with_big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
     std::thread::Builder::new()
         .stack_size(1 << 30)
-        .spawn(f)
+        .spawn(move || {
+            // The run's stack's top, for a census's mark (C480).
+            #[cfg(feature = "heap-stats")]
+            {
+                let top = 0u8;
+                census::stack_top(std::ptr::from_ref(&top) as usize + 64);
+            }
+            f()
+        })
         .expect("a thread for the run")
         .join()
         .unwrap_or_else(|_| std::process::exit(1))

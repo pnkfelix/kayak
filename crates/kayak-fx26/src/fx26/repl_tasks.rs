@@ -1011,7 +1011,7 @@ pub mod tasks {
         }), es))
     }
 
-    pub fn reversed_onto<A: Copy + 'static>(mut xs: List<A>, mut acc: List<A>) -> List<A> {
+    pub fn reversed_onto<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut xs: List<A>, mut acc: List<A>) -> List<A> {
         loop {
             if null_p(xs) {
                 return acc;

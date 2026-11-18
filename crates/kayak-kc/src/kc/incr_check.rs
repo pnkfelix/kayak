@@ -525,7 +525,7 @@ pub mod incremental_check {
         typed(code_text(car(xs)), second(xs))
     }
 
-    pub fn leading<A: Copy + 'static>(xs: List<A>, n: i64) -> List<A> {
+    pub fn leading<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<A>, n: i64) -> List<A> {
         if (i64_eq(n, 0i64) || null_p(xs)) {
             nil::<A>()
         } else {

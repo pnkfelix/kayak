@@ -13,7 +13,7 @@ pub type Strings = List<Str>;
 pub type Ints = List<i64>;
 
 #[inline]
-pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+pub fn map<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
     } else {
@@ -22,7 +22,7 @@ pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + S
 }
 
 /// A self tail call in a poly procedure: it loops too.
-pub fn fold<A: Copy + 'static, B: Copy + 'static>(mut f: &'static (dyn Fn(B, A) -> B + Send + Sync), mut acc: B, mut xs: List<A>) -> B {
+pub fn fold<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut f: &'static (dyn Fn(B, A) -> B + Send + Sync), mut acc: B, mut xs: List<A>) -> B {
     loop {
         if null_p(xs) {
             return acc;
@@ -56,7 +56,7 @@ pub fn adder(n: i64) -> &'static (dyn Fn(i64) -> i64 + Send + Sync) {
 }
 
 #[inline]
-pub fn twice<A: Copy + 'static>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
+pub fn twice<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
     f(f(x))
 }
 

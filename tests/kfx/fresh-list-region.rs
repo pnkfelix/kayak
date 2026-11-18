@@ -7,7 +7,7 @@ use kayak_rt::*;
 // written, which is what a later use wants (C284).
 
 #[inline]
-pub fn h<A: Copy + 'static>(fs: List<A>) -> i64 {
+pub fn h<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(fs: List<A>) -> i64 {
     0i64
 }
 

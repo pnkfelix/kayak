@@ -1566,12 +1566,12 @@
 
     (define put-generics-of (subr kfx (strings bool chars) chars)
       (lambda (names bounded acc)
-        "`<T, U>`, or with `bounded`, `<T: Copy + 'static, U: Copy + 'static>`
+        "`<T, U>`, or with `bounded`, `<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, U: Copy + 'static + for<'t> kayak_rt::Trace<'t>>`
          as every KFX value is; nothing for no names."
         (if (null? names)
             acc
             (put ">" (put-sep (lambda ((n string) (acc chars))
-                                (let ((acc (put (camel n) acc))) (if bounded (put ": Copy + 'static" acc) acc)))
+                                (let ((acc (put (camel n) acc))) (if bounded (put ": Copy + 'static + for<'t> kayak_rt::Trace<'t>" acc) acc)))
                               ", " names (put "<" acc))))))
 
     (define collect (subr kfx (sexps ctx) ctx)
@@ -3159,7 +3159,7 @@
                  (outer (letrena-lifetimes (ctx-locals c)))
                  (tvars (type-params-in (ctx-locals c)))
                  (lives (words-of-sep (onto (cons life outer) tvars) ", "))
-                 (lives-bounded (words-of-sep (onto (cons life outer) (map (lambda ((t string)) (string-append t ": Copy + 'static")) tvars)) ", "))
+                 (lives-bounded (words-of-sep (onto (cons life outer) (map (lambda ((t string)) (string-append t ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) tvars)) ", "))
                  (names (split-words (fact-with c e "letrena-names ")))
                  (types (read-all (fact-with c e "letrena-locals ") "" 1))
                  (fallible (mfact? c e "fallible"))
@@ -3180,7 +3180,7 @@
                                  "phantom_: std::marker::PhantomData } } }")))))))))) acc))
                  (acc (put-held-impls held 0 region lives lives-bounded n1 acc))
                  (acc (put-nl n1 acc))
-                 (acc (put (string-append (if async "async fn letrena__" "fn letrena__") (string-append (mangle-bare r) (string-append "<" (string-append (words-of-sep (onto (onto outer (list life)) (map (lambda ((t string)) (string-append t ": Copy + 'static")) tvars)) ", ") ">(")))) acc))
+                 (acc (put (string-append (if async "async fn letrena__" "fn letrena__") (string-append (mangle-bare r) (string-append "<" (string-append (words-of-sep (onto (onto outer (list life)) (map (lambda ((t string)) (string-append t ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) tvars)) ", ") ">(")))) acc))
                  (acc (put (string-append (mangle r) (string-append ": &" (string-append life (string-append " " (string-append region (string-append "<" (string-append lives ">"))))))) acc))
                  ;; In the async mode, as they are outside, where they are from:
                  ;; at none of this region's data, a procedure's future too (C376).

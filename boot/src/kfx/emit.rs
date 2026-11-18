@@ -3001,7 +3001,7 @@ pub mod emitter {
         }
     }
 
-    /// `<T, U>`, or with `bounded`, `<T: Copy + 'static, U: Copy + 'static>`
+    /// `<T, U>`, or with `bounded`, `<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, U: Copy + 'static + for<'t> kayak_rt::Trace<'t>>`
     /// as every KFX value is; nothing for no names.
     pub fn put_generics_of(names: Strings, bounded: bool, acc: Chars) -> Chars {
         if null_p(names) {
@@ -3010,7 +3010,7 @@ pub mod emitter {
             put(str_lit(">"), put_sep(lambda2s(move |n: Str, acc: Chars| {
                 let acc = put(camel(n), acc);
                 if bounded {
-                    put(str_lit(": Copy + 'static"), acc)
+                    put(str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"), acc)
                 } else {
                     acc
                 }
@@ -5732,7 +5732,7 @@ pub mod emitter {
         let tvars = type_params_in(ctx_locals(c));
         let lives = words_of_sep(onto(kayak_rt::heap_cons(life, outer), tvars), str_lit(", "));
         let lives_bounded = words_of_sep(onto(kayak_rt::heap_cons(life, outer), map(lambda1s(move |t: Str| {
-            string_append(t, str_lit(": Copy + 'static"))
+            string_append(t, str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))
         }), tvars)), str_lit(", "));
         let names = split_words(fact_with(c, e, str_lit("letrena-names ")));
         let types = read_all(fact_with(c, e, str_lit("letrena-locals ")), str_lit(""), 1i64);
@@ -5768,7 +5768,7 @@ pub mod emitter {
         } else {
             str_lit("fn letrena__")
         }, string_append(mangle_bare(r), string_append(str_lit("<"), string_append(words_of_sep(onto(onto(outer, kayak_rt::heap_cons(life, kayak_rt::nil())), map(lambda1s(move |t: Str| {
-            string_append(t, str_lit(": Copy + 'static"))
+            string_append(t, str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))
         }), tvars)), str_lit(", ")), str_lit(">("))))), acc);
         let acc = put(string_append(mangle(r), string_append(str_lit(": &"), string_append(life, string_append(str_lit(" "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit(">")))))))), acc);
         let acc = put_letrena_params(if async_mode_p(c) {

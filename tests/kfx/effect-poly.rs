@@ -20,7 +20,7 @@ pub async fn each(mut f: &'static dyn Fn(i64) -> kayak_rt::suspend::Body<()>, mu
     }
 }
 
-pub async fn twice<A: Copy + 'static>(f: &'static dyn Fn(A) -> kayak_rt::suspend::Body<A>, x: A) -> Result<A, Unwind> {
+pub async fn twice<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static dyn Fn(A) -> kayak_rt::suspend::Body<A>, x: A) -> Result<A, Unwind> {
     Ok(kayak_rt::suspend::body(f(kayak_rt::suspend::body(f(x)).await?)).await?)
 }
 

@@ -34,7 +34,7 @@ pub mod parser_in {
     }
 
     #[inline]
-    pub fn twice<A: Copy + 'static>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
+    pub fn twice<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
         f(f(x))
     }
 

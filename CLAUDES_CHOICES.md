@@ -14686,3 +14686,50 @@ Measured: an edit's build 0.28 s, as before; kc's binary 7.06 MB.
   stopped at the I/O programs' Rust, blessed again; the second at
   clippy's two findings in `trace.rs`); nextest 5600 (the four new
   tests); selfhost 155 s; the fixpoint with Fixpt.
+
+## C480. A census of what the stack reaches of kayak-rt's heap (2026-11-18)
+
+The user, on closures as handles: "To me, this is just as much about
+getting a precise estimate of what's actually known to be reachable from
+the stack as anything else", then approving closure conversion to FX-26's
+heap grammar, its first step the measure. Taken here: the mark of
+Bartlett's collector, as a measure, nothing freed, with kayak-rt's
+`heap-stats` feature (C476) alone.
+
+What changed:
+- **kayak-rt's `census.rs`** (the feature's only): each heap arena's block
+  noted as it is made, with how its cell is traced (`trace_cell::<T>`);
+  each block `leak` makes noted opaque, its size alone; each constant
+  noted when first made (`once`), its slot read again at each mark. A
+  mark every `KAYAK_HEAP_MARK`th allocation: the run's stack (from
+  `with_big_stack`'s top) read word by word, conservatively, a word in a
+  noted block its cell's root; an opaque block so reached, and a plain
+  reference a trace meets, read the same way; each root and constant
+  traced precisely. Said on standard error: the stack's words, roots,
+  values and strings reached, and the types reached the most. Its
+  `unsafe` (a stack's words, a cell by its address) is the feature's
+  only, never a run's.
+- **`Trace` required** of what the heap holds: `heap_alloc`, `heap_cons`,
+  `heap_new`, `once`, `sum_new`/`sum_of` and the functions building lists
+  of a generic `T`; so the emitter bounds every type parameter and
+  associated type `for<'t> kayak_rt::Trace<'t>`, and writes a generative
+  type's `Trace` (its one field's). New impls: `SumOf<T>` (its payload),
+  `world.rs`'s three products, `MarkKey`, `Tag` (numbers alone), `BlobRef`
+  (its owner). A plain reference's `Trace` reports it to the tracer, for
+  a census to read its block as opaque.
+- **Bootstrapped** through two generations of the old kfx (the bounds
+  name what the old kayak-rt lacks).
+
+Measured, at an edit's build of the 1000-procedure bench (155 MB in 6.1
+million allocations), a mark every 250,000 allocations: 2.5 to 8.3 MB of
+values reachable, and 2.0 to 4.4 MB of strings, the most at the read's
+deepest (142,547 stack words, 31,165 conservative roots), mostly the
+database's maps and the reader's forms. Closures (opaque blocks) reached:
+one or two, under 0.1 MB, at most one root through them. So a collector
+keeps a twentieth of what kc allocates; and closures' captures are not
+where the estimate is imprecise, so converting them to FX-26's grammar
+is for a collector's precision and layout, not for this measure. Left
+out of the measure: values in letregion arenas (not the heap's), strings
+held only by the stack (a `Str`'s bytes `leak_string`'s). An edit's
+build 0.27 to 0.28 s, as before.
+- **The full check**: all passed in 398.6 s.

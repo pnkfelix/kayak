@@ -74,7 +74,7 @@
                 (cond ((string=? kind "type")
                        (let* ((acc (put (if first "<" ", ") acc))
                               (acc (put (camel (sym-name (car b))) acc)))
-                         (put-generics (cdr binders) #f (put ": Copy + 'static" acc))))
+                         (put-generics (cdr binders) #f (put ": Copy + 'static + for<'t> kayak_rt::Trace<'t>" acc))))
                       ((or (string=? kind "effect") (string=? kind "region")) (put-generics (cdr binders) first acc))
                       (else (error (string-append "kfx: KFX-0 has no poly over a " kind))))))))
 
@@ -106,7 +106,7 @@
           (let* ((inner (in-trait c spec))
                  (descs (spec-of spec "desc"))
                  (acc (put " {\n" (put (camel name) (put "pub trait " acc))))
-                 (acc (put-sep (lambda ((t string) (acc chars)) (put ": Copy + 'static;\n" (put (camel t) (put "    type " acc)))) "" (abs-of spec) acc))
+                 (acc (put-sep (lambda ((t string) (acc chars)) (put ": Copy + 'static + for<'t> kayak_rt::Trace<'t>;\n" (put (camel t) (put "    type " acc)))) "" (abs-of spec) acc))
                  (acc (put-sep (lambda ((v sexps) (acc chars)) (put ";\n" (put-val-sig inner v descs (put "    " acc)))) "" (spec-of spec "val") acc)))
             (put "}\n\n" acc))))
 
@@ -215,7 +215,7 @@
                                                   nil)))
                                           needs)))))
                  (params (onto (map (lambda ((p string)) (lifetime p)) (onto lives places))
-                               (onto (map (lambda ((t string)) (string-append t ": Copy + 'static")) types)
+                               (onto (map (lambda ((t string)) (string-append t ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) types)
                                      (map (lambda ((p string))
                                             (let ((bs (bounds p)))
                                               (string-append "Place_" (string-append (camel p) (if (null? bs) "" (string-append ": " (words-of-sep bs " + ")))))))
@@ -269,7 +269,7 @@
       (define put-lifetime-generics (subr kfx (strings sexps chars) chars)
         (lambda (lives binders acc)
           "A procedure's generics: its regions' lifetimes, then its types'."
-          (let ((types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (string-append (camel (sym-name (car (items b)))) ": Copy + 'static"))) nil)) binders))))
+          (let ((types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (string-append (camel (sym-name (car (items b)))) ": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))) nil)) binders))))
             (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lives) types) ", ") ">")) acc))))
 
       (define-rec
@@ -491,7 +491,7 @@
               (let* ((v (items (car variants)))
                      (tag (sym-name (car v)))
                      (gen (lambda ((more string))
-                            (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (onto (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static")) params) (if (string=? more "") nil (the strings (list more))))) ", ") ">"))))
+                            (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (onto (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) params) (if (string=? more "") nil (the strings (list more))))) ", ") ">"))))
                      (named (string-append (camel d) (if (and (null? lived) (null? params)) "" (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (map camel params)) ", ") ">")))))
                      (at (if (null? lived) "'static" (lifetime (car lived))))
                      (made (string-append (camel d) (string-append "::" (variant-name tag))))
@@ -550,7 +550,7 @@
                  (acc (put (camel d) acc))
                  (acc (if (null? lived)
                           (put-generics-of params #t acc)
-                          (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static")) params)) ", ") ">")) acc)))
+                          (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) params)) ", ") ">")) acc)))
                  (acc (put " {\n" acc))
                  (acc (put-variants inner (cdr xs) acc))
                  (acc (put "}\n\n" acc))
@@ -563,7 +563,7 @@
            traced, what of the heap they reach told the tracer; its regions'
            lifetimes outlive the trace's, its type parameters traceable."
           (let* ((generic (onto (map (lambda ((r string)) (string-append (lifetime r) ": 'a")) lived)
-                                (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + kayak_rt::Trace<'a>")) params)))
+                                (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) params)))
                  (args (onto (map lifetime lived) (map camel params)))
                  (acc (put (string-append "impl<'a" (string-append (string-list-append (map (lambda ((g string)) (string-append ", " g)) generic)) "> kayak_rt::Trace<'a> for ")) acc))
                  (acc (put (camel d) acc))
@@ -597,6 +597,11 @@
           (let* ((t (type-head-name (car xs)))
                  (params (head-type-params (car xs)))
                  (inside (not (string=? (module-here c) "")))
+                 ;; Its `Trace` (C480): its one field's.
+                 (acc (put (string-append "impl<'a" (string-list-append (map (lambda ((p string)) (string-append ", " (string-append (camel p) ": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))) params))) acc))
+                 (acc (put (string-append "> kayak_rt::Trace<'a> for " (camel t)) acc))
+                 (acc (if (null? params) acc (put (string-append "<" (string-append (words-of-sep (map camel params) ", ") ">")) acc)))
+                 (acc (put " {\n    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {\n        kayak_rt::Trace::trace(&self.0, t);\n    }\n}\n\n" acc))
                  (acc (put "#[derive(Clone, Copy)]\npub struct " acc))
                  (acc (put (camel t) acc))
                  (acc (put-generics-of params #t acc))
@@ -814,7 +819,7 @@
                         (acc (put "impl" acc))
                         (acc (if (null? lived)
                                  (put-generics-of params #t acc)
-                                 (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static")) params)) ", ") ">")) acc)))
+                                 (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) params)) ", ") ">")) acc)))
                         (acc (put " Show for " acc))
                         (acc (put (camel d) acc))
                         (acc (if (null? lived)
@@ -830,7 +835,7 @@
                         (acc (if (null? params)
                                  acc
                                  (put ">" (put-sep (lambda ((n string) (acc chars))
-                                                     (put ": Copy + 'static + Show" (put (camel n) acc)))
+                                                     (put ": Copy + 'static + for<'t> kayak_rt::Trace<'t> + Show" (put (camel n) acc)))
                                                    ", " params (put "<" acc)))))
                         (acc (put " Show for " acc))
                         (acc (put (camel (type-head-name h)) acc))

@@ -14,6 +14,11 @@ pub struct Tag<A, H> {
     kinds: PhantomData<fn(A, H)>,
 }
 
+/// A tag: its number alone, holding nothing of the heap (C480).
+impl<'a, A, H> crate::Trace<'a> for Tag<A, H> {
+    fn trace(&self, _: &mut crate::Tracer<'a>) {}
+}
+
 impl<A, H> Clone for Tag<A, H> {
     fn clone(&self) -> Self {
         *self

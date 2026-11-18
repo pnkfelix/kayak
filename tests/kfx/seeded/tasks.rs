@@ -179,12 +179,12 @@ pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn
 
 // An ivar: a cell written once, whose readers wait until it is.
 #[inline]
-pub fn make_ivar<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Ref<kayak_rt::Sum> {
+pub fn make_ivar<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Ref<kayak_rt::Sum> {
     kayak_rt::heap_new(the::<kayak_rt::Sum>(kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("empty") }, "empty", nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())))
 }
 
 // Its value, waited for.
-pub async fn ivar_get_x<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>) -> Result<A, Unwind> {
+pub async fn ivar_get_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>) -> Result<A, Unwind> {
     let tagcase_ = get(iv);
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("full") } {
@@ -210,7 +210,7 @@ pub fn enqueue_all_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static d
 
 // Written, its waiters made ready in the order they came. Written twice
 // is an error.
-pub fn ivar_put_x<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>, v: A) -> () {
+pub fn ivar_put_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>, v: A) -> () {
     let tagcase_ = get(iv);
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("full") } {

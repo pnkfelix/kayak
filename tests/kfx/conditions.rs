@@ -10,7 +10,7 @@ use kayak_rt::*;
 pub mod made__load__0__conditions {
     use super::*;
 
-    pub async fn handle<A: Copy + 'static, H: Copy + 'static>(body: &'static dyn Fn(Tag<A, H>) -> kayak_rt::suspend::Body<A>, on_escape: &'static dyn Fn(H) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
+    pub async fn handle<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, H: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(body: &'static dyn Fn(Tag<A, H>) -> kayak_rt::suspend::Body<A>, on_escape: &'static dyn Fn(H) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
         let t = make_escape_tag();
         Ok({
             let prompt_tag__ = t;
@@ -24,14 +24,14 @@ pub mod made__load__0__conditions {
         })
     }
 
-    pub async fn with_handler<C: Copy + 'static, V: Copy + 'static, A: Copy + 'static>(handler: &'static dyn Fn(C) -> kayak_rt::suspend::Body<V>, body: &'static dyn Fn(MarkKey<&'static dyn Fn(C) -> kayak_rt::suspend::Body<V>>) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
+    pub async fn with_handler<C: Copy + 'static + for<'t> kayak_rt::Trace<'t>, V: Copy + 'static + for<'t> kayak_rt::Trace<'t>, A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(handler: &'static dyn Fn(C) -> kayak_rt::suspend::Body<V>, body: &'static dyn Fn(MarkKey<&'static dyn Fn(C) -> kayak_rt::suspend::Body<V>>) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
         let key = make_continuation_mark_key();
         Ok(kayak_rt::suspend::body(with_mark_async(key, handler, lambda0(move || kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body((body)(key)).await?)
         })))).await?)
     }
 
-    pub async fn raise<C: Copy + 'static, V: Copy + 'static>(key: MarkKey<&'static dyn Fn(C) -> kayak_rt::suspend::Body<V>>, condition: C) -> Result<V, Unwind> {
+    pub async fn raise<C: Copy + 'static + for<'t> kayak_rt::Trace<'t>, V: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(key: MarkKey<&'static dyn Fn(C) -> kayak_rt::suspend::Body<V>>, condition: C) -> Result<V, Unwind> {
         Ok(kayak_rt::suspend::body((first_mark(key, lambda1(move |x: C| kayak_rt::suspend::body(async move {
             Ok(error(str_lit("a condition raised with no handler")))
         }))))(condition)).await?)

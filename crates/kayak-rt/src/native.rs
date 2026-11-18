@@ -121,7 +121,7 @@ impl Native for char {
 /// A list, copied each way, as pairs of Fixpt's layout made by kayak-jit
 /// and as kayak's. No KFX program can tell the copy from the list, since
 /// none tells pairs apart nor writes through one (C116).
-impl<T: Native + Clone + 'static> Native for crate::List<T> {
+impl<T: Native + Clone + 'static + for<'t> crate::Trace<'t>> Native for crate::List<T> {
     fn word(self) -> u64 {
         let mut items = Vec::new();
         let mut at = self;

@@ -236,6 +236,13 @@ pub struct BlobRef<B> {
     at: usize,
 }
 
+/// A suffix's reference: its owner's (C480).
+impl<'a, B: crate::Trace<'a>> crate::Trace<'a> for BlobRef<B> {
+    fn trace(&self, t: &mut crate::Tracer<'a>) {
+        self.owner.trace(t);
+    }
+}
+
 /// `(blobref-at b off)`, of a flat of `size` bytes.
 pub fn blobref_at<B: Owner>(b: B, off: Int, size: usize) -> BlobRef<B> {
     let at = index_of(off, "blobref-at: a negative offset");

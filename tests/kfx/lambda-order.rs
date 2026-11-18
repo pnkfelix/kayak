@@ -7,7 +7,7 @@ use kayak_rt::*;
 // order, is given the closure's parameter's type the checker found.
 
 #[inline]
-pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+pub fn map<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
     } else {

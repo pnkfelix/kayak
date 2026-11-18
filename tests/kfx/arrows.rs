@@ -60,7 +60,7 @@ pub fn count_down(mut n: Int) -> Int {
 }
 
 #[inline]
-pub fn first_of<T: Copy + 'static>(xs: List<T>, d: T) -> T {
+pub fn first_of<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<T>, d: T) -> T {
     if null_p(xs) {
         d
     } else {

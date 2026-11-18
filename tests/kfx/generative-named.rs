@@ -7,6 +7,12 @@ use kayak_rt::*;
 // the type's name. At the top level, in a family, and in a module, where
 // they are the module's own (Fixpt's `generative/named-module.fx`).
 
+impl<'a> kayak_rt::Trace<'a> for Meters {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Meters(pub i64);
 
@@ -18,19 +24,31 @@ pub fn from_meters(x: Meters) -> i64 {
     x.0
 }
 
-#[derive(Clone, Copy)]
-pub struct Stack<T: Copy + 'static>(pub List<T>, std::marker::PhantomData<(T, )>);
+impl<'a, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>> kayak_rt::Trace<'a> for Stack<T> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+    }
+}
 
-pub fn stacked<T: Copy + 'static>(x: List<T>) -> Stack<T> {
+#[derive(Clone, Copy)]
+pub struct Stack<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(pub List<T>, std::marker::PhantomData<(T, )>);
+
+pub fn stacked<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: List<T>) -> Stack<T> {
     Stack(x, std::marker::PhantomData)
 }
 
-pub fn unstack<T: Copy + 'static>(x: Stack<T>) -> List<T> {
+pub fn unstack<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: Stack<T>) -> List<T> {
     x.0
 }
 
 pub mod m {
     use super::*;
+
+    impl<'a> kayak_rt::Trace<'a> for Counter {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            kayak_rt::Trace::trace(&self.0, t);
+        }
+    }
 
     #[derive(Clone, Copy)]
     pub struct Counter(i64);
@@ -60,7 +78,7 @@ pub mod m {
 }
 
 #[inline]
-pub fn push<T: Copy + 'static>(x: T, s: Stack<T>) -> Stack<T> {
+pub fn push<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: T, s: Stack<T>) -> Stack<T> {
     stacked(kayak_rt::heap_cons(x, unstack(s)))
 }
 

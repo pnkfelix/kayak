@@ -40,7 +40,7 @@ pub fn bump<'r>(b: RefAt<'r, i64>, n: i64) -> () {
 }
 
 // A type variable beside the region, and a procedure given that reads it.
-pub fn fold<'r, A: Copy + 'static>(mut f: &'r dyn Fn(A, i64) -> i64, mut xs: ListAt<'r, A>, mut acc: i64) -> i64 {
+pub fn fold<'r, A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut f: &'r dyn Fn(A, i64) -> i64, mut xs: ListAt<'r, A>, mut acc: i64) -> i64 {
     loop {
         if null_p(xs) {
             return acc;

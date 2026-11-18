@@ -6,12 +6,12 @@ use kayak_rt::*;
 // declare the type parameter again, A: Copy + 'static, as a nested Rust
 // item must, and the arena holds pairs of A.
 
-pub fn second_of<A: Copy + 'static>(x: A, y: A) -> A {
+pub fn second_of<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: A, y: A) -> A {
     {
-        struct Region_R<'r, A: Copy + 'static> { a0: Arena<Cons<'r, A>>, phantom_: std::marker::PhantomData<(&'r (), A,)> }
-        impl<'r, A: Copy + 'static> Default for Region_R<'r, A> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
-        impl<'r, A: Copy + 'static> Holds<Cons<'r, A>> for Region_R<'r, A> { fn arena(&self) -> &Arena<Cons<'r, A>> { &self.a0 } }
-        fn letrena__r<'r, A: Copy + 'static>(r: &'r Region_R<'r, A>, x: A, y: A) -> A {
+        struct Region_R<'r, A: Copy + 'static + for<'t> kayak_rt::Trace<'t>> { a0: Arena<Cons<'r, A>>, phantom_: std::marker::PhantomData<(&'r (), A,)> }
+        impl<'r, A: Copy + 'static + for<'t> kayak_rt::Trace<'t>> Default for Region_R<'r, A> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
+        impl<'r, A: Copy + 'static + for<'t> kayak_rt::Trace<'t>> Holds<Cons<'r, A>> for Region_R<'r, A> { fn arena(&self) -> &Arena<Cons<'r, A>> { &self.a0 } }
+        fn letrena__r<'r, A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(r: &'r Region_R<'r, A>, x: A, y: A) -> A {
             let xs = the::<ListAt<'r, A>>(rcons(r, x, rcons(r, y, nil::<A>())));
             car(cdr(xs))
         }

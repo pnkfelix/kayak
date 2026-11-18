@@ -28,7 +28,7 @@ pub fn count_up(n: i64) -> i64 {
 }
 
 /// `(the a ...)` inside a poly procedure: its type variable is in scope.
-pub fn firsts<A: Copy + 'static>(xs: List<A>, d: A) -> List<A> {
+pub fn firsts<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<A>, d: A) -> List<A> {
     if null_p(xs) {
         the::<List<A>>(kayak_rt::heap_cons(d, kayak_rt::nil()))
     } else {

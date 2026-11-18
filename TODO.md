@@ -1878,7 +1878,10 @@ over its 1664 definitions, 335 of them refused:
   objects (`leak`: continuations, mailboxes, tables). Then ~~a `Trace`
   the emitter writes for each datatype~~ (done, C479: every datatype and
   shape, kayak-rt's own types; a reference opaque, a closure's captures
-  too); then a collector, the Rust stack conservative and the heap
+  too); ~~a census of what the stack reaches~~ (done, C480: at an edit's
+  build, 2.5 to 8 MB of values and 2 to 4.4 MB of strings reachable
+  while 155 MB is allocated; closures reach next to nothing); then a
+  collector, the Rust stack conservative and the heap
   precise (Bartlett's mostly-copying), its stress mode at every
   allocation: its roots (the stacks, the constants kfx's Rust keeps,
   kayak-rt's statics and thread locals), cells used again (an arena's

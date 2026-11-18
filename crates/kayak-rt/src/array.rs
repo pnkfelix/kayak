@@ -48,7 +48,7 @@ pub fn array_length<T>(a: Array<T>) -> Int {
     i64_to_int(a.0.len() as i64)
 }
 
-pub fn array_to_list<T: Copy + 'static>(a: Array<T>) -> List<T> {
+pub fn array_to_list<T: Copy + 'static + for<'t> crate::Trace<'t>>(a: Array<T>) -> List<T> {
     a.0.iter()
         .rev()
         .fold(nil(), |acc, c| heap_cons(c.get(), acc))

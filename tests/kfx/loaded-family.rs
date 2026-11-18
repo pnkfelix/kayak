@@ -31,7 +31,7 @@ pub mod made__load__1__loaded_family {
     }
 
     #[inline]
-    pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: Product_3fst_3snd<A, B>) -> Product_3fst_3snd<B, A> {
+    pub fn swap<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(p: Product_3fst_3snd<A, B>) -> Product_3fst_3snd<B, A> {
         Product_3fst_3snd(p.1, p.0)
     }
 

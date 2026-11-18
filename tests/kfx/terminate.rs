@@ -117,7 +117,7 @@ pub fn ack(m: Int, n: Int) -> Int {
 // A procedure given, called: pure, as its type says, since no procedure is
 // in what it takes or gives (FX-26 says `spin` only for a type recursive
 // through a parameter).
-pub fn map_pure<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+pub fn map_pure<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
     let go__knot = knot::<&'static (dyn Fn(List<A>) -> List<B> + Send + Sync)>();
     let go = lambda1s(move |ys: List<A>| {
         if null_p(ys) {

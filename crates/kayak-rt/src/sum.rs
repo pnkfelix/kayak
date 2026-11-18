@@ -43,6 +43,13 @@ pub struct SumOf<T> {
     payload: T,
 }
 
+/// A sum's payload traced (C480): its head is kayak-rt's, holding none.
+impl<'a, T: crate::Trace<'a>> crate::Trace<'a> for SumOf<T> {
+    fn trace(&self, t: &mut crate::Tracer<'a>) {
+        self.payload.trace(t);
+    }
+}
+
 impl<T: 'static> SumOf<T> {
     /// A cell, for a `static`: `SumOf::new("eof", ())`, then [`SumOf::sum`].
     pub const fn new(name: &'static str, payload: T) -> Self {
@@ -230,7 +237,11 @@ const _: () = tags_distinct(RUNTIME_TAGS);
 
 /// A sum of tag `name`, its discriminant `tag` (`tag_hash(name)`), and
 /// `payload`, on the heap.
-pub fn sum_new<T: 'static>(tag: u64, name: &'static str, payload: T) -> Sum {
+pub fn sum_new<T: 'static + for<'t> crate::Trace<'t>>(
+    tag: u64,
+    name: &'static str,
+    payload: T,
+) -> Sum {
     let cell: &'static SumOf<T> = crate::heap_alloc(SumOf {
         head: SumHead {
             tag,
@@ -244,7 +255,7 @@ pub fn sum_new<T: 'static>(tag: u64, name: &'static str, payload: T) -> Sum {
 }
 
 /// The same, its discriminant found from its name: for kayak-rt's own sums.
-pub fn sum_of<T: 'static>(name: &'static str, payload: T) -> Sum {
+pub fn sum_of<T: 'static + for<'t> crate::Trace<'t>>(name: &'static str, payload: T) -> Sum {
     sum_new(tag_hash(name), name, payload)
 }
 

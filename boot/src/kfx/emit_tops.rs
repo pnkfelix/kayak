@@ -177,7 +177,7 @@ pub mod writing {
                         str_lit(", ")
                     }, acc);
                     let acc = put(camel(sym_name(car(b))), acc);
-                    return put_generics(cdr(binders), false, put(str_lit(": Copy + 'static"), acc));
+                    return put_generics(cdr(binders), false, put(str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"), acc));
                 } else if (string_eq_p(kind, str_lit("effect")) || string_eq_p(kind, str_lit("region"))) {
                     binders = cdr(binders);
                     continue;
@@ -235,7 +235,7 @@ pub mod writing {
         let descs = spec_of(spec, str_lit("desc"));
         let acc = put(str_lit(" {\n"), put(camel(name), put(str_lit("pub trait "), acc)));
         let acc = put_sep(lambda2s(move |t: Str, acc: Chars| {
-            put(str_lit(": Copy + 'static;\n"), put(camel(t), put(str_lit("    type "), acc)))
+            put(str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>;\n"), put(camel(t), put(str_lit("    type "), acc)))
         }), str_lit(""), abs_of(spec), acc);
         let acc = put_sep(lambda2s(move |v: Sexps, acc: Chars| {
             put(str_lit(";\n"), put_val_sig(inner, v, descs, put(str_lit("    "), acc)))
@@ -471,7 +471,7 @@ pub mod writing {
         let params = onto(map(lambda1s(move |p: Str| {
             lifetime(p)
         }), onto(lives, places)), onto(map(lambda1s(move |t: Str| {
-            string_append(t, str_lit(": Copy + 'static"))
+            string_append(t, str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))
         }), types), map(lambda1s(move |p: Str| {
             let bs = bounds(p);
             string_append(str_lit("Place_"), string_append(camel(p), if null_p(bs) {
@@ -563,7 +563,7 @@ pub mod writing {
     pub fn put_lifetime_generics(lives: Strings, binders: Sexps, acc: Chars) -> Chars {
         let types = concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
             if sym_is_p(second(items(b)), str_lit("type")) {
-                the::<Strings>(kayak_rt::heap_cons(string_append(camel(sym_name(car(items(b)))), str_lit(": Copy + 'static")), kayak_rt::nil()))
+                the::<Strings>(kayak_rt::heap_cons(string_append(camel(sym_name(car(items(b)))), str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>")), kayak_rt::nil()))
             } else {
                 nil::<Str>()
             }
@@ -951,7 +951,7 @@ pub mod writing {
             let tag = sym_name(car(v));
             let r#gen = lambda1s(move |more: Str| {
                 string_append(str_lit("<"), string_append(words_of_sep(onto(map(&lifetime, lived), onto(map(lambda1s(move |p: Str| {
-                    string_append(camel(p), str_lit(": Copy + 'static"))
+                    string_append(camel(p), str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))
                 }), params), if string_eq_p(more, str_lit("")) {
                     nil::<Str>()
                 } else {
@@ -1048,7 +1048,7 @@ pub mod writing {
             put_generics_of(params, true, acc)
         } else {
             put(string_append(str_lit("<"), string_append(words_of_sep(onto(map(&lifetime, lived), map(lambda1s(move |p: Str| {
-                string_append(camel(p), str_lit(": Copy + 'static"))
+                string_append(camel(p), str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))
             }), params)), str_lit(", ")), str_lit(">"))), acc)
         };
         let acc = put(str_lit(" {\n"), acc);
@@ -1065,7 +1065,7 @@ pub mod writing {
         let generic = onto(map(lambda1s(move |r: Str| {
             string_append(lifetime(r), str_lit(": 'a"))
         }), lived), map(lambda1s(move |p: Str| {
-            string_append(camel(p), str_lit(": Copy + 'static + kayak_rt::Trace<'a>"))
+            string_append(camel(p), str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))
         }), params));
         let args = onto(map(&lifetime, lived), map(&camel, params));
         let acc = put(string_append(str_lit("impl<'a"), string_append(string_list_append(map(lambda1s(move |g: Str| {
@@ -1126,6 +1126,16 @@ pub mod writing {
         let t = type_head_name(car(xs));
         let params = head_type_params(car(xs));
         let inside = not(string_eq_p(module_here(c), str_lit("")));
+        let acc = put(string_append(str_lit("impl<'a"), string_list_append(map(lambda1s(move |p: Str| {
+            string_append(str_lit(", "), string_append(camel(p), str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>")))
+        }), params))), acc);
+        let acc = put(string_append(str_lit("> kayak_rt::Trace<'a> for "), camel(t)), acc);
+        let acc = if null_p(params) {
+            acc
+        } else {
+            put(string_append(str_lit("<"), string_append(words_of_sep(map(&camel, params), str_lit(", ")), str_lit(">"))), acc)
+        };
+        let acc = put(str_lit(" {\n    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {\n        kayak_rt::Trace::trace(&self.0, t);\n    }\n}\n\n"), acc);
         let acc = put(str_lit("#[derive(Clone, Copy)]\npub struct "), acc);
         let acc = put(camel(t), acc);
         let acc = put_generics_of(params, true, acc);
@@ -1494,7 +1504,7 @@ pub mod writing {
                     put_generics_of(params, true, acc)
                 } else {
                     put(string_append(str_lit("<"), string_append(words_of_sep(onto(map(&lifetime, lived), map(lambda1s(move |p: Str| {
-                        string_append(camel(p), str_lit(": Copy + 'static"))
+                        string_append(camel(p), str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t>"))
                     }), params)), str_lit(", ")), str_lit(">"))), acc)
                 };
                 let acc = put(str_lit(" Show for "), acc);
@@ -1515,7 +1525,7 @@ pub mod writing {
                     acc
                 } else {
                     put(str_lit(">"), put_sep(lambda2s(move |n: Str, acc: Chars| {
-                        put(str_lit(": Copy + 'static + Show"), put(camel(n), acc))
+                        put(str_lit(": Copy + 'static + for<'t> kayak_rt::Trace<'t> + Show"), put(camel(n), acc))
                     }), str_lit(", "), params, put(str_lit("<"), acc)))
                 };
                 let acc = put(str_lit(" Show for "), acc);

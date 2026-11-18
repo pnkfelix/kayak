@@ -29,6 +29,9 @@ pub struct Tracer<'a> {
     /// Of each type a handle reached: how many values, and their bytes.
     counts: HashMap<&'static str, (u64, u64)>,
     strings: (u64, u64),
+    /// The plain references met (a closure in a value): what a census
+    /// reads as opaque blocks (C480).
+    opaque: Vec<usize>,
 }
 
 impl<'a> Tracer<'a> {
@@ -55,6 +58,16 @@ impl<'a> Tracer<'a> {
             self.strings.0 += 1;
             self.strings.1 += s.len() as u64;
         }
+    }
+
+    /// A plain reference met, to what no `Trace` says the parts of.
+    pub fn opaque(&mut self, p: usize) {
+        self.opaque.push(p);
+    }
+
+    /// The plain references met since asked last.
+    pub fn take_opaque(&mut self) -> Vec<usize> {
+        std::mem::take(&mut self.opaque)
     }
 
     /// Everything kept to visit, visited, and what that reaches.
@@ -181,7 +194,9 @@ impl<'a> Trace<'a> for Value {
 /// does not show), a dynamic sum, a bloblet, a flat array; opaque for now
 /// (a collector scans such a block as a whole).
 impl<'a, T: ?Sized> Trace<'a> for &'_ T {
-    fn trace(&self, _: &mut Tracer<'a>) {}
+    fn trace(&self, t: &mut Tracer<'a>) {
+        t.opaque(std::ptr::from_ref::<T>(*self).cast::<()>() as usize);
+    }
 }
 
 #[cfg(test)]

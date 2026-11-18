@@ -9,7 +9,7 @@ use kayak_rt::*;
 // is `a__0`).
 
 #[inline]
-pub fn mk<A: Copy + 'static>() -> List<A> {
+pub fn mk<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>() -> List<A> {
     nil::<A>()
 }
 
