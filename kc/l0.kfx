@@ -23,8 +23,10 @@
  `(sum \"TAG\" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
  item's code, `(none)`.
  Delimited control (C458): `(prompt TAG HANDLER BODY)`, each made in
- that order, the body a lambda of no parameters (C459); a tag a fresh
- ref of unit; `abort-current-continuation`, `escape`,
+ that order, the body a lambda of no parameters (C459); a tag, and a
+ mark's key (C460), a fresh ref of unit; `cwcc` and `current-marks`
+ unary, `first-mark` and `marks-of` binary, `with-mark` ternary
+ primitives; a top-level form's expression a call of a lambda (C460); `abort-current-continuation`, `escape`,
  `call-with-composable-continuation` and `call-with-oneshot-continuation`
  binary primitives.
  Step 11: strings and symbols (C421); arrays (C422), and `(the T e)`: `(string \"TEXT\")`, `(symbol
@@ -52,7 +54,9 @@
               ;; A transformer's (C447): what a datum is.
               "int?" "char?" "bool?" "procedure?"
               ;; And by a bloblet's kind (C448), as Fixpt's heap has them.
-              "array?" "ref?" "sum?" "product?" "vector?" "bytevector?" "keyword?"))
+              "array?" "ref?" "sum?" "product?" "vector?" "bytevector?" "keyword?"
+              ;; A whole continuation's capture; a key's marks (C460).
+              "cwcc" "current-marks"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
@@ -65,9 +69,11 @@
               "abort-current-continuation" "escape"
               ;; A capture up to the tag's prompt (C459), given to the
               ;; procedure: composable, or resumed once at most.
-              "call-with-composable-continuation" "call-with-oneshot-continuation"))
+              "call-with-composable-continuation" "call-with-oneshot-continuation"
+              ;; A key's innermost mark, or the default; a continuation's (C460).
+              "first-mark" "marks-of"))
 
-      (define ternary-primitives (listof string acyclic) (list "substring" "array-set!")))
+      (define ternary-primitives (listof string acyclic) (list "substring" "array-set!" "with-mark")))
 
     (define not-yet (subr kfx (string string) string)
       (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))
@@ -375,7 +381,7 @@
                         ;; body a procedure of no arguments (C459), as Fixpt
                         ;; compiles it, so that what is inside the prompt is
                         ;; above its frame on the stack, which a capture takes.
-                        ((and (null? (cdr xs)) (or (string=? h "make-continuation-prompt-tag") (string=? h "make-escape-tag")))
+                        ((and (null? (cdr xs)) (or (string=? h "make-continuation-prompt-tag") (string=? h "make-escape-tag") (string=? h "make-continuation-mark-key")))
                          (l0-made "(prim new (unit))" next))
                         ((and (string=? h "prompt") (i64= (size xs) 4))
                          (tagcase (l0-of path scope env next (second xs))
@@ -586,16 +592,26 @@
                   (l0-made (t n1) (l0-seq path scope env n1 (cdr es) (cons t done)))))))))
 
     (hide
+      "A top-level form's term made a call of a procedure of no parameters
+       (C460), so that each form's run is a call of its own from
+       `kc_entry`'s frame, as Fixpt runs each: the frames a whole continuation
+       (`cwcc`) takes end there, and one resumed returns there. Made a term
+       here, the lambda numbered `n`, after the form's binders, with no free
+       variables (a top-level form has no local), and not a form for `l0-of`,
+       which would look its head up as a global's name first."
+      (define l0-run (subr kfx (string i64) string)
+        (lambda (t n) (string-list-append (list "(app (lambda " (i64->string n) " () () " t "))"))))
+
       (define l0-item-text (subr kfx (string sexp sexps) string)
         (lambda (path f scope)
           "Form `f` as an item, its names' entries `scope`; a type's, none."
           (if (type-form? f) "(none)"
           (if (string=? (form-name f) "")
-              (tagcase (l0-of path scope nil 0 f) (l0-made (t n) (string-append "(expr " (string-append t ")"))))
+              (tagcase (l0-of path scope nil 0 f) (l0-made (t n) (string-append "(expr " (string-append (l0-run t n) ")"))))
               (let ((l (lambda-of (define-value f))))
                 (if (null? l)
                     (tagcase (l0-of path scope nil 0 (define-value f))
-                      (l0-made (t n) (string-list-append (list "(global " (form-name f) " " t ")"))))
+                      (l0-made (t n) (string-list-append (list "(global " (form-name f) " " (l0-run t n) ")"))))
                     (let ((lx (items (car l))))
                       (tagcase (l0-params (items (second lx)) 0 nil nil)
                         (l0-made-params (ps env k)

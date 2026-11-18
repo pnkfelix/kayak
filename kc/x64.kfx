@@ -543,6 +543,11 @@
                             (c (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si 2)) ", %rdx"))))
                             (c (x64-array-index c)))
                        (x64-emit (x64-emit c "movq %rdx, -20(%rsi)") (string-append "movq $" (string-append (i64->string (x64-constant-of (car (read-all "(unit)" "l0" 1)))) ", %rax")))))
+                    ((and (string=? h "prim") (string=? (prim-name t) "with-mark"))
+                     ;; A mark (C460): the key, the value and the thunk to `kc_with_mark`.
+                     (let* ((c (x64-emit-args c (prim-args t) si env))
+                            (c (x64-moved-args c x64-arg-registers si 3)))
+                       (x64-emit c "call kc_with_mark")))
                     ((and (string=? h "prim") (i64= (size (prim-args t)) 3))
                      ;; `substring`: its arguments into slots, then given to the runtime.
                      (let* ((args (prim-args t))
@@ -674,6 +679,13 @@
                             (c (x64-moved-args c x64-arg-registers si n))
                             (c (x64-emit c (string-append "addq $" (string-append fr ", %rsp")))))
                        (x64-emit c (string-append "jmp " (x64-proc-symbol (call-name t))))))
+                    ;; A mark in tail position (C460): this frame given back first,
+                    ;; so that a mark of the key the return is to is replaced.
+                    ((and (string=? h "prim") (string=? (prim-name t) "with-mark"))
+                     (let* ((c (x64-emit-args c (prim-args t) si env))
+                            (c (x64-moved-args c x64-arg-registers si 3))
+                            (c (x64-emit c (string-append "addq $" (string-append fr ", %rsp")))))
+                       (x64-emit c "jmp kc_with_mark")))
                     ((and (string=? h "app") (i64<= (size (app-args t)) 6))
                      (let* ((args (app-args t)) (n (size args))
                             (c (x64-emit-expr c (app-fn t) si env))
@@ -820,6 +832,12 @@
                   ;; Its fields less the trailer, from the trailer's distance (C422).
                   ((string=? n "array-length") (x64-emit (x64-emit c "movq -12(%rax), %rax") "subq $13, %rax"))
                   ((string=? n "string->symbol") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_intern"))
+                  ;; A whole continuation's capture (C460): to the run's frame.
+                  ((string=? n "cwcc")
+                   (x64-emit (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq kc_run_base(%rip), %rsi") "movl $32, %edx") "call kc_capture"))
+                  ;; A key's marks, innermost first (C460).
+                  ((string=? n "current-marks")
+                   (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq kc_prompts(%rip), %rsi") "call kc_current_marks"))
                   ((string=? n "string?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_string"))
                   ((string=? n "symbol?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_symbol"))
                   ;; What a datum is (C447): a fixnum, tag 0; a character, its low
@@ -848,6 +866,9 @@
                   ;; An abort to the tag's prompt (C458), never back.
                   ((or (string=? n "abort-current-continuation") (string=? n "escape"))
                    (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi") "call kc_abort"))
+                  ;; A key's innermost mark, or the default; a continuation's marks (C460).
+                  ((string=? n "first-mark") (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi") "call kc_first_mark"))
+                  ((string=? n "marks-of") (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi") "call kc_marks_of"))
                   ;; A capture (C459): the procedure, the tag, and whether once.
                   ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-oneshot-continuation"))
                    (x64-emit (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi")
@@ -1100,7 +1121,25 @@
        records on the current ones; then the capture's return taken with
        the value, so that the copy's last return is to the resume's caller
        (a composable continuation's composition). Past the stack's limit,
-       failure 8.
+       failure 8. A whole one (`cwcc`, C460, its flag 32) is the frames up
+       to the run's (`kc_run_base`, the stack pointer of the frame each
+       top-level form's run is called from: `kc_entry`'s, or `kc_call2`'s),
+       put back below the current run's return, whatever is there now
+       given up, so that it returns where the current run does, as
+       Fixpt's.
+
+       And marks' (C460), each a record on the prompts' chain, as Fixpt's
+       native convention has a mark a frame of its own: the record before,
+       the key, its own address (a stack address, as a prompt's stack
+       pointer is, which a capture makes an offset), the value, and a word
+       for the stack's alignment. `kc_with_mark` (the key, the value and
+       the thunk): where it was called to return to `kc_mark_ret` (in tail
+       position under a mark) and that mark's key is this, its value
+       replaced; else a record pushed, `kc_mark_ret` as its return, which
+       takes it off. Then the thunk tail-called. `kc_first_mark` walks the
+       chain for the key; `kc_current_marks` and `kc_marks_of`, kcrt's,
+       make the list of a key's marks, the chain's or a continuation's
+       copy's, innermost first.
 
        And `kc_apply_run` (C455; the state in `%rdi`), a transformer's run
        after `kc_entry`, a built one's `--apply` and one in process alike:
@@ -1115,6 +1154,7 @@
             (list "    .bss\n    .p2align 3\n    .globl kc_heap_next\nkc_heap_next:\n    .quad 0\n"
                   "kc_gc:\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n"
                   "    .globl kc_prompts\nkc_prompts:\n    .quad 0\n"
+                  "    .globl kc_run_base\nkc_run_base:\n    .quad 0\n"
                   "    .text\nkc_gc_init:\n    leaq kc_prompts(%rip), %rax\n    subq 208(%r15), %rax\n    movq $0, -4(%rax)\n    leaq 8(%rsp), %rax\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"
                   "    movq %r12, -4(%rcx)\n    movq %r13, 4(%rcx)\n    movq %rax, 12(%rcx)\n"
                   "    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 20(%rcx)\n"
@@ -1132,17 +1172,33 @@
                   "    leaq kc_gc(%rip), %rsi\n    subq 208(%r15), %rsi\n    subq $4, %rsi\n    movq %r12, 40(%rsi)\n    movq %rsp, 48(%rsi)\n    movq %rsp, %rdi\n"
                   "    call kcrt_capture\n    movq kc_gc+40(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n"
                   "    movq 0(%rsp), %r10\n    movq %rax, %rdi\n    addq $40, %rsp\n    jmp *-28(%r10)\n"
-                  "    .p2align 3\n    .globl kc_resume\nkc_resume:\n    movq -36(%r10), %r11\n    movq -20(%r11), %rax\n    movq %rsp, %rcx\n    subq %rax, %rcx\n"
-                  "    cmpq 16(%r15), %rcx\n    jb .Lkc_resume_deep\n    movq %rdi, -8(%rcx)\n    leaq -64(%rcx), %rsp\n    andq $-16, %rsp\n    movq %rcx, 8(%rsp)\n"
+                  "    .p2align 3\n    .globl kc_resume\nkc_resume:\n    movq -36(%r10), %r11\n    movq -20(%r11), %rax\n    movq -36(%r11), %rcx\n    andq $32, %rcx\n"
+                  "    jne .Lkc_resume_whole\n    movq %rsp, %rcx\n    jmp .Lkc_resume_at\n"
+                  ".Lkc_resume_whole:\n    movq kc_run_base(%rip), %rcx\n    subq $8, %rcx\n"
+                  ".Lkc_resume_at:\n    subq %rax, %rcx\n"
+                  "    cmpq 16(%r15), %rcx\n    jb .Lkc_resume_deep\n    movq %rdi, -8(%rcx)\n    movq %rsp, %rdx\n    cmpq %rdx, %rcx\n    jae .Lkc_resume_low\n    movq %rcx, %rdx\n"
+                  ".Lkc_resume_low:\n    leaq -64(%rdx), %rsp\n    andq $-16, %rsp\n    movq %rcx, 8(%rsp)\n"
                   "    movq %r11, %rdi\n    movq %rcx, %rsi\n    movq kc_prompts(%rip), %rdx\n    call kcrt_resume_copy\n    andq $-2, %rax\n    movq %rax, %rdx\n"
                   (x64-cell-stored "%rdx" "kc_prompts")
                   "    movq 8(%rsp), %rcx\n    movq %rcx, %rsp\n    movq -8(%rcx), %rax\n    ret\n"
                   ".Lkc_resume_deep:\n    subq $8, %rsp\n    movl $8, %edi\n    call kc_fail\n"
+                  "    .text\n    .globl kc_with_mark\nkc_with_mark:\n    leaq kc_mark_ret(%rip), %rax\n    cmpq %rax, 0(%rsp)\n    jne .Lkc_mark_push\n"
+                  "    cmpq %rdi, 16(%rsp)\n    jne .Lkc_mark_push\n    movq %rsi, 32(%rsp)\n    movq %rdx, %r10\n    jmp *-28(%r10)\n"
+                  ".Lkc_mark_push:\n    subq $40, %rsp\n    movq kc_prompts(%rip), %rcx\n    movq %rcx, 0(%rsp)\n    movq %rdi, 8(%rsp)\n    movq %rsp, 16(%rsp)\n"
+                  "    movq %rsi, 24(%rsp)\n    movq $0, 32(%rsp)\n" (x64-cell-stored "%rsp" "kc_prompts")
+                  "    leaq kc_mark_ret(%rip), %rax\n    pushq %rax\n    movq %rdx, %r10\n    jmp *-28(%r10)\n"
+                  "kc_mark_ret:\n    movq 0(%rsp), %rdx\n" (x64-cell-stored "%rdx" "kc_prompts") "    addq $40, %rsp\n    ret\n"
+                  "    .globl kc_first_mark\nkc_first_mark:\n    movq kc_prompts(%rip), %rax\n"
+                  ".Lkc_fm_look:\n    testq %rax, %rax\n    je .Lkc_fm_none\n    cmpq %rdi, 8(%rax)\n    je .Lkc_fm_found\n    movq 0(%rax), %rax\n    jmp .Lkc_fm_look\n"
+                  ".Lkc_fm_found:\n    movq 24(%rax), %rax\n    ret\n.Lkc_fm_none:\n    movq %rsi, %rax\n    ret\n"
+                  (x64-heap-routine "kc_current_marks" "kcrt_current_marks" 2)
+                  (x64-heap-routine "kc_marks_of" "kcrt_marks_of" 2)
                   "    .text\n    .globl kc_apply_address\nkc_apply_address:\n"
                   (if applies (string-append "    leaq " (string-append (x64-proc-symbol "%phase1-apply") "(%rip), %rax\n")) "    movl $0, %eax\n")
                   "    ret\n"
                   "    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"
                   "    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n    movq %rsp, 12(%rcx)\n"
+                  (x64-cell-stored "%rsp" "kc_run_base")
                   "    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"
                   "    call *%rax\n" (x64-cell-stored "%r12" "kc_heap_next") "    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"
                   (x64-heap-routine "kc_string_append" "kcrt_string_append" 2)
@@ -1165,13 +1221,13 @@
       (list "kc_show" "kc_fail" "kc_intern" "kc_string_eq" "kc_string_lt" "kcrt_string_append"
             "kcrt_substring" "kc_symbol_to_string" "kc_is_string" "kc_is_symbol" "kc_is_procedure"
             "kc_is_kind" "kcrt_append" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_collect"
-            "kcrt_given" "kc_gc_reset" "kcrt_capture" "kcrt_resume_copy"))
+            "kcrt_given" "kc_gc_reset" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,
        not jumped to, so that its answer is seen."
       (define x64-failing strings (list "kc_fail" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail"))
-      (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy"))
+      (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of"))
 
       (define-rec
         (x64-routine-stubs (subr kfx (strings i64 (listof string acyclic)) string)
@@ -1257,7 +1313,8 @@
               (append (list "kc_cells_hi:\n    .text\n")
                (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") (string-append (x64-part x 2) (x64-part x 3)) "")) kinds its)
                 (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"
-                              "    call kc_gc_init\n    subq $" (i64->string frame) ", %rsp\n" (x64-frame-zeroed frame 0 nil))
+                              "    call kc_gc_init\n    subq $" (i64->string frame) ", %rsp\n" (x64-frame-zeroed frame 0 nil)
+                              (x64-cell-stored "%rsp" "kc_run_base"))
                  (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 2))) kinds its)
                   (append (list (x64-cell-stored "%r12" "kc_heap_next") "    addq $" (i64->string frame) ", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n")
                    (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 3))) kinds its)
@@ -1281,7 +1338,8 @@
             (append (list "# Made by kc (docs/research/kc.md) from " path ".\n    .bss\n    .p2align 3\nkc_cells_lo:\n")
              (append (map2 (lambda ((k string) (n string)) (if (string=? k "value") (x64-cell n) "")) kinds names)
               (append (list "kc_cells_hi:\n    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"
-                            "    call kc_gc_init\n    subq $" (i64->string frame) ", %rsp\n" (x64-frame-zeroed frame 0 nil))
+                            "    call kc_gc_init\n    subq $" (i64->string frame) ", %rsp\n" (x64-frame-zeroed frame 0 nil)
+                            (x64-cell-stored "%rsp" "kc_run_base"))
                (append (map (lambda ((x sexp)) (x64-part x 2)) its)
                 (append (list (x64-cell-stored "%r12" "kc_heap_next") "    addq $" (i64->string frame) ", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n")
                  (append (map (lambda ((x sexp)) (x64-part x 3)) its)

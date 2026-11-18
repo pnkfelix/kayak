@@ -8,6 +8,6 @@ use super::*;
 // takes none of another's. Not to be edited.
 #[inline]
 pub fn kc_identity() -> Str {
-    str_lit("8843e7b1147cc935")
+    str_lit("a2d57efa24879e4a")
 }
 

@@ -13735,3 +13735,70 @@ What changed:
 - **The full check**: all passed in 619 s; kc-steps 344 of 344 (in
   process, and with a heap of 64 words); kc-objects 443, 0 differ;
   nextest 5501 passed.
+
+## C460. Whole continuations and marks in kc (2026-11-17)
+
+The user: "cwcc and marks" (after C459). Reviewed first:
+- **Fixpt**: `cwcc` takes the frames to the run's base; called, the copy
+  replaces the stack and returns where the current run does
+  (`docs/research/native-conventions.md`, step 5); its tests keep one and
+  call it after `cwcc` has returned (`native/whole-captures.fx`). Marks
+  (`docs/fx26.md`, "Control, typed"; KFX's `check-defs.kfx` types):
+  `make-continuation-mark-key`, `with-mark KEY VALUE THUNK`, `first-mark
+  KEY DEFAULT`, `current-marks KEY` (innermost first), `marks-of K KEY`
+  (a composable continuation's). A mark is a frame of its own around the
+  thunk's call; in tail position the native code pushes it and
+  tail-calls the thunk, which returns through a stub that pops it
+  (`mark_ret`); returning there already, under a mark of the same key,
+  its value is replaced, so a loop that marks each round runs in
+  constant space (`run/tail-marks.fx`).
+- **Accomplice** (Larceny): `call/cc` by its stack cache; no marks.
+- **Coopt**: none.
+- **kayak**: C458's records and C459's copies, which take any record on
+  the chain.
+
+What changed:
+- **A run's frame** (l0): each top-level form's expression, a
+  definition's value too, is a call of a lambda of no parameters, so
+  that its run is a call of its own from `kc_entry`'s frame, as Fixpt
+  runs each form; `kc_run_base` (a cell) holds that frame's stack
+  pointer, `kc_entry`'s, or `kc_call2`'s for a transformer's call.
+- **`cwcc`** (a unary primitive): `kc_capture` with flag 32 and the run
+  base for a tag; the copy is of the frames up to the run's return.
+  Resumed (`kc_resume`, by the flag), the copy goes below the current
+  run's return, whatever frames are there given up (the stack pointer
+  moved below both it and them for kcrt's copy), its records the whole
+  chain; so it returns where the current run does.
+- **Marks**: a record of five words on the prompts' chain (the record
+  before, the key, its own address, the value, a word for alignment);
+  keys are boxes as tags are, so a walk for one never meets the other.
+  `with-mark` (ternary) calls `kc_with_mark`, or, in tail position, gives
+  its frame back and jumps to it: if its return is `kc_mark_ret` and that
+  mark's key is this, the value replaced; else a record pushed with
+  `kc_mark_ret` as the thunk's return, which takes it off. `first-mark`
+  walks the chain (`kc_first_mark`); `current-marks` and `marks-of`
+  (`kcrt_current_marks`, `kcrt_marks_of`) make the list, from the chain
+  or from a continuation's copy, whose records C459 already keeps. An
+  abort past a mark takes it off with the frames it cuts.
+- **Tests** (tests/kc/control/, kc-steps' every way and Fixpt's answer):
+  `marks.fx` (a loop marking each of 20000 rounds, its one mark; tail
+  marks nested; marks not in tail position, each kept; `first-mark`
+  outside, inside; a mark under an abort, gone; `marks-of` of a
+  capture), `whole.fx` (Fixpt's `whole-captures.fx` on one machine:
+  thrown through frames, from 200 deep, through a prompt; kept, called
+  again after `cwcc` returned, three times round). Two of the values I
+  first stated were wrong; Fixpt's are the ones stated, and kc gives
+  them. By hand, the marking loop of 1000000 rounds: 0.07 s, 77 MB (a
+  mark a round would take 48 MB of the 64 MB stack).
+- **The first check failed** at kc-steps' cutoff: a program `42`, cold,
+  ran `form` and `interface` too. The run's lambda was first written as a
+  form, `((lambda () E))`, for `l0-of`, which looks a head up as a
+  global's name before it sees `lambda` (so asks the database of a
+  global `lambda`); now the term is made directly, `(app (lambda N () ()
+  T))`, numbered after the form's binders. A lambda a program writes,
+  and C459's prompt body, still make that look-up, as before.
+- **Left**: a copy past 262140 words; kc's Rust back end's control;
+  `letregion`; l0's look-up of `lambda` as a global's name.
+- **The full check** (the second): all passed in 590 s; kc-steps 346 of
+  346 (in process, and with a heap of 64 words); kc-objects 447, 0
+  differ; nextest 5501 passed.

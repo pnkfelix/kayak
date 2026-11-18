@@ -28,8 +28,10 @@ use super::*;
 // `(sum "TAG" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
 // item's code, `(none)`.
 // Delimited control (C458): `(prompt TAG HANDLER BODY)`, each made in
-// that order, the body a lambda of no parameters (C459); a tag a fresh
-// ref of unit; `abort-current-continuation`, `escape`,
+// that order, the body a lambda of no parameters (C459); a tag, and a
+// mark's key (C460), a fresh ref of unit; `cwcc` and `current-marks`
+// unary, `first-mark` and `marks-of` binary, `with-mark` ternary
+// primitives; a top-level form's expression a call of a lambda (C460); `abort-current-continuation`, `escape`,
 // `call-with-composable-continuation` and `call-with-oneshot-continuation`
 // binary primitives.
 // Step 11: strings and symbols (C421); arrays (C422), and `(the T e)`: `(string "TEXT")`, `(symbol
@@ -90,14 +92,14 @@ pub mod kc_l0 {
     pub fn unary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::nil())))))))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::nil())))))))))))))))))))))))))))))
         })
     }
 
     pub fn binary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::nil()))))))))))))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))))))))))))))))))))))))))))))))))
         })
     }
 
@@ -105,7 +107,7 @@ pub mod kc_l0 {
     pub fn ternary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::nil()))
+            kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::nil())))
         })
     }
 
@@ -822,7 +824,7 @@ pub mod kc_l0 {
                         continue;
                     } else if (string_eq_p(h, str_lit("list")) && null_p(cdr(xs))) {
                         return l0_made(str_lit("(nil)"), next);
-                    } else if (null_p(cdr(xs)) && (string_eq_p(h, str_lit("make-continuation-prompt-tag")) || string_eq_p(h, str_lit("make-escape-tag")))) {
+                    } else if (null_p(cdr(xs)) && (string_eq_p(h, str_lit("make-continuation-prompt-tag")) || string_eq_p(h, str_lit("make-escape-tag")) || string_eq_p(h, str_lit("make-continuation-mark-key")))) {
                         return l0_made(str_lit("(prim new (unit))"), next);
                     } else if (string_eq_p(h, str_lit("prompt")) && i64_eq(size(xs), 4i64)) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
@@ -1224,6 +1226,18 @@ pub mod kc_l0 {
         }
     }
 
+    // A top-level form's term made a call of a procedure of no parameters
+    // (C460), so that each form's run is a call of its own from
+    // `kc_entry`'s frame, as Fixpt runs each: the frames a whole continuation
+    // (`cwcc`) takes end there, and one resumed returns there. Made a term
+    // here, the lambda numbered `n`, after the form's binders, with no free
+    // variables (a top-level form has no local), and not a form for `l0-of`,
+    // which would look its head up as a global's name first.
+    #[inline]
+    pub fn l0_run(t: Str, n: i64) -> Str {
+        string_list_append(kayak_rt::heap_cons(str_lit("(app (lambda "), kayak_rt::heap_cons(i64_to_string(n), kayak_rt::heap_cons(str_lit(" () () "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))))
+    }
+
     /// Form `f` as an item, its names' entries `scope`; a type's, none.
     pub fn l0_item_text(path: Str, f: &'static Sexp, scope: Sexps) -> Str {
         if type_form_p()(f) {
@@ -1233,7 +1247,7 @@ pub mod kc_l0 {
                 let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, f);
                 match *tagcase_ {
                     L0Made::L0Made(t, n) => {
-                        string_append(str_lit("(expr "), string_append(t, str_lit(")")))
+                        string_append(str_lit("(expr "), string_append(l0_run(t, n), str_lit(")")))
                     }
                 }
             } else {
@@ -1242,7 +1256,7 @@ pub mod kc_l0 {
                     let tagcase_ = l0_of(path, scope, nil::<&'static kc_l0::L0Bound>(), 0i64, define_value()(f));
                     match *tagcase_ {
                         L0Made::L0Made(t, n) => {
-                            string_list_append(kayak_rt::heap_cons(str_lit("(global "), kayak_rt::heap_cons(form_name()(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                            string_list_append(kayak_rt::heap_cons(str_lit("(global "), kayak_rt::heap_cons(form_name()(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(l0_run(t, n), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
                         }
                     }
                 } else {

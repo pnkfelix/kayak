@@ -383,15 +383,21 @@ const R_SP: u64 = 16;
 /// An offset of no record, in a continuation's copy: past its segment.
 const NO_RECORD: u64 = (-8i64) as u64;
 const KIND_ARRAY: u64 = 32;
+const ONCE: u64 = 8;
+const RESUMED: u64 = 16;
+const WHOLE: u64 = 32;
+/// A mark's value in its record (C460): where a prompt's handler is.
+const R_VALUE: u64 = 24;
 /// The most fields a header holds (Fixpt's 18 bits; kc makes no large one).
 const MOST_FIELDS: u64 = 0x3_ffff;
 
 /// A continuation's copy's word `k` (C459): a bloblet of kind 32, its
 /// fields below its trailer, the first just below it, so that `kc_resume`
 /// reads its bytes at -20 from the value. Its words: the segment's bytes,
-/// the innermost prompt's record's offset in it (or `NO_RECORD`), whether
-/// once only (0 no, 8 not yet resumed, 16 resumed), then the segment's
-/// words, each prompt's record's stack addresses made offsets in it.
+/// the innermost prompt's record's offset in it (or `NO_RECORD`), its
+/// flags (8 once only, 16 resumed, 32 whole: C460's `cwcc`), then the
+/// segment's words, each record's (a prompt's or a mark's) stack addresses
+/// made offsets in it.
 fn copy_at(v: u64, k: u64) -> u64 {
     v - TAG_BLOBLET - 8 * (k + 2)
 }
@@ -402,18 +408,27 @@ fn copy_at(v: u64, k: u64) -> u64 {
 /// to the prompt of `tag` (just below its record's stack pointer) copied
 /// into the heap, and a closure of `kc_resume` over the copy. Its stack
 /// words: the procedure, the tag, the innermost prompt, `kc_resume`'s
-/// address, and 8 if once only.
+/// address, and its flags (8 once only; 32 whole, C460's `cwcc`, whose
+/// second word is the run's stack pointer, `kc_run_base`, not a tag: the
+/// segment then up to the run's return).
 fn captured(args: *const u64, block: *mut u64) -> Result<u64, String> {
     let chain = arg(args, 2);
-    let mut at = chain;
-    while at != 0 && word(at + R_TAG) != arg(args, 1) {
-        at = word(at + R_PREV);
-    }
-    if at == 0 {
-        return Err(fail_words(11).to_string());
-    }
     let top = args as u64 + 40;
-    let end = word(at + R_SP) - 8;
+    let end = if arg(args, 4) & WHOLE != 0 {
+        arg(args, 1) - 8
+    } else {
+        let mut at = chain;
+        while at != 0 && word(at + R_TAG) != arg(args, 1) {
+            at = word(at + R_PREV);
+        }
+        if at == 0 {
+            return Err(fail_words(11).to_string());
+        }
+        word(at + R_SP) - 8
+    };
+    if end < top {
+        return Err("kc: a continuation taken outside a run".to_string());
+    }
     let len = (end - top) / 8;
     let fields = 3 + len;
     if fields + 1 > MOST_FIELDS {
@@ -470,14 +485,18 @@ pub extern "C" fn kcrt_capture(args: *const u64, block: *mut u64) -> u64 {
 
 /// A continuation resumed (C459, x64.kfx's `kc_resume`): its copy `v` put
 /// at `dest`, its prompts' records made the innermost on the current ones
-/// (`chain`); the innermost record then, with 1 added (so never 0, which
-/// says a failure in process).
+/// (`chain`; of a whole one, none: what it replaces had them); the
+/// innermost record then, with 1 added (so never 0, which says a failure
+/// in process).
 fn resumed(v: u64, dest: u64, chain: u64) -> Result<u64, String> {
-    match word(copy_at(v, 2)) {
-        16 => return Err(fail_words(12).to_string()),
-        8 => set(copy_at(v, 2), 16),
-        _ => {}
+    let flags = word(copy_at(v, 2));
+    if flags & ONCE != 0 {
+        if flags & RESUMED != 0 {
+            return Err(fail_words(12).to_string());
+        }
+        set(copy_at(v, 2), flags | RESUMED);
     }
+    let chain = if flags & WHOLE != 0 { 0 } else { chain };
     let len = word(copy_at(v, 0)) / 8;
     for j in 0..len {
         set(dest + 8 * j, word(copy_at(v, 3 + j)));
@@ -504,6 +523,83 @@ fn resumed(v: u64, dest: u64, chain: u64) -> Result<u64, String> {
 #[unsafe(no_mangle)]
 pub extern "C" fn kcrt_resume_copy(v: u64, dest: u64, chain: u64) -> u64 {
     resumed(v, dest, chain).unwrap_or_else(|m| failed(&m))
+}
+
+/// A list of `values`, innermost first, in kc's heap (C460), room had at
+/// once; `values` read after, as the collection may have moved them.
+fn listed(block: *mut u64, n: u64, values: impl Fn() -> Vec<u64>) -> Result<u64, String> {
+    if n == 0 {
+        return Ok(null());
+    }
+    let at = gc::words(block, 2 * n)?;
+    let vs = values();
+    for (k, &x) in vs.iter().enumerate() {
+        let k = k as u64;
+        set(at + 16 * k, x);
+        set(
+            at + 16 * k + 8,
+            if k + 1 < n {
+                at + 16 * (k + 1) + TAG_PAIR
+            } else {
+                null()
+            },
+        );
+    }
+    Ok(at + TAG_PAIR)
+}
+
+/// The marks of key `arg 0` on the chain from `arg 1` (C460,
+/// `current-marks`), innermost first.
+fn current_marks(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let of = || {
+        let mut out = Vec::new();
+        let mut r = arg(args, 1);
+        while r != 0 {
+            if word(r + R_TAG) == arg(args, 0) {
+                out.push(word(r + R_VALUE));
+            }
+            r = word(r + R_PREV);
+        }
+        out
+    };
+    listed(block, of().len() as u64, of)
+}
+
+/// The marks of key `arg 1` a continuation `arg 0` took (C460,
+/// `marks-of`): in its copy (the closure's free value), innermost first.
+fn marks_of(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let of = || {
+        let v = word(arg(args, 0) - TAG_BLOBLET - 32);
+        let mut out = Vec::new();
+        let mut off = word(copy_at(v, 1));
+        while off != NO_RECORD {
+            let j = off / 8;
+            if word(copy_at(v, 3 + j + 1)) == arg(args, 1) {
+                out.push(word(copy_at(v, 3 + j + 3)));
+            }
+            off = word(copy_at(v, 3 + j));
+        }
+        out
+    };
+    listed(block, of().len() as u64, of)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_current_marks(args: *const u64, block: *mut u64) -> u64 {
+    current_marks(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_marks_of(args: *const u64, block: *mut u64) -> u64 {
+    marks_of(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+extern "C" fn here_current_marks(args: *const u64, block: *mut u64) -> u64 {
+    current_marks(args, block).unwrap_or_else(failed_here)
+}
+
+extern "C" fn here_marks_of(args: *const u64, block: *mut u64) -> u64 {
+    marks_of(args, block).unwrap_or_else(failed_here)
 }
 
 extern "C" fn here_capture(args: *const u64, block: *mut u64) -> u64 {
@@ -693,6 +789,8 @@ pub fn routine(name: &str) -> u64 {
         "kc_collect" => here_collect as *const (),
         "kcrt_capture" => here_capture as *const (),
         "kcrt_resume_copy" => here_resume_copy as *const (),
+        "kcrt_current_marks" => here_current_marks as *const (),
+        "kcrt_marks_of" => here_marks_of as *const (),
         _ => return 0,
     };
     f as usize as u64

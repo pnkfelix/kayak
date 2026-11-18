@@ -1766,8 +1766,8 @@ over its 1664 definitions, 335 of them refused:
   Done (C458): prompts as frames, aborts that walk them; the survey's
   refused items 320, were 335. Capture too (C459): composable and
   one-shot continuations, the frames to the prompt copied into the heap.
-  Left: `cwcc`, marks, a copy past a header's fields, `letregion`, the
-  Rust back end's control.
+  Whole continuations and marks too (C460). Left: a copy past a
+  header's fields, `letregion`, the Rust back end's control.
 - **`i64`**: `int->i64` 39, `i64->int` 32, `i64+` 14, `i64>=` 10,
   `i64=` 9, `i64-quotient` 3, `i64<=` 2, `i64-` 2.
 - **Strings and characters**: `int->string` 149, `char->string` 11,
