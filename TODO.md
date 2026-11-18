@@ -1837,6 +1837,14 @@ over its 1664 definitions, 335 of them refused:
   C470), and the expander's host: its asker, the bridge's data, its files
   read.
 
+- **A race in tier 1's `pselect` over processes** (found at C475's check,
+  2026-11-18): `kayak/io/pselect-processes.fx`, under `--regs --compiled
+  --gc-stress` on a loaded machine (7.7 s, not 0.7), gave `"0 one\nexited
+  4"`, its second line lost: the process's end seen before its last
+  output taken, which the program's `pselect` says cannot be (C296). Six
+  runs alone, each right. To find: whether tier 1 marks a process ended
+  while its output's pipe still holds text (kayak-rt's polling, C295).
+
 ## 55. Debts against K8: what works against parallelism (the user, 2026-11-18)
 
 The user, on kc's `kc_args` (C464) being the image's, so that two
@@ -1984,7 +1992,9 @@ of it chosen in C448–C464:
     Asked of Fixpt (the user, 2026-11-18): an atomic `write-file` that
     does not flush, for files whose loss is harmless (a value file is
     believed only if its fingerprint is the graph's); then kayak's value
-    files and shards use it, the head alone flushed.
+    files and shards use it, the head alone flushed. Done (C475): Fixpt's
+    `write-file-unflushed` (6f7bd73, the pin since C474); an edit's save
+    one flush, the head's.
 
 Order: 1 and 7, each a step of its own size, before kc grows more; 3 a
 table the process shares now (which is right under any design: kcrt's

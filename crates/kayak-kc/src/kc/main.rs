@@ -374,6 +374,18 @@ pub mod kc_driver {
         } else { unreachable!() }
     }
 
+    pub fn write_text_unflushed(path: Str, text: Str) -> () {
+        let tagcase_ = write_file_unflushed(path, the::<Bytes>(string_to_utf8(text)));
+        let tag_ = kayak_rt::sum_tag(tagcase_);
+        if tag_ == const { kayak_rt::tag_hash("done") } {
+            let u: () = kayak_rt::sum_payload::<()>(tagcase_);
+            ()
+        } else if tag_ == const { kayak_rt::tag_hash("failed") } {
+            let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
+            match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+        } else { unreachable!() }
+    }
+
     pub fn write_text(path: Str, text: Str) -> () {
         let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
         let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -427,7 +439,11 @@ pub mod kc_driver {
                     let tagcase_ = car(fs);
                     match *tagcase_ {
                         DbFile::DbFile(name, text) => {
-                            write_text(db_path(dbp, name), text)
+                            if string_eq_p(name, str_lit("")) {
+                                write_text(db_path(dbp, name), text)
+                            } else {
+                                write_text_unflushed(db_path(dbp, name), text)
+                            }
                         }
                     }
                 };

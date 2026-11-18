@@ -1066,7 +1066,21 @@ pub fn write_file(path: Str, data: BytesAt<'_>) -> Sum {
     written(write_file_bytes(path.as_str(), &to_vec(data)))
 }
 
+/// `(write-file-unflushed path data)` (C475; Fixpt's 6f7bd73, kayak's
+/// request): replaced whole and atomically, as `write-file` is, but
+/// nothing flushed to the disk before the rename: after a crash the file
+/// may hold its old contents, its new, nothing, or be missing.
+pub fn write_file_unflushed(path: Str, data: BytesAt<'_>) -> Sum {
+    written(replace_file_bytes(path.as_str(), &to_vec(data), false))
+}
+
 pub(crate) fn write_file_bytes(path: &str, bytes: &[u8]) -> std::io::Result<()> {
+    replace_file_bytes(path, bytes, true)
+}
+
+/// A file replaced whole: written beside it, flushed to the disk first if
+/// `durable`, and renamed over it, so a reader sees the old or the new.
+pub(crate) fn replace_file_bytes(path: &str, bytes: &[u8], durable: bool) -> std::io::Result<()> {
     let path = std::path::Path::new(path);
     let mut beside = path.as_os_str().to_owned();
     beside.push(format!(".kayak-{}.tmp", std::process::id()));
@@ -1074,7 +1088,9 @@ pub(crate) fn write_file_bytes(path: &str, bytes: &[u8]) -> std::io::Result<()> 
     let r = (|| {
         let mut f = std::fs::File::create(&beside)?;
         f.write_all(bytes)?;
-        f.sync_all()?;
+        if durable {
+            f.sync_all()?;
+        }
         std::fs::rename(&beside, path)
     })();
     if r.is_err() {
@@ -1472,6 +1488,40 @@ mod tests {
         );
         let none = leak_string(dir.join("none").to_string_lossy().into_owned());
         let r = read_file(none);
+        assert_eq!(sum_name(r), "failed");
+        assert_eq!(sum_name(sum_payload::<IoError>(r).0), "not-found");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// `write-file-unflushed` (C475), as Fixpt's `a_file_replaced_unflushed`
+    /// tests it: written long then short, it reads back the short alone,
+    /// nothing left beside it; one in a missing directory, `not-found`.
+    #[test]
+    fn a_file_replaced_unflushed() {
+        let dir = std::env::temp_dir().join(format!("kayak-unflushed-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = leak_string(dir.join("v1").to_string_lossy().into_owned());
+        use crate::{sum_name, sum_payload};
+        assert_eq!(
+            sum_name(write_file_unflushed(
+                p,
+                string_to_utf8(str_lit("a longer text"))
+            )),
+            "done"
+        );
+        assert_eq!(
+            sum_name(write_file_unflushed(p, string_to_utf8(str_lit("short")))),
+            "done"
+        );
+        let r = read_file(p);
+        assert_eq!(to_vec(sum_payload::<Bytes>(r)), b"short");
+        let names: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["v1".to_string()]);
+        let missing = leak_string(dir.join("none").join("v2").to_string_lossy().into_owned());
+        let r = write_file_unflushed(missing, string_to_utf8(str_lit("x")));
         assert_eq!(sum_name(r), "failed");
         assert_eq!(sum_name(sum_payload::<IoError>(r).0), "not-found");
         std::fs::remove_dir_all(&dir).unwrap();

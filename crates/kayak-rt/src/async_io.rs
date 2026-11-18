@@ -352,6 +352,17 @@ pub async fn write_file(path: Str, data: BytesAt<'_>) -> Sum {
     )
 }
 
+/// `(write-file-unflushed path data)` (C475): as `write-file`, not flushed.
+pub async fn write_file_unflushed(path: Str, data: BytesAt<'_>) -> Sum {
+    let (path, bytes) = (path.as_str().to_string(), crate::world::to_vec(data));
+    crate::world::written(
+        on_worker("write-file-unflushed", move || {
+            crate::world::replace_file_bytes(&path, &bytes, false)
+        })
+        .await,
+    )
+}
+
 /// `(list-dir path)`.
 pub async fn list_dir(path: Str) -> crate::Sum {
     let path = path.as_str().to_string();

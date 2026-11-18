@@ -14472,3 +14472,45 @@ dependency more. Next, after C475: `kc build` with no linker at all.
   `string-search` in kfx); kc-steps 362 of 362; nextest 5595; selfhost
   147 s; cells-programs 652 agree on tier 1; of Fixpt's 615 refused
   programs kayak refuses 615.
+
+## C475. The database's shards and values written unflushed (2026-11-18)
+
+Fixpt's answer to C473's request, at the pin since C474:
+`write-file-unflushed`, of `write-file`'s type, replaced whole and
+atomically (written beside, renamed over), nothing flushed to the disk
+first; after a crash the file may hold its old contents, its new,
+nothing, or be missing (Fixpt's `docs/fx26.md`). Reviewed: Fixpt's
+`world::replace_file`, one for both, a `Flush` of `Durable` or
+`Unflushed`; kayak-rt's `write_file_bytes`, `sync_all` before the rename.
+
+What changed:
+- **kayak-rt**: `write_file_unflushed`, and its async twin, one
+  `replace_file_bytes` for both, flushing if durable; its test,
+  `a_file_replaced_unflushed`, as Fixpt's (written long then short, the
+  short alone read back, nothing beside it; a missing directory's
+  `not-found`).
+- **kfx**: the name's type (Fixpt's), and among the runner's I/O, which
+  an async build awaits; lang items: 216 runtime functions.
+- **kc's database** (`save-db`): the head, written last, flushed
+  (`write-file`); a shard's file and a value's not. The head names what
+  is believed: a save cut short leaves the head before it, and the files
+  it names, which no save writes (a shard's other slot, C472); a value is
+  believed only if its fingerprint is the graph's (C473), so one lost is
+  made again.
+
+Measured: a comment's edit of the 1000-procedure bench flushes one file,
+the head (C473: five). kc-bench: a comment's edit 252 ms, a body's 317,
+cold 827 (the Fixpt column 840, not C473's 655: the new pin's Fixpt is
+slower at this program, so that column is not comparable across C474).
+Next: an edit's build measured part by part, then `kc build` with no
+linker.
+- **The full check**, first run: nextest stopped at
+  `kayak/io/pselect-processes.fx` on tier 1 (`--regs --compiled
+  --gc-stress`): `"0 one\nexited 4"`, the process's last line lost, under
+  load; right alone six times in six. A race of tier 1's, not of this
+  step's (nothing here reaches processes): TODO §54. kc-steps 149.7 s,
+  C473's 123.3: the flushes saved (a few a run) are under the machine's
+  noise.
+- **The full check**, again: all passed in 283.9 s; kc-steps 362 of 362
+  in 63.2 s, its database warm from the first run (no body ran);
+  nextest 5596 passed, `pselect-processes` among them.

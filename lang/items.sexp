@@ -955,6 +955,7 @@
 (runtime-fn "rep-nodes" kayak)
 (runtime-fn "rep-of-nodes" kayak)
 (runtime-fn "write-file" kayak)
+(runtime-fn "write-file-unflushed" kayak)
 (runtime-fn "new" kayak)
 (runtime-fn "get" kayak)
 (runtime-fn "set" kayak)

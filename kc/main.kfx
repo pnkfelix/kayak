@@ -111,6 +111,12 @@
             (data b (tagcase (utf8->string b) (text s s) (bad k "")))
             (failed e ""))))
 
+      (define write-text-unflushed (subr qe (string string) unit)
+        (lambda (path text)
+          (tagcase (write-file-unflushed path (the (bytevectorof @io) (string->utf8 text)))
+            (done u #u)
+            (failed e (fail-with (string-append "cannot write " (string-append path (string-append ": " (extract e detail)))) 1)))))
+
       (define write-text (subr qe (string string) unit)
         (lambda (path text)
           (tagcase (write-file path (the (bytevectorof @io) (string->utf8 text)))
@@ -138,7 +144,12 @@
           (lambda (dbp fs)
             (if (null? fs)
                 #u
-                (begin (tagcase (car fs) (db-file (name text) (write-text (db-path dbp name) text)))
+                ;; The head flushed to the disk (`write-file`); a shard's file
+                ;; and a value's not (C475, `write-file-unflushed`): the head,
+                ;; written last, names what is believed, and a value is
+                ;; believed only if its fingerprint is the graph's, so one lost
+                ;; in a crash is made again.
+                (begin (tagcase (car fs) (db-file (name text) (if (string=? name "") (write-text (db-path dbp name) text) (write-text-unflushed (db-path dbp name) text))))
                        (files-written dbp (cdr fs)))))))
 
       (define-rec

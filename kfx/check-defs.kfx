@@ -215,6 +215,7 @@
    (rep-nodes (poly ((s region)) (subr (read s) ((bytevectorof s) (listof string acyclic)) (productof (1 (listof (productof (1 int) (2 symbol) (3 bool) (4 (listof symbol acyclic)) (5 (listof (sumof (node int) (bound (productof (1 int) (2 int))) (hole int) (const (productof (1 string) (2 int) (3 string))) (sym symbol) (int int) (flag bool)) acyclic))) acyclic)) (2 (listof symbol acyclic))))))
    (rep-of-nodes (poly ((r region)) (subr (alloc r) ((listof (productof (1 int) (2 symbol) (3 bool) (4 (listof symbol acyclic)) (5 (listof (sumof (node int) (bound (productof (1 int) (2 int))) (hole int) (const (productof (1 string) (2 int) (3 string))) (sym symbol) (int int) (flag bool)) acyclic))) acyclic) (listof symbol acyclic) int) (bytevectorof r))))
    (write-file (poly ((r region)) (subr (maxeff (io fs-write) (read r)) (string (bytevectorof r)) (sumof (done unit) (failed io-error)))))
+   (write-file-unflushed (poly ((r region)) (subr (maxeff (io fs-write) (read r)) (string (bytevectorof r)) (sumof (done unit) (failed io-error)))))
    (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))
    (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))
    (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))
