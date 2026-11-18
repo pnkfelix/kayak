@@ -24,7 +24,8 @@ use super::*;
 // Step 12: refs, `new`, `get`, `set` (C424); FX-26 assigns through them alone.
 // `(letrec ((K NAME) ...) (VALUE ...) BODY)` (C426); `plambda` and `proj`
 // their values.
-// Types (C423): `(product E ...)`, its fields by position; `(extract E K)`;
+// Types (C423): `(product E ...)`, its fields by position, and `(tuple E
+// ...)` the same (C461); `(extract E K)`;
 // `(sum "TAG" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
 // item's code, `(none)`.
 // Delimited control (C458): `(prompt TAG HANDLER BODY)`, each made in
@@ -778,6 +779,17 @@ pub mod kc_l0 {
                                         str_lit(" ")
                                     }, kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))), n1);
                                 }
+                            }
+                        }
+                    } else if string_eq_p(h, str_lit("tuple")) {
+                        let tagcase_ = l0_terms(path, scope, env, next, cdr(xs), nil::<Str>());
+                        match *tagcase_ {
+                            L0Made::L0Made(ts, n1) => {
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(product"), kayak_rt::heap_cons(if string_eq_p(ts, str_lit("")) {
+                                    str_lit("")
+                                } else {
+                                    str_lit(" ")
+                                }, kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))), n1);
                             }
                         }
                     } else if (string_eq_p(h, str_lit("extract")) && i64_eq(size(xs), 3i64)) {

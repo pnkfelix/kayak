@@ -13802,3 +13802,41 @@ What changed:
 - **The full check** (the second): all passed in 590 s; kc-steps 346 of
   346 (in process, and with a heap of 64 words); kc-objects 447, 0
   differ; nextest 5501 passed.
+
+## C461. Tuples in kc, and KFX's tuples inside an unquote (2026-11-17)
+
+The user: "Okay, sure, do boring old tuples" (TODO §54's survey: 1484
+`tuple`s, the most of any gap). Reviewed first:
+- **Fixpt**: `(tupleof T1 T2 ...)` is `(productof (1 T1) (2 T2) ...)` and
+  `(tuple e1 e2 ...)` is `(product (1 e1) (2 e2) ...)` (`docs/fx26.md`,
+  the table of types and their values); `extract` reads a field by its
+  label, from 1.
+- **Accomplice**, **Coopt**: nothing of their own; a record or a vector.
+- **kayak**: kc's products (C423), kind 37, their fields by position;
+  KFX's checker makes the same rewrite (`check-defs.kfx`'s `imports-in`,
+  C393).
+
+What changed:
+- **kc's l0**: `(tuple E ...)` is `(product E ...)`, its fields' terms in
+  order; `extract` and the types were kc's already.
+- **KFX's checker**: `imports-in`, which writes `tuple` as `product`,
+  `->` as `subr` and expands imports, returned a quasiquote whole, so a
+  `tuple` an unquote held stayed, and was refused, "unbound variable
+  `tuple`", where Fixpt takes it (`` `(,(extract (tuple 1 2) 1)) ``). It
+  now goes into a quasiquote as the checker reads one (`quasi`): what
+  an unquote at depth 1 holds is an expression, expanded; a nested
+  quasiquote deeper. Found by this step's test; KFX takes more of what
+  Fixpt takes, nothing Fixpt refuses.
+- **Tests**: tests/kc/types/tuple.fx (fields of each kind, a tuple in a
+  tuple, one made and taken apart by a caller, tuples in a list, a
+  datatype's payload, the expander's `(tupleof datum string int)`, and
+  20000 made and dropped past a heap of 64 words), kc-steps' every way
+  and Fixpt's answer; built too.
+- **The survey again** (a build of kc that goes on past `not-yet`, its
+  generated Rust copied aside and put back): 110 items refused, were
+  320; the counts of what is left (`reverse` 725, `append` 346,
+  `int->string` 161, ...) grew, as more of each item is reached.
+- **The full check**: all passed in 537.1 s; kc-steps 347 of 347 (in
+  process, and with a heap of 64 words); kc-objects 449, 0 differ; the
+  fixpoint as before (Fixpt makes the compiler with the checker's
+  change); nextest 5501 passed.

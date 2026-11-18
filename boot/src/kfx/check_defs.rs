@@ -6643,6 +6643,34 @@ pub fn import_items(its: Sexps) -> Sexps {
     }), its))
 }
 
+/// A quasiquoted datum at `depth`, as the checker reads one (`quasi`):
+/// what an unquote at depth 1 holds an expression, its imports expanded;
+/// a nested quasiquote deeper, an unquote shallower; the rest as it is.
+pub fn imports_in_quasi(d: &'static Sexp, depth: i64) -> &'static Sexp {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Sexp::Lst(ys, f, l, p) => {
+            if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
+                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(if i64_eq(depth, 1i64) {
+                    imports_in(second(ys))
+                } else {
+                    imports_in_quasi(second(ys), i64_minus(depth, 1i64))
+                }, kayak_rt::nil())), f, l, p)
+            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
+                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(imports_in_quasi(second(ys), i64_plus(depth, 1i64)), kayak_rt::nil())), f, l, p)
+            } else {
+                lst(map(lambda1s(move |y: &'static Sexp| {
+                    imports_in_quasi(y, depth)
+                }), ys), f, l, p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            d
+        }
+    }
+}
+
 /// Each of `xs` a field labelled by its place, from `k`: `(k x)`.
 pub fn numbered_fields(xs: Sexps, k: i64, f: Str, l: i64, p: i64) -> Sexps {
     if null_p(xs) {
@@ -6655,12 +6683,18 @@ pub fn numbered_fields(xs: Sexps, k: i64, f: Str, l: i64, p: i64) -> Sexps {
 /// Imports expanded; and FX-26's procedure types written short (Fixpt
 /// 2a0e6fd, 38df01e): `(-> (T ...) R)` as `(subr pure (T ...) R)`, which
 /// it is, and `(->* (T ...) R)` as `(subr %found (T ...) R)`, whose
-/// effect a definition finds (`found-define`); in no quoted datum.
+/// effect a definition finds (`found-define`); in no quoted datum, but in
+/// what a quasiquote's unquote holds (C461: `(tuple ...)` there was left
+/// unexpanded, an unbound `tuple`).
 pub fn imports_in(e: &'static Sexp) -> &'static Sexp {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            if (head_is_p(e, str_lit("quote")) || head_is_p(e, str_lit("quasiquote"))) {
+            if head_is_p(e, str_lit("quote")) {
+                e
+            } else if (head_is_p(e, str_lit("quasiquote")) && i64_eq(size(xs), 2i64)) {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(imports_in_quasi(second(xs), 1i64), kayak_rt::nil())), f, l, p)
+            } else if head_is_p(e, str_lit("quasiquote")) {
                 e
             } else if head_is_p(e, str_lit("module")) {
                 lst(kayak_rt::heap_cons(car(xs), run_items(import_items(cdr(xs)))), f, l, p)

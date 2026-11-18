@@ -1758,7 +1758,11 @@ The survey (C457; step 2's list): kc's checker takes the expander whole
 (flattened: its types file inlined, its place one region, its items a
 `module`'s); its code generator refuses, by kind, occurrences counted
 over its 1664 definitions, 335 of them refused:
-- **Tuples** (`tuple`, `extract`): 1484.
+- ~~**Tuples** (`tuple`, `extract`): 1484.~~ Done (C461): Fixpt's
+  products; KFX's checker expands a `tuple` an unquote holds. The survey
+  then: 110 items refused, were 320; `reverse` 725, `append` 346,
+  `int->string` 161, `i64->int` 43, `int->i64` 42, more than six 61, the
+  type-level names as before.
 - **List procedures as forms**: `reverse` 519, `append` (not `,@`'s)
   325, `length` 3.
 - ~~**Delimited control** (the parser's): `prompt` 112,

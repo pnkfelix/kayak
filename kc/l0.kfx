@@ -19,7 +19,8 @@
  Step 12: refs, `new`, `get`, `set` (C424); FX-26 assigns through them alone.
  `(letrec ((K NAME) ...) (VALUE ...) BODY)` (C426); `plambda` and `proj`
  their values.
- Types (C423): `(product E ...)`, its fields by position; `(extract E K)`;
+ Types (C423): `(product E ...)`, its fields by position, and `(tuple E
+ ...)` the same (C461); `(extract E K)`;
  `(sum \"TAG\" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
  item's code, `(none)`.
  Delimited control (C458): `(prompt TAG HANDLER BODY)`, each made in
@@ -349,6 +350,10 @@
                              (l0-made (not-yet path "a product's fields by name") next)
                              (tagcase (l0-terms path scope env next (map (lambda ((f sexp)) (second (items f))) (cdr xs)) nil)
                                (l0-made (ts n1) (l0-made (string-list-append (list "(product" (if (string=? ts "") "" " ") ts ")")) n1)))))
+                        ;; `(tuple E ...)`, Fixpt's `(product (1 E) ...)` (C461; `docs/fx26.md`).
+                        ((string=? h "tuple")
+                         (tagcase (l0-terms path scope env next (cdr xs) nil)
+                           (l0-made (ts n1) (l0-made (string-list-append (list "(product" (if (string=? ts "") "" " ") ts ")")) n1))))
                         ((and (string=? h "extract") (i64= (size xs) 3))
                          (tagcase (third xs)
                            (num (k f2 p2)
