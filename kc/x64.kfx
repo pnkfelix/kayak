@@ -604,10 +604,13 @@
           (lambda (c t si env)
             "A prompt (C458), as Fixpt's native convention has one, a frame of a
              known kind (`docs/research/native-conventions.md`): its tag, then
-             its handler, made; then a record of it in the frame's slots from
-             `si` (the prompt before it, the tag, the stack pointer, and where
-             its handler's call is), the innermost prompt `kc_prompts` holds;
-             then its body, not in tail position, and the record taken off. An
+             its handler, made, then its body, a closure of no parameters
+             (C459); then a record of it in the frame's slots from `si` (the
+             prompt before it, the tag, the stack pointer, and where its
+             handler's call is), the innermost prompt `kc_prompts` holds; then
+             the body called, so that all it does is above this frame, the
+             return to it just below the record's stack pointer, where a
+             capture's segment ends (`kc_capture`); and the record taken off. An
              abort (`kc_abort`) finds the record of its tag's innermost prompt,
              takes it and those inside it off, makes the stack pointer the
              record's and goes to the handler's call, its value in `%rax`: the
@@ -617,11 +620,13 @@
             (let* ((xs (items t)) (k (x64-fresh-label c))
                    (handler (x64-label c "abort" k)) (past (x64-label c "prompted" k))
                    (c (x64-labelled c))
-                   (c (x64-using c (i64+ si 5)))
-                   (c (x64-emit-expr c (second xs) (i64+ si 5) env))
+                   (c (x64-using c (i64+ si 6)))
+                   (c (x64-emit-expr c (second xs) (i64+ si 6) env))
                    (c (x64-emit c (string-append "movq %rax, " (x64-slot (i64+ si 1)))))
-                   (c (x64-emit-expr c (third xs) (i64+ si 5) env))
+                   (c (x64-emit-expr c (third xs) (i64+ si 6) env))
                    (c (x64-emit c (string-append "movq %rax, " (x64-slot (i64+ si 4)))))
+                   (c (x64-emit-expr c (fourth xs) (i64+ si 6) env))
+                   (c (x64-emit c (string-append "movq %rax, " (x64-slot (i64+ si 5)))))
                    (c (x64-emit c "movq kc_prompts(%rip), %rdx"))
                    (c (x64-emit c (string-append "movq %rdx, " (x64-slot si))))
                    (c (x64-emit c (string-append "movq %rsp, " (x64-slot (i64+ si 2)))))
@@ -629,7 +634,8 @@
                    (c (x64-emit c (string-append "movq %rdx, " (x64-slot (i64+ si 3)))))
                    (c (x64-emit c (string-append "leaq " (string-append (x64-slot si) ", %rdx"))))
                    (c (x64-emit-lines c (x64-cell-stored "%rdx" "kc_prompts")))
-                   (c (x64-emit-expr c (fourth xs) (i64+ si 5) env))
+                   (c (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si 5)) ", %r10"))))
+                   (c (x64-emit c "call *-28(%r10)"))
                    (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rdx"))))
                    (c (x64-emit-lines c (x64-cell-stored "%rdx" "kc_prompts")))
                    (c (x64-emit c (string-append "jmp " past)))
@@ -842,6 +848,11 @@
                   ;; An abort to the tag's prompt (C458), never back.
                   ((or (string=? n "abort-current-continuation") (string=? n "escape"))
                    (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi") "call kc_abort"))
+                  ;; A capture (C459): the procedure, the tag, and whether once.
+                  ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-oneshot-continuation"))
+                   (x64-emit (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi")
+                                       (if (string=? n "call-with-oneshot-continuation") "movl $8, %edx" "movl $0, %edx"))
+                             "call kc_capture"))
                   ((string=? n "+") (x64-failing-if (x64-emit c "addq %rcx, %rax") "o" x64-fail-past-fixnum))
                   ((string=? n "-") (x64-failing-if (x64-emit c "subq %rcx, %rax") "o" x64-fail-past-fixnum))
                   ((string=? n "*") (x64-failing-if (x64-emit (x64-emit c "sarq $3, %rax") "imulq %rcx, %rax") "o" x64-fail-past-fixnum))
@@ -1072,6 +1083,25 @@
        record's and jumps to its handler's call with the value; no prompt
        of the tag, failure 10, Fixpt's native machines' words.
 
+       And capture's (C459), as Fixpt's native convention takes a
+       continuation (`docs/research/native-conventions.md`, step 5): the
+       frames from the capture's return up to its tag's prompt's, copied
+       into the heap. `kc_capture`, given the procedure, the tag, and 8 if
+       the continuation may be resumed once only: in stack words of its own
+       those, the innermost prompt, `kc_resume`'s address and that flag;
+       kcrt's `kcrt_capture` makes the copy and a closure over it of
+       `kc_resume` (collecting if need be, the words moved), and the
+       procedure is called on it in tail position, so that it returns to
+       the capture's caller. `kc_resume`, the closure's code (in `%r10`,
+       the value in `%rdi`, aligned so that its address reads as a
+       fixnum): the copy put back below its caller's return, the stack
+       pointer first moved past where it goes so that kcrt's
+       `kcrt_resume_copy` runs below it, which puts the copy's prompts'
+       records on the current ones; then the capture's return taken with
+       the value, so that the copy's last return is to the resume's caller
+       (a composable continuation's composition). Past the stack's limit,
+       failure 8.
+
        And `kc_apply_run` (C455; the state in `%rdi`), a transformer's run
        after `kc_entry`, a built one's `--apply` and one in process alike:
        `%phase1-apply` called on the use and the tag kcrt was given
@@ -1097,6 +1127,17 @@
                   ".Lkc_abort_found:\n    movq 0(%rax), %rdx\n" (x64-cell-stored "%rdx" "kc_prompts")
                   "    movq 24(%rax), %rcx\n    movq 16(%rax), %rsp\n    movq %rsi, %rax\n    jmp *%rcx\n"
                   ".Lkc_abort_none:\n    subq $8, %rsp\n    movl $10, %edi\n    call kc_fail\n"
+                  "    .text\n    .globl kc_capture\nkc_capture:\n    subq $40, %rsp\n    movq %rdi, 0(%rsp)\n    movq %rsi, 8(%rsp)\n"
+                  "    movq kc_prompts(%rip), %rax\n    movq %rax, 16(%rsp)\n    leaq kc_resume(%rip), %rax\n    movq %rax, 24(%rsp)\n    movq %rdx, 32(%rsp)\n"
+                  "    leaq kc_gc(%rip), %rsi\n    subq 208(%r15), %rsi\n    subq $4, %rsi\n    movq %r12, 40(%rsi)\n    movq %rsp, 48(%rsi)\n    movq %rsp, %rdi\n"
+                  "    call kcrt_capture\n    movq kc_gc+40(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n"
+                  "    movq 0(%rsp), %r10\n    movq %rax, %rdi\n    addq $40, %rsp\n    jmp *-28(%r10)\n"
+                  "    .p2align 3\n    .globl kc_resume\nkc_resume:\n    movq -36(%r10), %r11\n    movq -20(%r11), %rax\n    movq %rsp, %rcx\n    subq %rax, %rcx\n"
+                  "    cmpq 16(%r15), %rcx\n    jb .Lkc_resume_deep\n    movq %rdi, -8(%rcx)\n    leaq -64(%rcx), %rsp\n    andq $-16, %rsp\n    movq %rcx, 8(%rsp)\n"
+                  "    movq %r11, %rdi\n    movq %rcx, %rsi\n    movq kc_prompts(%rip), %rdx\n    call kcrt_resume_copy\n    andq $-2, %rax\n    movq %rax, %rdx\n"
+                  (x64-cell-stored "%rdx" "kc_prompts")
+                  "    movq 8(%rsp), %rcx\n    movq %rcx, %rsp\n    movq -8(%rcx), %rax\n    ret\n"
+                  ".Lkc_resume_deep:\n    subq $8, %rsp\n    movl $8, %edi\n    call kc_fail\n"
                   "    .text\n    .globl kc_apply_address\nkc_apply_address:\n"
                   (if applies (string-append "    leaq " (string-append (x64-proc-symbol "%phase1-apply") "(%rip), %rax\n")) "    movl $0, %eax\n")
                   "    ret\n"
@@ -1124,13 +1165,13 @@
       (list "kc_show" "kc_fail" "kc_intern" "kc_string_eq" "kc_string_lt" "kcrt_string_append"
             "kcrt_substring" "kc_symbol_to_string" "kc_is_string" "kc_is_symbol" "kc_is_procedure"
             "kc_is_kind" "kcrt_append" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_collect"
-            "kcrt_given" "kc_gc_reset"))
+            "kcrt_given" "kc_gc_reset" "kcrt_capture" "kcrt_resume_copy"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,
        not jumped to, so that its answer is seen."
       (define x64-failing strings (list "kc_fail" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail"))
-      (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect"))
+      (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy"))
 
       (define-rec
         (x64-routine-stubs (subr kfx (strings i64 (listof string acyclic)) string)

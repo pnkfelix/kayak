@@ -13670,3 +13670,68 @@ What changed:
 - **The full check**: all passed in 589 s; kc-steps 341 of 341 (in
   process, and with a heap of 64 words); kc-objects 439, 0 differ;
   nextest 5501 passed.
+
+## C459. Capturing continuations in kc: the frames to the prompt copied into the heap (2026-11-17)
+
+The user: "No let's go ahead and get capturing continuations in `kc`
+too" (after C458; before tuples). Reviewed first:
+- **Fixpt**: its native convention takes a continuation by copying the
+  frames up to the prompt (`call-with-composable-continuation`) or the
+  stack's top (`cwcc`) into a vector on the heap, links as offsets,
+  return addresses as fixnums; called, the frames go back, a delimited
+  one on top of its caller (`docs/research/native-conventions.md`,
+  "Continuations" and step 5). A prompt's body is compiled as a closure of
+  no arguments, so that what is inside the prompt is above its marker
+  (`compile.fx`'s header). A one-shot continuation's second resume fails,
+  "a one-shot continuation resumed twice" (`docs/fx26.md`); a capture of
+  no prompt, "call-with-composable-continuation: no prompt for this tag"
+  (`fixpt-native`'s `control.rs`), the cellular machine's words too.
+- **Accomplice** (Larceny): its stack cache, frames copied to the heap
+  when taken, frames live on the stack until then; Fixpt's design is
+  that.
+- **Coopt**: none.
+- **kayak**: C458's prompt records; kc's closures (C412) and the
+  collector's scan (C453), which follows only words into the space it
+  collects, so a return address in a copy is no harm.
+
+What changed:
+- **A prompt's body a procedure** (l0): `(lambda () BODY)`, called from
+  the prompt's frame after its record is made, so that everything inside
+  the prompt is in frames above it, the return to the prompt just below
+  the record's stack pointer. Aborts are as they were.
+- **Capture** (`call-with-composable-continuation`,
+  `call-with-oneshot-continuation`, binary primitives): `kc_capture`
+  (x64.kfx's entry support) puts the procedure, the tag, the innermost
+  prompt, `kc_resume`'s address and the once-only flag in stack words of
+  its own and calls kcrt's `kcrt_capture`, which finds the tag's prompt,
+  takes room for the copy and its closure at once (collecting if need
+  be; the stack's words moved, so read after) and copies the segment,
+  from the capture's return to the prompt's, into a bloblet of kind 32
+  with a trailer (its words: the segment's bytes, the innermost record's
+  offset, the flag, the words), each prompt record's stack addresses
+  inside made offsets; the closure (of one free value, the copy) is of
+  `kc_resume`. The procedure is then called on it in tail position.
+- **Resume** (`kc_resume`, the closure's code, aligned so its address
+  reads as a fixnum): the copy's place is just below its caller's
+  return; past the stack's limit, failure 8; the stack pointer moved
+  below that place, kcrt's `kcrt_resume_copy` puts the words there, its
+  records' offsets made addresses there, the outermost's link the
+  current innermost prompt, and gives the innermost record (plus 1, as 0
+  says a failure in process); then the capture's return taken with the
+  value. The copy's last return is the resume's caller's: composition.
+  Once-only resumed again: failure 12.
+- **Tests** (tests/kc/control/, kc-steps' every way and Fixpt's answer):
+  `captures.fx` (resumed twice; once only; from 100 frames deep, twice; a
+  prompt inside the copy, relinked at each resume, one resume aborting to
+  it; frames holding lists, collected with copies live under a heap of
+  64 words); `oneshot-twice.fx`, `capture-unprompted.fx`, the
+  failures, in Fixpt's words. By hand, 100000 captures 50 deep each
+  resumed twice: 0.21 s (0.10 s with a heap of 64 words).
+- **Left**: `cwcc`, a whole continuation (the stack to `kc_entry`'s
+  base, which resuming replaces); marks (`with-mark`, `first-mark`,
+  `current-marks`, `marks-of`), as frames of their own; a copy past
+  262140 words (a large bloblet, which kc's collector has not yet);
+  kc's Rust back end.
+- **The full check**: all passed in 619 s; kc-steps 344 of 344 (in
+  process, and with a heap of 64 words); kc-objects 443, 0 differ;
+  nextest 5501 passed.

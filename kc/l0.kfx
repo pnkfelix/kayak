@@ -23,8 +23,10 @@
  `(sum \"TAG\" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
  item's code, `(none)`.
  Delimited control (C458): `(prompt TAG HANDLER BODY)`, each made in
- that order; a tag a fresh ref of unit; `abort-current-continuation`
- and `escape` binary primitives.
+ that order, the body a lambda of no parameters (C459); a tag a fresh
+ ref of unit; `abort-current-continuation`, `escape`,
+ `call-with-composable-continuation` and `call-with-oneshot-continuation`
+ binary primitives.
  Step 11: strings and symbols (C421); arrays (C422), and `(the T e)`: `(string \"TEXT\")`, `(symbol
  \"NAME\")`, the strings' primitives, `substring` of three arguments.
  Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
@@ -60,7 +62,10 @@
               "symbol=?"
               ;; Delimited control (C458): an abort to a tag's prompt, with a
               ;; value; an escape-only tag's the same at run time.
-              "abort-current-continuation" "escape"))
+              "abort-current-continuation" "escape"
+              ;; A capture up to the tag's prompt (C459), given to the
+              ;; procedure: composable, or resumed once at most.
+              "call-with-composable-continuation" "call-with-oneshot-continuation"))
 
       (define ternary-primitives (listof string acyclic) (list "substring" "array-set!")))
 
@@ -366,7 +371,10 @@
                         ;; Delimited control (C458), as Fixpt's: a tag a box of
                         ;; unit, fresh, its identity what an abort finds;
                         ;; `(prompt TAG BODY HANDLER)`, `(prompt TAG HANDLER BODY)`
-                        ;; in order made, as Fixpt's `%prompt` takes them.
+                        ;; in order made, as Fixpt's `%prompt` takes them; the
+                        ;; body a procedure of no arguments (C459), as Fixpt
+                        ;; compiles it, so that what is inside the prompt is
+                        ;; above its frame on the stack, which a capture takes.
                         ((and (null? (cdr xs)) (or (string=? h "make-continuation-prompt-tag") (string=? h "make-escape-tag")))
                          (l0-made "(prim new (unit))" next))
                         ((and (string=? h "prompt") (i64= (size xs) 4))
@@ -374,7 +382,7 @@
                            (l0-made (t n1)
                              (tagcase (l0-of path scope env n1 (fourth xs))
                                (l0-made (hd n2)
-                                 (tagcase (l0-of path scope env n2 (third xs))
+                                 (tagcase (l0-of path scope env n2 (lst (list (sym "lambda" f p) (lst nil f l p) (third xs)) f l p))
                                    (l0-made (b n3) (l0-made (string-list-append (list "(prompt " t " " hd " " b ")")) n3))))))))
                         ;; `(list a b ...)`, `cons`es of each, its last onto `nil` (C406).
                         ((and (string=? h "list") (not (null? (cdr xs))))

@@ -373,6 +373,147 @@ pub extern "C" fn kcrt_append(args: *const u64, block: *mut u64) -> u64 {
     appended(args, block).unwrap_or_else(|m| failed(&m))
 }
 
+// ------------------------------------------------------------ control
+
+/// A prompt's record (C458, x64.kfx's `x64-emit-prompt`): the prompt
+/// before it, its tag, its frame's stack pointer, its handler's call.
+const R_PREV: u64 = 0;
+const R_TAG: u64 = 8;
+const R_SP: u64 = 16;
+/// An offset of no record, in a continuation's copy: past its segment.
+const NO_RECORD: u64 = (-8i64) as u64;
+const KIND_ARRAY: u64 = 32;
+/// The most fields a header holds (Fixpt's 18 bits; kc makes no large one).
+const MOST_FIELDS: u64 = 0x3_ffff;
+
+/// A continuation's copy's word `k` (C459): a bloblet of kind 32, its
+/// fields below its trailer, the first just below it, so that `kc_resume`
+/// reads its bytes at -20 from the value. Its words: the segment's bytes,
+/// the innermost prompt's record's offset in it (or `NO_RECORD`), whether
+/// once only (0 no, 8 not yet resumed, 16 resumed), then the segment's
+/// words, each prompt's record's stack addresses made offsets in it.
+fn copy_at(v: u64, k: u64) -> u64 {
+    v - TAG_BLOBLET - 8 * (k + 2)
+}
+
+/// `(call-with-composable-continuation f tag)` and its one-shot twin
+/// (C459), as Fixpt's native convention takes one: the frames from the
+/// capture's return (`args + 40`, x64.kfx's `kc_capture`) up to the return
+/// to the prompt of `tag` (just below its record's stack pointer) copied
+/// into the heap, and a closure of `kc_resume` over the copy. Its stack
+/// words: the procedure, the tag, the innermost prompt, `kc_resume`'s
+/// address, and 8 if once only.
+fn captured(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let chain = arg(args, 2);
+    let mut at = chain;
+    while at != 0 && word(at + R_TAG) != arg(args, 1) {
+        at = word(at + R_PREV);
+    }
+    if at == 0 {
+        return Err(fail_words(11).to_string());
+    }
+    let top = args as u64 + 40;
+    let end = word(at + R_SP) - 8;
+    let len = (end - top) / 8;
+    let fields = 3 + len;
+    if fields + 1 > MOST_FIELDS {
+        return Err("kc: not yet: a continuation of more than 262140 words".to_string());
+    }
+    // The copy and its closure at once; the stack's words moved by any
+    // collection, so read after.
+    let room = gc::words(block, fields + 2 + 5)?;
+    let suffix = room + 8 * (fields + 2);
+    set(room, TAG_HEADER | (KIND_ARRAY << 3) | ((fields + 1) << 14));
+    set(suffix - 8, TAG_TRAILER | ((fields + 1) << 3));
+    let v = suffix + TAG_BLOBLET;
+    for j in 0..len {
+        set(copy_at(v, 3 + j), word(top + 8 * j));
+    }
+    // The records inside the segment, innermost first: their stack
+    // addresses made offsets in it.
+    let inside = |r: u64| r >= top && r < end;
+    set(copy_at(v, 0), 8 * len);
+    set(
+        copy_at(v, 1),
+        if inside(chain) {
+            chain - top
+        } else {
+            NO_RECORD
+        },
+    );
+    set(copy_at(v, 2), arg(args, 4));
+    let mut r = chain;
+    while inside(r) {
+        let j = (r - top) / 8;
+        let prev = word(r + R_PREV);
+        set(
+            copy_at(v, 3 + j),
+            if inside(prev) { prev - top } else { NO_RECORD },
+        );
+        set(copy_at(v, 3 + j + 2), word(r + R_SP) - top);
+        r = prev;
+    }
+    // The closure (x64.kfx's `x64-emit-closure`, of one free value).
+    let c = suffix;
+    set(c, TAG_HEADER | (KIND_CLOSURE << 3) | (4 << 14));
+    set(c + 8, v);
+    set(c + 16, arg(args, 3));
+    set(c + 24, 0);
+    set(c + 32, TAG_TRAILER | (4 << 3));
+    Ok(c + 40 + TAG_BLOBLET)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_capture(args: *const u64, block: *mut u64) -> u64 {
+    captured(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+/// A continuation resumed (C459, x64.kfx's `kc_resume`): its copy `v` put
+/// at `dest`, its prompts' records made the innermost on the current ones
+/// (`chain`); the innermost record then, with 1 added (so never 0, which
+/// says a failure in process).
+fn resumed(v: u64, dest: u64, chain: u64) -> Result<u64, String> {
+    match word(copy_at(v, 2)) {
+        16 => return Err(fail_words(12).to_string()),
+        8 => set(copy_at(v, 2), 16),
+        _ => {}
+    }
+    let len = word(copy_at(v, 0)) / 8;
+    for j in 0..len {
+        set(dest + 8 * j, word(copy_at(v, 3 + j)));
+    }
+    let mut off = word(copy_at(v, 1));
+    let head = if off == NO_RECORD { chain } else { dest + off };
+    while off != NO_RECORD {
+        let r = dest + off;
+        let prev = word(r + R_PREV);
+        set(r + R_SP, dest + word(r + R_SP));
+        set(
+            r + R_PREV,
+            if prev == NO_RECORD {
+                chain
+            } else {
+                dest + prev
+            },
+        );
+        off = prev;
+    }
+    Ok(head | 1)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_resume_copy(v: u64, dest: u64, chain: u64) -> u64 {
+    resumed(v, dest, chain).unwrap_or_else(|m| failed(&m))
+}
+
+extern "C" fn here_capture(args: *const u64, block: *mut u64) -> u64 {
+    captured(args, block).unwrap_or_else(failed_here)
+}
+
+extern "C" fn here_resume_copy(v: u64, dest: u64, chain: u64) -> u64 {
+    resumed(v, dest, chain).unwrap_or_else(failed_here)
+}
+
 /// An array's index past its end, or below 0 (C422): kc's words, in a
 /// string's way; Fixpt's machines each say it their own way.
 #[unsafe(no_mangle)]
@@ -550,6 +691,8 @@ pub fn routine(name: &str) -> u64 {
         "kc_make_array_fail" => here_make_array_fail as *const (),
         "kc_string_index_fail" => here_string_index_fail as *const (),
         "kc_collect" => here_collect as *const (),
+        "kcrt_capture" => here_capture as *const (),
+        "kcrt_resume_copy" => here_resume_copy as *const (),
         _ => return 0,
     };
     f as usize as u64
@@ -646,6 +789,11 @@ pub fn fail_words(what: u64) -> &'static str {
         // An abort no prompt of its tag delimits (C458), as Fixpt's native
         // machines say it.
         10 => "abort: no prompt for this tag",
+        // A capture no prompt of its tag delimits (C459), as Fixpt's native
+        // machines say it.
+        11 => "call-with-composable-continuation: no prompt for this tag",
+        // A one-shot continuation resumed again (C459), FX-26's words.
+        12 => "a one-shot continuation resumed twice",
         _ => "a failure kc's runtime has no words for",
     }
 }
