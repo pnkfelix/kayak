@@ -6,8 +6,9 @@ license.workspace = true
 
 # The routines kc's native code calls (C452), apart from a built program's
 # `main` (kayak-kcrt), so that kayak-rt links them into kc for `kc run`.
+# Its unit tests run (C468): it defines no `main`, unlike kayak-kcrt, whose
+# `test = false` this had copied.
 [lib]
-test = false
 doctest = false
 
 [dependencies]

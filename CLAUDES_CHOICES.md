@@ -14128,3 +14128,16 @@ by thread instead, it fails.
   so cannot be a test harness; kcrt-core defines none), so nextest never
   ran its unit tests. The test passed by hand (`cargo test -p
   kayak-kcrt-core`); its tests turned on is C468.
+
+## C468. kcrt-core's unit tests run in the check (2026-11-18)
+
+Found at C467's check: nextest's count stayed 5501, the new
+`a_name_is_one_symbol_across_threads` not among them. kcrt-core's
+`Cargo.toml` said `test = false`, copied in C452 from kayak-kcrt, which
+defines a built program's `main` and so cannot be a test harness;
+kcrt-core defines none, and has nothing that keeps it from one. Its
+`test = false` is gone, with a word why; the other crate that says it,
+kayak-kcrt, keeps it for its reason. nextest now runs kcrt-core's test.
+The full check: all passed in 632.0 s; nextest 5502 passed (was 5501:
+kcrt-core's test among them); kc-steps 351 of 351, warm; kc-objects 457,
+0 differ.
