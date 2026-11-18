@@ -82,6 +82,14 @@
               ;; A key's innermost mark, or the default; a continuation's (C460).
               "first-mark" "marks-of"))
 
+      "The core forms' keywords (C463): at a form's head each is its form,
+       as Fixpt has it, a global of its name or not (`(define if ...)`,
+       then `(if #t 1 2)` is 1), so none is looked up as a global's name,
+       which would make the item depend on that name."
+      (define l0-keywords (listof string acyclic)
+        (list "lambda" "quote" "let" "let*" "begin" "the" "plambda" "proj" "letrec" "product" "tuple"
+              "extract" "sum" "tagcase" "quasiquote" "typecase" "prompt" "if" "and" "or" "cond" "case"))
+
       "An `i64`'s operations (C462), as the `int`'s they are on fixnums."
       (define i64-as-int (listof string acyclic)
         (list "i64+" "+" "i64-" "-" "i64*" "*" "i64=" "=" "i64<" "<" "i64<=" "<=" "i64>" ">" "i64>=" ">="
@@ -277,13 +285,14 @@
               (sym (n f p)
                 (let ((k (l0-number-of n env)))
                   (cond ((i64>= k 0) (l0-made (string-list-append (list "(var " (i64->string k) " " n ")")) next))
+                        ;; Literals, no global's names (C463): none looked up.
+                        ((string=? n "#t") (l0-made "(bool 1)" next))
+                        ((string=? n "#f") (l0-made "(bool 0)" next))
+                        ((string=? n "#u") (l0-made "(unit)" next))
                         ((string=? (l0-global-kind n scope) "value") (l0-made (string-append "(gvar " (string-append n ")")) next))
                         ;; A procedure the program defines, as a value (C412).
                         ((string=? (l0-global-kind n scope) "proc")
                          (l0-made (string-list-append (list "(gproc " n " " (i64->string (l0-global-arity n scope)) ")")) next))
-                        ((string=? n "#t") (l0-made "(bool 1)" next))
-                        ((string=? n "#f") (l0-made "(bool 0)" next))
-                        ((string=? n "#u") (l0-made "(unit)" next))
                         ((string=? n "nil") (l0-made "(nil)" next))
                         (else (l0-made (not-yet path (string-append "a global, " n)) next)))))
               (lst (xs f l p)
@@ -306,12 +315,12 @@
                          ;; checker's (C426).
                          (l0-of path scope env next (lst (cons (second (items (car xs))) (cdr xs)) f l p)))
                         ((or (string=? h "") (and (i64>= (l0-number-of h env) 0) (not (string=? h "")))
-                             (string=? (l0-global-kind h scope) "value"))
+                             (and (not (string-member? h l0-keywords)) (string=? (l0-global-kind h scope) "value")))
                          ;; A call of a procedure as a value: a local's, a global
                          ;; value's, any expression's (C412).
                          (tagcase (l0-terms path scope env next xs nil)
                            (l0-made (ts n1) (l0-made (string-list-append (list "(app " ts ")")) n1))))
-                        ((string=? (l0-global-kind h scope) "proc")
+                        ((and (not (string-member? h l0-keywords)) (string=? (l0-global-kind h scope) "proc"))
                          ;; A call of a procedure the program defines (C407).
                          (tagcase (l0-terms path scope env next (cdr xs) nil)
                            (l0-made (args n1) (l0-made (string-list-append (list "(call " h (if (string=? args "") "" " ") args ")")) n1))))

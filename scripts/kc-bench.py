@@ -7,7 +7,8 @@ followed by fixing forward ... I want to check that we are leveraging
 incremental compilation cache in smart way, where we don't throw things
 away too safely").
 
-usage: python3 -I scripts/kc-bench.py [--sizes N,...] [--runs R] [--record]
+usage: python3 -I scripts/kc-bench.py [--sizes N,...] [--runs R] [--record | --rows FILE]
+       python3 -I scripts/kc-bench.py --tag FILE COMMIT
 
 A program of N procedures is made (each a small arithmetic procedure, the
 last expression calling a few), then put through a session of edits, each
@@ -40,6 +41,14 @@ serve's, then the run's; Fixpt's ms; kc's bodies run, and those beyond the need
 (serve's are the same, or said apart). With --record, each size's rows are
 appended to bench/kc.tsv with the commit, so that the numbers are kept
 step by step (they gate nothing: a speed's change is for discussion).
+
+As a step's workflow has it (C463; the user: "make gathering those
+timings part of the default workflow"): scripts/check-snapshot.sh runs
+this after each check that passes, `--rows FILE`, the rows kept apart, their
+commit not yet made; and when the next check begins, the commit that
+was made of that snapshot known (after any amend), `--tag FILE COMMIT`
+appends them to bench/kc.tsv, so that each step's rows go in with the
+step after it.
 """
 
 import os
@@ -233,8 +242,11 @@ def bench(n, runs, fx):
 
 
 def main():
-    sizes, runs, record = [100, 1000], 3, False
+    sizes, runs, record, rows = [100, 1000], 3, False, None
     args = sys.argv[1:]
+    if args[:1] == ["--tag"] and len(args) == 3:
+        tagged(args[1], args[2])
+        return
     while args:
         a = args.pop(0)
         if a == "--sizes":
@@ -243,6 +255,8 @@ def main():
             runs = int(args.pop(0))
         elif a == "--record":
             record = True
+        elif a == "--rows" and args:
+            rows = args.pop(0)
         else:
             sys.exit(__doc__)
     fx = fixpt()
@@ -257,11 +271,26 @@ def main():
                                                                        ft * 1000, nb, extra, kgot, fgot))
             out.append("\t".join([commit, str(n), name, "%.1f" % (kc_t * 1000), "%.1f" % (sv_t * 1000), "%.1f" % (link_t * 1000), "%.1f" % (ft * 1000), str(nb), extra]))
     if record:
-        new = not os.path.exists(RECORD)
-        with open(RECORD, "a") as f:
-            if new:
-                f.write("commit\tprocedures\tstep\tkc_ms\tserve_ms\tlink_run_ms\tfixpt_ms\tbodies\tbeyond_need\n")
-            f.write("\n".join(out) + "\n")
+        recorded(out)
+    if rows:
+        # Their commit not made yet: `-`, which `--tag` names.
+        with open(rows, "w") as f:
+            f.write("".join("-" + r[len(commit):] + "\n" for r in out))
+
+
+def recorded(out):
+    new = not os.path.exists(RECORD)
+    with open(RECORD, "a") as f:
+        if new:
+            f.write("commit\tprocedures\tstep\tkc_ms\tserve_ms\tlink_run_ms\tfixpt_ms\tbodies\tbeyond_need\n")
+        f.write("\n".join(out) + "\n")
+
+
+def tagged(path, commit):
+    """`--rows`' rows, each its commit's now that it is made, recorded."""
+    out = [commit + l[1:] for l in open(path).read().splitlines() if l.startswith("-\t")]
+    if out:
+        recorded(out)
 
 
 if __name__ == "__main__":

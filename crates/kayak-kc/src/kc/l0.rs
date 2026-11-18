@@ -110,6 +110,18 @@ pub mod kc_l0 {
         })
     }
 
+    // The core forms' keywords (C463): at a form's head each is its form,
+    // as Fixpt has it, a global of its name or not (`(define if ...)`,
+    // then `(if #t 1 2)` is 1), so none is looked up as a global's name,
+    // which would make the item depend on that name.
+    #[inline]
+    pub fn l0_keywords() -> List<Str> {
+        static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("let*"), kayak_rt::heap_cons(str_lit("begin"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("proj"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("tuple"), kayak_rt::heap_cons(str_lit("extract"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("tagcase"), kayak_rt::heap_cons(str_lit("quasiquote"), kayak_rt::heap_cons(str_lit("typecase"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("and"), kayak_rt::heap_cons(str_lit("or"), kayak_rt::heap_cons(str_lit("cond"), kayak_rt::heap_cons(str_lit("case"), kayak_rt::nil()))))))))))))))))))))))
+        })
+    }
+
     // An `i64`'s operations (C462), as the `int`'s they are on fixnums.
     #[inline]
     pub fn i64_as_int() -> List<Str> {
@@ -584,16 +596,16 @@ pub mod kc_l0 {
                     let k = l0_number_of(n, env);
                     if i64_gt_eq(k, 0i64) {
                         return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(var "), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), next);
-                    } else if string_eq_p(l0_global_kind(n, scope), str_lit("value")) {
-                        return l0_made(string_append(str_lit("(gvar "), string_append(n, str_lit(")"))), next);
-                    } else if string_eq_p(l0_global_kind(n, scope), str_lit("proc")) {
-                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(gproc "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(l0_global_arity(n, scope)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), next);
                     } else if string_eq_p(n, str_lit("#t")) {
                         return l0_made(str_lit("(bool 1)"), next);
                     } else if string_eq_p(n, str_lit("#f")) {
                         return l0_made(str_lit("(bool 0)"), next);
                     } else if string_eq_p(n, str_lit("#u")) {
                         return l0_made(str_lit("(unit)"), next);
+                    } else if string_eq_p(l0_global_kind(n, scope), str_lit("value")) {
+                        return l0_made(string_append(str_lit("(gvar "), string_append(n, str_lit(")"))), next);
+                    } else if string_eq_p(l0_global_kind(n, scope), str_lit("proc")) {
+                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(gproc "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(l0_global_arity(n, scope)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), next);
                     } else if string_eq_p(n, str_lit("nil")) {
                         return l0_made(str_lit("(nil)"), next);
                     } else {
@@ -632,14 +644,14 @@ pub mod kc_l0 {
                     } else if (string_eq_p(h, str_lit("")) && head_is_p(car(xs), str_lit("proj"))) {
                         e = lst(kayak_rt::heap_cons(second(items(car(xs))), cdr(xs)), f, l, p);
                         continue;
-                    } else if (string_eq_p(h, str_lit("")) || (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit("")))) || string_eq_p(l0_global_kind(h, scope), str_lit("value"))) {
+                    } else if (string_eq_p(h, str_lit("")) || (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit("")))) || (not(string_member_p(h, l0_keywords())) && string_eq_p(l0_global_kind(h, scope), str_lit("value")))) {
                         let tagcase_ = l0_terms(path, scope, env, next, xs, nil::<Str>());
                         match *tagcase_ {
                             L0Made::L0Made(ts, n1) => {
                                 return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(app "), kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))), n1);
                             }
                         }
-                    } else if string_eq_p(l0_global_kind(h, scope), str_lit("proc")) {
+                    } else if (not(string_member_p(h, l0_keywords())) && string_eq_p(l0_global_kind(h, scope), str_lit("proc"))) {
                         let tagcase_ = l0_terms(path, scope, env, next, cdr(xs), nil::<Str>());
                         match *tagcase_ {
                             L0Made::L0Made(args, n1) => {

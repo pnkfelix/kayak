@@ -22,6 +22,14 @@
 # check.log. When the check passes, the Fixpt answers it kept or dropped
 # (tests/fixpt-answers/) are copied back here, and the snapshot's tree
 # recorded for --same.
+#
+# And kc's timings, edit by edit (C463; the user: "make gathering those
+# timings part of the default workflow"): when a full check passes,
+# scripts/kc-bench.py on the snapshot, its rows kept in the snapshot's
+# target/ (they gate nothing; a bench that fails is said, no more). The
+# commit is not made yet, and may be amended after, so the rows are
+# recorded in bench/kc.tsv when the next check begins, under the commit
+# made on the snapshot's base: each step's rows go in with the step after.
 set -eu
 # Run from a copy of this script: `sh` reads a script as it goes, and this
 # one may be edited while its check runs.
@@ -64,8 +72,21 @@ if [ "${1-}" = --commit ]; then
     made=$(git commit-tree "$passed" -p HEAD -F -)
     git reset --quiet --soft "$made"
     git reset --quiet
+    # The bench's rows of this snapshot: the commit on `base` theirs.
+    [ ! -f "$snap/target/bench-rows" ] || echo "$base" > "$snap/target/bench-base"
     echo "check-snapshot: committed $(git log -1 --format='%h %s')"
     exit 0
+fi
+
+# The last commit's bench rows, recorded under it, now that it is made.
+if [ -f "$snap/target/bench-base" ] && [ -f "$snap/target/bench-rows" ]; then
+    pbase=$(cat "$snap/target/bench-base")
+    child=$(git rev-list --first-parent --reverse "$pbase..HEAD" 2>/dev/null | head -n 1)
+    if [ -n "$child" ]; then
+        python3 -I scripts/kc-bench.py --tag "$snap/target/bench-rows" "$(git rev-parse --short "$child")"
+        echo "check-snapshot: kc-bench's rows of $(git rev-parse --short "$child") recorded in bench/kc.tsv"
+    fi
+    rm -f "$snap/target/bench-base" "$snap/target/bench-rows"
 fi
 
 tree=$(tree_now)
@@ -78,7 +99,7 @@ git -C "$snap" checkout --quiet --detach --force "$commit"
 git -C "$snap" clean --quiet -ffdx -e /target -e /check.log -e /.passed-tree -e /.passed-base
 mkdir -p "$snap/target" target/fixpt-cache
 [ -L "$snap/target/fixpt-cache" ] || { rm -rf "$snap/target/fixpt-cache"; ln -s "$here/target/fixpt-cache" "$snap/target/fixpt-cache"; }
-rm -f "$snap/.passed-tree" "$snap/.passed-base"
+rm -f "$snap/.passed-tree" "$snap/.passed-base" "$snap/target/bench-rows" "$snap/target/bench-base"
 echo "check-snapshot: directory $snap"
 echo "check-snapshot: snapshot $commit (tree $tree)"
 echo "check-snapshot: log $snap/check.log"
@@ -97,6 +118,15 @@ done
 [ -z "$changed" ] || echo "check-snapshot: $(echo "$changed" | wc -l | tr -d ' ') Fixpt answer file(s) brought back"
 other=$(cd "$snap" && git status --porcelain --untracked-files=all | grep -v ' tests/fixpt-answers/' | grep -v ' check.log$' || true)
 [ -z "$other" ] || { echo "check-snapshot: the check also changed, left in $snap:"; echo "$other"; }
+# kc's timings (C463): a full check's, not a quick one's.
+if [ "${1-}" != --quick ]; then
+    if (cd "$snap" && python3 -I scripts/kc-bench.py --rows "$snap/target/bench-rows") > "$snap/target/bench.log" 2>&1; then
+        echo "check-snapshot: kc-bench's rows kept (log $snap/target/bench.log)"
+    else
+        rm -f "$snap/target/bench-rows"
+        echo "check-snapshot: kc-bench failed, no rows (log $snap/target/bench.log)"
+    fi
+fi
 echo "$tree" > "$snap/.passed-tree"
 echo "$base" > "$snap/.passed-base"
 echo "check-snapshot: passed (directory $snap)"

@@ -21,6 +21,12 @@ only what reads the text (`checked`, `l0`), not the back end after it,
 whose input, `l0`'s value, is as it was; edited to another value, the back
 end runs too.
 
+And warm (C463): after the sweep, each program built again, nothing
+changed, with the database the sweep left: no query body may run. And
+early cutoff of the kinds of item kc has grown since (C463): a datatype,
+a module's value, a global a closure captures, a prompt's body; a core
+form's keyword and a literal never looked up as a global's name.
+
 And a file's macros (C445): each form's expansion a query of its own, an
 edit expands again only the forms that name what it changed.
 
@@ -74,7 +80,7 @@ def run(args, **kw):
     return subprocess.run(args, capture_output=True, text=True, **kw)
 
 
-def ran(stderr):
+def bodies_ran(stderr):
     """The queries `kc --stats` says ran."""
     for line in stderr.splitlines():
         if "query bodies ran:" in line:
@@ -113,10 +119,66 @@ def cutoff():
                        (TWO % "(+ n 2)", ["asm", "asm-item", "checked", "interface", "l0-item"])]:
         open(p, "w").write(text)
         r = run([KC, "--db", db, "--stats", "--asm", p, s])
-        got = ran(r.stderr)
+        got = bodies_ran(r.stderr)
         if want is not None and got != want:
             wrong.append("cutoff: after %r, ran %s, not %s" % (text, got, want))
+    # A core form's keyword and a literal, never a global's name (C463): a
+    # program of them, cold, runs what `42` does, no `form` or `interface`
+    # of `lambda`, `if`, `#t` ...
+    for text in ["(let ((x 1)) (if (and #t #f) ((lambda ((y int)) y) x) (begin #u 2)))\n"]:
+        if os.path.exists(db):
+            os.remove(db)
+        open(p, "w").write(text)
+        got = bodies_ran(run([KC, "--db", db, "--stats", "--asm", p, s]).stderr)
+        if got != ["asm", "asm-item", "checked", "l0-item"]:
+            wrong.append("cutoff: %r, cold, ran %s, not as `42`" % (text, got))
+    # The kinds of item since (C463), each: cold; the same; another
+    # procedure's body edited, it alone; then the kind's own edit.
+    one = ["asm", "asm-item", "checked", "interface", "l0-item"]
+    for kind, tmpl, edit, want in GROWN:
+        if os.path.exists(db):
+            os.remove(db)
+        for args, w in [(("a", "(* n 2)"), None), (("a", "(* n 2)"), []), (("a", "(* 2 n)"), one), (("b", "(* 2 n)"), want)]:
+            open(p, "w").write(tmpl % (edit[args[0]], args[1]))
+            r = run([KC, "--db", db, "--stats", "--asm", p, s])
+            got = bodies_ran(r.stderr)
+            if r.returncode != 0:
+                wrong.append("cutoff: %s: kc --asm: %s" % (kind, r.stderr.strip()[-300:]))
+                break
+            if w is not None and got != w:
+                wrong.append("cutoff: %s, edit %s %s: ran %s, not %s" % (kind, args[0], args[1], got, w))
     return wrong
+
+
+# Each: its program, a slot for the kind's own text (`a`, then `b`) and one
+# for another procedure's body; what the kind's edit runs. A datatype's
+# variants changed: a `tagcase` of it lowered again, its code the same,
+# cut off; the datatype's own code made again. A module's value, a
+# captured global's: that item alone. A prompt's body made an abort: that
+# item, and `abort-current-continuation` looked up as a global's name
+# (unlike a keyword, a program may define one).
+GROWN = [
+    ("a datatype", """(define-datatype shape (circle int) (square %s))
+(define area (subr pure (shape) int) (lambda (s) (tagcase s (circle (r) (* 3 (* r r))) (else x 0))))
+(define dbl (subr pure (int) int) (lambda (n) %s))
+(+ (area (circle 2)) (dbl 3))
+""", {"a": "int", "b": "int int"}, ["asm", "asm-item", "checked", "interface", "l0-item", "l0-item"]),
+    ("a module's value", """(define m (module (define v int %s) (define get (subr pure () int) (lambda () (* v 2)))))
+(define dbl (subr pure (int) int) (lambda (n) %s))
+(+ (with m (get)) (dbl 3))
+""", {"a": "5", "b": "6"}, ["asm", "asm-item", "checked", "interface", "l0-item"]),
+    ("a captured global", """(define k int %s)
+(define mk (subr (read (globals k)) () (subr pure (int) int)) (lambda () (let ((j k)) (lambda ((x int)) (* x j)))))
+(define dbl (subr pure (int) int) (lambda (n) %s))
+(+ ((mk) 2) (dbl 3))
+""", {"a": "5", "b": "6"}, ["asm", "asm-item", "checked", "interface", "l0-item"]),
+    ("a prompt's body", """(define t (prompt-tag int int (maxeff spin (read (globals t))) @p) (make-continuation-prompt-tag))
+(define f (subr (maxeff spin (read (globals t))) (int) int) (lambda (n) (prompt t %s (lambda ((v int)) (+ v 1)))))
+(define dbl (subr pure (int) int) (lambda (n) %s))
+(+ (f 3) (dbl 3))
+""", {"a": "(+ n 1)", "b": "(abort-current-continuation t n)"},
+     ["asm", "asm-item", "checked", "form", "interface", "interface", "l0-item"]),
+]
 
 
 MACROS = """(define-syntax inc
@@ -155,7 +217,7 @@ def expansions():
                             ("(define unused int 9)\n" + MACROS % ("(+ 1 e)", "(* 2 n)"), (1, 3), "a form put first")]:
         open(p, "w").write(text)
         r = run([KC, "--db", db, "--stats", "--check", p])
-        got = ran(r.stderr) or []
+        got = bodies_ran(r.stderr) or []
         n = (got.count("expansion"), got.count("macros-for"))
         if r.returncode != 0:
             wrong.append("expansions: %s: kc --check: %s" % (why, r.stderr.strip()))
@@ -177,7 +239,7 @@ def expansions():
                             (PROCEDURAL % "(+ n 1)", (1, 1, 0), "procedural, a use's operand edited")]:
         open(p, "w").write(text)
         r = run([KC, "--db", db, "--stats", "--check", p])
-        got = ran(r.stderr) or []
+        got = bodies_ran(r.stderr) or []
         n = (got.count("expansion"), got.count("macros-for"), got.count("asm-item"))
         if r.returncode != 0:
             wrong.append("expansions: %s: kc --check: %s" % (why, r.stderr.strip()))
@@ -298,6 +360,17 @@ def main():
                          % (name, TINY_HEAP, q.stdout[-300:], q.stderr[-300:], q.returncode, r.stdout[-300:], r.stderr[-300:], r.returncode))
         else:
             collected += 1
+    # Warm (C463): each built again, nothing changed: no query body runs.
+    warm = 0
+    for p in ps:
+        name = os.path.relpath(p, TESTS)
+        exe = os.path.join(WORK, name.replace("/", "--"))
+        r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
+        got = bodies_ran(r.stderr)
+        if r.returncode == 0 and got == []:
+            warm += 1
+        elif r.returncode == 0:
+            wrong.append("%s: built again, nothing changed, ran %s" % (name, " ".join(got or ["(no stats)"])))
     kfx = [p for p in ps if p.endswith(".kfx")]
     crate = os.path.join(ROOT, "target", "kc-rust")
     os.makedirs(os.path.join(crate, "src"), exist_ok=True)
@@ -342,8 +415,8 @@ def main():
     wrong += convention()
     for w in wrong:
         print("kc-steps: " + w)
-    print("kc-steps: %d programs, %d by native code (%d of them in process as their executables, %d with a heap of %d words), %d by Rust; %d wrong; %d query bodies ran%s"
-          % (len(ps), len(ps), in_process, collected, TINY_HEAP, len(kfx), len(wrong), ran, "" if fx else "; Fixpt not here, its answers unchecked"))
+    print("kc-steps: %d programs, %d by native code (%d of them in process as their executables, %d with a heap of %d words, %d built again warm, no body run), %d by Rust; %d wrong; %d query bodies ran%s"
+          % (len(ps), len(ps), in_process, collected, TINY_HEAP, warm, len(kfx), len(wrong), ran, "" if fx else "; Fixpt not here, its answers unchecked"))
     sys.exit(1 if wrong else 0)
 
 

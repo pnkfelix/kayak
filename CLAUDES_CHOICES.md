@@ -13883,3 +13883,57 @@ What changed:
 - **The full check**: all passed in 637.9 s; kc-steps 348 of 348 (in
   process, and with a heap of 64 words); kc-objects 451, 0 differ; the
   fixpoint as before; nextest 5501 passed.
+
+## C463. kc's incrementality kept checked, and its timings recorded each step (2026-11-18)
+
+The user: "is kc still incremental? Do you have tests ensuring we
+aren't undermining that goal for it?", then "Yes" to closing the gaps
+found; and "are you measuring timing for these incremental steps? ...
+I would like to have some idea of overall trends", and "Is there a
+straightforward way to make gathering those timings part of the
+default workflow?". Reviewed first:
+- **kayak**: kc-steps' `cutoff()` and `expansions()` (C399, C407, C414,
+  C445–C449) say exactly which query bodies run after each edit, and
+  fail the check otherwise (C460's first check failed by them). But
+  their programs are the early steps' (an integer, two procedures, a few
+  macros); the sweep's count of bodies run is said, not checked; and
+  kc-bench (C414), which times a session of edits against Fixpt, was
+  last recorded at C418, 44 commits before: run by hand, and then not.
+- **Fixpt**: a core form's keyword at a form's head is that form, a
+  global of its name or not (`(define if ...)`, then `(if #t 1 2)` is
+  1; `(define lambda ...)`, then `(lambda 4)` is refused as a lambda);
+  a program may define `nil`, or `+`, which its uses then name.
+
+What changed:
+- **l0**: a head that is a core form's keyword (`lambda`, `let`, `if`,
+  `prompt`, ...) is never looked up as a global's name, and nor are
+  `#t`, `#f` and `#u`. Each such look-up made the item ask for the name
+  (`kc-need`, a restart) and depend on it, so every `lambda` a program
+  wrote did; and kc called a global of a keyword's name where Fixpt
+  takes the form. `nil` and the primitives' names are still looked up,
+  as Fixpt lets a program define them.
+- **kc-steps**: after the sweep, each program built again with the
+  database it left, nothing changed: no query body may run (348 of 348).
+  `cutoff()` grows: a program of keywords and literals, cold, runs what
+  `42` does; and four kinds of item since the early steps, each cold,
+  the same, another procedure's body edited (that item alone), then the
+  kind's own edit: a datatype's variants (a `tagcase` of it lowered
+  again and cut off, the datatype's code made again), a module's value
+  and a captured global's (that item alone), a prompt's body made an
+  abort (that item, and the new name looked up).
+- **The timings, each step**: `check-snapshot.sh`, when a full check
+  passes, runs kc-bench on the snapshot (`--rows`, some 35 s; it gates
+  nothing, a failure said), and when the next check begins appends the
+  rows to bench/kc.tsv under the commit made of that snapshot
+  (`--tag`), its hash final by then, after any amend. So each step's
+  rows go in with the step after it, and every step has them.
+- **The trend since C418** (kc-bench by hand at C462, recorded): the
+  same bodies run at each step, none beyond the edit's need; at 1000
+  procedures, `body` 405 → 301 ms, `add` 411 → 300 ms, `serve`'s `body`
+  249 → 167 ms; cold 827 → 819 ms. And after this step's l0 change, a
+  cold 100 procedures runs 314 bodies, was 316.
+- **The full check** (the second; the first stopped at the warm pass,
+  whose call of `ran` a counter of that name hid, now `bodies_ran`):
+  all passed in 596.2 s; kc-steps 348 of 348, each built again warm, no
+  body run (kc-steps 402 s, was 345: the warm pass and the new cases);
+  kc-objects 451, 0 differ; nextest 5501 passed; kc-bench's rows kept.
