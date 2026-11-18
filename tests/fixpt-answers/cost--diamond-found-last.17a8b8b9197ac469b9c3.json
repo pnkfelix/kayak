@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/cost/diamond-found-last.fx:23:1: `m41` keeps a procedure that reads `@globals`, so it could reach itself through a global: it must say `spin`, and it is a (subr (read @globals) () int)",
+"! <kayak>-snapshot/tests/fx26/programs/cost/diamond-found-last.fx:23:1: `m41` keeps a procedure that reads `@globals`, so it could reach itself through a global: it must say `spin`, and it is a (subr (read @globals) () int)",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

@@ -14400,3 +14400,75 @@ the head written so.
 - **The full check**: all passed in 376.2 s; kc-steps 361 of 361 in
   123.3 s (C472's 251.9, C471's 512.1 cold), each built again warm, no
   body run; kc-objects 478, 0 differ; corpus 107 agree; nextest 5503.
+
+## C474. The pin moved to Fixpt 6f7bd73 (2026-11-18)
+
+The user: "Also update to the latest Fixpt from GitHub". 0585488 to
+6f7bd73, 30 commits: names under the heap's management (a heap's names,
+interners of them, the symbols table weak; TODO §292), `gensym`,
+module paths in `with` and `select` and `a::b::c` paths, local binders
+shadowing macros, `import-with-syntax` of an instance's macros, ER's
+`rename` given no expansion's tag, a form's key of every atom's value
+(kayak's INCR_IMPED §5), the closed-code note (§4), and
+`write-file-unflushed` (kayak's request, C473).
+
+Carried:
+- **The expander**, re-ported (`macros-port.py`; 2220 lines added, 765
+  taken away). The driver (`fx26/macros-driver.kfx`) follows two of
+  Fixpt's changes: a `with`'s uses carry a kind (0 a macro used by a
+  name, 1 a template's `(with m name)`, 2 a path's), and kfx's
+  `uses-wrong` reads it as Fixpt's `k-macro-clash` does, a path's name
+  its last (`last-path-name`), in Fixpt's words; the type is the port's
+  `mx-exports-uses`.
+- **ER's `rename`** (Fixpt's 3a84cb5f, answering C446's measure): a
+  transformer is called with `%er-rename`, `%~:x`, which the expander
+  makes the calling expansion's alias, not `%er-renamer` of a tag
+  (`fx26/macros-phase1.kfx`, `kc/phase1-read.kfx`): 27 of kc-expanded's
+  28 new differences.
+- **kfx's join of a `nat` and an `int`** (`nat-then-int?`): branches
+  found by themselves, a `nat` first and an `int` after, refused (the
+  rest's fitted to the first's); FX-26 joins them to the `int`, and
+  Fixpt's expander now has one (`(if (< k 0) (string-length n) k)`,
+  `path-from`). Fixpt took it at the old pin too: a gap of kfx's.
+- **`string-search` in kc** (Fixpt's, by code points, -1 if none; the
+  expander's paths use it): `kc_string_search`, kcrt-core's.
+  `tests/kc/lists/string-search.fx`. x64's three-argument primitives no
+  longer fall to `substring` whatever their name.
+- **Paths kfx's checker refuses, as Fixpt does** (kayak-checks' K1:
+  kayak may accept no program Fixpt refuses): a name `module::name`
+  where a binder goes (`name-of`, in Fixpt's words; Fixpt's Rust expander
+  refuses it, the FX-26 one kayak ports passes it on:
+  `modules/colons-binder.fx`); and a `with` of a module no variable names,
+  a path `(with (with m a) x)`: kfx opened the expression's module type,
+  its abstract types not its base binding's, so it took what Fixpt's path
+  rules refuse (`path-apart`, `path-escape`, `path-not-binding`). Refused
+  now, as Fixpt refused any such `with` before; a path's types, to follow
+  Fixpt's anchors, TODO §54.
+  kfx finds a `::` by its own `colons-at`, not `string-search`, which
+  tier 1 has not (selfhost runs the compiler there).
+- **The expander program's answer** (`tests/kc/loads/expander-facts.fx`):
+  a form's key is now of every atom's value (22aebcf), so its first
+  form's is 23307562, not 22848371: Fixpt's.
+- **Drift**: ten marks, each read against what was ported: `parser-forms`
+  (with-module, path-written: kfx's port is the generative usage's),
+  `check.rs` (no standard generative changed), `prim.rs` (two primitives
+  added last, `gensym` and `write-file-unflushed`; lang items 562),
+  `heap.rs` (the hashes as kayak copied them), `value.rs` (an interned
+  symbol's name a text: a gap, TODO §54), `layout.rs` (none),
+  `sched.rs` (a global reached otherwise), `print.rs` (a text printed),
+  `parser-exps.fx` (a path in `with`: a gap). Built-in modules and
+  Fixpt's test programs copied again.
+- **kc-expanded**: `modules/colons-macro.fx` known to differ (PATHED):
+  kc's expansion a form at a time knows not `m`'s shape at a path's
+  `with`, and refuses as Fixpt would where it does not (TODO §54).
+
+Tried and not taken (before the move): kc's link by lld (`-fuse-ld=lld`),
+half the default's time alone (0.07 s against 0.12 s, 1000 procedures),
+but an edit's build, in turn, 0.32 to 0.35 s by either: no gain, a
+dependency more. Next, after C475: `kc build` with no linker at all.
+- **The full check**: all passed in 416.3 s (its fourth run: the first
+  stopped at kc-steps, the expander program's answer and `string-search`;
+  the second at nextest, the four path programs; the third at selfhost,
+  `string-search` in kfx); kc-steps 362 of 362; nextest 5595; selfhost
+  147 s; cells-programs 652 agree on tier 1; of Fixpt's 615 refused
+  programs kayak refuses 615.

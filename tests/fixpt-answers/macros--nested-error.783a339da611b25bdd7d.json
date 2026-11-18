@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/macros/nested-error.fx:7:17: argument 2 is a bool, where a int is expected",
-"  in the expansion of `add-one` at <programs>/macros/nested-error.fx:11:12",
-"  in the expansion of `twice-add` at <programs>/macros/nested-error.fx:12:1",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/macros/nested-error.fx:7:17: argument 2 is a bool, where a int is expected",
+"  in the expansion of `add-one` at <kayak>-snapshot/tests/fx26/programs/macros/nested-error.fx:11:12",
+"  in the expansion of `twice-add` at <kayak>-snapshot/tests/fx26/programs/macros/nested-error.fx:12:1",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

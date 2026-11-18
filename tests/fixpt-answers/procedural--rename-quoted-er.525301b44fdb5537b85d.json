@@ -1,0 +1,35 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"rename-quoted-er.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (16 cells, cellular):",
+"     0: lit |x|",
+"     2: lit |x|",
+"     4: eq",
+"     5: lit |x|",
+"     7: lit |x|",
+"     9: eq",
+"    10: lit #t",
+"    12: prim list 3",
+"    15: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

@@ -13,7 +13,7 @@ use super::*;
 // capturing the rest of itself up to the scheduler's prompt, which the
 // engine has; here, only what the tasks share. The state is tier 1's
 // `sched-state`, which the engine's collector forwards (`collect!`).
-// fixpt-source: crates/fixpt-runtime/src/sched.rs@19b31f1
+// fixpt-source: crates/fixpt-runtime/src/sched.rs@6f7bd73
 /// A failure, the engine's (C110).
 #[inline]
 pub fn sched_refused_x(message: Str) -> i64 {

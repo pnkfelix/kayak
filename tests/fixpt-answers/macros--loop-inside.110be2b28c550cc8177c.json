@@ -12,12 +12,12 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/macros/loop-inside.fx:3:44: this use of `m` is one it was expanded from, unchanged: its expansion would never end",
-"  in the expansion of `m` at <programs>/macros/loop-inside.fx:4:1",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/loop-inside.fx:3:44: this use of `m` is one it was expanded from, unchanged: its expansion would never end",
+"  in the expansion of `m` at <kayak>-snapshot/tests/fx26/programs/macros/loop-inside.fx:4:1",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

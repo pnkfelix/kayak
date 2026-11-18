@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"gensym.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"f : (subr gensym (symbol) symbol) ! pure",
+"(#t #f #f #t #t #t) : (listof bool acyclic) ! (maxeff gensym (read (globals f)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

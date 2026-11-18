@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/unions/overlap.fx:3:16: a `oneof`'s members must be told apart at run time: a (subr pure (int) int) and a (subr pure (bool) int) cannot be",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/unions/overlap.fx:3:16: a `oneof`'s members must be told apart at run time: a (subr pure (int) int) and a (subr pure (bool) int) cannot be",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

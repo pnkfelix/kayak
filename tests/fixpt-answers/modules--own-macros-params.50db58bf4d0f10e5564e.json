@@ -17,17 +17,17 @@
 "     4: slot 0",
 "     6: prim %make-frozen 2",
 "     9: slot! 0",
-"    11: global! %shared:<programs>/modules/../module-files/own-macros-base.fx",
-"    13: global %shared:<programs>/modules/../module-files/own-macros-base.fx",
+"    11: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/own-macros-base.fx",
+"    13: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/own-macros-base.fx",
 "    15: global! b",
 "    17: closure word input@1002:344 over 0",
 "    20: lit 37",
 "    22: slot 0",
 "    24: prim %make-frozen 2",
 "    27: slot! 0",
-"    29: global! %shared:input:<programs>/modules/../module-files/own-macros-params.fx",
+"    29: global! %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/own-macros-params.fx",
 "    31: global b",
-"    33: global %shared:input:<programs>/modules/../module-files/own-macros-params.fx",
+"    33: global %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/own-macros-params.fx",
 "    35: field 2",
 "    37: slot 1",
 "    39: slot! 1",
@@ -171,7 +171,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

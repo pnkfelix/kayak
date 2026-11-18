@@ -105,7 +105,7 @@
                   ((string=? (car ops) n) (car (cdr ops)))
                   (else (int-op-of n (cdr (cdr ops))))))))
 
-      (define ternary-primitives (listof string acyclic) (list "substring" "array-set!" "with-mark")))
+      (define ternary-primitives (listof string acyclic) (list "substring" "array-set!" "with-mark" "string-search")))
 
     (define not-yet (subr kfx (string string) string)
       (lambda (path what) (begin (error (string-append "kc: " (string-append path (string-append ": not yet: " what)))) "")))

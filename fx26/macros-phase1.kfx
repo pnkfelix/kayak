@@ -43,7 +43,9 @@
   (lambda (style tag form)
     (string-list-append
       (list "(%transformer (quote " form ") "
-            (cond ((string=? style "0") (string-append "(%er-renamer (string->symbol " (string-append (string-append "\"" (string-append tag "\"")) ")) %er-compare")))
+            ;; ER's `rename` given no expansion's tag (C474; Fixpt's 3a84cb5f):
+            ;; `%~:x`, which the expander makes the calling expansion's alias.
+            (cond ((string=? style "0") "%er-rename %er-compare")
                   ((string=? style "1") "(quote %env:use)")
                   (else "(quote %env:macro)"))
             ")\n"))))

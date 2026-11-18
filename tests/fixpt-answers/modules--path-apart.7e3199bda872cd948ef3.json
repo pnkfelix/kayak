@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"path-apart.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"make : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"mid : (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))) ! (read (globals make))",
+"other : (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))) ! (read (globals make))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/path-apart.fx:11:30: argument 1 is a mid.a..t, where a other.a..t is expected",
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

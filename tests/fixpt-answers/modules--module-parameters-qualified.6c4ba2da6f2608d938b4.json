@@ -167,17 +167,17 @@
 "     5: slot 0",
 "     7: prim %make-frozen 2",
 "    10: slot! 0",
-"    12: global! %shared:<programs>/modules/../module-files/mp-base.fx",
-"    14: global %shared:<programs>/modules/../module-files/mp-base.fx",
+"    12: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-base.fx",
+"    14: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-base.fx",
 "    16: global! m-base",
 "    18: closure word input@1002:103 over 0",
 "    21: lit 37",
 "    23: slot 0",
 "    25: prim %make-frozen 2",
 "    28: slot! 0",
-"    30: global! %shared:input:<programs>/modules/../module-files/mp-qualified.fx",
+"    30: global! %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-qualified.fx",
 "    32: global m-base",
-"    34: global %shared:input:<programs>/modules/../module-files/mp-qualified.fx",
+"    34: global %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/mp-qualified.fx",
 "    36: field 2",
 "    38: slot 1",
 "    40: slot! 1",
@@ -304,7 +304,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

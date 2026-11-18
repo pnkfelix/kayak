@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/macros/trailmark-misplaced.fx:10:16: a use of `string-cases`: `((else 1) (\"b\" 2))` is of none of the shapes this part may have",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/trailmark-misplaced.fx:10:16: a use of `string-cases`: `((else 1) (\"b\" 2))` is of none of the shapes this part may have",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

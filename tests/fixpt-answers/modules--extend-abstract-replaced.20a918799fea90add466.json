@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/modules/extend-abstract-replaced.fx:5:1: `zero`'s type mentions the first module's `t`, which the second's `t` replaces",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/extend-abstract-replaced.fx:5:1: `zero`'s type mentions the first module's `t`, which the second's `t` replaces",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

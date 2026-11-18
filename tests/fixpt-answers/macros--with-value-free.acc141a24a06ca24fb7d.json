@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/macros/with-value-free.fx:9:21: `int-order`, the module a template's `(with module name)` takes from, is bound by the template or given by a use: a top level's, not yet",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/with-value-free.fx:9:21: `int-order`, the module a template's `(with module name)` takes from, is bound by the template or given by a use: a top level's, not yet",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

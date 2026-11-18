@@ -239,11 +239,27 @@
      definition."
     (error (string-append "kfx: " (refusal-text v message)))))
 
+"Where `::` is first in `s` at or after `i`, -1 if it is not (C474): by
+ index, in place, as `string-search` would, which tier 1 has not (the
+ compiler runs there, selfhost)."
+(define-rec
+  (colons-at (subr kfx (string i64) i64)
+    (lambda (s i)
+      (cond ((i64>= (i64+ i 1) (string-length-i64 s)) -1)
+            ((and (char=? (string-ref-i64 s i) #\:) (char=? (string-ref-i64 s (i64+ i 1)) #\:)) i)
+            (else (colons-at s (i64+ i 1)))))))
+
 (define name-of (subr kfx (cv sexp) string)
   (lambda (v e)
-    "A name, where one is expected: refused, saying where, if `e` is none."
+    "A name, where one is expected: refused, saying where, if `e` is none;
+     or if it is a path, `module::name`, which names and binds nothing
+     (C474; Fixpt's `macros.rs`, TODO §296: its Rust expander refuses a
+     binder of one, where the expander kayak ports passes it on)."
     (tagcase e
-      (sym (s at-file at-pos) s)
+      (sym (s at-file at-pos)
+        (if (and (i64> (string-length-i64 s) 2) (i64>= (colons-at s 0) 0))
+            (refuse v (string-append "`" (string-append s "` is a path, `module::name`, not a name that may be bound")))
+            s))
       (else other (refuse v (string-append "a name is expected here, not " (show-sexp other)))))))
 
 "Effects"
@@ -1376,7 +1392,7 @@
 
 "A `define-generative`'s usage, and its refusals' messages below, as Fixpt's
  `parser-forms.fx` says them (`generative-conversions`, `gen-named`).
- fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@120b70e"
+ fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@6f7bd73"
 (define generative-usage string
   "`(define-generative name type #:seal name #:unseal name)`, or `(define-generative (name (param kind) …) type …)`")
 
@@ -6858,12 +6874,22 @@
     "What two sums' join needs (C292)."
     (let ((a (sum-parts s t)) (b (sum-parts s rest))) (parts-joined v s a b (tags-within? a b)))))
 
+"Whether branches of a `nat` first and an `int` after join to the `int`
+ (C474): a `nat` is an `int`, so FX-26's join of the two is the `int`
+ (Fixpt's expander: `(if (< k 0) (string-length n) k)`), where the rest's
+ fitted to the first's would refuse it."
+(define nat-then-int? (subr kfx (st ty ty) bool)
+  (lambda (s t rest)
+    (and (tagcase (walk s t) (ty-nat () #t) (else other #f))
+         (tagcase (walk s rest) (ty-int () #t) (else other #f)))))
+
 (define join-state (subr kfx (cv st ty ty tys) st)
   (lambda (v s t rest expected)
     "Branches found by themselves agree: the rest's type fits the first's;
-     or, of sums, the two join (C292)."
+     or, of sums, the two join (C292); or a `nat`'s and an `int`'s (C474)."
     (cond ((or (not (null? expected)) (void? s t) (void? s rest)) s)
           ((sum-joins? s t rest) (sum-join-state v s t rest))
+          ((nat-then-int? s t rest) s)
           (else (fits v s rest t)))))
 
 (define joined (subr kfx (st ty ty tys) ty)
@@ -6873,6 +6899,7 @@
           ((void? s t) rest)
           ((void? s rest) t)
           ((sum-joins? s t rest) (sum-joined s t rest))
+          ((nat-then-int? s t rest) rest)
           (else t))))
 
 (define region-of (subr kfx (cv st ty) res)
@@ -7189,22 +7216,39 @@
           ""
           (string-append shown (string-append " gives other names than were read from the program before it was checked: " (relied-joined said ", and ")))))))
 
+"A path's last name, after its last `::` (C474; Fixpt's `k-said-name`)."
+(define-rec
+  (last-path-name (subr kfx (string) string)
+    (lambda (n)
+      (let ((k (colons-at n 0)))
+        (if (i64< k 0) n (last-path-name (substring n (i64->int (i64+ k 2)) (string-length n))))))))
+
 (define uses-wrong (subr kfx (ty sexp string) string)
   (lambda (t uses m)
     "Why module type `t`, of `m`, opened by a `with` the expander noted
-     `uses` of, `((name projection?) …)`, is refused, or the empty string (Fixpt's
-     `with_as`, `k-macro-clash`; C440)."
+     `uses` of, `((name KIND) …)`, is refused, or the empty string (Fixpt's
+     `with_as`, `k-macro-clash`; C440): KIND 0, a macro its body uses by a
+     name, refused if `m` gives a value of it; 1, a template's `(with m
+     name)`, and 2, a path `m::name` (C474), refused if `m` gives none (of a
+     path, its last name)."
     (let* ((gives (lambda ((n string)) (not (null? (mtype-find t "%val" n)))))
+           (kind (lambda ((u sexp)) (tagcase (second (items u)) (num (k f p) k) (sym (b f p) (if (string=? b "#t") (the i64 1) (the i64 0))) (else other (the i64 0)))))
+           (said (lambda ((u sexp)) (let ((n (sym-name (car (items u))))) (if (i64= (kind u) 2) (last-path-name n) n))))
            (bad (filter (lambda ((u sexp))
-                          (let ((n (sym-name (car (items u)))) (proj (sym-is? (second (items u)) "#t")))
-                            (if proj (not (gives n)) (gives n))))
+                          (if (i64> (kind u) 0) (not (gives (said u))) (gives (sym-name (car (items u))))))
                         (items uses))))
       (if (null? bad)
           ""
-          (let ((n (sym-name (car (items (car bad))))))
-            (if (sym-is? (second (items (car bad))) "#t")
-                (string-append "`" (string-append m (string-append "` gives no value `" (string-append n (string-append "`, which a template's `(with " (string-append m (string-append " " (string-append n ")` takes from it alone"))))))))
-                (string-append "`" (string-append n (string-append "` is a macro here, and `" (string-append m "` gives a value of that name, which this `with` would seem to call"))))))))))
+          (let* ((u (car bad)) (n (said u)) (whole (sym-name (car (items u)))))
+            (cond ((i64= (kind u) 2)
+                   (string-list-append (list "`" (substring whole 0 (- (string-length whole) (+ (string-length n) 2))) "` gives no value `" n
+                                             "`, which the path `" whole "` takes from it alone")))
+                  ((i64= (kind u) 1)
+                   (string-append "`" (string-append m (string-append "` gives no value `" (string-append n (string-append "`, which a template's `(with " (string-append m (string-append " " (string-append n ")` takes from it alone")))))))))
+                  (else
+                   (string-append "`" (string-append n (string-append "` is a macro here, and `" (string-append m "` gives a value of that name, which this `with` would seem to call")))))))))))
+
+
 
 (define loaded-scope (subr kfx (cv strings) cv)
   (lambda (v sees)

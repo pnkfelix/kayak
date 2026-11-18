@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/procedural/in-template.fx:6:42: `wrap` is refused: no signature is written, and the one inferred from its clauses does not fit them: `id` is a procedural macro, whose binding structure no signature says: not in a template",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/procedural/in-template.fx:6:42: `wrap` is refused: no signature is written, and the one inferred from its clauses does not fit them: `id` is a procedural macro, whose binding structure no signature says: not in a template",
 "  inferred: (macro (_ data) expr)",
 "  write one: (define-syntax wrap SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

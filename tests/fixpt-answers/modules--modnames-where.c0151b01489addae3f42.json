@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/modules/modnames-where.fx:3:23: `(modnames …)` names no types: it is written as a `define`'s or `the`'s type, whose value supplies them; here a `moduleof` is needed",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/modnames-where.fx:3:23: `(modnames …)` names no types: it is written as a `define`'s or `the`'s type, whose value supplies them; here a `moduleof` is needed",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

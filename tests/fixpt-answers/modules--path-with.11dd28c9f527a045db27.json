@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"path-with.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define make : (subr pure () (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))) ! pure",
+"define mid : (moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))) (val b int)) ! (read (globals make))",
+"define one : mid.a..t ! (read (globals mid))",
+"define p : (moduleof (desc t mid.a..t) (val zero mid.a..t) (val inc (subr pure (mid.a..t) mid.a..t)) (val value (subr pure (mid.a..t) int))) ! (read (globals mid))",
+"define bump : (subr (read (globals p)) (mid.a..t) mid.a..t) ! pure",
+"(listof int acyclic) ! (read (globals bump mid one p))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

@@ -13,11 +13,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/higher-kinds/effect-within-poly-stricter.fx:9:3: `wider` is declared a (poly ((r region) (e effect (within (maxeff (read r) (write r))))) (subr (maxeff (read r) (write r)) ((subr e () int)) int)): `e` is bound within (read r), and e is not: it has e",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/higher-kinds/effect-within-poly-stricter.fx:9:3: `wider` is declared a (poly ((r region) (e effect (within (maxeff (read r) (write r))))) (subr (maxeff (read r) (write r)) ((subr e () int)) int)): `e` is bound within (read r), and e is not: it has e",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

@@ -263,7 +263,7 @@
 "",
 "word program (9 cells, cellular):",
 "     0: closure word lambda@1001:0 over 0",
-"     3: global! %shared:<programs>/module-files/made-core.fx",
+"     3: global! %shared:<kayak>-snapshot/tests/fx26/programs/module-files/made-core.fx",
 "     5: closure word lambda@241 over 0",
 "     8: exit",
 "",
@@ -504,7 +504,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

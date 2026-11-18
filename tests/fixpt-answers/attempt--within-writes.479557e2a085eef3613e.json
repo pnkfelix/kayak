@@ -13,11 +13,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/attempt/within-writes.fx:4:21: an `attempt`'s body may be stopped half way, so it must do nothing another could see, and this one has (write @x)",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/attempt/within-writes.fx:4:21: an `attempt`'s body may be stopped half way, so it must do nothing another could see, and this one has (write @x)",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

@@ -155,10 +155,11 @@
     (loc-dotted (list (the datum k) (the datum f) (the datum (i64->int l)) (the datum (i64->int p)))
                (if (= k 0) (loc-dotted (list d) (the datum nil)) d))))
 "What the expander noted of the `with` at `a`..`b` (`with-uses`), for the
- checker (Fixpt's `with_as`; C440): each macro its body uses by a name,
- and each name a template's `(with m name)` projects (`#t`), as `(name
- projection?)`, in the order met."
-(define drive-uses-in (->* (uses int int string i64 i64) (listof datum acyclic))
+ checker (Fixpt's `with_as`; C440): each macro its body uses by a name
+ (0), each name a template's `(with m name)` projects (1), and each path
+ `m::name` (2, its path for the name; C474, Fixpt's `TODO.md` §296), as
+ `(name KIND)`, in the order met."
+(define drive-uses-in (->* (mx-exports-uses int int string i64 i64) (listof datum acyclic))
   (lambda (us a b f l p)
     (cond ((null? us) nil)
           ((and (= (extract (car us) 1) a) (= (extract (car us) 2) b))

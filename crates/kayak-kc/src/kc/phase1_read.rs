@@ -22,7 +22,7 @@ pub fn phase1_reader() -> Str {
 // `%phase1-apply`, for transformers of style `style`.
 pub fn phase1_applier(style: Str) -> Str {
     let call = if string_eq_p(style, str_lit("0")) {
-        str_lit("(%transformer d (%er-renamer (string->symbol tag)) %er-compare)")
+        str_lit("(%transformer d %er-rename %er-compare)")
     } else if string_eq_p(style, str_lit("1")) {
         str_lit("(%transformer d (quote %env:use))")
     } else {

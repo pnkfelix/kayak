@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/anyof/cells.fx:5:23: an `anyof`'s members that may be written must be told apart at run time: a (ref int @r) and a (ref bool @r) cannot be",
+"! <kayak>-snapshot/tests/fx26/programs/anyof/cells.fx:5:23: an `anyof`'s members that may be written must be told apart at run time: a (ref int @r) and a (ref bool @r) cannot be",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

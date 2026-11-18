@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/unions/paths-untested.fx:3:58: argument 1 is a (oneof int string), where a int is expected",
+"! <kayak>-snapshot/tests/fx26/programs/unions/paths-untested.fx:3:58: argument 1 is a (oneof int string), where a int is expected",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

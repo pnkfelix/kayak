@@ -44,8 +44,8 @@
 "    54: field 5",
 "    56: prim %make-frozen 4",
 "    59: slot! 0",
-"    61: global! %shared:<programs>/top-include/../module-files/include-lib.fx",
-"    63: global %shared:<programs>/top-include/../module-files/include-lib.fx",
+"    61: global! %shared:<kayak>-snapshot/tests/fx26/programs/top-include/../module-files/include-lib.fx",
+"    63: global %shared:<kayak>-snapshot/tests/fx26/programs/top-include/../module-files/include-lib.fx",
 "    65: global! m",
 "    67: global m",
 "    69: field 2",
@@ -123,7 +123,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

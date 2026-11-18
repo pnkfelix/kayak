@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/macros/ellipsis-lengths.fx:6:1: a use of `zip-sum`: `a` and `b`, repeated together, are given 2 and 1 times",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/ellipsis-lengths.fx:6:1: a use of `zip-sum`: `a` and `b`, repeated together, are given 2 and 1 times",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

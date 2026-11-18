@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/macros/oneof-under-mu-overlap.fx:7:15: a syntax type: a `oneof`'s members must be told apart by their shapes in the source (an `expr` may be anything)",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/oneof-under-mu-overlap.fx:7:15: a syntax type: a `oneof`'s members must be told apart by their shapes in the source (an `expr` may be anything)",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

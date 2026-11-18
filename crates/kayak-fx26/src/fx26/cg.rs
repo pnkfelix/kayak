@@ -27,7 +27,7 @@ use super::*;
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@120b70e
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@0d933ff
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@0d933ff
-// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@120b70e
+// fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@6f7bd73
 // fixpt-source: crates/fixpt-fx26/src/parser.fx@0585488
 
 // The generator's data lives at `@g`.
@@ -450,6 +450,9 @@ pub mod made__load__1__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("append")) => {
                         str_lit("append")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("gensym")) => {
+                        str_lit("%fx26-gensym")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("%sched")) => {
                         str_lit("%fx26-sched")
@@ -1434,6 +1437,9 @@ pub mod made__load__1__cg {
             }
             case_ if kayak_rt::_eq(case_, int_lit(20)) => {
                 match n {
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("write-file-unflushed")) => {
+                        str_lit("%fx26-write-file-unflushed")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("datum-bytevector-ref")) => {
                         str_lit("bytevector-u8-ref")
                     }

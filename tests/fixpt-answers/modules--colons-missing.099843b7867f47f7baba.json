@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"colons-missing.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mid : (moduleof (val a (moduleof (val x int)))) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/colons-missing.fx:4:9: `mid::a` gives no value `y`, which the path `mid::a::y` takes from it alone",
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

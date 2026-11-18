@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/procedural/contract-defn-expression.fx:8:1: a use of `define-const`: its expansion: `(+ 1 2)` is not a definition: a macro that makes definitions makes `define`, `define*`, `define-rec`, a `begin` of them, or a use of another such",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/procedural/contract-defn-expression.fx:8:1: a use of `define-const`: its expansion: `(+ 1 2)` is not a definition: a macro that makes definitions makes `define`, `define*`, `define-rec`, a `begin` of them, or a use of another such",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

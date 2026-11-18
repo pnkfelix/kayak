@@ -1,0 +1,33 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"path-deep.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"make : (subr pure () (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))) ! pure",
+"outer : (moduleof (val mid (moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))))))) ! (read (globals make))",
+"start : outer.mid.a..t ! (read (globals outer))",
+"q : (moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))))) ! (read (globals outer))",
+"bump : (subr (read (globals q)) (outer.mid.a..t) outer.mid.a..t) ! pure",
+"once : (subr pure ((moduleof (val a (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int)))))) int) ! pure",
+"(2 1) : (listof int acyclic) ! (read (globals bump once outer q start))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

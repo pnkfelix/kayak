@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/allof/fresh-reader-writer.fx:14:11: this call fits a (subr (alloc @h) (ab) (productof (#:w (subr (write @h) (ab) unit)) (#:r (subr (read @h) () ab)))) and a (subr (alloc @h) (ac) (productof (#:w (subr (write @h) (ac) unit)) (#:r (subr (read @h) () ac)))), whose results are procedures that may keep what the call allocates: one value would be both",
+"! <kayak>-snapshot/tests/fx26/programs/allof/fresh-reader-writer.fx:14:11: this call fits a (subr (alloc @h) (ab) (productof (#:w (subr (write @h) (ab) unit)) (#:r (subr (read @h) () ab)))) and a (subr (alloc @h) (ac) (productof (#:w (subr (write @h) (ac) unit)) (#:r (subr (read @h) () ac)))), whose results are procedures that may keep what the call allocates: one value would be both",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

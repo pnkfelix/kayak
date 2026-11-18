@@ -556,13 +556,35 @@ pub fn refuse(v: &'static Cv, message: Str) -> Void {
     error(string_append(str_lit("kfx: "), refusal_text(v, message)))
 }
 
-/// A name, where one is expected: refused, saying where, if `e` is none.
-#[inline]
+// Where `::` is first in `s` at or after `i`, -1 if it is not (C474): by
+// index, in place, as `string-search` would, which tier 1 has not (the
+// compiler runs there, selfhost).
+pub fn colons_at(mut s: Str, mut i: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i64_plus(i, 1i64), string_length_i64(s)) {
+            return -1i64;
+        } else if (char_eq_p(string_ref_i64(s, i), ':') && char_eq_p(string_ref_i64(s, i64_plus(i, 1i64)), ':')) {
+            return i;
+        } else {
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// A name, where one is expected: refused, saying where, if `e` is none;
+/// or if it is a path, `module::name`, which names and binds nothing
+/// (C474; Fixpt's `macros.rs`, TODO §296: its Rust expander refuses a
+/// binder of one, where the expander kayak ports passes it on).
 pub fn name_of(v: &'static Cv, e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(s, at_file, at_pos) => {
-            s
+            if (i64_gt(string_length_i64(s), 2i64) && i64_gt_eq(colons_at(s, 0i64), 0i64)) {
+                match refuse(v, string_append(str_lit("`"), string_append(s, str_lit("` is a path, `module::name`, not a name that may be bound")))) {}
+            } else {
+                s
+            }
         }
         _ => {
             let other = tagcase_;
@@ -3141,7 +3163,7 @@ pub fn conversion_of(v: &'static Cv, g: Str) -> Str {
 
 // A `define-generative`'s usage, and its refusals' messages below, as Fixpt's
 // `parser-forms.fx` says them (`generative-conversions`, `gen-named`).
-// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@120b70e
+// fixpt-source: crates/fixpt-fx26/src/parser-forms.fx@6f7bd73
 #[inline]
 pub fn generative_usage() -> Str {
     str_lit("`(define-generative name type #:seal name #:unseal name)`, or `(define-generative (name (param kind) …) type …)`")
@@ -17014,13 +17036,45 @@ pub fn sum_join_state(v: &'static Cv, s: &'static St, t: &'static Ty, rest: &'st
     parts_joined(v, s, a, b, tags_within_p(a, b))
 }
 
+// Whether branches of a `nat` first and an `int` after join to the `int`
+// (C474): a `nat` is an `int`, so FX-26's join of the two is the `int`
+// (Fixpt's expander: `(if (< k 0) (string-length n) k)`), where the rest's
+// fitted to the first's would refuse it.
+pub fn nat_then_int_p(s: &'static St, t: &'static Ty, rest: &'static Ty) -> bool {
+    ({
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyNat() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = walk(s, rest);
+        match *tagcase_ {
+            Ty::TyInt() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    })
+}
+
 /// Branches found by themselves agree: the rest's type fits the first's;
-/// or, of sums, the two join (C292).
+/// or, of sums, the two join (C292); or a `nat`'s and an `int`'s (C474).
 pub fn join_state(v: &'static Cv, s: &'static St, t: &'static Ty, rest: &'static Ty, expected: Tys) -> &'static St {
     if (not(null_p(expected)) || void_p(s, t) || void_p(s, rest)) {
         s
     } else if sum_joins_p(s, t, rest) {
         sum_join_state(v, s, t, rest)
+    } else if nat_then_int_p(s, t, rest) {
+        s
     } else {
         fits(v, s, rest, t)
     }
@@ -17036,6 +17090,8 @@ pub fn joined(s: &'static St, t: &'static Ty, rest: &'static Ty, expected: Tys) 
         t
     } else if sum_joins_p(s, t, rest) {
         sum_joined(s, t, rest)
+    } else if nat_then_int_p(s, t, rest) {
+        rest
     } else {
         t
     }
@@ -17803,26 +17859,72 @@ pub fn relied_wrong(t: &'static Ty, shape: &'static Sexp, body: Sexps, shown: St
     }
 }
 
+// A path's last name, after its last `::` (C474; Fixpt's `k-said-name`).
+pub fn last_path_name(mut n: Str) -> Str {
+    loop {
+        let k = colons_at(n, 0i64);
+        if i64_lt(k, 0i64) {
+            return n;
+        } else {
+            n = substring(n, i64_to_int(i64_plus(k, 2i64)), string_length(n));
+            continue;
+        }
+    }
+}
+
 /// Why module type `t`, of `m`, opened by a `with` the expander noted
-/// `uses` of, `((name projection?) …)`, is refused, or the empty string (Fixpt's
-/// `with_as`, `k-macro-clash`; C440).
+/// `uses` of, `((name KIND) …)`, is refused, or the empty string (Fixpt's
+/// `with_as`, `k-macro-clash`; C440): KIND 0, a macro its body uses by a
+/// name, refused if `m` gives a value of it; 1, a template's `(with m
+/// name)`, and 2, a path `m::name` (C474), refused if `m` gives none (of a
+/// path, its last name).
 pub fn uses_wrong(t: &'static Ty, uses: &'static Sexp, m: Str) -> Str {
     let gives = lambda1s(move |n: Str| {
         not(null_p(mtype_find(t, str_lit("%val"), n)))
     });
-    let bad = filter(lambda1s(move |u: &'static Sexp| {
-        let (n, proj) = (sym_name(car(items(u))), sym_is_p(second(items(u)), str_lit("#t")));
-        if proj {
-            not(gives(n))
+    let kind = lambda1s(move |u: &'static Sexp| {
+        let tagcase_ = second(items(u));
+        match *tagcase_ {
+            Sexp::Num(k, f, p) => {
+                k
+            }
+            Sexp::Sym(b, f, p) => {
+                if string_eq_p(b, str_lit("#t")) {
+                    the::<i64>(1i64)
+                } else {
+                    the::<i64>(0i64)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                the::<i64>(0i64)
+            }
+        }
+    });
+    let said = lambda1s(move |u: &'static Sexp| {
+        let n = sym_name(car(items(u)));
+        if i64_eq(kind(u), 2i64) {
+            last_path_name(n)
         } else {
-            gives(n)
+            n
+        }
+    });
+    let bad = filter(lambda1s(move |u: &'static Sexp| {
+        if i64_gt(kind(u), 0i64) {
+            not(gives(said(u)))
+        } else {
+            gives(sym_name(car(items(u))))
         }
     }), items(uses));
     if null_p(bad) {
         str_lit("")
     } else {
-        let n = sym_name(car(items(car(bad))));
-        if sym_is_p(second(items(car(bad))), str_lit("#t")) {
+        let u = car(bad);
+        let n = said(u);
+        let whole = sym_name(car(items(u)));
+        if i64_eq(kind(u), 2i64) {
+            string_list_append(kayak_rt::heap_cons(str_lit("`"), kayak_rt::heap_cons(substring(whole, int_lit(0), _minus(string_length(whole), _plus(string_length(n), int_lit(2)))), kayak_rt::heap_cons(str_lit("` gives no value `"), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("`, which the path `"), kayak_rt::heap_cons(whole, kayak_rt::heap_cons(str_lit("` takes from it alone"), kayak_rt::nil()))))))))
+        } else if i64_eq(kind(u), 1i64) {
             string_append(str_lit("`"), string_append(m, string_append(str_lit("` gives no value `"), string_append(n, string_append(str_lit("`, which a template's `(with "), string_append(m, string_append(str_lit(" "), string_append(n, str_lit(")` takes from it alone")))))))))
         } else {
             string_append(str_lit("`"), string_append(n, string_append(str_lit("` is a macro here, and `"), string_append(m, str_lit("` gives a value of that name, which this `with` would seem to call")))))

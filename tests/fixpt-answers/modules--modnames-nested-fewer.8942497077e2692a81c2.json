@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/modules/modnames-nested-fewer.fx:4:21: `inner` gives more than this names of it: a `modnames` seals a module's own names, not yet those of one inside it; name all of `inner`'s here, or seal it where it is defined",
+"! <kayak>-snapshot/tests/fx26/programs/modules/modnames-nested-fewer.fx:4:21: `inner` gives more than this names of it: a `modnames` seals a module's own names, not yet those of one inside it; name all of `inner`'s here, or seal it where it is defined",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

@@ -17,8 +17,21 @@
 ""
 ],
 "by": [
-"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0",
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"aarch64-macos@0c2e4dd5bea8657ccdaf63ef769597cf2f6b3df0"
+]
+},
+{
+"code": 1,
+"out": [
+"! <kayak>-snapshot/tests/fx26/programs/bloblet/flat-unsized-new.fx:8:71: a new blobref's array of a length not literal is of length `finite`, not a (flat-arrayof f64 n): the length is named where the blobref is bound",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

@@ -1,4 +1,4 @@
-;; => (((22848371) (x) ()) ((1303289370) () (m)))
+;; => (((23307562) (x) ()) ((1303289370) () (m)))
 ;; Fixpt's expander, a file of a place, loaded by a kc program as kc's
 ;; `kc-instance` loads it (C471), under a `letrena`, an instance its own:
 ;; a file's facts, what each form defines, a macro or a value.

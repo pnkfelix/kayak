@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/macros/infer-shown-shape.fx:7:68: `my-let*` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of other bindings than its signature says it is",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/infer-shown-shape.fx:7:68: `my-let*` is refused: no signature is written, and the one inferred from its clauses does not fit them: `body` is placed in the scope of other bindings than its signature says it is",
 "  inferred: (macro (letrec-shape ((m1 (union (end ()) (more ((p1 @ bvar expr) p2 @ . m1) (bind p1 in p2))))) (_ m1 (many expr))) expr)",
 "  write one: (define-syntax my-let* SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

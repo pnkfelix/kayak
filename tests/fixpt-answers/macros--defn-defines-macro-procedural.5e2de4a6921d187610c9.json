@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/macros/defn-defines-macro-procedural.fx:6:35: a template's `define-syntax` defines a `syntax-rules` macro: a procedural one's transformer is phase 1's code, not yet in a template",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/defn-defines-macro-procedural.fx:6:35: a template's `define-syntax` defines a `syntax-rules` macro: a procedural one's transformer is phase 1's code, not yet in a template",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

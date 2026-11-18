@@ -12,13 +12,13 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/macros/infer-shown-union.fx:6:56: `my-let*` is refused: no signature is written, and the one inferred from its clauses does not fit them: `((rest ...) body)` is of none of the shapes this part may have",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/infer-shown-union.fx:6:56: `my-let*` is refused: no signature is written, and the one inferred from its clauses does not fit them: `((rest ...) body)` is of none of the shapes this part may have",
 "  inferred: (macro (_ . (oneof (() expr) (((data data) data ...) data))) expr)",
 "  write one: (define-syntax my-let* SIGNATURE (syntax-rules …))",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

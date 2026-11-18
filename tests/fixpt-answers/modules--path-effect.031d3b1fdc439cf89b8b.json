@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"path-effect.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define mid : (moduleof (val a (moduleof (desc e spin) (desc n int)))) ! pure",
+"define f : (subr spin () int) ! pure",
+"int ! (maxeff (read (globals f)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

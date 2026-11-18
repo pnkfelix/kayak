@@ -14,13 +14,13 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/control/resume-undelimited.fx:26:20: `handle` is declared a (subr (maxeff (read @globals) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int): a (subr (maxeff (read @globals) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int) is expected here, and this is a (subr (maxeff (read @globals) (goto @ev) (comefrom @ev) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int)",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/control/resume-undelimited.fx:26:20: `handle` is declared a (subr (maxeff (read @globals) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int): a (subr (maxeff (read @globals) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int) is expected here, and this is a (subr (maxeff (read @globals) (goto @ev) (comefrom @ev) spin) ((subr (maxeff (read @globals) (goto @ev) (comefrom @ev)) () int)) int)",
 "  beyond what is expected, it has (maxeff (goto @ev) (comefrom @ev))",
 "  a `prompt` masks the control on its tag's region only where no free variable of its body names that region but the tag (a continuation resumed under it does); a `letregion` that makes the region masks it",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

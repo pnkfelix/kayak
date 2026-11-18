@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/allof/converted-twice.fx:8:9: argument 1 is a (subr (conv fx) pure (int) int), made a (subr pure (int) int) for one member this call fits and a (subr (conv fx) pure (int) int) for another: one value cannot be both",
+"! <kayak>-snapshot/tests/fx26/programs/allof/converted-twice.fx:8:9: argument 1 is a (subr (conv fx) pure (int) int), made a (subr pure (int) int) for one member this call fits and a (subr (conv fx) pure (int) int) for another: one value cannot be both",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

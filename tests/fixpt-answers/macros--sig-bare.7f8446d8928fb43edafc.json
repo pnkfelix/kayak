@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/macros/sig-bare.fx:4:3: a signature is `(macro (_ part …) made fact …)`, what its uses make written: `expr`, `defn`, `(defn D …)` or `desc`",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/sig-bare.fx:4:3: a signature is `(macro (_ part …) made fact …)`, what its uses make written: `expr`, `defn`, `(defn D …)` or `desc`",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

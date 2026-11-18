@@ -13,11 +13,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/allof/fresh-closure.fx:14:11: this call fits a (subr (alloc @h) (ab) (subr pure () (ref ab @h))) and a (subr (alloc @h) (ac) (subr pure () (ref ac @h))), whose results are procedures that may keep what the call allocates: one value would be both",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/allof/fresh-closure.fx:14:11: this call fits a (subr (alloc @h) (ab) (subr pure () (ref ab @h))) and a (subr (alloc @h) (ac) (subr pure () (ref ac @h))), whose results are procedures that may keep what the call allocates: one value would be both",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

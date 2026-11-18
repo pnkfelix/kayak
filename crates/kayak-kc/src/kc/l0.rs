@@ -148,7 +148,7 @@ pub mod kc_l0 {
     pub fn ternary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::nil())))
+            kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("string-search"), kayak_rt::nil()))))
         })
     }
 

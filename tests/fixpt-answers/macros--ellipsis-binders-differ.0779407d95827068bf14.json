@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/macros/ellipsis-binders-differ.fx:8:1: a use of `pairs`: this part repeats binders and parts that were repeated, or given, different numbers of times",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/ellipsis-binders-differ.fx:8:1: a use of `pairs`: this part repeats binders and parts that were repeated, or given, different numbers of times",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

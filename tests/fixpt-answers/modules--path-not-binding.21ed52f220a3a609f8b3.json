@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"path-not-binding.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"make : (subr pure () (moduleof (abs t type) (val zero t) (val value (subr pure (t) int)))) ! pure",
+"mid0 : (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))) ! (read (globals make))",
+"other0 : (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))) ! (read (globals make))",
+"outer : (moduleof (val m (moduleof (val a (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))))))) ! (read (globals mid0 other0))",
+""
+],
+"err": [
+"fixpt: <programs>/modules/path-not-binding.fx:14:14: this is a (subr pure ((with m a)..t) int), and `(with m a)..t` is a module's abstract type, not known outside the scope where the module is named",
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

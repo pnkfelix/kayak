@@ -98,8 +98,8 @@
 "",
 "word program (80 cells, cellular):",
 "     0: closure word lambda@1002:0 over 0",
-"     3: global! %shared:<programs>/modules/../module-files/include-cell.fx",
-"     5: global %shared:<programs>/modules/../module-files/include-cell.fx",
+"     3: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-cell.fx",
+"     5: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-cell.fx",
 "     7: tcall 0",
 "     9: lit 37",
 "    11: slot 0",
@@ -126,8 +126,8 @@
 "    55: field 3",
 "    57: prim %make-frozen 3",
 "    60: slot! 0",
-"    62: global! %shared:<programs>/modules/../module-files/include-in-file.fx",
-"    64: global %shared:<programs>/modules/../module-files/include-in-file.fx",
+"    62: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-in-file.fx",
+"    64: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/include-in-file.fx",
 "    66: global! m",
 "    68: global m",
 "    70: field 3",
@@ -174,7 +174,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

@@ -1,0 +1,32 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"use-binds-macro-name.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (10 cells, cellular):",
+"     0: lit 2",
+"     2: slot 0",
+"     4: lit 1",
+"     6: int-add",
+"     7: slot! 0",
+"     9: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

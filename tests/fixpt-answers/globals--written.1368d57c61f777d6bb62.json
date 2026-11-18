@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/globals/written.fx:7:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
+"! <kayak>-snapshot/tests/fx26/programs/globals/written.fx:7:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
 "  beyond what is expected, it has (read (globals below limit))",
 "; both checkers agree",
 ""
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

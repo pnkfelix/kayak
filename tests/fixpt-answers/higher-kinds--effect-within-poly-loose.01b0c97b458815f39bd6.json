@@ -13,12 +13,12 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/higher-kinds/effect-within-poly-loose.fx:8:3: `loose` is declared a (poly ((r region) (e effect)) (subr (read r) ((subr e () int)) int)): a (subr (read r) ((subr e () int)) int) is expected here, and this is a (subr (maxeff (read r) e) ((subr (maxeff (read r) e) () int)) int)",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/higher-kinds/effect-within-poly-loose.fx:8:3: `loose` is declared a (poly ((r region) (e effect)) (subr (read r) ((subr e () int)) int)): a (subr (read r) ((subr e () int)) int) is expected here, and this is a (subr (maxeff (read r) e) ((subr (maxeff (read r) e) () int)) int)",
 "  beyond what is expected, it has e",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/allof/product-cell.fx:4:18: an `allof`'s members differ at `c`, a (ref int @heap) and a (ref string @heap): only procedures, and products of them, may",
+"! <kayak>-snapshot/tests/fx26/programs/allof/product-cell.fx:4:18: an `allof`'s members differ at `c`, a (ref int @heap) and a (ref string @heap): only procedures, and products of them, may",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

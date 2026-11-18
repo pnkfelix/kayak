@@ -28,7 +28,7 @@
 {
 "code": 0,
 "out": [
-"define m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) pair-of-t))) ! (read (globals %shared:<programs>/top-include/../module-files/include-lib.fx))",
+"define m : (moduleof (desc t include-lib.fx..t) (desc pair-of-t (pairof include-lib.fx..t include-lib.fx..t @heap)) (desc touches (read @heap)) (val zero include-lib.fx..t) (val value (subr pure (include-lib.fx..t) int)) (val both (subr (alloc @heap) (include-lib.fx..t) pair-of-t))) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/top-include/../module-files/include-lib.fx))",
 "define zero : include-lib.fx..t ! (read (globals m))",
 "define value : (subr pure (include-lib.fx..t) int) ! (read (globals m))",
 "define both : (subr (alloc @heap) (include-lib.fx..t) (select m pair-of-t)) ! (read (globals m))",
@@ -41,7 +41,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

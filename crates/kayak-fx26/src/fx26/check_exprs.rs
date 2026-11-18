@@ -7703,9 +7703,16 @@ pub mod expressions {
                         }
                     }
                 })) {
-                    // A module value's (C170): the value a variable names, or one an
-                    // expression makes; FX-26's, not KFX's.
-                    let tagcase_ = synth(v, s, car(xs));
+                    // A module value's (C170): the value a variable names; FX-26's,
+                    // not KFX's. One an expression makes, a path `(with m a)` (Fixpt's
+                    // TODO §291), refused (C474): its abstract types are its base's
+                    // binding's, which kfx does not follow; as Fixpt refused it before.
+                    let tagcase_ = if string_eq_p(m, str_lit("")) {
+                        match refuse(v, str_lit("`with` opens a module named by a variable; a path to one, `(with (with m a) x)`, kayak's checker has not yet (C474)")) {};
+                        synth(v, s, car(xs))
+                    } else {
+                        synth(v, s, car(xs))
+                    };
                     match *tagcase_ {
                         Res::Res(t0, es, s) => {
                             let t = load_mtype(v, walk(s, t0));

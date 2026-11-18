@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/macros/mu-nested-unguarded.fx:7:15: a syntax type: a `mu`'s variable is used where no pair is around it (Herman's types are contractive)",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/mu-nested-unguarded.fx:7:15: a syntax type: a `mu`'s variable is used where no pair is around it (Herman's types are contractive)",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

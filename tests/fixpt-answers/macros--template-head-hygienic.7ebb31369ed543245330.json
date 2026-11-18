@@ -1,0 +1,43 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"template-head-hygienic.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"",
+"word program (11 cells, cellular):",
+"     0: closure word loop@328 over 0",
+"     3: lit 5",
+"     5: lit 1",
+"     7: int-add",
+"     8: slot! 0",
+"    10: exit",
+"",
+"word loop@328 (8 cells, cellular):",
+"     0: slot 0",
+"     2: lit 3",
+"     4: prim %fx26-mul 2",
+"     7: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: prim2imm %fx26-mul 3",
+"       7: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

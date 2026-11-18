@@ -13,7 +13,7 @@
 "",
 "word program (12 cells, cellular):",
 "     0: closure word lambda@497 over 0",
-"     3: global! %template:call-rec:378650617.4",
+"     3: global! %template:call-rec:650792979.4",
 "     5: lit 3",
 "     7: lit closure of g@575",
 "     9: tcall 1",
@@ -30,7 +30,7 @@
 "word lambda@497 (20 cells, cellular):",
 "     0: slot 0",
 "     2: lit #f",
-"     4: closure word lambda/%f:378650617.1@531 over 2",
+"     4: closure word lambda/%f:650792979.1@531 over 2",
 "     7: slot 1",
 "     9: slot 1",
 "    11: lit 4",
@@ -45,7 +45,7 @@
 "       7: load 1 0",
 "      10: const #f",
 "      12: setreg 2",
-"      14: lambda word lambda/%f:378650617.1@531 over 2",
+"      14: lambda word lambda/%f:650792979.1@531 over 2",
 "      18: setstk 1",
 "      20: load 1 1",
 "      23: stack 1",
@@ -56,7 +56,7 @@
 "      34: pop 2",
 "      36: tailinvoke 1 1",
 "",
-"word lambda/%f:378650617.1@531 (10 cells, cellular):",
+"word lambda/%f:650792979.1@531 (10 cells, cellular):",
 "     0: slot 0",
 "     2: free 1",
 "     4: free 0",
@@ -82,7 +82,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

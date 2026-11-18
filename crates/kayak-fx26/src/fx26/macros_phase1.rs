@@ -83,7 +83,7 @@ pub fn phase1_defined(style: Str, code: Str) -> Str {
 
 pub fn phase1_called(style: Str, tag: Str, form: Str) -> Str {
     string_list_append(kayak_rt::heap_cons(str_lit("(%transformer (quote "), kayak_rt::heap_cons(form, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(if string_eq_p(style, str_lit("0")) {
-        string_append(str_lit("(%er-renamer (string->symbol "), string_append(string_append(str_lit("\""), string_append(tag, str_lit("\""))), str_lit(")) %er-compare")))
+        str_lit("%er-rename %er-compare")
     } else if string_eq_p(style, str_lit("1")) {
         str_lit("(quote %env:use)")
     } else {

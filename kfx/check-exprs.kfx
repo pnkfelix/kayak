@@ -3466,9 +3466,14 @@
                          ((or (string=? m "")
                               (and (not (null? found))
                                    (tagcase (car found) (bind (n sc wher) (and (not (string=? wher "module")) (tagcase sc (scheme (tv t) (mtype? (load-mtype v (walk s t))))))))))
-                          "A module value's (C170): the value a variable names, or one an
-                           expression makes; FX-26's, not KFX's."
-                          (tagcase (synth v s (car xs))
+                          "A module value's (C170): the value a variable names; FX-26's,
+                           not KFX's. One an expression makes, a path `(with m a)` (Fixpt's
+                           TODO §291), refused (C474): its abstract types are its base's
+                           binding's, which kfx does not follow; as Fixpt refused it before."
+                          (tagcase (if (string=? m "")
+                                       (begin (refuse v "`with` opens a module named by a variable; a path to one, `(with (with m a) x)`, kayak's checker has not yet (C474)")
+                                              (synth v s (car xs)))
+                                       (synth v s (car xs)))
                             (res (t0 es s)
                              (let ((t (load-mtype v (walk s t0))))
                               (if (not (mtype? (walk s t)))

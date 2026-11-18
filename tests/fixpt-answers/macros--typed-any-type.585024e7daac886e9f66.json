@@ -13,7 +13,7 @@
 "",
 "word program (16 cells, cellular):",
 "     0: closure word lambda@149 over 0",
-"     3: global! %template:same:1275574459.2",
+"     3: global! %template:same:1979756644.2",
 "     5: lit #t",
 "     7: 0branch → 13",
 "     9: lit 5",
@@ -39,7 +39,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

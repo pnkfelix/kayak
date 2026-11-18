@@ -23,7 +23,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/unions/nil-is-not-a-pair.fx:2:29: a (pairof symbol int @r) is expected here, and this is a (oneof nil (pairof symbol int @r))",
+"! <kayak>-snapshot/tests/fx26/programs/unions/nil-is-not-a-pair.fx:2:29: a (pairof symbol int @r) is expected here, and this is a (oneof nil (pairof symbol int @r))",
 "; both checkers agree",
 ""
 ],
@@ -31,7 +31,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

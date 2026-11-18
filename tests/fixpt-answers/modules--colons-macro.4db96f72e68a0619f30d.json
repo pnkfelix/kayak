@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"colons-macro.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"define m : (moduleof (val x int)) ! pure",
+"symbol ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

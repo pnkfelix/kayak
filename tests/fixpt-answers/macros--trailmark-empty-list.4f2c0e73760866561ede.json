@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/macros/trailmark-empty-list.fx:4:34: a `syntax-rules` has no list of literals: drop the `()` (names its patterns match are written `#:trailmarks (name …)`)",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/trailmark-empty-list.fx:4:34: a `syntax-rules` has no list of literals: drop the `()` (names its patterns match are written `#:trailmarks (name …)`)",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

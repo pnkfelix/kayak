@@ -1820,6 +1820,18 @@ over its 1664 definitions, 335 of them refused:
   its text spliced as read; Fixpt expands it); a program's top-level
   `include` of a module, which kfx's checker refuses and Fixpt accepts;
   a `define-datatype` in a file of a place (`not yet`).
+- **Module paths, `a::b`** (Fixpt's TODO §296, at the pin since C474):
+  kc's expansion a form at a time knows not `m`'s shape where a path's
+  `with` asks it (`#:relied #f`), so kc refuses `m::x`, which the engine's
+  expansion of the whole program, and Fixpt, take
+  (`modules/colons-macro.fx`, kc-expanded's KNOWN). And the engine's `with`
+  takes a variable alone, not a path (`parser-exps.fx`'s `with-module`).
+- **Gaps of the pin's (C474)**: Fixpt's interned symbol's name now a
+  *text* (an immediate, its heap's name's number, `value.rs`'s
+  `IMM_TEXT`), not a string; kayak's symbols, kc's and the engine's, hold
+  a string still (Fixpt's formats everywhere: to follow with §55 item 2's
+  heap design, a name table each heap). `gensym` (FX-26's, its own effect)
+  neither kc nor the engine has.
 - Not seen by a survey of the code generator: what runs (an `int` past
   a fixnum, which kc fails; ~~the expander's hashes~~, Fixpt's since
   C470), and the expander's host: its asker, the bridge's data, its files

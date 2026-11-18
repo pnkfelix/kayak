@@ -608,7 +608,13 @@
                      (let* ((c (x64-emit-args c (prim-args t) si env))
                             (c (x64-moved-args c x64-arg-registers si 3)))
                        (x64-emit c "call kc_with_mark")))
-                    ((and (string=? h "prim") (i64= (size (prim-args t)) 3))
+                    ((and (string=? h "prim") (string=? (prim-name t) "string-search"))
+                     ;; `(string-search s sub from)` (C474, the expander's paths):
+                     ;; the runtime's, Fixpt's, a fixnum, -1 if none.
+                     (let* ((c (x64-emit-args c (prim-args t) si env))
+                            (c (x64-moved-args c x64-arg-registers si 3)))
+                       (x64-emit c "call kc_string_search")))
+                    ((and (string=? h "prim") (string=? (prim-name t) "substring"))
                      ;; `substring`: its arguments into slots, then given to the runtime.
                      (let* ((args (prim-args t))
                             (c (x64-emit-args c args si env))
@@ -1318,7 +1324,7 @@
             "kcrt_given" "kc_gc_reset" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of"
             "kcrt_reverse" "kcrt_int_to_string"
             "kcrt_char_to_string" "kc_char_whitespace" "kc_char_numeric" "kc_string_hash" "kc_symbol_hash"
-            "kcrt_f64_to_string" "kcrt_list_to_vector" "kc_error"))
+            "kcrt_f64_to_string" "kcrt_list_to_vector" "kc_error" "kc_string_search"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,

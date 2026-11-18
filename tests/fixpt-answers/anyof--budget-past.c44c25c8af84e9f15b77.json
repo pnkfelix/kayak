@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/anyof/budget-past.fx:137:15: `q` is declared a all: a all is expected here, and this is a (productof (1 ib) (2 ib) (3 ib) (4 ib) (5 ib) (6 ib) (7 ib))",
+"! <kayak>-snapshot/tests/fx26/programs/anyof/budget-past.fx:137:15: `q` is declared a all: a all is expected here, and this is a (productof (1 ib) (2 ib) (3 ib) (4 ib) (5 ib) (6 ib) (7 ib))",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

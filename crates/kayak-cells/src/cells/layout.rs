@@ -7,8 +7,8 @@ use super::*;
 // layout from its own `layout.fx`, built in at the pin (C121), as `i64`s;
 // its immediates and its routines' names, which `layout.fx` does not
 // hold, written here after Fixpt's sources:
-// fixpt-source: crates/fixpt-heap/src/value.rs@196dd2a
-// fixpt-source: crates/fixpt-heap/src/layout.rs@196dd2a
+// fixpt-source: crates/fixpt-heap/src/value.rs@6f7bd73
+// fixpt-source: crates/fixpt-heap/src/layout.rs@6f7bd73
 pub mod lay {
     use super::*;
 

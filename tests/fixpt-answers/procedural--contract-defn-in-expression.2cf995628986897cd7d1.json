@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/procedural/contract-defn-in-expression.fx:8:6: `define-const` makes definitions, which are made at the top level, not where an expression is",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/procedural/contract-defn-in-expression.fx:8:6: `define-const` makes definitions, which are made at the top level, not where an expression is",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

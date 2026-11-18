@@ -13,11 +13,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/anyof/mixed-list.fx:6:62: `m` is declared a (anyof (listof int acyclic) (listof bool acyclic)): a (anyof (listof int acyclic) (listof bool acyclic)) is expected here, and this is a (listof ib acyclic)",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/anyof/mixed-list.fx:6:62: `m` is declared a (anyof (listof int acyclic) (listof bool acyclic)): a (anyof (listof int acyclic) (listof bool acyclic)) is expected here, and this is a (listof ib acyclic)",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

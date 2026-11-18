@@ -9,7 +9,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/modules/modnames-gives-no.fx:4:23: the module gives no `z`",
+"! <kayak>-snapshot/tests/fx26/programs/modules/modnames-gives-no.fx:4:23: the module gives no `z`",
 "; both checkers agree",
 ""
 ],
@@ -17,7 +17,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

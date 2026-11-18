@@ -1,6 +1,6 @@
 "built-in.kfx: the modules Fixpt builds in that KFX has (C107), each
  loaded by its name, `(load-module \"fx26:NAME\")`, its text Fixpt's at
- 0585488. Written by scripts/built-in.py: edit that, not this."
+ 6f7bd73. Written by scripts/built-in.py: edit that, not this."
 
 (define built-in-0 string
   ";; Conditions, design B (`docs/research/conditions.md`, `TODO.md` §89): a
@@ -2256,6 +2256,7 @@
          ((\"assert\") \"%fx26-assert\")
          ((\"assume\") \"%fx26-assume\")
          ((\"append\") \"append\")
+         ((\"gensym\") \"%fx26-gensym\")
          ((\"%sched\") \"%fx26-sched\")
          (else \"\")))
       ((7)
@@ -2593,6 +2594,7 @@
          (else \"\")))
       ((20)
        (case n
+         ((\"write-file-unflushed\") \"%fx26-write-file-unflushed\")
          ((\"datum-bytevector-ref\") \"bytevector-u8-ref\")
          ((\"set-register-twin-at\") \"%set-register-twin\")
          (else \"\")))

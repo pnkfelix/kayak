@@ -11,7 +11,7 @@ use super::*;
 // takes, at least and at most; Fixpt's own numbers, later, with the
 // layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
 // and counted as not yet, never as an answer.
-// fixpt-source: crates/fixpt-runtime/src/prim.rs@120b70e
+// fixpt-source: crates/fixpt-runtime/src/prim.rs@6f7bd73
 
 // Each primitive: its name, how many arguments it takes, at least and at
 // most (-1: any), and its operation.

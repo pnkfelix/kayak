@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"path-not-module.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"mid : (moduleof (val b int)) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/path-not-module.fx:4:1: `(select (with mid b) t)`: `(with mid b)` is no path to a module from a variable bound to one, a module of each step",
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

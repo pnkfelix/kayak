@@ -9,8 +9,8 @@
 {
 "code": 0,
 "out": [
-"define b : (moduleof (val one int)) ! (read (globals %shared:<programs>/modules/../module-files/own-macros-base.fx))",
-"define u : (moduleof (val g (subr pure (int) int)) (val h (subr pure (int) int))) ! (read (globals %shared:input:<programs>/modules/../module-files/own-macros-params.fx b))",
+"define b : (moduleof (val one int)) ! (read (globals %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/own-macros-base.fx))",
+"define u : (moduleof (val g (subr pure (int) int)) (val h (subr pure (int) int))) ! (read (globals %shared:input:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/own-macros-params.fx b))",
 "define g : (subr pure (int) int) ! (read (globals u))",
 "define h : (subr pure (int) int) ! (read (globals u))",
 "int ! (read (globals g h))",
@@ -21,7 +21,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

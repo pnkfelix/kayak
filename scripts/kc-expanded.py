@@ -31,6 +31,7 @@ PROGRAMS = os.path.join(ROOT, "..", "kayak-refs", "fixpt", "crates", "fixpt-fx26
 
 MADE = "a later form names a macro a use makes, or a `hide` holds, not a `define-syntax` written at the top level: kc refuses, not yet"
 SHAPED = "a later form names a global a use of a macro defines, its shape known (a module's): kc refuses, not yet"
+PATHED = "a path `m::x` (Fixpt's TODO §296, at the pin since C474): kc's expansion a form at a time knows not `m`'s shape where the path's `with` asks it (`#:relied #f`), the engine's of the whole program does; kc refuses, not yet (TODO §54)"
 WORDS = "kc's own native code runs the transformer (C447) and says Fixpt's words, `car or cdr of a non-pair`; the engine says its own, `car of nil`"
 # Programs whose expansion by kc differs from the engine's, each with why.
 KNOWN = {
@@ -45,6 +46,7 @@ KNOWN = {
     "cost/diamond-found-last.fx": SHAPED,
     "macros/desc-subr-named.fx": SHAPED,
     "procedural/transformer-fails.fx": WORDS,
+    "modules/colons-macro.fx": PATHED,
 }
 
 

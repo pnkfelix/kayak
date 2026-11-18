@@ -1076,7 +1076,11 @@ pub mod kc_x64 {
             let c = x64_emit_args(c, prim_args()(t), si, env);
             let c = x64_moved_args(c, x64_arg_registers(), si, 3i64);
             x64_emit(c, str_lit("call kc_with_mark"))
-        } else if (string_eq_p(h, str_lit("prim")) && i64_eq(size(prim_args()(t)), 3i64)) {
+        } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("string-search"))) {
+            let c = x64_emit_args(c, prim_args()(t), si, env);
+            let c = x64_moved_args(c, x64_arg_registers(), si, 3i64);
+            x64_emit(c, str_lit("call kc_string_search"))
+        } else if (string_eq_p(h, str_lit("prim")) && string_eq_p(prim_name()(t), str_lit("substring"))) {
             let args = prim_args()(t);
             let c = x64_emit_args(c, args, si, env);
             let c = x64_moved_args(c, x64_arg_registers(), si, 3i64);
@@ -1930,7 +1934,7 @@ pub mod kc_x64 {
     pub fn x64_services() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("kc_show"), kayak_rt::heap_cons(str_lit("kc_fail"), kayak_rt::heap_cons(str_lit("kc_intern"), kayak_rt::heap_cons(str_lit("kc_string_eq"), kayak_rt::heap_cons(str_lit("kc_string_lt"), kayak_rt::heap_cons(str_lit("kcrt_string_append"), kayak_rt::heap_cons(str_lit("kcrt_substring"), kayak_rt::heap_cons(str_lit("kc_symbol_to_string"), kayak_rt::heap_cons(str_lit("kc_is_string"), kayak_rt::heap_cons(str_lit("kc_is_symbol"), kayak_rt::heap_cons(str_lit("kc_is_procedure"), kayak_rt::heap_cons(str_lit("kc_is_kind"), kayak_rt::heap_cons(str_lit("kcrt_append"), kayak_rt::heap_cons(str_lit("kc_array_index_fail"), kayak_rt::heap_cons(str_lit("kc_make_array_fail"), kayak_rt::heap_cons(str_lit("kc_string_index_fail"), kayak_rt::heap_cons(str_lit("kc_collect"), kayak_rt::heap_cons(str_lit("kcrt_given"), kayak_rt::heap_cons(str_lit("kc_gc_reset"), kayak_rt::heap_cons(str_lit("kcrt_capture"), kayak_rt::heap_cons(str_lit("kcrt_resume_copy"), kayak_rt::heap_cons(str_lit("kcrt_current_marks"), kayak_rt::heap_cons(str_lit("kcrt_marks_of"), kayak_rt::heap_cons(str_lit("kcrt_reverse"), kayak_rt::heap_cons(str_lit("kcrt_int_to_string"), kayak_rt::heap_cons(str_lit("kcrt_char_to_string"), kayak_rt::heap_cons(str_lit("kc_char_whitespace"), kayak_rt::heap_cons(str_lit("kc_char_numeric"), kayak_rt::heap_cons(str_lit("kc_string_hash"), kayak_rt::heap_cons(str_lit("kc_symbol_hash"), kayak_rt::heap_cons(str_lit("kcrt_f64_to_string"), kayak_rt::heap_cons(str_lit("kcrt_list_to_vector"), kayak_rt::heap_cons(str_lit("kc_error"), kayak_rt::nil())))))))))))))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit("kc_show"), kayak_rt::heap_cons(str_lit("kc_fail"), kayak_rt::heap_cons(str_lit("kc_intern"), kayak_rt::heap_cons(str_lit("kc_string_eq"), kayak_rt::heap_cons(str_lit("kc_string_lt"), kayak_rt::heap_cons(str_lit("kcrt_string_append"), kayak_rt::heap_cons(str_lit("kcrt_substring"), kayak_rt::heap_cons(str_lit("kc_symbol_to_string"), kayak_rt::heap_cons(str_lit("kc_is_string"), kayak_rt::heap_cons(str_lit("kc_is_symbol"), kayak_rt::heap_cons(str_lit("kc_is_procedure"), kayak_rt::heap_cons(str_lit("kc_is_kind"), kayak_rt::heap_cons(str_lit("kcrt_append"), kayak_rt::heap_cons(str_lit("kc_array_index_fail"), kayak_rt::heap_cons(str_lit("kc_make_array_fail"), kayak_rt::heap_cons(str_lit("kc_string_index_fail"), kayak_rt::heap_cons(str_lit("kc_collect"), kayak_rt::heap_cons(str_lit("kcrt_given"), kayak_rt::heap_cons(str_lit("kc_gc_reset"), kayak_rt::heap_cons(str_lit("kcrt_capture"), kayak_rt::heap_cons(str_lit("kcrt_resume_copy"), kayak_rt::heap_cons(str_lit("kcrt_current_marks"), kayak_rt::heap_cons(str_lit("kcrt_marks_of"), kayak_rt::heap_cons(str_lit("kcrt_reverse"), kayak_rt::heap_cons(str_lit("kcrt_int_to_string"), kayak_rt::heap_cons(str_lit("kcrt_char_to_string"), kayak_rt::heap_cons(str_lit("kc_char_whitespace"), kayak_rt::heap_cons(str_lit("kc_char_numeric"), kayak_rt::heap_cons(str_lit("kc_string_hash"), kayak_rt::heap_cons(str_lit("kc_symbol_hash"), kayak_rt::heap_cons(str_lit("kcrt_f64_to_string"), kayak_rt::heap_cons(str_lit("kcrt_list_to_vector"), kayak_rt::heap_cons(str_lit("kc_error"), kayak_rt::heap_cons(str_lit("kc_string_search"), kayak_rt::nil()))))))))))))))))))))))))))))))))))
         })
     }
 

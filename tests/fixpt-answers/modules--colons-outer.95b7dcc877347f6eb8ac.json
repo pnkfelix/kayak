@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"colons-outer.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m : (moduleof (val x int)) ! pure",
+"y : int ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/colons-outer.fx:6:4: `m` gives no value `y`, which the path `m::y` takes from it alone",
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

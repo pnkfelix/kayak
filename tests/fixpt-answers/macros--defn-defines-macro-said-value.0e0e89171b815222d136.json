@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/macros/defn-defines-macro-said-value.fx:7:1: a use of `def-five`: its signature says it defines `five`, a macro of `(macro (_) expr)`, and its expansion does not",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/defn-defines-macro-said-value.fx:7:1: a use of `def-five`: its signature says it defines `five`, a macro of `(macro (_) expr)`, and its expansion does not",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

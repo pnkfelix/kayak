@@ -81,8 +81,8 @@
 "     5: slot 0",
 "     7: prim %make-frozen 2",
 "    10: slot! 0",
-"    12: global! %shared:<programs>/modules/../module-files/with-local-f.fx",
-"    14: global %shared:<programs>/modules/../module-files/with-local-f.fx",
+"    12: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/with-local-f.fx",
+"    14: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/with-local-f.fx",
 "    16: global! m",
 "    18: global m",
 "    20: field 2",
@@ -132,7 +132,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

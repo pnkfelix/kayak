@@ -24,7 +24,7 @@
 {
 "code": 1,
 "out": [
-"! <programs>/terminate/cwcc-kept.fx:5:3: `loop` is declared a (subr pure () int): a (subr pure () int) is expected here, and this is a (subr spin () int)",
+"! <kayak>-snapshot/tests/fx26/programs/terminate/cwcc-kept.fx:5:3: `loop` is declared a (subr pure () int): a (subr pure () int) is expected here, and this is a (subr spin () int)",
 "  beyond what is expected, it has spin; it may not end: it waits, (await @c), on what nothing outside it sees",
 "; both checkers agree",
 ""
@@ -33,7 +33,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

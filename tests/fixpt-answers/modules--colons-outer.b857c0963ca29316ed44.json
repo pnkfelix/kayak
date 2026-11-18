@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"colons-outer.fx"
+],
+"answers": [
+{
+"code": 1,
+"out": [
+"m : (moduleof (val x int)) ! pure",
+"y : int ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/modules/colons-outer.fx:6:4: `m` gives no value `y`, which the path `m::y` takes from it alone",
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

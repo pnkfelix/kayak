@@ -133,10 +133,10 @@
 "    28: drop",
 "    29: drop",
 "    30: drop",
-"    31: global! %shared:<programs>/modules/../module-files/shared-counter.fx",
-"    33: global %shared:<programs>/modules/../module-files/shared-counter.fx",
+"    31: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-counter.fx",
+"    33: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-counter.fx",
 "    35: global! c",
-"    37: global %shared:<programs>/modules/../module-files/shared-counter.fx",
+"    37: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-counter.fx",
 "    39: slot 0",
 "    41: closure word bump@1002:166 over 1",
 "    44: lit 37",
@@ -145,8 +145,8 @@
 "    50: prim %make-frozen 3",
 "    53: slot! 0",
 "    55: drop",
-"    56: global! %shared:<programs>/modules/../module-files/shared-twice.fx",
-"    58: global %shared:<programs>/modules/../module-files/shared-twice.fx",
+"    56: global! %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-twice.fx",
+"    58: global %shared:<kayak>-snapshot/tests/fx26/programs/modules/../module-files/shared-twice.fx",
 "    60: global! u",
 "    62: global c",
 "    64: field 2",
@@ -216,7 +216,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

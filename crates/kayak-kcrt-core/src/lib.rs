@@ -622,6 +622,22 @@ pub extern "C" fn kcrt_list_to_vector(args: *const u64, block: *mut u64) -> u64 
     list_vector(args, block).unwrap_or_else(|m| failed(&m))
 }
 
+/// `(string-search s sub from)` (C474), Fixpt's (`Heap::string_search`):
+/// where `sub` is first in `s` at or after `from` (taken as 0 if below it),
+/// by code points, as a fixnum; -1 if it is not.
+#[unsafe(no_mangle)]
+pub extern "C" fn kc_string_search(s: u64, sub: u64, from: u64) -> u64 {
+    let s: Vec<char> = string_text(s).chars().collect();
+    let sub: Vec<char> = string_text(sub).chars().collect();
+    let from = ((from as i64) >> 3).max(0) as usize;
+    let found = if from > s.len() || sub.len() > s.len() {
+        None
+    } else {
+        (from..=s.len() - sub.len()).find(|&i| s[i..i + sub.len()] == sub[..])
+    };
+    fixnum(found.map_or(-1, |i| i as i64))
+}
+
 /// `(error message)`, FX-26's: the run fails, saying the message.
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_error(v: u64) -> u64 {
@@ -1072,6 +1088,7 @@ pub fn routine(name: &str) -> u64 {
         "kcrt_f64_to_string" => here_f64_to_string as *const (),
         "kcrt_list_to_vector" => here_list_to_vector as *const (),
         "kc_error" => here_error as *const (),
+        "kc_string_search" => kc_string_search as *const (),
         "kc_array_index_fail" => here_array_index_fail as *const (),
         "kc_make_array_fail" => here_make_array_fail as *const (),
         "kc_string_index_fail" => here_string_index_fail as *const (),

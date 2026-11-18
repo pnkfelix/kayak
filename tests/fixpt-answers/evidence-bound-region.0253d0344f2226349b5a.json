@@ -9,8 +9,8 @@
 {
 "code": 1,
 "out": [
-"FX-26: ! <kayak>/tests/fx26/stage/evidence-bound-region.fx:9:75: `stage` is given a bound of `t`, which may be of less than `t` is: `t` may stand only where less is safe, in the effect, and in what is given, not taken; or give its exact evidence",
-"Rust:  ! <kayak>/tests/fx26/stage/evidence-bound-region.fx:9:33: `stage` is given a bound of `t`, which may be of less than `t` is: `t` may stand only where less is safe, in the effect, and in what is given, not taken; or give its exact evidence",
+"FX-26: ! <kayak>-snapshot/tests/fx26/stage/evidence-bound-region.fx:9:75: `stage` is given a bound of `t`, which may be of less than `t` is: `t` may stand only where less is safe, in the effect, and in what is given, not taken; or give its exact evidence",
+"Rust:  ! <kayak>-snapshot/tests/fx26/stage/evidence-bound-region.fx:9:33: `stage` is given a bound of `t`, which may be of less than `t` is: `t` may stand only where less is safe, in the effect, and in what is given, not taken; or give its exact evidence",
 "; the checkers disagree",
 ""
 ],
@@ -18,7 +18,7 @@
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

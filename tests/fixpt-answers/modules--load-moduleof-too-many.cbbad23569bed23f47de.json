@@ -25,11 +25,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/modules/load-moduleof-too-many.fx:3:23: what `../module-files/made-core.fx` makes is a (moduleof (abs ticket type) (desc counter (productof (#:state (ref int @heap)))) (val issued (ref int @heap)) (val spawn (subr (alloc @heap) (int) counter)) (val peek (subr (read @heap) (counter) int)) (val issue (subr (maxeff (read @heap) (write @heap)) () ticket)) (val number (subr pure (ticket) int))), given no more",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/load-moduleof-too-many.fx:3:23: what `../module-files/made-core.fx` makes is a (moduleof (abs ticket type) (desc counter (productof (#:state (ref int @heap)))) (val issued (ref int @heap)) (val spawn (subr (alloc @heap) (int) counter)) (val peek (subr (read @heap) (counter) int)) (val issue (subr (maxeff (read @heap) (write @heap)) () ticket)) (val number (subr pure (ticket) int))), given no more",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

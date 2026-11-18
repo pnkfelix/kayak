@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"path-effect.fx"
+],
+"answers": [
+{
+"code": 0,
+"out": [
+"mid : (moduleof (val a (moduleof (desc e spin) (desc n int)))) ! pure",
+"f : (subr spin () int) ! pure",
+"3 : int ! (maxeff spin (read (globals f)))",
+""
+],
+"err": [
+""
+],
+"by": [
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
+]
+}
+]
+}

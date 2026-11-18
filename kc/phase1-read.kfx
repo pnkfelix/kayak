@@ -115,7 +115,7 @@
 "`%phase1-apply`, for transformers of style `style`."
 (define phase1-applier (subr kfx (string) string)
   (lambda (style)
-    (let ((call (cond ((string=? style "0") "(%transformer d (%er-renamer (string->symbol tag)) %er-compare)")
+    (let ((call (cond ((string=? style "0") "(%transformer d %er-rename %er-compare)")
                       ((string=? style "1") "(%transformer d (quote %env:use))")
                       (else "(%transformer d (quote %env:macro))"))))
       (string-list-append

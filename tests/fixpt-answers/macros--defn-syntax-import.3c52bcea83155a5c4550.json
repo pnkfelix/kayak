@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: read error: <programs>/macros/defn-syntax-import.fx:4:27: a syntax type: a macro's binder, `(macro …)`, says what a use defines, in what its signature makes, `(defn D …)`",
+"fixpt: read error: <kayak>-snapshot/tests/fx26/programs/macros/defn-syntax-import.fx:4:27: a syntax type: a macro's binder, `(macro …)`, says what a use defines, in what its signature makes, `(defn D …)`",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

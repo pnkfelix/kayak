@@ -15,12 +15,12 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/generative/named.fx:5:43: `twice` is declared a (subr pure (meters) meters): a (subr pure (meters) meters) is expected here, and this is a (subr (read (globals from-meters to-meters)) (meters) meters)",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/generative/named.fx:5:43: `twice` is declared a (subr pure (meters) meters): a (subr pure (meters) meters) is expected here, and this is a (subr (read (globals from-meters to-meters)) (meters) meters)",
 "  beyond what is expected, it has (read (globals from-meters to-meters))",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/macros/facts-each-target.fx:6:22: a fact binding in a repeated part is each repetition's: followed by `...`",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/macros/facts-each-target.fx:6:22: a fact binding in a repeated part is each repetition's: followed by `...`",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

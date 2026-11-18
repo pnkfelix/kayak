@@ -25,11 +25,11 @@
 ""
 ],
 "err": [
-"fixpt: <programs>/modules/load-moduleof-not-module.fx:3:23: what `../module-files/made-core.fx` makes, given these, is a (poly ((ed region) (world effect)) (subr (alloc ed) () (moduleof (abs ticket type) (desc counter (productof (#:state (ref int ed)))) (val issued (ref int ed)) (val spawn (subr (alloc ed) (int) counter)) (val peek (subr (read ed) (counter) int)) (val issue (subr (maxeff (read ed) (write ed)) () ticket)) (val number (subr pure (ticket) int))))), not a module",
+"fixpt: <kayak>-snapshot/tests/fx26/programs/modules/load-moduleof-not-module.fx:3:23: what `../module-files/made-core.fx` makes, given these, is a (poly ((ed region) (world effect)) (subr (alloc ed) () (moduleof (abs ticket type) (desc counter (productof (#:state (ref int ed)))) (val issued (ref int ed)) (val spawn (subr (alloc ed) (int) counter)) (val peek (subr (read ed) (counter) int)) (val issue (subr (maxeff (read ed) (write ed)) () ticket)) (val number (subr pure (ticket) int))))), not a module",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]

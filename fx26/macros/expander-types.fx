@@ -257,10 +257,12 @@
 ;; path and each reference to it; a free name its alias, `%~K.N:n`, which
 ;; the resolution after expansion makes the name where the macro is defined
 ;; (`macros-shapes.fx`'s `aliases-resolved`); a file's macro's description read whole through
-;; the file's module or the standard environment, by `select`; a use of
+;; the file's module or the standard environment, by `select`, or an instance's, its
+;; name an alias (`InstanceType`, step 4 (c)); a use of
 ;; another of the file's macros, by the name the importer has it by.
 (define-datatype action
-  (act-rename addr int) (act-alias) (act-module-type symbol) (act-standard-type)
+  (act-rename addr int) (act-alias) (act-module-type symbol) (act-instance-type symbol)
+  (act-standard-type)
   (act-macro-head symbol)
   ;; A trailmark of a file's a template writes: the name the importer has it by.
   (act-mark symbol))
@@ -269,7 +271,9 @@
 ;; (`macros/hygiene.rs`'s `DefEnv`), by its kind: the top level (0); a file
 ;; as its importer has it (1), its hidden global `%shared:key` and the
 ;; values its module shows (its other names the standard environment's); or
-;; a module file's items, as its own macros see them (2). A type of its
+;; a module file's items, as its own macros see them (2); or a file as an
+;; importer of an instance of it has it (3), the instance's name in place of
+;; `%shared:key`, which a binder at a use is kept from capturing. A type of its
 ;; structure, the same in each instance of the expander's files
 ;; (`macros.fx`'s `def-envs`).
 (define-type def-env (tupleof int symbol mx-parser-types-names))
@@ -354,6 +358,34 @@
 (define-type head-reading (tupleof int (listof int acyclic) (listof int acyclic)))
 (define-type head-readings (listof head-reading acyclic))
 (define-type syntax-binder (tupleof bool symbol int int))
+;;; ------------------------------------------------------------ a program read by its scopes
+
+;; Program form `s`, of syntax type `core`, aligned and walked, each list a
+;; macro's name heads read by its scope (`macros.rs`'s `Aligner::program`,
+;; `TODO.md` §295): an application where the program wrote its head (a
+;; template's is its macro, by hygiene), it makes no description, and a
+;; binder around it binds the name, or `bound` has it (the macros' names
+;; bound around `s`); else a use, whole if `whole` (where a form is
+;; expanded), else by its signature. Read to a fixed point: each list read
+;; otherwise than it is now, with none such around it, read anew, as what
+;; binds a head is read by the lists around it alone; so each round
+;; settles one for good, and it ends. Its root, what the walk found, and
+;; each such list's node, whether it is read an application, and its
+;; environment.
+(define-type mx-scopes-heads-read (listof (tupleof int bool mx-env-indexed-env) acyclic))
+;; The uses of macros in `s`, of type `core`, `bound` the macros' names
+;; bound around it, as the walk finds them, each whole (`program-scoped`;
+;; `Macros::uses_found`): each by its place, the indices of the items it is
+;; in, list by list from `s` (`index-path`), in the order they are written,
+;; with the macros' names bound around it that the program wrote in it.
+;; And each path, `a::b::c`, where a value or a description is named
+;; (`TODO.md` §296); none where a name is bound.
+(define-type ixs (listof int acyclic))
+;; What is found at a place: a use of a macro, with the macros' names bound
+;; around it; or a path, naming a description if `#t`, else a value
+;; (`macros.rs`'s `Part`).
+(define-datatype mx-scopes-part (pt-use mx-parser-types-names) (pt-path bool))
+(define-type mx-scopes-uses (listof (tupleof ixs mx-scopes-part) acyclic))
 
 ;;; ============================================================ macros-match.fx (whole)
 
@@ -380,11 +412,12 @@
 (define-type mx-exports-places (listof (tupleof int int) acyclic))
 ;; By each `with` form's place, the macros used in its body by names the
 ;; program wrote, each with the use's place (`Macros::with_uses`): the
-;; checker refuses the `with` if its module gives a value of the name. And,
-;; `#t` last, a template's `(with m name)`, with the name's place
+;; checker refuses the `with` if its module gives a value of the name (0
+;; last). And, 1 last, a template's `(with m name)`, with the name's place
 ;; (`Macros::projections`): refused if the module gives no value of it,
-;; which would otherwise be what it is where the macro is used.
-(define-type uses (listof (tupleof int int symbol int int bool) acyclic))
+;; which would otherwise be what it is where the macro is used; 2, a path's
+;; `with`, its path to the name for the name, the same (`TODO.md` §296).
+(define-type mx-exports-uses (listof (tupleof int int symbol int int int) acyclic))
 ;;; ------------------------------------------------------------ binders' depths
 
 ;; Each template binder the walk found, with how many ellipses it is under.
@@ -574,9 +607,9 @@
 
 (define-type tags (listof (tupleof int string) acyclic))
 (define-type seen-keys (listof (tupleof int int) acyclic))
-;; A module file's forms begun: their keys their own; what is given back
-;; puts the program's back (`fresh-scope-end!`).
-(define-type fresh-saved (tupleof string int int seen-keys bool int tags))
+;; A module file's forms begun, their keys of `prefix`: their own; what is
+;; given back puts the program's back (`fresh-scope-end!`).
+(define-type fresh-saved (tupleof string int int seen-keys string int tags))
 
 ;;; ============================================================ macros-contracts.fx (whole)
 
@@ -653,6 +686,22 @@
 ;; The binders in the scope of hole `n`, outermost first (`levels`), each a
 ;; typed `bvar`: its name and type.
 (define-type scope-vars (listof (tupleof symbol syn) acyclic))
+
+;;; ============================================================ macros-imports.fx (whole)
+
+;; The forms the files whose own macros' uses were expanded were read as, by
+;; base (`parser-top.fx`'s `loaded-own-expanded!`): what an importer reads
+;; of each, as the Rust checker reads its text again (`file_macros_at`).
+(define-type raw (listof (tupleof int syns-a) acyclic))
+;; Each macro a file gives, with the name the importer has it by.
+(define-type mx-imports-given (listof (tupleof symbol symbol) acyclic))
+;; A module file's `(define name (load-module "path"))`s so far, the last
+;; first, each with its load, which the driver read it by where it starts.
+(define-type file-loads (listof (tupleof symbol syn) acyclic))
+;; What a file's forms defined so far: the name the importer has each of its
+;; macros by, the macros it gives, each with whether it is hidden, the last
+;; first, and its load definitions.
+(define-type file-state (tupleof (listof (tupleof symbol symbol) acyclic) mades file-loads))
 
 ;;; ============================================================ macros-walk.fx (whole)
 

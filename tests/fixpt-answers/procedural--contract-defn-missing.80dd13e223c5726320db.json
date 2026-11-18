@@ -12,11 +12,11 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <programs>/procedural/contract-defn-missing.fx:8:1: a use of `define-const`: its contract says a use defines `seven`, and its expansion does not",
+"fixpt: the FX-26 front end: <kayak>-snapshot/tests/fx26/programs/procedural/contract-defn-missing.fx:8:1: a use of `define-const`: its contract says a use defines `seven`, and its expansion does not",
 ""
 ],
 "by": [
-"x86_64-linux@05854885968c8222112ea543f7819c922223d9ab"
+"x86_64-linux@6f7bd739e138354532d872eb47723a139e45926f"
 ]
 }
 ]
