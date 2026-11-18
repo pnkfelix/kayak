@@ -1761,8 +1761,11 @@ over its 1664 definitions, 335 of them refused:
 - **Tuples** (`tuple`, `extract`): 1484.
 - **List procedures as forms**: `reverse` 519, `append` (not `,@`'s)
   325, `length` 3.
-- **Delimited control** (the parser's): `prompt` 112,
-  `abort-current-continuation` 4, `make-continuation-prompt-tag` 1.
+- ~~**Delimited control** (the parser's): `prompt` 112,
+  `abort-current-continuation` 4, `make-continuation-prompt-tag` 1.~~
+  Done (C458): prompts as frames, aborts that walk them; the survey's
+  refused items 320, were 335. Left: capture (composable, one-shot),
+  marks, `letregion`, the Rust back end's prompt.
 - **`i64`**: `int->i64` 39, `i64->int` 32, `i64+` 14, `i64>=` 10,
   `i64=` 9, `i64-quotient` 3, `i64<=` 2, `i64-` 2.
 - **Strings and characters**: `int->string` 149, `char->string` 11,

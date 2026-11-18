@@ -27,6 +27,9 @@ use super::*;
 // Types (C423): `(product E ...)`, its fields by position; `(extract E K)`;
 // `(sum "TAG" E)`; `(tagcase E ARM ...)` (`l0-arms`); a type's form no
 // item's code, `(none)`.
+// Delimited control (C458): `(prompt TAG HANDLER BODY)`, each made in
+// that order; a tag a fresh ref of unit; `abort-current-continuation`
+// and `escape` binary primitives.
 // Step 11: strings and symbols (C421); arrays (C422), and `(the T e)`: `(string "TEXT")`, `(symbol
 // "NAME")`, the strings' primitives, `substring` of three arguments.
 // Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
@@ -92,7 +95,7 @@ pub mod kc_l0 {
     pub fn binary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::nil()))))))))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::nil()))))))))))))))))))))))))))))))
         })
     }
 
@@ -817,6 +820,25 @@ pub mod kc_l0 {
                         continue;
                     } else if (string_eq_p(h, str_lit("list")) && null_p(cdr(xs))) {
                         return l0_made(str_lit("(nil)"), next);
+                    } else if (null_p(cdr(xs)) && (string_eq_p(h, str_lit("make-continuation-prompt-tag")) || string_eq_p(h, str_lit("make-escape-tag")))) {
+                        return l0_made(str_lit("(prim new (unit))"), next);
+                    } else if (string_eq_p(h, str_lit("prompt")) && i64_eq(size(xs), 4i64)) {
+                        let tagcase_ = l0_of(path, scope, env, next, second(xs));
+                        match *tagcase_ {
+                            L0Made::L0Made(t, n1) => {
+                                let tagcase_ = l0_of(path, scope, env, n1, fourth(xs));
+                                match *tagcase_ {
+                                    L0Made::L0Made(hd, n2) => {
+                                        let tagcase_ = l0_of(path, scope, env, n2, third(xs));
+                                        match *tagcase_ {
+                                            L0Made::L0Made(b, n3) => {
+                                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prompt "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(hd, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n3);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     } else if (string_eq_p(h, str_lit("list")) && not(null_p(cdr(xs)))) {
                         e = lst(kayak_rt::heap_cons(sym(str_lit("cons"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(if null_p(cdr(cdr(xs))) {
                             sym(str_lit("nil"), f, p)

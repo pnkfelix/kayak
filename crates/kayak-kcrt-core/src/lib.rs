@@ -643,6 +643,9 @@ pub fn fail_words(what: u64) -> &'static str {
         8 => "stack overflow",
         // kc's own: a transformer's program run with no transformer (C448).
         9 => "kc: this program has no transformer to apply",
+        // An abort no prompt of its tag delimits (C458), as Fixpt's native
+        // machines say it.
+        10 => "abort: no prompt for this tag",
         _ => "a failure kc's runtime has no words for",
     }
 }

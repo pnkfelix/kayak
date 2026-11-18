@@ -1,0 +1,35 @@
+;; => ((p-ok 3) (p-err "no: x" 2) (1000 "kept") 6)
+;; Delimited control in kc (C458), the expander's way (its parser's
+;; `parse-tag`, `pfail`): a datatype the prompt gives, an abort's payload
+;; made in the heap; a body that makes enough to collect under its prompt
+;; (with a heap of 64 words), the tag a box the collector moves, the
+;; abort's payload a list; and an escape-only tag, as a prompt tag.
+(define-datatype presult (p-ok int) (p-err string int))
+(define parse-tag (prompt-tag presult presult (maxeff spin (read (globals parse-tag pfail parse p-ok p-err))) @p)
+  (make-continuation-prompt-tag))
+(define* pfail (subr (maxeff (goto @p) (read (globals parse-tag))) (string int) void)
+  (lambda (m at) (abort-current-continuation parse-tag (p-err m at))))
+(define* parse (subr (maxeff spin (goto @p) (read (globals parse-tag pfail parse))) (string int) int)
+  (lambda (s i)
+    (cond ((>= i (string-length s)) 0)
+          ((char=? (string-ref s i) #\x) (begin (pfail (string-append "no: " (substring s i (+ i 1))) i) 0))
+          (else (+ 1 (parse s (+ i 1)))))))
+(define shown (subr pure (presult) datum)
+  (lambda (r) (tagcase r (p-ok (n) `(p-ok ,n)) (p-err (m at) `(p-err ,m ,at)))))
+(define parsed (subr (maxeff spin (goto @p) (read (globals parse-tag pfail parse p-ok p-err))) (string) presult)
+  (lambda (s) (prompt parse-tag (p-ok (parse s 0)) (lambda ((r presult)) r))))
+(define l (prompt-tag (listof int acyclic) (listof int acyclic) (maxeff spin (read (globals l build))) @p)
+  (make-continuation-prompt-tag))
+(define* build (subr (maxeff spin (goto @p) (read (globals l build))) (int (listof int acyclic)) (listof int acyclic))
+  (lambda (n acc) (if (zero? n) (begin (abort-current-continuation l acc) nil) (build (- n 1) (cons n acc)))))
+(define built (listof int acyclic) (prompt l (build 1000 nil) (lambda ((xs (listof int acyclic))) xs)))
+(define* count (subr (maxeff spin (read (globals count))) ((listof int acyclic) int) int)
+  (lambda (xs n) (if (null? xs) n (count (cdr xs) (+ n 1)))))
+(define kept string (string-append "ke" "pt"))
+(define e (escape-tag int int @p) (make-escape-tag))
+(define digits (subr (maxeff spin (read (globals e))) (string) int)
+  (lambda (s)
+    (prompt e
+      (if (char=? (string-ref s 0) #\6) (escape e 6) 0)
+      (lambda ((v int)) v))))
+`(,(shown (parsed "abc")) ,(shown (parsed "abxc")) (,(count built 0) ,kept) ,(digits "6"))

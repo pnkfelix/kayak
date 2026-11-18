@@ -13604,3 +13604,69 @@ convention has it, prompts and marks frames of known kinds a walk of the
 stack finds, `docs/research/native-conventions.md` step 5; kc's own
 convention has none yet). Incremental collection,
 whether in the plan or after: to-discuss 16.
+
+## C458. Delimited control in kc: prompts as frames, aborts that walk them (2026-11-17)
+
+The user: "Start with delimited control in `kc`" (TODO §54, step 2; the
+expander's parser backtracks by it: one prompt tag, `parse-tag`, 14
+prompts, 4 aborts, nothing captured). Reviewed first:
+- **Fixpt**: FX-26's typed control (`docs/fx26.md`, "Control, typed"):
+  `(prompt tag body handler)`, syntax; `abort-current-continuation` of
+  `(goto R)`; an escape-only tag a prompt tag at run time. A tag is a box
+  of unit (`cellular.rs`: `(%make-box #u)`), compared by `eq?`; a prompt
+  is `(%prompt tag handler thunk)`, so the tag is made first, then the
+  handler, then the body runs. Its native convention keeps prompts and
+  marks as frames of known kinds a walk of the stack finds
+  (`docs/research/native-conventions.md`, step 5); an abort cuts to the
+  innermost for its tag and calls the handler there; none, "abort: no
+  prompt for this tag" (`fixpt-native`'s `control.rs`), the cellular
+  machine's words too.
+- **Accomplice** (Larceny): continuations by its stack cache's segments;
+  an escape is a jump to a saved frame.
+- **Coopt**: nothing of delimited control in its runtime.
+- **kayak**: kayak-rt's escapes are `Result`s each call checks (C18,
+  `escape.rs`): a cost at every call, which kc's convention need not pay.
+
+What changed:
+- **l0** (kc/l0.kfx): `(prompt TAG HANDLER BODY)`, in the order made;
+  `make-continuation-prompt-tag` and `make-escape-tag` a fresh ref of
+  unit (Fixpt's box, kind 10); `abort-current-continuation` and `escape`
+  binary primitives.
+- **x64**: a prompt's record, four of its frame's slots: the prompt
+  before it, the tag, the stack pointer, and its handler's call's
+  address; the innermost prompt's record in `kc_prompts` (a cell of the
+  entry object, `.globl`, none at each `kc_entry`). Its body runs not in
+  tail position, and the record is taken off after. An abort calls
+  `kc_abort`, which walks the records for the tag by `eq?`, takes that
+  one and those inside it off, makes the stack pointer the record's and
+  jumps to the handler's call with the value; the handler is called in
+  the prompt's continuation. No record of the tag: failure 10, Fixpt's
+  words. Nothing at a call: no check after a return, no frame of a call
+  that does not prompt.
+- **The collector**: each word of a record is a stack address (a
+  fixnum's tag), a value (the tag, a box the collector moves, the
+  handler), or a code address outside the heap, so the stack's scan
+  (C453) wants nothing new.
+- **Tests** (tests/kc/control/, kc-steps' every way and Fixpt's answer):
+  `prompts.fx` (a body's value, an abort from 1000 calls deep, the
+  innermost prompt of a tag, an abort past another tag's prompt, one
+  from a closure, 2000 rounds each aborted); `prompts-heap.fx` (the
+  expander's way, a datatype through a global tag; a body that collects
+  under its prompt, with a heap of 64 words, its abort's payload a list;
+  an escape tag); `abort-unprompted.fx` (no prompt of the tag, past
+  another's). Built too, and, by hand, 1000000 rounds each aborted from
+  50 deep in 0.19 s.
+- **The survey again** (as C457, a build of kc that goes on past
+  `not-yet`): the expander's prompts and aborts all lowered; 320 items
+  refused, were 335. That build's generated Rust was put back from git,
+  which, after this step's regeneration, took the step's code with it:
+  regenerated again (a memory now says to copy them aside).
+- **Left**: `call-with-composable-continuation`,
+  `call-with-oneshot-continuation` and marks (`with-mark`, ...), which
+  copy a stack's segment as Fixpt's native convention does (the
+  expander uses none); `letregion` (kc has none yet, so a tag of a
+  region a `letregion` makes is not yet kc's); kc's Rust back end, which
+  has no prompt.
+- **The full check**: all passed in 589 s; kc-steps 341 of 341 (in
+  process, and with a heap of 64 words); kc-objects 439, 0 differ;
+  nextest 5501 passed.

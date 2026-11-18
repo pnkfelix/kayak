@@ -549,6 +549,7 @@
                             (c (x64-emit-args c args si env))
                             (c (x64-moved-args c x64-arg-registers si 3)))
                        (x64-emit c "call kc_substring")))
+                    ((string=? h "prompt") (x64-emit-prompt c t si env))
                     ((string=? h "lambda") (x64-emit-lambda c t env))
                     ((string=? h "gproc") (x64-emit-closure c (x64-proc-symbol (item-name t)) nil))
                     ((string=? h "app")
@@ -598,6 +599,45 @@
                                           px)
                                 sym
                                 (map (lambda ((v sexp)) (x64-slot-of (tagcase (car (items v)) (num (j f p) j) (else other -1)) env)) fv))))))))))))
+
+        (x64-emit-prompt (subr kfx (x64-code sexp i64 (listof x64-at acyclic)) x64-code)
+          (lambda (c t si env)
+            "A prompt (C458), as Fixpt's native convention has one, a frame of a
+             known kind (`docs/research/native-conventions.md`): its tag, then
+             its handler, made; then a record of it in the frame's slots from
+             `si` (the prompt before it, the tag, the stack pointer, and where
+             its handler's call is), the innermost prompt `kc_prompts` holds;
+             then its body, not in tail position, and the record taken off. An
+             abort (`kc_abort`) finds the record of its tag's innermost prompt,
+             takes it and those inside it off, makes the stack pointer the
+             record's and goes to the handler's call, its value in `%rax`: the
+             handler called on it, in the prompt's continuation. Each word of
+             the record a value, a stack address or a code address, as the
+             collector's scan of the stack wants."
+            (let* ((xs (items t)) (k (x64-fresh-label c))
+                   (handler (x64-label c "abort" k)) (past (x64-label c "prompted" k))
+                   (c (x64-labelled c))
+                   (c (x64-using c (i64+ si 5)))
+                   (c (x64-emit-expr c (second xs) (i64+ si 5) env))
+                   (c (x64-emit c (string-append "movq %rax, " (x64-slot (i64+ si 1)))))
+                   (c (x64-emit-expr c (third xs) (i64+ si 5) env))
+                   (c (x64-emit c (string-append "movq %rax, " (x64-slot (i64+ si 4)))))
+                   (c (x64-emit c "movq kc_prompts(%rip), %rdx"))
+                   (c (x64-emit c (string-append "movq %rdx, " (x64-slot si))))
+                   (c (x64-emit c (string-append "movq %rsp, " (x64-slot (i64+ si 2)))))
+                   (c (x64-emit c (string-append "leaq " (string-append handler "(%rip), %rdx"))))
+                   (c (x64-emit c (string-append "movq %rdx, " (x64-slot (i64+ si 3)))))
+                   (c (x64-emit c (string-append "leaq " (string-append (x64-slot si) ", %rdx"))))
+                   (c (x64-emit-lines c (x64-cell-stored "%rdx" "kc_prompts")))
+                   (c (x64-emit-expr c (fourth xs) (i64+ si 5) env))
+                   (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rdx"))))
+                   (c (x64-emit-lines c (x64-cell-stored "%rdx" "kc_prompts")))
+                   (c (x64-emit c (string-append "jmp " past)))
+                   (c (x64-emit-label c handler))
+                   (c (x64-emit c "movq %rax, %rdi"))
+                   (c (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si 4)) ", %r10"))))
+                   (c (x64-emit c "call *-28(%r10)")))
+              (x64-emit-label c past))))
 
         (x64-emit-tail (subr kfx (x64-code sexp i64 (listof x64-at acyclic) string) x64-code)
           (lambda (c t si env fr)
@@ -799,6 +839,9 @@
              product, one of them shifted back first."
             (cond ((string-member? n x64-comparisons)
                    (x64-boolean-if (x64-emit c "cmpq %rcx, %rax") (x64-condition n)))
+                  ;; An abort to the tag's prompt (C458), never back.
+                  ((or (string=? n "abort-current-continuation") (string=? n "escape"))
+                   (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq %rcx, %rsi") "call kc_abort"))
                   ((string=? n "+") (x64-failing-if (x64-emit c "addq %rcx, %rax") "o" x64-fail-past-fixnum))
                   ((string=? n "-") (x64-failing-if (x64-emit c "subq %rcx, %rax") "o" x64-fail-past-fixnum))
                   ((string=? n "*") (x64-failing-if (x64-emit (x64-emit c "sarq $3, %rax") "imulq %rcx, %rax") "o" x64-fail-past-fixnum))
@@ -1021,6 +1064,14 @@
        (C455, `x64-heap-routine`), whose wrappers are here, so that a
        program built and one in process call kcrt the same way.
 
+       And delimited control's (C458): `kc_prompts`, the innermost prompt's
+       record (`x64-emit-prompt`), none at `kc_entry` (`kc_gc_init`); and
+       `kc_abort`, given the tag in `%rdi` and the value in `%rsi`, which
+       finds that tag's innermost prompt by `eq?` (a tag is a box, Fixpt's),
+       takes it and those inside it off, makes the stack pointer the
+       record's and jumps to its handler's call with the value; no prompt
+       of the tag, failure 10, Fixpt's native machines' words.
+
        And `kc_apply_run` (C455; the state in `%rdi`), a transformer's run
        after `kc_entry`, a built one's `--apply` and one in process alike:
        `%phase1-apply` called on the use and the tag kcrt was given
@@ -1033,12 +1084,19 @@
           (string-list-append
             (list "    .bss\n    .p2align 3\n    .globl kc_heap_next\nkc_heap_next:\n    .quad 0\n"
                   "kc_gc:\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n"
-                  "    .text\nkc_gc_init:\n    leaq 8(%rsp), %rax\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"
+                  "    .globl kc_prompts\nkc_prompts:\n    .quad 0\n"
+                  "    .text\nkc_gc_init:\n    leaq kc_prompts(%rip), %rax\n    subq 208(%r15), %rax\n    movq $0, -4(%rax)\n    leaq 8(%rsp), %rax\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"
                   "    movq %r12, -4(%rcx)\n    movq %r13, 4(%rcx)\n    movq %rax, 12(%rcx)\n"
                   "    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 20(%rcx)\n"
                   "    leaq kc_cells_hi(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 28(%rcx)\n    ret\n"
                   "    .globl kc_gc_call\nkc_gc_call:\n    leaq 8(%rsp), %rsi\n    leaq kc_gc(%rip), %rdx\n    subq 208(%r15), %rdx\n    subq $4, %rdx\n"
                   "    subq $8, %rsp\n    call kc_collect\n    addq $8, %rsp\n    movq %rax, %r12\n    movq %rdx, %r13\n    ret\n"
+                  "    .text\n    .globl kc_abort\nkc_abort:\n    movq kc_prompts(%rip), %rax\n"
+                  ".Lkc_abort_look:\n    testq %rax, %rax\n    je .Lkc_abort_none\n    cmpq %rdi, 8(%rax)\n    je .Lkc_abort_found\n"
+                  "    movq 0(%rax), %rax\n    jmp .Lkc_abort_look\n"
+                  ".Lkc_abort_found:\n    movq 0(%rax), %rdx\n" (x64-cell-stored "%rdx" "kc_prompts")
+                  "    movq 24(%rax), %rcx\n    movq 16(%rax), %rsp\n    movq %rsi, %rax\n    jmp *%rcx\n"
+                  ".Lkc_abort_none:\n    subq $8, %rsp\n    movl $10, %edi\n    call kc_fail\n"
                   "    .text\n    .globl kc_apply_address\nkc_apply_address:\n"
                   (if applies (string-append "    leaq " (string-append (x64-proc-symbol "%phase1-apply") "(%rip), %rax\n")) "    movl $0, %eax\n")
                   "    ret\n"
