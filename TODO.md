@@ -1785,12 +1785,14 @@ over its 1664 definitions, 335 of them refused:
   Done (C464): to 64, the rest in `kc_args`; and `string-append` of any
   count. The survey then: `not yet` 264 times, was 343. Left: `vlambda`,
   `vsubr` and `apply`, which the expander has none of.
-- **Type-level names reached as values** (the expander's types of its
-  own module system, `mu`, `union`, `export`, `import`, `rho`): `expr`
-  27, `data` 26, `bvar` 24, `id` 22, `lambda` 18, `desc` 16, `label` 14,
-  `type` 13, `dvar` 12, `region` 11, `kind` 10, `place` 9, `item` 8,
-  `effect` 8, `sendable` 5, `size` 3, `conv` 2: kc lowers a form these
-  are in as an expression; which form, to find first.
+- ~~**Type-level names reached as values**: `expr` 26, `data` 25,
+  `bvar` 24, `id` 22, `lambda` 18, ...~~ Not names at all (C469): the
+  data of two `case`s (`read-sty-name`, `mx-parser-forms-kind-form?`),
+  which kc compared with the variable of the datum's name, unquoted; a
+  miscompile, as was a `case` on strings compared by `eq?`. Both fixed.
+  The survey then: 11 items refused, were 13; `not yet` 46 times, was
+  264, all of the strings' and characters', `f64`, a vector and `error`
+  below.
 - **`f64`**: `f64?` 6, `f64->string` 4. **Vectors**:
   `datum-list->vector` 4. `error` 1.
 - **A file of a place**: kc's checker refuses `module-parameters` as a

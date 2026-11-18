@@ -552,8 +552,12 @@
                       (lst (list (sym "if" f p)
                                  (lst (cons (sym "or" f p)
                                             (map (lambda ((d sexp))
-                                                   ;; Each datum by its own kind's equality.
-                                                   (lst (list (sym (tagcase d (num (k f2 p2) "=") (chr (ch f2 p2) "char=?") (else other "eq?")) f p) (sym key f p) d) f l p))
+                                                   ;; Each datum by its own kind's equality, and
+                                                   ;; quoted: a datum, never a variable's name.
+                                                   (lst (list (sym (tagcase d (num (k f2 p2) "=") (chr (ch f2 p2) "char=?") (str (s f2 p2) "string=?") (else other "eq?")) f p)
+                                                              (sym key f p)
+                                                              (tagcase d (num (k f2 p2) d) (chr (ch f2 p2) d) (str (s f2 p2) d) (else other (lst (list (sym "quote" f p) d) f l p))))
+                                                        f l p))
                                                  (items (car c))))
                                       f l p)
                                  (lst (cons (sym "begin" f p) (cdr c)) f l p)

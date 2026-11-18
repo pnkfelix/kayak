@@ -14141,3 +14141,43 @@ kayak-kcrt, keeps it for its reason. nextest now runs kcrt-core's test.
 The full check: all passed in 632.0 s; nextest 5502 passed (was 5501:
 kcrt-core's test among them); kc-steps 351 of 351, warm; kc-objects 457,
 0 differ.
+
+## C469. `case`'s data quoted, and strings compared by contents (2026-11-18)
+
+The user: "Go back to expander survey" (TODO §54 step 2). The survey's
+largest gap, "type-level names reached as values" (`expr` 26, `data` 25,
+`bvar` 24, ... 228 in all), was to be diagnosed first. Reviewed first:
+- **Fixpt**: `case` compares the key with each clause's data, which are
+  literals all of one kind (integers, characters, strings, symbols or
+  booleans; its checker refuses a mix); strings by contents.
+- **kayak**: kc's `l0-case-as-if` (C405) made each clause an `or` of
+  `(EQ key DATUM)`, `EQ` by the datum's kind (`=`, `char=?`, else
+  `eq?`), the datum spliced in as it was written.
+
+What it was: every one of those names came from two procedures, the
+expander's `read-sty-name` (`(case n ((expr) ...) ((bvar) ...) ...)`)
+and `mx-parser-forms-kind-form?` (`((region place effect type data
+...) #t)`). A symbol datum spliced in unquoted is an expression naming a
+variable: kc refused where no global had the name, and, where a local or
+global did, compared the key with that variable's value, silently. Not
+a gap but a miscompile; and its neighbour, a `case` on strings, compared
+by `eq?`, so a string made at run time never matched (`(0 0 0)` where
+Fixpt gives `(1 2 0)`).
+
+What changed (kc/l0.kfx): a symbol's or boolean's datum quoted, a
+string's compared by `string=?`. Tests (tests/kc/step6/, Fixpt's
+answers): `case-symbol.fx` (data that name a global, a local, keywords,
+a primitive and `nil`; a `case` of nine symbols, the expander's; one of
+booleans); `case-string.fx` (strings made at run time). Each failed on
+the old kc.
+
+The survey again (as C464, the generated Rust copied aside and back):
+11 items refused, were 13; `not yet` 46 times, was 264. Every remaining
+refused item has a `not yet` before its failure. Left: `char->string`
+11, `datum-list->vector` 7, `string-hash` 6, `f64?` 6,
+`symbol-name-hash` 4, `f64->string` 4, `char-whitespace?` 4,
+`char-numeric?` 3, `error` 1; then what the survey does not see (an
+`int` past a fixnum, the hashes' values, the expander's host).
+- **The full check**: all passed in 544.1 s; kc-steps 353 of 353, each
+  built again warm, no body run (8777 bodies in its cold passes, kc's
+  identity new); kc-objects 461, 0 differ; nextest 5502 passed.

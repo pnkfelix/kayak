@@ -1140,12 +1140,32 @@ pub mod kc_l0 {
                             Sexp::Chr(ch, f2, p2) => {
                                 str_lit("char=?")
                             }
+                            Sexp::Str(s, f2, p2) => {
+                                str_lit("string=?")
+                            }
                             _ => {
                                 let other = tagcase_;
                                 str_lit("eq?")
                             }
                         }
-                    }, f, p), kayak_rt::heap_cons(sym(key, f, p), kayak_rt::heap_cons(d, kayak_rt::nil()))), f, l, p)
+                    }, f, p), kayak_rt::heap_cons(sym(key, f, p), kayak_rt::heap_cons({
+                        let tagcase_ = d;
+                        match *tagcase_ {
+                            Sexp::Num(k, f2, p2) => {
+                                d
+                            }
+                            Sexp::Chr(ch, f2, p2) => {
+                                d
+                            }
+                            Sexp::Str(s, f2, p2) => {
+                                d
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                lst(kayak_rt::heap_cons(sym(str_lit("quote"), f, p), kayak_rt::heap_cons(d, kayak_rt::nil())), f, l, p)
+                            }
+                        }
+                    }, kayak_rt::nil()))), f, l, p)
                 }), items(car(c)))), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p), kayak_rt::heap_cons(l0_case_as_if(path, key, cdr(clauses), f, l, p), kayak_rt::nil())))), f, l, p)
             }
         }
