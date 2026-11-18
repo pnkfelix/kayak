@@ -1817,12 +1817,16 @@ OS thread, its state thread-local, `SCHED` locked, `Send` checked by
 rustc); nothing of it is on this list. kc's native side is, nearly all
 of it chosen in C448–C464:
 
-1. **A run's state in cells of the image, not per thread**
+1. ~~**A run's state in cells of the image, not per thread**
    (`kc/x64.kfx`, `.bss`, reached `%rip`-relative): `kc_args` (C464),
    `kc_prompts` (C458), `kc_run_base` (C460), `kc_gc` (C453),
    `kc_heap_next` (C448). Their place is the state block `%r15` holds
    (Fixpt's convention, kc's since C451: the stack's limit, fuel, `poll`,
-   the code's distance), one per run. Cheap; first.
+   the code's distance), one per run. Cheap; first.~~ Done (C466): the
+   state block's words from 664, past `LEAVE`, 152 words in all; the
+   entry's stack pointer too (it was the heap array's word 4). The image
+   keeps the globals' cells, which processes share, and its heap (in
+   process, the code bloblet's field), which is items 2 and 6.
 2. **One heap per run, and a collector that sees one stack**
    (`crates/kayak-kcrt-core/src/gc.rs`, C453): Cheney's, the world
    stopped, its roots its own stack from its pointer to the base; its
@@ -1885,12 +1889,13 @@ of it chosen in C448–C464:
 6. **In process, a heap per size, every run of the size given it again**
    (`kc/native.kfx`, `heaps`, C454): two runs of one size at once share
    it. A heap per run, or a pool.
-7. **`kayak:last-sealed/1`**, the code sealed last, the process's
+7. ~~**`kayak:last-sealed/1`**, the code sealed last, the process's
    (kayak-jit's `LAST_SEALED`, kc's since C456): kc seals an image, then
    asks where the last sealed code is, to free it later; two threads
    sealing at once may be told each other's, and kc then frees the other
    thread's code. `seal-code` to give the address, or the record per
-   thread. Cheap; first.
+   thread. Cheap; first.~~ Done (C466): the thread's own, as each
+   caller asks on the thread that sealed; tested from eight threads.
 8. **Code freed while it may run** (C456): kc frees a transformer's image
    when its cache drops it; kayak-rt checks the code is live at entry
    only, so a thread inside it could have it freed under it. §54's step 5

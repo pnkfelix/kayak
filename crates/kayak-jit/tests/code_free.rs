@@ -44,6 +44,7 @@ fn code_freed_makes_room_past_the_area() {
     // Each round's block the one the round before gave back.
     assert_eq!(area_use().0, top0);
     blocks_freed_are_joined_and_used_again();
+    last_sealed_is_each_threads_own();
 }
 
 /// In the same test as the one above: the area is the process's, and its
@@ -68,5 +69,25 @@ fn blocks_freed_are_joined_and_used_again() {
     assert!(!free(0));
     for c in [cs[0], cs[3], big] {
         assert!(free(c.entry()));
+    }
+}
+
+/// What a thread sealed last is its own (C466, TODO §55 item 7): threads
+/// sealing at once are each told their own code, never another's. In the
+/// same test as the others, for the area's sake.
+fn last_sealed_is_each_threads_own() {
+    let hs: Vec<_> = (0..8)
+        .map(|_| {
+            std::thread::spawn(|| {
+                for _ in 0..200 {
+                    let c = seal(layout::KIND_BLOBLET, &[], false, &add2(64));
+                    assert_eq!(last_sealed(), c.entry());
+                    assert!(free(c.entry()));
+                }
+            })
+        })
+        .collect();
+    for h in hs {
+        h.join().unwrap();
     }
 }

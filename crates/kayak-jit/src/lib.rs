@@ -140,7 +140,15 @@ pub mod state {
     /// kayak's own, past what either machine's convention declares: where
     /// a routine that ends the call goes back to the trampoline.
     pub const LEAVE: usize = 656;
-    pub const WORDS_IN_STATE: usize = 83;
+    /// kc's run's own words, past `LEAVE` (C466, kc/x64.kfx's
+    /// `x64-state-args` and the layout above it): its prompts, run base,
+    /// heap's next word, collector's block, entry's stack pointer, and its
+    /// arguments past the sixth; one per run, never the image's.
+    pub const KC_RUN: usize = 664;
+    pub const WORDS_IN_STATE: usize = 152;
+    /// kc's run's words fit: 3, the collector's 7, the entry's stack
+    /// pointer, and 58 arguments, from `KC_RUN`.
+    const _: () = assert!(KC_RUN + 8 * (3 + 7 + 1 + 58) <= 8 * WORDS_IN_STATE);
 }
 
 /// Whether this machine runs native code: arm64 macOS or x86_64 Linux, its
@@ -450,21 +458,22 @@ pub fn seal(kind: u8, fields: &[u64], fields_frozen: bool, suffix: &[u8]) -> Cod
         sys::put(code.suffix + 8 * i, u64::from_le_bytes(w));
     }
     sys::flush(code.entry(), suffix.len().max(4));
-    LAST_SEALED.set(code.entry());
+    LAST_SEALED.with(|l| l.set(code.entry()));
     code
 }
 
-/// Where the code `seal` sealed last runs: for a runtime to name what it
-/// placed there, for profilers (kayak-rt's `kayak:last-sealed/1`, C239).
-static LAST_SEALED: SealedAt = SealedAt(std::sync::atomic::AtomicUsize::new(0));
-struct SealedAt(std::sync::atomic::AtomicUsize);
-impl SealedAt {
-    fn set(&self, at: usize) {
-        self.0.store(at, std::sync::atomic::Ordering::Relaxed)
-    }
+std::thread_local! {
+    /// Where the code this thread's `seal` sealed last runs: for a runtime
+    /// to name what it placed there, for profilers (kayak-rt's
+    /// `kayak:last-sealed/1`, C239), and for kc to free it (C456). The
+    /// thread's own (C466, TODO §55 item 7): one the process shared let a
+    /// thread sealing just after another's seal give the first its code's
+    /// address, which kc would then free.
+    static LAST_SEALED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
+
 pub fn last_sealed() -> usize {
-    LAST_SEALED.0.load(std::sync::atomic::Ordering::Relaxed)
+    LAST_SEALED.with(|l| l.get())
 }
 
 impl Code {

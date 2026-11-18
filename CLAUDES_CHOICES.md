@@ -14051,3 +14051,48 @@ collector (`coopt-heap`), its pauses bounded and tested, its throughput
 not yet measured. §55 item 2 now says so, and that `coopt-heap`, a fork
 kayak may take, is where kc's shared heap starts; the cost the user asks
 about is a measurement still to make.
+
+## C466. A run's state in the state block, and what a thread sealed its own (2026-11-18)
+
+The user: "Yes continue" (TODO §55 items 1 and 7, after C465). Reviewed
+first:
+- **Fixpt**: its native convention keeps a run's state in the block
+  `%r15` (x24 on arm64) holds, one per native thread (kayak-jit's
+  `state`: the stack's limit, fuel, the trap, the arguments past the
+  registers, the code's distance, `poll`, ...), and its code no cells of
+  its own but the globals'.
+- **kayak**: kc's convention has had `%r15` since C451 (C452's runtime
+  table, the stack's limit, fuel, `poll`, the code's distance), and
+  kayak-jit's `LEAVE` (656) is a word of kayak's own past Fixpt's. In
+  process, kayak-jit's state is a thread's (`STATE`, thread-local);
+  built, kcrt's is the program's one. `kayak:last-sealed/1` (C239),
+  used by the cells engine for its perf map and by kc since C456 to free
+  an image, read a word the process shared.
+
+What changed:
+- **Item 1**: kc's run's words are the state block's, from 664, past
+  `LEAVE`: `kc_prompts` (664), `kc_run_base` (672), `kc_heap_next`
+  (680), the collector's block `kc_gc` (688, 7 words), the entry's
+  stack pointer for a failure (744; it was the heap array's word 4), and
+  the arguments past the sixth (752, 58 words). The block is 152 words,
+  kayak-jit's and kcrt's alike, each asserting at compile time that
+  they fit. The image keeps only the globals' cells, a program's
+  definitions, which FX-26's processes share. Each access is shorter
+  too: a store is `movq R, N(%r15)`, not a store through the code
+  area's writable view, and the collector's block `leaq 688(%r15)`.
+- **Item 7**: `last_sealed` is the thread's own (kayak-jit, a
+  thread-local): each thread is told the code it sealed last, as every
+  caller (kc, the cells engine) asks on the thread that sealed.
+  kayak-jit's `code_free` test seals from eight threads at once, 200
+  each, each told its own; with the process's word back, it fails.
+- **Not yet, and why**: a test of two threads running one kc image at
+  once. The heap is still the image's (in process, the code bloblet's
+  field, a heap array shared by size, §55 item 6), so two runs would
+  share it; that is §55's items 2 and 6.
+- **Tests**: kc's control and argument tests (many-args, its capture,
+  `whole.fx`, `marks.fx`), the 18 transformers, every way, before the
+  check.
+- **The full check**: all passed in 637.4 s; kc-steps 351 of 351, each
+  built again warm, no body run; kc-objects 457, 0 differ; nextest 5501
+  passed. kc-bench at 1000 procedures: `body` 300 ms, `fix-forward`
+  289, `add` 303, as C464's; the same bodies run.

@@ -233,51 +233,63 @@
       "The registers a call's arguments are given in, in order."
       (define x64-arg-registers (listof string acyclic) (list "%rdi" "%rsi" "%rdx" "%rcx" "%r8" "%r9"))
 
-      "Arguments past the sixth (C464): in `kc_args`, a run of words
-       of the image's, the seventh first, which the callee copies into its
-       frame on entry, after its registers' (`x64-loaded-args`). Nothing
-       between the caller's stores and that copy collects (the entry's
-       checks fail or give fuel, every register kept), so the words are no
-       roots; nor does a tail call need room on a caller's stack. Larceny's
-       convention, Fixpt's register code's, passes them as a list instead,
-       a `cons` each at each call; kc's convention is its own. At most
-       `x64-most-args`."
-      (define x64-most-args i64 64)
+      "A run's own words (C466, TODO §55 item 1; K8): in the state block
+       `%r15` holds, one per run (in process, kayak-jit's, one per thread;
+       built, kcrt's one), past kayak's `leave` (656), never in cells of
+       the image, which every thread running it would share. By offset:
+         664  `kc_prompts`, the innermost prompt's or mark's record (C458)
+         672  `kc_run_base`, the run's frame, where `cwcc` ends (C460)
+         680  `kc_heap_next`, the heap's next word between calls (C448)
+         688  `kc_gc`, the collector's block, 7 words (C453; kcrt-core's
+              `gc.rs`): the space, its end, the stack's base, the
+              globals' cells' run, the next word, a routine's stack
+         744  the entry's stack pointer, for a failure (C452)
+         752  arguments past the sixth, 58 words (C464)
+       152 words in all (kayak-jit's `state::WORDS_IN_STATE`, kcrt's
+       `STATE_WORDS`). The globals' cells stay the image's: a program's
+       definitions, made once, what FX-26's processes share.
 
-      (define-rec
-        (x64-zero-quads (subr kfx (i64 (listof string acyclic)) string)
-          (lambda (n acc) (if (i64<= n 0) (string-list-append acc) (x64-zero-quads (i64- n 1) (cons "    .quad 0\n" acc))))))
+       Arguments past the sixth (C464): the seventh first, which the callee
+       copies into its frame on entry, after its registers'
+       (`x64-loaded-args`). Nothing between the caller's stores and that
+       copy collects (the entry's checks fail or give fuel, every register
+       kept), so the words are no roots; nor does a tail call need room on
+       a caller's stack. Larceny's convention, Fixpt's register code's,
+       passes them as a list instead, a `cons` each at each call; kc's
+       convention is its own. At most `x64-most-args`."
+      (define x64-most-args i64 64)
+      (define x64-state-args i64 752)
 
       (define-rec
         (x64-spilled-args (subr kfx (x64-code i64 i64 i64) x64-code)
           (lambda (c si k n)
             "Arguments `k` (from 6) to `n` - 1, from the slots from `si`, stored
-             in `kc_args` through the writable view, its address in `%rcx`."
+             in the state block's words from `x64-state-args`."
             (if (i64>= k n)
                 c
                 (x64-spilled-args
                   (x64-emit (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si k)) ", %rax")))
-                            (string-append "movq %rax, " (string-append (i64->string (i64- (i64* 8 (i64- k 6)) 4)) "(%rcx)")))
+                            (string-append "movq %rax, " (string-append (i64->string (i64+ x64-state-args (i64* 8 (i64- k 6)))) "(%r15)")))
                   si (i64+ k 1) n)))))
 
       (define x64-args-passed (subr kfx (x64-code i64 i64) x64-code)
         (lambda (c si n)
           "The `n` arguments in the slots from `si` where the callee takes them:
-           the first six in registers, the rest in `kc_args`."
+           the first six in registers, the rest in the state block's words."
           (x64-moved-args
             (if (i64> n 6)
-                (x64-spilled-args (x64-emit (x64-emit c "leaq kc_args(%rip), %rcx") "subq 208(%r15), %rcx") si 6 n)
+                (x64-spilled-args c si 6 n)
                 c)
             x64-arg-registers si n)))
 
       (define-rec
         (x64-loaded-args (subr kfx (x64-code i64 i64) x64-code)
           (lambda (c k n)
-            "Parameters `k` (from 6) to `n` - 1, from `kc_args` into their slots."
+            "Parameters `k` (from 6) to `n` - 1, from the state block into their slots."
             (if (i64>= k n)
                 c
                 (x64-loaded-args
-                  (x64-emit (x64-emit c (string-append "movq kc_args+" (string-append (i64->string (i64* 8 (i64- k 6))) "(%rip), %rax")))
+                  (x64-emit (x64-emit c (string-append "movq " (string-append (i64->string (i64+ x64-state-args (i64* 8 (i64- k 6)))) "(%r15), %rax")))
                             (string-append "movq %rax, " (x64-slot k)))
                   (i64+ k 1) n)))))
 
@@ -680,17 +692,17 @@
                    (c (x64-emit c (string-append "movq %rax, " (x64-slot (i64+ si 4)))))
                    (c (x64-emit-expr c (fourth xs) (i64+ si 6) env))
                    (c (x64-emit c (string-append "movq %rax, " (x64-slot (i64+ si 5)))))
-                   (c (x64-emit c "movq kc_prompts(%rip), %rdx"))
+                   (c (x64-emit c "movq 664(%r15), %rdx"))
                    (c (x64-emit c (string-append "movq %rdx, " (x64-slot si))))
                    (c (x64-emit c (string-append "movq %rsp, " (x64-slot (i64+ si 2)))))
                    (c (x64-emit c (string-append "leaq " (string-append handler "(%rip), %rdx"))))
                    (c (x64-emit c (string-append "movq %rdx, " (x64-slot (i64+ si 3)))))
                    (c (x64-emit c (string-append "leaq " (string-append (x64-slot si) ", %rdx"))))
-                   (c (x64-emit-lines c (x64-cell-stored "%rdx" "kc_prompts")))
+                   (c (x64-emit-lines c "    movq %rdx, 664(%r15)\n"))
                    (c (x64-emit c (string-append "movq " (string-append (x64-slot (i64+ si 5)) ", %r10"))))
                    (c (x64-emit c "call *-28(%r10)"))
                    (c (x64-emit c (string-append "movq " (string-append (x64-slot si) ", %rdx"))))
-                   (c (x64-emit-lines c (x64-cell-stored "%rdx" "kc_prompts")))
+                   (c (x64-emit-lines c "    movq %rdx, 664(%r15)\n"))
                    (c (x64-emit c (string-append "jmp " past)))
                    (c (x64-emit-label c handler))
                    (c (x64-emit c "movq %rax, %rdi"))
@@ -882,10 +894,10 @@
                   ((string=? n "string->symbol") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_intern"))
                   ;; A whole continuation's capture (C460): to the run's frame.
                   ((string=? n "cwcc")
-                   (x64-emit (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq kc_run_base(%rip), %rsi") "movl $32, %edx") "call kc_capture"))
+                   (x64-emit (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq 672(%r15), %rsi") "movl $32, %edx") "call kc_capture"))
                   ;; A key's marks, innermost first (C460).
                   ((string=? n "current-marks")
-                   (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq kc_prompts(%rip), %rsi") "call kc_current_marks"))
+                   (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq 664(%r15), %rsi") "call kc_current_marks"))
                   ;; Lists and numbers (C462): a list reversed, a number's
                   ;; digits, made in the heap by kcrt (`x64-heap-routine`).
                   ((string=? n "reverse") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_reverse"))
@@ -1129,8 +1141,8 @@
        calls any routine; this puts them in stack words of its own, a 0 for
        each not given, so that the collector moves what they hold, puts the
        heap's next free word and its stack pointer in the block, and calls
-       kcrt's routine `rt` on those words and the block (the writable
-       address of `kc_gc`), which takes its room by kcrt-core's `gc::words`,
+       kcrt's routine `rt` on those words and the block (`kc_gc`, the
+       state block's words from 688, C466), which takes its room by kcrt-core's `gc::words`,
        collecting if need be, and reads its arguments after; the heap the
        block has then made `%r12` and `%r13`."
       (define x64-heap-routine (subr kfx (string string i64) string)
@@ -1139,12 +1151,13 @@
             (list "    .text\n    .globl " name "\n" name ":\n    subq $24, %rsp\n    movq %rdi, 0(%rsp)\n"
                   (if (i64< n 2) "    movq $0, 8(%rsp)\n" "    movq %rsi, 8(%rsp)\n")
                   (if (i64< n 3) "    movq $0, 16(%rsp)\n" "    movq %rdx, 16(%rsp)\n")
-                  "    leaq kc_gc(%rip), %rsi\n    subq 208(%r15), %rsi\n    subq $4, %rsi\n"
+                  "    leaq 688(%r15), %rsi\n"
                   "    movq %r12, 40(%rsi)\n    movq %rsp, 48(%rsi)\n    movq %rsp, %rdi\n"
-                  "    call " rt "\n    movq kc_gc+40(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    addq $24, %rsp\n    ret\n"))))
+                  "    call " rt "\n    movq 728(%r15), %r12\n    movq 696(%r15), %r13\n    addq $24, %rsp\n    ret\n"))))
 
       "What `kc_entry`'s object gives the runtime besides (C448): the heap's
-       next free word, kept there when `kc_entry` returns (`kc_heap_next`);
+       next free word, kept there when `kc_entry` returns (`kc_heap_next`,
+       the state block's word 680, C466);
        `kc_call2`, which calls a procedure of kc's code on two arguments, the
        heap in `%r12` and `%r13` as kc's code has it, and keeps the heap's
        next word after; and `kc_apply_address`, which gives `%phase1-apply`'s
@@ -1152,9 +1165,10 @@
        `--apply`), else 0: made relative to the code, so that an image needs
        no absolute address (C454; it was a word, `kc_apply_entry`).
 
-       And the collector's (C453): `kc_gc`, its block, as kcrt-core's
-       `gc.rs` reads it (the space's first word and its end, the stack's
-       base, the globals' cells' run, each address the writable view's),
+       And the collector's (C453): `kc_gc`, its block, the state block's
+       words from 688 (C466), as kcrt-core's `gc.rs` reads it (the space's
+       first word and its end, the stack's base, the globals' cells' run,
+       the cells' addresses the writable view's),
        which `kc_gc_init` fills at `kc_entry` (its stack's base the
        entry's, past its saved registers) and `kc_call2` gives its own
        base; `kc_gc_call`, which kc's code calls where an allocation does
@@ -1165,8 +1179,8 @@
        (C455, `x64-heap-routine`), whose wrappers are here, so that a
        program built and one in process call kcrt the same way.
 
-       And delimited control's (C458): `kc_prompts`, the innermost prompt's
-       record (`x64-emit-prompt`), none at `kc_entry` (`kc_gc_init`); and
+       And delimited control's (C458): `kc_prompts`, the state block's
+       word 664 (C466), the innermost prompt's record (`x64-emit-prompt`), none at `kc_entry` (`kc_gc_init`); and
        `kc_abort`, given the tag in `%rdi` and the value in `%rsi`, which
        finds that tag's innermost prompt by `eq?` (a tag is a box, Fixpt's),
        takes it and those inside it off, makes the stack pointer the
@@ -1220,46 +1234,40 @@
       (define x64-entry-support (subr kfx (bool) string)
         (lambda (applies)
           (string-list-append
-            (list "    .bss\n    .p2align 3\n    .globl kc_heap_next\nkc_heap_next:\n    .quad 0\n"
-                  "kc_gc:\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n    .quad 0\n"
-                  "    .globl kc_prompts\nkc_prompts:\n    .quad 0\n"
-                  "    .globl kc_run_base\nkc_run_base:\n    .quad 0\n"
-                  ;; Arguments past the sixth (C464, `x64-args-passed`).
-                  "    .globl kc_args\nkc_args:\n" (x64-zero-quads (i64- x64-most-args 6) nil)
-                  "    .text\nkc_gc_init:\n    leaq kc_prompts(%rip), %rax\n    subq 208(%r15), %rax\n    movq $0, -4(%rax)\n    leaq 8(%rsp), %rax\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"
-                  "    movq %r12, -4(%rcx)\n    movq %r13, 4(%rcx)\n    movq %rax, 12(%rcx)\n"
-                  "    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 20(%rcx)\n"
-                  "    leaq kc_cells_hi(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 28(%rcx)\n    ret\n"
-                  "    .globl kc_gc_call\nkc_gc_call:\n    leaq 8(%rsp), %rsi\n    leaq kc_gc(%rip), %rdx\n    subq 208(%r15), %rdx\n    subq $4, %rdx\n"
+            (list "    .text\nkc_gc_init:\n    movq $0, 664(%r15)\n    leaq 8(%rsp), %rax\n"
+                  "    movq %r12, 688(%r15)\n    movq %r13, 696(%r15)\n    movq %rax, 704(%r15)\n"
+                  "    leaq kc_cells_lo(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 712(%r15)\n"
+                  "    leaq kc_cells_hi(%rip), %rax\n    subq 208(%r15), %rax\n    subq $4, %rax\n    movq %rax, 720(%r15)\n    ret\n"
+                  "    .globl kc_gc_call\nkc_gc_call:\n    leaq 8(%rsp), %rsi\n    leaq 688(%r15), %rdx\n"
                   "    subq $8, %rsp\n    call kc_collect\n    addq $8, %rsp\n    movq %rax, %r12\n    movq %rdx, %r13\n    ret\n"
-                  "    .text\n    .globl kc_abort\nkc_abort:\n    movq kc_prompts(%rip), %rax\n"
+                  "    .text\n    .globl kc_abort\nkc_abort:\n    movq 664(%r15), %rax\n"
                   ".Lkc_abort_look:\n    testq %rax, %rax\n    je .Lkc_abort_none\n    cmpq %rdi, 8(%rax)\n    je .Lkc_abort_found\n"
                   "    movq 0(%rax), %rax\n    jmp .Lkc_abort_look\n"
-                  ".Lkc_abort_found:\n    movq 0(%rax), %rdx\n" (x64-cell-stored "%rdx" "kc_prompts")
+                  ".Lkc_abort_found:\n    movq 0(%rax), %rdx\n" "    movq %rdx, 664(%r15)\n"
                   "    movq 24(%rax), %rcx\n    movq 16(%rax), %rsp\n    movq %rsi, %rax\n    jmp *%rcx\n"
                   ".Lkc_abort_none:\n    subq $8, %rsp\n    movl $10, %edi\n    call kc_fail\n"
                   "    .text\n    .globl kc_capture\nkc_capture:\n    subq $40, %rsp\n    movq %rdi, 0(%rsp)\n    movq %rsi, 8(%rsp)\n"
-                  "    movq kc_prompts(%rip), %rax\n    movq %rax, 16(%rsp)\n    leaq kc_resume(%rip), %rax\n    movq %rax, 24(%rsp)\n    movq %rdx, 32(%rsp)\n"
-                  "    leaq kc_gc(%rip), %rsi\n    subq 208(%r15), %rsi\n    subq $4, %rsi\n    movq %r12, 40(%rsi)\n    movq %rsp, 48(%rsi)\n    movq %rsp, %rdi\n"
-                  "    call kcrt_capture\n    movq kc_gc+40(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n"
+                  "    movq 664(%r15), %rax\n    movq %rax, 16(%rsp)\n    leaq kc_resume(%rip), %rax\n    movq %rax, 24(%rsp)\n    movq %rdx, 32(%rsp)\n"
+                  "    leaq 688(%r15), %rsi\n    movq %r12, 40(%rsi)\n    movq %rsp, 48(%rsi)\n    movq %rsp, %rdi\n"
+                  "    call kcrt_capture\n    movq 728(%r15), %r12\n    movq 696(%r15), %r13\n"
                   "    movq 0(%rsp), %r10\n    movq %rax, %rdi\n    addq $40, %rsp\n    jmp *-28(%r10)\n"
                   "    .p2align 3\n    .globl kc_resume\nkc_resume:\n    movq -36(%r10), %r11\n    movq -20(%r11), %rax\n    movq -36(%r11), %rcx\n    andq $32, %rcx\n"
                   "    jne .Lkc_resume_whole\n    movq %rsp, %rcx\n    jmp .Lkc_resume_at\n"
-                  ".Lkc_resume_whole:\n    movq kc_run_base(%rip), %rcx\n    subq $8, %rcx\n"
+                  ".Lkc_resume_whole:\n    movq 672(%r15), %rcx\n    subq $8, %rcx\n"
                   ".Lkc_resume_at:\n    subq %rax, %rcx\n"
                   "    cmpq 16(%r15), %rcx\n    jb .Lkc_resume_deep\n    movq %rdi, -8(%rcx)\n    movq %rsp, %rdx\n    cmpq %rdx, %rcx\n    jae .Lkc_resume_low\n    movq %rcx, %rdx\n"
                   ".Lkc_resume_low:\n    leaq -64(%rdx), %rsp\n    andq $-16, %rsp\n    movq %rcx, 8(%rsp)\n"
-                  "    movq %r11, %rdi\n    movq %rcx, %rsi\n    movq kc_prompts(%rip), %rdx\n    call kcrt_resume_copy\n    andq $-2, %rax\n    movq %rax, %rdx\n"
-                  (x64-cell-stored "%rdx" "kc_prompts")
+                  "    movq %r11, %rdi\n    movq %rcx, %rsi\n    movq 664(%r15), %rdx\n    call kcrt_resume_copy\n    andq $-2, %rax\n    movq %rax, %rdx\n"
+                  "    movq %rdx, 664(%r15)\n"
                   "    movq 8(%rsp), %rcx\n    movq %rcx, %rsp\n    movq -8(%rcx), %rax\n    ret\n"
                   ".Lkc_resume_deep:\n    subq $8, %rsp\n    movl $8, %edi\n    call kc_fail\n"
                   "    .text\n    .globl kc_with_mark\nkc_with_mark:\n    leaq kc_mark_ret(%rip), %rax\n    cmpq %rax, 0(%rsp)\n    jne .Lkc_mark_push\n"
                   "    cmpq %rdi, 16(%rsp)\n    jne .Lkc_mark_push\n    movq %rsi, 32(%rsp)\n    movq %rdx, %r10\n    jmp *-28(%r10)\n"
-                  ".Lkc_mark_push:\n    subq $40, %rsp\n    movq kc_prompts(%rip), %rcx\n    movq %rcx, 0(%rsp)\n    movq %rdi, 8(%rsp)\n    movq %rsp, 16(%rsp)\n"
-                  "    movq %rsi, 24(%rsp)\n    movq $0, 32(%rsp)\n" (x64-cell-stored "%rsp" "kc_prompts")
+                  ".Lkc_mark_push:\n    subq $40, %rsp\n    movq 664(%r15), %rcx\n    movq %rcx, 0(%rsp)\n    movq %rdi, 8(%rsp)\n    movq %rsp, 16(%rsp)\n"
+                  "    movq %rsi, 24(%rsp)\n    movq $0, 32(%rsp)\n" "    movq %rsp, 664(%r15)\n"
                   "    leaq kc_mark_ret(%rip), %rax\n    pushq %rax\n    movq %rdx, %r10\n    jmp *-28(%r10)\n"
-                  "kc_mark_ret:\n    movq 0(%rsp), %rdx\n" (x64-cell-stored "%rdx" "kc_prompts") "    addq $40, %rsp\n    ret\n"
-                  "    .globl kc_first_mark\nkc_first_mark:\n    movq kc_prompts(%rip), %rax\n"
+                  "kc_mark_ret:\n    movq 0(%rsp), %rdx\n" "    movq %rdx, 664(%r15)\n" "    addq $40, %rsp\n    ret\n"
+                  "    .globl kc_first_mark\nkc_first_mark:\n    movq 664(%r15), %rax\n"
                   ".Lkc_fm_look:\n    testq %rax, %rax\n    je .Lkc_fm_none\n    cmpq %rdi, 8(%rax)\n    je .Lkc_fm_found\n    movq 0(%rax), %rax\n    jmp .Lkc_fm_look\n"
                   ".Lkc_fm_found:\n    movq 24(%rax), %rax\n    ret\n.Lkc_fm_none:\n    movq %rsi, %rax\n    ret\n"
                   (x64-heap-routine "kc_current_marks" "kcrt_current_marks" 2)
@@ -1268,10 +1276,10 @@
                   (if applies (string-append "    leaq " (string-append (x64-proc-symbol "%phase1-apply") "(%rip), %rax\n")) "    movl $0, %eax\n")
                   "    ret\n"
                   "    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"
-                  "    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n    movq %rsp, 12(%rcx)\n"
-                  (x64-cell-stored "%rsp" "kc_run_base")
+                  "    movq 680(%r15), %r12\n    movq 696(%r15), %r13\n    movq %rsp, 704(%r15)\n"
+                  "    movq %rsp, 672(%r15)\n"
                   "    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"
-                  "    call *%rax\n" (x64-cell-stored "%r12" "kc_heap_next") "    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"
+                  "    call *%rax\n" "    movq %r12, 680(%r15)\n" "    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"
                   (x64-heap-routine "kc_string_append" "kcrt_string_append" 2)
                   (x64-heap-routine "kc_substring" "kcrt_substring" 3)
                   (x64-heap-routine "kc_append" "kcrt_append" 2)
@@ -1281,10 +1289,10 @@
                   "    .text\n    .globl kc_apply_run\nkc_apply_run:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r15\n"
                   "    call kc_apply_address\n    testq %rax, %rax\n    jne .Lkc_apply_have\n    movl $9, %edi\n    call kc_fail\n"
                   ".Lkc_apply_have:\n    subq $16, %rsp\n    movq %rax, 0(%rsp)\n    movq $0, 8(%rsp)\n"
-                  "    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"
-                  "    leaq 16(%rsp), %rax\n    movq %rax, 12(%rcx)\n"
+                  "    movq 680(%r15), %r12\n    movq 696(%r15), %r13\n"
+                  "    leaq 16(%rsp), %rax\n    movq %rax, 704(%r15)\n"
                   "    movl $0, %edi\n    call kc_given\n    movq %rax, 8(%rsp)\n    movl $8, %edi\n    call kc_given\n    movq %rax, %rdx\n"
-                  (x64-cell-stored "%r12" "kc_heap_next")
+                  "    movq %r12, 680(%r15)\n"
                   "    movq 8(%rsp), %rsi\n    movq 0(%rsp), %rdi\n    movl $0, %ecx\n    movq %r15, %r8\n"
                   "    call kc_call2\n    movq %rax, %rdi\n    call kc_show\n    addq $16, %rsp\n    popq %r12\n    popq %r13\n    popq %r15\n    ret\n")))))
 
@@ -1356,12 +1364,12 @@
         (string-list-append
           (list "    .text\nkc_native_entry:\n    pushq %rbp\n    leaq -4(%rdi), %rax\n    movq %rax, 0(%rax)\n"
                 "    leaq kc_native_entry(%rip), %rcx\n    movq %rcx, 8(%rax)\n    movq 24(%rax), %rsi\n    shlq $3, %rsi\n"
-                "    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %rsp, 32(%rax)\n    pushq %rdi\n    pushq %rsi\n    call kc_gc_reset\n"
+                "    addq %rax, %rsi\n    leaq 128(%rax), %rdi\n    movq %rsp, 744(%r15)\n    pushq %rdi\n    pushq %rsi\n    call kc_gc_reset\n"
                 "    popq %rsi\n    popq %rdi\n    movq %r15, %rdx\n    call kc_entry\n"
                 "    movq kc_native_entry-16(%rip), %rcx\n    cmpq $0, 36(%rcx)\n    je .Lkc_native_done\n"
                 "    movq %r15, %rdi\n    call kc_apply_run\n"
                 ".Lkc_native_done:\n    movl $0, %eax\n    popq %rbp\n    ret\n"
-                "kc_failed:\n    movq kc_native_entry-16(%rip), %rcx\n    movq 28(%rcx), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"
+                "kc_failed:\n    movq 744(%r15), %rsp\n    movl $8, %eax\n    popq %rbp\n    ret\n"
                 (x64-routine-stubs x64-services 0 nil)
                 "    .data\n    .p2align 3\nkc_routines:\n" (x64-quads addrs nil) "    .text\n"))))
 
@@ -1388,9 +1396,9 @@
                (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") (string-append (x64-part x 2) (x64-part x 3)) "")) kinds its)
                 (append (list "    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"
                               "    call kc_gc_init\n    subq $" (i64->string frame) ", %rsp\n" (x64-frame-zeroed frame 0 nil)
-                              (x64-cell-stored "%rsp" "kc_run_base"))
+                              "    movq %rsp, 672(%r15)\n")
                  (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 2))) kinds its)
-                  (append (list (x64-cell-stored "%r12" "kc_heap_next") "    addq $" (i64->string frame) ", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n")
+                  (append (list "    movq %r12, 680(%r15)\n" "    addq $" (i64->string frame) ", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n")
                    (append (map2 (lambda ((k string) (x sexp)) (if (string=? k "proc") "" (x64-part x 3))) kinds its)
                            (list (x64-entry-support (x64-applies? kinds names)) "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))))
 
@@ -1413,9 +1421,9 @@
              (append (map2 (lambda ((k string) (n string)) (if (string=? k "value") (x64-cell n) "")) kinds names)
               (append (list "kc_cells_hi:\n    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"
                             "    call kc_gc_init\n    subq $" (i64->string frame) ", %rsp\n" (x64-frame-zeroed frame 0 nil)
-                            (x64-cell-stored "%rsp" "kc_run_base"))
+                            "    movq %rsp, 672(%r15)\n")
                (append (map (lambda ((x sexp)) (x64-part x 2)) its)
-                (append (list (x64-cell-stored "%r12" "kc_heap_next") "    addq $" (i64->string frame) ", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n")
+                (append (list "    movq %r12, 680(%r15)\n" "    addq $" (i64->string frame) ", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n")
                  (append (map (lambda ((x sexp)) (x64-part x 3)) its)
                          (list (x64-entry-support (x64-applies? kinds names)) "    .section .note.GNU-stack,\"\",@progbits\n")))))))))))
 

@@ -25,7 +25,12 @@ const HEAP_WORDS: usize = 1 << 23;
 /// The state's words, and its fields kc's code reads (Fixpt's native
 /// convention's `state`, kayak-jit's `state::…`): the stack's limit, the
 /// fuel, the code distance, the fuel's reserve and the `poll` routine.
-const STATE_WORDS: usize = 83;
+/// Fixpt's convention's words, kayak's `leave`, and kc's run's own past
+/// them (C466, kc/x64.kfx's layout; kayak-jit's `state::WORDS_IN_STATE`).
+const STATE_WORDS: usize = 152;
+/// kc's run's words from 664 (3, the collector's 7, the entry's stack
+/// pointer, 58 arguments) fit.
+const _: () = assert!(664 + 8 * (3 + 7 + 1 + 58) <= 8 * STATE_WORDS);
 const STATE_STACK_LIMIT: usize = 16;
 const STATE_FUEL: usize = 24;
 const STATE_DELTA: usize = 208;

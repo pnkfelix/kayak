@@ -26,7 +26,6 @@ use super::*;
 // 0  the array's own address    (the code's, at entry)
 // 1  the image's address        (the code's, at entry)
 // 3  the array's length         (KFX's)
-// 4  the entry's stack pointer  (the code's, for a failure)
 // 5  1 for a transformer's run  (KFX's, C454)
 // 16 on   the heap
 
