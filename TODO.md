@@ -1837,6 +1837,38 @@ over its 1664 definitions, 335 of them refused:
   C470), and the expander's host: its asker, the bridge's data, its files
   read.
 
+- **kc atop kc: the survey** (C477; the user, after C476, asked for kc's
+  code on a collected heap, then "Survey first, then decide"; recorded at
+  their word, not chosen): kc's own program, its unit's 26 files made one
+  (32,723 lines), its syscalls let declare. kc's checker takes it whole
+  (48 s); kc's code generator refuses 355 items, `not yet` 4956 times, of
+  107 kinds:
+  - **`i64`** (3222): KFX's names (`i64->string` 1843,
+    `string-length-i64` 481, `string-ref-i64` 301, `char->i64`,
+    `i64-and`, `-shl`, `-shr`, `-xor`, `fnv-string`), and 17 literals
+    past a fixnum (FNV's): kc's `i64` a fixnum (61 bits) where kc's
+    hashes wrap at 64; a 64-bit integer in kc's native code, boxed or not,
+    the new mechanism.
+  - **Modules' `define-rec`s** (647, the largest names `place-of` 224,
+    `poly-type?` 114, `expressions..nlist-size` 41): kc flattens a
+    module's `define`s by renaming (C425), not its `define-rec`s, so the
+    calls renamed find nothing.
+  - **Products by field name** (543): `(extract d rev)`; the field's
+    place the checker's type's, which kc's lowering has not.
+  - **Strings and characters** (264): `list->string`, `string->list`,
+    `char-downcase`, `has-char?`.
+  - **The system** (170): files, processes, `args`, output, `exit`,
+    `define-syscall`, the code area (`seal-code`, `kc-routine`).
+  - **Bytes** (99): bytevectors, flat arrays, `make-bloblet`,
+    `utf8->string`.
+  - **`attempt`** (11): a failure caught as a value (the database's
+    refusals); kc's native code's failures end the run.
+  Not seen: whether the native kc answers as kfx's Rust does; its heap
+  (kcrt's Cheney copies all that lives, kc's being large); the bootstrap
+  to a fixed point. The other way weighed (C477): a collector in
+  kayak-rt, conservative and not moving (every value a `&'static`, no
+  stack maps), 4 to 6 steps, its errors use-after-free a stress mode
+  finds; for every KFX program built to Rust, not toward K8's heap.
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
   edit's build at 1000 procedures 154 MB, kept for the run (kayak-rt has
   no collector), half its time the kernel's page faults. Left, largest

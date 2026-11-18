@@ -14559,3 +14559,40 @@ characters (36 MB left), and the texts read more than once.
 - **The full check**: all passed in 287.6 s (its third run: the first's
   corpus wanted its Rust blessed again, the second's lang items the new
   emitter call); kc-steps 362 of 362, warm; nextest 5596; selfhost 151 s.
+
+## C477. kc atop kc: the survey (2026-11-18)
+
+The user: "Let's tackle §54: kc's code on a collected heap"; of three
+routes (kc compiling kc, natively on kcrt's collector; a collector for
+kayak-rt; the survey first), "Survey first, then decide"; on its result,
+"It sounds like a rabbit-hole. How hard is adding GC to kayak-rt?"; then,
+"Recording the survey of kc atop kc is a fine idea". So recorded; no
+route chosen. Reviewed first: C457's survey of the expander (its way,
+kept: a build of kc whose `not yet` says its words and goes on, an item's
+failure caught, the generated Rust copied aside and back).
+
+How: kc's unit's files, one after another (32,723 lines; `kc/kc.unit`),
+beside a link to `fx26/` for the expander's load. kc's checker allows
+syscalls' declarations only in a runtime's own program (a `--syscalls`
+unit, kfx's `check-program-as`), which a file cannot say: the survey's
+build answered yes (`syscalls-allowed?`). kc's checker takes the program
+whole, in 48 s (a first run, before, 2 min 39 s, most of it the kernel's
+on memory). kc's code generator refuses 355 items; `not yet` 4956 times,
+of 107 kinds: `i64` 3222 (KFX's names, and literals past a fixnum: kc's
+`i64` a fixnum where its hashes wrap at 64 bits), modules' `define-rec`s
+647 (C425's flattening renames `define`s alone), products by field name
+543, strings and characters 264, the system 170, bytes 99, `attempt` 11.
+The kinds, sized, are TODO §54's "kc atop kc".
+
+Weighed beside it, as asked: a collector in kayak-rt. Its values are
+`&'static` references into arenas of each type and each thread, strings
+leaked chunks, passed through locals, closures, constants and kayak-rt's
+own maps; no stack maps. So no precise or moving collector; a
+conservative mark and sweep, not moving (Boehm's design), in kayak-sys
+(`unsafe`, which kayak-rt has none of): a map from address to block,
+roots the threads' stacks and registers and kayak-rt's statics and
+thread locals, cells used again, the threads stopped; a stress mode
+collecting at each allocation. Some 4 to 6 steps; it serves every KFX
+program built to Rust (kfx, kc, the engine, tier 1; `kc serve`, which
+grows without bound now), and is no road to K8's incremental, shared
+heap.
