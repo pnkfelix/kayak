@@ -147,7 +147,45 @@ def cutoff():
                 break
             if w is not None and got != w:
                 wrong.append("cutoff: %s, edit %s %s: ran %s, not %s" % (kind, args[0], args[1], got, w))
+    # A load (C471): what a program loads an input too, its forms spliced in
+    # as the program's; an edit of the loaded file, the program's own text as
+    # it was, runs what an edit of one item does. A file of no parameters'
+    # value; a file of a place's procedure (its maker one item, C471).
+    for kind, prog, name, loaded, edits in LOADS:
+        if os.path.exists(db):
+            os.remove(db)
+        open(p, "w").write(prog)
+        for k, w in [(0, None), (0, []), (1, one)]:
+            open(os.path.join(WORK, name), "w").write(loaded % edits[k])
+            r = run([KC, "--db", db, "--stats", "--asm", p, s])
+            got = bodies_ran(r.stderr)
+            if r.returncode != 0:
+                wrong.append("cutoff: %s: kc --asm: %s" % (kind, r.stderr.strip()[-300:]))
+                break
+            if w is not None and got != w:
+                wrong.append("cutoff: %s, edit %s: ran %s, not %s" % (kind, edits[k], got, w))
     return wrong
+
+
+# Each: the program, the file it loads (written beside it), that file's
+# text with a slot, and the slot's text before and after the edit.
+LOADS = [
+    ("a loaded file's value", """(define m (load-module "cutoff-loaded.fx"))
+(define dbl (subr pure (int) int) (lambda (n) (* n 2)))
+(+ (with m (get)) (dbl 3))
+""", "cutoff-loaded.fx", """(define v int %s)
+(define get (subr pure () int) (lambda () (* v 2)))
+""", ["5", "6"]),
+    ("a file of a place's procedure", """(define f (subr (maxeff (alloc @w) (read @globals) spin) (int) int)
+  (lambda (a) (letrena q (let ((x ((proj (load-module "cutoff-place.fx") q)))) (with x (bump a))))))
+(define dbl (subr pure (int) int) (lambda (n) (* n 2)))
+(+ (f 3) (dbl 3))
+""", "cutoff-place.fx", """(module-parameters ((p place)))
+(define n (ref int p) (new 0))
+(define bump (subr (maxeff (read p) (write p)) (int) int)
+  (lambda (k) (begin (set n %s) (get n))))
+""", ["(+ k (get n))", "(+ (get n) k)"]),
+]
 
 
 # Each: its program, a slot for the kind's own text (`a`, then `b`) and one
@@ -309,6 +347,17 @@ def convention():
     return wrong
 
 
+def db_of(p, shared):
+    """The database a program is built with: the sweep's, but a program's own
+    for one that loads Fixpt's expander (C471): its 1583 procedures' code
+    made the shared database's payload 43 MB, which kc reads and writes
+    whole at every run (TODO §55 item 12), each run of every program after
+    it 0.9 s, not 0.01 s."""
+    if "expander-kc.fx" in open(p, encoding="utf-8").read():
+        return os.path.join(ROOT, "target", "kc-steps--%s.db" % os.path.relpath(p, TESTS).replace("/", "--"))
+    return shared
+
+
 def main():
     if sys.argv[1:]:
         sys.exit(__doc__)
@@ -317,7 +366,9 @@ def main():
     fx = fixpt()
     wrong, ran, in_process, collected = [], 0, 0, 0
     ps = programs()
+    shared = db
     for p in ps:
+        db = db_of(p, shared)
         name = os.path.relpath(p, TESTS)
         want = stated(p)
         if fx:
@@ -363,6 +414,7 @@ def main():
     # Warm (C463): each built again, nothing changed: no query body runs.
     warm = 0
     for p in ps:
+        db = db_of(p, shared)
         name = os.path.relpath(p, TESTS)
         exe = os.path.join(WORK, name.replace("/", "--"))
         r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
@@ -371,6 +423,7 @@ def main():
             warm += 1
         elif r.returncode == 0:
             wrong.append("%s: built again, nothing changed, ran %s" % (name, " ".join(got or ["(no stats)"])))
+    db = shared
     kfx = [p for p in ps if p.endswith(".kfx")]
     crate = os.path.join(ROOT, "target", "kc-rust")
     os.makedirs(os.path.join(crate, "src"), exist_ok=True)

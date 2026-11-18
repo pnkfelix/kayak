@@ -14229,3 +14229,78 @@ GNU `as`. What step 2 still holds: a file of a place (kc's checker and
 - **The full check**: all passed in 652.9 s; kc-steps 357 of 357, each
   built again warm, no body run; kc-objects 468, 0 differ; nextest 5503
   passed (kcrt-core's new test among them).
+
+## C471. Loads in kc: a file of a place's instances, and the expander loaded (2026-11-18)
+
+The user, on C470's next step, a file of a place: "Go ahead"; then, of
+two routes (kc compiling a file of a place as its root, the place its
+heap; or loads in general, a native host loading the expander as
+`kc-instance` does): "General loads first". Reviewed first:
+- **Fixpt**: a load of a file of no parameters is one module for all its
+  loads; a file of `(module-parameters ((p place)))` is made again at
+  each call with the place given, its state its own (C442, Fixpt's
+  `docs/research/closed-code.md`). A module's items name each other as
+  a program's globals do, a later one too.
+- **kayak**: kfx reads what a program loads (`loads-read`) and splices it
+  in before checking (`with-loads`, `check-defs.kfx`): each file's
+  module a top-level `made--load--K`; a file of a place a maker,
+  `(poly ((p place)) ...)` of type `MK--face`, its body `(module
+  (%loaded ...) ITEM ...)`, called with the place. kc ran kfx's checker
+  but never that splicing (`unbound variable load-module`); its modules
+  were static, flattened to top-level definitions (C425).
+
+What changed:
+- **The driver** (`kc/main.kfx`'s `kc-read-file!`): what a file loads,
+  and what those load, read once (`loads-read`, kfx's).
+- **The inputs** (`kc/expand.kfx`'s `kc-load-file!`): the loaded files'
+  texts an input, `loads PATH`, so that an edit of one sets the forms
+  again; a program that loads has its loads spliced by kfx's
+  `with-loads`, after its expansion, kept as an expansion's forms are
+  (`expanded PATH`, which the check reads), each form an input of its
+  own still. The forms before splicing kept too (`unspliced PATH`),
+  which `--expanded-located` writes, as the engine does.
+- **Modules** (`kc/front.kfx`): a load's mark, `(%loaded ...)`, nothing;
+  `(include M)` of a module known, each of `M`'s values an alias.
+- **A file of a place's maker**: its module made at each call as its
+  items scope at the top level: each procedure (a value that is a
+  `lambda`) in one `letrec`; each other value in a slot of an array of
+  the instance's own, set in order, each use of its name reading the
+  slot (substituted, binders respected); then a tuple of its interface's
+  values in `MK--face`'s order. A first try bound each item by a `let`
+  in order, which a procedure naming a later one (the expander's
+  `mx-datum-dotted`) showed wrong. `(with x E)` of an instance (a local
+  bound to a maker's call, or the call) a `let` of the names `E` uses,
+  each its field; `(letrena r ...)` a `let` of `r` to unit (kc's code
+  has one heap; a place is nothing at run time).
+- **Tests** (tests/kc/loads/, Fixpt's answers; the loaded files under
+  `files/`, which kc-steps does not run as programs): `with.fx` (a file
+  loaded twice, one module), `place.fx` (instances' state their own),
+  `include.fx` (a file of a place including a load, as the expander's
+  includes its types file), `expander-facts.fx` (Fixpt's expander
+  loaded under a `letrena`, a file's facts asked). kc-steps' cutoff: a
+  loaded file's value edited, and a file of a place's procedure, each
+  runs one item's five bodies, the program's text as it was.
+
+The expander loaded (`expander-facts.fx`): kfx's checker takes the whole
+program; kc builds it cold in 48 s (1058 query bodies; warm, none, 0.3
+s); the executable answers in 4 ms, Fixpt's interpreter in 3.4 s; in
+process, and with a heap of 64 words, the same answer.
+
+Its cost, said (K8; TODO §55 item 11): a file of a place is one item,
+its maker, so an edit of one of the expander's procedures lowers and
+assembles all 1583 again. Left of loads (TODO §54): a loaded file's
+macros not expanded (kfx's way), a program's top-level `include`
+(kfx's checker refuses it, Fixpt accepts it), a `define-datatype` in a
+file of a place.
+
+Found at the first full check (stopped by the user's word at 25 minutes,
+by mine at 18): kc-steps' shared database's payload grew to 43 MB once
+`expander-facts.fx` was built in it, and kc reads it whole, and writes
+it whole when changed, at every run: each of the ~1250 runs after it
+0.94 s, where 0.012 s against a small one. kc-steps now gives a program
+that loads the expander a database of its own (`db_of`); the cost
+itself is TODO §55 item 12.
+- **The full check**, again: all passed in 694.9 s; kc-steps 361 of 361
+  in 512.1 s (its database cold, kc's identity new), each built again
+  warm, no body run; kc-objects 478, 0 differ; kc-expanded 258 agree,
+  0 differ; nextest 5503 passed.

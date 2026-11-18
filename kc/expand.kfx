@@ -547,14 +547,53 @@
      inputs made, as `kc-load!` makes them; of a file that defines a macro,
      each form expanded first, a query of its own, and the inputs made of
      what they make (C445), each transformer's request answered as it is
-     asked (C449, `phase1 REQUEST`)."
-    (define kc-load-file! (subr qe (db runner string string) unit)
-      (lambda (d run path text)
-        (if (kc-text-as-was? d path text)
+     asked (C449, `phase1 REQUEST`).
+
+     `loaded`, the files it loads, and those they load, each read once
+     (C471, as kfx's `loads-read`): an input too, `loads PATH`, so that an
+     edit of one sets the forms again. A program that loads one has its
+     loads spliced in (kfx's `with-loads`: each file's module defined
+     before its first load, a file of a place a maker), after its
+     expansion, and its forms as spliced kept as an expansion's are
+     (`expanded PATH`), each form an input of its own still."
+    (define kc-load-file! (subr qe (db runner string string fileds) unit)
+      (lambda (d run path text loaded)
+        (if (and (kc-text-as-was? d path text) (kc-loads-as-was? d path loaded))
             #u
             (let ((forms (read-all text path 1)))
+              (begin
+                (db-set! d (key1 "loads" path) (kc-loads-text loaded) 0)
+                (kc-forms-spliced! d run path text forms loaded))))))
+
+    (hide
+      "The files a program loads, as an input's text: each path and text."
+      (define kc-loads-text (subr kfx (fileds) string)
+        (lambda (loaded)
+          (words-of (map (lambda ((x filed)) (tagcase x (filed (n t) (string-append (kc-datum (str n "" 0)) (string-append " " (kc-datum (str t "" 0)))))))
+                         loaded))))
+
+      (define kc-loads-as-was? (subr qe (db string fileds) bool)
+        (lambda (d path loaded)
+          (let ((t (db-node d (key1 "loads" path))))
+            (if (null? t) (null? loaded) (string=? (node-value d (car t)) (kc-loads-text loaded))))))
+
+      "Forms `xs`, the program's as read or expanded, set as its forms: if
+       it loads a file, with its loads spliced in (C471)."
+      (define kc-set-spliced! (subr qe (db string string sexps fileds string) unit)
+        (lambda (d path text xs loaded expanded)
+          (begin
+            ;; As expanded, before the loads are spliced: what
+            ;; `--expanded-located` writes, as the engine does.
+            (db-set! d (key1 "unspliced" path) (if (any? loads? xs) (if (string=? expanded "") "%read" expanded) "") 0)
+            (if (any? loads? xs)
+                (let ((ys (with-loads xs path loaded)))
+                  (kc-load-forms! d path text ys (words-of (map located ys))))
+                (kc-load-forms! d path text xs expanded))))))
+
+    (define kc-forms-spliced! (subr qe (db runner string string sexps fileds) unit)
+      (lambda (d run path text forms loaded)
               (if (not (mentions? forms macro-heads))
-                  (kc-load-forms! d path text forms "")
+                  (kc-set-spliced! d path text forms loaded "")
                   (let* ((fs (facts-of forms))
                          (ks (keys-of fs 0 nil))
                          (texts (with incremental-check (form-texts text (string-length-i64 text) (map datum-pos forms))))
@@ -584,14 +623,20 @@
                                                         (map2 (lambda ((k string) (f sexp)) (tuple k f)) ks forms))))
                                0)
                       (tagcase (expand-each d run path ks fs forms ps 0 nil nil)
-                        (expanded-forms (xs) (begin (kc-load-forms! d path text xs (words-of (map located xs))) #u))
-                        (expanded-refused (m) (begin (kc-load-forms! d path text nil (string-append "(refused " (string-append (kc-datum (str m "" 0)) ")"))) #u))))))))))
+                        (expanded-forms (xs) (begin (kc-set-spliced! d path text xs loaded (words-of (map located xs))) #u))
+                        (expanded-refused (m) (begin (kc-load-forms! d path text nil (string-append "(refused " (string-append (kc-datum (str m "" 0)) ")"))) #u))))))))
 
     "The program as expanded, located, each node a line, as the engine's
      `--expanded-located` writes it (C445; scripts/kc-expanded.py)."
     (define kc-expanded-lines (subr qe (db runner string) strings)
       (lambda (d run path)
-        (let ((x (db-get d run (key1 "expanded" path))))
+        (let* ((u (db-node d (key1 "unspliced" path)))
+               (unspliced (if (null? u) "" (node-value d (car u))))
+               ;; A program that loads (C471): as it was before its loads were
+               ;; spliced in, read (`%read`) or expanded.
+               (x (cond ((string=? unspliced "") (db-get d run (key1 "expanded" path)))
+                        ((string=? unspliced "%read") "")
+                        (else unspliced))))
           (cond ((string=? x "") (located-lines (sexps-located (read-all (db-get d run (key1 "text" path)) path 1))))
                 ((has-prefix? x "(refused ")
                  (list (string-append (tagcase (second (items (car (read-all x "expanded" 1)))) (str (m f p) m) (else other "?")) "\n")))

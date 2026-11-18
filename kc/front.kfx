@@ -310,6 +310,21 @@
                       (else (lst (map (lambda ((x sexp)) (withs-expanded x ms)) xs) f l p))))
               (else other e)))))
 
+      "A module's items as kc flattens them (C471): a load's mark,
+       `(%loaded ...)`, none; an `(include M)` of a module `ms` knows, each
+       of `M`'s names given, `(define n M..n)` (a load's module named, `(define
+       s (load-module ...))`, kfx's `(module (include made--load--K))`)."
+      (define items-included (subr kfx (sexps (listof kmod acyclic)) sexps)
+        (lambda (its ms)
+          (concat (map (lambda ((it sexp))
+                         (cond ((head-is? it "%loaded") nil)
+                               ((and (head-is? it "include") (i64= (size (items it)) 2)
+                                     (tagcase (second (items it)) (sym (n f p) (not (null? (module-of n ms)))) (else other #f)))
+                                (tagcase (car (module-of (sym-name (second (items it))) ms))
+                                  (kmod (m es) (map (lambda ((n string)) (lst (list (sym "define" "" 0) (sym n "" 0) (sym (string-append m (string-append ".." n)) "" 0)) "" 0 0)) es))))
+                               (else (list it))))
+                       its))))
+
       (define-rec
         (module-items (subr kfx (sexps bool (listof sexp acyclic)) sexps)
           (lambda (its hidden acc)
@@ -334,15 +349,268 @@
             (if (null? ns) (reverse acc)
                 (fields-of-names (cdr ns) (i64+ i 1) (cons (lst (list (num i "" 0) (sym (car ns) "" 0)) "" 0 0) acc))))))
 
+      "A file of a place's interface (C471): its maker's type's name,
+       `MK--face` (kfx's `place-made`), and its values' names, in order."
+      (define-datatype kface (kface string (listof string acyclic)))
+
+      (define faces-of (subr kfx (sexps) (listof kface acyclic))
+        (lambda (fs)
+          (concat (map (lambda ((f sexp))
+                         (if (and (head-is? f "define-type") (i64= (size (items f)) 3)
+                                  (tagcase (second (items f))
+                                    (lst (ys f2 l2 p2) (and (not (null? ys)) (tagcase (car ys) (sym (n f3 p3) (has-suffix? n "--face")) (else other #f))))
+                                    (else other #f))
+                                  (head-is? (third (items f)) "moduleof"))
+                             (the (listof kface acyclic)
+                               (list (kface (sym-name (car (items (second (items f)))))
+                                            (map (lambda ((v sexp)) (sym-name (second (items v))))
+                                                 (filter (lambda ((v sexp)) (head-is? v "val")) (cdr (items (third (items f)))))))))
+                             nil))
+                       fs))))
+
+      (define face-named (subr kfx (string (listof kface acyclic)) (listof kface acyclic))
+        (lambda (mk faces)
+          (filter (lambda ((k kface)) (tagcase k (kface (n vs) (string=? n (string-append mk "--face"))))) faces)))
+
+      "Substitution (C471): a name for an expression, as `renamed` renames."
+      (define-datatype ksub (ksub string sexp))
+
       (define-rec
-        (modules-expanded (subr kfx (sexps (listof kmod acyclic) sexps) sexps)
-          (lambda (fs ms acc)
+        (subs-without (subr kfx ((listof ksub acyclic) (listof string acyclic)) (listof ksub acyclic))
+          (lambda (ss ns) (filter (lambda ((x ksub)) (tagcase x (ksub (n e) (not (string-member? n ns))))) ss)))
+        (substituted (subr kfx (sexp (listof ksub acyclic)) sexp)
+          (lambda (e ss)
+            "`e`, each name `ss` has that no binder in it hides its expression."
+            (if (null? ss)
+                e
+                (tagcase e
+                  (sym (n f p) (let ((hit (filter (lambda ((x ksub)) (tagcase x (ksub (m v) (string=? m n)))) ss)))
+                                 (if (null? hit) e (tagcase (car hit) (ksub (m v) v)))))
+                  (lst (xs f l p)
+                    (cond ((null? xs) e)
+                          ((sym-is? (car xs) "quote") e)
+                          ((and (sym-is? (car xs) "lambda") (i64>= (size xs) 3))
+                           (lst (cons (car xs) (cons (second xs) (substituted-all (cdr (cdr xs)) (subs-without ss (map binder-name (items (second xs))))))) f l p))
+                          ((and (or (sym-is? (car xs) "let") (sym-is? (car xs) "letrec")) (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                           (let* ((names (map binder-name (items (second xs))))
+                                  (in-values (if (sym-is? (car xs) "letrec") (subs-without ss names) ss)))
+                             (lst (cons (car xs) (cons (lst (map (lambda ((b sexp)) (tagcase b (lst (bs f2 l2 p2) (lst (cons (car bs) (substituted-all (cdr bs) in-values)) f2 l2 p2)) (else other b))) (items (second xs))) f l p)
+                                                       (substituted-all (cdr (cdr xs)) (subs-without ss names))))
+                                  f l p)))
+                          ((and (sym-is? (car xs) "let*") (i64>= (size xs) 3) (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                           (if (null? (items (second xs)))
+                               (lst (cons (car xs) (cons (second xs) (substituted-all (cdr (cdr xs)) ss))) f l p)
+                               ;; One binder at a time: `(let* (b) (let* (rest) body))`.
+                               (substituted (lst (list (sym "let" f p) (lst (list (car (items (second xs)))) f l p)
+                                                       (lst (cons (sym "let*" f p) (cons (lst (cdr (items (second xs))) f l p) (cdr (cdr xs)))) f l p))
+                                                 f l p)
+                                            ss)))
+                          ((and (sym-is? (car xs) "tagcase") (i64>= (size xs) 2))
+                           (lst (cons (car xs) (cons (substituted (second xs) ss)
+                                                     (map (lambda ((a sexp))
+                                                            (tagcase a
+                                                              (lst (as f2 l2 p2)
+                                                                (if (null? as) a
+                                                                    (let ((hidden (tagcase (second as) (lst (bs f3 l3 p3) (map binder-name bs)) (sym (n f3 p3) (the strings (list n))) (else other nil))))
+                                                                      (lst (cons (car as) (cons (second as) (substituted-all (cdr (cdr as)) (subs-without ss hidden)))) f2 l2 p2))))
+                                                              (else other a)))
+                                                          (cdr (cdr xs)))))
+                                f l p))
+                          (else (lst (substituted-all xs ss) f l p))))
+                  (else other e)))))
+        (substituted-all (subr kfx (sexps (listof ksub acyclic)) sexps)
+          (lambda (es ss) (map (lambda ((e sexp)) (substituted e ss)) es))))
+
+      "An instance's items, `hide`s opened; a type, an effect, a load's mark,
+       none (C471)."
+      (define-rec
+        (instance-items (subr kfx (sexps) sexps)
+          (lambda (its)
+            (concat (map (lambda ((it sexp))
+                           (cond ((head-is? it "hide") (instance-items (cdr (items it))))
+                                 ((or (head-is? it "%loaded") (head-is? it "define-type") (head-is? it "define-effect")) nil)
+                                 (else (list it))))
+                         its)))))
+
+      "Whether a value is a procedure's, a `lambda` (perhaps under `the`)."
+      (define a-lambda? (subr kfx (sexp) bool)
+        (lambda (v) (or (head-is? v "lambda") (and (head-is? v "the") (i64= (size (items v)) 3) (head-is? (third (items v)) "lambda")))))
+
+      "An instance's bindings: a `define`'s, as a `letrec`'s, `(n T v)`; a
+       `define-rec`'s each."
+      (define instance-bindings (subr kfx (sexps) sexps)
+        (lambda (its)
+          (concat (map (lambda ((it sexp))
+                         (cond ((and (head-is? it "define") (i64>= (size (items it)) 3)) (list (lst (cdr (items it)) "" 0 0)))
+                               ((head-is? it "define-rec") (cdr (items it)))
+                               (else nil)))
+                       its))))
+
+      (define-rec
+        (slot-subs (subr kfx (sexps i64 (listof ksub acyclic)) (listof ksub acyclic))
+          (lambda (vs i acc)
+            (if (null? vs)
+                (reverse acc)
+                (slot-subs (cdr vs) (i64+ i 1)
+                           (cons (ksub (binder-name (car vs))
+                                       (lst (list (sym "array-ref" "" 0) (sym "instance%env" "" 0) (num i "" 0)) "" 0 0))
+                                 acc))))))
+
+      (define-rec
+        (slots-set (subr kfx (sexps i64 (listof ksub acyclic) sexps) sexps)
+          (lambda (vs i ss acc)
+            (if (null? vs)
+                (reverse acc)
+                (slots-set (cdr vs) (i64+ i 1) ss
+                           (cons (lst (list (sym "array-set!" "" 0) (sym "instance%env" "" 0) (num i "" 0) (substituted (car (reverse (items (car vs)))) ss)) "" 0 0)
+                                 acc))))))
+
+      (define instance-body (subr kfx (sexps (listof string acyclic)) sexp)
+        (lambda (its vals)
+          "A module made at each call (C471), its items scoped as a program's
+           globals are: each procedure (a value that is a `lambda`) in one
+           `letrec`, so that each names any; each other value in a slot of
+           an array of the instance's, `instance%env`, set in order, each use
+           of its name reading it; then a tuple of its interface's values, in
+           order. Its items, in order: a `define-datatype`'s not yet."
+          (let* ((items0 (instance-items its))
+                 (others (filter (lambda ((it sexp)) (not (or (head-is? it "define") (head-is? it "define-rec")))) items0))
+                 (bs (instance-bindings items0))
+                 (procs (filter (lambda ((b sexp)) (a-lambda? (car (reverse (items b))))) bs))
+                 (values (filter (lambda ((b sexp)) (not (a-lambda? (car (reverse (items b)))))) bs))
+                 (ss (slot-subs values 0 nil))
+                 (result (substituted (lst (cons (sym "tuple" "" 0) (map (lambda ((n string)) (sym n "" 0)) vals)) "" 0 0) ss))
+                 (sets (slots-set values 0 ss nil))
+                 (body (lst (cons (sym "begin" "" 0) (onto others (onto sets (list result)))) "" 0 0))
+                 (inner (if (null? procs)
+                            body
+                            (lst (list (sym "letrec" "" 0)
+                                       (lst (map (lambda ((b sexp)) (lst (cons (car (items b)) (substituted-all (cdr (items b)) ss)) "" 0 0)) procs) "" 0 0)
+                                       body)
+                                 "" 0 0))))
+            (lst (list (sym "let" "" 0)
+                       (lst (list (lst (list (sym "instance%env" "" 0)
+                                             (lst (list (sym "make-array" "" 0) (num (size values) "" 0) (num 0 "" 0)) "" 0 0))
+                                       "" 0 0))
+                            "" 0 0)
+                       inner)
+                 "" 0 0))))
+
+      (define instance-made (subr kfx (sexp (listof kmod acyclic) (listof kface acyclic)) sexp)
+        (lambda (f ms faces)
+          "A file of a place's maker (C471; kfx's `place-made`), `(define MK T
+           (lambda (p) (module ITEM ...)))`: its module made at each call."
+          (if (and (head-is? f "define") (i64= (size (items f)) 4) (not (null? (face-named (form-name f) faces)))
+                   (head-is? (fourth (items f)) "lambda") (i64= (size (items (fourth (items f)))) 3)
+                   (head-is? (third (items (fourth (items f)))) "module"))
+              (let ((l (items (fourth (items f)))))
+                (tagcase (car (face-named (form-name f) faces))
+                  (kface (n vals)
+                    (lst (list (car (items f)) (second (items f)) (third (items f))
+                               (lst (list (car l) (second l) (instance-body (items-included (cdr (items (third l))) ms) vals)) "" 0 0))
+                         "" 0 0))))
+              f)))
+
+      "A local bound to an instance (C471): its name, and its maker's."
+      (define-datatype kinst (kinst string string))
+
+      (define env-without (subr kfx ((listof kinst acyclic) (listof string acyclic)) (listof kinst acyclic))
+        (lambda (env ns) (filter (lambda ((k kinst)) (tagcase k (kinst (n m) (not (string-member? n ns))))) env)))
+
+      (define instance-of (subr kfx (sexp (listof kface acyclic) (listof kinst acyclic)) (listof kface acyclic))
+        (lambda (x faces env)
+          "The interface of instance `x`: a local bound to one, or a maker's
+           call; else none."
+          (tagcase x
+            (sym (n f p) (concat (map (lambda ((k kinst)) (tagcase k (kinst (v m) (if (string=? v n) (face-named m faces) nil)))) env)))
+            (lst (ys f l p) (if (and (i64= (size ys) 2) (tagcase (car ys) (sym (n f2 p2) #t) (else other #f))) (face-named (sym-name (car ys)) faces) nil))
+            (else other nil))))
+
+      (define-rec
+        (fields-bound (subr kfx ((listof string acyclic) i64 (listof string acyclic) sexp sexps) sexps)
+          (lambda (vals i used x acc)
+            "A `let`'s bindings of each value of an interface `used` names, the
+             field of instance `x` at its place."
+            (cond ((null? vals) (reverse acc))
+                  ((string-member? (car vals) used)
+                   (fields-bound (cdr vals) (i64+ i 1) used x
+                                 (cons (lst (list (sym (car vals) "" 0) (lst (list (sym "extract" "" 0) x (num i "" 0)) "" 0 0)) "" 0 0) acc)))
+                  (else (fields-bound (cdr vals) (i64+ i 1) used x acc))))))
+
+      (define-rec
+        (instances-in (subr kfx (sexp (listof kface acyclic) (listof kinst acyclic)) sexp)
+          (lambda (e faces env)
+            "`e`, each `(letrena r B ...)` a `let` of `r` to unit (kc's code has
+             one heap, so a place is nothing at run time), and each `(with x E)`
+             of an instance a `let` of the names `E` uses of its interface, each
+             its field (C471)."
+            (tagcase e
+              (lst (xs f l p)
+                (cond ((null? xs) e)
+                      ((sym-is? (car xs) "quote") e)
+                      ((and (sym-is? (car xs) "letrena") (i64>= (size xs) 3))
+                       (instances-in (lst (cons (sym "let" f p) (cons (lst (list (lst (list (second xs) (sym "#u" f p)) f l p)) f l p) (cdr (cdr xs)))) f l p)
+                                     faces env))
+                      ((and (sym-is? (car xs) "with") (i64= (size xs) 3) (not (null? (instance-of (second xs) faces env))))
+                       (tagcase (car (instance-of (second xs) faces env))
+                         (kface (n vals)
+                           (let* ((used (names-in (third xs)))
+                                  (x (tagcase (second xs) (sym (v f2 p2) (second xs)) (else other (sym "instance%with" f p))))
+                                  (bs (fields-bound vals 1 used x nil))
+                                  (body (lst (list (sym "let" f p) (lst bs f l p) (instances-in (third xs) faces (env-without env vals))) f l p)))
+                             (tagcase (second xs)
+                               (sym (v f2 p2) body)
+                               (else other
+                                 (lst (list (sym "let" f p) (lst (list (lst (list x (instances-in (second xs) faces env)) f l p)) f l p) body) f l p)))))))
+                      ((and (sym-is? (car xs) "lambda") (i64>= (size xs) 3))
+                       (lst (cons (car xs) (cons (second xs) (instances-all (cdr (cdr xs)) faces (env-without env (map binder-name (items (second xs))))))) f l p))
+                      ((and (or (sym-is? (car xs) "let") (sym-is? (car xs) "letrec") (sym-is? (car xs) "let*")) (i64>= (size xs) 3)
+                            (tagcase (second xs) (lst (ys f2 l2 p2) #t) (else other #f)))
+                       (let* ((bs (items (second xs)))
+                              (names (map binder-name bs))
+                              (inner (if (sym-is? (car xs) "let") env (env-without env names)))
+                              (bs2 (map (lambda ((b sexp))
+                                          (tagcase b
+                                            (lst (ys f2 l2 p2) (lst (cons (car ys) (instances-all (cdr ys) faces inner)) f2 l2 p2))
+                                            (else other b)))
+                                        bs))
+                              (made (concat (map (lambda ((b sexp))
+                                                   (tagcase b
+                                                     (lst (ys f2 l2 p2)
+                                                       (tagcase (car (reverse ys))
+                                                         (lst (zs f3 l3 p3)
+                                                           (if (and (i64= (size zs) 2) (tagcase (car zs) (sym (m f4 p4) (not (null? (face-named m faces)))) (else other #f)))
+                                                               (the (listof kinst acyclic) (list (kinst (binder-name b) (sym-name (car zs)))))
+                                                               nil))
+                                                         (else other nil)))
+                                                     (else other nil)))
+                                                 bs))))
+                         (lst (cons (car xs) (cons (lst bs2 f l p) (instances-all (cdr (cdr xs)) faces (onto made (env-without env names))))) f l p)))
+                      ((and (sym-is? (car xs) "tagcase") (i64>= (size xs) 2))
+                       (lst (cons (car xs) (cons (instances-in (second xs) faces env)
+                                                 (map (lambda ((a sexp))
+                                                        (tagcase a
+                                                          (lst (as f2 l2 p2)
+                                                            (if (null? as) a
+                                                                (let ((bound (tagcase (second as) (lst (bs f3 l3 p3) (map binder-name bs)) (sym (n f3 p3) (the strings (list n))) (else other nil))))
+                                                                  (lst (cons (car as) (cons (second as) (instances-all (cdr (cdr as)) faces (env-without env bound)))) f2 l2 p2))))
+                                                          (else other a)))
+                                                      (cdr (cdr xs)))))
+                            f l p))
+                      (else (lst (instances-all xs faces env) f l p))))
+              (else other e))))
+        (instances-all (subr kfx (sexps (listof kface acyclic) (listof kinst acyclic)) sexps)
+          (lambda (es faces env) (map (lambda ((e sexp)) (instances-in e faces env)) es))))
+
+      (define-rec
+        (modules-expanded (subr kfx (sexps (listof kmod acyclic) sexps (listof kface acyclic)) sexps)
+          (lambda (fs ms acc faces)
             (if (null? fs)
                 (reverse acc)
                 (let ((f (car fs)))
                   (cond ((module-form? f)
                          (let* ((m (form-name f))
-                                (its (module-items (cdr (items (car (reverse (items f))))) #f nil))
+                                (its (module-items (items-included (cdr (items (car (reverse (items f))))) ms) #f nil))
                                 (names (filter (lambda ((n string)) (not (string=? n ""))) (map (lambda ((x sexp)) (item-defined (second (items x)))) its)))
                                 (given (concat (map (lambda ((x sexp)) (if (and (sym-is? (car (items x)) "given") (head-is? (second (items x)) "define"))
                                                                           (the strings (list (form-name (second (items x)))))
@@ -359,7 +627,7 @@
                                 (value (lst (list (sym "define" "" 0) (sym m "" 0)
                                                   (lst (cons (sym "product" "" 0) (fields-of-names (map (lambda ((n string)) (string-append m (string-append ".." n))) given) 1 nil)) "" 0 0))
                                             "" 0 0)))
-                           (modules-expanded (cdr fs) (cons (kmod m given) ms) (cons value (onto (reverse defs) acc)))))
+                           (modules-expanded (cdr fs) (cons (kmod m given) ms) (cons value (onto (reverse defs) acc)) faces)))
                         ((and (head-is? f "import") (i64>= (size (items f)) 2)
                               (tagcase (second (items f)) (sym (n f2 p2) (not (null? (module-of n ms)))) (else other #f)))
                          (let ((m (sym-name (second (items f)))))
@@ -369,8 +637,9 @@
                                                              (sym (n f2 p2) (the sexps (list (lst (list (sym "define" "" 0) x (sym (string-append m (string-append ".." n)) "" 0)) "" 0 0))))
                                                              (else other nil)))
                                                          (cdr (cdr (items f))))))
-                                   acc))))
-                        (else (modules-expanded (cdr fs) ms (cons (withs-expanded f ms) acc))))))))))
+                                   acc)
+                             faces)))
+                        (else (modules-expanded (cdr fs) ms (cons (withs-expanded (instances-in (instance-made f ms faces) faces nil) ms) acc) faces)))))))))
 
     "Whether the file `PATH`'s text is as it was (C417): its forms' inputs
      are too, not read again."
@@ -390,7 +659,7 @@
     (define kc-load-forms! (subr qe (db string string sexps string) unit)
       (lambda (d path text forms expanded)
         (let* ((kd (lambda ((x sexp)) (tagcase (car (items x)) (sym (n f p) n) (else other ""))))
-               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (modules-expanded forms nil nil) 0 nil))))
+               (keyed (map (lambda ((t string)) (car (read-all t "forms" 1))) (reverse (forms-keyed (modules-expanded forms nil nil (faces-of forms)) 0 nil))))
                (keys (map kd keyed))
                (keys-text (string-append "(" (string-append (words-of keys) ")")))
                (old (db-node d (key1 "keys" path)))

@@ -87,6 +87,24 @@
             (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
             (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
+      (define-rec
+        (loads-read (subr qe (strings fileds) fileds)
+          (lambda (todo done)
+            "The files a program loads, and those they load, each read once
+             (C471, as kfx's `loads-read`)."
+            (cond ((null? todo) done)
+                  ((any? (lambda ((s filed)) (tagcase s (filed (n t) (string=? n (car todo))))) done) (loads-read (cdr todo) done))
+                  (else
+                   (let ((text (read-text (car todo))))
+                     (loads-read (onto (load-paths-all (read-all text (car todo) 1) (directory-of (car todo))) (cdr todo))
+                                 (cons (filed (car todo) text) done))))))))
+
+      "`file` read, and what it loads, and its inputs set (`kc-load-file!`)."
+      (define kc-read-file! (subr qe (db runner string) unit)
+        (lambda (d run file)
+          (let ((text (read-text file)))
+            (kc-load-file! d run file text (loads-read (load-paths-all (read-all text file 1) (directory-of file)) nil)))))
+
       (define read-text-or-none (subr qe (string) string)
         (lambda (path)
           (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
@@ -286,7 +304,7 @@
             (begin
               ;; Its inputs made inside this query (C449): fresh keys, which
               ;; no one has read, set at no new revision (`db-set!`).
-              (kc-load-file! d run path program)
+              (kc-load-file! d run path program nil)
               (let ((refused (kc-refusal (db-get d run (key1 "checked" path)))))
                 (if (not (string=? refused ""))
                     (p1 nil (string-append "!" (phase1-unplaced refused)))
@@ -453,7 +471,7 @@
            it passes, its code asked for, or built (on the runtime `rt`)."
           (let ((before (db-runs d)) (rt at))
             (begin
-              (kc-load-file! d kc-run file (read-text file))
+              (kc-read-file! d kc-run file)
               (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" file)))))
                 (begin
                   ;; Written only if it is new (C417): an output as it was is left as
@@ -541,7 +559,7 @@
                             (words (if sized (i64+ (the i64 16) (string->i64 (car (cdr (cdr rest))))) (the i64 8388608)))
                             (file (if sized (car (cdr (cdr (cdr rest)))) (car (cdr rest)))))
                        (begin
-                         (kc-load-file! d kc-run file (read-text file))
+                         (kc-read-file! d kc-run file)
                          (let ((refused (kc-refusal (db-get d kc-run (key1 "checked" file)))))
                            (if (not (string=? refused ""))
                                (begin
@@ -564,7 +582,7 @@
                     ((and (string=? (car rest) "--expanded-located") (not (null? (cdr rest))))
                      (let ((file (car (cdr rest))))
                        (begin
-                         (kc-load-file! d kc-run file (read-text file))
+                         (kc-read-file! d kc-run file)
                          (tagcase (write-out (string-list-append (kc-expanded-lines d kc-run file))) (done u #u) (failed e #u))
                          (if (or (string=? dbp "") (not (db-dirty? d))) #u (save-db d dbp))
                          0)))

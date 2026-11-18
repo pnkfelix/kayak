@@ -26914,75 +26914,129 @@ pub mod kc_expand {
     // each form expanded first, a query of its own, and the inputs made of
     // what they make (C445), each transformer's request answered as it is
     // asked (C449, `phase1 REQUEST`).
-    pub fn kc_load_file_x(d: Db, run: Runner, path: Str, text: Str) -> () {
-        if kc_text_as_was_p()(d, path, text) {
+    //
+    // `loaded`, the files it loads, and those they load, each read once
+    // (C471, as kfx's `loads-read`): an input too, `loads PATH`, so that an
+    // edit of one sets the forms again. A program that loads one has its
+    // loads spliced in (kfx's `with-loads`: each file's module defined
+    // before its first load, a file of a place a maker), after its
+    // expansion, and its forms as spliced kept as an expansion's are
+    // (`expanded PATH`), each form an input of its own still.
+    pub fn kc_load_file_x(d: Db, run: Runner, path: Str, text: Str, loaded: Fileds) -> () {
+        if (kc_text_as_was_p()(d, path, text) && kc_loads_as_was_p(d, path, loaded)) {
             ()
         } else {
             let forms = read_all(text, path, 1i64);
-            if not(mentions_p(forms, macro_heads())) {
-                kc_load_forms_x()(d, path, text, forms, str_lit(""))
+            db_set_x(d, key1(str_lit("loads"), path), kc_loads_text(loaded), 0i64);
+            kc_forms_spliced_x(d, run, path, text, forms, loaded)
+        }
+    }
+
+    // The files a program loads, as an input's text: each path and text.
+    pub fn kc_loads_text(loaded: Fileds) -> Str {
+        words_of(map(lambda1s(move |x: &'static Filed| {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Filed::Filed(n, t) => {
+                    string_append(kc_datum()(str(n, str_lit(""), 0i64)), string_append(str_lit(" "), kc_datum()(str(t, str_lit(""), 0i64))))
+                }
+            }
+        }), loaded))
+    }
+
+    pub fn kc_loads_as_was_p(d: Db, path: Str, loaded: Fileds) -> bool {
+        let t = db_node(d, key1(str_lit("loads"), path));
+        if null_p(t) {
+            null_p(loaded)
+        } else {
+            string_eq_p(node_value(d, car(t)), kc_loads_text(loaded))
+        }
+    }
+
+    // Forms `xs`, the program's as read or expanded, set as its forms: if
+    // it loads a file, with its loads spliced in (C471).
+    pub fn kc_set_spliced_x(d: Db, path: Str, text: Str, xs: Sexps, loaded: Fileds, expanded: Str) -> () {
+        db_set_x(d, key1(str_lit("unspliced"), path), if any_p(&loads_p, xs) {
+            if string_eq_p(expanded, str_lit("")) {
+                str_lit("%read")
             } else {
-                let fs = facts_of(forms);
-                let ks = keys_of(fs, 0i64, nil::<Str>());
-                let texts = incremental_check::form_texts(text, string_length_i64(text), map(&datum_pos, forms));
-                let chars = string_chars(text);
-                let ps = map2(lambda2s(move |k: Str, f: &'static Sexp| {
-                    kx_place(k, {
-                        let tagcase_ = f;
-                        match *tagcase_ {
-                            Sexp::Lst(xs, f2, l, p) => {
-                                l
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                lines_to(chars, the::<i64>(0i64), datum_pos(f), the::<i64>(1i64))
-                            }
+                expanded
+            }
+        } else {
+            str_lit("")
+        }, 0i64);
+        if any_p(&loads_p, xs) {
+            let ys = with_loads(xs, path, loaded);
+            kc_load_forms_x()(d, path, text, ys, words_of(map(&located, ys)))
+        } else {
+            kc_load_forms_x()(d, path, text, xs, expanded)
+        }
+    }
+
+    pub fn kc_forms_spliced_x(d: Db, run: Runner, path: Str, text: Str, forms: Sexps, loaded: Fileds) -> () {
+        if not(mentions_p(forms, macro_heads())) {
+            kc_set_spliced_x(d, path, text, forms, loaded, str_lit(""))
+        } else {
+            let fs = facts_of(forms);
+            let ks = keys_of(fs, 0i64, nil::<Str>());
+            let texts = incremental_check::form_texts(text, string_length_i64(text), map(&datum_pos, forms));
+            let chars = string_chars(text);
+            let ps = map2(lambda2s(move |k: Str, f: &'static Sexp| {
+                kx_place(k, {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Sexp::Lst(xs, f2, l, p) => {
+                            l
                         }
-                    }, datum_pos(f))
-                }), ks, forms);
-                let macros = fold_named(fs, ks, true, nil::<&'static kc_expand::KxNamed>());
-                let defs = fold_named(fs, ks, false, nil::<&'static kc_expand::KxNamed>());
-                let old_keys = keys_in(d, run, key1(str_lit("wkeys"), path));
-                let old_names = keys_in(d, run, key1(str_lit("wnames"), path));
-                let names = onto(named_names(macros), named_names(defs));
-                set_forms_x(d, path, ks, texts, fs, 0i64, nil::<&'static kc_expand::KxCount>());
-                unset_forms_x(d, path, filter(lambda1s(move |k: Str| {
-                    not(string_member_p(k, ks))
-                }), old_keys));
-                unset_named_x(d, path, filter(lambda1s(move |n: Str| {
-                    not(string_member_p(n, names))
-                }), old_names));
-                set_named_x(d, path, str_lit("syntax-at"), macros);
-                set_named_x(d, path, str_lit("defines-at"), defs);
-                set_named_x(d, path, str_lit("syntax-at"), map(lambda1s(move |n: Str| {
-                    kx_named(n, nil::<Str>())
-                }), filter(lambda1s(move |n: Str| {
-                    not(string_member_p(n, named_names(macros)))
-                }), names)));
-                set_named_x(d, path, str_lit("defines-at"), map(lambda1s(move |n: Str| {
-                    kx_named(n, nil::<Str>())
-                }), filter(lambda1s(move |n: Str| {
-                    not(string_member_p(n, named_names(defs)))
-                }), names)));
-                db_set_x(d, key1(str_lit("wkeys"), path), named_text(ks), 0i64);
-                db_set_x(d, key1(str_lit("wnames"), path), named_text(names), 0i64);
-                db_set_x(d, key1(str_lit("wforsyntax"), path), named_text(map(lambda1s(move |x: Product_11_12<Str, &'static Sexp>| {
-                    x.0
-                }), filter(lambda1s(move |x: Product_11_12<Str, &'static Sexp>| {
-                    mentions_p(kayak_rt::heap_cons(x.1, kayak_rt::nil()), kayak_rt::heap_cons(str_lit("begin-for-syntax"), kayak_rt::nil()))
-                }), map2(lambda2s(move |k: Str, f: &'static Sexp| {
-                    Product_11_12(k, f)
-                }), ks, forms)))), 0i64);
-                let tagcase_ = expand_each(d, run, path, ks, fs, forms, ps, 0i64, nil::<&'static kc_expand::KxDefd>(), nil::<&'static Sexp>());
-                match *tagcase_ {
-                    KxExpanded::ExpandedForms(xs) => {
-                        kc_load_forms_x()(d, path, text, xs, words_of(map(&located, xs)));
-                        ()
+                        _ => {
+                            let other = tagcase_;
+                            lines_to(chars, the::<i64>(0i64), datum_pos(f), the::<i64>(1i64))
+                        }
                     }
-                    KxExpanded::ExpandedRefused(m) => {
-                        kc_load_forms_x()(d, path, text, nil::<&'static Sexp>(), string_append(str_lit("(refused "), string_append(kc_datum()(str(m, str_lit(""), 0i64)), str_lit(")"))));
-                        ()
-                    }
+                }, datum_pos(f))
+            }), ks, forms);
+            let macros = fold_named(fs, ks, true, nil::<&'static kc_expand::KxNamed>());
+            let defs = fold_named(fs, ks, false, nil::<&'static kc_expand::KxNamed>());
+            let old_keys = keys_in(d, run, key1(str_lit("wkeys"), path));
+            let old_names = keys_in(d, run, key1(str_lit("wnames"), path));
+            let names = onto(named_names(macros), named_names(defs));
+            set_forms_x(d, path, ks, texts, fs, 0i64, nil::<&'static kc_expand::KxCount>());
+            unset_forms_x(d, path, filter(lambda1s(move |k: Str| {
+                not(string_member_p(k, ks))
+            }), old_keys));
+            unset_named_x(d, path, filter(lambda1s(move |n: Str| {
+                not(string_member_p(n, names))
+            }), old_names));
+            set_named_x(d, path, str_lit("syntax-at"), macros);
+            set_named_x(d, path, str_lit("defines-at"), defs);
+            set_named_x(d, path, str_lit("syntax-at"), map(lambda1s(move |n: Str| {
+                kx_named(n, nil::<Str>())
+            }), filter(lambda1s(move |n: Str| {
+                not(string_member_p(n, named_names(macros)))
+            }), names)));
+            set_named_x(d, path, str_lit("defines-at"), map(lambda1s(move |n: Str| {
+                kx_named(n, nil::<Str>())
+            }), filter(lambda1s(move |n: Str| {
+                not(string_member_p(n, named_names(defs)))
+            }), names)));
+            db_set_x(d, key1(str_lit("wkeys"), path), named_text(ks), 0i64);
+            db_set_x(d, key1(str_lit("wnames"), path), named_text(names), 0i64);
+            db_set_x(d, key1(str_lit("wforsyntax"), path), named_text(map(lambda1s(move |x: Product_11_12<Str, &'static Sexp>| {
+                x.0
+            }), filter(lambda1s(move |x: Product_11_12<Str, &'static Sexp>| {
+                mentions_p(kayak_rt::heap_cons(x.1, kayak_rt::nil()), kayak_rt::heap_cons(str_lit("begin-for-syntax"), kayak_rt::nil()))
+            }), map2(lambda2s(move |k: Str, f: &'static Sexp| {
+                Product_11_12(k, f)
+            }), ks, forms)))), 0i64);
+            let tagcase_ = expand_each(d, run, path, ks, fs, forms, ps, 0i64, nil::<&'static kc_expand::KxDefd>(), nil::<&'static Sexp>());
+            match *tagcase_ {
+                KxExpanded::ExpandedForms(xs) => {
+                    kc_set_spliced_x(d, path, text, xs, loaded, words_of(map(&located, xs)));
+                    ()
+                }
+                KxExpanded::ExpandedRefused(m) => {
+                    kc_load_forms_x()(d, path, text, nil::<&'static Sexp>(), string_append(str_lit("(refused "), string_append(kc_datum()(str(m, str_lit(""), 0i64)), str_lit(")"))));
+                    ()
                 }
             }
         }
@@ -26991,7 +27045,19 @@ pub mod kc_expand {
     // The program as expanded, located, each node a line, as the engine's
     // `--expanded-located` writes it (C445; scripts/kc-expanded.py).
     pub fn kc_expanded_lines(d: Db, run: Runner, path: Str) -> Strings {
-        let x = db_get(d, run, key1(str_lit("expanded"), path));
+        let u = db_node(d, key1(str_lit("unspliced"), path));
+        let unspliced = if null_p(u) {
+            str_lit("")
+        } else {
+            node_value(d, car(u))
+        };
+        let x = if string_eq_p(unspliced, str_lit("")) {
+            db_get(d, run, key1(str_lit("expanded"), path))
+        } else if string_eq_p(unspliced, str_lit("%read")) {
+            str_lit("")
+        } else {
+            unspliced
+        };
         if string_eq_p(x, str_lit("")) {
             located_lines(sexps_located(read_all(db_get(d, run, key1(str_lit("text"), path)), path, 1i64)))
         } else if has_prefix_p(x, str_lit("(refused ")) {

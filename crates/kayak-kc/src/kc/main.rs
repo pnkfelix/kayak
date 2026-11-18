@@ -176,7 +176,7 @@ pub mod kc_driver {
     pub type RunImage = &'static kc_native::RunImage;
 
     #[inline]
-    pub fn kc_load_file_x() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str) -> () {
+    pub fn kc_load_file_x() -> &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static dyn Fn(Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<List<&'static Sexp>>>, &'static Sexp) -> Str, Str, Str, List<&'static Filed>) -> () {
         &kc_expand::kc_load_file_x
     }
 
@@ -322,6 +322,36 @@ pub mod kc_driver {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
             match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
         } else { unreachable!() }
+    }
+
+    /// The files a program loads, and those they load, each read once
+    /// (C471, as kfx's `loads-read`).
+    pub fn loads_read(mut todo: Strings, mut done: Fileds) -> Fileds {
+        loop {
+            if null_p(todo) {
+                return done;
+            } else if any_p(lambda1s(move |s: &'static Filed| {
+                let tagcase_ = s;
+                match *tagcase_ {
+                    Filed::Filed(n, t) => {
+                        string_eq_p(n, car(todo))
+                    }
+                }
+            }), done) {
+                todo = cdr(todo);
+                continue;
+            } else {
+                let text = read_text(car(todo));
+                (todo, done) = (onto(load_paths_all(read_all(text, car(todo), 1i64), directory_of(car(todo))), cdr(todo)), kayak_rt::heap_cons(filed(car(todo), text), done));
+                continue;
+            }
+        }
+    }
+
+    // `file` read, and what it loads, and its inputs set (`kc-load-file!`).
+    pub fn kc_read_file_x(d: Db, run: Runner, file: Str) -> () {
+        let text = read_text(file);
+        kc_load_file_x()(d, run, file, text, loads_read(load_paths_all(read_all(text, file, 1i64), directory_of(file)), nil::<&'static Filed>()))
     }
 
     pub fn read_text_or_none(path: Str) -> Str {
@@ -740,7 +770,7 @@ pub mod kc_driver {
     // A phase-1 program's image, sealed now, kept by none.
     pub fn phase1_image(d: Db, run: Runner, name: Str, program: Str) -> &'static P1 {
         let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
-        kc_load_file_x()(d, run, path, program);
+        kc_load_file_x()(d, run, path, program, nil::<&'static Filed>());
         let refused = kc_refusal()(db_get(d, run, key1(str_lit("checked"), path)));
         if not(string_eq_p(refused, str_lit(""))) {
             p1(nil::<&'static kc_native::RunImage>(), string_append(str_lit("!"), phase1_unplaced(refused)))
@@ -1012,7 +1042,7 @@ pub mod kc_driver {
     /// it passes, its code asked for, or built (on the runtime `rt`).
     pub fn request(d: Db, at: Str, what: Str, file: Str, out: Str) -> &'static Answer {
         let (before, rt) = (db_runs(d), at);
-        kc_load_file_x()(d, &kc_run, file, read_text(file));
+        kc_read_file_x(d, &kc_run, file);
         let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), file)));
         if (string_eq_p(refused, str_lit("")) && not(string_eq_p(what, str_lit("check"))) && not(string_eq_p(what, str_lit("build")))) {
             let key = key1(if string_eq_p(what, str_lit("rust")) {
@@ -1183,7 +1213,7 @@ pub mod kc_driver {
                     } else {
                         car(cdr(rest))
                     };
-                    kc_load_file_x()(d, &kc_run, file, read_text(file));
+                    kc_read_file_x(d, &kc_run, file);
                     let refused = kc_refusal()(db_get(d, &kc_run, key1(str_lit("checked"), file)));
                     if not(string_eq_p(refused, str_lit(""))) {
                         if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
@@ -1241,7 +1271,7 @@ pub mod kc_driver {
                     }
                 } else if (string_eq_p(car(rest), str_lit("--expanded-located")) && not(null_p(cdr(rest)))) {
                     let file = car(cdr(rest));
-                    kc_load_file_x()(d, &kc_run, file, read_text(file));
+                    kc_read_file_x(d, &kc_run, file);
                     {
                         let tagcase_ = write_out(string_list_append(kc_expanded_lines()(d, &kc_run, file)));
                         let tag_ = kayak_rt::sum_tag(tagcase_);

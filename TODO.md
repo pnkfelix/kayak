@@ -1807,9 +1807,19 @@ over its 1664 definitions, 335 of them refused:
   the empty name (R7RS). The expander's source has none. To be fixed in
   the shared reader (a kfx change: its fixpoint), and its writer to bar
   a name that needs it.
-- **A file of a place**: kc's checker refuses `module-parameters` as a
+- ~~**A file of a place**: kc's checker refuses `module-parameters` as a
   program (`a region KFX-0 does not have: mxp`); kc's code has one
-  heap, so the place can be it.
+  heap, so the place can be it.~~ Done (C471), by the route the user
+  chose, loads in general: kc reads what a program loads, splices it
+  in (kfx's `with-loads`), and lowers a file of a place's maker, each
+  instance a tuple of its interface. A kc program loads the expander
+  under a `letrena` as `kc-instance` does, and its native code gives
+  Fixpt's answer (`tests/kc/loads/expander-facts.fx`), the executable in
+  4 ms where Fixpt's interpreter takes 3.4 s. Its cost: §55 item 11.
+  Left of loads: a loaded file's macros are not expanded (kfx's way:
+  its text spliced as read; Fixpt expands it); a program's top-level
+  `include` of a module, which kfx's checker refuses and Fixpt accepts;
+  a `define-datatype` in a file of a place (`not yet`).
 - Not seen by a survey of the code generator: what runs (an `int` past
   a fixnum, which kc fails; ~~the expander's hashes~~, Fixpt's since
   C470), and the expander's host: its asker, the bridge's data, its files
@@ -1931,6 +1941,25 @@ of it chosen in C448–C464:
     `receive`, `par`, I-cells, `pselect` and `race`; nothing above has
     been run on threads. Each item, once done, gets a program run with
     processes on threads of their own (K8).
+11. **A file of a place, one item to kc's database** (C471,
+    incrementality): kc lowers a file of a place as its maker, one form,
+    whose body holds every procedure of the file (each instance's items
+    scoped as a program's globals, its values in an array of its own).
+    An edit of one procedure in it lowers and assembles the whole file
+    again: the expander's, its 1583 procedures, where a program's are an
+    item each. To come: an instance's procedures items of their own,
+    each taking its instance's environment (the array) as a closure's,
+    the maker making the closures alone.
+12. **kc's database read and written whole at each run** (found at
+    C471, scalability): a run of kc loads the database's payload and, if
+    it changed, writes it again, whatever it reads. kc-steps' shared
+    database grew to 43 MB once a program loaded the expander (its
+    code's text), and each run of a small program after it took 0.94 s,
+    not 0.012 s (0.66 s of it the system's: the file read): the full
+    check went past 25 minutes and was stopped. kc-steps gives such a
+    program a database of its own for now. To come: a value's payload
+    read when a query reads it (C418 reads the graph so; the payload is
+    the rest), and written by what changed, not whole.
 
 Order: 1 and 7, each a step of its own size, before kc grows more; 3 a
 table the process shares now (which is right under any design: kcrt's
