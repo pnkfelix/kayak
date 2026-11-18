@@ -13840,3 +13840,46 @@ What changed:
   process, and with a heap of 64 words); kc-objects 449, 0 differ; the
   fixpoint as before (Fixpt makes the compiler with the checker's
   change); nextest 5501 passed.
+
+## C462. Lists and numbers in kc: `reverse`, `append`, `length`, `int->string`, `i64` (2026-11-17)
+
+The user: "Go ahead" (after C461: the survey's largest gaps then
+`reverse` 725, `append` as a procedure 346, `int->string` 161, the
+`i64` conversions 85). Reviewed first:
+- **Fixpt**: `reverse`, `append` (any number of lists, the last shared)
+  and `length` are its runtime's procedures (`prim.rs`); `int->string`
+  is `number->string` (`standard.fx`), decimal. An `i64` is the exact
+  integer it stands for, a fixnum where it fits (`docs/fx26.md`, the
+  fixed widths), and its operations the machine's 64 bits, wrapped.
+- **Accomplice**, **Coopt**: list procedures written in their own
+  languages; nothing kc's convention can take.
+- **kayak**: kc's binary `append` (C447, `,@`'s), and kcrt's routines
+  that make things in kc's heap (C455's `x64-heap-routine`).
+
+What changed:
+- **l0**: `reverse`, `length` and `int->string` unary primitives;
+  `(append L ...)` the binary `append` nested, `(append)` `nil` and
+  `(append L)` `L`; `int->i64` and `i64->int` nothing, and `i64+`,
+  `i64-`, `i64*`, the comparisons, `i64-quotient` and `i64-remainder`
+  the `int`'s primitives. So an `i64` past a fixnum fails in kc, as an
+  `int` there does, where Fixpt's wraps at 64 bits (the bit operations
+  and the `u64`s not yet: the expander has none).
+- **x64**: `length` a loop in line, a non-pair failing as `cdr` does;
+  `reverse` and `int->string` kcrt's (`kcrt_reverse`,
+  `kcrt_int_to_string`), each with its wrapper, so that the collector
+  may move its argument, and its in-process twin.
+- **Tests**: tests/kc/lists/procedures.fx (`reverse` of a list and of
+  none; `append` of no lists, one, and four, its last list shared;
+  `length`; `int->string` of each sign, 0 and the largest fixnum; an
+  `i64`'s operations; 2000 rounds of each made past a heap of 64
+  words), kc-steps' every way and Fixpt's answer; built too.
+- **The survey again** (as C461): 13 items refused, were 110; `not yet`
+  met 343 times, was 1701. Left: calls of more than six arguments (39)
+  and procedures of more than six parameters (26); the type-level names
+  reached as values (`expr` 27, `data` 26, ...); `char->string` 11,
+  `datum-list->vector` 7, `string-hash` 6, `f64?` 6,
+  `char-whitespace?` 6, `char-numeric?` 5, `symbol-name-hash` 4,
+  `f64->string` 4.
+- **The full check**: all passed in 637.9 s; kc-steps 348 of 348 (in
+  process, and with a heap of 64 words); kc-objects 451, 0 differ; the
+  fixpoint as before; nextest 5501 passed.

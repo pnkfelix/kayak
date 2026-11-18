@@ -34,7 +34,13 @@
  \"NAME\")`, the strings' primitives, `substring` of three arguments.
  Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
  free variables found here; `(app F ARG ...)`, a call of a procedure as a
- value; `(gproc NAME ARITY)`, a procedure the program defines as one."
+ value; `(gproc NAME ARITY)`, a procedure the program defines as one.
+ Lists and numbers (C462), as Fixpt's procedures: `reverse`, `length`
+ and `int->string` unary primitives; `(append L ...)` the binary
+ primitive `append` (`,@`'s) nested, its last list shared, `(append)`
+ `nil`; an `i64` the `int` of its value, as Fixpt's is the exact integer
+ (a fixnum here: past one, kc fails, where Fixpt's wraps at 64 bits), so
+ `int->i64` and `i64->int` nothing and `i64+` ... the `int`'s."
 
 (define kc-l0
   (module
@@ -57,7 +63,9 @@
               ;; And by a bloblet's kind (C448), as Fixpt's heap has them.
               "array?" "ref?" "sum?" "product?" "vector?" "bytevector?" "keyword?"
               ;; A whole continuation's capture; a key's marks (C460).
-              "cwcc" "current-marks"))
+              "cwcc" "current-marks"
+              ;; Lists and numbers (C462).
+              "reverse" "length" "int->string"))
 
       (define binary-primitives (listof string acyclic)
         (list "cons" "+" "-" "*" "quotient" "remainder" "modulo" "max" "min" "=" "<" "<=" ">" ">="
@@ -73,6 +81,17 @@
               "call-with-composable-continuation" "call-with-oneshot-continuation"
               ;; A key's innermost mark, or the default; a continuation's (C460).
               "first-mark" "marks-of"))
+
+      "An `i64`'s operations (C462), as the `int`'s they are on fixnums."
+      (define i64-as-int (listof string acyclic)
+        (list "i64+" "+" "i64-" "-" "i64*" "*" "i64=" "=" "i64<" "<" "i64<=" "<=" "i64>" ">" "i64>=" ">="
+              "i64-quotient" "quotient" "i64-remainder" "remainder"))
+      (define-rec
+        (int-op-of (subr kfx (string (listof string acyclic)) string)
+          (lambda (n ops)
+            (cond ((or (null? ops) (null? (cdr ops))) "")
+                  ((string=? (car ops) n) (car (cdr ops)))
+                  (else (int-op-of n (cdr (cdr ops))))))))
 
       (define ternary-primitives (listof string acyclic) (list "substring" "array-set!" "with-mark")))
 
@@ -379,6 +398,22 @@
                         ((and (string=? h "typecase") (i64>= (size xs) 3))
                          (l0-of path scope env next (l0-typecase-as-if path (second xs) (cdr (cdr xs)) f l p)))
                         ((and (string=? h "list") (null? (cdr xs))) (l0-made "(nil)" next))
+                        ;; Lists and numbers (C462): `append`'s lists each copied
+                        ;; onto the next's, as `,@`'s; an `i64` an `int`.
+                        ((and (string=? h "append") (null? (cdr xs))) (l0-made "(nil)" next))
+                        ((and (string=? h "append") (null? (cdr (cdr xs)))) (l0-of path scope env next (second xs)))
+                        ((string=? h "append")
+                         (tagcase (l0-of path scope env next (second xs))
+                           (l0-made (a n1)
+                             (tagcase (l0-of path scope env n1 (lst (cons (car xs) (cdr (cdr xs))) f l p))
+                               (l0-made (b n2) (l0-made (string-list-append (list "(prim append " a " " b ")")) n2))))))
+                        ((and (i64= (size xs) 2) (or (string=? h "int->i64") (string=? h "i64->int")))
+                         (l0-of path scope env next (second xs)))
+                        ((and (i64= (size xs) 3) (not (string=? (int-op-of h i64-as-int) "")))
+                         (tagcase (l0-of path scope env next (second xs))
+                           (l0-made (a n1)
+                             (tagcase (l0-of path scope env n1 (third xs))
+                               (l0-made (b n2) (l0-made (string-list-append (list "(prim " (int-op-of h i64-as-int) " " a " " b ")")) n2))))))
                         ;; Delimited control (C458), as Fixpt's: a tag a box of
                         ;; unit, fresh, its identity what an abort finds;
                         ;; `(prompt TAG BODY HANDLER)`, `(prompt TAG HANDLER BODY)`

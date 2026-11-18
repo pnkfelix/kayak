@@ -1406,6 +1406,28 @@ pub mod kc_x64 {
             x64_emit(x64_emit(x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("movq kc_run_base(%rip), %rsi")), str_lit("movl $32, %edx")), str_lit("call kc_capture"))
         } else if string_eq_p(n, str_lit("current-marks")) {
             x64_emit(x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("movq kc_prompts(%rip), %rsi")), str_lit("call kc_current_marks"))
+        } else if string_eq_p(n, str_lit("reverse")) {
+            x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_reverse"))
+        } else if string_eq_p(n, str_lit("int->string")) {
+            x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_int_to_string"))
+        } else if string_eq_p(n, str_lit("length")) {
+            let k = x64_fresh_label(c);
+            let r#loop = x64_label(c, str_lit("len"), k);
+            let done = x64_label(c, str_lit("lend"), k);
+            let c = x64_labelled(c);
+            let c = x64_emit(c, str_lit("movq %rax, %rdx"));
+            let c = x64_emit(c, str_lit("movl $0, %eax"));
+            let c = x64_emit_label(c, r#loop);
+            let c = x64_emit(c, string_append(str_lit("cmpq $"), string_append(i64_to_string(x64_word_nil()), str_lit(", %rdx"))));
+            let c = x64_emit(c, string_append(str_lit("je "), done));
+            let c = x64_emit(c, str_lit("movq %rdx, %rcx"));
+            let c = x64_emit(c, str_lit("andq $7, %rcx"));
+            let c = x64_emit(c, str_lit("cmpq $1, %rcx"));
+            let c = x64_failing_if(c, str_lit("ne"), x64_fail_not_a_pair());
+            let c = x64_emit(c, str_lit("movq 7(%rdx), %rdx"));
+            let c = x64_emit(c, str_lit("addq $8, %rax"));
+            let c = x64_emit(c, string_append(str_lit("jmp "), r#loop));
+            x64_emit_label(c, done)
         } else if string_eq_p(n, str_lit("string?")) {
             x64_emit(x64_emit(c, str_lit("movq %rax, %rdi")), str_lit("call kc_is_string"))
         } else if string_eq_p(n, str_lit("symbol?")) {
@@ -1810,7 +1832,7 @@ pub mod kc_x64 {
             string_append(str_lit("    leaq "), string_append(x64_proc_symbol(str_lit("%phase1-apply")), str_lit("(%rip), %rax\n")))
         } else {
             str_lit("    movl $0, %eax\n")
-        }, kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"), kayak_rt::heap_cons(str_lit("    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n    movq %rsp, 12(%rcx)\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%rsp"), str_lit("kc_run_base")), kayak_rt::heap_cons(str_lit("    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"), kayak_rt::heap_cons(str_lit("    call *%rax\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%r12"), str_lit("kc_heap_next")), kayak_rt::heap_cons(str_lit("    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_string_append"), str_lit("kcrt_string_append"), 2i64), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_substring"), str_lit("kcrt_substring"), 3i64), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_append"), str_lit("kcrt_append"), 2i64), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_given"), str_lit("kcrt_given"), 1i64), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_apply_run\nkc_apply_run:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r15\n"), kayak_rt::heap_cons(str_lit("    call kc_apply_address\n    testq %rax, %rax\n    jne .Lkc_apply_have\n    movl $9, %edi\n    call kc_fail\n"), kayak_rt::heap_cons(str_lit(".Lkc_apply_have:\n    subq $16, %rsp\n    movq %rax, 0(%rsp)\n    movq $0, 8(%rsp)\n"), kayak_rt::heap_cons(str_lit("    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"), kayak_rt::heap_cons(str_lit("    leaq 16(%rsp), %rax\n    movq %rax, 12(%rcx)\n"), kayak_rt::heap_cons(str_lit("    movl $0, %edi\n    call kc_given\n    movq %rax, 8(%rsp)\n    movl $8, %edi\n    call kc_given\n    movq %rax, %rdx\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%r12"), str_lit("kc_heap_next")), kayak_rt::heap_cons(str_lit("    movq 8(%rsp), %rsi\n    movq 0(%rsp), %rdi\n    movl $0, %ecx\n    movq %r15, %r8\n"), kayak_rt::heap_cons(str_lit("    call kc_call2\n    movq %rax, %rdi\n    call kc_show\n    addq $16, %rsp\n    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+        }, kayak_rt::heap_cons(str_lit("    ret\n"), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_call2\nkc_call2:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %r8, %r15\n"), kayak_rt::heap_cons(str_lit("    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n    movq %rsp, 12(%rcx)\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%rsp"), str_lit("kc_run_base")), kayak_rt::heap_cons(str_lit("    movq %rdi, %rax\n    movq %rsi, %rdi\n    movq %rdx, %rsi\n"), kayak_rt::heap_cons(str_lit("    call *%rax\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%r12"), str_lit("kc_heap_next")), kayak_rt::heap_cons(str_lit("    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_string_append"), str_lit("kcrt_string_append"), 2i64), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_substring"), str_lit("kcrt_substring"), 3i64), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_append"), str_lit("kcrt_append"), 2i64), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_reverse"), str_lit("kcrt_reverse"), 1i64), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_int_to_string"), str_lit("kcrt_int_to_string"), 1i64), kayak_rt::heap_cons(x64_heap_routine(str_lit("kc_given"), str_lit("kcrt_given"), 1i64), kayak_rt::heap_cons(str_lit("    .text\n    .globl kc_apply_run\nkc_apply_run:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r15\n"), kayak_rt::heap_cons(str_lit("    call kc_apply_address\n    testq %rax, %rax\n    jne .Lkc_apply_have\n    movl $9, %edi\n    call kc_fail\n"), kayak_rt::heap_cons(str_lit(".Lkc_apply_have:\n    subq $16, %rsp\n    movq %rax, 0(%rsp)\n    movq $0, 8(%rsp)\n"), kayak_rt::heap_cons(str_lit("    movq kc_heap_next(%rip), %r12\n    movq kc_gc+8(%rip), %r13\n    leaq kc_gc(%rip), %rcx\n    subq 208(%r15), %rcx\n"), kayak_rt::heap_cons(str_lit("    leaq 16(%rsp), %rax\n    movq %rax, 12(%rcx)\n"), kayak_rt::heap_cons(str_lit("    movl $0, %edi\n    call kc_given\n    movq %rax, 8(%rsp)\n    movl $8, %edi\n    call kc_given\n    movq %rax, %rdx\n"), kayak_rt::heap_cons(x64_cell_stored(str_lit("%r12"), str_lit("kc_heap_next")), kayak_rt::heap_cons(str_lit("    movq 8(%rsp), %rsi\n    movq 0(%rsp), %rdi\n    movl $0, %ecx\n    movq %r15, %r8\n"), kayak_rt::heap_cons(str_lit("    call kc_call2\n    movq %rax, %rdi\n    call kc_show\n    addq $16, %rsp\n    popq %r12\n    popq %r13\n    popq %r15\n    ret\n"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
     }
 
     // The runtime's procedures kc's code calls, in order: in process, each
@@ -1818,7 +1840,7 @@ pub mod kc_x64 {
     pub fn x64_services() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("kc_show"), kayak_rt::heap_cons(str_lit("kc_fail"), kayak_rt::heap_cons(str_lit("kc_intern"), kayak_rt::heap_cons(str_lit("kc_string_eq"), kayak_rt::heap_cons(str_lit("kc_string_lt"), kayak_rt::heap_cons(str_lit("kcrt_string_append"), kayak_rt::heap_cons(str_lit("kcrt_substring"), kayak_rt::heap_cons(str_lit("kc_symbol_to_string"), kayak_rt::heap_cons(str_lit("kc_is_string"), kayak_rt::heap_cons(str_lit("kc_is_symbol"), kayak_rt::heap_cons(str_lit("kc_is_procedure"), kayak_rt::heap_cons(str_lit("kc_is_kind"), kayak_rt::heap_cons(str_lit("kcrt_append"), kayak_rt::heap_cons(str_lit("kc_array_index_fail"), kayak_rt::heap_cons(str_lit("kc_make_array_fail"), kayak_rt::heap_cons(str_lit("kc_string_index_fail"), kayak_rt::heap_cons(str_lit("kc_collect"), kayak_rt::heap_cons(str_lit("kcrt_given"), kayak_rt::heap_cons(str_lit("kc_gc_reset"), kayak_rt::heap_cons(str_lit("kcrt_capture"), kayak_rt::heap_cons(str_lit("kcrt_resume_copy"), kayak_rt::heap_cons(str_lit("kcrt_current_marks"), kayak_rt::heap_cons(str_lit("kcrt_marks_of"), kayak_rt::nil())))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit("kc_show"), kayak_rt::heap_cons(str_lit("kc_fail"), kayak_rt::heap_cons(str_lit("kc_intern"), kayak_rt::heap_cons(str_lit("kc_string_eq"), kayak_rt::heap_cons(str_lit("kc_string_lt"), kayak_rt::heap_cons(str_lit("kcrt_string_append"), kayak_rt::heap_cons(str_lit("kcrt_substring"), kayak_rt::heap_cons(str_lit("kc_symbol_to_string"), kayak_rt::heap_cons(str_lit("kc_is_string"), kayak_rt::heap_cons(str_lit("kc_is_symbol"), kayak_rt::heap_cons(str_lit("kc_is_procedure"), kayak_rt::heap_cons(str_lit("kc_is_kind"), kayak_rt::heap_cons(str_lit("kcrt_append"), kayak_rt::heap_cons(str_lit("kc_array_index_fail"), kayak_rt::heap_cons(str_lit("kc_make_array_fail"), kayak_rt::heap_cons(str_lit("kc_string_index_fail"), kayak_rt::heap_cons(str_lit("kc_collect"), kayak_rt::heap_cons(str_lit("kcrt_given"), kayak_rt::heap_cons(str_lit("kc_gc_reset"), kayak_rt::heap_cons(str_lit("kcrt_capture"), kayak_rt::heap_cons(str_lit("kcrt_resume_copy"), kayak_rt::heap_cons(str_lit("kcrt_current_marks"), kayak_rt::heap_cons(str_lit("kcrt_marks_of"), kayak_rt::heap_cons(str_lit("kcrt_reverse"), kayak_rt::heap_cons(str_lit("kcrt_int_to_string"), kayak_rt::nil())))))))))))))))))))))))))
         })
     }
 
@@ -1836,7 +1858,7 @@ pub mod kc_x64 {
     pub fn x64_may_fail() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("kcrt_string_append"), kayak_rt::heap_cons(str_lit("kcrt_substring"), kayak_rt::heap_cons(str_lit("kcrt_append"), kayak_rt::heap_cons(str_lit("kcrt_given"), kayak_rt::heap_cons(str_lit("kc_collect"), kayak_rt::heap_cons(str_lit("kcrt_capture"), kayak_rt::heap_cons(str_lit("kcrt_resume_copy"), kayak_rt::heap_cons(str_lit("kcrt_current_marks"), kayak_rt::heap_cons(str_lit("kcrt_marks_of"), kayak_rt::nil())))))))))
+            kayak_rt::heap_cons(str_lit("kcrt_string_append"), kayak_rt::heap_cons(str_lit("kcrt_substring"), kayak_rt::heap_cons(str_lit("kcrt_append"), kayak_rt::heap_cons(str_lit("kcrt_given"), kayak_rt::heap_cons(str_lit("kc_collect"), kayak_rt::heap_cons(str_lit("kcrt_capture"), kayak_rt::heap_cons(str_lit("kcrt_resume_copy"), kayak_rt::heap_cons(str_lit("kcrt_current_marks"), kayak_rt::heap_cons(str_lit("kcrt_marks_of"), kayak_rt::heap_cons(str_lit("kcrt_reverse"), kayak_rt::heap_cons(str_lit("kcrt_int_to_string"), kayak_rt::nil())))))))))))
         })
     }
 

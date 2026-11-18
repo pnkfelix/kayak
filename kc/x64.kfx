@@ -838,6 +838,27 @@
                   ;; A key's marks, innermost first (C460).
                   ((string=? n "current-marks")
                    (x64-emit (x64-emit (x64-emit c "movq %rax, %rdi") "movq kc_prompts(%rip), %rsi") "call kc_current_marks"))
+                  ;; Lists and numbers (C462): a list reversed, a number's
+                  ;; digits, made in the heap by kcrt (`x64-heap-routine`).
+                  ((string=? n "reverse") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_reverse"))
+                  ((string=? n "int->string") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_int_to_string"))
+                  ;; A list's length, its pairs counted, a fixnum.
+                  ((string=? n "length")
+                   (let* ((k (x64-fresh-label c)) (loop (x64-label c "len" k)) (done (x64-label c "lend" k))
+                          (c (x64-labelled c))
+                          (c (x64-emit c "movq %rax, %rdx"))
+                          (c (x64-emit c "movl $0, %eax"))
+                          (c (x64-emit-label c loop))
+                          (c (x64-emit c (string-append "cmpq $" (string-append (i64->string x64-word-nil) ", %rdx"))))
+                          (c (x64-emit c (string-append "je " done)))
+                          (c (x64-emit c "movq %rdx, %rcx"))
+                          (c (x64-emit c "andq $7, %rcx"))
+                          (c (x64-emit c "cmpq $1, %rcx"))
+                          (c (x64-failing-if c "ne" x64-fail-not-a-pair))
+                          (c (x64-emit c "movq 7(%rdx), %rdx"))
+                          (c (x64-emit c "addq $8, %rax"))
+                          (c (x64-emit c (string-append "jmp " loop))))
+                     (x64-emit-label c done)))
                   ((string=? n "string?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_string"))
                   ((string=? n "symbol?") (x64-emit (x64-emit c "movq %rax, %rdi") "call kc_is_symbol"))
                   ;; What a datum is (C447): a fixnum, tag 0; a character, its low
@@ -1204,6 +1225,8 @@
                   (x64-heap-routine "kc_string_append" "kcrt_string_append" 2)
                   (x64-heap-routine "kc_substring" "kcrt_substring" 3)
                   (x64-heap-routine "kc_append" "kcrt_append" 2)
+                  (x64-heap-routine "kc_reverse" "kcrt_reverse" 1)
+                  (x64-heap-routine "kc_int_to_string" "kcrt_int_to_string" 1)
                   (x64-heap-routine "kc_given" "kcrt_given" 1)
                   "    .text\n    .globl kc_apply_run\nkc_apply_run:\n    pushq %r15\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r15\n"
                   "    call kc_apply_address\n    testq %rax, %rax\n    jne .Lkc_apply_have\n    movl $9, %edi\n    call kc_fail\n"
@@ -1221,13 +1244,14 @@
       (list "kc_show" "kc_fail" "kc_intern" "kc_string_eq" "kc_string_lt" "kcrt_string_append"
             "kcrt_substring" "kc_symbol_to_string" "kc_is_string" "kc_is_symbol" "kc_is_procedure"
             "kc_is_kind" "kcrt_append" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail" "kc_collect"
-            "kcrt_given" "kc_gc_reset" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of"))
+            "kcrt_given" "kc_gc_reset" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of"
+            "kcrt_reverse" "kcrt_int_to_string"))
 
     (hide
       "Routines that always fail, and those that may (C452): each called,
        not jumped to, so that its answer is seen."
       (define x64-failing strings (list "kc_fail" "kc_array_index_fail" "kc_make_array_fail" "kc_string_index_fail"))
-      (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of"))
+      (define x64-may-fail strings (list "kcrt_string_append" "kcrt_substring" "kcrt_append" "kcrt_given" "kc_collect" "kcrt_capture" "kcrt_resume_copy" "kcrt_current_marks" "kcrt_marks_of" "kcrt_reverse" "kcrt_int_to_string"))
 
       (define-rec
         (x64-routine-stubs (subr kfx (strings i64 (listof string acyclic)) string)

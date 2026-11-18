@@ -373,6 +373,52 @@ pub extern "C" fn kcrt_append(args: *const u64, block: *mut u64) -> u64 {
     appended(args, block).unwrap_or_else(|m| failed(&m))
 }
 
+/// `(reverse l)` (C462), as Fixpt's: a new list of `l`'s elements, last
+/// first, in kc's heap, the room for it had at once and `l` read again
+/// after; `l` not a list fails as `cdr` of a non-pair does.
+fn reversed(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    let mut n = 0;
+    let mut rest = arg(args, 0);
+    while rest != null() {
+        if rest & TAG_MASK != TAG_PAIR {
+            return Err(fail_words(4).to_string());
+        }
+        n += 1;
+        rest = pair(rest).1;
+    }
+    if n == 0 {
+        return Ok(null());
+    }
+    let at = gc::words(block, 2 * n)?;
+    let mut rest = arg(args, 0);
+    // The first element the last pair's, each next one the pair before.
+    let mut head = null();
+    for k in (0..n).rev() {
+        let (car, cdr) = pair(rest);
+        set(at + 16 * k, car);
+        set(at + 16 * k + 8, head);
+        head = at + 16 * k + TAG_PAIR;
+        rest = cdr;
+    }
+    Ok(head)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_reverse(args: *const u64, block: *mut u64) -> u64 {
+    reversed(args, block).unwrap_or_else(|m| failed(&m))
+}
+
+/// `(int->string n)` (C462), Fixpt's `number->string` of a fixnum: its
+/// decimal digits, a `-` before a negative one's.
+fn int_string(args: *const u64, block: *mut u64) -> Result<u64, String> {
+    string_in(block, &((arg(args, 0) as i64) >> 3).to_string())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn kcrt_int_to_string(args: *const u64, block: *mut u64) -> u64 {
+    int_string(args, block).unwrap_or_else(|m| failed(&m))
+}
+
 // ------------------------------------------------------------ control
 
 /// A prompt's record (C458, x64.kfx's `x64-emit-prompt`): the prompt
@@ -762,6 +808,14 @@ extern "C" fn here_append(args: *const u64, block: *mut u64) -> u64 {
     appended(args, block).unwrap_or_else(failed_here)
 }
 
+extern "C" fn here_reverse(args: *const u64, block: *mut u64) -> u64 {
+    reversed(args, block).unwrap_or_else(failed_here)
+}
+
+extern "C" fn here_int_to_string(args: *const u64, block: *mut u64) -> u64 {
+    int_string(args, block).unwrap_or_else(failed_here)
+}
+
 /// The address of the routine kc's code names `name` (`kc_show`, ...), as
 /// it is called in process (`kayak:kc-routine/1`): the routine itself, or,
 /// of one that may fail, its variant that answers 0 instead of ending the
@@ -783,6 +837,8 @@ pub fn routine(name: &str) -> u64 {
         "kc_is_procedure" => kc_is_procedure as *const (),
         "kc_is_kind" => kc_is_kind as *const (),
         "kcrt_append" => here_append as *const (),
+        "kcrt_reverse" => here_reverse as *const (),
+        "kcrt_int_to_string" => here_int_to_string as *const (),
         "kc_array_index_fail" => here_array_index_fail as *const (),
         "kc_make_array_fail" => here_make_array_fail as *const (),
         "kc_string_index_fail" => here_string_index_fail as *const (),

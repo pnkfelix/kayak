@@ -40,6 +40,12 @@ use super::*;
 // Step 9: closures (C412): `(lambda ID (PARAM ...) (FREE ...) BODY)`, its
 // free variables found here; `(app F ARG ...)`, a call of a procedure as a
 // value; `(gproc NAME ARITY)`, a procedure the program defines as one.
+// Lists and numbers (C462), as Fixpt's procedures: `reverse`, `length`
+// and `int->string` unary primitives; `(append L ...)` the binary
+// primitive `append` (`,@`'s) nested, its last list shared, `(append)`
+// `nil`; an `i64` the `int` of its value, as Fixpt's is the exact integer
+// (a fixnum here: past one, kc fails, where Fixpt's wraps at 64 bits), so
+// `int->i64` and `i64->int` nothing and `i64+` ... the `int`'s.
 pub mod kc_l0 {
     use super::*;
 
@@ -93,7 +99,7 @@ pub mod kc_l0 {
     pub fn unary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::nil())))))))))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("reverse"), kayak_rt::heap_cons(str_lit("length"), kayak_rt::heap_cons(str_lit("int->string"), kayak_rt::nil()))))))))))))))))))))))))))))))))
         })
     }
 
@@ -102,6 +108,28 @@ pub mod kc_l0 {
         once(&ONCE, || {
             kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))))))))))))))))))))))))))))))))))
         })
+    }
+
+    // An `i64`'s operations (C462), as the `int`'s they are on fixnums.
+    #[inline]
+    pub fn i64_as_int() -> List<Str> {
+        static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
+        once(&ONCE, || {
+            kayak_rt::heap_cons(str_lit("i64+"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("i64-"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("i64*"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("i64="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("i64<"), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("i64<="), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit("i64>"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("i64>="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("i64-quotient"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("i64-remainder"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::nil()))))))))))))))))))))
+        })
+    }
+
+    pub fn int_op_of(mut n: Str, mut ops: List<Str>) -> Str {
+        loop {
+            if (null_p(ops) || null_p(cdr(ops))) {
+                return str_lit("");
+            } else if string_eq_p(car(ops), n) {
+                return car(cdr(ops));
+            } else {
+                ops = cdr(cdr(ops));
+                continue;
+            }
+        }
     }
 
     #[inline]
@@ -836,6 +864,38 @@ pub mod kc_l0 {
                         continue;
                     } else if (string_eq_p(h, str_lit("list")) && null_p(cdr(xs))) {
                         return l0_made(str_lit("(nil)"), next);
+                    } else if (string_eq_p(h, str_lit("append")) && null_p(cdr(xs))) {
+                        return l0_made(str_lit("(nil)"), next);
+                    } else if (string_eq_p(h, str_lit("append")) && null_p(cdr(cdr(xs)))) {
+                        e = second(xs);
+                        continue;
+                    } else if string_eq_p(h, str_lit("append")) {
+                        let tagcase_ = l0_of(path, scope, env, next, second(xs));
+                        match *tagcase_ {
+                            L0Made::L0Made(a, n1) => {
+                                let tagcase_ = l0_of(path, scope, env, n1, lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p));
+                                match *tagcase_ {
+                                    L0Made::L0Made(b, n2) => {
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n2);
+                                    }
+                                }
+                            }
+                        }
+                    } else if (i64_eq(size(xs), 2i64) && (string_eq_p(h, str_lit("int->i64")) || string_eq_p(h, str_lit("i64->int")))) {
+                        e = second(xs);
+                        continue;
+                    } else if (i64_eq(size(xs), 3i64) && not(string_eq_p(int_op_of(h, i64_as_int()), str_lit("")))) {
+                        let tagcase_ = l0_of(path, scope, env, next, second(xs));
+                        match *tagcase_ {
+                            L0Made::L0Made(a, n1) => {
+                                let tagcase_ = l0_of(path, scope, env, n1, third(xs));
+                                match *tagcase_ {
+                                    L0Made::L0Made(b, n2) => {
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim "), kayak_rt::heap_cons(int_op_of(h, i64_as_int()), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n2);
+                                    }
+                                }
+                            }
+                        }
                     } else if (null_p(cdr(xs)) && (string_eq_p(h, str_lit("make-continuation-prompt-tag")) || string_eq_p(h, str_lit("make-escape-tag")) || string_eq_p(h, str_lit("make-continuation-mark-key")))) {
                         return l0_made(str_lit("(prim new (unit))"), next);
                     } else if (string_eq_p(h, str_lit("prompt")) && i64_eq(size(xs), 4i64)) {

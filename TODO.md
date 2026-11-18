@@ -1763,8 +1763,11 @@ over its 1664 definitions, 335 of them refused:
   then: 110 items refused, were 320; `reverse` 725, `append` 346,
   `int->string` 161, `i64->int` 43, `int->i64` 42, more than six 61, the
   type-level names as before.
-- **List procedures as forms**: `reverse` 519, `append` (not `,@`'s)
-  325, `length` 3.
+- ~~**List procedures as forms**: `reverse` 519, `append` (not `,@`'s)
+  325, `length` 3.~~ Done (C462), with `int->string` and the `i64`s
+  below. The survey then: 13 items refused, were 110; left, more than
+  six (39 calls, 26 procedures), the type-level names, the strings'
+  and characters' rest, `f64`, a vector.
 - ~~**Delimited control** (the parser's): `prompt` 112,
   `abort-current-continuation` 4, `make-continuation-prompt-tag` 1.~~
   Done (C458): prompts as frames, aborts that walk them; the survey's
@@ -1772,9 +1775,10 @@ over its 1664 definitions, 335 of them refused:
   one-shot continuations, the frames to the prompt copied into the heap.
   Whole continuations and marks too (C460). Left: a copy past a
   header's fields, `letregion`, the Rust back end's control.
-- **`i64`**: `int->i64` 39, `i64->int` 32, `i64+` 14, `i64>=` 10,
-  `i64=` 9, `i64-quotient` 3, `i64<=` 2, `i64-` 2.
-- **Strings and characters**: `int->string` 149, `char->string` 11,
+- ~~**`i64`**: `int->i64` 39, `i64->int` 32, `i64+` 14, `i64>=` 10,
+  `i64=` 9, `i64-quotient` 3, `i64<=` 2, `i64-` 2.~~ Done (C462): an
+  `i64` an `int`, a fixnum (past one kc fails, Fixpt wraps).
+- **Strings and characters**: ~~`int->string` 149~~ (C462), `char->string` 11,
   `char-whitespace?` 6, `char-numeric?` 7, `string-hash` 6,
   `symbol-name-hash` 4.
 - **More than six**: 26 procedures' parameters, 32 calls' arguments.
