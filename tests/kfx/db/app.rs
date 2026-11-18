@@ -54,16 +54,39 @@ pub fn k_text(k: &'static Sexp) -> Str {
     }
 }
 
-#[inline]
-pub fn reread(d: Db, whose: Str) -> Db {
-    let tagcase_ = db_files(d, str_lit("test"), lambda1s(move |k: &'static Sexp| {
-        true
-    }));
-    match *tagcase_ {
-        DbFilesMade::DbFilesMade(g, p) => {
-            db_of_files(g, p, whose)
+pub fn file_in(mut fs: List<&'static DbFile>, mut name: Str, mut before: Reader) -> Str {
+    loop {
+        if null_p(fs) {
+            return before(name);
+        } else if {
+            let tagcase_ = car(fs);
+            match *tagcase_ {
+                DbFile::DbFile(n, t) => {
+                    string_eq_p(n, name)
+                }
+            }
+        } {
+            let tagcase_ = car(fs);
+            match *tagcase_ {
+                DbFile::DbFile(n, t) => {
+                    return t;
+                }
+            }
+        } else {
+            fs = cdr(fs);
+            continue;
         }
     }
+}
+
+pub fn reread(d: Db, whose: Str) -> Db {
+    let fs = db_saved(d, str_lit("test"), lambda1s(move |k: &'static Sexp| {
+        true
+    }));
+    let before = db_reader(d);
+    db_opened(lambda1(move |name: Str| {
+        file_in(fs, name, before)
+    }), whose)
 }
 
 pub fn words_from(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> List<Str> {

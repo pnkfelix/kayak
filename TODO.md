@@ -1950,7 +1950,7 @@ of it chosen in C448–C464:
     item each. To come: an instance's procedures items of their own,
     each taking its instance's environment (the array) as a closure's,
     the maker making the closures alone.
-12. **kc's database read and written whole at each run** (found at
+12. ~~**kc's database read and written whole at each run** (found at
     C471, scalability): a run of kc loads the database's payload and, if
     it changed, writes it again, whatever it reads. kc-steps' shared
     database grew to 43 MB once a program loaded the expander (its
@@ -1959,7 +1959,11 @@ of it chosen in C448–C464:
     check went past 25 minutes and was stopped. kc-steps gives such a
     program a database of its own for now. To come: a value's payload
     read when a query reads it (C418 reads the graph so; the payload is
-    the rest), and written by what changed, not whole.
+    the rest), and written by what changed, not whole.~~ Done (C472,
+    `kayak-db 3`): a head; the graph in shards, a program's file's keys
+    one, each read when asked for and written when changed; each value a
+    file of its own. A run beside the expander: 0.012 s. Left: the head
+    lists every shard (small: a line each), read and written whole.
 
 Order: 1 and 7, each a step of its own size, before kc grows more; 3 a
 table the process shares now (which is right under any design: kcrt's

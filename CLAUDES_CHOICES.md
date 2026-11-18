@@ -14304,3 +14304,55 @@ itself is TODO §55 item 12.
   in 512.1 s (its database cold, kc's identity new), each built again
   warm, no body run; kc-objects 478, 0 differ; kc-expanded 258 agree,
   0 differ; nextest 5503 passed.
+
+## C472. The database in shards, and a file a value (`kayak-db 3`) (2026-11-18)
+
+The user, after C471's first check ran past 18 minutes (kc-steps' shared
+database's payload 43 MB, read and written whole at each of ~1250 runs):
+"we gotta prioritize revisiting the database format now"; then, of three
+designs (a file per value, the graph whole; segments compacted, which
+needs a `delete-file` FX-26 lacks; a file per value and the graph split
+too), "Graph first too". Reviewed first:
+- **Fixpt**: no persisted query database; its files are read and written
+  whole (`read-file`, `write-file`; FX-26 has no delete, rename, append
+  or ranged read: `list-dir`, `file-info`, `read-symlink` besides).
+- **Coopt**: `coopt-query`, whose design lib/db.kfx follows, keeps
+  nothing on disk.
+- **kayak**: C417's two files, the graph (keys read at once, each node's
+  record when asked for, C418) and the payload, read whole by the driver
+  and both written whole whenever anything changed; kfx's `--cache`, one
+  file, likewise; kc's objects (C419), a file each by fingerprint.
+
+What changed (`lib/db.kfx`, `kayak-db 3`):
+- **Shards**: a key's group is its first argument (for kc, most often a
+  program's path) or its query's name; a shard holds the keys and nodes
+  of one group, so one program's are together and a run reads the
+  shards of what it reads. A node's number is its shard's times 2^24
+  and its place in it, so that a number a node read names its shard. A
+  shard is read the first time one of its keys or nodes is asked for
+  (its keys numbered, its nodes' records noted and read when asked for,
+  as C417's graph was), and written when one of its nodes changed, to
+  the other of its two slots.
+- **The head**, written last: whose, the revision, the durabilities'
+  revisions, and each shard's group's hash, slot and next number. A save
+  cut short leaves the files the old head names as they were; a shard
+  file not there, or not a shard's, has nothing, its numbers kept its
+  own (its next number the head's) so that none is given another key.
+- **Values**: each kept value a file of its own, `vN`, written when made,
+  read when asked for, and believed only if its fingerprint is the
+  graph's (else made again): a file cut short, or one written after the
+  graph that names it, is not believed.
+- **The interface**: `db-saved` (the files to write, values, shards, the
+  head last) and `db-opened` (a reader of the files by name) for C417's
+  `db-files` and `db-of-files`; kc writes them at DB and in DB.d/ (made
+  by `mkdir` once, as kc's objects' directories are); the database's own
+  tests (tests/kfx/db, db-verify) keep them in memory, a save's files
+  over those before. `map`, kfx's, takes procedures of the `kfx` effect
+  alone, so the database's loops are its own.
+
+Measured: a small program beside the expander's (33 MB of values, 1680
+files) runs in 0.012 s, as beside nothing; it took 0.94 s. The expander's
+program built warm runs no body, in 0.25 s. kc-steps' one database for
+the sweep again (C471's database of its own for the expander's program
+taken away). Left (TODO §55 item 12): the head lists every shard, read
+and written whole, a line each.

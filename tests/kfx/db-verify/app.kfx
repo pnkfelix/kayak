@@ -30,9 +30,20 @@
 (define k-text (subr kfx (sexp) string)
   (lambda (k) (if (string=? (key-arg k 0) "") (key-query k) (string-append (key-query k) (string-append " " (key-arg k 0))))))
 
+(define-rec
+  (file-in (subr qe ((listof db-file acyclic) string reader) string)
+    (lambda (fs name before)
+      (cond ((null? fs) (before name))
+            ((tagcase (car fs) (db-file (n t) (string=? n name))) (tagcase (car fs) (db-file (n t) t)))
+            (else (file-in (cdr fs) name before))))))
+
 (define reread (subr qe (db string) db)
   (lambda (d whose)
-    (tagcase (db-files d "test" (lambda ((k sexp)) #t)) (db-files-made (g p) (db-of-files g p whose)))))
+    ;; Its files as `db-saved` gives them (C472), those it does not (the
+    ;; shards and values as they were) read as before.
+    (let* ((fs (db-saved d "test" (lambda ((k sexp)) #t)))
+           (before (db-reader d)))
+      (db-opened (lambda ((name string)) (file-in fs name before)) whose))))
 
 (define-rec
   (digits (subr kfx ((listof char acyclic) i64) i64)

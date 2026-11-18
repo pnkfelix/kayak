@@ -347,17 +347,6 @@ def convention():
     return wrong
 
 
-def db_of(p, shared):
-    """The database a program is built with: the sweep's, but a program's own
-    for one that loads Fixpt's expander (C471): its 1583 procedures' code
-    made the shared database's payload 43 MB, which kc reads and writes
-    whole at every run (TODO §55 item 12), each run of every program after
-    it 0.9 s, not 0.01 s."""
-    if "expander-kc.fx" in open(p, encoding="utf-8").read():
-        return os.path.join(ROOT, "target", "kc-steps--%s.db" % os.path.relpath(p, TESTS).replace("/", "--"))
-    return shared
-
-
 def main():
     if sys.argv[1:]:
         sys.exit(__doc__)
@@ -366,9 +355,7 @@ def main():
     fx = fixpt()
     wrong, ran, in_process, collected = [], 0, 0, 0
     ps = programs()
-    shared = db
     for p in ps:
-        db = db_of(p, shared)
         name = os.path.relpath(p, TESTS)
         want = stated(p)
         if fx:
@@ -414,7 +401,6 @@ def main():
     # Warm (C463): each built again, nothing changed: no query body runs.
     warm = 0
     for p in ps:
-        db = db_of(p, shared)
         name = os.path.relpath(p, TESTS)
         exe = os.path.join(WORK, name.replace("/", "--"))
         r = run([KC, "--db", db, "--rt", RT, "--stats", "build", p, exe])
@@ -423,7 +409,6 @@ def main():
             warm += 1
         elif r.returncode == 0:
             wrong.append("%s: built again, nothing changed, ran %s" % (name, " ".join(got or ["(no stats)"])))
-    db = shared
     kfx = [p for p in ps if p.endswith(".kfx")]
     crate = os.path.join(ROOT, "target", "kc-rust")
     os.makedirs(os.path.join(crate, "src"), exist_ok=True)

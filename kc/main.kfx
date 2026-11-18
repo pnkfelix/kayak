@@ -117,14 +117,29 @@
             (done u #u)
             (failed e (fail-with (string-append "cannot write " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
-      "The database's two files (C417): its graph at DB, its payload at
-       DB.payload; a whole program's output not kept, made again from its
+      "The database's files (C472, `lib/db.kfx`'s `kayak-db 3`): its head
+       at DB, its shards and values in DB.d/, each written only if it
+       changed; a whole program's output not kept, made again from its
        items when it is asked for."
+      (define db-path (subr kfx (string string) string)
+        (lambda (dbp name) (if (string=? name "") dbp (string-append dbp (string-append ".d/" name)))))
+
       (define save-db (subr driving (db string) unit)
         (lambda (d dbp)
-          (tagcase (db-files d kc-whose (lambda ((k sexp)) (not (or (string=? (key-query k) "asm") (string=? (key-query k) "rust")))))
-            (db-files-made (graph payload)
-              (begin (write-text dbp graph) (write-text (string-append dbp ".payload") payload))))))
+          (let ((dir (string-append dbp ".d")))
+            (begin
+              (tagcase (file-info dir)
+                (info x #u)
+                (failed e (begin (run-command (list "mkdir" "-p" dir) "") #u)))
+              (files-written dbp (db-saved d kc-whose (lambda ((k sexp)) (not (or (string=? (key-query k) "asm") (string=? (key-query k) "rust"))))))))))
+
+      (define-rec
+        (files-written (subr qe (string (listof db-file acyclic)) unit)
+          (lambda (dbp fs)
+            (if (null? fs)
+                #u
+                (begin (tagcase (car fs) (db-file (name text) (write-text (db-path dbp name) text)))
+                       (files-written dbp (cdr fs)))))))
 
       (define-rec
         (strings-at-io (subr (alloc @io) ((listof string acyclic)) (listof string @io))
@@ -523,7 +538,7 @@
       (lambda ()
         (tagcase (opts-of (the (listof string acyclic) (args)) "" #f "" nil)
           (opts (dbp stats rt0 rest)
-            (let* ((d (if (string=? dbp "") (db-make) (db-of-files (read-text-or-none dbp) (read-text-or-none (string-append dbp ".payload")) kc-whose)))
+            (let* ((d (if (string=? dbp "") (db-make) (db-opened (lambda ((name string)) (read-text-or-none (db-path dbp name))) kc-whose)))
                    ;; The runtime, where not given, the one beside this kc (C447).
                    (rt (if (not (string=? rt0 ""))
                            rt0

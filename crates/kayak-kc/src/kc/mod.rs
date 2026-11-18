@@ -54,7 +54,7 @@ pub mod main;
 pub use main::*;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10);
+pub struct Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]

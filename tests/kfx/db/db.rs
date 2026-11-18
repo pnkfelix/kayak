@@ -27,8 +27,13 @@ use super::*;
 // - **Modelled** in `models/db.qnt` (Quint), checked by its simulator.
 // - **Early cutoff**: a node run again whose value has the fingerprint it
 // had keeps its revision of change, so what read it stays current.
-// - **Persisted** in two files (C417): the graph, a datum, and the values,
-// a payload read as it is needed (`db-files`, `db-of-files`).
+// - **Persisted** (C472, `kayak-db 3`): a head; the graph in shards, one
+// for each group of keys (a program's file, most), each read when one of
+// its keys is asked for, and written when one of its nodes changed; and
+// each value kept in a file of its own, read when it is asked for. So a
+// run reads and writes what it uses and changes, not the database whole
+// (C417's two files, read and written whole, before: a run beside the
+// expander's 43 MB took 0.94 s, not 0.012 s). `db-saved`, `db-opened`.
 //
 // Keys are data (C417; the user: "Making keys structured data is totally
 // up my alley"): a query's name and its arguments, `(l0-item "PATH"
@@ -57,14 +62,14 @@ use super::*;
 // C454 it runs it in process: its image sealed in the code area and
 // called, through its runtime's syscalls.
 
-// A value as a node keeps it (C417): its text; where it is in the payload
-// read with the database, its offset and length, and whether it is escaped
-// there (past ASCII, or with a `\`), cut out when it is read;
-// or none, a value the database was not asked to keep, made again when it
-// is read.
+// A value as a node keeps it (C472): its text, made in this run and not
+// yet in a file; its text, as its file has it (read, or written); in its
+// file, not read yet (the node's number, which names the file); or none, a
+// value the database was not asked to keep, made again when it is read.
 pub enum Value {
     VText(Str),
-    VAt(i64, i64, bool),
+    VRead(Str),
+    VFile(i64),
     VNone(),
 }
 
@@ -72,8 +77,12 @@ pub fn v_text(f0: Str) -> &'static Value {
     kayak_rt::heap_alloc(Value::VText(f0))
 }
 
-pub fn v_at(f0: i64, f1: i64, f2: bool) -> &'static Value {
-    kayak_rt::heap_alloc(Value::VAt(f0, f1, f2))
+pub fn v_read(f0: Str) -> &'static Value {
+    kayak_rt::heap_alloc(Value::VRead(f0))
+}
+
+pub fn v_file(f0: i64) -> &'static Value {
+    kayak_rt::heap_alloc(Value::VFile(f0))
 }
 
 pub fn v_none() -> &'static Value {
@@ -130,12 +139,44 @@ pub fn frame(f0: i64, f1: List<i64>, f2: i64) -> &'static Frame {
     kayak_rt::heap_alloc(Frame::Frame(f0, f1, f2))
 }
 
-// The database: the revision; the nodes, by number; the numbers, by key; the
-// next number; the payload its values were read from; the queries being
-// run, the innermost first; for each durability, 0 to 3, the revision an
-// input of it or more last changed in; how many times a body has run, and
-// whose (for tests and measures).
-pub type Db = Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<i64>, Ref<Str>, Ref<Str>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<Sexps>>;
+// A shard of the graph (C472): the keys of one group, a key's first
+// argument (a file's path, most) or its query's name, and their nodes. Its
+// group's hash, by which the head names it; the slot its file is in (0 or
+// 1; -1, none yet); its file's text, once read (its nodes' records read
+// from it as they are asked for); the next number within it; whether it is
+// read, and whether a node of it changed since.
+pub enum Shard {
+    Shard(Str, i64, Str, i64, bool, bool),
+}
+
+pub fn shard(f0: Str, f1: i64, f2: Str, f3: i64, f4: bool, f5: bool) -> &'static Shard {
+    kayak_rt::heap_alloc(Shard::Shard(f0, f1, f2, f3, f4, f5))
+}
+
+pub enum Smap {
+    SmNone(),
+    SmNode(&'static Smap, i64, &'static Shard, i64, &'static Smap),
+}
+
+pub fn sm_none() -> &'static Smap {
+    kayak_rt::heap_alloc(Smap::SmNone())
+}
+
+pub fn sm_node(f0: &'static Smap, f1: i64, f2: &'static Shard, f3: i64, f4: &'static Smap) -> &'static Smap {
+    kayak_rt::heap_alloc(Smap::SmNode(f0, f1, f2, f3, f4))
+}
+
+// What reads a file of the database by its name (`` the head's): its text,
+// or `` if there is none.
+pub type Reader = &'static dyn Fn(Str) -> Str;
+
+// The database: the revision; the nodes, by number, those read or made; the
+// numbers, by key, of the shards read; the shards, by number, and their
+// numbers by their groups' hashes; how many; what reads its files; the
+// queries being run, the innermost first; for each durability, 0 to 3, the
+// revision an input of it or more last changed in; how many times a body
+// has run, and whose (for tests and measures).
+pub type Db = Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<&'static Imap>, Ref<&'static Kmap>, Ref<&'static Smap>, Ref<&'static Kmap>, Ref<i64>, Ref<Reader>, Ref<bool>, Ref<List<&'static Frame>>, Ref<List<i64>>, Ref<i64>, Ref<Sexps>>;
 
 // What runs a query: given the database and a key, its value.
 pub type Runner = &'static dyn Fn(Db, &'static Sexp) -> Str;
@@ -868,640 +909,14 @@ pub fn node_record(s: Str, i: i64, key: &'static Sexp) -> &'static Node {
                     let p = sc_ws(s, db_nth(ns, 5i64), n);
                     let deps = labels_scanned(s, i64_plus(p, 1i64), n, nil::<i64>());
                     let v = sc_ws(s, i64_plus(sc_close(s, i64_plus(p, 1i64), n), 1i64), n);
-                    let val = if i64_eq(sc_char(s, v, n), 40i64) {
-                        let x = i64_eq(sc_char(s, i64_plus(v, 3i64), n), 120i64);
-                        let o = sc_int(s, i64_plus(v, if x {
-                            4i64
-                        } else {
-                            3i64
-                        }), n);
-                        let tagcase_ = o;
-                        match *tagcase_ {
-                            Scanned::Scanned(off, e2) => {
-                                let tagcase_ = sc_int(s, e2, n);
-                                match *tagcase_ {
-                                    Scanned::Scanned(l, e3) => {
-                                        v_at(off, l, x)
-                                    }
-                                }
-                            }
-                        }
+                    let val = if i64_eq(sc_char(s, v, n), 102i64) {
+                        v_file(k)
                     } else {
                         v_none()
                     };
                     node(key, i64_eq(db_nth(ns, 0i64), 1i64), db_nth(ns, 1i64), db_nth(ns, 2i64), db_nth(ns, 3i64), deps, db_nth(ns, 4i64), val)
                 }
             }
-        }
-    }
-}
-
-pub fn db_make() -> Db {
-    Product_3rev_5nodes_3ids_4next_7payload_5graph_5dirty_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<&'static Imap>>(kayak_rt::heap_new(im_none())), the::<Ref<&'static Kmap>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Str>>(kayak_rt::heap_new(str_lit(""))), the::<Ref<Str>>(kayak_rt::heap_new(str_lit(""))), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<&'static Frame>>>(kayak_rt::heap_new(nil::<&'static Frame>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<&'static Sexp>())))
-}
-
-#[inline]
-pub fn db_revision(d: Db) -> i64 {
-    get(d.0)
-}
-
-#[inline]
-pub fn db_runs(d: Db) -> i64 {
-    get(d.9)
-}
-
-// The keys whose bodies ran, the newest first: so that a test can say what
-// an edit made run again, and what it spared.
-#[inline]
-pub fn db_ran(d: Db) -> Sexps {
-    get(d.10)
-}
-
-// A key's number, made the first time the key is met.
-pub fn db_id(d: Db, k: &'static Sexp) -> i64 {
-    let t = key_text(k);
-    let i = km_get(get(d.2), t);
-    if i64_gt_eq(i, 0i64) {
-        i
-    } else {
-        let n = get(d.3);
-        set(d.2, km_put(get(d.2), t, n));
-        set(d.3, i64_plus(n, 1i64));
-        n
-    }
-}
-
-// A node by number; one read with the database but not yet looked at (its
-// record noted, C417: its revision verified -1, its record's offset in the
-// graph as its revision of change) read from its record the first time it is
-// asked for; one whose key has no record, none.
-pub fn db_node_at(d: Db, i: i64) -> List<&'static Node> {
-    let n = im_get(get(d.1), i);
-    if (null_p(n) || not(i64_eq(node_verified(car(n)), -1i64))) {
-        n
-    } else {
-        if i64_lt(node_changed(car(n)), 0i64) {
-            nil::<&'static Node>()
-        } else {
-            let x = node_record(get(d.5), node_changed(car(n)), node_key(car(n)));
-            set(d.1, im_put(get(d.1), i, x));
-            kayak_rt::heap_cons(x, kayak_rt::nil())
-        }
-    }
-}
-
-#[inline]
-pub fn db_node(d: Db, k: &'static Sexp) -> List<&'static Node> {
-    db_node_at(d, db_id(d, k))
-}
-
-pub fn db_put_x(d: Db, i: i64, n: &'static Node) -> () {
-    set(d.6, true);
-    set(d.1, im_put(get(d.1), i, n))
-}
-
-// Whether a node has changed since the database was made or read: if not,
-// its files are as they were, and need not be written (C417).
-#[inline]
-pub fn db_dirty_p(d: Db) -> bool {
-    get(d.6)
-}
-
-/// A value's characters as the payload keeps them, the newest first.
-pub fn ascii_escaped(mut cs: List<char>, mut acc: List<Str>) -> List<Str> {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else {
-            let k = char_to_i64(car(cs));
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(if char_eq_p(car(cs), '\\') {
-                str_lit("\\\\")
-            } else if i64_gt(k, 127i64) {
-                string_append(str_lit("\\u{"), string_append(hex_of(k, str_lit("")), str_lit("}")))
-            } else {
-                list_to_string(kayak_rt::heap_cons(car(cs), kayak_rt::nil()))
-            }, acc));
-            continue;
-        }
-    }
-}
-
-pub fn ascii_only_p(mut cs: List<char>) -> bool {
-    loop {
-        if null_p(cs) {
-            return true;
-        } else if i64_gt(char_to_i64(car(cs)), 127i64) {
-            return false;
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
-
-#[inline]
-pub fn payload_text(x: Str) -> Str {
-    if ascii_only_p(string_chars(x)) {
-        x
-    } else {
-        string_list_append(reverse(ascii_escaped(string_chars(x), nil::<Str>())))
-    }
-}
-
-pub fn ascii_unescaped(mut cs: List<char>, mut acc: List<char>) -> Str {
-    loop {
-        if null_p(cs) {
-            return list_to_string(reverse(acc));
-        } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
-            (cs, acc) = (cdr(cdr(cs)), kayak_rt::heap_cons('\\', acc));
-            continue;
-        } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), 'u')) {
-            return ascii_code(cdr(cdr(cdr(cs))), 0i64, acc);
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-pub fn ascii_code(mut cs: List<char>, mut n: i64, mut acc: List<char>) -> Str {
-    loop {
-        if null_p(cs) {
-            return list_to_string(reverse(acc));
-        } else if char_eq_p(car(cs), '}') {
-            return ascii_unescaped(cdr(cs), kayak_rt::heap_cons(i64_to_char(n), acc));
-        } else {
-            let k = char_to_i64(car(cs));
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 16i64), if i64_lt(k, 58i64) {
-                i64_minus(k, 48i64)
-            } else {
-                i64_minus(k, 87i64)
-            }));
-            continue;
-        }
-    }
-}
-
-// A node's value as text: kept, cut from the payload, or `` if none is
-// kept (a reader makes it again first).
-pub fn node_value_in(d: Db, n: &'static Node) -> Str {
-    let tagcase_ = node_kept(n);
-    match *tagcase_ {
-        Value::VText(s) => {
-            s
-        }
-        Value::VAt(o, len, esc) => {
-            let x = substring(get(d.4), i64_to_int(o), i64_to_int(i64_plus(o, len)));
-            if esc {
-                ascii_unescaped(string_chars(x), nil::<char>())
-            } else {
-                x
-            }
-        }
-        Value::VNone() => {
-            str_lit("")
-        }
-    }
-}
-
-#[inline]
-pub fn node_value(d: Db, n: &'static Node) -> Str {
-    node_value_in(d, n)
-}
-
-// A side store (C415): text kept with the database under a name, no
-// query's input and no query's value: no revision for it, nothing depends
-// on it. For what is content-addressed, whose use can spare work and change
-// no value (the checker's memos, each keyed by a fingerprint of all it was
-// made from); kept as the nodes are, under the key `(%side NAME)`, and so
-// written and read with them.
-#[inline]
-pub fn db_side(d: Db, k: Str) -> Str {
-    let n = db_node(d, key1(str_lit("%side"), k));
-    if null_p(n) {
-        str_lit("")
-    } else {
-        node_value_in(d, car(n))
-    }
-}
-
-pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
-    let key = key1(str_lit("%side"), k);
-    db_put_x(d, db_id(d, key), node(key, true, 0i64, 0i64, 0i64, nil::<i64>(), 0i64, v_text(text)))
-}
-
-// Input `k` set to `text`, of durability `du`: a new revision if its value
-// is new. Of a key no node is of (C449), no new revision: nothing has read
-// it, so no value made is made stale, and a query may make inputs no one
-// has asked for (a transformer's phase-1 file, `phase1 REQUEST`) without
-// sending every node to be verified again. Not in `models/db.qnt` yet,
-// whose inputs all are from the first.
-pub fn db_set_x(d: Db, k: &'static Sexp, text: Str, du: i64) -> () {
-    let fp = (&queries::fnv_string)(text, queries::fnv_offset());
-    let i = db_id(d, k);
-    let old = db_node_at(d, i);
-    if (not(null_p(old)) && node_input_p(car(old)) && i64_eq(node_fp(car(old)), fp) && i64_eq(node_durability(car(old)), du)) {
-        ()
-    } else if null_p(old) {
-        let r = get(d.0);
-        db_put_x(d, i, node(k, true, r, r, fp, nil::<i64>(), du, v_text(text)))
-    } else {
-        let r = i64_plus(get(d.0), 1i64);
-        set(d.0, r);
-        set(d.8, bumped(get(d.8), if (not(null_p(old)) && i64_gt(node_durability(car(old)), du)) {
-            node_durability(car(old))
-        } else {
-            du
-        }, r, 0i64));
-        db_put_x(d, i, node(k, true, r, r, fp, nil::<i64>(), du, v_text(text)))
-    }
-}
-
-// That the innermost query being run read `i`, of durability `du`.
-pub fn note_read_x(d: Db, i: i64, du: i64) -> () {
-    let fs = get(d.7);
-    if null_p(fs) {
-        ()
-    } else {
-        let tagcase_ = car(fs);
-        match *tagcase_ {
-            Frame::Frame(fk, ds, fdu) => {
-                set(d.7, kayak_rt::heap_cons(frame(fk, kayak_rt::heap_cons(i, ds), if i64_lt(du, fdu) {
-                    du
-                } else {
-                    fdu
-                }), cdr(fs)))
-            }
-        }
-    }
-}
-
-/// `k`'s value, current, and that the query being run read it.
-pub fn db_get(d: Db, run: Runner, k: &'static Sexp) -> Str {
-    let i = db_id(d, k);
-    if id_in_p(i, get(d.7)) {
-        error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
-        str_lit("")
-    } else {
-        let x = db_current(d, run, i, k);
-        note_read_x(d, i, {
-            let n = db_node_at(d, i);
-            if null_p(n) {
-                0i64
-            } else {
-                node_durability(car(n))
-            }
-        });
-        x
-    }
-}
-
-/// `k`'s value, made current (`db-made-current`); one of a query whose
-/// value was not kept (C417) made again: its fingerprint the one it had,
-/// nothing that read it runs.
-pub fn db_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> Str {
-    db_made_current(d, run, i, k);
-    let n = db_node_at(d, i);
-    if node_has_value_p(car(n)) {
-        node_value_in(d, car(n))
-    } else {
-        db_execute(d, run, i, k, n)
-    }
-}
-
-/// `k` made current, its value not read: an input as set; a query
-/// verified, or run again.
-pub fn db_made_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> () {
-    let (old, r) = (db_node_at(d, i), get(d.0));
-    if null_p(old) {
-        db_execute(d, run, i, k, old);
-        ()
-    } else if node_input_p(car(old)) {
-        ()
-    } else if i64_eq(node_verified(car(old)), r) {
-        ()
-    } else if i64_lt_eq(db_nth(get(d.8), node_durability(car(old))), node_verified(car(old))) {
-        db_put_x(d, i, node_verified_at(car(old), r))
-    } else {
-        let du = db_reads_durability(d, run, node_deps(car(old)), node_verified(car(old)), i64_minus(durabilities(), 1i64));
-        if i64_gt_eq(du, 0i64) {
-            db_put_x(d, i, node_reverified(car(old), r, du))
-        } else {
-            db_execute(d, run, i, k, old);
-            ()
-        }
-    }
-}
-
-/// If none of `is`, each made current in turn, changed after `since`,
-/// their least durability, and `du`'s; else -1, at the first that did.
-pub fn db_reads_durability(mut d: Db, mut run: Runner, mut is: List<i64>, mut since: i64, mut du: i64) -> i64 {
-    loop {
-        if null_p(is) {
-            return du;
-        } else {
-            let n0 = db_node_at(d, car(is));
-            if null_p(n0) {
-                return -1i64;
-            } else {
-                db_made_current(d, run, car(is), node_key(car(n0)));
-                let n = db_node_at(d, car(is));
-                if (null_p(n) || i64_gt(node_changed(car(n)), since)) {
-                    return -1i64;
-                } else {
-                    (is, du) = (cdr(is), if i64_lt(node_durability(car(n)), du) {
-                        node_durability(car(n))
-                    } else {
-                        du
-                    });
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-/// `k`'s query run, its reads recorded; its value's fingerprint the
-/// same as `old`'s, its revision of change kept (early cutoff).
-pub fn db_execute(d: Db, run: Runner, i: i64, k: &'static Sexp, old: List<&'static Node>) -> Str {
-    set(d.7, kayak_rt::heap_cons(frame(i, nil::<i64>(), i64_minus(durabilities(), 1i64)), get(d.7)));
-    let x = run(d, k);
-    let fr = car(get(d.7));
-    let r = get(d.0);
-    let fp = (&queries::fnv_string)(x, queries::fnv_offset());
-    set(d.7, cdr(get(d.7)));
-    set(d.9, i64_plus(get(d.9), 1i64));
-    set(d.10, kayak_rt::heap_cons(k, get(d.10)));
-    {
-        let tagcase_ = fr;
-        match *tagcase_ {
-            Frame::Frame(fk, ds, du) => {
-                db_put_x(d, i, node(k, false, r, if (not(null_p(old)) && i64_eq(node_fp(car(old)), fp)) {
-                    node_changed(car(old))
-                } else {
-                    r
-                }, fp, reverse(ds), du, v_text(x)))
-            }
-        }
-    };
-    x
-}
-
-// `k` made current, its value's fingerprint, and that the query being run
-// read it (C418): a reader of a fingerprint is run again when it changes,
-// as a reader of a value is when that does, the two changing together (a
-// node's revision of change moves when its fingerprint does, early cutoff);
-// the value neither read nor made. For a query of what has been made by
-// name of its content (`kc build`'s objects).
-pub fn db_get_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
-    let i = db_id(d, k);
-    if id_in_p(i, get(d.7)) {
-        error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
-        0i64
-    } else {
-        db_made_current(d, run, i, k);
-        let n = car(db_node_at(d, i));
-        note_read_x(d, i, node_durability(n));
-        node_fp(n)
-    }
-}
-
-// `k` made current, and its value's fingerprint, its value neither read nor
-// made (C417): so that a client holding a value already (a file it wrote)
-// may know it is as it was.
-pub fn db_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
-    let i = db_id(d, k);
-    db_made_current(d, run, i, k);
-    node_fp(car(db_node_at(d, i)))
-}
-
-// The database as two files, and back (`db-files`, `db-of-files`; C417):
-//
-// - the graph, three datums: `(kayak-db 2 WHOSE REVISION (LAST ...) LENGTH)`,
-// whose it is (a compiler's identity), the durabilities' revisions, and
-// the payload's length; then `(keys #0=KEY ...)`, each key labelled by
-// its number where it is written (datum labels, `kfx/read.kfx`'s
-// `read-data`), and each text in the keys written more than once, a path,
-// labelled where first written; then `(nodes (#N# INPUT VERIFIED CHANGED
-// FINGERPRINT DURABILITY (#M# ...) VALUE) ...)`, each node's key and what
-// it read by their labels, its value `(at OFFSET LENGTH)` in the payload,
-// or `none`;
-// - the payload: the values kept, one after another, cut out when read;
-// ASCII alone, so that a value is cut out of it at once, wherever it is
-// (a `substring` of ASCII text is one; of any other, a walk from its
-// start): a value past ASCII written with each `` `\` and each
-// character past ASCII `u{HEX}`, and marked so (`atx`); any other as it
-// is.
-//
-// A key whose value `keep` says is not to be kept (a whole program's output,
-// made again from its parts, which are kept) is written `none`: its node,
-// fingerprint and reads are kept, so that it is verified as any is, and
-// made again only when its value is read.
-pub enum DbFilesMade {
-    DbFilesMade(Str, Str),
-}
-
-pub fn db_files_made(f0: Str, f1: Str) -> &'static DbFilesMade {
-    kayak_rt::heap_alloc(DbFilesMade::DbFilesMade(f0, f1))
-}
-
-#[inline]
-pub fn db_format() -> Str {
-    str_lit("kayak-db 2")
-}
-
-pub enum KeyedOut {
-    KeyedOut(List<Str>, &'static Kmap, i64),
-}
-
-pub fn keyed_out(f0: List<Str>, f1: &'static Kmap, f2: i64) -> &'static KeyedOut {
-    kayak_rt::heap_alloc(KeyedOut::KeyedOut(f0, f1, f2))
-}
-
-/// Key `k` as text onto `acc` (newest first), each text in it seen
-/// before by its label, each seen first labelled, from `n`.
-pub fn key_written(k: &'static Sexp, seen: &'static Kmap, n: i64, acc: List<Str>) -> &'static KeyedOut {
-    let tagcase_ = k;
-    match *tagcase_ {
-        Sexp::Str(s, f, p) => {
-            let j = km_get(seen, s);
-            if i64_gt_eq(j, 0i64) {
-                keyed_out(kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(j), str_lit("#"))), acc), seen, n)
-            } else {
-                keyed_out(kayak_rt::heap_cons(str_text(s), kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(n), str_lit("="))), acc)), km_put(seen, s, n), i64_plus(n, 1i64))
-            }
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            let tagcase_ = keys_written(xs, seen, n, kayak_rt::heap_cons(str_lit("("), acc));
-            match *tagcase_ {
-                KeyedOut::KeyedOut(acc2, seen2, n2) => {
-                    keyed_out(kayak_rt::heap_cons(str_lit(")"), acc2), seen2, n2)
-                }
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            keyed_out(kayak_rt::heap_cons(key_text(k), acc), seen, n)
-        }
-    }
-}
-
-pub fn keys_written(mut xs: Sexps, mut seen: &'static Kmap, mut n: i64, mut acc: List<Str>) -> &'static KeyedOut {
-    loop {
-        if null_p(xs) {
-            return keyed_out(acc, seen, n);
-        } else {
-            let tagcase_ = key_written(car(xs), seen, n, acc);
-            match *tagcase_ {
-                KeyedOut::KeyedOut(acc2, seen2, n2) => {
-                    (xs, seen, n, acc) = (cdr(xs), seen2, n2, if null_p(cdr(xs)) {
-                        acc2
-                    } else {
-                        kayak_rt::heap_cons(str_lit(" "), acc2)
-                    });
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-pub fn labels_text(mut is: List<i64>, mut acc: List<Str>) -> List<Str> {
-    loop {
-        if null_p(is) {
-            return acc;
-        } else {
-            (is, acc) = (cdr(is), kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("#"))), if null_p(acc) {
-                acc
-            } else {
-                kayak_rt::heap_cons(str_lit(" "), acc)
-            }));
-            continue;
-        }
-    }
-}
-
-// A record of the graph (C417): `(LEN ...)`, `LEN` the length of what follows
-// it and its space, to the record's `)`, so that a reader may step over it
-// unread: `body` is that, its `)` included.
-#[inline]
-pub fn length_first(body: Str) -> Str {
-    string_append(str_lit("\n ("), string_append(i64_to_string(string_length_i64(body)), string_append(str_lit(" "), body)))
-}
-
-pub enum MadeFiles {
-    MadeFiles(List<Str>, List<Str>, List<Str>, &'static Kmap, i64, i64),
-}
-
-pub fn made_files(f0: List<Str>, f1: List<Str>, f2: List<Str>, f3: &'static Kmap, f4: i64, f5: i64) -> &'static MadeFiles {
-    kayak_rt::heap_alloc(MadeFiles::MadeFiles(f0, f1, f2, f3, f4, f5))
-}
-
-/// Each node of `is`, its key into the keys, its line into the nodes, its
-/// value onto the payload.
-pub fn nodes_files(mut d: Db, mut is: List<i64>, mut keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync), mut m: &'static MadeFiles) -> &'static MadeFiles {
-    loop {
-        if null_p(is) {
-            return m;
-        } else {
-            let tagcase_ = m;
-            match *tagcase_ {
-                MadeFiles::MadeFiles(keys, nodes, payload, seen, labels, at) => {
-                    if null_p(db_node_at(d, car(is))) {
-                        is = cdr(is);
-                        continue;
-                    } else {
-                        let n = car(db_node_at(d, car(is)));
-                        let tagcase_ = key_written(node_key(n), seen, labels, kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("="))), kayak_rt::nil()));
-                        match *tagcase_ {
-                            KeyedOut::KeyedOut(key_parts, seen2, labels2) => {
-                                let kept = (node_input_p(n) || keep(node_key(n)));
-                                let raw = {
-                                    let tagcase_ = node_kept(n);
-                                    match *tagcase_ {
-                                        Value::VAt(o, l, esc) => {
-                                            substring(get(d.4), i64_to_int(o), i64_to_int(i64_plus(o, l)))
-                                        }
-                                        Value::VText(t) => {
-                                            if kept {
-                                                payload_text(t)
-                                            } else {
-                                                str_lit("")
-                                            }
-                                        }
-                                        Value::VNone() => {
-                                            str_lit("")
-                                        }
-                                    }
-                                };
-                                let esc = {
-                                    let tagcase_ = node_kept(n);
-                                    match *tagcase_ {
-                                        Value::VAt(o, l, e) => {
-                                            e
-                                        }
-                                        Value::VText(t) => {
-                                            (kept && not(ascii_only_p(string_chars(t))))
-                                        }
-                                        Value::VNone() => {
-                                            false
-                                        }
-                                    }
-                                };
-                                let x = if kept {
-                                    raw
-                                } else {
-                                    str_lit("")
-                                };
-                                let len = string_length_i64(x);
-                                (is, m) = (cdr(is), made_files(kayak_rt::heap_cons(length_first(string_append(string_list_append(reverse(key_parts)), str_lit(")"))), keys), kayak_rt::heap_cons(length_first(string_list_append(kayak_rt::heap_cons(str_lit("#"), kayak_rt::heap_cons(i64_to_string(car(is)), kayak_rt::heap_cons(str_lit("# "), kayak_rt::heap_cons(if node_input_p(n) {
-                                    str_lit("1 ")
-                                } else {
-                                    str_lit("0 ")
-                                }, kayak_rt::heap_cons(i64_to_string(node_verified(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_changed(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_fp(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_durability(n)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(string_list_append(reverse(labels_text(node_deps(n), nil::<Str>()))), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(if (kept && node_has_value_p(n)) {
-                                    string_list_append(kayak_rt::heap_cons(if esc {
-                                        str_lit("(atx ")
-                                    } else {
-                                        str_lit("(at ")
-                                    }, kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(len), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
-                                } else {
-                                    str_lit("none")
-                                }, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), nodes), if kept {
-                                    kayak_rt::heap_cons(x, payload)
-                                } else {
-                                    payload
-                                }, seen2, labels2, if kept {
-                                    i64_plus(at, len)
-                                } else {
-                                    at
-                                }));
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[inline]
-pub fn numbers_text(xs: List<i64>) -> List<Str> {
-    if null_p(xs) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(car(xs)), numbers_text(cdr(xs))))
-    }
-}
-
-// The database as its two files, `whose` it is; `keep` says of a query's
-// key whether its value is kept.
-pub fn db_files(d: Db, whose: Str, keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync)) -> &'static DbFilesMade {
-    let is = im_list(get(d.1), nil::<i64>());
-    let tagcase_ = nodes_files(d, is, keep, made_files(nil::<Str>(), nil::<Str>(), nil::<Str>(), km_none(), get(d.3), 0i64));
-    match *tagcase_ {
-        MadeFiles::MadeFiles(keys, nodes, payload, seen, labels, at) => {
-            db_files_made(string_list_append(append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::nil()))))))), append(cdr(numbers_text(get(d.8))), append(kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")\n(keys"), kayak_rt::nil()))), append(reverse(keys), append(kayak_rt::heap_cons(str_lit(")\n(nodes"), kayak_rt::nil()), append(reverse(nodes), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::nil())))))))), string_list_append(reverse(payload)))
         }
     }
 }
@@ -1888,11 +1303,945 @@ pub fn nodes_scanned_x(d: Db, s: Str, i: i64, n: i64) -> () {
     }
 }
 
-/// The database the two files write, if the graph says it is `whose` and
-/// the payload is as long as it says; else an empty one, as files of
-/// another format, or another's, or cut short, have none for this.
-pub fn db_of_files(graph: Str, payload: Str, whose: Str) -> Db {
+// A value file's text if its fingerprint is `fp`; else none (C472): a
+// file cut short, or written after the graph that names it was (a save cut
+// short), is not believed.
+#[inline]
+pub fn value_checked(x: Str, fp: i64) -> List<Str> {
+    if i64_eq((&queries::fnv_string)(x, queries::fnv_offset()), fp) {
+        kayak_rt::heap_cons(x, kayak_rt::nil())
+    } else {
+        nil::<Str>()
+    }
+}
+
+// A node's number (C472): its shard's number times `shard-span`, and its
+// place within the shard; so that a number a node read names its shard.
+#[inline]
+pub fn shard_span() -> i64 {
+    16777216i64
+}
+
+#[inline]
+pub fn shard_of_number(i: i64) -> i64 {
+    i64_quotient(i, shard_span())
+}
+
+// A key's group, which its shard is of (C472): its first argument, a
+// file's path for most of kc's queries, so that one program's nodes are in
+// one shard, and a run reads the shards of what it reads; else its query's
+// name. And the group's hash, by which the head names its shard.
+#[inline]
+pub fn key_group(k: &'static Sexp) -> Str {
+    let a = key_arg(k, 0i64);
+    if string_eq_p(a, str_lit("")) {
+        key_query(k)
+    } else {
+        a
+    }
+}
+
+#[inline]
+pub fn group_hash(g: Str) -> Str {
+    i64_to_string((&queries::fnv_string)(g, queries::fnv_offset()))
+}
+
+#[inline]
+pub fn shard_text(x: &'static Shard) -> Str {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Shard::Shard(h, slot, text, next, loaded, dirty) => {
+            text
+        }
+    }
+}
+
+#[inline]
+pub fn sm_height(t: &'static Smap) -> i64 {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Smap::SmNone() => {
+            0i64
+        }
+        Smap::SmNode(l, k, x, h, r) => {
+            h
+        }
+    }
+}
+
+pub fn sm_make(l: &'static Smap, k: i64, x: &'static Shard, r: &'static Smap) -> &'static Smap {
+    sm_node(l, k, x, i64_plus(1i64, {
+        let (a, b) = (sm_height(l), sm_height(r));
+        if i64_gt(a, b) {
+            a
+        } else {
+            b
+        }
+    }), r)
+}
+
+pub fn sm_balanced(l: &'static Smap, k: i64, x: &'static Shard, r: &'static Smap) -> &'static Smap {
+    let (hl, hr) = (sm_height(l), sm_height(r));
+    if i64_gt(hl, i64_plus(hr, 1i64)) {
+        let tagcase_ = l;
+        match *tagcase_ {
+            Smap::SmNode(ll, lk, lx, lh, lr) => {
+                if i64_gt_eq(sm_height(ll), sm_height(lr)) {
+                    sm_make(ll, lk, lx, sm_make(lr, k, x, r))
+                } else {
+                    let tagcase_ = lr;
+                    match *tagcase_ {
+                        Smap::SmNode(rl, rk, rx, rh, rr) => {
+                            sm_make(sm_make(ll, lk, lx, rl), rk, rx, sm_make(rr, k, x, r))
+                        }
+                        Smap::SmNone() => {
+                            sm_make(l, k, x, r)
+                        }
+                    }
+                }
+            }
+            Smap::SmNone() => {
+                sm_make(l, k, x, r)
+            }
+        }
+    } else if i64_gt(hr, i64_plus(hl, 1i64)) {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Smap::SmNode(rl, rk, rx, rh, rr) => {
+                if i64_gt_eq(sm_height(rr), sm_height(rl)) {
+                    sm_make(sm_make(l, k, x, rl), rk, rx, rr)
+                } else {
+                    let tagcase_ = rl;
+                    match *tagcase_ {
+                        Smap::SmNode(ml, mk, mx, mh, mr) => {
+                            sm_make(sm_make(l, k, x, ml), mk, mx, sm_make(mr, rk, rx, rr))
+                        }
+                        Smap::SmNone() => {
+                            sm_make(l, k, x, r)
+                        }
+                    }
+                }
+            }
+            Smap::SmNone() => {
+                sm_make(l, k, x, r)
+            }
+        }
+    } else {
+        sm_make(l, k, x, r)
+    }
+}
+
+pub fn sm_put(t: &'static Smap, n: i64, x: &'static Shard) -> &'static Smap {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Smap::SmNone() => {
+            sm_node(sm_none(), n, x, 1i64, sm_none())
+        }
+        Smap::SmNode(l, k, y, h, r) => {
+            if i64_eq(n, k) {
+                sm_node(l, k, x, h, r)
+            } else if i64_lt(n, k) {
+                sm_balanced(sm_put(l, n, x), k, y, r)
+            } else {
+                sm_balanced(l, k, y, sm_put(r, n, x))
+            }
+        }
+    }
+}
+
+pub fn sm_get(mut t: &'static Smap, mut n: i64) -> List<&'static Shard> {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Smap::SmNone() => {
+                return nil::<&'static Shard>();
+            }
+            Smap::SmNode(l, k, x, h, r) => {
+                if i64_eq(n, k) {
+                    return kayak_rt::heap_cons(x, kayak_rt::nil());
+                } else if i64_lt(n, k) {
+                    t = l;
+                    continue;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+#[inline]
+pub fn sm_set_x(d: Db, n: i64, x: &'static Shard) -> () {
+    set(d.3, sm_put(get(d.3), n, x))
+}
+
+// Shard `n`, which the database has (each number made is of one).
+pub fn db_shard(d: Db, n: i64) -> &'static Shard {
+    let x = sm_get(get(d.3), n);
+    if null_p(x) {
+        error(str_lit("kayak-db: no such shard"));
+        shard(str_lit(""), -1i64, str_lit(""), 0i64, true, false)
+    } else {
+        car(x)
+    }
+}
+
+#[inline]
+pub fn shard_file(n: i64, slot: i64) -> Str {
+    string_append(str_lit("g"), string_append(i64_to_string(n), string_append(str_lit("."), i64_to_string(slot))))
+}
+
+#[inline]
+pub fn value_file(i: i64) -> Str {
+    string_append(str_lit("v"), i64_to_string(i))
+}
+
+// Shard `n` read, if the database has it and it is not yet (C472): its
+// file's keys numbered, its nodes' records noted, read when asked for. A
+// file not there, or not a shard's, has nothing: its numbers stay its own
+// (its next number the head's), so that none is given to another key, and
+// what read one of them runs again.
+pub fn db_shard_read_x(d: Db, n: i64) -> () {
+    let x = sm_get(get(d.3), n);
+    if null_p(x) {
+        ()
+    } else {
+        let tagcase_ = car(x);
+        match *tagcase_ {
+            Shard::Shard(h, slot, text0, next, loaded, dirty) => {
+                if loaded {
+                    ()
+                } else {
+                    let text = if i64_lt(slot, 0i64) {
+                        str_lit("")
+                    } else {
+                        (get(d.6))(shard_file(n, slot))
+                    };
+                    let m = string_length_i64(text);
+                    let hd = str_lit("(kayak-shard 3 ");
+                    let ok = (i64_gt(m, string_length_i64(hd)) && string_eq_p(substring(text, int_lit(0), string_length(hd)), hd));
+                    sm_set_x(d, n, shard(h, slot, if ok {
+                        text
+                    } else {
+                        str_lit("")
+                    }, next, true, dirty));
+                    if ok {
+                        let k0 = sc_ws(text, i64_plus(sc_close(text, string_length_i64(hd), m), 1i64), m);
+                        let tagcase_ = keys_scanned_x(d, text, i64_plus(k0, 5i64), m, am_none(), -1i64);
+                        match *tagcase_ {
+                            Scanned::Scanned(top, e) => {
+                                nodes_scanned_x(d, text, i64_plus(sc_ws(text, e, m), 6i64), m)
+                            }
+                        }
+                    } else {
+                        ()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The shard of group `g`, read; a new one if the database has none.
+pub fn db_shard_of_group_x(d: Db, g: Str) -> i64 {
+    let h = group_hash(g);
+    let n = km_get(get(d.4), h);
+    if i64_gt_eq(n, 0i64) {
+        db_shard_read_x(d, n);
+        n
+    } else {
+        let m = get(d.5);
+        set(d.5, i64_plus(m, 1i64));
+        set(d.4, km_put(get(d.4), h, m));
+        sm_set_x(d, m, shard(h, -1i64, str_lit(""), 0i64, true, false));
+        m
+    }
+}
+
+// Node `i`'s value read from its file, if it is there unread: as it was
+// made, or none if the file is not as the graph says (`value-checked`), so
+// that it is made again.
+pub fn db_node_read_x(d: Db, i: i64) -> () {
+    let n = im_get(get(d.1), i);
+    if null_p(n) {
+        ()
+    } else {
+        let tagcase_ = node_kept(car(n));
+        match *tagcase_ {
+            Value::VFile(j) => {
+                let x = value_checked((get(d.6))(value_file(i)), node_fp(car(n)));
+                let tagcase_ = car(n);
+                match *tagcase_ {
+                    Node::Node(k, inp, v, c, f, ds, du, val) => {
+                        set(d.1, im_put(get(d.1), i, node(k, inp, v, c, f, ds, du, if null_p(x) {
+                            v_none()
+                        } else {
+                            v_read(car(x))
+                        })))
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ()
+            }
+        }
+    }
+}
+
+pub fn db_make() -> Db {
+    Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<&'static Imap>>(kayak_rt::heap_new(im_none())), the::<Ref<&'static Kmap>>(kayak_rt::heap_new(km_none())), the::<Ref<&'static Smap>>(kayak_rt::heap_new(sm_none())), the::<Ref<&'static Kmap>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Reader>>(kayak_rt::heap_new(lambda1(move |name: Str| {
+        str_lit("")
+    }))), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<&'static Frame>>>(kayak_rt::heap_new(nil::<&'static Frame>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<&'static Sexp>())))
+}
+
+#[inline]
+pub fn db_revision(d: Db) -> i64 {
+    get(d.0)
+}
+
+#[inline]
+pub fn db_runs(d: Db) -> i64 {
+    get(d.10)
+}
+
+// The keys whose bodies ran, the newest first: so that a test can say what
+// an edit made run again, and what it spared.
+#[inline]
+pub fn db_ran(d: Db) -> Sexps {
+    get(d.11)
+}
+
+// A key's number (C472): its shard's, read first if it is not; made, in its
+// shard, the first time the key is met.
+pub fn db_id(d: Db, k: &'static Sexp) -> i64 {
+    let t = key_text(k);
+    let i = km_get(get(d.2), t);
+    if i64_gt_eq(i, 0i64) {
+        i
+    } else {
+        let s = db_shard_of_group_x(d, key_group(k));
+        let j = km_get(get(d.2), t);
+        if i64_gt_eq(j, 0i64) {
+            j
+        } else {
+            let tagcase_ = db_shard(d, s);
+            match *tagcase_ {
+                Shard::Shard(h, slot, text, next, loaded, dirty) => {
+                    let n = i64_plus(i64_star(s, shard_span()), next);
+                    sm_set_x(d, s, shard(h, slot, text, i64_plus(next, 1i64), loaded, dirty));
+                    set(d.2, km_put(get(d.2), t, n));
+                    n
+                }
+            }
+        }
+    }
+}
+
+// A node by number; one read with the database but not yet looked at (its
+// record noted, C417: its revision verified -1, its record's offset in the
+// graph as its revision of change) read from its record the first time it is
+// asked for; one whose key has no record, none.
+pub fn db_node_at(d: Db, i: i64) -> List<&'static Node> {
+    let n = {
+        db_shard_read_x(d, shard_of_number(i));
+        im_get(get(d.1), i)
+    };
+    if (null_p(n) || not(i64_eq(node_verified(car(n)), -1i64))) {
+        n
+    } else {
+        if i64_lt(node_changed(car(n)), 0i64) {
+            nil::<&'static Node>()
+        } else {
+            let x = node_record(shard_text(db_shard(d, shard_of_number(i))), node_changed(car(n)), node_key(car(n)));
+            set(d.1, im_put(get(d.1), i, x));
+            kayak_rt::heap_cons(x, kayak_rt::nil())
+        }
+    }
+}
+
+#[inline]
+pub fn db_node(d: Db, k: &'static Sexp) -> List<&'static Node> {
+    db_node_at(d, db_id(d, k))
+}
+
+pub fn db_put_x(d: Db, i: i64, n: &'static Node) -> () {
+    set(d.7, true);
+    {
+        let tagcase_ = db_shard(d, shard_of_number(i));
+        match *tagcase_ {
+            Shard::Shard(h, slot, text, next, loaded, dirty) => {
+                sm_set_x(d, shard_of_number(i), shard(h, slot, text, next, loaded, true))
+            }
+        }
+    };
+    set(d.1, im_put(get(d.1), i, n))
+}
+
+// Whether a node has changed since the database was made or read: if not,
+// its files are as they were, and need not be written (C417).
+
+// What reads the database's files (C472).
+#[inline]
+pub fn db_reader(d: Db) -> Reader {
+    get(d.6)
+}
+
+#[inline]
+pub fn db_dirty_p(d: Db) -> bool {
+    get(d.7)
+}
+
+// A node's value as text: kept, read from its file, or `` if none is kept
+// (a reader makes it again first, `db-node-read!`).
+pub fn node_value_in(d: Db, n: &'static Node) -> Str {
+    let tagcase_ = node_kept(n);
+    match *tagcase_ {
+        Value::VText(s) => {
+            s
+        }
+        Value::VRead(s) => {
+            s
+        }
+        Value::VFile(i) => {
+            let x = value_checked((get(d.6))(value_file(i)), node_fp(n));
+            if null_p(x) {
+                str_lit("")
+            } else {
+                car(x)
+            }
+        }
+        Value::VNone() => {
+            str_lit("")
+        }
+    }
+}
+
+#[inline]
+pub fn node_value(d: Db, n: &'static Node) -> Str {
+    node_value_in(d, n)
+}
+
+// A side store (C415): text kept with the database under a name, no
+// query's input and no query's value: no revision for it, nothing depends
+// on it. For what is content-addressed, whose use can spare work and change
+// no value (the checker's memos, each keyed by a fingerprint of all it was
+// made from); kept as the nodes are, under the key `(%side NAME)`, and so
+// written and read with them.
+#[inline]
+pub fn db_side(d: Db, k: Str) -> Str {
+    let n = db_node(d, key1(str_lit("%side"), k));
+    if null_p(n) {
+        str_lit("")
+    } else {
+        node_value_in(d, car(n))
+    }
+}
+
+pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
+    let key = key1(str_lit("%side"), k);
+    db_put_x(d, db_id(d, key), node(key, true, 0i64, 0i64, 0i64, nil::<i64>(), 0i64, v_text(text)))
+}
+
+// Input `k` set to `text`, of durability `du`: a new revision if its value
+// is new. Of a key no node is of (C449), no new revision: nothing has read
+// it, so no value made is made stale, and a query may make inputs no one
+// has asked for (a transformer's phase-1 file, `phase1 REQUEST`) without
+// sending every node to be verified again. Not in `models/db.qnt` yet,
+// whose inputs all are from the first.
+pub fn db_set_x(d: Db, k: &'static Sexp, text: Str, du: i64) -> () {
+    let fp = (&queries::fnv_string)(text, queries::fnv_offset());
+    let i = db_id(d, k);
+    let old = db_node_at(d, i);
+    if (not(null_p(old)) && node_input_p(car(old)) && i64_eq(node_fp(car(old)), fp) && i64_eq(node_durability(car(old)), du)) {
+        ()
+    } else if null_p(old) {
+        let r = get(d.0);
+        db_put_x(d, i, node(k, true, r, r, fp, nil::<i64>(), du, v_text(text)))
+    } else {
+        let r = i64_plus(get(d.0), 1i64);
+        set(d.0, r);
+        set(d.9, bumped(get(d.9), if (not(null_p(old)) && i64_gt(node_durability(car(old)), du)) {
+            node_durability(car(old))
+        } else {
+            du
+        }, r, 0i64));
+        db_put_x(d, i, node(k, true, r, r, fp, nil::<i64>(), du, v_text(text)))
+    }
+}
+
+// That the innermost query being run read `i`, of durability `du`.
+pub fn note_read_x(d: Db, i: i64, du: i64) -> () {
+    let fs = get(d.8);
+    if null_p(fs) {
+        ()
+    } else {
+        let tagcase_ = car(fs);
+        match *tagcase_ {
+            Frame::Frame(fk, ds, fdu) => {
+                set(d.8, kayak_rt::heap_cons(frame(fk, kayak_rt::heap_cons(i, ds), if i64_lt(du, fdu) {
+                    du
+                } else {
+                    fdu
+                }), cdr(fs)))
+            }
+        }
+    }
+}
+
+/// `k`'s value, current, and that the query being run read it.
+pub fn db_get(d: Db, run: Runner, k: &'static Sexp) -> Str {
+    let i = db_id(d, k);
+    if id_in_p(i, get(d.8)) {
+        error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
+        str_lit("")
+    } else {
+        let x = db_current(d, run, i, k);
+        note_read_x(d, i, {
+            let n = db_node_at(d, i);
+            if null_p(n) {
+                0i64
+            } else {
+                node_durability(car(n))
+            }
+        });
+        x
+    }
+}
+
+/// `k`'s value, made current (`db-made-current`); one of a query whose
+/// value was not kept (C417) made again: its fingerprint the one it had,
+/// nothing that read it runs.
+pub fn db_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> Str {
+    db_made_current(d, run, i, k);
+    db_node_read_x(d, i);
+    let n = db_node_at(d, i);
+    if node_has_value_p(car(n)) {
+        node_value_in(d, car(n))
+    } else {
+        db_execute(d, run, i, k, n)
+    }
+}
+
+/// `k` made current, its value not read: an input as set; a query
+/// verified, or run again.
+pub fn db_made_current(d: Db, run: Runner, i: i64, k: &'static Sexp) -> () {
+    let (old, r) = (db_node_at(d, i), get(d.0));
+    if null_p(old) {
+        db_execute(d, run, i, k, old);
+        ()
+    } else if node_input_p(car(old)) {
+        ()
+    } else if i64_eq(node_verified(car(old)), r) {
+        ()
+    } else if i64_lt_eq(db_nth(get(d.9), node_durability(car(old))), node_verified(car(old))) {
+        db_put_x(d, i, node_verified_at(car(old), r))
+    } else {
+        let du = db_reads_durability(d, run, node_deps(car(old)), node_verified(car(old)), i64_minus(durabilities(), 1i64));
+        if i64_gt_eq(du, 0i64) {
+            db_put_x(d, i, node_reverified(car(old), r, du))
+        } else {
+            db_execute(d, run, i, k, old);
+            ()
+        }
+    }
+}
+
+/// If none of `is`, each made current in turn, changed after `since`,
+/// their least durability, and `du`'s; else -1, at the first that did.
+pub fn db_reads_durability(mut d: Db, mut run: Runner, mut is: List<i64>, mut since: i64, mut du: i64) -> i64 {
+    loop {
+        if null_p(is) {
+            return du;
+        } else {
+            let n0 = db_node_at(d, car(is));
+            if null_p(n0) {
+                return -1i64;
+            } else {
+                db_made_current(d, run, car(is), node_key(car(n0)));
+                let n = db_node_at(d, car(is));
+                if (null_p(n) || i64_gt(node_changed(car(n)), since)) {
+                    return -1i64;
+                } else {
+                    (is, du) = (cdr(is), if i64_lt(node_durability(car(n)), du) {
+                        node_durability(car(n))
+                    } else {
+                        du
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// `k`'s query run, its reads recorded; its value's fingerprint the
+/// same as `old`'s, its revision of change kept (early cutoff).
+pub fn db_execute(d: Db, run: Runner, i: i64, k: &'static Sexp, old: List<&'static Node>) -> Str {
+    set(d.8, kayak_rt::heap_cons(frame(i, nil::<i64>(), i64_minus(durabilities(), 1i64)), get(d.8)));
+    let x = run(d, k);
+    let fr = car(get(d.8));
+    let r = get(d.0);
+    let fp = (&queries::fnv_string)(x, queries::fnv_offset());
+    set(d.8, cdr(get(d.8)));
+    set(d.10, i64_plus(get(d.10), 1i64));
+    set(d.11, kayak_rt::heap_cons(k, get(d.11)));
+    {
+        let tagcase_ = fr;
+        match *tagcase_ {
+            Frame::Frame(fk, ds, du) => {
+                db_put_x(d, i, node(k, false, r, if (not(null_p(old)) && i64_eq(node_fp(car(old)), fp)) {
+                    node_changed(car(old))
+                } else {
+                    r
+                }, fp, reverse(ds), du, v_text(x)))
+            }
+        }
+    };
+    x
+}
+
+// `k` made current, its value's fingerprint, and that the query being run
+// read it (C418): a reader of a fingerprint is run again when it changes,
+// as a reader of a value is when that does, the two changing together (a
+// node's revision of change moves when its fingerprint does, early cutoff);
+// the value neither read nor made. For a query of what has been made by
+// name of its content (`kc build`'s objects).
+pub fn db_get_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
+    let i = db_id(d, k);
+    if id_in_p(i, get(d.8)) {
+        error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
+        0i64
+    } else {
+        db_made_current(d, run, i, k);
+        let n = car(db_node_at(d, i));
+        note_read_x(d, i, node_durability(n));
+        node_fp(n)
+    }
+}
+
+// `k` made current, and its value's fingerprint, its value neither read nor
+// made (C417): so that a client holding a value already (a file it wrote)
+// may know it is as it was.
+pub fn db_fingerprint(d: Db, run: Runner, k: &'static Sexp) -> i64 {
+    let i = db_id(d, k);
+    db_made_current(d, run, i, k);
+    node_fp(car(db_node_at(d, i)))
+}
+
+// The database as files (C472, `kayak-db 3`; C417's two, read and written
+// whole, before): a run reads what it reads, and writes what changed.
+//
+// - the head, its name ``: `(kayak-db 3 WHOSE REVISION (LAST ...) ((HASH
+// SLOT NEXT) ...))`, whose it is (a compiler's identity), the
+// durabilities' revisions, and each shard, by number, its group's hash,
+// the slot its file is in, and its next number;
+// - a shard's file, `gN.SLOT`: `(kayak-shard 3 NEXT)`, then `(keys #I=KEY
+// ...)`, each key labelled by its number where it is written, each text
+// in them written more than once (a path) labelled where first written;
+// then `(nodes (#I# INPUT VERIFIED CHANGED FINGERPRINT DURABILITY (#M#
+// ...) VALUE) ...)`, each node's key and what it read by number, its
+// value `file` or `none`; each record `(LEN ...)`, stepped over unread
+// until its node is asked for (C417). ASCII alone, so that an offset is a
+// character's. A shard of which a node changed is written to the other
+// of its two slots, and the head, written last, names the slot: a save
+// cut short leaves the files the old head names as they were;
+// - a value's file, `vI`, its node's number: its text, as it is, read when
+// it is asked for and believed if its fingerprint is the graph's.
+//
+// A key whose value `keep` says is not to be kept (a whole program's output,
+// made again from its parts, which are kept) is written `none`: its node,
+// fingerprint and reads are kept, so that it is verified as any is, and
+// made again only when its value is read.
+#[inline]
+pub fn db_format() -> Str {
+    str_lit("kayak-db 3")
+}
+
+// A file to write: its name, and its text.
+pub enum DbFile {
+    DbFile(Str, Str),
+}
+
+pub fn db_file(f0: Str, f1: Str) -> &'static DbFile {
+    kayak_rt::heap_alloc(DbFile::DbFile(f0, f1))
+}
+
+pub enum KeyedOut {
+    KeyedOut(List<Str>, &'static Kmap, i64),
+}
+
+pub fn keyed_out(f0: List<Str>, f1: &'static Kmap, f2: i64) -> &'static KeyedOut {
+    kayak_rt::heap_alloc(KeyedOut::KeyedOut(f0, f1, f2))
+}
+
+/// Key `k` as text onto `acc` (newest first), each text in it seen
+/// before by its label, each seen first labelled, from `n`.
+pub fn key_written(k: &'static Sexp, seen: &'static Kmap, n: i64, acc: List<Str>) -> &'static KeyedOut {
+    let tagcase_ = k;
+    match *tagcase_ {
+        Sexp::Str(s, f, p) => {
+            let j = km_get(seen, s);
+            if i64_gt_eq(j, 0i64) {
+                keyed_out(kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(j), str_lit("#"))), acc), seen, n)
+            } else {
+                keyed_out(kayak_rt::heap_cons(str_text(s), kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(n), str_lit("="))), acc)), km_put(seen, s, n), i64_plus(n, 1i64))
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            let tagcase_ = keys_written(xs, seen, n, kayak_rt::heap_cons(str_lit("("), acc));
+            match *tagcase_ {
+                KeyedOut::KeyedOut(acc2, seen2, n2) => {
+                    keyed_out(kayak_rt::heap_cons(str_lit(")"), acc2), seen2, n2)
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            keyed_out(kayak_rt::heap_cons(key_text(k), acc), seen, n)
+        }
+    }
+}
+
+pub fn keys_written(mut xs: Sexps, mut seen: &'static Kmap, mut n: i64, mut acc: List<Str>) -> &'static KeyedOut {
+    loop {
+        if null_p(xs) {
+            return keyed_out(acc, seen, n);
+        } else {
+            let tagcase_ = key_written(car(xs), seen, n, acc);
+            match *tagcase_ {
+                KeyedOut::KeyedOut(acc2, seen2, n2) => {
+                    (xs, seen, n, acc) = (cdr(xs), seen2, n2, if null_p(cdr(xs)) {
+                        acc2
+                    } else {
+                        kayak_rt::heap_cons(str_lit(" "), acc2)
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn labels_text(mut is: List<i64>, mut acc: List<Str>) -> List<Str> {
+    loop {
+        if null_p(is) {
+            return acc;
+        } else {
+            (is, acc) = (cdr(is), kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("#"))), if null_p(acc) {
+                acc
+            } else {
+                kayak_rt::heap_cons(str_lit(" "), acc)
+            }));
+            continue;
+        }
+    }
+}
+
+// A record of a shard (C417): `(LEN ...)`, `LEN` the length of what follows
+// it and its space, to the record's `)`, so that a reader may step over it
+// unread: `body` is that, its `)` included.
+#[inline]
+pub fn length_first(body: Str) -> Str {
+    string_append(str_lit("\n ("), string_append(i64_to_string(string_length_i64(body)), string_append(str_lit(" "), body)))
+}
+
+// A shard's records made: its keys', its nodes', the values' files to
+// write; the texts seen in keys, and the next label.
+pub enum MadeFiles {
+    MadeFiles(List<Str>, List<Str>, List<&'static DbFile>, &'static Kmap, i64),
+}
+
+pub fn made_files(f0: List<Str>, f1: List<Str>, f2: List<&'static DbFile>, f3: &'static Kmap, f4: i64) -> &'static MadeFiles {
+    kayak_rt::heap_alloc(MadeFiles::MadeFiles(f0, f1, f2, f3, f4))
+}
+
+/// Each node of `is`, its key into the keys, its record into the nodes, its
+/// value, made in this run and kept, a file to write (and as the file
+/// has it after).
+pub fn nodes_files(mut d: Db, mut is: List<i64>, mut keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync), mut m: &'static MadeFiles) -> &'static MadeFiles {
+    loop {
+        if null_p(is) {
+            return m;
+        } else {
+            let tagcase_ = m;
+            match *tagcase_ {
+                MadeFiles::MadeFiles(keys, nodes, files, seen, labels) => {
+                    if null_p(db_node_at(d, car(is))) {
+                        is = cdr(is);
+                        continue;
+                    } else {
+                        let n = car(db_node_at(d, car(is)));
+                        let tagcase_ = key_written(node_key(n), seen, labels, kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("="))), kayak_rt::nil()));
+                        match *tagcase_ {
+                            KeyedOut::KeyedOut(key_parts, seen2, labels2) => {
+                                let kept = (node_input_p(n) || keep(node_key(n)));
+                                let made = {
+                                    let tagcase_ = node_kept(n);
+                                    match *tagcase_ {
+                                        Value::VText(t) => {
+                                            if kept {
+                                                kayak_rt::heap_cons(t, kayak_rt::nil())
+                                            } else {
+                                                nil::<Str>()
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            nil::<Str>()
+                                        }
+                                    }
+                                };
+                                let filed = (kept && {
+                                    let tagcase_ = node_kept(n);
+                                    match *tagcase_ {
+                                        Value::VNone() => {
+                                            false
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            true
+                                        }
+                                    }
+                                });
+                                if null_p(made) {
+                                    ()
+                                } else {
+                                    let tagcase_ = n;
+                                    match *tagcase_ {
+                                        Node::Node(k, inp, v, c, f, ds, du, val) => {
+                                            set(d.1, im_put(get(d.1), car(is), node(k, inp, v, c, f, ds, du, v_read(car(made)))))
+                                        }
+                                    }
+                                };
+                                (is, m) = (cdr(is), made_files(kayak_rt::heap_cons(length_first(string_append(string_list_append(reverse(key_parts)), str_lit(")"))), keys), kayak_rt::heap_cons(length_first(string_list_append(kayak_rt::heap_cons(str_lit("#"), kayak_rt::heap_cons(i64_to_string(car(is)), kayak_rt::heap_cons(str_lit("# "), kayak_rt::heap_cons(if node_input_p(n) {
+                                    str_lit("1 ")
+                                } else {
+                                    str_lit("0 ")
+                                }, kayak_rt::heap_cons(i64_to_string(node_verified(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_changed(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_fp(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_durability(n)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(string_list_append(reverse(labels_text(node_deps(n), nil::<Str>()))), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(if filed {
+                                    str_lit("file")
+                                } else {
+                                    str_lit("none")
+                                }, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), nodes), if null_p(made) {
+                                    files
+                                } else {
+                                    kayak_rt::heap_cons(db_file(value_file(car(is)), car(made)), files)
+                                }, seen2, labels2));
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[inline]
+pub fn numbers_text(xs: List<i64>) -> List<Str> {
+    if null_p(xs) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(car(xs)), numbers_text(cdr(xs))))
+    }
+}
+
+pub fn numbers_from(mut base: i64, mut k: i64, mut n: i64, mut acc: List<i64>) -> List<i64> {
+    loop {
+        if i64_gt_eq(k, n) {
+            return reverse(acc);
+        } else {
+            (k, acc) = (i64_plus(k, 1i64), kayak_rt::heap_cons(i64_plus(base, k), acc));
+            continue;
+        }
+    }
+}
+
+pub fn sm_numbers(mut t: &'static Smap, mut acc: List<i64>) -> List<i64> {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Smap::SmNone() => {
+                return acc;
+            }
+            Smap::SmNode(l, k, x, h, r) => {
+                (t, acc) = (l, kayak_rt::heap_cons(k, sm_numbers(r, acc)));
+                continue;
+            }
+        }
+    }
+}
+
+/// Each shard of `ns`: if a node of it changed, its file written to its
+/// other slot, and its values' files; its line of the head.
+pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync), mut values: List<&'static DbFile>, mut graphs: List<&'static DbFile>, mut heads: List<Str>) -> Product_11_12_13<List<&'static DbFile>, List<&'static DbFile>, List<Str>> {
+    loop {
+        if null_p(ns) {
+            return Product_11_12_13(values, graphs, reverse(heads));
+        } else {
+            let tagcase_ = db_shard(d, car(ns));
+            match *tagcase_ {
+                Shard::Shard(h, slot, text, next, loaded, dirty) => {
+                    if not(dirty) {
+                        (ns, heads) = (cdr(ns), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(slot), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), heads));
+                        continue;
+                    } else {
+                        let tagcase_ = nodes_files(d, numbers_from(i64_star(car(ns), shard_span()), 0i64, next, nil::<i64>()), keep, made_files(nil::<Str>(), nil::<Str>(), nil::<&'static DbFile>(), km_none(), 0i64));
+                        match *tagcase_ {
+                            MadeFiles::MadeFiles(keys, nodes, files, seen, labels) => {
+                                let to = if i64_eq(slot, 0i64) {
+                                    the::<i64>(1i64)
+                                } else {
+                                    the::<i64>(0i64)
+                                };
+                                let t = string_list_append(append(kayak_rt::heap_cons(str_lit("(kayak-shard 3 "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(")\n(keys"), kayak_rt::nil()))), append(reverse(keys), append(kayak_rt::heap_cons(str_lit(")\n(nodes"), kayak_rt::nil()), append(reverse(nodes), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::nil()))))));
+                                sm_set_x(d, car(ns), shard(h, to, t, next, true, false));
+                                (ns, values, graphs, heads) = (cdr(ns), onto(reverse(files), values), kayak_rt::heap_cons(db_file(shard_file(car(ns), to), t), graphs), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(to), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), heads));
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The files to write of what changed since the database was read or last
+// saved, `whose` it is, `keep` saying of a query's key whether its value is
+// kept, in the order to write them: the values', the shards', the head
+// last. Its nodes after are as those files have them.
+pub fn db_saved(d: Db, whose: Str, keep: &'static (dyn Fn(&'static Sexp) -> bool + Send + Sync)) -> List<&'static DbFile> {
+    let r = shards_saved(d, sm_numbers(get(d.3), nil::<i64>()), keep, nil::<&'static DbFile>(), nil::<&'static DbFile>(), nil::<Str>());
+    set(d.7, false);
+    onto(r.0, onto(r.1, kayak_rt::heap_cons(db_file(str_lit(""), string_list_append(append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::nil()))))))), append(cdr(numbers_text(get(d.9))), append(kayak_rt::heap_cons(str_lit(") ("), kayak_rt::nil()), append(r.2, kayak_rt::heap_cons(str_lit("))\n"), kayak_rt::nil()))))))), kayak_rt::nil())))
+}
+
+/// The head's shards, `(HASH SLOT NEXT)` each, numbered from `k`, none
+/// read yet.
+pub fn shards_scanned_x(d: Db, s: Str, i: i64, n: i64, k: i64) -> () {
+    let i = sc_ws(s, i, n);
+    if not(i64_eq(sc_char(s, i, n), 40i64)) {
+        set(d.5, k)
+    } else {
+        let xs = sc_ints(s, i64_plus(i, 1i64), n, 3i64, nil::<i64>());
+        let h = i64_to_string(db_nth(xs, 0i64));
+        set(d.4, km_put(get(d.4), h, k));
+        sm_set_x(d, k, shard(h, db_nth(xs, 1i64), str_lit(""), db_nth(xs, 2i64), false, false));
+        shards_scanned_x(d, s, i64_plus(sc_close(s, db_nth(xs, 3i64), n), 1i64), n, i64_plus(k, 1i64))
+    }
+}
+
+/// The database whose files `rd` reads, if its head says it is `whose`;
+/// else an empty one, as files of another format, or another's, have
+/// none for this (C472). Its shards read as their keys are asked for.
+pub fn db_opened(rd: Reader, whose: Str) -> Db {
     let d = db_make();
+    let graph = {
+        set(d.6, rd);
+        rd(str_lit(""))
+    };
     let h = string_append(str_lit("("), string_append(db_format(), str_lit(" ")));
     let n = string_length_i64(graph);
     let hn = string_length_i64(h);
@@ -1902,42 +2251,27 @@ pub fn db_of_files(graph: Str, payload: Str, whose: Str) -> Db {
         let tagcase_ = sc_str(graph, hn, n, am_none());
         match *tagcase_ {
             Part::Part(w, wt, atoms, e) => {
-                let ns = sc_ints(graph, e, n, 1i64, nil::<i64>());
-                let lasts = sc_ints(graph, i64_plus(sc_ws(graph, db_nth(ns, 1i64), n), 1i64), n, durabilities(), nil::<i64>());
-                let plen = sc_int(graph, i64_plus(sc_close(graph, db_nth(lasts, durabilities()), n), 1i64), n);
-                let tagcase_ = plen;
-                match *tagcase_ {
-                    Scanned::Scanned(pl, e2) => {
-                        if not(({
-                            let tagcase_ = w;
-                            match *tagcase_ {
-                                Sexp::Str(t, f, p) => {
-                                    string_eq_p(t, whose)
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    false
-                                }
-                            }
-                        } && i64_eq(pl, string_length_i64(payload)))) {
-                            d
-                        } else {
-                            let k0 = sc_ws(graph, i64_plus(sc_close(graph, e2, n), 1i64), n);
-                            let top = keys_scanned_x(d, graph, i64_plus(k0, 5i64), n, am_none(), -1i64);
-                            let tagcase_ = top;
-                            match *tagcase_ {
-                                Scanned::Scanned(t, e3) => {
-                                    set(d.0, db_nth(ns, 0i64));
-                                    set(d.8, reverse(cdr(reverse(lasts))));
-                                    set(d.4, payload);
-                                    set(d.5, graph);
-                                    set(d.3, i64_plus(t, 1i64));
-                                    nodes_scanned_x(d, graph, i64_plus(sc_ws(graph, e3, n), 6i64), n);
-                                    d
-                                }
-                            }
+                if not({
+                    let tagcase_ = w;
+                    match *tagcase_ {
+                        Sexp::Str(t, f, p) => {
+                            string_eq_p(t, whose)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
                         }
                     }
+                }) {
+                    d
+                } else {
+                    let ns = sc_ints(graph, e, n, 1i64, nil::<i64>());
+                    let lasts = sc_ints(graph, i64_plus(sc_ws(graph, db_nth(ns, 1i64), n), 1i64), n, durabilities(), nil::<i64>());
+                    let at = sc_ws(graph, i64_plus(sc_close(graph, db_nth(lasts, durabilities()), n), 1i64), n);
+                    set(d.0, db_nth(ns, 0i64));
+                    set(d.9, reverse(cdr(reverse(lasts))));
+                    shards_scanned_x(d, graph, i64_plus(at, 1i64), n, 0i64);
+                    d
                 }
             }
         }
@@ -1960,8 +2294,21 @@ pub fn im_keys(mut t: &'static Imap, mut acc: Sexps) -> Sexps {
     }
 }
 
+pub fn shards_read_x(mut d: Db, mut ns: List<i64>) -> () {
+    loop {
+        if null_p(ns) {
+            return ();
+        } else {
+            db_shard_read_x(d, car(ns));
+            ns = cdr(ns);
+            continue;
+        }
+    }
+}
+
 #[inline]
 pub fn db_keys(d: Db) -> Sexps {
+    shards_read_x(d, sm_numbers(get(d.3), nil::<i64>()));
     im_keys(get(d.1), nil::<&'static Sexp>())
 }
 
