@@ -68,6 +68,15 @@ pub enum Step {
     Done(),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Step {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::More(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Done() => { }
+        }
+    }
+}
+
 pub fn more(f0: i64) -> kayak_rt::Handle<'static, Step> {
     kayak_rt::heap_alloc(Step::More(f0))
 }

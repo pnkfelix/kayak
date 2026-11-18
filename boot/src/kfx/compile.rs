@@ -14,12 +14,28 @@ pub enum Source {
     Source(Str, Str),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Source {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Source(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn source(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Source> {
     kayak_rt::heap_alloc(Source::Source(f0, f1))
 }
 
 pub enum Output {
     Output(Str, Str),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Output {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Output(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn output(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Output> {
@@ -265,6 +281,14 @@ pub fn compile_units(ss: Sources) -> Outputs {
 // or took are given back, for the next.
 pub enum Compiled {
     Compiled(Outputs, Memos),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Compiled {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Compiled(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn compiled(f0: Outputs, f1: Memos) -> kayak_rt::Handle<'static, Compiled> {

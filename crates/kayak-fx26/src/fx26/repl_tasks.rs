@@ -58,6 +58,15 @@ pub mod tasks {
         DraftTold(i64, Str, bool),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Told {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::EntryTold(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
+                Self::DraftTold(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
+    }
+
     pub fn entry_told(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> kayak_rt::Handle<'static, Told> {
         kayak_rt::heap_alloc(Told::EntryTold(f0, f1, f2, f3, f4, f5, f6, f7))
     }
@@ -70,6 +79,14 @@ pub mod tasks {
     // whether no task may run.
     pub enum Ran {
         Ran(List<kayak_rt::Handle<'static, Told>>, i64, bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Ran {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Ran(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
     }
 
     pub fn ran(f0: List<kayak_rt::Handle<'static, Told>>, f1: i64, f2: bool) -> kayak_rt::Handle<'static, Ran> {
@@ -85,6 +102,21 @@ pub mod tasks {
         RoundEnded(i64, ICell<kayak_rt::Handle<'static, Ran>>),
         FrontEnded(),
         FrontFailed(Str),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Asked {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::EntryAsked(f0, f1, f2, f3, f4, f5, f6, f7, f8) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); kayak_rt::Trace::trace(f8, t); }
+                Self::DraftAsked(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::DraftUnasked() => { }
+                Self::CancelAsked(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::LimitAsked(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::RoundEnded(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::FrontEnded() => { }
+                Self::FrontFailed(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn entry_asked(f0: i64, f1: Str, f2: Str, f3: bool, f4: Str, f5: Str, f6: bool, f7: List<i64>, f8: Strings) -> kayak_rt::Handle<'static, Asked> {
@@ -124,6 +156,15 @@ pub mod tasks {
     pub enum Relayed {
         FromFront(kayak_rt::Handle<'static, Asked>),
         Taken(ICell<List<kayak_rt::Handle<'static, Asked>>>, bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Relayed {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::FromFront(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::Taken(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn from_front(f0: kayak_rt::Handle<'static, Asked>) -> kayak_rt::Handle<'static, Relayed> {
@@ -548,6 +589,15 @@ pub mod tasks {
         ClosedAs(Str, i64, List<i64>, bool),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Closing {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Unclosable() => { }
+                Self::ClosedAs(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
+    }
+
     pub fn unclosable() -> kayak_rt::Handle<'static, Closing> {
         kayak_rt::heap_alloc(Closing::Unclosable())
     }
@@ -559,6 +609,15 @@ pub mod tasks {
     pub enum Scan {
         IllBalanced(),
         ScannedAs(List<i64>, bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Scan {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::IllBalanced() => { }
+                Self::ScannedAs(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn ill_balanced() -> kayak_rt::Handle<'static, Scan> {
@@ -991,6 +1050,18 @@ pub mod tasks {
         Recheck(kayak_rt::Handle<'static, Cv>, kayak_rt::Handle<'static, Sexp>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Job {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::CheckEntry(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::TypeOf(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Try(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::HoleItems(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::Recheck(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn check_entry(f0: kayak_rt::Handle<'static, Cv>, f1: Strings, f2: i64, f3: Str, f4: Str) -> kayak_rt::Handle<'static, Job> {
         kayak_rt::heap_alloc(Job::CheckEntry(f0, f1, f2, f3, f4))
     }
@@ -1020,6 +1091,21 @@ pub mod tasks {
         ItemsDone(i64, Str),
         Rechecked(kayak_rt::Handle<'static, Cv>),
         RefusedDone(Str),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Done {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::EntryDone(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+                Self::ShownDone(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::TriedNone() => { }
+                Self::TriedExpression(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::TriedDefinitions(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ItemsDone(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Rechecked(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::RefusedDone(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn entry_done(f0: kayak_rt::Handle<'static, Cv>, f1: Strings, f2: Str, f3: Str, f4: bool, f5: List<i64>, f6: Strings) -> kayak_rt::Handle<'static, Done> {
@@ -3552,6 +3638,14 @@ pub mod tasks {
     // escapes), as C103's Rust read them.
     pub enum Arrival {
         Arrival(i64, List<i64>),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Arrival {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Arrival(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn arrival(f0: i64, f1: List<i64>) -> kayak_rt::Handle<'static, Arrival> {

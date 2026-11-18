@@ -79,6 +79,14 @@ pub enum Abbrev {
     Abbrev(Str, Str),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Abbrev {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Abbrev(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn abbrev(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Abbrev> {
     kayak_rt::heap_alloc(Abbrev::Abbrev(f0, f1))
 }
@@ -555,6 +563,14 @@ pub enum Qual {
     Qual(Str, kayak_rt::Handle<'static, Sexp>, bool),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Qual {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Qual(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn qual(f0: Str, f1: kayak_rt::Handle<'static, Sexp>, f2: bool) -> kayak_rt::Handle<'static, Qual> {
     kayak_rt::heap_alloc(Qual::Qual(f0, f1, f2))
 }
@@ -932,6 +948,14 @@ pub fn module_item_shown(v: kayak_rt::Handle<'static, Cv>, all: Sexps, scope: Qu
 // abbreviation names the type.
 pub enum Brn {
     Brn(Str, Str),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Brn {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Brn(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn brn(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Brn> {

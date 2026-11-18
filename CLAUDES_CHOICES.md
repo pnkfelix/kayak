@@ -14651,3 +14651,38 @@ then a generated `Trace`; then a collector.
   the lang items, Fixpt's programs' `Show`); Fixpt running the compiler
   makes the same Rust; selfhost on tier 1 147 s; the async build; nextest
   5596; kc-steps 362 of 362.
+
+## C479. `Trace`: what a value reaches of kayak-rt's heap, generated (2026-11-18)
+
+The user, after C478: "Okay ... keep going". C478's next steps were
+closures, bloblets and flat arrays as handles, then a generated `Trace`.
+Taken in the other order, said to the user: a closure's captures are
+opaque to Rust whether it is a handle or a reference, so a collector
+scans one whole either way; what it needs first is to know, precisely,
+which parts of each heap value are the heap's. Reviewed first: Fixpt's
+`dump-heap!` (FX-26's) dumps a heap to resume it, no census, so no name a
+KFX program could call one by: the generated impls tested from Rust.
+
+What changed:
+- **kayak-rt's `trace.rs`**: `Trace<'a>`, a value's handles told to a
+  `Tracer<'a>`, which keeps what it must still visit in a list (a long
+  list traced in a loop), visits each value once, and counts what it
+  reached by type, and strings' bytes (`census`); `traced(root)`. No
+  `unsafe`: the list holds `&'a dyn Trace<'a>`. The lifetime the
+  trait's, so a copy (a cell's value, read) traces what it reaches.
+  Impls: scalars, `Str`, `Symbol` (the process's), `Int`, `Handle` (its
+  value reached), `Option`, `Cons`, `Cell`, `Array`, `Value`, bytevectors,
+  kayak-rt's three products; a plain reference opaque (a closure, a
+  dynamic sum, a bloblet: a collector to scan such a block whole).
+- **kfx's emitter**: each datatype's `impl Trace` (a region's lifetimes
+  outliving the trace's, its type parameters traceable; each variant's
+  fields traced), and each shape's (a product's fields, a sum's payload).
+- **Tests**: kayak-rt's (a shared tail reached once; a million pairs);
+  the corpus crate's `tests/trace.rs`, of `tests/kfx/data.rs`'s generated
+  `Tree` (a shared subtree once; 200,000 deep, in a loop).
+
+Measured: an edit's build 0.28 s, as before; kc's binary 7.06 MB.
+- **The full check**: all passed in 442.6 s, its third run (the first
+  stopped at the I/O programs' Rust, blessed again; the second at
+  clippy's two findings in `trace.rs`); nextest 5600 (the four new
+  tests); selfhost 155 s; the fixpoint with Fixpt.

@@ -45,6 +45,20 @@ pub mod kc_asm {
         OImem(i64, Str, i64),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Opd {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::OReg(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::OImm(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::OIsym(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::OMem(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::OSym(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::OIreg(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::OImem(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
+    }
+
     pub fn o_reg(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Opd> {
         kayak_rt::heap_alloc(Opd::OReg(f0, f1))
     }
@@ -85,6 +99,19 @@ pub mod kc_asm {
         PBranch(i64, Str),
         PCall(Str),
         PFix(i64, Str, i64, i64),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Piece {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::PBytes(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::PLabel(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::PAlign(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::PBranch(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::PCall(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::PFix(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
     }
 
     pub fn p_bytes(f0: List<i64>) -> kayak_rt::Handle<'static, Piece> {
@@ -849,6 +876,14 @@ pub mod kc_asm {
         Reading(List<Pieces>, i64, Strings, List<Product_11_12_13<Str, i64, i64>>, List<Product_11_12<Str, i64>>, List<Product_11_12<Str, i64>>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Reading {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Reading(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+            }
+        }
+    }
+
     pub fn reading(f0: List<Pieces>, f1: i64, f2: Strings, f3: List<Product_11_12_13<Str, i64, i64>>, f4: List<Product_11_12<Str, i64>>, f5: List<Product_11_12<Str, i64>>) -> kayak_rt::Handle<'static, Reading> {
         kayak_rt::heap_alloc(Reading::Reading(f0, f1, f2, f3, f4, f5))
     }
@@ -1161,6 +1196,14 @@ pub mod kc_asm {
         Reloc(i64, i64, Str, i64),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Reloc {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Reloc(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
+    }
+
     pub fn reloc(f0: i64, f1: i64, f2: Str, f3: i64) -> kayak_rt::Handle<'static, Reloc> {
         kayak_rt::heap_alloc(Reloc::Reloc(f0, f1, f2, f3))
     }
@@ -1169,6 +1212,14 @@ pub mod kc_asm {
     // where in it, whether it is global.
     pub enum Where {
         Where(i64, i64, bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Where {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Where(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
     }
 
     pub fn r#where(f0: i64, f1: i64, f2: bool) -> kayak_rt::Handle<'static, Where> {
@@ -1191,6 +1242,14 @@ pub mod kc_asm {
     // A section made: its bytes and its relocations.
     pub enum Made {
         Made(Bytes, List<kayak_rt::Handle<'static, Reloc>>),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Made {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Made(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn made(f0: Bytes, f1: List<kayak_rt::Handle<'static, Reloc>>) -> kayak_rt::Handle<'static, Made> {

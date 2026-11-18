@@ -13,6 +13,15 @@ pub enum Tree {
     Node(kayak_rt::Handle<'static, Tree>, kayak_rt::Handle<'static, Tree>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Tree {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Leaf(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Node(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn leaf(f0: Int) -> kayak_rt::Handle<'static, Tree> {
     kayak_rt::heap_alloc(Tree::Leaf(f0))
 }

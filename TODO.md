@@ -1875,10 +1875,14 @@ over its 1664 definitions, 335 of them refused:
   type mentions), made only by the heap's and regions' allocations. Left
   as references: closures (`&'static dyn Fn`, 345 in kc), bloblets, flat
   arrays (`Array` a newtype already, its field public), kayak-rt's own
-  objects (`leak`: continuations, mailboxes, tables). Then: a `Trace` the
-  emitter writes for each datatype (its handles, precisely); then a
-  collector, the Rust stack conservative and the heap precise
-  (Bartlett's mostly-copying), its stress mode at every allocation.
+  objects (`leak`: continuations, mailboxes, tables). Then ~~a `Trace`
+  the emitter writes for each datatype~~ (done, C479: every datatype and
+  shape, kayak-rt's own types; a reference opaque, a closure's captures
+  too); then a collector, the Rust stack conservative and the heap
+  precise (Bartlett's mostly-copying), its stress mode at every
+  allocation: its roots (the stacks, the constants kfx's Rust keeps,
+  kayak-rt's statics and thread locals), cells used again (an arena's
+  cells set once now, `OnceCell`), the threads stopped.
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
   edit's build at 1000 procedures 154 MB, kept for the run (kayak-rt has
   no collector), half its time the kernel's page faults. Left, largest

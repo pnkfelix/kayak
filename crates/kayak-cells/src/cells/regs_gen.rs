@@ -30,6 +30,14 @@ pub enum Gwrites {
     Gwrites(Str, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Gwrites {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Gwrites(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn gwrites(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Gwrites> {
     kayak_rt::heap_alloc(Gwrites::Gwrites(f0, f1))
 }
@@ -120,6 +128,14 @@ pub enum Rctx {
     Rctx(Ref<bool>, bool, Ref<Strings>, Ref<bool>, Str, i64, i64, Ref<i64>, List<kayak_rt::Handle<'static, Rspec>>, Ref<Rlocs>, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rctx {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rctx(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); kayak_rt::Trace::trace(f8, t); kayak_rt::Trace::trace(f9, t); kayak_rt::Trace::trace(f10, t); }
+        }
+    }
+}
+
 pub fn rctx(f0: Ref<bool>, f1: bool, f2: Ref<Strings>, f3: Ref<bool>, f4: Str, f5: i64, f6: i64, f7: Ref<i64>, f8: List<kayak_rt::Handle<'static, Rspec>>, f9: Ref<Rlocs>, f10: i64) -> kayak_rt::Handle<'static, Rctx> {
     kayak_rt::heap_alloc(Rctx::Rctx(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10))
 }
@@ -129,6 +145,14 @@ pub fn rctx(f0: Ref<bool>, f1: bool, f2: Ref<Strings>, f3: Ref<bool>, f4: Str, f
 // procedure knows of itself, and its start's label; and the context.
 pub enum Rgen {
     Rgen(Ref<Ritems>, bool, Ref<i64>, Ref<i64>, Ref<i64>, Ref<i64>, Rthis, i64, kayak_rt::Handle<'static, Rctx>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rgen {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rgen(f0, f1, f2, f3, f4, f5, f6, f7, f8) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); kayak_rt::Trace::trace(f8, t); }
+        }
+    }
 }
 
 pub fn rgen(f0: Ref<Ritems>, f1: bool, f2: Ref<i64>, f3: Ref<i64>, f4: Ref<i64>, f5: Ref<i64>, f6: Rthis, f7: i64, f8: kayak_rt::Handle<'static, Rctx>) -> kayak_rt::Handle<'static, Rgen> {
@@ -684,6 +708,14 @@ pub enum Rflags {
     Rflags(List<bool>, bool),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rflags {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rflags(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rflags(f0: List<bool>, f1: bool) -> kayak_rt::Handle<'static, Rflags> {
     kayak_rt::heap_alloc(Rflags::Rflags(f0, f1))
 }
@@ -724,6 +756,14 @@ pub fn r_in_regs(g: kayak_rt::Handle<'static, Rgen>, inits: Cxs, m: i64, te: Cen
 // sum, under 2^30 in size.
 pub enum Rsplit {
     Rsplit(Cxs, Int),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rsplit {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rsplit(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rsplit(f0: Cxs, f1: Int) -> kayak_rt::Handle<'static, Rsplit> {
@@ -1107,6 +1147,14 @@ pub enum Rfree {
     Rfree(Rargs, Rpatches),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rfree {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rfree(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rfree(f0: Rargs, f1: Rpatches) -> kayak_rt::Handle<'static, Rfree> {
     kayak_rt::heap_alloc(Rfree::Rfree(f0, f1))
 }
@@ -1116,6 +1164,14 @@ pub enum Rscope {
     Rscope(Renv, Cenv),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rscope {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rscope(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rscope(f0: Renv, f1: Cenv) -> kayak_rt::Handle<'static, Rscope> {
     kayak_rt::heap_alloc(Rscope::Rscope(f0, f1))
 }
@@ -1123,6 +1179,14 @@ pub fn rscope(f0: Renv, f1: Cenv) -> kayak_rt::Handle<'static, Rscope> {
 // A join point's place: its parameters' places and its label.
 pub enum Rplace {
     Rplace(Rlocs, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rplace {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rplace(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rplace(f0: Rlocs, f1: i64) -> kayak_rt::Handle<'static, Rplace> {
@@ -1254,6 +1318,14 @@ pub enum Rbound {
     Rbound(Renv, Cenv, List<kayak_rt::Handle<'static, Rarg>>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rbound {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rbound(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn rbound(f0: Renv, f1: Cenv, f2: List<kayak_rt::Handle<'static, Rarg>>) -> kayak_rt::Handle<'static, Rbound> {
     kayak_rt::heap_alloc(Rbound::Rbound(f0, f1, f2))
 }
@@ -1276,6 +1348,18 @@ pub enum Rarg {
     ASlot(i64),
     ALexical(i64),
     AThunk(kayak_rt::Handle<'static, Cx>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rarg {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::AE(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::AV(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::ASlot(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::ALexical(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::AThunk(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
 }
 
 pub fn a_e(f0: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Rarg> {
@@ -1383,6 +1467,16 @@ pub enum Roperands {
     RopNone(),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Roperands {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::RopImm(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RopReg(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RopNone() => { }
+        }
+    }
+}
+
 pub fn rop_imm(f0: kayak_rt::Handle<'static, Lit>) -> kayak_rt::Handle<'static, Roperands> {
     kayak_rt::heap_alloc(Roperands::RopImm(f0))
 }
@@ -1401,6 +1495,14 @@ pub enum Rpatch {
     Rpatch(i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rpatch {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rpatch(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rpatch(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Rpatch> {
     kayak_rt::heap_alloc(Rpatch::Rpatch(f0, f1))
 }
@@ -1413,6 +1515,14 @@ pub type Rpatches = List<kayak_rt::Handle<'static, Rpatch>>;
 // oldest made for the same body, parameters, own name and captures.
 pub enum Rmade {
     Rmade(Str, Strings),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rmade {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rmade(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rmade(f0: Str, f1: Strings) -> kayak_rt::Handle<'static, Rmade> {
@@ -1592,6 +1702,14 @@ pub enum Rcall {
     Rcall(kayak_rt::Handle<'static, Rspecial>, kayak_rt::Handle<'static, Cx>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rcall {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rcall(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rcall(f0: kayak_rt::Handle<'static, Rspecial>, f1: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Rcall> {
     kayak_rt::heap_alloc(Rcall::Rcall(f0, f1))
 }
@@ -1670,12 +1788,28 @@ pub enum Rlate {
     Rlate(i64, kayak_rt::Handle<'static, Cx>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rlate {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rlate(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rlate(f0: i64, f1: kayak_rt::Handle<'static, Cx>) -> kayak_rt::Handle<'static, Rlate> {
     kayak_rt::heap_alloc(Rlate::Rlate(f0, f1))
 }
 
 pub enum Rleaf {
     Rleaf(Rmoves, List<kayak_rt::Handle<'static, Rlate>>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rleaf {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rleaf(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rleaf(f0: Rmoves, f1: List<kayak_rt::Handle<'static, Rlate>>) -> kayak_rt::Handle<'static, Rleaf> {

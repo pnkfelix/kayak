@@ -6,6 +6,13 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1n_5reply<A0, A1>(pub A0, pub A1);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1n_5reply<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
+
 // Responsiveness by effects (C388): a handler that must not wait says so by
 // its type, an effect with no `receive`, no `await`, no standard input. It
 // hands what would wait to a process, a worker of its own, and only sends;

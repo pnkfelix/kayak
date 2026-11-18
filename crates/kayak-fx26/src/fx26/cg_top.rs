@@ -259,6 +259,14 @@ pub enum Qseen {
     Qseen(i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Qseen {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Qseen(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn qseen(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Qseen> {
     kayak_rt::heap_alloc(Qseen::Qseen(f0, f1))
 }

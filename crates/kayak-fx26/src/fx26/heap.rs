@@ -284,6 +284,14 @@ pub enum Cblock {
     Cblock(i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Cblock {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Cblock(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn cblock(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Cblock> {
     kayak_rt::heap_alloc(Cblock::Cblock(f0, f1))
 }
@@ -783,6 +791,14 @@ pub fn string_text(v: i64) -> Str {
 // no global slots: each is 0.
 pub enum NamedSlot {
     NamedSlot(Str, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for NamedSlot {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::NamedSlot(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn named_slot(f0: Str, f1: i64) -> kayak_rt::Handle<'static, NamedSlot> {

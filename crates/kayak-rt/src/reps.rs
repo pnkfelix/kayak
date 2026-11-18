@@ -23,6 +23,42 @@ pub struct Product_11_12_13<A0, A1, A2>(pub A0, pub A1, pub A2);
 #[derive(Clone, Copy)]
 pub struct Product_11_12_13_14_15<A0, A1, A2, A3, A4>(pub A0, pub A1, pub A2, pub A3, pub A4);
 
+/// The products' `Trace` (C479), each field's.
+impl<'a, A0: crate::Trace<'a>, A1: crate::Trace<'a>> crate::Trace<'a> for Product_11_12<A0, A1> {
+    fn trace(&self, t: &mut crate::Tracer<'a>) {
+        self.0.trace(t);
+        self.1.trace(t);
+    }
+}
+
+impl<'a, A0: crate::Trace<'a>, A1: crate::Trace<'a>, A2: crate::Trace<'a>> crate::Trace<'a>
+    for Product_11_12_13<A0, A1, A2>
+{
+    fn trace(&self, t: &mut crate::Tracer<'a>) {
+        self.0.trace(t);
+        self.1.trace(t);
+        self.2.trace(t);
+    }
+}
+
+impl<
+    'a,
+    A0: crate::Trace<'a>,
+    A1: crate::Trace<'a>,
+    A2: crate::Trace<'a>,
+    A3: crate::Trace<'a>,
+    A4: crate::Trace<'a>,
+> crate::Trace<'a> for Product_11_12_13_14_15<A0, A1, A2, A3, A4>
+{
+    fn trace(&self, t: &mut crate::Tracer<'a>) {
+        self.0.trace(t);
+        self.1.trace(t);
+        self.2.trace(t);
+        self.3.trace(t);
+        self.4.trace(t);
+    }
+}
+
 impl<A0, A1> Show for Product_11_12<A0, A1> {
     fn show(&self, out: &mut String) {
         out.push_str("#<product of 2>");

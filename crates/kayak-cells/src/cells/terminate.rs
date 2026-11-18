@@ -74,6 +74,15 @@ pub mod termination {
         IntOf(i64, i64),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Tracked {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Part(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::IntOf(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn part(f0: i64, f1: bool, f2: Tys) -> kayak_rt::Handle<'static, Tracked> {
         kayak_rt::heap_alloc(Tracked::Part(f0, f1, f2))
     }
@@ -88,6 +97,14 @@ pub mod termination {
         Known(Str, Trackeds),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Known {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Known(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn known(f0: Str, f1: Trackeds) -> kayak_rt::Handle<'static, Known> {
         kayak_rt::heap_alloc(Known::Known(f0, f1))
     }
@@ -97,6 +114,14 @@ pub mod termination {
     // A parameter, bounded below (`#t`) or above.
     pub enum Guard {
         Guard(i64, bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Guard {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Guard(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn guard(f0: i64, f1: bool) -> kayak_rt::Handle<'static, Guard> {
@@ -111,6 +136,14 @@ pub mod termination {
         Edge(i64, i64, bool),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Edge {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Edge(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
+    }
+
     pub fn edge(f0: i64, f1: i64, f2: bool) -> kayak_rt::Handle<'static, Edge> {
         kayak_rt::heap_alloc(Edge::Edge(f0, f1, f2))
     }
@@ -119,6 +152,14 @@ pub mod termination {
 
     pub enum Scall {
         Scall(i64, i64, Edges),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Scall {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Scall(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
     }
 
     pub fn scall(f0: i64, f1: i64, f2: Edges) -> kayak_rt::Handle<'static, Scall> {
@@ -132,6 +173,14 @@ pub mod termination {
         Passing(i64, i64, I64s),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Passing {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Passing(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
+    }
+
     pub fn passing(f0: i64, f1: i64, f2: I64s) -> kayak_rt::Handle<'static, Passing> {
         kayak_rt::heap_alloc(Passing::Passing(f0, f1, f2))
     }
@@ -140,6 +189,14 @@ pub mod termination {
 
     pub enum Slot {
         Slot(i64, i64),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Slot {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Slot(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn slot(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Slot> {
@@ -155,6 +212,14 @@ pub mod termination {
         Wc(kayak_rt::Handle<'static, Cv>, Strings, i64, Knowns, Guards, I64s, Slots),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Wc {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Wc(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+            }
+        }
+    }
+
     pub fn wc(f0: kayak_rt::Handle<'static, Cv>, f1: Strings, f2: i64, f3: Knowns, f4: Guards, f5: I64s, f6: Slots) -> kayak_rt::Handle<'static, Wc> {
         kayak_rt::heap_alloc(Wc::Wc(f0, f1, f2, f3, f4, f5, f6))
     }
@@ -163,6 +228,14 @@ pub mod termination {
     // escaped.
     pub enum Ws {
         Ws(Scalls, Passings, bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Ws {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Ws(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
     }
 
     pub fn ws(f0: Scalls, f1: Passings, f2: bool) -> kayak_rt::Handle<'static, Ws> {
@@ -1114,6 +1187,14 @@ pub mod termination {
     // A member of a group: its name, parameters, their types, and its body.
     pub enum RecMember {
         RecMember(Str, Strings, Tys, Sexps),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for RecMember {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::RecMember(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
     }
 
     pub fn rec_member(f0: Str, f1: Strings, f2: Tys, f3: Sexps) -> kayak_rt::Handle<'static, RecMember> {

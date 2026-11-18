@@ -113,6 +113,35 @@ pub enum Val {
     VRep(Str),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Val {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::VInt(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VReal(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VChar(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VString(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VSymbol(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VBool(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VUnit() => { }
+            Self::VNil() => { }
+            Self::VPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::VRef(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VSum(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::VProduct(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::VData(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::VArray(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VBytes(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VFlat(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VProc(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::VPrim(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::VCtor(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::VCont(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::VDatum(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::VRep(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn v_int(f0: Int) -> kayak_rt::Handle<'static, Val> {
     kayak_rt::heap_alloc(Val::VInt(f0))
 }
@@ -230,6 +259,28 @@ pub enum Ir {
     IPrompt(kayak_rt::Handle<'static, Ir>, kayak_rt::Handle<'static, Ir>, kayak_rt::Handle<'static, Ir>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Ir {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::ILit(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::ILocal(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::IGlobal(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::ILambda(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::ICall(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::IIf(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::ISeq(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::ILet(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::ILetrec(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::IDefine(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::ISum(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::IProduct(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::IField(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::ITagcase(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::IPrompt(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn i_lit(f0: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Ir> {
     kayak_rt::heap_alloc(Ir::ILit(f0))
 }
@@ -297,6 +348,14 @@ pub enum Arm {
     Arm(Str, i64, kayak_rt::Handle<'static, Ir>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Arm {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Arm(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn arm(f0: Str, f1: i64, f2: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Arm> {
     kayak_rt::heap_alloc(Arm::Arm(f0, f1, f2))
 }
@@ -308,6 +367,16 @@ pub enum Todo {
     TCall(),
     TLet(kayak_rt::Handle<'static, Ir>),
     TProduct(Strings),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Todo {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::TCall() => { }
+            Self::TLet(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::TProduct(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
 }
 
 pub fn t_call() -> kayak_rt::Handle<'static, Todo> {
@@ -337,6 +406,25 @@ pub enum Frame {
     KPromptHandler(kayak_rt::Handle<'static, Val>, kayak_rt::Handle<'static, Ir>, Env),
     KPrompt(i64, kayak_rt::Handle<'static, Val>),
     KAbort(i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Frame {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::KIf(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::KSeq(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::KList(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::KLetrec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::KDefine(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::KSumTag(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::KExtract(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::KTagcase(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::KPromptTag(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::KPromptHandler(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::KPrompt(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::KAbort(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
 }
 
 pub fn k_if(f0: kayak_rt::Handle<'static, Ir>, f1: kayak_rt::Handle<'static, Ir>, f2: Env) -> kayak_rt::Handle<'static, Frame> {

@@ -20,6 +20,14 @@ pub enum Memo {
     Memo(i64, Str),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Memo {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Memo(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn memo(f0: i64, f1: Str) -> kayak_rt::Handle<'static, Memo> {
     kayak_rt::heap_alloc(Memo::Memo(f0, f1))
 }
@@ -31,6 +39,15 @@ pub type Memos = List<kayak_rt::Handle<'static, Memo>>;
 pub enum Fmap {
     FmNone(),
     FmNode(kayak_rt::Handle<'static, Fmap>, Str, i64, i64, kayak_rt::Handle<'static, Fmap>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Fmap {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::FmNone() => { }
+            Self::FmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+        }
+    }
 }
 
 pub fn fm_none() -> kayak_rt::Handle<'static, Fmap> {

@@ -1133,6 +1133,18 @@ pub enum HandItem {
     AlignOdd(Int),
 }
 
+impl<'a> kayak_rt::Trace<'a> for HandItem {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Ins(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Jump(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::LabelHere(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::OffsetOf(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::AlignOdd(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn ins(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
     kayak_rt::heap_alloc(HandItem::Ins(f0))
 }
@@ -2684,6 +2696,14 @@ pub fn zeros_x(mut k: i64) -> () {
 // (`KAYAK_PERF_MAP`).
 pub enum Span {
     Span(Str, Int, Int, i64, bool, Int),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Span {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Span(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+        }
+    }
 }
 
 pub fn span(f0: Str, f1: Int, f2: Int, f3: i64, f4: bool, f5: Int) -> kayak_rt::Handle<'static, Span> {

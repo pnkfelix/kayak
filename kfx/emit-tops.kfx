@@ -553,8 +553,37 @@
                           (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static")) params)) ", ") ">")) acc)))
                  (acc (put " {\n" acc))
                  (acc (put-variants inner (cdr xs) acc))
-                 (acc (put "}\n\n" acc)))
+                 (acc (put "}\n\n" acc))
+                 (acc (put-trace-impl d lived params (cdr xs) acc)))
             (put-constructors inner d lived params (cdr xs) acc))))
+
+      (define put-trace-impl (subr kfx (string strings strings sexps chars) chars)
+        (lambda (d lived params variants acc)
+          "Its `Trace` (C479; kayak-rt's `trace.rs`): each variant's fields
+           traced, what of the heap they reach told the tracer; its regions'
+           lifetimes outlive the trace's, its type parameters traceable."
+          (let* ((generic (onto (map (lambda ((r string)) (string-append (lifetime r) ": 'a")) lived)
+                                (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + kayak_rt::Trace<'a>")) params)))
+                 (args (onto (map lifetime lived) (map camel params)))
+                 (acc (put (string-append "impl<'a" (string-append (string-list-append (map (lambda ((g string)) (string-append ", " g)) generic)) "> kayak_rt::Trace<'a> for ")) acc))
+                 (acc (put (camel d) acc))
+                 (acc (if (null? args) acc (put (string-append "<" (string-append (words-of-sep args ", ") ">")) acc)))
+                 (acc (put " {\n    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {\n" acc))
+                 (acc (if (null? variants) (put "        let _ = t;\n        match *self {}\n" acc) (put "        match self {\n" acc)))
+                 (acc (put-trace-arms variants acc))
+                 (acc (if (null? variants) acc (put "        }\n" acc))))
+            (put "    }\n}\n\n" acc))))
+
+      (define-rec
+        (put-trace-arms (subr kfx (sexps chars) chars)
+          (lambda (variants acc)
+            (if (null? variants)
+                acc
+                (let* ((v (items (car variants)))
+                       (fields (map (lambda ((i i64)) (string-append "f" (i64->string i))) (counting 0 (size (cdr v)))))
+                       (acc (put (string-append "            Self::" (string-append (camel (sym-name (car v))) (string-append "(" (string-append (words-of-sep fields ", ") ") => {")))) acc))
+                       (acc (put (string-list-append (map (lambda ((f string)) (string-append " kayak_rt::Trace::trace(" (string-append f ", t);"))) fields)) acc)))
+                  (put-trace-arms (cdr variants) (put " }\n" acc)))))))
 
       (define put-generics-list (subr kfx (strings chars) chars)
         (lambda (ps acc)
@@ -698,6 +727,25 @@
                 (put-variants-of (cdr tags) (i64+ i 1)
                                  (put "),\n" (put (i64->string i) (put "(A" (put (variant-name (car tags)) (put "    " acc))))))))))
 
+      (define put-shape-trace (subr kfx (string bool strings i64 chars) chars)
+        (lambda (name product labels n acc)
+          "A shape's `Trace` (C479): a product's fields traced, or a sum's
+           payload, each type parameter traceable."
+          (let* ((ps (map (lambda ((i i64)) (string-append "A" (i64->string i))) (counting 0 n)))
+                 (acc (put (string-append "impl<'a" (string-list-append (map (lambda ((a string)) (string-append ", " (string-append a ": kayak_rt::Trace<'a>"))) ps))) acc))
+                 (acc (put (string-append "> kayak_rt::Trace<'a> for " name) acc))
+                 (acc (if (i64= n 0) acc (put (string-append "<" (string-append (words-of-sep ps ", ") ">")) acc)))
+                 (acc (put " {\n    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {\n" acc)))
+            (put "    }\n}\n\n"
+                 (cond (product
+                        (put (if (i64= n 0) "        let _ = t;\n" "")
+                             (put (string-list-append (map (lambda ((i i64)) (string-append "        kayak_rt::Trace::trace(&self." (string-append (i64->string i) ", t);\n"))) (counting 0 n))) acc)))
+                       ((null? labels) (put "        let _ = t;\n        match *self {}\n" acc))
+                       (else
+                        (put "        }\n"
+                             (put (string-list-append (map (lambda ((l string)) (string-append "            " (string-append name (string-append "::" (string-append (variant-name l) "(x) => kayak_rt::Trace::trace(x, t),\n"))))) labels))
+                                  (put "        match self {\n" acc)))))))))
+
       (define put-shape-decls (subr kfx (strings bool bool chars) chars)
         (lambda (keys shows flats acc)
           "Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
@@ -715,6 +763,7 @@
                               (put ");\n\n" (put-sep (lambda ((i i64) (acc chars)) (put (i64->string i) (put "pub A" acc))) ", " (counting 0 n)
                                                    (put "(" (put-generic-params n (put name (put "#[derive(Clone, Copy)]\npub struct " acc))))))
                               (put "}\n\n" (put-variants-of labels 0 (put " {\n" (put-generic-params n (put name (put "pub enum " acc))))))))
+                     (acc (put-shape-trace name product labels n acc))
                      (acc (if (not shows)
                               acc
                               (let ((acc (put " {\n    fn show(&self, out: &mut String) {\n" (put-generic-params n (put name (put " Show for " (put-generic-params n (put "impl" acc))))))))

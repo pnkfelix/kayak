@@ -12,6 +12,14 @@ pub enum CheckedMemo {
     CheckedMemo(kayak_rt::Handle<'static, Cv>, Typeds, Memos),
 }
 
+impl<'a> kayak_rt::Trace<'a> for CheckedMemo {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::CheckedMemo(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn checked_memo(f0: kayak_rt::Handle<'static, Cv>, f1: Typeds, f2: Memos) -> kayak_rt::Handle<'static, CheckedMemo> {
     kayak_rt::heap_alloc(CheckedMemo::CheckedMemo(f0, f1, f2))
 }
@@ -27,6 +35,14 @@ pub enum Reads {
     Reads(kayak_rt::Handle<'static, Fmap>, kayak_rt::Handle<'static, Fmap>, kayak_rt::Handle<'static, Fmap>, Aliases, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Reads {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Reads(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+        }
+    }
+}
+
 pub fn reads(f0: kayak_rt::Handle<'static, Fmap>, f1: kayak_rt::Handle<'static, Fmap>, f2: kayak_rt::Handle<'static, Fmap>, f3: Aliases, f4: i64) -> kayak_rt::Handle<'static, Reads> {
     kayak_rt::heap_alloc(Reads::Reads(f0, f1, f2, f3, f4))
 }
@@ -38,6 +54,14 @@ pub enum FactRec {
     FactRec(i64, i64, i64, Str, Str),
 }
 
+impl<'a> kayak_rt::Trace<'a> for FactRec {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::FactRec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+        }
+    }
+}
+
 pub fn fact_rec(f0: i64, f1: i64, f2: i64, f3: Str, f4: Str) -> kayak_rt::Handle<'static, FactRec> {
     kayak_rt::heap_alloc(FactRec::FactRec(f0, f1, f2, f3, f4))
 }
@@ -47,6 +71,14 @@ pub type FactRecs = List<kayak_rt::Handle<'static, FactRec>>;
 // A key, and what was learned making it.
 pub enum ReadKey {
     ReadKey(i64, kayak_rt::Handle<'static, Reads>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for ReadKey {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::ReadKey(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn read_key(f0: i64, f1: kayak_rt::Handle<'static, Reads>) -> kayak_rt::Handle<'static, ReadKey> {
@@ -518,6 +550,14 @@ pub mod incremental_check {
         Change(Str, Str),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Change {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Change(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn change(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Change> {
         kayak_rt::heap_alloc(Change::Change(f0, f1))
     }
@@ -796,6 +836,14 @@ pub mod incremental_check {
         Redone(kayak_rt::Handle<'static, Cv>, Typeds, Str),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Redone {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Redone(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
+    }
+
     pub fn redone(f0: kayak_rt::Handle<'static, Cv>, f1: Typeds, f2: Str) -> kayak_rt::Handle<'static, Redone> {
         kayak_rt::heap_alloc(Redone::Redone(f0, f1, f2))
     }
@@ -891,6 +939,14 @@ pub mod incremental_check {
     // not found again, every body of its walked.
     pub enum OrderMemo {
         OrderMemo(Sexps, Memos),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for OrderMemo {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::OrderMemo(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn order_memo(f0: Sexps, f1: Memos) -> kayak_rt::Handle<'static, OrderMemo> {

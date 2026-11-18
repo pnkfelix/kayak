@@ -12,6 +12,15 @@ pub enum Point {
     Origin(),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Point {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Pt(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Origin() => { }
+        }
+    }
+}
+
 pub fn pt(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Point> {
     kayak_rt::heap_alloc(Point::Pt(f0, f1))
 }
@@ -26,6 +35,15 @@ pub mod m {
     pub enum Place {
         Pt(i64),
         Nowhere(),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Place {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Pt(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::Nowhere() => { }
+            }
+        }
     }
 
     pub fn pt(f0: i64) -> kayak_rt::Handle<'static, Place> {

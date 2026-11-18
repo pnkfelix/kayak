@@ -6,6 +6,13 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1a_1c<A0, A1>(pub A0, pub A1);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1a_1c<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
+
 impl<A0: Flat, A1: Flat> Flat for Product_1a_1c<A0, A1> {
     fn zeroed() -> Self {
         Product_1a_1c(A0::zeroed(), A1::zeroed())
@@ -15,6 +22,13 @@ impl<A0: Flat, A1: Flat> Flat for Product_1a_1c<A0, A1> {
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_1w_1h<A0, A1>(pub A0, pub A1);
+
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1w_1h<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
 
 impl<A0: Flat, A1: Flat> Flat for Product_1w_1h<A0, A1> {
     fn zeroed() -> Self {

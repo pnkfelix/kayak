@@ -19,6 +19,19 @@ pub enum Ritem {
     RiPos(i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Ritem {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::RiOp(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::RiFrame(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RiLabel(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RiBranch(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::RiGuard(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::RiPos(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn ri_op(f0: Str, f1: List<kayak_rt::Handle<'static, Opnd>>) -> kayak_rt::Handle<'static, Ritem> {
     kayak_rt::heap_alloc(Ritem::RiOp(f0, f1))
 }
@@ -210,6 +223,14 @@ pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'sta
 // Register code made: its items in order, its frame's size.
 pub enum Rcode {
     Rcode(Ritems, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rcode {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rcode(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rcode(f0: Ritems, f1: i64) -> kayak_rt::Handle<'static, Rcode> {

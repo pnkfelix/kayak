@@ -6,6 +6,12 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1k<A0>(pub A0);
 
+impl<'a, A0: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1k<A0> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+    }
+}
+
 // A procedure that cannot abort where one that may is expected, wherever it
 // stands: a list's element, a product's field, a branch, an argument. Its
 // Rust type returns no Result, so it is lifted: a closure that returns its

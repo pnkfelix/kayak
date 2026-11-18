@@ -292,6 +292,14 @@ pub mod kc_x64 {
         X64Code(List<Str>, i64, i64, List<Str>, Str),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for X64Code {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::X64Code(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            }
+        }
+    }
+
     pub fn x64_code(f0: List<Str>, f1: i64, f2: i64, f3: List<Str>, f4: Str) -> kayak_rt::Handle<'static, X64Code> {
         kayak_rt::heap_alloc(X64Code::X64Code(f0, f1, f2, f3, f4))
     }
@@ -811,6 +819,14 @@ pub mod kc_x64 {
     // Where each variable is: its binder's number and its slot.
     pub enum X64At {
         X64At(i64, i64),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for X64At {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::X64At(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn x64_at(f0: i64, f1: i64) -> kayak_rt::Handle<'static, X64At> {

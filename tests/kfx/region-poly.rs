@@ -6,6 +6,12 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1k<A0>(pub A0);
 
+impl<'a, A0: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1k<A0> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+    }
+}
+
 // Procedures poly over regions (C42): each region binder not within a
 // place is a lifetime of the Rust `fn`, `'r`, its data at that lifetime, so
 // a `letrena`'s lists and references may be given to a helper defined at

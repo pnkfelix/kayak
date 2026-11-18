@@ -422,6 +422,14 @@ pub mod expressions {
         FreshMetas(List<i64>, kayak_rt::Handle<'static, St>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for FreshMetas {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::FreshMetas(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn fresh_metas(f0: List<i64>, f1: kayak_rt::Handle<'static, St>) -> kayak_rt::Handle<'static, FreshMetas> {
         kayak_rt::heap_alloc(FreshMetas::FreshMetas(f0, f1))
     }
@@ -1822,6 +1830,14 @@ pub mod expressions {
 
     pub enum Narrowing {
         Narrowing(kayak_rt::Handle<'static, Cv>, kayak_rt::Handle<'static, Cv>),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Narrowing {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Narrowing(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn narrowing(f0: kayak_rt::Handle<'static, Cv>, f1: kayak_rt::Handle<'static, Cv>) -> kayak_rt::Handle<'static, Narrowing> {
@@ -4600,6 +4616,14 @@ pub mod expressions {
     // items' types (newest first), the effect of making it, the state.
     pub enum Mres {
         Mres(kayak_rt::Handle<'static, Cv>, Tys, Strings, kayak_rt::Handle<'static, St>),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Mres {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Mres(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
     }
 
     pub fn mres(f0: kayak_rt::Handle<'static, Cv>, f1: Tys, f2: Strings, f3: kayak_rt::Handle<'static, St>) -> kayak_rt::Handle<'static, Mres> {

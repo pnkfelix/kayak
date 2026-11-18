@@ -6,6 +6,12 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1a<A0>(pub A0);
 
+impl<'a, A0: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1a<A0> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+    }
+}
+
 // Paths narrowed by a test (C196, Fixpt's `unions/paths-narrow.fx`): a
 // union read through a pair, `(car x)`, and through a product's field,
 // used at its member's type where the test held, unboxed in Rust; a write

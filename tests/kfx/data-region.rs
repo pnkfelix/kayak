@@ -13,6 +13,15 @@ pub enum Rose<'r, T: Copy + 'static> {
     Node(ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>),
 }
 
+impl<'a, 'r: 'a, T: Copy + 'static + kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Rose<'r, T> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Leaf(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Node(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn leaf<'r, T: Copy + 'static>(f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     kayak_rt::alloc(Rose::Leaf(f0))
 }

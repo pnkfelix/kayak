@@ -515,6 +515,14 @@ pub enum Activation {
     Activation(i64, i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Activation {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Activation(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn activation(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Activation> {
     kayak_rt::heap_alloc(Activation::Activation(f0, f1, f2))
 }
@@ -561,6 +569,14 @@ pub fn env_within_p(mut outer: i64, mut e: i64, mut depth: i64) -> bool {
 // first 17 kept (last first), and how many.
 pub enum Walked {
     Walked(List<kayak_rt::Handle<'static, Activation>>, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Walked {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Walked(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn walked(f0: List<kayak_rt::Handle<'static, Activation>>, f1: i64) -> kayak_rt::Handle<'static, Walked> {

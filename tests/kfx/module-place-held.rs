@@ -6,6 +6,13 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_4seen_6bumper<A0, A1>(pub A0, pub A1);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4seen_6bumper<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
+
 // A module maker's instance, its item held as a closure in a product of refs, as the REPL's front holds its expander's (C439).
 
 pub struct Cnt<'p, Place_P>(pub &'p Place_P, pub &'p counter_in::CntState<'p, Place_P>);

@@ -96,6 +96,14 @@ pub enum Counter {
     Counter(Str, Ref<i64>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Counter {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Counter(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn counter(f0: Str, f1: Ref<i64>) -> kayak_rt::Handle<'static, Counter> {
     kayak_rt::heap_alloc(Counter::Counter(f0, f1))
 }

@@ -22,6 +22,20 @@ pub enum Sexp {
     Real(Str, Str, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Sexp {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Sym(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Str(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Num(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Big(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Chr(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Lst(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Real(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn sym(f0: Str, f1: Str, f2: i64) -> kayak_rt::Handle<'static, Sexp> {
     kayak_rt::heap_alloc(Sexp::Sym(f0, f1, f2))
 }
@@ -57,6 +71,14 @@ pub enum Here {
     Here(Chars, i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Here {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Here(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn here(f0: Chars, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Here> {
     kayak_rt::heap_alloc(Here::Here(f0, f1, f2))
 }
@@ -68,6 +90,14 @@ pub enum Got {
     Got(kayak_rt::Handle<'static, Sexp>, kayak_rt::Handle<'static, Here>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Got {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Got(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn got(f0: kayak_rt::Handle<'static, Sexp>, f1: kayak_rt::Handle<'static, Here>) -> kayak_rt::Handle<'static, Got> {
     kayak_rt::heap_alloc(Got::Got(f0, f1))
 }
@@ -76,12 +106,28 @@ pub enum Gots {
     Gots(Sexps, kayak_rt::Handle<'static, Here>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Gots {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Gots(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn gots(f0: Sexps, f1: kayak_rt::Handle<'static, Here>) -> kayak_rt::Handle<'static, Gots> {
     kayak_rt::heap_alloc(Gots::Gots(f0, f1))
 }
 
 pub enum Tok {
     Tok(Str, Chars, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Tok {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Tok(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
 }
 
 pub fn tok(f0: Str, f1: Chars, f2: i64) -> kayak_rt::Handle<'static, Tok> {
@@ -763,6 +809,15 @@ pub enum Labels {
     LbNode(kayak_rt::Handle<'static, Labels>, i64, kayak_rt::Handle<'static, Sexp>, i64, kayak_rt::Handle<'static, Labels>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Labels {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::LbNone() => { }
+            Self::LbNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+        }
+    }
+}
+
 pub fn lb_none() -> kayak_rt::Handle<'static, Labels> {
     kayak_rt::heap_alloc(Labels::LbNone())
 }
@@ -773,6 +828,14 @@ pub fn lb_node(f0: kayak_rt::Handle<'static, Labels>, f1: i64, f2: kayak_rt::Han
 
 pub enum Resolved {
     Resolved(Sexps, kayak_rt::Handle<'static, Labels>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Resolved {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Resolved(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn resolved(f0: Sexps, f1: kayak_rt::Handle<'static, Labels>) -> kayak_rt::Handle<'static, Resolved> {

@@ -42,19 +42,57 @@ pub mod main;
 pub use main::*;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
+pub struct Product_3put<A0>(pub A0);
+
+impl<'a, A0: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_3put<A0> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
 pub struct Product_11string_eq_p<A0>(pub A0);
+
+impl<'a, A0: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_11string_eq_p<A0> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+    }
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4path_4text<A0, A1>(pub A0, pub A1);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4path_4text<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_2op_1k<A0, A1>(pub A0, pub A1);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_2op_1k<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4step_2op_6answer<A0, A1, A2>(pub A0, pub A1, pub A2);
+
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4step_2op_6answer<A0, A1, A2> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+        kayak_rt::Trace::trace(&self.2, t);
+    }
+}
 
 const _: () = kayak_rt::tags_apart_from_runtime(&["write-file", "read-file", "clock", "write", "read-line", "failed", "text", "time", "done", "eof", "line"]);
 

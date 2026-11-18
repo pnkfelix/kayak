@@ -54,6 +54,18 @@ pub enum Request {
     Limited(i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Request {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::EntryGiven(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::DraftGiven(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::DraftDropped() => { }
+            Self::Cancelled(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Limited(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn entry_given(f0: i64, f1: Str, f2: Str, f3: bool) -> kayak_rt::Handle<'static, Request> {
     kayak_rt::heap_alloc(Request::EntryGiven(f0, f1, f2, f3))
 }
@@ -77,6 +89,15 @@ pub fn limited(f0: i64) -> kayak_rt::Handle<'static, Request> {
 pub enum News {
     EntryNews(i64, i64, Str, Str, i64, i64, i64, i64),
     DraftNews(i64, Str, bool),
+}
+
+impl<'a> kayak_rt::Trace<'a> for News {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::EntryNews(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
+            Self::DraftNews(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
 }
 
 pub fn entry_news(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> kayak_rt::Handle<'static, News> {
@@ -1569,6 +1590,14 @@ pub mod session {
         MadeEntry(Str, Str, bool, List<i64>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for MadeEntry {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::MadeEntry(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
+    }
+
     pub fn made_entry(f0: Str, f1: Str, f2: bool, f3: List<i64>) -> kayak_rt::Handle<'static, MadeEntry> {
         kayak_rt::heap_alloc(MadeEntry::MadeEntry(f0, f1, f2, f3))
     }
@@ -2026,6 +2055,15 @@ pub mod session {
         ClosedOff(Str, i64, List<i64>, bool),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Closing {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::NotClosable() => { }
+                Self::ClosedOff(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
+    }
+
     pub fn not_closable() -> kayak_rt::Handle<'static, Closing> {
         kayak_rt::heap_alloc(Closing::NotClosable())
     }
@@ -2037,6 +2075,15 @@ pub mod session {
     pub enum Scan {
         Unbalanced(),
         Scanned(List<i64>, bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Scan {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Unbalanced() => { }
+                Self::Scanned(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn unbalanced() -> kayak_rt::Handle<'static, Scan> {

@@ -406,12 +406,28 @@ pub mod kc_front {
         Kmod(Str, List<Str>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Kmod {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Kmod(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn kmod(f0: Str, f1: List<Str>) -> kayak_rt::Handle<'static, Kmod> {
         kayak_rt::heap_alloc(Kmod::Kmod(f0, f1))
     }
 
     pub enum Renaming {
         Renaming(Str, Str),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Renaming {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Renaming(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn renaming(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Renaming> {
@@ -776,6 +792,14 @@ pub mod kc_front {
         Kface(Str, List<Str>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Kface {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Kface(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn kface(f0: Str, f1: List<Str>) -> kayak_rt::Handle<'static, Kface> {
         kayak_rt::heap_alloc(Kface::Kface(f0, f1))
     }
@@ -831,6 +855,14 @@ pub mod kc_front {
     // Substitution (C471): a name for an expression, as `renamed` renames.
     pub enum Ksub {
         Ksub(Str, kayak_rt::Handle<'static, Sexp>),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Ksub {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Ksub(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn ksub(f0: Str, f1: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Ksub> {
@@ -1092,6 +1124,14 @@ pub mod kc_front {
     // A local bound to an instance (C471): its name, and its maker's.
     pub enum Kinst {
         Kinst(Str, Str),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Kinst {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Kinst(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn kinst(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Kinst> {
@@ -1690,6 +1730,15 @@ pub mod kc_front {
     pub enum CheckOutcome {
         CheckPassed(Str, Memos),
         CheckRefused(Str),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for CheckOutcome {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::CheckPassed(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::CheckRefused(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn check_passed(f0: Str, f1: Memos) -> kayak_rt::Handle<'static, CheckOutcome> {

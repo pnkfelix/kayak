@@ -12,6 +12,15 @@ pub mod made__load__0__areas {
         Box(Int, Int),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Shape {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Dot(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::Box(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn dot(f0: Int) -> kayak_rt::Handle<'static, Shape> {
         kayak_rt::heap_alloc(Shape::Dot(f0))
     }

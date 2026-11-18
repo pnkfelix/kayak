@@ -64,6 +64,14 @@ pub enum Op {
     Op(Str, &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Op {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Op(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn op(f0: Str, f1: &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)) -> kayak_rt::Handle<'static, Op> {
     kayak_rt::heap_alloc(Op::Op(f0, f1))
 }

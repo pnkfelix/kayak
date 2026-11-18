@@ -1836,6 +1836,16 @@ pub enum Top {
     TopNone(),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Top {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::TopDefine(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::TopExpr(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::TopNone() => { }
+        }
+    }
+}
+
 pub fn top_define(f0: kayak_rt::Handle<'static, Ir>) -> kayak_rt::Handle<'static, Top> {
     kayak_rt::heap_alloc(Top::TopDefine(f0))
 }

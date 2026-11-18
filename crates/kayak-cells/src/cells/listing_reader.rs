@@ -185,12 +185,28 @@ pub enum Iline {
     Iline(i64, Chars),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Iline {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Iline(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn iline(f0: i64, f1: Chars) -> kayak_rt::Handle<'static, Iline> {
     kayak_rt::heap_alloc(Iline::Iline(f0, f1))
 }
 
 pub enum Block {
     Block(Str, i64, i64, List<kayak_rt::Handle<'static, Iline>>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Block {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Block(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+        }
+    }
 }
 
 pub fn block(f0: Str, f1: i64, f2: i64, f3: List<kayak_rt::Handle<'static, Iline>>) -> kayak_rt::Handle<'static, Block> {
@@ -275,6 +291,14 @@ pub enum Ltext {
     Ltext(Str, Str),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Ltext {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Ltext(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn ltext(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Ltext> {
     kayak_rt::heap_alloc(Ltext::Ltext(f0, f1))
 }
@@ -321,6 +345,14 @@ pub fn tables_read_x(mut ls: List<Chars>, mut name: Str) -> () {
 // A line table's entries: each a cell and the source position from it on.
 pub enum Cpos {
     Cpos(i64, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Cpos {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Cpos(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn cpos(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Cpos> {
@@ -430,6 +462,14 @@ pub enum Lab {
     Lab(i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Lab {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Lab(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn lab(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Lab> {
     kayak_rt::heap_alloc(Lab::Lab(f0, f1))
 }
@@ -448,12 +488,28 @@ pub enum Lgot {
     Lgot(i64, Chars),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Lgot {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Lgot(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn lgot(f0: i64, f1: Chars) -> kayak_rt::Handle<'static, Lgot> {
     kayak_rt::heap_alloc(Lgot::Lgot(f0, f1))
 }
 
 pub enum Gint {
     Gint(Int, Chars),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Gint {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Gint(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn gint(f0: Int, f1: Chars) -> kayak_rt::Handle<'static, Gint> {
@@ -464,12 +520,28 @@ pub enum Gtext {
     Gtext(Str, Chars),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Gtext {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Gtext(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn gtext(f0: Str, f1: Chars) -> kayak_rt::Handle<'static, Gtext> {
     kayak_rt::heap_alloc(Gtext::Gtext(f0, f1))
 }
 
 pub enum Gall {
     Gall(List<i64>, Chars),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Gall {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Gall(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn gall(f0: List<i64>, f1: Chars) -> kayak_rt::Handle<'static, Gall> {

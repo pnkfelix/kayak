@@ -208,6 +208,17 @@ pub mod made__load__2__expander {
         Vec(List<kayak_rt::Handle<'static, Syn>>, kayak_rt::value::Value, Int, Int, Int),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Syn {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Atom(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::MxEagerReaderTypesLst(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::Dotted(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::Vec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            }
+        }
+    }
+
     pub fn atom(f0: kayak_rt::value::Value, f1: Int, f2: Int, f3: Int) -> kayak_rt::Handle<'static, Syn> {
         kayak_rt::heap_alloc(Syn::Atom(f0, f1, f2, f3))
     }
@@ -234,6 +245,16 @@ pub mod made__load__2__expander {
         RlNames(MxParserTypesNames, MxParserTypesNames),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Relied {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::RlNone() => { }
+                Self::RlUnknown() => { }
+                Self::RlNames(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn rl_none() -> kayak_rt::Handle<'static, Relied> {
         kayak_rt::heap_alloc(Relied::RlNone())
     }
@@ -249,6 +270,15 @@ pub mod made__load__2__expander {
     pub enum MxParserTypesShape {
         ShModule(List<Product_11_12<Symbol, List<kayak_rt::Handle<'static, MxParserTypesShape>>>>, List<Product_11_12<Symbol, List<kayak_rt::Handle<'static, MxParserTypesShape>>>>),
         ShFun(List<List<kayak_rt::Handle<'static, MxParserTypesShape>>>, List<kayak_rt::Handle<'static, MxParserTypesShape>>),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for MxParserTypesShape {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::ShModule(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::ShFun(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn sh_module(f0: List<Product_11_12<Symbol, List<kayak_rt::Handle<'static, MxParserTypesShape>>>>, f1: List<Product_11_12<Symbol, List<kayak_rt::Handle<'static, MxParserTypesShape>>>>) -> kayak_rt::Handle<'static, MxParserTypesShape> {
@@ -269,6 +299,18 @@ pub mod made__load__2__expander {
         DatumLayout(Int),
         DatumArray(Int, Int),
         DatumFits(Int),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for KDatum {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::DatumField(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::DatumBlobrefField(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::DatumLayout(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::DatumArray(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::DatumFits(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn datum_field(f0: Int) -> kayak_rt::Handle<'static, KDatum> {
@@ -323,6 +365,42 @@ pub mod made__load__2__expander {
         ETagcase(kayak_rt::Handle<'static, Exp>, List<Product_11_12_13_14<Symbol, bool, MxParserTypesNames, kayak_rt::Handle<'static, Exp>>>, List<Product_11_12<Symbol, kayak_rt::Handle<'static, Exp>>>, KDatums, Int, Int, Int, Int),
         EModule(List<Product_11_12_13_14<Int, MxParserTypesNames, SynsA, List<kayak_rt::Handle<'static, Exp>>>>, Int, Int, Int, Int),
         EWith(Symbol, kayak_rt::Handle<'static, Exp>, Int, Int, Int, Int, kayak_rt::Handle<'static, Relied>),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Exp {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::EVar(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EInt(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EBool(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EStr(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EChar(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EFloat(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::ESym(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EQuote(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EUnit(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::ELambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::EApp(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::EPlambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::EProj(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::EIf(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+                Self::ELetrec(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::ELet(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::EBegin(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EPrompt(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+                Self::ELetregion(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
+                Self::ERlambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::EThe(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::EConvention(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::EBloblet(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
+                Self::EProduct(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EExtract(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+                Self::ESum(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::ETagcase(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
+                Self::EModule(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::EWith(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+            }
+        }
     }
 
     pub fn e_var(f0: Symbol, f1: Int, f2: Int, f3: Int, f4: Int) -> kayak_rt::Handle<'static, Exp> {
@@ -452,6 +530,21 @@ pub mod made__load__2__expander {
         MxParserTypesTExp(kayak_rt::Handle<'static, Exp>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for MxParserTypesTop {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::MxParserTypesTDefine(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::MxParserTypesTDefineRec(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::TDefineType(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::TDefineEffect(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::TDefineConvention(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::TDefineSyscall(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::TDefineGenerative(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::MxParserTypesTExp(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
+    }
+
     pub fn mx_parser_types_t_define(f0: Symbol, f1: SynsA, f2: kayak_rt::Handle<'static, Exp>, f3: Int, f4: Int) -> kayak_rt::Handle<'static, MxParserTypesTop> {
         kayak_rt::heap_alloc(MxParserTypesTop::MxParserTypesTDefine(f0, f1, f2, f3, f4))
     }
@@ -489,6 +582,15 @@ pub mod made__load__2__expander {
         PErr(Str, Int, Int),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Presult {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::POk(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::PErr(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
+    }
+
     pub fn p_ok(f0: List<kayak_rt::Handle<'static, MxParserTypesTop>>) -> kayak_rt::Handle<'static, Presult> {
         kayak_rt::heap_alloc(Presult::POk(f0))
     }
@@ -511,6 +613,16 @@ pub mod made__load__2__expander {
         RingShape(Addr),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Ring {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::RingRib(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::RingAt(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::RingShape(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
+    }
+
     pub fn ring_rib(f0: Entries) -> kayak_rt::Handle<'static, Ring> {
         kayak_rt::heap_alloc(Ring::RingRib(f0))
     }
@@ -529,6 +641,16 @@ pub mod made__load__2__expander {
         AtmVar(Symbol, bool, Int),
         AtmRibOf(Symbol),
         AtmLit(Int, bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Atm {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::AtmVar(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::AtmRibOf(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::AtmLit(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn atm_var(f0: Symbol, f1: bool, f2: Int) -> kayak_rt::Handle<'static, Atm> {
@@ -551,6 +673,18 @@ pub mod made__load__2__expander {
         BindDirect(Atms),
         BindEarlier(Atms),
         BindShape(Addr),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for MxTypesBind {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::BindRib(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::BindCage(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::BindDirect(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::BindEarlier(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::BindShape(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn bind_rib(f0: Entries) -> kayak_rt::Handle<'static, MxTypesBind> {
@@ -599,6 +733,36 @@ pub mod made__load__2__expander {
         SKind(),
         SItem(),
         SRules(),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Sty {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::SExpr() => { }
+                Self::SBvar() => { }
+                Self::SId() => { }
+                Self::SData() => { }
+                Self::SType() => { }
+                Self::SLabel() => { }
+                Self::SNil() => { }
+                Self::SLiteral(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::SPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::SImport(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::SExport(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::SMark(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::SMu(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::SVar(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::SMany(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::SUnion(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::STyped(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::SLambda() => { }
+                Self::SDefn() => { }
+                Self::SDvar() => { }
+                Self::SKind() => { }
+                Self::SItem() => { }
+                Self::SRules() => { }
+            }
+        }
     }
 
     pub fn s_expr() -> kayak_rt::Handle<'static, Sty> {
@@ -710,6 +874,17 @@ pub mod made__load__2__expander {
         LvShape(Int),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Level {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::LvRib(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::LvCage(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::LvEarlier(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::LvShape(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
+    }
+
     pub fn lv_rib(f0: Atms) -> kayak_rt::Handle<'static, Level> {
         kayak_rt::heap_alloc(Level::LvRib(f0))
     }
@@ -735,6 +910,15 @@ pub mod made__load__2__expander {
         IxNode(Int, Symbol, bool, Int, kayak_rt::Handle<'static, Index>, kayak_rt::Handle<'static, Index>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Index {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::IxLeaf() => { }
+                Self::IxNode(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+            }
+        }
+    }
+
     pub fn ix_leaf() -> kayak_rt::Handle<'static, Index> {
         kayak_rt::heap_alloc(Index::IxLeaf())
     }
@@ -746,6 +930,15 @@ pub mod made__load__2__expander {
     pub enum Group {
         GrNames(kayak_rt::Handle<'static, Index>),
         GrShape(Int),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Group {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::GrNames(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::GrShape(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn gr_names(f0: kayak_rt::Handle<'static, Index>) -> kayak_rt::Handle<'static, Group> {
@@ -762,6 +955,14 @@ pub mod made__load__2__expander {
         EnvOf(Product_11_12<Levels, MxEnvIndexedGroups>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for MxEnvIndexedEnv {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::EnvOf(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
+    }
+
     pub fn env_of(f0: Product_11_12<Levels, MxEnvIndexedGroups>) -> kayak_rt::Handle<'static, MxEnvIndexedEnv> {
         kayak_rt::heap_alloc(MxEnvIndexedEnv::EnvOf(f0))
     }
@@ -774,6 +975,20 @@ pub mod made__load__2__expander {
         ActStandardType(),
         ActMacroHead(Symbol),
         ActMark(Symbol),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Action {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::ActRename(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::ActAlias() => { }
+                Self::ActModuleType(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ActInstanceType(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ActStandardType() => { }
+                Self::ActMacroHead(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ActMark(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn act_rename(f0: Addr, f1: Int) -> kayak_rt::Handle<'static, Action> {
@@ -844,6 +1059,22 @@ pub mod made__load__2__expander {
         KOther(),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for MxNodesKids {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::KPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::KNil() => { }
+                Self::KPvar(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::KBinder(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::KRef(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::KForm(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::KDesc(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::MxNodesKSeq(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::KOther() => { }
+            }
+        }
+    }
+
     pub fn k_pair(f0: Int, f1: Int) -> kayak_rt::Handle<'static, MxNodesKids> {
         kayak_rt::heap_alloc(MxNodesKids::KPair(f0, f1))
     }
@@ -901,6 +1132,15 @@ pub mod made__load__2__expander {
     pub enum MxScopesPart {
         PtUse(MxParserTypesNames),
         PtPath(bool),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for MxScopesPart {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::PtUse(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::PtPath(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn pt_use(f0: MxParserTypesNames) -> kayak_rt::Handle<'static, MxScopesPart> {
@@ -964,6 +1204,19 @@ pub mod made__load__2__expander {
         ShUnion(List<Int>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for MxInferShape {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::ShNil() => { }
+                Self::ShPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::ShSeq(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ShLit(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ShLeaf() => { }
+                Self::ShUnion(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
+    }
+
     pub fn sh_nil() -> kayak_rt::Handle<'static, MxInferShape> {
         kayak_rt::heap_alloc(MxInferShape::ShNil())
     }
@@ -1005,6 +1258,19 @@ pub mod made__load__2__expander {
         ClPair(kayak_rt::Handle<'static, Syn>, kayak_rt::Handle<'static, Syn>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Class {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::ClSeq(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ClWild() => { }
+                Self::ClLit(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ClVar(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ClNil() => { }
+                Self::ClPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn cl_seq(f0: kayak_rt::Handle<'static, Syn>) -> kayak_rt::Handle<'static, Class> {
         kayak_rt::heap_alloc(Class::ClSeq(f0))
     }
@@ -1040,6 +1306,15 @@ pub mod made__load__2__expander {
     pub enum Kd {
         KdTy(kayak_rt::Handle<'static, Sty>),
         KdRef(Int),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Kd {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::KdTy(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::KdRef(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn kd_ty(f0: kayak_rt::Handle<'static, Sty>) -> kayak_rt::Handle<'static, Kd> {
@@ -1107,6 +1382,15 @@ pub mod made__load__2__expander {
         IvCage(Int),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Lv {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::IvRib(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::IvCage(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
+    }
+
     pub fn iv_rib(f0: Gents) -> kayak_rt::Handle<'static, Lv> {
         kayak_rt::heap_alloc(Lv::IvRib(f0))
     }
@@ -1122,6 +1406,15 @@ pub mod made__load__2__expander {
         RdRib(Pents),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Rd {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::RdAt(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::RdRib(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
+    }
+
     pub fn rd_at(f0: Int) -> kayak_rt::Handle<'static, Rd> {
         kayak_rt::heap_alloc(Rd::RdAt(f0))
     }
@@ -1135,6 +1428,15 @@ pub mod made__load__2__expander {
     pub enum Demand {
         DmRib(Pents),
         DmCage(Rds),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Demand {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::DmRib(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::DmCage(f0) => { kayak_rt::Trace::trace(f0, t); }
+            }
+        }
     }
 
     pub fn dm_rib(f0: Pents) -> kayak_rt::Handle<'static, Demand> {
@@ -1228,6 +1530,15 @@ pub mod made__load__2__expander {
     pub enum NameTree {
         NmLeaf(),
         NmNode(Int, Symbol, MxParserTypesShapes, kayak_rt::Handle<'static, NameTree>, kayak_rt::Handle<'static, NameTree>),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for NameTree {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::NmLeaf() => { }
+                Self::NmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            }
+        }
     }
 
     pub fn nm_leaf() -> kayak_rt::Handle<'static, NameTree> {

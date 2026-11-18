@@ -19,6 +19,14 @@ pub enum Pdef {
     Pdef(Str, i64, i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Pdef {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Pdef(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+        }
+    }
+}
+
 pub fn pdef(f0: Str, f1: i64, f2: i64, f3: i64) -> kayak_rt::Handle<'static, Pdef> {
     kayak_rt::heap_alloc(Pdef::Pdef(f0, f1, f2, f3))
 }

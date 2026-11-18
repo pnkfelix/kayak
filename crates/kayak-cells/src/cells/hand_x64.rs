@@ -931,6 +931,18 @@ pub enum XItem {
     Xa(Int),
 }
 
+impl<'a> kayak_rt::Trace<'a> for XItem {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Xb(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Xj(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Xl(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Xo(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Xa(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn xb(f0: List<Int>) -> kayak_rt::Handle<'static, XItem> {
     kayak_rt::heap_alloc(XItem::Xb(f0))
 }
@@ -1013,6 +1025,14 @@ pub fn y_exports() -> Ref<List<Int>> {
 
 pub enum Ystub {
     Ystub(Int, Int),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Ystub {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Ystub(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn ystub(f0: Int, f1: Int) -> kayak_rt::Handle<'static, Ystub> {

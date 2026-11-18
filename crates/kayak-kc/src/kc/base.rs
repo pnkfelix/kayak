@@ -264,6 +264,15 @@ pub enum Nset {
     Nnode(kayak_rt::Handle<'static, Nset>, Str, kayak_rt::Handle<'static, Nset>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Nset {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Nempty() => { }
+            Self::Nnode(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn nempty() -> kayak_rt::Handle<'static, Nset> {
     kayak_rt::heap_alloc(Nset::Nempty())
 }

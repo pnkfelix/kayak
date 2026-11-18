@@ -19,6 +19,14 @@ pub enum Rnamed {
     Rnamed(Str, kayak_rt::Handle<'static, Rcode>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rnamed {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rnamed(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rnamed(f0: Str, f1: kayak_rt::Handle<'static, Rcode>) -> kayak_rt::Handle<'static, Rnamed> {
     kayak_rt::heap_alloc(Rnamed::Rnamed(f0, f1))
 }

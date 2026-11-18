@@ -26,6 +26,14 @@ pub enum Rpbind {
     Rpbind(Str, i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rpbind {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rpbind(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn rpbind(f0: Str, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Rpbind> {
     kayak_rt::heap_alloc(Rpbind::Rpbind(f0, f1, f2))
 }
@@ -45,6 +53,14 @@ pub enum Rxenv {
     Rxenv(bool, kayak_rt::Handle<'static, Cv>, Rpbinds),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rxenv {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rxenv(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn rxenv(f0: bool, f1: kayak_rt::Handle<'static, Cv>, f2: Rpbinds) -> kayak_rt::Handle<'static, Rxenv> {
     kayak_rt::heap_alloc(Rxenv::Rxenv(f0, f1, f2))
 }
@@ -58,12 +74,28 @@ pub enum Rx {
     Rx(RpNodes, i64, Strings, Str, kayak_rt::Handle<'static, Rxenv>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rx {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rx(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+        }
+    }
+}
+
 pub fn rx(f0: RpNodes, f1: i64, f2: Strings, f3: Str, f4: kayak_rt::Handle<'static, Rxenv>) -> kayak_rt::Handle<'static, Rx> {
     kayak_rt::heap_alloc(Rx::Rx(f0, f1, f2, f3, f4))
 }
 
 pub enum Rxa {
     Rxa(kayak_rt::Handle<'static, Rx>, RpOperand),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rxa {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rxa(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rxa(f0: kayak_rt::Handle<'static, Rx>, f1: RpOperand) -> kayak_rt::Handle<'static, Rxa> {
@@ -74,12 +106,28 @@ pub enum Rxs {
     Rxs(kayak_rt::Handle<'static, Rx>, RpOperands),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rxs {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rxs(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rxs(f0: kayak_rt::Handle<'static, Rx>, f1: RpOperands) -> kayak_rt::Handle<'static, Rxs> {
     kayak_rt::heap_alloc(Rxs::Rxs(f0, f1))
 }
 
 pub enum Rxi {
     Rxi(kayak_rt::Handle<'static, Rx>, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rxi {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rxi(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rxi(f0: kayak_rt::Handle<'static, Rx>, f1: i64) -> kayak_rt::Handle<'static, Rxi> {
@@ -825,6 +873,14 @@ pub fn rp_datatype_sum(d: kayak_rt::Handle<'static, Dt>, args: Tys) -> kayak_rt:
 // (`%variance NAME`) and the representation its `#:seal` takes (`%up NAME`, C428).
 pub enum Gdecl {
     Gdecl(Strings, Strings, Strings, kayak_rt::Handle<'static, Ty>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Gdecl {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Gdecl(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+        }
+    }
 }
 
 pub fn gdecl(f0: Strings, f1: Strings, f2: Strings, f3: kayak_rt::Handle<'static, Ty>) -> kayak_rt::Handle<'static, Gdecl> {
@@ -2426,6 +2482,14 @@ pub enum Ri {
     Ri(RpNodes, List<Symbol>, List<Product_11_12<Int, List<Symbol>>>, List<Int>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Ri {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Ri(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+        }
+    }
+}
+
 pub fn ri(f0: RpNodes, f1: List<Symbol>, f2: List<Product_11_12<Int, List<Symbol>>>, f3: List<Int>) -> kayak_rt::Handle<'static, Ri> {
     kayak_rt::heap_alloc(Ri::Ri(f0, f1, f2, f3))
 }
@@ -3465,6 +3529,14 @@ pub fn mtypes_each(v: kayak_rt::Handle<'static, Cv>, s: kayak_rt::Handle<'static
 // not, the first part declined.
 pub enum Rexp {
     Rexp(RpNodes, Strings, Int, Str),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rexp {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rexp(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+        }
+    }
 }
 
 pub fn rexp(f0: RpNodes, f1: Strings, f2: Int, f3: Str) -> kayak_rt::Handle<'static, Rexp> {

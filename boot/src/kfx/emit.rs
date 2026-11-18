@@ -8,6 +8,14 @@ pub enum Tagof {
     Tagof(Str, Str),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Tagof {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Tagof(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn tagof(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Tagof> {
     kayak_rt::heap_alloc(Tagof::Tagof(f0, f1))
 }
@@ -16,6 +24,14 @@ pub type Tagofs = List<kayak_rt::Handle<'static, Tagof>>;
 
 pub enum Family {
     Family(Str, bool, Strings),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Family {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Family(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
 }
 
 pub fn family(f0: Str, f1: bool, f2: Strings) -> kayak_rt::Handle<'static, Family> {
@@ -33,6 +49,15 @@ pub enum Fidx {
     Fnode(kayak_rt::Handle<'static, Fidx>, i64, Facts, kayak_rt::Handle<'static, Fidx>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Fidx {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Fempty() => { }
+            Self::Fnode(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+        }
+    }
+}
+
 pub fn fempty() -> kayak_rt::Handle<'static, Fidx> {
     kayak_rt::heap_alloc(Fidx::Fempty())
 }
@@ -43,6 +68,14 @@ pub fn fnode(f0: kayak_rt::Handle<'static, Fidx>, f1: i64, f2: Facts, f3: kayak_
 
 pub enum Fgroup {
     Fgroup(i64, Facts),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Fgroup {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Fgroup(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn fgroup(f0: i64, f1: Facts) -> kayak_rt::Handle<'static, Fgroup> {
@@ -209,6 +242,14 @@ pub enum Ctx {
     Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, kayak_rt::Handle<'static, Fidx>, Families, Typeds, Typeds),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Ctx {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Ctx(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); kayak_rt::Trace::trace(f8, t); kayak_rt::Trace::trace(f9, t); }
+        }
+    }
+}
+
 pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts, f6: kayak_rt::Handle<'static, Fidx>, f7: Families, f8: Typeds, f9: Typeds) -> kayak_rt::Handle<'static, Ctx> {
     kayak_rt::heap_alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9))
 }
@@ -233,6 +274,16 @@ pub enum Tail {
     OkValue(),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Tail {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Value() => { }
+            Self::Returns(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::OkValue() => { }
+        }
+    }
+}
+
 pub fn value() -> kayak_rt::Handle<'static, Tail> {
     kayak_rt::heap_alloc(Tail::Value())
 }
@@ -247,6 +298,14 @@ pub fn ok_value() -> kayak_rt::Handle<'static, Tail> {
 
 pub enum Assign {
     Assign(Strings, Sexps),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Assign {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Assign(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn assign(f0: Strings, f1: Sexps) -> kayak_rt::Handle<'static, Assign> {

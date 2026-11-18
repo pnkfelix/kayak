@@ -56,21 +56,83 @@ pub use main::*;
 #[derive(Clone, Copy)]
 pub struct Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>, A7: kayak_rt::Trace<'a>, A8: kayak_rt::Trace<'a>, A9: kayak_rt::Trace<'a>, A10: kayak_rt::Trace<'a>, A11: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+        kayak_rt::Trace::trace(&self.2, t);
+        kayak_rt::Trace::trace(&self.3, t);
+        kayak_rt::Trace::trace(&self.4, t);
+        kayak_rt::Trace::trace(&self.5, t);
+        kayak_rt::Trace::trace(&self.6, t);
+        kayak_rt::Trace::trace(&self.7, t);
+        kayak_rt::Trace::trace(&self.8, t);
+        kayak_rt::Trace::trace(&self.9, t);
+        kayak_rt::Trace::trace(&self.10, t);
+        kayak_rt::Trace::trace(&self.11, t);
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_11_12_13_14<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
+
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_11_12_13_14<A0, A1, A2, A3> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+        kayak_rt::Trace::trace(&self.2, t);
+        kayak_rt::Trace::trace(&self.3, t);
+    }
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_11_12_13_14_15_16_17_18<A0, A1, A2, A3, A4, A5, A6, A7>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>, A7: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_11_12_13_14_15_16_17_18<A0, A1, A2, A3, A4, A5, A6, A7> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+        kayak_rt::Trace::trace(&self.2, t);
+        kayak_rt::Trace::trace(&self.3, t);
+        kayak_rt::Trace::trace(&self.4, t);
+        kayak_rt::Trace::trace(&self.5, t);
+        kayak_rt::Trace::trace(&self.6, t);
+        kayak_rt::Trace::trace(&self.7, t);
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_11_12_13_14_15_16<A0, A1, A2, A3, A4, A5>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_11_12_13_14_15_16<A0, A1, A2, A3, A4, A5> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+        kayak_rt::Trace::trace(&self.2, t);
+        kayak_rt::Trace::trace(&self.3, t);
+        kayak_rt::Trace::trace(&self.4, t);
+        kayak_rt::Trace::trace(&self.5, t);
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_11_12_13_14_15_16_17<A0, A1, A2, A3, A4, A5, A6>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6);
+
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_11_12_13_14_15_16_17<A0, A1, A2, A3, A4, A5, A6> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+        kayak_rt::Trace::trace(&self.2, t);
+        kayak_rt::Trace::trace(&self.3, t);
+        kayak_rt::Trace::trace(&self.4, t);
+        kayak_rt::Trace::trace(&self.5, t);
+        kayak_rt::Trace::trace(&self.6, t);
+    }
+}
 
 const _: () = kayak_rt::tags_apart_from_runtime(&["apart", "failed", "ok"]);
 

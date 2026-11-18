@@ -217,6 +217,14 @@ pub mod kc_l0 {
         L0Bound(Str, i64),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for L0Bound {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::L0Bound(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn l0_bound(f0: Str, f1: i64) -> kayak_rt::Handle<'static, L0Bound> {
         kayak_rt::heap_alloc(L0Bound::L0Bound(f0, f1))
     }
@@ -226,6 +234,14 @@ pub mod kc_l0 {
         L0Made(Str, i64),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for L0Made {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::L0Made(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn l0_made(f0: Str, f1: i64) -> kayak_rt::Handle<'static, L0Made> {
         kayak_rt::heap_alloc(L0Made::L0Made(f0, f1))
     }
@@ -233,6 +249,14 @@ pub mod kc_l0 {
     // Parameters made: their text, the scope with them, and the next number.
     pub enum L0MadeParams {
         L0MadeParams(Str, List<kayak_rt::Handle<'static, L0Bound>>, i64),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for L0MadeParams {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::L0MadeParams(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
     }
 
     pub fn l0_made_params(f0: Str, f1: List<kayak_rt::Handle<'static, L0Bound>>, f2: i64) -> kayak_rt::Handle<'static, L0MadeParams> {

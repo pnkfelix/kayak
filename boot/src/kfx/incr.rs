@@ -21,6 +21,14 @@ pub enum Emitted {
     Emitted(Chars, Memos),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Emitted {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Emitted(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn emitted(f0: Chars, f1: Memos) -> kayak_rt::Handle<'static, Emitted> {
     kayak_rt::heap_alloc(Emitted::Emitted(f0, f1))
 }
@@ -30,6 +38,14 @@ pub fn emitted(f0: Chars, f1: Memos) -> kayak_rt::Handle<'static, Emitted> {
 // and what it reads by no name (its locals).
 pub enum Ereads {
     Ereads(kayak_rt::Handle<'static, Fmap>, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Ereads {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Ereads(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn ereads(f0: kayak_rt::Handle<'static, Fmap>, f1: i64) -> kayak_rt::Handle<'static, Ereads> {

@@ -28,6 +28,28 @@ pub enum Node {
     NPrompt(i64, i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Node {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::NLit(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::NLocal(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::NGlobal(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::NLambda(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::NCall(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::NIf(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::NSeq(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::NLet(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::NLetrec(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::NDefine(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::NSum(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::NProduct(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::NField(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::NTagcase(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::NPrompt(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
+}
+
 pub fn n_lit(f0: i64) -> kayak_rt::Handle<'static, Node> {
     kayak_rt::heap_alloc(Node::NLit(f0))
 }
@@ -92,6 +114,14 @@ pub fn n_prompt(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Node> {
 // whole), and its body's node.
 pub enum Armx {
     Armx(i64, i64, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Armx {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Armx(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+        }
+    }
 }
 
 pub fn armx(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Armx> {
@@ -497,6 +527,14 @@ pub fn literal_word_x(v: kayak_rt::Handle<'static, Val>) -> i64 {
 // equal quotes are one object, as FX-26's heap interns them.
 pub enum Quoted {
     Quoted(Str, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Quoted {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Quoted(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn quoted(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Quoted> {

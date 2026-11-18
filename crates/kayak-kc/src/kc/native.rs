@@ -132,6 +132,14 @@ pub mod kc_native {
         Sized(i64, HeapArray),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Sized {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Sized(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn sized(f0: i64, f1: HeapArray) -> kayak_rt::Handle<'static, Sized> {
         kayak_rt::heap_alloc(Sized::Sized(f0, f1))
     }
@@ -187,6 +195,14 @@ pub mod kc_native {
     // (`kayak:last-sealed/1` after its `seal-code`), which names it to free.
     pub enum RunImage {
         RunImage(&'static dyn Fn(HeapArray) -> i64, HeapArray, Int),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for RunImage {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::RunImage(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            }
+        }
     }
 
     pub fn run_image(f0: &'static dyn Fn(HeapArray) -> i64, f1: HeapArray, f2: Int) -> kayak_rt::Handle<'static, RunImage> {

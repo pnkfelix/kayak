@@ -20,6 +20,18 @@ pub enum Rconst {
     RcData(kayak_rt::Handle<'static, Lit>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rconst {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::RcInt(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RcBool(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RcChar(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RcNil() => { }
+            Self::RcData(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn rc_int(f0: Int) -> kayak_rt::Handle<'static, Rconst> {
     kayak_rt::heap_alloc(Rconst::RcInt(f0))
 }
@@ -76,6 +88,23 @@ pub enum Rloc {
     RlTest(Str, List<kayak_rt::Handle<'static, Rloc>>, bool),
     RlSeen(i64),
     RlJoin(List<kayak_rt::Handle<'static, Rloc>>, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rloc {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::RlReg(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RlSlot(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RlFree(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RlGlobal(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RlLoop() => { }
+            Self::RlPending(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RlConst(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RlTest(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::RlSeen(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RlJoin(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rl_reg(f0: i64) -> kayak_rt::Handle<'static, Rloc> {
@@ -144,6 +173,14 @@ pub enum Rbind {
     Rbind(Str, kayak_rt::Handle<'static, Rloc>),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rbind {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rbind(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rbind(f0: Str, f1: kayak_rt::Handle<'static, Rloc>) -> kayak_rt::Handle<'static, Rbind> {
     kayak_rt::heap_alloc(Rbind::Rbind(f0, f1))
 }
@@ -203,6 +240,14 @@ pub fn r_reg_of(l: Rlocs) -> i64 {
 // A register move: its source (0: RESULT) and its destination.
 pub enum Rmove {
     Rmove(i64, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rmove {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rmove(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rmove(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Rmove> {

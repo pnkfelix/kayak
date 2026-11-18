@@ -11,6 +11,15 @@ pub enum Shape {
     Rect(i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Shape {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Circle(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn circle(f0: i64) -> kayak_rt::Handle<'static, Shape> {
     kayak_rt::heap_alloc(Shape::Circle(f0))
 }

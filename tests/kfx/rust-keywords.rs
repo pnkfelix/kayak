@@ -6,6 +6,13 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_2fn_2in<A0, A1>(pub A0, pub A1);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_2fn_2in<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
+
 const _: () = kayak_rt::tags_apart_from_runtime(&["where", "dyn"]);
 
 // Rust's keywords as names (C41): FX-26 has them, and so KFX, as Rust's raw
@@ -22,6 +29,15 @@ pub type Match = Product_2fn_2in<i64, i64>;
 pub enum Enum {
     Struct(i64),
     Unsafe(),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Enum {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Struct(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Unsafe() => { }
+        }
+    }
 }
 
 pub fn r#struct(f0: i64) -> kayak_rt::Handle<'static, Enum> {

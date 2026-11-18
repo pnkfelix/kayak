@@ -20,6 +20,14 @@ pub enum Rview {
     Rview(bool, bool, Str, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rview {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rview(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+        }
+    }
+}
+
 pub fn rview(f0: bool, f1: bool, f2: Str, f3: i64) -> kayak_rt::Handle<'static, Rview> {
     kayak_rt::heap_alloc(Rview::Rview(f0, f1, f2, f3))
 }
@@ -78,6 +86,26 @@ pub enum Rstd {
     SApply(),
     SList(),
     SNone(),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rstd {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::SOp2(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::SOp1(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::SOp2imm(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::SField(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::SPrim(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::SPure(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::SCellular(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::SIdentity() => { }
+            Self::SSet() => { }
+            Self::SSpecial(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::SApply() => { }
+            Self::SList() => { }
+            Self::SNone() => { }
+        }
+    }
 }
 
 pub fn s_op2(f0: Str, f1: bool, f2: bool) -> kayak_rt::Handle<'static, Rstd> {
@@ -412,6 +440,14 @@ pub enum Sv {
     Sv(Str, bool),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Sv {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Sv(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn sv(f0: Str, f1: bool) -> kayak_rt::Handle<'static, Sv> {
     kayak_rt::heap_alloc(Sv::Sv(f0, f1))
 }
@@ -686,6 +722,14 @@ pub enum Rinline {
     Rinline(Str, Strings, kayak_rt::Handle<'static, Cx>, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rinline {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rinline(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+        }
+    }
+}
+
 pub fn rinline(f0: Str, f1: Strings, f2: kayak_rt::Handle<'static, Cx>, f3: i64) -> kayak_rt::Handle<'static, Rinline> {
     kayak_rt::heap_alloc(Rinline::Rinline(f0, f1, f2, f3))
 }
@@ -726,6 +770,14 @@ pub fn r_inline_limit() -> i64 {
 // first.
 pub enum Rspecial {
     Rspecial(Str, Strings, kayak_rt::Handle<'static, Cx>, i64, i64, i64, i64),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rspecial {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rspecial(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+        }
+    }
 }
 
 pub fn rspecial(f0: Str, f1: Strings, f2: kayak_rt::Handle<'static, Cx>, f3: i64, f4: i64, f5: i64, f6: i64) -> kayak_rt::Handle<'static, Rspecial> {
@@ -1008,6 +1060,14 @@ pub enum Rfound {
     Rfound(i64, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rfound {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rfound(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn rfound(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Rfound> {
     kayak_rt::heap_alloc(Rfound::Rfound(f0, f1))
 }
@@ -1035,6 +1095,14 @@ pub enum Rspec {
     Rspec(kayak_rt::Handle<'static, Rspecial>, Strings, kayak_rt::Handle<'static, Cx>, Strings, i64),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Rspec {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rspec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+        }
+    }
+}
+
 pub fn rspec(f0: kayak_rt::Handle<'static, Rspecial>, f1: Strings, f2: kayak_rt::Handle<'static, Cx>, f3: Strings, f4: i64) -> kayak_rt::Handle<'static, Rspec> {
     kayak_rt::heap_alloc(Rspec::Rspec(f0, f1, f2, f3, f4))
 }
@@ -1044,6 +1112,14 @@ pub fn rspec(f0: kayak_rt::Handle<'static, Rspecial>, f1: Strings, f2: kayak_rt:
 // (Fixpt's `c-spec-made`).
 pub enum Rcopy {
     Rcopy(Str, i64, Strings, i64, Str),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rcopy {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rcopy(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+        }
+    }
 }
 
 pub fn rcopy(f0: Str, f1: i64, f2: Strings, f3: i64, f4: Str) -> kayak_rt::Handle<'static, Rcopy> {
@@ -1111,6 +1187,14 @@ pub fn r_inline_named(mut xs: List<kayak_rt::Handle<'static, Rinline>>, mut n: S
 // each name and value, newest first.
 pub enum Rgconst {
     Rgconst(Str, kayak_rt::Handle<'static, Rconst>),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rgconst {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rgconst(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rgconst(f0: Str, f1: kayak_rt::Handle<'static, Rconst>) -> kayak_rt::Handle<'static, Rgconst> {
@@ -1492,6 +1576,14 @@ pub fn r_same_operands_p(mut xs: Rlocs, mut ys: Rlocs) -> bool {
 // A test's description: its comparison, and its operands' places.
 pub enum Rtest {
     Rtest(Str, Rlocs),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Rtest {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Rtest(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn rtest(f0: Str, f1: Rlocs) -> kayak_rt::Handle<'static, Rtest> {

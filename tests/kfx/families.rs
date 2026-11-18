@@ -10,6 +10,15 @@ pub enum Rose<'r, T: Copy + 'static> {
     Node(ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>),
 }
 
+impl<'a, 'r: 'a, T: Copy + 'static + kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Rose<'r, T> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Leaf(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Node(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn leaf<'r, T: Copy + 'static>(f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     kayak_rt::alloc(Rose::Leaf(f0))
 }
@@ -39,6 +48,15 @@ pub enum Option<A: Copy + 'static> {
     Some(A),
 }
 
+impl<'a, A: Copy + 'static + kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Option<A> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::None() => { }
+            Self::Some(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn none<A: Copy + 'static>() -> kayak_rt::Handle<'static, Option<A>> {
     kayak_rt::heap_alloc(Option::None())
 }
@@ -49,6 +67,14 @@ pub fn some<A: Copy + 'static>(f0: A) -> kayak_rt::Handle<'static, Option<A>> {
 
 pub enum Both<A: Copy + 'static, B: Copy + 'static> {
     Both(A, B),
+}
+
+impl<'a, A: Copy + 'static + kayak_rt::Trace<'a>, B: Copy + 'static + kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Both<A, B> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Both(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn both<A: Copy + 'static, B: Copy + 'static>(f0: A, f1: B) -> kayak_rt::Handle<'static, Both<A, B>> {

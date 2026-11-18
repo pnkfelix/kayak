@@ -730,12 +730,28 @@ pub mod kc_driver {
         P1(List<RunImage>, Str),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for P1 {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::P1(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
+    }
+
     pub fn p1(f0: List<RunImage>, f1: Str) -> kayak_rt::Handle<'static, P1> {
         kayak_rt::heap_alloc(P1::P1(f0, f1))
     }
 
     pub enum NamedSealed {
         NamedSealed(Str, RunImage),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for NamedSealed {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::NamedSealed(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            }
+        }
     }
 
     pub fn named_sealed(f0: Str, f1: RunImage) -> kayak_rt::Handle<'static, NamedSealed> {
@@ -1011,6 +1027,14 @@ pub mod kc_driver {
         Opts(Str, bool, Str, List<Str>),
     }
 
+    impl<'a> kayak_rt::Trace<'a> for Opts {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Opts(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
+    }
+
     pub fn opts(f0: Str, f1: bool, f2: Str, f3: List<Str>) -> kayak_rt::Handle<'static, Opts> {
         kayak_rt::heap_alloc(Opts::Opts(f0, f1, f2, f3))
     }
@@ -1039,6 +1063,14 @@ pub mod kc_driver {
     // what it ran.
     pub enum Answer {
         Answer(bool, Str, i64, Str),
+    }
+
+    impl<'a> kayak_rt::Trace<'a> for Answer {
+        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+            match self {
+                Self::Answer(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            }
+        }
     }
 
     pub fn answer(f0: bool, f1: Str, f2: i64, f3: Str) -> kayak_rt::Handle<'static, Answer> {

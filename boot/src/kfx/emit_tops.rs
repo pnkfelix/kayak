@@ -10,6 +10,14 @@ pub enum Mparts {
     Mparts(kayak_rt::Handle<'static, Ctx>, Sexps),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Mparts {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Mparts(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
+}
+
 pub fn mparts(f0: kayak_rt::Handle<'static, Ctx>, f1: Sexps) -> kayak_rt::Handle<'static, Mparts> {
     kayak_rt::heap_alloc(Mparts::Mparts(f0, f1))
 }
@@ -18,6 +26,14 @@ pub fn mparts(f0: kayak_rt::Handle<'static, Ctx>, f1: Sexps) -> kayak_rt::Handle
 // names of the program's procedures it calls.
 pub enum Calling {
     Calling(Str, Strings),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Calling {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Calling(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn calling(f0: Str, f1: Strings) -> kayak_rt::Handle<'static, Calling> {
@@ -30,6 +46,14 @@ pub type Callings = List<kayak_rt::Handle<'static, Calling>>;
 // latest first.
 pub enum Visited {
     Visited(Strings, Strings),
+}
+
+impl<'a> kayak_rt::Trace<'a> for Visited {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::Visited(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+        }
+    }
 }
 
 pub fn visited(f0: Strings, f1: Strings) -> kayak_rt::Handle<'static, Visited> {
@@ -1030,7 +1054,58 @@ pub mod writing {
         let acc = put(str_lit(" {\n"), acc);
         let acc = put_variants(inner, cdr(xs), acc);
         let acc = put(str_lit("}\n\n"), acc);
+        let acc = put_trace_impl(d, lived, params, cdr(xs), acc);
         put_constructors(inner, d, lived, params, cdr(xs), acc)
+    }
+
+    /// Its `Trace` (C479; kayak-rt's `trace.rs`): each variant's fields
+    /// traced, what of the heap they reach told the tracer; its regions'
+    /// lifetimes outlive the trace's, its type parameters traceable.
+    pub fn put_trace_impl(d: Str, lived: Strings, params: Strings, variants: Sexps, acc: Chars) -> Chars {
+        let generic = onto(map(lambda1s(move |r: Str| {
+            string_append(lifetime(r), str_lit(": 'a"))
+        }), lived), map(lambda1s(move |p: Str| {
+            string_append(camel(p), str_lit(": Copy + 'static + kayak_rt::Trace<'a>"))
+        }), params));
+        let args = onto(map(&lifetime, lived), map(&camel, params));
+        let acc = put(string_append(str_lit("impl<'a"), string_append(string_list_append(map(lambda1s(move |g: Str| {
+            string_append(str_lit(", "), g)
+        }), generic)), str_lit("> kayak_rt::Trace<'a> for "))), acc);
+        let acc = put(camel(d), acc);
+        let acc = if null_p(args) {
+            acc
+        } else {
+            put(string_append(str_lit("<"), string_append(words_of_sep(args, str_lit(", ")), str_lit(">"))), acc)
+        };
+        let acc = put(str_lit(" {\n    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {\n"), acc);
+        let acc = if null_p(variants) {
+            put(str_lit("        let _ = t;\n        match *self {}\n"), acc)
+        } else {
+            put(str_lit("        match self {\n"), acc)
+        };
+        let acc = put_trace_arms(variants, acc);
+        let acc = if null_p(variants) {
+            acc
+        } else {
+            put(str_lit("        }\n"), acc)
+        };
+        put(str_lit("    }\n}\n\n"), acc)
+    }
+
+    pub fn put_trace_arms(variants: Sexps, acc: Chars) -> Chars {
+        if null_p(variants) {
+            acc
+        } else {
+            let v = items(car(variants));
+            let fields = map(lambda1s(move |i: i64| {
+                string_append(str_lit("f"), i64_to_string(i))
+            }), counting(0i64, size(cdr(v))));
+            let acc = put(string_append(str_lit("            Self::"), string_append(camel(sym_name(car(v))), string_append(str_lit("("), string_append(words_of_sep(fields, str_lit(", ")), str_lit(") => {"))))), acc);
+            let acc = put(string_list_append(map(lambda1s(move |f: Str| {
+                string_append(str_lit(" kayak_rt::Trace::trace("), string_append(f, str_lit(", t);")))
+            }), fields)), acc);
+            put_trace_arms(cdr(variants), put(str_lit(" }\n"), acc))
+        }
     }
 
     /// Type parameters, each as Rust names it, each followed by `,`.
@@ -1307,6 +1382,39 @@ pub mod writing {
         }
     }
 
+    /// A shape's `Trace` (C479): a product's fields traced, or a sum's
+    /// payload, each type parameter traceable.
+    pub fn put_shape_trace(name: Str, product: bool, labels: Strings, n: i64, acc: Chars) -> Chars {
+        let ps = map(lambda1s(move |i: i64| {
+            string_append(str_lit("A"), i64_to_string(i))
+        }), counting(0i64, n));
+        let acc = put(string_append(str_lit("impl<'a"), string_list_append(map(lambda1s(move |a: Str| {
+            string_append(str_lit(", "), string_append(a, str_lit(": kayak_rt::Trace<'a>")))
+        }), ps))), acc);
+        let acc = put(string_append(str_lit("> kayak_rt::Trace<'a> for "), name), acc);
+        let acc = if i64_eq(n, 0i64) {
+            acc
+        } else {
+            put(string_append(str_lit("<"), string_append(words_of_sep(ps, str_lit(", ")), str_lit(">"))), acc)
+        };
+        let acc = put(str_lit(" {\n    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {\n"), acc);
+        put(str_lit("    }\n}\n\n"), if product {
+            put(if i64_eq(n, 0i64) {
+                str_lit("        let _ = t;\n")
+            } else {
+                str_lit("")
+            }, put(string_list_append(map(lambda1s(move |i: i64| {
+                string_append(str_lit("        kayak_rt::Trace::trace(&self."), string_append(i64_to_string(i), str_lit(", t);\n")))
+            }), counting(0i64, n))), acc))
+        } else if null_p(labels) {
+            put(str_lit("        let _ = t;\n        match *self {}\n"), acc)
+        } else {
+            put(str_lit("        }\n"), put(string_list_append(map(lambda1s(move |l: Str| {
+                string_append(str_lit("            "), string_append(name, string_append(str_lit("::"), string_append(variant_name(l), str_lit("(x) => kayak_rt::Trace::trace(x, t),\n")))))
+            }), labels)), put(str_lit("        match self {\n"), acc)))
+        })
+    }
+
     /// Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
     /// Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
     /// product's `Flat`, for a typed suffix (C32): its fields' zero bytes.
@@ -1327,6 +1435,7 @@ pub mod writing {
             } else {
                 put(str_lit("}\n\n"), put_variants_of(labels, 0i64, put(str_lit(" {\n"), put_generic_params(n, put(name, put(str_lit("pub enum "), acc))))))
             };
+            let acc = put_shape_trace(name, product, labels, n, acc);
             let acc = if not(shows) {
                 acc
             } else {

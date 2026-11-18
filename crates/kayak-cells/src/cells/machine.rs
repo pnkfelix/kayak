@@ -2307,6 +2307,15 @@ pub enum Ran {
     RanFailed(Str),
 }
 
+impl<'a> kayak_rt::Trace<'a> for Ran {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        match self {
+            Self::RanAnswer(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RanFailed(f0) => { kayak_rt::Trace::trace(f0, t); }
+        }
+    }
+}
+
 pub fn ran_answer(f0: i64) -> kayak_rt::Handle<'static, Ran> {
     kayak_rt::heap_alloc(Ran::RanAnswer(f0))
 }

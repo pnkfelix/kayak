@@ -6,13 +6,35 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1n_5reply<A0, A1>(pub A0, pub A1);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1n_5reply<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_1f_1x_3out<A0, A1, A2>(pub A0, pub A1, pub A2);
 
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1f_1x_3out<A0, A1, A2> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+        kayak_rt::Trace::trace(&self.2, t);
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4stop_5total<A0, A1>(pub A0, pub A1);
+
+impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4stop_5total<A0, A1> {
+    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+        kayak_rt::Trace::trace(&self.0, t);
+        kayak_rt::Trace::trace(&self.1, t);
+    }
+}
 
 // FX-26's processes and `par` (C101, C102): Fixpt's `programs/processes`,
 // in KFX, where a process is made by a procedure, since KFX makes a
