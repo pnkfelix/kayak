@@ -14838,3 +14838,19 @@ before; a cold build 0.63 s (C481: 0.69); an edit's build allocates
 (5.7 MB, not 7.8, at the second); the deepest stack 89,311 words
 (142,547). kc's binary 8.91 MB (C481: 7.73): a `static` a literal.
 - **The full check**: all passed in 521.5 s, its first run; nextest 5605.
+
+## C483. A bytevector as Fixpt's object (2026-11-18)
+
+The user, after C482: "Go for it" (bytevectors, then bloblets, then
+arrays, each as C482's string is). A bytevector, `BytesAt<'r>`, is one
+word to an object of Fixpt's layout (`obj.rs`): header (kind 4,
+bytevector; no fields; its suffix not frozen), trailer, its bytes the
+suffix. Its object's words are cells (`Cell<u64>`), so that its bytes,
+viewed as `Cell<u8>`s, may be written. In the heap, kept; at a
+`letrena`'s region, its object in the region's arena (`BytesCells` now
+the object's words), freed with it, as C267's were. `BytesAt`'s field
+was public; every use was kayak-rt's own (`world.rs`), now `cells()`.
+No change to the Rust kfx writes.
+
+Measured: nextest 5606 (a test of a bytevector written and read).
+- **The full check**: all passed in 433.7 s, its first run.

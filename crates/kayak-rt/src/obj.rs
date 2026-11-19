@@ -214,3 +214,75 @@ mod tests {
         assert!(string_made(1, |bs| bs[0] = 0xff).is_none());
     }
 }
+
+/// `(bytevectorof R)` (C482): one word, to its object (kind 4, no fields,
+/// its bytes the suffix, which may be written: the object's words are
+/// cells). At a `letrena`'s region, `BytesAt<'r>`, its object in the
+/// region's arena, freed with it (C267); in the heap, `Bytes`, kept.
+#[derive(Clone, Copy)]
+pub struct BytesAt<'r>(NonNull<Cell<u64>>, std::marker::PhantomData<&'r [Cell<u8>]>);
+pub type Bytes = BytesAt<'static>;
+
+/// A bytevector's object, as a region's arena holds it.
+pub type BytesCells = Box<[Cell<u64>]>;
+
+impl<'r> BytesAt<'r> {
+    /// Its length in bytes.
+    #[inline]
+    pub fn len(self) -> usize {
+        // SAFETY: a `BytesAt` is made only by this module, of an object
+        // whose header is its first word, alive for `'r`.
+        (unsafe { (*self.0.as_ptr()).get() } >> 32) as usize
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// Its bytes, each a cell.
+    #[inline]
+    pub fn cells(self) -> &'r [Cell<u8>] {
+        // SAFETY: its bytes follow the header and trailer, `len` of them,
+        // within its object's words (whose pointer it keeps), alive for
+        // `'r`; a `Cell<u64>`'s bytes are cells too, each `UnsafeCell`.
+        unsafe { std::slice::from_raw_parts(self.0.as_ptr().add(2).cast::<Cell<u8>>(), self.len()) }
+    }
+}
+
+/// A bytevector's object of `bytes`, to be kept in the heap or an arena.
+pub(crate) fn bytes_object(bytes: &[u8]) -> BytesCells {
+    let n = bytes.len();
+    let ws: BytesCells = (0..string_words(n)).map(|_| Cell::new(0)).collect();
+    ws[0].set(layout::header(4, 0, n, true, false));
+    ws[1].set(layout::trailer(1));
+    for (i, chunk) in bytes.chunks(8).enumerate() {
+        let mut w = [0u8; 8];
+        w[..chunk.len()].copy_from_slice(chunk);
+        ws[2 + i].set(u64::from_ne_bytes(w));
+    }
+    ws
+}
+
+/// The bytevector whose object is `ws` (`bytes_object`'s), kept for `'r`.
+pub(crate) fn bytes_at(ws: &[Cell<u64>]) -> BytesAt<'_> {
+    BytesAt(NonNull::from(ws).cast(), std::marker::PhantomData)
+}
+
+#[cfg(test)]
+mod bytes_tests {
+    use super::*;
+
+    #[test]
+    fn a_bytevector_written_and_read() {
+        let ws = bytes_object(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        let b = bytes_at(&ws);
+        assert_eq!(b.len(), 9);
+        b.cells()[8].set(42);
+        assert_eq!(
+            b.cells().iter().map(Cell::get).collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 42]
+        );
+        assert_eq!(std::mem::size_of::<Bytes>(), 8);
+    }
+}

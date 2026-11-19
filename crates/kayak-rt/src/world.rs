@@ -82,21 +82,15 @@ pub(crate) fn invalid_data(what: &str) -> IoError {
 
 // Bytevectors.
 
-/// `(bytevectorof R)`: bytes in a row, each a cell; at a `letrena`'s
-/// region, `BytesAt<'r>`, its cells in the region's arena, freed with it
-/// (C267); in the heap, `Bytes`, kept for the run.
-#[derive(Clone, Copy)]
-pub struct BytesAt<'r>(pub &'r [Cell<u8>]);
-pub type Bytes = BytesAt<'static>;
-
-/// What a region's arena holds of each bytevector made in it.
-pub type BytesCells = Box<[Cell<u8>]>;
+/// `(bytevectorof R)`: one word to an object of Fixpt's layout (C482,
+/// `obj.rs`), its bytes the suffix, each a cell.
+pub use crate::obj::{Bytes, BytesAt, BytesCells};
 
 /// As Fixpt writes one, R7RS's `#u8(…)`.
 impl Show for BytesAt<'_> {
     fn show(&self, out: &mut String) {
         out.push_str("#u8(");
-        for (i, c) in self.0.iter().enumerate() {
+        for (i, c) in self.cells().iter().enumerate() {
             if i > 0 {
                 out.push(' ');
             }
@@ -106,20 +100,14 @@ impl Show for BytesAt<'_> {
     }
 }
 
-fn cells_of(v: Vec<u8>) -> BytesCells {
-    v.into_iter()
-        .map(Cell::new)
-        .collect::<Vec<_>>()
-        .into_boxed_slice()
-}
-
 pub(crate) fn bytes_of(v: Vec<u8>) -> Bytes {
-    BytesAt(Box::leak(cells_of(v)))
+    crate::stats::note::<Bytes>(v.len());
+    crate::obj::bytes_at(Box::leak(crate::obj::bytes_object(&v)))
 }
 
 /// Bytes kept in region `r`'s arena (C267).
 fn bytes_in<'r, R: Holds<BytesCells>>(r: &'r R, v: Vec<u8>) -> BytesAt<'r> {
-    BytesAt(r.arena().alloc(cells_of(v)).to_ref())
+    crate::obj::bytes_at(r.arena().alloc(crate::obj::bytes_object(&v)).to_ref())
 }
 
 fn index(n: Int, what: &str) -> usize {
@@ -131,14 +119,14 @@ fn index(n: Int, what: &str) -> usize {
 
 pub(crate) fn span(b: BytesAt<'_>, start: Int, end: Int, what: &str) -> (usize, usize) {
     let (s, e) = (index(start, what), index(end, what));
-    if s > e || e > b.0.len() {
+    if s > e || e > b.cells().len() {
         fail(what)
     }
     (s, e)
 }
 
 pub(crate) fn to_vec(b: BytesAt<'_>) -> Vec<u8> {
-    b.0.iter().map(Cell::get).collect()
+    b.cells().iter().map(Cell::get).collect()
 }
 
 pub fn make_bytevector(n: Int, v: u8) -> Bytes {
@@ -151,18 +139,24 @@ pub fn make_bytevector_in<'r, R: Holds<BytesCells>>(r: &'r R, n: Int, v: u8) -> 
 }
 
 pub fn bytevector_length(b: BytesAt<'_>) -> Int {
-    i64_to_int(b.0.len() as i64)
+    i64_to_int(b.cells().len() as i64)
 }
 
 pub fn bytevector_u8_ref(b: BytesAt<'_>, i: Int) -> u8 {
-    match b.0.get(index(i, "bytevector-u8-ref: index out of range")) {
+    match b
+        .cells()
+        .get(index(i, "bytevector-u8-ref: index out of range"))
+    {
         Some(c) => c.get(),
         None => fail("bytevector-u8-ref: index out of range"),
     }
 }
 
 pub fn bytevector_u8_set_x(b: BytesAt<'_>, i: Int, v: u8) {
-    match b.0.get(index(i, "bytevector-u8-set!: index out of range")) {
+    match b
+        .cells()
+        .get(index(i, "bytevector-u8-set!: index out of range"))
+    {
         Some(c) => c.set(v),
         None => fail("bytevector-u8-set!: index out of range"),
     }
@@ -170,7 +164,7 @@ pub fn bytevector_u8_set_x(b: BytesAt<'_>, i: Int, v: u8) {
 
 pub fn bytevector_copy(b: BytesAt<'_>, start: Int, end: Int) -> Bytes {
     let (s, e) = span(b, start, end, "bytevector-copy: a span that does not fit");
-    bytes_of(b.0[s..e].iter().map(Cell::get).collect())
+    bytes_of(b.cells()[s..e].iter().map(Cell::get).collect())
 }
 
 /// The same, in region `r` (C267).
@@ -181,7 +175,7 @@ pub fn bytevector_copy_in<'r, R: Holds<BytesCells>>(
     end: Int,
 ) -> BytesAt<'r> {
     let (s, e) = span(b, start, end, "bytevector-copy: a span that does not fit");
-    bytes_in(r, b.0[s..e].iter().map(Cell::get).collect())
+    bytes_in(r, b.cells()[s..e].iter().map(Cell::get).collect())
 }
 
 /// R7RS's: `to`, `at`, `from`, `start`, `end`; overlapping spans copied
@@ -194,17 +188,21 @@ pub fn bytevector_copy_x(to: BytesAt<'_>, at: Int, from: BytesAt<'_>, start: Int
         "bytevector-copy!: a span that does not fit",
     );
     let at = index(at, "bytevector-copy!: a span that does not fit");
-    if at + (e - s) > to.0.len() {
+    if at + (e - s) > to.cells().len() {
         fail("bytevector-copy!: a span that does not fit")
     }
-    let moved: Vec<u8> = from.0[s..e].iter().map(Cell::get).collect();
+    let moved: Vec<u8> = from.cells()[s..e].iter().map(Cell::get).collect();
     for (k, v) in moved.into_iter().enumerate() {
-        to.0[at + k].set(v);
+        to.cells()[at + k].set(v);
     }
 }
 
 pub fn bytevector_eq_p(a: BytesAt<'_>, b: BytesAt<'_>) -> bool {
-    a.0.len() == b.0.len() && a.0.iter().zip(b.0).all(|(x, y)| x.get() == y.get())
+    a.cells().len() == b.cells().len()
+        && a.cells()
+            .iter()
+            .zip(b.cells())
+            .all(|(x, y)| x.get() == y.get())
 }
 
 pub fn string_to_utf8(s: Str) -> Bytes {
@@ -783,7 +781,7 @@ pub fn read_bytes(bv: BytesAt<'_>, start: Int, end: Int) -> Sum {
         };
     }
     let k = i.buf.len().min(e - s);
-    for (cell, b) in bv.0[s..s + k].iter().zip(i.buf.drain(..k)) {
+    for (cell, b) in bv.cells()[s..s + k].iter().zip(i.buf.drain(..k)) {
         cell.set(b);
     }
     drop(i);
