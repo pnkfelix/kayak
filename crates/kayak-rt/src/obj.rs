@@ -363,6 +363,45 @@ impl<'r, Fs> BlobletAt<'r, Fs> {
     }
 }
 
+/// A bloblet's head: its fields visited (C486), its suffix plain bytes.
+impl<Fs: crate::Visit> crate::Visit for BlobHead<Fs> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        self.fields.visit(t);
+    }
+    fn visit_size(&self) -> usize {
+        std::mem::size_of::<Self>() + ((self.header >> 32) as usize).next_multiple_of(8)
+    }
+    fn visit_name(&self) -> &'static str {
+        std::any::type_name::<Bloblet<Fs>>()
+    }
+}
+
+/// A bloblet: its object reached (C486).
+impl<Fs: crate::Visit> crate::Trace for BlobletAt<'_, Fs> {
+    crate::trace_whole!();
+    #[inline]
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.reach(self.head());
+    }
+}
+
+/// A bloblet's object at `addr`, traced (a census's, C486).
+///
+/// # Safety
+/// `addr` is a bloblet's object of fields `Fs`, kept for the run.
+#[cfg(feature = "heap-stats")]
+unsafe fn trace_bloblet<Fs: crate::Visit + 'static>(addr: usize, t: &mut crate::Tracer<'static>) {
+    // SAFETY: the caller's.
+    let b = BlobletAt::<'static, Fs>(
+        unsafe { NonNull::new_unchecked(addr as *mut BlobHead<Fs>) },
+        std::marker::PhantomData,
+    );
+    crate::Trace::trace(b, t);
+}
+
 /// A bloblet's object, owned: what a region's arena holds of one made in
 /// it, freed with the region (C267); one of the heap's is kept.
 pub struct Bloblet<Fs> {
@@ -407,10 +446,17 @@ impl<Fs> Bloblet<Fs> {
     }
 
     /// It, kept for the run (the heap's: never freed).
-    pub(crate) fn kept<'a>(self) -> BlobletAt<'a, Fs> {
+    pub(crate) fn kept<'a>(self) -> BlobletAt<'a, Fs>
+    where
+        Fs: crate::Visit + 'static,
+    {
         let at = self.at;
         #[cfg(feature = "heap-stats")]
-        crate::census::opaque(at.as_ptr() as usize, self.layout.size());
+        crate::census::object(
+            at.as_ptr() as usize,
+            self.layout.size(),
+            trace_bloblet::<Fs>,
+        );
         crate::stats::note::<Bloblet<Fs>>(self.layout.size());
         std::mem::forget(self);
         BlobletAt(at, std::marker::PhantomData)
@@ -511,10 +557,32 @@ impl<T> Array<T> {
     pub fn addr(self) -> usize {
         self.0.as_ptr() as usize
     }
+
+    /// Its object's bytes: its header words, its elements, its trailer.
+    pub fn object_bytes(self) -> usize {
+        let n = self.len();
+        (elements_at(n) * 8 + n * std::mem::size_of::<T>()).next_multiple_of(8) + 8
+    }
+}
+
+/// An array's object at `addr`, traced (a census's, C486).
+///
+/// # Safety
+/// `addr` is an array of `T`'s object, `array_made`'s, kept for the run.
+#[cfg(feature = "heap-stats")]
+unsafe fn trace_array<T: crate::Trace + 'static>(addr: usize, t: &mut crate::Tracer<'static>) {
+    // SAFETY: the caller's.
+    let a = Array::<T>(
+        unsafe { NonNull::new_unchecked(addr as *mut u64) },
+        std::marker::PhantomData,
+    );
+    crate::Trace::trace(a, t);
 }
 
 /// An array of `items`, kept for the run.
-pub(crate) fn array_made<T>(items: impl ExactSizeIterator<Item = T>) -> Array<T> {
+pub(crate) fn array_made<T: crate::Trace + 'static>(
+    items: impl ExactSizeIterator<Item = T>,
+) -> Array<T> {
     const {
         assert!(
             std::mem::align_of::<T>() <= 8,
@@ -552,7 +620,7 @@ pub(crate) fn array_made<T>(items: impl ExactSizeIterator<Item = T>) -> Array<T>
             .cast::<u64>()
             .write(layout::trailer(trailer_at / 8));
         #[cfg(feature = "heap-stats")]
-        crate::census::opaque(p as usize, layout.size());
+        crate::census::object(p as usize, layout.size(), trace_array::<T>);
         Array(base, std::marker::PhantomData)
     }
 }

@@ -1907,8 +1907,11 @@ over its 1664 definitions, 335 of them refused:
   place it needs its flat all zero bytes valid, an `unsafe` trait the
   emitter's products would implement, and generated Rust has no `unsafe`;
   flat arrays (`FlatArray`, Fixpt's header already in its first cells, a
-  plain reference to them); bloblets and arrays opaque to a trace and flat arrays
-  (their elements the fields, counted at run time); a dynamic value (`Value`, an enum), a product held by
+  plain reference to them); ~~bloblets and arrays opaque to a trace~~
+  (done, C486: each object reached once, its fields visited; a census
+  traces them precisely) and flat arrays and typed-suffix bloblets
+  still (plain references; their elements the fields, counted at run
+  time); a dynamic value (`Value`, an enum), a product held by
   value in its holder (a heap object of its own in FX-26), an integer
   (`Int`, a bignum's limbs a `Vec`), bloblets and flat arrays (plain
   references); then a

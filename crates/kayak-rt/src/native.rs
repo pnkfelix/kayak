@@ -12,7 +12,7 @@ use crate::{BlobletAt, Int, fail, i64_to_int};
 
 /// A value that crosses into native code and back, as the same word Fixpt
 /// would pass.
-pub trait Native: Sized {
+pub trait Native: Sized + crate::Trace {
     fn word(self) -> u64;
     fn of_word(w: u64) -> Self;
 }
@@ -330,7 +330,7 @@ native_fields!(A 0, B 1, C 2, D 3);
 
 /// `(seal-code b)`: a copy of `b` in the code area, its suffix frozen and
 /// runnable, its fields beside it (KFX's checker sees they cross).
-pub fn seal_code<Fs: NativeFields + Clone + 'static>(
+pub fn seal_code<Fs: NativeFields + crate::Visit + Clone + 'static>(
     b: BlobletAt<'_, Fs>,
 ) -> BlobletAt<'static, Fs> {
     if !kayak_jit::native_code() {

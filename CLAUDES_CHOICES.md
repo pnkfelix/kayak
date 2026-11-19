@@ -14906,3 +14906,46 @@ What changed:
 
 Measured: nextest 5608; the async check and Fixpt's programs as before.
 - **The full check**: all passed in 436.0 s, its first run.
+
+## C486. Bloblets and arrays traced, not opaque (2026-11-19)
+
+The user, after C485: "Keep going" (on "everything conversion"). Of
+§54's list, what a collector needs first: a bloblet and an array, now
+objects of Fixpt's layout, were opaque to a trace (a census read their
+blocks word by word, conservatively); now precise.
+
+What changed:
+- **A bloblet's object visited** (`obj.rs`): `Visit` for its head
+  (`BlobHead<Fs>`), its fields each visited, its size its head and its
+  suffix as its header counts it; `Trace` for `BlobletAt` reaches its
+  head, once. A bloblet's fields are a tuple of cells: `Visit` for
+  tuples (to 16) of what is visited, and for `()`.
+- **An array's object reached once** (`trace.rs`): before, each value
+  holding an array traced its elements again, in a recursion as deep as
+  arrays held in arrays. The tracer now keeps one-word values to visit
+  (`reach_value`, the value boxed while it waits, as a reference to it
+  would not outlive the value), visited in its loop (`visit_owned`); an
+  array is counted once, its bytes its object's (`object_bytes`).
+- **The census** (`heap-stats`): a bloblet's and an array's object noted
+  as an object traced from its address (`census::object`), no longer an
+  opaque block.
+- **Bounds**: `make_array`, `list_to_array` and `array_made` want
+  `T: Trace + 'static`; `make_bloblet`, `of_native`, `seal_code` and a
+  sealed copy want their fields `Visit`; `Native` (what crosses to
+  native code) is `Trace`. The emitter's Rust already bounds what these
+  are called at; no change to the Rust kfx writes.
+- **Tests**: an array and a bloblet reached once each, however often
+  held, at their objects' sizes; a chain of 200,001 arrays each holding
+  the next, in a loop.
+
+Not done: a typed-suffix bloblet (`&TBloblet`) is a plain reference, so
+opaque still (`Trace` for `&T`): it wants a one-word value of its own,
+as `BlobletAt`, which with `FlatArr` waits on the user's word on
+`unsafe` in generated Rust (C485).
+
+Measured: at an edit's build of the 1000-procedure bench, no opaque
+block left (were closures' and bloblets'); 2.2 to 5.9 MB of values and
+2.6 to 3.3 MB of strings reached, as C482. An edit's build 0.26 to 0.27
+s, as before. nextest 5610; the async check and Fixpt's programs as
+before.
+- **The full check**: all passed in 437.4 s, its first run.

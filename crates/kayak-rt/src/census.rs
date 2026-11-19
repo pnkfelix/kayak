@@ -100,6 +100,20 @@ pub(crate) fn opaque(p: usize, size: usize) {
     }
 }
 
+/// An object of Fixpt's layout kept for the run (an array, a bloblet,
+/// C486), of `size` bytes from `p`, traced by `trace` from its address.
+pub(crate) fn object(p: usize, size: usize, trace: unsafe fn(usize, &mut Tracer<'static>)) {
+    BLOCKS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(Block {
+            start: p,
+            end: p + size,
+            cell: size,
+            trace,
+        });
+}
+
 /// A constant, made: its slot, read again and traced at each mark.
 pub(crate) fn constant_of<T: Trace + 'static, S: crate::once::OnceSlot<T> + ?Sized>(
     slot: &'static S,

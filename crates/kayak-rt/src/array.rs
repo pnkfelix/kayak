@@ -24,7 +24,7 @@ fn cell<T>(a: Array<T>, i: Int) -> &'static Cell<T> {
     }
 }
 
-pub fn make_array<T: Copy>(n: Int, v: T) -> Array<T> {
+pub fn make_array<T: crate::Trace + 'static>(n: Int, v: T) -> Array<T> {
     match usize::try_from(int_to_i64(n)) {
         Ok(n) => crate::obj::array_made(std::iter::repeat_n(v, n)),
         Err(_) => fail("make-array: a negative length"),
@@ -53,7 +53,7 @@ pub fn array_to_list<T: Copy + 'static + crate::Trace>(a: Array<T>) -> List<T> {
         .fold(nil(), |acc, c| heap_cons(c.get(), acc))
 }
 
-pub fn list_to_array<T: Copy>(xs: List<T>) -> Array<T> {
+pub fn list_to_array<T: crate::Trace + 'static>(xs: List<T>) -> Array<T> {
     let mut v = Vec::new();
     let mut at = xs;
     while let Some(c) = at {

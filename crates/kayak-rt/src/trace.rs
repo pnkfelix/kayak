@@ -49,6 +49,10 @@ pub trait Visit {
     fn visit_size(&self) -> usize {
         std::mem::size_of_val(self)
     }
+    /// It visited where it is a one-word value, kept by the tracer only
+    /// while visited (an array): what it reaches lives as long as the
+    /// trace, not as the value. Visited by reference unless it says so.
+    fn visit_owned(&self, _: &mut Tracer<'_>) {}
 }
 
 /// What a trace has visited, and what it still must, each alive for `'a`.
@@ -56,6 +60,9 @@ pub trait Visit {
 pub struct Tracer<'a> {
     seen: HashSet<usize>,
     pending: Vec<&'a (dyn Visit + 'a)>,
+    /// What is still to visit of one-word values (an array, C486): each
+    /// the value itself, which a reference would not outlive.
+    pending_values: Vec<Box<dyn Visit + 'a>>,
     /// Of each type a handle reached: how many values, and their bytes.
     counts: HashMap<&'static str, (u64, u64)>,
     strings: (u64, u64),
@@ -79,6 +86,17 @@ impl<'a> Tracer<'a> {
         }
     }
 
+    /// An object a one-word value points to (an array), at `addr`: counted
+    /// and kept to visit, the value with it, if not seen before.
+    pub fn reach_value<V: Visit + 'a>(&mut self, addr: usize, v: V) {
+        if self.seen.insert(addr) {
+            let e = self.counts.entry(v.visit_name()).or_insert((0, 0));
+            e.0 += 1;
+            e.1 += v.visit_size() as u64;
+            self.pending_values.push(Box::new(v));
+        }
+    }
+
     /// A string's bytes, counted once.
     pub fn string(&mut self, s: &str) {
         if !s.is_empty() && self.seen.insert(s.as_ptr() as usize) {
@@ -99,8 +117,15 @@ impl<'a> Tracer<'a> {
 
     /// Everything kept to visit, visited, and what that reaches.
     pub fn finish(&mut self) {
-        while let Some(v) = self.pending.pop() {
-            v.visit(self);
+        loop {
+            if let Some(v) = self.pending.pop() {
+                v.visit(self);
+            } else if let Some(v) = self.pending_values.pop() {
+                // Visited as owned: what it reaches the heap's, not its.
+                v.visit_owned(self);
+            } else {
+                break;
+            }
         }
     }
 
@@ -239,6 +264,40 @@ trace_tuples!(
     (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7)
 );
 
+/// A bloblet's fields, each a cell (C486): each visited.
+macro_rules! visit_tuples {
+    ($(($($a:ident $i:tt),+)),*) => {
+        $(impl<$($a: Visit),+> Visit for ($($a,)+) {
+            fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
+                $(self.$i.visit(t);)+
+            }
+        })*
+    };
+}
+visit_tuples!(
+    (A 0),
+    (A 0, B 1),
+    (A 0, B 1, C 2),
+    (A 0, B 1, C 2, D 3),
+    (A 0, B 1, C 2, D 3, E 4),
+    (A 0, B 1, C 2, D 3, E 4, F 5),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14),
+    (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14, P 15)
+);
+
+/// No fields.
+impl Visit for () {
+    fn visit<'a>(&'a self, _: &mut Tracer<'a>) {}
+}
+
 /// A bytevector's bytes, the heap's but holding none of it.
 impl Trace for crate::BytesAt<'_> {
     trace_whole!();
@@ -320,15 +379,29 @@ impl<T: Trace> Visit for Cell<T> {
     }
 }
 
+/// An array (C486): its object reached once, its elements visited then.
 impl<T: Trace> Trace for Array<T> {
     trace_whole!();
+    #[inline]
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a,
     {
+        t.reach_value(self.addr(), self);
+    }
+}
+
+impl<T: Trace> Visit for Array<T> {
+    fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
+        self.visit_owned(t);
+    }
+    fn visit_owned(&self, t: &mut Tracer<'_>) {
         for c in self.cells() {
             c.get().trace(t);
         }
+    }
+    fn visit_size(&self) -> usize {
+        self.object_bytes()
     }
 }
 
@@ -380,6 +453,60 @@ mod tests {
         // Two pairs of the outer list, three of strings (the shared tail once).
         assert_eq!(pairs("Cons"), 5);
         assert_eq!(strings.0, 3);
+    }
+
+    #[test]
+    fn arrays_and_bloblets_reached_once_each() {
+        // An array of a string twice and a pair; a bloblet holding the
+        // array twice and another string.
+        let p = crate::heap_cons(crate::str_lit("p"), None);
+        let a = crate::list_to_array(crate::heap_cons(
+            p,
+            crate::heap_cons(None, crate::heap_cons(p, None)),
+        ));
+        let b = crate::make_bloblet(
+            crate::Int::Small(12),
+            (Cell::new(a), Cell::new(a), Cell::new(crate::str_lit("q"))),
+        );
+        let t = traced((b, b, a));
+        let (rows, strings) = t.census();
+        let of = |name: &str| {
+            rows.iter()
+                .filter(|r| r.0.starts_with(name))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(of("kayak_rt::obj::Array<")[0].1, 1);
+        // Its header, three elements of a word, its trailer.
+        assert_eq!(of("kayak_rt::obj::Array<")[0].2, 5 * 8);
+        assert_eq!(of("kayak_rt::obj::Bloblet<")[0].1, 1);
+        // Its header, three fields, its trailer, two words of suffix.
+        assert_eq!(of("kayak_rt::obj::Bloblet<")[0].2, 7 * 8);
+        assert_eq!(of("kayak_rt::Cons<")[0].1, 1);
+        assert_eq!(strings.0, 2);
+    }
+
+    /// A chain of arrays, each holding the next: a type of its own.
+    #[derive(Clone, Copy)]
+    struct Link(Option<crate::Array<Link>>);
+
+    impl Trace for Link {
+        trace_whole!();
+        fn trace<'a>(self, t: &mut Tracer<'a>)
+        where
+            Self: 'a,
+        {
+            self.0.trace(t);
+        }
+    }
+
+    #[test]
+    fn a_long_chain_of_arrays_in_a_loop() {
+        let mut a = crate::list_to_array(crate::heap_cons(Link(None), None));
+        for _ in 0..200_000 {
+            a = crate::list_to_array(crate::heap_cons(Link(Some(a)), None));
+        }
+        let (rows, _) = traced(a).census();
+        assert_eq!(rows.iter().map(|r| r.1).sum::<u64>(), 200_001);
     }
 
     #[test]

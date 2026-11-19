@@ -108,7 +108,10 @@ impl<'r, Fs> BlobletAt<'r, Fs> {
 
 /// One of fields `fields` and suffix `bytes`, as native code made it
 /// (C116), copied, kept for the run.
-pub(crate) fn of_native<'a, Fs: 'a>(fields: Fs, bytes: &[u8]) -> BlobletAt<'a, Fs> {
+pub(crate) fn of_native<'a, Fs: crate::Visit + 'static>(
+    fields: Fs,
+    bytes: &[u8],
+) -> BlobletAt<'a, Fs> {
     let b = Bloblet::new(fields, bytes.len(), false).kept();
     for (i, &x) in bytes.iter().enumerate() {
         b.set_byte(i, x as u64);
@@ -116,7 +119,7 @@ pub(crate) fn of_native<'a, Fs: 'a>(fields: Fs, bytes: &[u8]) -> BlobletAt<'a, F
     b
 }
 
-impl<Fs: crate::NativeFields + Clone + 'static> BlobletAt<'_, Fs> {
+impl<Fs: crate::NativeFields + crate::Visit + Clone + 'static> BlobletAt<'_, Fs> {
     /// Its copy sealed into the code area (`seal-code`, C116): its suffix
     /// the code, frozen (its header's bit); its fields beside it, after a
     /// trailer if it has any, as Fixpt's; a field written later written
@@ -176,7 +179,7 @@ pub fn bloblet_written<W: Written>(b: W, k: usize) {
 }
 
 /// `(make-bloblet bytes e …)`: in the heap, never freed.
-pub fn make_bloblet<'a, Fs: 'a>(bytes: Int, fields: Fs) -> BlobletAt<'a, Fs> {
+pub fn make_bloblet<'a, Fs: crate::Visit + 'static>(bytes: Int, fields: Fs) -> BlobletAt<'a, Fs> {
     Bloblet::new(
         fields,
         index_of(bytes, "make-bloblet: a negative size"),
@@ -245,17 +248,6 @@ impl<Fs> Owner for BlobletAt<'_, Fs> {
     #[inline]
     fn write(self, at: usize, n: usize, v: u64) {
         BlobletAt::write(self, at, n, v)
-    }
-}
-
-/// A bloblet: opaque to a trace for now, its fields cells of any type.
-impl<Fs> crate::Trace for BlobletAt<'_, Fs> {
-    crate::trace_whole!();
-    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
-    where
-        Self: 'a,
-    {
-        t.opaque(self.addr());
     }
 }
 
