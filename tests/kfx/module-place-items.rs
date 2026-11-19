@@ -65,7 +65,7 @@ pub mod parser_in {
     pub fn checked<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, n: i64) -> Result<i64, Unwind> {
         set(maker_st.tries.get().unwrap(), i64_plus(get(maker_st.tries.get().unwrap()), 1i64));
         if i64_lt(n, 0i64) {
-            Ok(refuse(p, maker_st, str_lit("negative"))?)
+            Ok(refuse(p, maker_st, str_lit!("negative"))?)
         } else {
             Ok(applied(p, maker_st, kayak_rt::closure1((p, maker_st,), |(p, maker_st,), a0| bumped(p, maker_st, a0)), twice(kayak_rt::as_proc(inc), n)))
         }
@@ -75,11 +75,11 @@ pub mod parser_in {
         Ok({
             let prompt_tag__ = maker_st.tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                Ok(string_append(i64_to_string(checked(p, maker_st, n)?), string_append(str_lit(" after "), i64_to_string(get(maker_st.tries.get().unwrap())))))
+                Ok(string_append(i64_to_string(checked(p, maker_st, n)?), string_append(str_lit!(" after "), i64_to_string(get(maker_st.tries.get().unwrap())))))
             })() {
                 Ok(v_) => v_,
                 Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), why: Str| {
-                    string_append(str_lit("refused: "), why)
+                    string_append(str_lit!("refused: "), why)
                 })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
@@ -116,7 +116,7 @@ pub fn main() -> Str {
         impl<'a> Default for Region_A<'a> { fn default() -> Self { Region_A { phantom_: std::marker::PhantomData } } }
         fn letrena__a<'a>(a: &'a Region_A<'a>) -> Result<Str, Unwind> {
             let x = parser_in(a);
-            Ok(string_append(x.parse(5i64)?, string_append(str_lit("; "), x.parse(-1i64)?)))
+            Ok(string_append(x.parse(5i64)?, string_append(str_lit!("; "), x.parse(-1i64)?)))
         }
         let a__arena = Region_A::default();
         letrena__a(&a__arena).unwrap_or_else(|u| unreachable_unwind(u))

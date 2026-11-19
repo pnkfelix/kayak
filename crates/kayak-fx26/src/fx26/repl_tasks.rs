@@ -215,12 +215,12 @@ pub mod tasks {
     // the same (live-repl.kfx).
     #[inline]
     pub fn seconds(ms: i64) -> Str {
-        string_append(i64_to_string(i64_quotient(ms, 1000i64)), string_append(str_lit("."), string_append(i64_to_string(i64_quotient(i64_remainder(ms, 1000i64), 100i64)), str_lit(" s"))))
+        string_append(i64_to_string(i64_quotient(ms, 1000i64)), string_append(str_lit!("."), string_append(i64_to_string(i64_quotient(i64_remainder(ms, 1000i64), 100i64)), str_lit!(" s"))))
     }
 
     #[inline]
     pub fn spinner(now: i64) -> Str {
-        let frames = str_lit("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏");
+        let frames = str_lit!("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏");
         char_to_string(string_ref_i64(frames, i64_remainder(i64_quotient(now, 80i64), 10i64)))
     }
 
@@ -316,7 +316,7 @@ pub mod tasks {
     pub fn nth_string(mut xs: Strings, mut i: i64) -> Str {
         loop {
             if null_p(xs) {
-                return str_lit("");
+                return str_lit!("");
             } else if i64_eq(i, 0i64) {
                 return car(xs);
             } else {
@@ -358,10 +358,10 @@ pub mod tasks {
             if null_p(cs) {
                 return acc;
             } else if char_eq_p(car(cs), '\n') {
-                (cs, acc) = (cdr(cs), put(str_lit("\\n"), acc));
+                (cs, acc) = (cdr(cs), put(str_lit!("\\n"), acc));
                 continue;
             } else if char_eq_p(car(cs), '\\') {
-                (cs, acc) = (cdr(cs), put(str_lit("\\\\"), acc));
+                (cs, acc) = (cdr(cs), put(str_lit!("\\\\"), acc));
                 continue;
             } else {
                 (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
@@ -393,7 +393,7 @@ pub mod tasks {
         if (null_p(hs) || i64_lt_eq(n, 0i64)) {
             acc
         } else {
-            put(str_lit("\n"), escaped(string_chars(car(hs)), history_text(cdr(hs), i64_minus(n, 1i64), acc)))
+            put(str_lit!("\n"), escaped(string_chars(car(hs)), history_text(cdr(hs), i64_minus(n, 1i64), acc)))
         }
     }
 
@@ -426,19 +426,19 @@ pub mod tasks {
 
     pub fn words_of_at_most(xs: Strings, n: i64) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else if i64_eq(n, 0i64) {
-            str_lit("…")
+            str_lit!("…")
         } else if null_p(cdr(xs)) {
             car(xs)
         } else {
-            string_append(car(xs), string_append(str_lit(" "), words_of_at_most(cdr(xs), i64_minus(n, 1i64))))
+            string_append(car(xs), string_append(str_lit!(" "), words_of_at_most(cdr(xs), i64_minus(n, 1i64))))
         }
     }
 
     #[inline]
     pub fn help_text() -> Str {
-        str_lit(",help              this; ,help NAME: what NAME is\n,type E            E's type and effect, checked and not run\n,time E            E run, then its time, steps and collections\n,load FILE         FILE's forms, an entry\n,pending           the entries not ended\n,cancel K          entry K interrupted (^C: the newest)\n,step-limit [N|none]  how many steps an entry may take\n,apropos TEXT      the names containing TEXT\n,quit              leave now (^D: when every entry has ended)\nAnything else is forms, checked and run as an entry; %K is entry K's value;\nan entry naming one that has not ended waits for it.")
+        str_lit!(",help              this; ,help NAME: what NAME is\n,type E            E's type and effect, checked and not run\n,time E            E run, then its time, steps and collections\n,load FILE         FILE's forms, an entry\n,pending           the entries not ended\n,cancel K          entry K interrupted (^C: the newest)\n,step-limit [N|none]  how many steps an entry may take\n,apropos TEXT      the names containing TEXT\n,quit              leave now (^D: when every entry has ended)\nAnything else is forms, checked and run as an entry; %K is entry K's value;\nan entry naming one that has not ended waits for it.")
     }
 
     /// Whether a command's line is whole: its forms, if any, closed.
@@ -471,11 +471,11 @@ pub mod tasks {
 
     pub fn words_lines(xs: Strings) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else if null_p(cdr(xs)) {
             car(xs)
         } else {
-            string_append(car(xs), string_append(str_lit("\n"), words_lines(cdr(xs))))
+            string_append(car(xs), string_append(str_lit!("\n"), words_lines(cdr(xs))))
         }
     }
 
@@ -483,7 +483,7 @@ pub mod tasks {
     pub fn first_line(s: Str) -> Str {
         let ls = lines_of(string_chars(s), nil::<char>(), nil::<Str>());
         if null_p(ls) {
-            str_lit("")
+            str_lit!("")
         } else {
             car(ls)
         }
@@ -514,9 +514,9 @@ pub mod tasks {
             let marked = if i64_gt_eq(from, to) {
                 acc
             } else if i64_eq(i, from) {
-                put(str_lit("\u{1b}[4m"), acc)
+                put(str_lit!("\u{1b}[4m"), acc)
             } else if i64_eq(i, to) {
-                put(str_lit("\u{1b}[24m"), acc)
+                put(str_lit!("\u{1b}[24m"), acc)
             } else {
                 acc
             };
@@ -524,9 +524,9 @@ pub mod tasks {
                 return marked;
             } else if char_eq_p(car(cs), '\n') {
                 (cs, i, acc) = (cdr(cs), i64_plus(i, 1i64), if (i64_gt_eq(i, from) && i64_lt(i, to)) {
-                    put(str_lit("\u{1b}[4m"), put(str_lit("\u{d}\n     | "), put(str_lit("\u{1b}[24m"), marked)))
+                    put(str_lit!("\u{1b}[4m"), put(str_lit!("\u{d}\n     | "), put(str_lit!("\u{1b}[24m"), marked)))
                 } else {
-                    put(str_lit("\u{d}\n     | "), marked)
+                    put(str_lit!("\u{d}\n     | "), marked)
                 });
                 continue;
             } else {
@@ -756,9 +756,9 @@ pub mod tasks {
     #[inline]
     pub fn closers(n: i64) -> Str {
         if i64_lt_eq(n, 0i64) {
-            str_lit("")
+            str_lit!("")
         } else {
-            string_append(str_lit(")"), closers(i64_minus(n, 1i64)))
+            string_append(str_lit!(")"), closers(i64_minus(n, 1i64)))
         }
     }
 
@@ -776,9 +776,9 @@ pub mod tasks {
             }
             Scan::ScannedAs(open, comment) => {
                 closed_as(string_append(typed, string_append(if (comment && not(null_p(open))) {
-                    str_lit("\n")
+                    str_lit!("\n")
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 }, closers(size(open)))), kept, open, (null_p(open) && i64_eq(kept, string_length_i64(text))))
             }
         }
@@ -888,12 +888,12 @@ pub mod tasks {
     /// before each if `filled` is -1, else before list `filled`'s alone.
     pub fn closers_filled(i: i64, n: i64, filled: i64) -> Str {
         if i64_gt_eq(i, n) {
-            str_lit("")
+            str_lit!("")
         } else {
             string_append(if (i64_eq(filled, -1i64) || i64_eq(filled, i)) {
-                str_lit(" %fill)")
+                str_lit!(" %fill)")
             } else {
-                str_lit(")")
+                str_lit!(")")
             }, closers_filled(i64_plus(i, 1i64), n, filled))
         }
     }
@@ -910,7 +910,7 @@ pub mod tasks {
 
     /// Where in the draft a refusal is, as `refuse` says it for one, or -1.
     pub fn refused_offset(m: Str) -> i64 {
-        let p = str_lit("kfx: <draft>@");
+        let p = str_lit!("kfx: <draft>@");
         if has_prefix_p(m, p) {
             number_from(digits_of(string_chars(cut(m, string_length_i64(p), string_length_i64(m)))), 0i64)
         } else {
@@ -937,15 +937,15 @@ pub mod tasks {
 
     /// A refusal of the draft without where: what it is.
     pub fn refusal_words(m: Str) -> Str {
-        if has_prefix_p(m, str_lit("kfx: <draft>@")) {
-            let at = int_to_i64(string_search(m, str_lit(": "), int_lit(13)));
+        if has_prefix_p(m, str_lit!("kfx: <draft>@")) {
+            let at = int_to_i64(string_search(m, str_lit!(": "), int_lit(13)));
             if i64_lt(at, 0i64) {
                 m
             } else {
-                without_prefix(cut(m, i64_plus(at, 2i64), string_length_i64(m)), str_lit("in a top-level expression: "))
+                without_prefix(cut(m, i64_plus(at, 2i64), string_length_i64(m)), str_lit!("in a top-level expression: "))
             }
-        } else if has_prefix_p(m, str_lit("kfx: ")) {
-            without_prefix(cut(m, 5i64, string_length_i64(m)), str_lit("in a top-level expression: "))
+        } else if has_prefix_p(m, str_lit!("kfx: ")) {
+            without_prefix(cut(m, 5i64, string_length_i64(m)), str_lit!("in a top-level expression: "))
         } else {
             m
         }
@@ -966,7 +966,7 @@ pub mod tasks {
     pub fn definition_form_p(f: kayak_rt::Handle<'static, Sexp>) -> bool {
         any_p(kayak_rt::as_proc(kayak_rt::closure1s((f,), |(f,), h: Str| {
             head_is_p(f, h)
-        })), kayak_rt::heap_cons(str_lit("define"), kayak_rt::heap_cons(str_lit("define*"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("define-type"), kayak_rt::heap_cons(str_lit("define-datatype"), kayak_rt::heap_cons(str_lit("define-generative"), kayak_rt::heap_cons(str_lit("define-effect"), kayak_rt::nil()))))))))
+        })), kayak_rt::heap_cons(str_lit!("define"), kayak_rt::heap_cons(str_lit!("define*"), kayak_rt::heap_cons(str_lit!("define-rec"), kayak_rt::heap_cons(str_lit!("define-type"), kayak_rt::heap_cons(str_lit!("define-datatype"), kayak_rt::heap_cons(str_lit!("define-generative"), kayak_rt::heap_cons(str_lit!("define-effect"), kayak_rt::nil()))))))))
     }
 
     pub fn named_results(x: kayak_rt::Handle<'static, Sexp>) -> List<i64> {
@@ -996,7 +996,7 @@ pub mod tasks {
     /// with it runs beside others.
     pub fn quiet_effect_p(es: Strings) -> bool {
         not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: Str| {
-            not((string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("@globals")) || has_prefix_p(a, str_lit("g:")) || has_prefix_p(a, str_lit("read:")) || has_prefix_p(a, str_lit("alloc:"))))
+            not((string_eq_p(a, str_lit!("spin")) || string_eq_p(a, str_lit!("@globals")) || has_prefix_p(a, str_lit!("g:")) || has_prefix_p(a, str_lit!("read:")) || has_prefix_p(a, str_lit!("alloc:"))))
         })), es))
     }
 
@@ -1142,7 +1142,7 @@ pub mod tasks {
 
     /// The checker's environment with `name` a global of `form`'s type.
     pub fn result_bound(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, name: Str) -> kayak_rt::Handle<'static, Cv> {
-        let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+        let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil()))
@@ -1152,7 +1152,7 @@ pub mod tasks {
 
     #[inline]
     pub fn expression_effects(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Strings {
-        let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+        let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 es
@@ -1178,7 +1178,7 @@ pub mod tasks {
                 return nil::<Str>();
             } else if definition_form_p(car(forms)) {
                 let l = form_type(v, car(forms));
-                if string_eq_p(l, str_lit("")) {
+                if string_eq_p(l, str_lit!("")) {
                     forms = cdr(forms);
                     continue;
                 } else {
@@ -1206,14 +1206,14 @@ pub mod tasks {
                 let shown_type = if expression {
                     form_type(v, form)
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 };
                 let effects = if expression {
                     expression_effects(v, form)
                 } else {
                     nil::<Str>()
                 };
-                let name = string_append(str_lit("%"), i64_to_string(k));
+                let name = string_append(str_lit!("%"), i64_to_string(k));
                 let checked = checked_form(v, form);
                 let v2 = if expression {
                     result_bound(checked, form, name)
@@ -1235,12 +1235,12 @@ pub mod tasks {
                     line
                 } else {
                     typed
-                }, if (expression || string_eq_p(line, str_lit(""))) {
+                }, if (expression || string_eq_p(line, str_lit!(""))) {
                     defined
-                } else if string_eq_p(defined, str_lit("")) {
+                } else if string_eq_p(defined, str_lit!("")) {
                     line
                 } else {
-                    string_append(defined, string_append(str_lit("\n"), line))
+                    string_append(defined, string_append(str_lit!("\n"), line))
                 }, (quiet && expression && quiet_effect_p(effects)));
                 continue;
             }
@@ -1251,31 +1251,31 @@ pub mod tasks {
         let tagcase_ = j;
         match *tagcase_ {
             Job::CheckEntry(v, gs, k, text, label) => {
-                let file = if string_eq_p(label, str_lit("")) {
-                    string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
+                let file = if string_eq_p(label, str_lit!("")) {
+                    string_append(str_lit!("<fx26:"), string_append(i64_to_string(k), str_lit!(">")))
                 } else {
                     label
                 };
                 let forms = program_read(text, file, 1i64);
-                entry_checked(v, gs, k, forms, str_lit(""), str_lit(""), true, concat(map(kayak_rt::as_proc(named_results), forms)), file)
+                entry_checked(v, gs, k, forms, str_lit!(""), str_lit!(""), true, concat(map(kayak_rt::as_proc(named_results), forms)), file)
             }
             Job::TypeOf(v, text) => {
-                let forms = program_read(text, str_lit("<,type>"), 1i64);
+                let forms = program_read(text, str_lit!("<,type>"), 1i64);
                 if null_p(forms) {
-                    error(str_lit("nothing to type"));
-                    shown_done(str_lit(""))
+                    error(str_lit!("nothing to type"));
+                    shown_done(str_lit!(""))
                 } else {
                     shown_done(form_type(v, car(forms)))
                 }
             }
             Job::Try(v, gs, text, finished) => {
-                let forms = program_read(text, str_lit("<draft>"), 1i64);
+                let forms = program_read(text, str_lit!("<draft>"), 1i64);
                 let v2 = checked_all(v, forms);
                 if (not(finished) || null_p(forms)) {
                     tried_none()
                 } else if (null_p(cdr(forms)) && not(definition_form_p(car(forms)))) {
                     lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), gs);
-                    tried_expression(form_type(v, car(forms)), expression_effects(v, car(forms)), named_results(car(forms)), entry_facts(v2, str_lit("<draft>")))
+                    tried_expression(form_type(v, car(forms)), expression_effects(v, car(forms)), named_results(car(forms)), entry_facts(v2, str_lit!("<draft>")))
                 } else {
                     tried_definitions(words_lines(definition_lines(v2, forms)))
                 }
@@ -1289,27 +1289,27 @@ pub mod tasks {
                 }
             }
             Job::HoleItems(text) => {
-                let inner = program_read(text, str_lit("<hint>"), 1i64);
+                let inner = program_read(text, str_lit!("<hint>"), 1i64);
                 let xs = if null_p(inner) {
                     nil::<kayak_rt::Handle<'static, Sexp>>()
                 } else {
                     items(car(inner))
                 };
                 items_done(size(xs), if null_p(xs) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Sexp::Sym(op, f, p) => {
                             if form_keyword_p(op) {
-                                str_lit("")
+                                str_lit!("")
                             } else {
                                 op
                             }
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 })
@@ -1440,7 +1440,7 @@ pub mod tasks {
     pub fn m_spec_type() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -1474,11 +1474,11 @@ pub mod tasks {
     }
 
     pub fn m_made(k: i64, typed: Str, defined: Str, quiet: bool, needs: List<i64>, state: i64, tops: List<i64>, shown: Str, timed: bool, now: i64) -> Mentry {
-        Product_3num_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_5drawn_5timed_5steps_3gcs_9gcs_after(k, typed, defined, quiet, needs, kayak_rt::heap_new(state), kayak_rt::heap_new(tops), kayak_rt::heap_new(shown), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(now), kayak_rt::heap_new(if i64_eq(state, st_done()) {
+        Product_3num_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_5drawn_5timed_5steps_3gcs_9gcs_after(k, typed, defined, quiet, needs, kayak_rt::heap_new(state), kayak_rt::heap_new(tops), kayak_rt::heap_new(shown), kayak_rt::heap_new(str_lit!("")), kayak_rt::heap_new(now), kayak_rt::heap_new(if i64_eq(state, st_done()) {
             now
         } else {
             -1i64
-        }), kayak_rt::heap_new(str_lit("")), timed, kayak_rt::heap_new(0i64), get(collections()), kayak_rt::heap_new(-1i64))
+        }), kayak_rt::heap_new(str_lit!("")), timed, kayak_rt::heap_new(0i64), get(collections()), kayak_rt::heap_new(-1i64))
     }
 
     /// An entry ended, in `state`: when, and the collections so far.
@@ -1582,7 +1582,7 @@ pub mod tasks {
     /// The draft's run's outcome, for the front.
     #[inline]
     pub fn m_noted_x(text: Str, error: bool) -> () {
-        if string_eq_p(text, str_lit("")) {
+        if string_eq_p(text, str_lit!("")) {
             ()
         } else {
             set(m_news(), kayak_rt::heap_cons(draft_told(get(m_spec_serial()), text, error), get(m_news())))
@@ -1625,7 +1625,7 @@ pub mod tasks {
             } else {
                 let form = car(forms);
                 let expression = not(definition_form_p(form));
-                let name = string_append(str_lit("%"), i64_to_string(k));
+                let name = string_append(str_lit!("%"), i64_to_string(k));
                 let gs = onto(get(machine_globals()), new_names(if expression {
                     kayak_rt::heap_cons(name, kayak_rt::nil())
                 } else {
@@ -1651,8 +1651,8 @@ pub mod tasks {
     pub fn m_given_x(k: i64, text: Str, label: Str, timed: bool, typed: Str, defined: Str, quiet: bool, needs: List<i64>, facts: Strings, now: i64) -> () {
         m_spec_dropped_x();
         set(repl_count(), k);
-        let forms = program_read(text, if string_eq_p(label, str_lit("")) {
-            string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
+        let forms = program_read(text, if string_eq_p(label, str_lit!("")) {
+            string_append(str_lit!("<fx26:"), string_append(i64_to_string(k), str_lit!(">")))
         } else {
             label
         }, 1i64);
@@ -1660,7 +1660,7 @@ pub mod tasks {
         if get(engine_failed()) {
             set(m_entries(), kayak_rt::heap_cons(m_made(k, typed, defined, quiet, needs, st_refused(), nil::<i64>(), failure_taken_x(), timed, now), get(m_entries())))
         } else {
-            set(m_entries(), kayak_rt::heap_cons(m_made(k, typed, defined, quiet, needs, st_waiting(), tops, str_lit(""), timed, now), get(m_entries())))
+            set(m_entries(), kayak_rt::heap_cons(m_made(k, typed, defined, quiet, needs, st_waiting(), tops, str_lit!(""), timed, now), get(m_entries())))
         }
     }
 
@@ -1672,13 +1672,13 @@ pub mod tasks {
         set(m_spec_type(), r#type);
         set(m_spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
         set(m_spec_state(), 2i64);
-        let forms = program_read(text, str_lit("<draft>"), 1i64);
+        let forms = program_read(text, str_lit!("<draft>"), 1i64);
         if null_p(forms) {
             ()
         } else {
             let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), onto(get(machine_globals()), onto(get(machine_modules()), facts))));
             if get(engine_failed()) {
-                m_noted_x(string_append(str_lit("running it fails: "), failure_taken_x()), true)
+                m_noted_x(string_append(str_lit!("running it fails: "), failure_taken_x()), true)
             } else if (null_p(ns) || i64_lt(car(ns), 0i64)) {
                 ()
             } else {
@@ -1727,7 +1727,7 @@ pub mod tasks {
             }
             Asked::FrontFailed(m) => {
                 terminal_restore();
-                write_err(string_append(str_lit("kayak-fx26: the REPL's front failed: "), string_append(m, str_lit("\n"))));
+                write_err(string_append(str_lit!("kayak-fx26: the REPL's front failed: "), string_append(m, str_lit!("\n"))));
                 set(m_over(), true)
             }
         }
@@ -1754,14 +1754,14 @@ pub mod tasks {
         if i64_eq(k, 0i64) {
             set(m_spec_state(), 2i64);
             parked_cleared_x(0i64);
-            m_noted_x(string_append(str_lit("running it fails: "), message), true)
+            m_noted_x(string_append(str_lit!("running it fails: "), message), true)
         } else if null_p(found) {
             ()
         } else {
             let e = car(found);
             taken_output_x(e);
             m_ended_x(e, st_failed(), now);
-            set(e.7, string_append(str_lit("! evaluation failed: "), message));
+            set(e.7, string_append(str_lit!("! evaluation failed: "), message));
             parked_cleared_x(k)
         }
     }
@@ -1789,11 +1789,11 @@ pub mod tasks {
         } else if not(i64_eq(w, w_paused())) {
             set(m_spec_state(), 2i64);
             parked_cleared_x(0i64);
-            m_noted_x(string_append(str_lit("= "), string_append(show_word(w), get(m_spec_type()))), false)
+            m_noted_x(string_append(str_lit!("= "), string_append(show_word(w), get(m_spec_type()))), false)
         } else if i64_gt(get(m_spec_steps()), spec_limit()) {
             set(m_spec_state(), 2i64);
             parked_cleared_x(0i64);
-            m_noted_x(string_append(str_lit("…"), string_append(get(m_spec_type()), string_append(str_lit("  (not run to its end early: "), string_append(i64_to_string(spec_limit()), str_lit(" steps; Enter runs it)"))))), false)
+            m_noted_x(string_append(str_lit!("…"), string_append(get(m_spec_type()), string_append(str_lit!("  (not run to its end early: "), string_append(i64_to_string(spec_limit()), str_lit!(" steps; Enter runs it)"))))), false)
         } else {
             ()
         }
@@ -1834,7 +1834,7 @@ pub mod tasks {
         } else {
             cdr(ts)
         };
-        let i = global_index(string_append(str_lit("%"), i64_to_string(e.0)), get(machine_globals()), 0i64);
+        let i = global_index(string_append(str_lit!("%"), i64_to_string(e.0)), get(machine_globals()), 0i64);
         if (i64_gt_eq(i, 0i64) && not(null_p(ts)) && i64_gt_eq(car(ts), 0i64)) {
             flatarray_set_i64_x(get(globals()), i, w)
         } else {
@@ -1845,16 +1845,16 @@ pub mod tasks {
             m_ended_x(e, st_done(), now);
             set(e.7, {
                 let value = if i64_lt(i, 0i64) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     string_append(show_word(flatarray_ref_i64(get(globals()), i)), e.1)
                 };
-                if string_eq_p(value, str_lit("")) {
+                if string_eq_p(value, str_lit!("")) {
                     e.2
-                } else if string_eq_p(e.2, str_lit("")) {
+                } else if string_eq_p(e.2, str_lit!("")) {
                     value
                 } else {
-                    string_append(e.2, string_append(str_lit("\n"), value))
+                    string_append(e.2, string_append(str_lit!("\n"), value))
                 }
             });
             parked_cleared_x(e.0)
@@ -1918,12 +1918,12 @@ pub mod tasks {
             set(capturing(), false);
             taken_output_x(e);
             if get(engine_failed()) {
-                m_run_failed_x(k, failure_traced_x(str_lit("!   ")), now)
+                m_run_failed_x(k, failure_traced_x(str_lit!("!   ")), now)
             } else if not(i64_eq(w, w_paused())) {
                 top_ended_x(e, w, now)
             } else if (i64_gt_eq(get(m_step_limit()), 0i64) && i64_gt(get(e.13), get(m_step_limit()))) {
                 m_ended_x(e, st_failed(), now);
-                set(e.7, string_append(str_lit("! the step limit, "), string_append(i64_to_string(get(m_step_limit())), str_lit(", reached (,step-limit)"))));
+                set(e.7, string_append(str_lit!("! the step limit, "), string_append(i64_to_string(get(m_step_limit())), str_lit!(", reached (,step-limit)"))));
                 parked_cleared_x(k)
             } else {
                 ()
@@ -1935,7 +1935,7 @@ pub mod tasks {
     /// What the front is told of an entry, apart from its output and steps,
     /// as a text, to know when it changed (C103).
     pub fn entry_key(e: Mentry) -> Str {
-        string_append(i64_to_string(get(e.5)), string_append(str_lit("|"), string_append(i64_to_string(get(e.10)), string_append(str_lit("|"), get(e.7)))))
+        string_append(i64_to_string(get(e.5)), string_append(str_lit!("|"), string_append(i64_to_string(get(e.10)), string_append(str_lit!("|"), get(e.7)))))
     }
 
     /// Each entry as it is now, its output since taken, for the front.
@@ -1945,7 +1945,7 @@ pub mod tasks {
         } else {
             let e = car(es);
             let out = get(e.8);
-            set(e.8, str_lit(""));
+            set(e.8, str_lit!(""));
             set(e.11, entry_key(e));
             kayak_rt::heap_cons(entry_told(e.0, get(e.5), get(e.7), out, get(e.9), get(e.10), get(e.13), i64_minus(if i64_lt(get(e.15), 0i64) {
                 get(collections())
@@ -1959,7 +1959,7 @@ pub mod tasks {
     /// line changed, or that wrote; then the draft's run's outcome.
     pub fn news_taken_x() -> List<kayak_rt::Handle<'static, Told>> {
         let (es, drafts) = (m_where(kayak_rt::closure1((), |(), e: Mentry| {
-            (not(string_eq_p(get(e.8), str_lit(""))) || not(string_eq_p(entry_key(e), get(e.11))))
+            (not(string_eq_p(get(e.8), str_lit!(""))) || not(string_eq_p(entry_key(e), get(e.11))))
         }), m_oldest_first(get(m_entries()), nil::<Product_3num_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())), get(m_news()));
         set(m_news(), nil::<kayak_rt::Handle<'static, tasks::Told>>());
         onto(entries_news(es), reversed_onto(drafts, nil::<kayak_rt::Handle<'static, tasks::Told>>()))
@@ -2318,11 +2318,11 @@ pub mod tasks {
     }
 
     pub fn f_made<'r>(k: i64, text: Str, typed: Str, defined: Str, quiet: bool, needs: List<i64>, state: i64, shown: Str, timed: bool, now: i64) -> Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>> {
-        Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected(k, text, typed, defined, quiet, needs, new(state), new(shown), new(str_lit("")), new(now), new(if i64_eq(state, st_done()) {
+        Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected(k, text, typed, defined, quiet, needs, new(state), new(shown), new(str_lit!("")), new(now), new(if i64_eq(state, st_done()) {
             now
         } else {
             -1i64
-        }), new(-1i64), new(str_lit("")), timed, new(0i64), new(0i64))
+        }), new(-1i64), new(str_lit!("")), timed, new(0i64), new(0i64))
     }
 
     #[inline]
@@ -2333,7 +2333,7 @@ pub mod tasks {
     #[inline]
     pub fn f_up_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: i64) -> () {
         if i64_gt(n, 0i64) {
-            f_say_x(f, string_append(str_lit("\u{1b}["), string_append(i64_to_string(n), str_lit("A"))))
+            f_say_x(f, string_append(str_lit!("\u{1b}["), string_append(i64_to_string(n), str_lit!("A"))))
         } else {
             ()
         }
@@ -2342,7 +2342,7 @@ pub mod tasks {
     #[inline]
     pub fn f_down_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: i64) -> () {
         if i64_gt(n, 0i64) {
-            f_say_x(f, string_append(str_lit("\u{1b}["), string_append(i64_to_string(n), str_lit("B"))))
+            f_say_x(f, string_append(str_lit!("\u{1b}["), string_append(i64_to_string(n), str_lit!("B"))))
         } else {
             ()
         }
@@ -2378,9 +2378,9 @@ pub mod tasks {
         let s = get(e.6);
         let live = get(f.22);
         let head = if (live && i64_gt(e.0, 0i64)) {
-            string_append(str_lit("["), string_append(i64_to_string(e.0), str_lit("] ")))
+            string_append(str_lit!("["), string_append(i64_to_string(e.0), str_lit!("] ")))
         } else {
-            str_lit("")
+            str_lit!("")
         };
         let took = i64_minus(if i64_gt_eq(get(e.10), 0i64) {
             get(e.10)
@@ -2388,22 +2388,22 @@ pub mod tasks {
             now
         }, get(e.9));
         let time = if e.13 {
-            string_append(str_lit("  ("), string_append(seconds(took), string_append(str_lit(", "), string_append(i64_to_string(get(e.14)), string_append(str_lit(" steps, "), string_append(i64_to_string(get(e.15)), str_lit(" collections)")))))))
+            string_append(str_lit!("  ("), string_append(seconds(took), string_append(str_lit!(", "), string_append(i64_to_string(get(e.14)), string_append(str_lit!(" steps, "), string_append(i64_to_string(get(e.15)), str_lit!(" collections)")))))))
         } else if (live && i64_gt_eq(took, 100i64)) {
-            string_append(str_lit("  ("), string_append(seconds(took), str_lit(")")))
+            string_append(str_lit!("  ("), string_append(seconds(took), str_lit!(")")))
         } else {
-            str_lit("")
+            str_lit!("")
         };
         if i64_eq(s, st_checking()) {
-            string_append(head, str_lit("…"))
+            string_append(head, str_lit!("…"))
         } else if i64_eq(s, st_waiting()) {
-            string_append(head, string_append(spinner(now), str_lit(" waiting")))
+            string_append(head, string_append(spinner(now), str_lit!(" waiting")))
         } else if i64_eq(s, st_running()) {
-            string_append(head, string_append(spinner(now), string_append(str_lit(" running "), seconds(took))))
+            string_append(head, string_append(spinner(now), string_append(str_lit!(" running "), seconds(took))))
         } else if i64_eq(s, st_done()) {
             string_append(head, string_append(get(e.7), time))
         } else if i64_eq(s, st_interrupted()) {
-            string_append(head, string_append(str_lit("interrupted"), time))
+            string_append(head, string_append(str_lit!("interrupted"), time))
         } else {
             string_append(head, get(e.7))
         }
@@ -2423,7 +2423,7 @@ pub mod tasks {
         let width = i64_minus(get(f.24), 1i64);
         let cut_short = (i64_gt(string_length_i64(line), width) || has_char_in_p(get(f.0), '\n'));
         if cut_short {
-            string_append(cut(line, 0i64, i64_minus(width, 1i64)), str_lit("…"))
+            string_append(cut(line, 0i64, i64_minus(width, 1i64)), str_lit!("…"))
         } else {
             line
         }
@@ -2434,22 +2434,22 @@ pub mod tasks {
     /// cleared; its note, if any, on the row after it.
     pub fn f_draw_draft_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, d: Str) -> () {
         let (cs, shown, cols) = (string_chars(d), f_note_shown(f), get(f.24));
-        f_say_x(f, str_lit("\u{d}\u{1b}[J"));
-        f_say_x(f, str_lit("fx26> "));
+        f_say_x(f, str_lit!("\u{d}\u{1b}[J"));
+        f_say_x(f, str_lit!("fx26> "));
         set(f.32, prompted(cs, 0i64, get(f.20), get(f.21), get(f.32)));
-        if string_eq_p(shown, str_lit("")) {
+        if string_eq_p(shown, str_lit!("")) {
             ()
         } else {
-            f_say_x(f, str_lit("\u{d}\n"));
+            f_say_x(f, str_lit!("\u{d}\n"));
             f_say_x(f, if get(f.1) {
-                str_lit("\u{1b}[31m")
+                str_lit!("\u{1b}[31m")
             } else {
-                str_lit("\u{1b}[2m")
+                str_lit!("\u{1b}[2m")
             });
             f_say_x(f, shown);
-            f_say_x(f, str_lit("\u{1b}[0m"))
+            f_say_x(f, str_lit!("\u{1b}[0m"))
         };
-        set(f.28, i64_plus(wrapped_rows(cs, 6i64, cols, 1i64), if string_eq_p(shown, str_lit("")) {
+        set(f.28, i64_plus(wrapped_rows(cs, 6i64, cols, 1i64), if string_eq_p(shown, str_lit!("")) {
             0i64
         } else {
             1i64
@@ -2458,13 +2458,13 @@ pub mod tasks {
         let before = string_chars(substring(d, int_lit(0), i64_to_int(get(f.33))));
         let row = i64_minus(wrapped_rows(before, 6i64, cols, 1i64), 1i64);
         let col = column_after(before, 6i64, cols);
-        if (i64_eq(get(f.33), string_length_i64(d)) && string_eq_p(shown, str_lit(""))) {
+        if (i64_eq(get(f.33), string_length_i64(d)) && string_eq_p(shown, str_lit!(""))) {
             ()
         } else {
             f_up_x(f, i64_minus(i64_minus(get(f.28), 1i64), row));
-            f_say_x(f, str_lit("\u{d}"));
+            f_say_x(f, str_lit!("\u{d}"));
             if i64_gt(col, 0i64) {
-                f_say_x(f, string_append(str_lit("\u{1b}["), string_append(i64_to_string(col), str_lit("C"))))
+                f_say_x(f, string_append(str_lit!("\u{1b}["), string_append(i64_to_string(col), str_lit!("C"))))
             } else {
                 ()
             }
@@ -2480,15 +2480,15 @@ pub mod tasks {
             } else {
                 let live = get(f.22);
                 f_say_x(f, if live {
-                    str_lit("\u{1b}[2K")
+                    str_lit!("\u{1b}[2K")
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 });
                 f_say_x(f, car(ls));
                 f_say_x(f, if live {
-                    str_lit("\u{d}\n")
+                    str_lit!("\u{d}\n")
                 } else {
-                    str_lit("\n")
+                    str_lit!("\n")
                 });
                 set(f.27, i64_plus(get(f.27), wrapped_rows(string_chars(car(ls)), 0i64, get(f.24), 1i64)));
                 ls = cdr(ls);
@@ -2507,7 +2507,7 @@ pub mod tasks {
             if null_p(ls) {
                 return ();
             } else {
-                f_printed_x(f, string_append(str_lit("["), string_append(i64_to_string(k), string_append(str_lit("]│ "), car(ls)))));
+                f_printed_x(f, string_append(str_lit!("["), string_append(i64_to_string(k), string_append(str_lit!("]│ "), car(ls)))));
                 ls = cdr(ls);
                 continue;
             }
@@ -2520,10 +2520,10 @@ pub mod tasks {
     /// draft's first row.
     pub fn f_entry_drawn_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, e: Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>, now: i64) -> () {
         let out = get(e.8);
-        if string_eq_p(out, str_lit("")) {
+        if string_eq_p(out, str_lit!("")) {
             ()
         } else {
-            set(e.8, str_lit(""));
+            set(e.8, str_lit!(""));
             f_output_printed_x(f, e.0, lines_of(string_chars(out), nil::<char>(), nil::<Str>()))
         };
         let line = f_entry_line(f, e, now);
@@ -2538,10 +2538,10 @@ pub mod tasks {
         } else if (i64_lt(up, i64_minus(get(f.23), get(f.28))) && not(has_char_in_p(line, '\n'))) {
             set(e.12, line);
             f_up_x(f, up);
-            f_say_x(f, str_lit("\u{d}\u{1b}[2K"));
+            f_say_x(f, str_lit!("\u{d}\u{1b}[2K"));
             f_say_x(f, line);
             f_down_x(f, up);
-            f_say_x(f, str_lit("\u{d}"))
+            f_say_x(f, str_lit!("\u{d}"))
         } else if f_unfinished_p(e) {
             ()
         } else {
@@ -2567,13 +2567,13 @@ pub mod tasks {
         let (es, before) = (f_oldest_first(get(f.25), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>()), rev_to_string(get(f.32)));
         set(f.32, nil::<char>());
         f_up_x(f, get(f.34));
-        f_say_x(f, str_lit("\u{d}"));
+        f_say_x(f, str_lit!("\u{d}"));
         let moved = rev_to_string(get(f.32));
         set(f.32, nil::<char>());
         f_each_drawn_x(f, es, now);
         let changes = rev_to_string(get(f.32));
         set(f.32, put(before, nil::<char>()));
-        if (string_eq_p(changes, str_lit("")) && not(get(f.29))) {
+        if (string_eq_p(changes, str_lit!("")) && not(get(f.29))) {
             ()
         } else {
             f_say_x(f, moved);
@@ -2588,19 +2588,19 @@ pub mod tasks {
                 return ();
             } else {
                 let e = car(es);
-                if string_eq_p(get(e.8), str_lit("")) {
+                if string_eq_p(get(e.8), str_lit!("")) {
                     ()
                 } else {
                     f_say_x(f, get(e.8));
-                    set(e.8, str_lit(""))
+                    set(e.8, str_lit!(""))
                 };
                 if (not(f_unfinished_p(e)) && i64_lt(get(e.11), 0i64)) {
                     let line = f_entry_line(f, e, now);
                     set(e.11, 0i64);
-                    if string_eq_p(line, str_lit("")) {
+                    if string_eq_p(line, str_lit!("")) {
                         ()
                     } else {
-                        f_say_x(f, string_append(line, str_lit("\n")))
+                        f_say_x(f, string_append(line, str_lit!("\n")))
                     }
                 } else {
                     ()
@@ -2666,7 +2666,7 @@ pub mod tasks {
         set(e.10, now);
         if get(f.9) {
             set(f.2, false);
-            set(f.8, str_lit(""))
+            set(f.8, str_lit!(""))
         } else {
             ()
         }
@@ -2682,17 +2682,17 @@ pub mod tasks {
         };
         set(f.7, 0i64);
         set(f.2, false);
-        set(f.8, str_lit(""));
+        set(f.8, str_lit!(""));
         set(f.9, false);
         set(f.12, 4i64);
-        set(f.18, str_lit(""));
+        set(f.18, str_lit!(""));
         set(f.19, -1i64);
         set(f.20, 0i64);
         set(f.21, 0i64);
-        if string_eq_p(get(f.0), str_lit("")) {
+        if string_eq_p(get(f.0), str_lit!("")) {
             ()
         } else {
-            f_noted_x(f, str_lit(""), false)
+            f_noted_x(f, str_lit!(""), false)
         }
     }
 
@@ -2708,12 +2708,12 @@ pub mod tasks {
                 ()
             };
             f_up_x(f, get(f.34));
-            set(f.0, str_lit(""));
+            set(f.0, str_lit!(""));
             set(f.20, 0i64);
             set(f.21, 0i64);
             set(f.33, string_length_i64(get(f.26)));
             f_draw_draft_x(f, get(f.26));
-            f_say_x(f, str_lit("\u{d}\n"));
+            f_say_x(f, str_lit!("\u{d}\n"));
             set(f.27, i64_plus(get(f.27), get(f.28)));
             set(f.28, 1i64);
             set(f.34, 0i64);
@@ -2726,7 +2726,7 @@ pub mod tasks {
     // History: a file of entries, each a line, its newlines and backslashes
     // escaped; the last 500 kept.
     pub fn f_history_written_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
-        if string_eq_p(get(f.39), str_lit("")) {
+        if string_eq_p(get(f.39), str_lit!("")) {
             ()
         } else {
             let tagcase_ = write_file(get(f.39), the::<BytesAt<'r>>(string_to_utf8(rev_to_string(history_text(get(f.36), 500i64, nil::<char>())))));
@@ -2742,7 +2742,7 @@ pub mod tasks {
     }
 
     pub fn f_history_read_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
-        if string_eq_p(get(f.39), str_lit("")) {
+        if string_eq_p(get(f.39), str_lit!("")) {
             ()
         } else {
             let tagcase_ = the::<kayak_rt::Sum>(read_file(get(f.39)));
@@ -2836,7 +2836,7 @@ pub mod tasks {
     /// A command's line, as an entry's that is done.
     pub fn f_said_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, line: Str, now: i64) -> () {
         set(f.41, i64_plus(get(f.41), 1i64));
-        set(f.25, cons(f_made(i64_minus(0i64, get(f.41)), str_lit(""), str_lit(""), str_lit(""), true, nil::<i64>(), st_done(), line, false, now), get(f.25)))
+        set(f.25, cons(f_made(i64_minus(0i64, get(f.41)), str_lit!(""), str_lit!(""), str_lit!(""), true, nil::<i64>(), st_done(), line, false, now), get(f.25)))
     }
 
     pub fn f_known_names<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> Strings {
@@ -2844,7 +2844,7 @@ pub mod tasks {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
-                    if (has_prefix_p(n, str_lit("%")) || has_char_in_p(n, ' ')) {
+                    if (has_prefix_p(n, str_lit!("%")) || has_char_in_p(n, ' ')) {
                         nil::<Str>()
                     } else {
                         the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
@@ -2869,7 +2869,7 @@ pub mod tasks {
                 nil::<Str>()
             }
         })), f_known_names(f))), nil::<Str>()));
-        if (string_eq_p(p, str_lit("")) || null_p(found)) {
+        if (string_eq_p(p, str_lit!("")) || null_p(found)) {
             ()
         } else {
             let common = common_prefix(car(found), cdr(found));
@@ -2906,9 +2906,9 @@ pub mod tasks {
     #[inline]
     pub fn f_written_forms(xs: Sexps) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else {
-            string_append(show_sexp(car(xs)), string_append(str_lit("\n"), f_written_forms(cdr(xs))))
+            string_append(show_sexp(car(xs)), string_append(str_lit!("\n"), f_written_forms(cdr(xs))))
         }
     }
 
@@ -2933,14 +2933,14 @@ pub mod tasks {
                 Ok(kayak_rt::sum_new::<Product_11_12<Str, Int>>(const { kayak_rt::tag_hash("text") }, "text", Product_11_12(text, s)))
             } else if entry {
                 let x = (f.50).call(sexps_located(forms), s)?;
-                if string_eq_p(x.1, str_lit("")) {
+                if string_eq_p(x.1, str_lit!("")) {
                     Ok(kayak_rt::sum_new::<Product_11_12<Str, Int>>(const { kayak_rt::tag_hash("text") }, "text", Product_11_12(f_written_forms(located_sexps(x.0)), x.2)))
                 } else {
                     Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("refused") }, "refused", x.1))
                 }
             } else {
                 let x = (f.51).call(sexps_located(forms), s)?;
-                if string_eq_p(x.1, str_lit("")) {
+                if string_eq_p(x.1, str_lit!("")) {
                     Ok(kayak_rt::sum_new::<Product_11_12<Str, Int>>(const { kayak_rt::tag_hash("text") }, "text", Product_11_12(f_written_forms(located_sexps(x.0)), s)))
                 } else {
                     Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("refused") }, "refused", x.1))
@@ -2956,9 +2956,9 @@ pub mod tasks {
         let k = i64_plus(get(f.46), 1i64);
         set(f.46, k);
         f_speculation_dropped_x(f);
-        set(f.25, cons(f_made(k, text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), str_lit(""), timed, now), get(f.25)));
-        let tagcase_ = f_expanded(f, text, if string_eq_p(label, str_lit("")) {
-            string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
+        set(f.25, cons(f_made(k, text, str_lit!(""), str_lit!(""), true, nil::<i64>(), st_checking(), str_lit!(""), timed, now), get(f.25)));
+        let tagcase_ = f_expanded(f, text, if string_eq_p(label, str_lit!("")) {
+            string_append(str_lit!("<fx26:"), string_append(i64_to_string(k), str_lit!(">")))
         } else {
             label
         }, true)?;
@@ -2975,7 +2975,7 @@ pub mod tasks {
                     set(f.44, v);
                     set(f.45, gs);
                     set(f.49, xs.1);
-                    set(f.25, cons(f_made(k, text, typed, defined, quiet, needs, st_waiting(), str_lit(""), timed, now), cdr(get(f.25))));
+                    set(f.25, cons(f_made(k, text, typed, defined, quiet, needs, st_waiting(), str_lit!(""), timed, now), cdr(get(f.25))));
                     Ok(f_asked_x(f, entry_asked(k, x, label, timed, typed, defined, quiet, needs, facts)))
                 }
                 Done::RefusedDone(m) => {
@@ -2995,16 +2995,16 @@ pub mod tasks {
         set(f.36, cons(trimmed_end(d), get(f.36)));
         f_history_written_x(f);
         set(f.37, -1i64);
-        set(f.38, str_lit(""));
-        Ok(f_draft_set_x(f, str_lit(""), 0i64))
+        set(f.38, str_lit!(""));
+        Ok(f_draft_set_x(f, str_lit!(""), 0i64))
     }
 
     /// `,type E`: E checked by a worker, its type and effect said, not run.
     /// A refusal finds the line, as an entry's (`f-refused!`).
     pub fn f_typed_only_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, now: i64) -> Result<(), Unwind> {
         set(f.41, i64_plus(get(f.41), 1i64));
-        set(f.25, cons(f_made(i64_minus(0i64, get(f.41)), text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), str_lit(""), false, now), get(f.25)));
-        let tagcase_ = f_expanded(f, text, str_lit("<,type>"), false)?;
+        set(f.25, cons(f_made(i64_minus(0i64, get(f.41)), text, str_lit!(""), str_lit!(""), true, nil::<i64>(), st_checking(), str_lit!(""), false, now), get(f.25)));
+        let tagcase_ = f_expanded(f, text, str_lit!("<,type>"), false)?;
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("refused") } {
             let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -3034,7 +3034,7 @@ pub mod tasks {
     pub fn f_described<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: Str) -> Str {
         let found = find_bind(n, cv_binds(get(f.44)));
         if null_p(found) {
-            string_append(n, str_lit(" is not defined"))
+            string_append(n, str_lit!(" is not defined"))
         } else {
             let tagcase_ = car(found);
             match *tagcase_ {
@@ -3042,10 +3042,10 @@ pub mod tasks {
                     let tagcase_ = sc;
                     match *tagcase_ {
                         Scheme::Scheme(tvars, t) => {
-                            string_append(n, string_append(str_lit(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit("prim")) {
-                                str_lit(", a primitive")
+                            string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit!("prim")) {
+                                str_lit!(", a primitive")
                             } else {
-                                str_lit("")
+                                str_lit!("")
                             })))
                         }
                     }
@@ -3067,18 +3067,18 @@ pub mod tasks {
                 Ok(f_submit_x(f, t, path, false, now)?)
             } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                 let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                Ok(f_said_x(f, string_append(path, str_lit(": not UTF-8")), now))
+                Ok(f_said_x(f, string_append(path, str_lit!(": not UTF-8")), now))
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            Ok(f_said_x(f, string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), now))
+            Ok(f_said_x(f, string_append(str_lit!("cannot read "), string_append(path, string_append(str_lit!(": "), e.1))), now))
         } else { unreachable!() }
     }
 
     pub fn f_pending_text<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Str {
         let open = f_unfinished(f_oldest_first(get(f.25), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>()));
         if null_p(open) {
-            str_lit("no entry is running")
+            str_lit!("no entry is running")
         } else {
             words_lines(f_pending_lines(open))
         }
@@ -3088,49 +3088,49 @@ pub mod tasks {
         if null_p(es) {
             nil::<Str>()
         } else {
-            cons(string_append(str_lit("["), string_append(i64_to_string(car(es).0), string_append(str_lit("] "), first_line(car(es).1)))), f_pending_lines(cdr(es)))
+            cons(string_append(str_lit!("["), string_append(i64_to_string(car(es).0), string_append(str_lit!("] "), first_line(car(es).1)))), f_pending_lines(cdr(es)))
         }
     }
 
     pub fn f_command_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, line: Str, now: i64) -> Result<(), Unwind> {
         let w = command_word(line);
         let rest = trimmed_end(command_rest(line));
-        if string_eq_p(w, str_lit(",help")) {
-            if string_eq_p(rest, str_lit("")) {
+        if string_eq_p(w, str_lit!(",help")) {
+            if string_eq_p(rest, str_lit!("")) {
                 Ok(f_said_x(f, help_text(), now))
             } else {
                 Ok(f_said_x(f, f_described(f, rest), now))
             }
-        } else if string_eq_p(w, str_lit(",type")) {
+        } else if string_eq_p(w, str_lit!(",type")) {
             Ok(f_typed_only_x(f, rest, now)?)
-        } else if string_eq_p(w, str_lit(",time")) {
-            Ok(f_submit_x(f, rest, str_lit(""), true, now)?)
-        } else if string_eq_p(w, str_lit(",load")) {
+        } else if string_eq_p(w, str_lit!(",time")) {
+            Ok(f_submit_x(f, rest, str_lit!(""), true, now)?)
+        } else if string_eq_p(w, str_lit!(",load")) {
             Ok(f_loaded_x(f, rest, now)?)
-        } else if string_eq_p(w, str_lit(",pending")) {
+        } else if string_eq_p(w, str_lit!(",pending")) {
             Ok(f_said_x(f, f_pending_text(f, now), now))
-        } else if string_eq_p(w, str_lit(",cancel")) {
+        } else if string_eq_p(w, str_lit!(",cancel")) {
             let found = f_numbered(get(f.25), number_from(string_chars(rest), 0i64));
             if (not(null_p(found)) && f_unfinished_p(car(found))) {
                 Ok(f_asked_x(f, cancel_asked(car(found).0)))
             } else {
-                Ok(f_said_x(f, string_append(str_lit("no entry "), string_append(rest, str_lit(" is running"))), now))
+                Ok(f_said_x(f, string_append(str_lit!("no entry "), string_append(rest, str_lit!(" is running"))), now))
             }
-        } else if string_eq_p(w, str_lit(",step-limit")) {
-            if string_eq_p(rest, str_lit("none")) {
+        } else if string_eq_p(w, str_lit!(",step-limit")) {
+            if string_eq_p(rest, str_lit!("none")) {
                 set(f.40, -1i64)
-            } else if string_eq_p(rest, str_lit("")) {
+            } else if string_eq_p(rest, str_lit!("")) {
                 ()
             } else {
                 set(f.40, number_from(string_chars(rest), 0i64))
             };
             f_asked_x(f, limit_asked(get(f.40)));
             Ok(f_said_x(f, if i64_lt(get(f.40), 0i64) {
-                str_lit("no step limit")
+                str_lit!("no step limit")
             } else {
-                string_append(str_lit("an entry may take "), string_append(i64_to_string(get(f.40)), str_lit(" steps")))
+                string_append(str_lit!("an entry may take "), string_append(i64_to_string(get(f.40)), str_lit!(" steps")))
             }, now))
-        } else if string_eq_p(w, str_lit(",apropos")) {
+        } else if string_eq_p(w, str_lit!(",apropos")) {
             Ok(f_said_x(f, {
                 let found = sorted_strings(deduped_names(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((rest,), |(rest,), n: Str| {
                     if i64_gt_eq(int_to_i64(string_search(n, rest, int_lit(0))), 0i64) {
@@ -3140,23 +3140,23 @@ pub mod tasks {
                     }
                 })), f_known_names(f))), nil::<Str>()));
                 if null_p(found) {
-                    str_lit("nothing")
+                    str_lit!("nothing")
                 } else {
                     words_of_at_most(found, 40i64)
                 }
             }, now))
-        } else if string_eq_p(w, str_lit(",quit")) {
+        } else if string_eq_p(w, str_lit!(",quit")) {
             Ok(set(f.42, true))
         } else {
-            Ok(f_said_x(f, string_append(str_lit("no command "), string_append(w, str_lit("; ,help for those there are"))), now))
+            Ok(f_said_x(f, string_append(str_lit!("no command "), string_append(w, str_lit!("; ,help for those there are"))), now))
         }
     }
 
     /// ^C: the draft dropped, if there is one; else the newest entry not
     /// ended, interrupted.
     pub fn f_interrupt_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
-        if not(string_eq_p(get(f.26), str_lit(""))) {
-            f_draft_set_x(f, str_lit(""), 0i64);
+        if not(string_eq_p(get(f.26), str_lit!(""))) {
+            f_draft_set_x(f, str_lit!(""), 0i64);
             set(f.37, -1i64)
         } else {
             let running = f_unfinished(get(f.25));
@@ -3178,11 +3178,11 @@ pub mod tasks {
             Ok(f_command_x(f, list_to_string(trimmed), now)?)
         } else if repl_complete_p(d) {
             f_given_x(f, d, now)?;
-            Ok(f_submit_x(f, d, str_lit(""), false, now)?)
+            Ok(f_submit_x(f, d, str_lit!(""), false, now)?)
         } else if null_p(trimmed) {
-            Ok(f_draft_set_x(f, str_lit(""), 0i64))
+            Ok(f_draft_set_x(f, str_lit!(""), 0i64))
         } else {
-            Ok(f_inserted_x(f, str_lit("\n")))
+            Ok(f_inserted_x(f, str_lit!("\n")))
         }
     }
 
@@ -3209,7 +3209,7 @@ pub mod tasks {
         } else if i64_eq(c, 3i64) {
             Ok(f_interrupt_x(f, now))
         } else if i64_eq(c, 4i64) {
-            if string_eq_p(d, str_lit("")) {
+            if string_eq_p(d, str_lit!("")) {
                 Ok(set(f.30, true))
             } else {
                 Ok(f_deleted_x(f, at, i64_plus(at, 1i64)))
@@ -3244,7 +3244,7 @@ pub mod tasks {
         } else if i64_eq(c, 9i64) {
             Ok(f_completed_x(f, now))
         } else if i64_eq(c, 12i64) {
-            f_say_x(f, str_lit("\u{1b}[H\u{1b}[2J"));
+            f_say_x(f, str_lit!("\u{1b}[H\u{1b}[2J"));
             set(f.27, i64_plus(get(f.27), get(f.23)));
             set(f.34, 0i64);
             Ok(set(f.29, true))
@@ -3268,9 +3268,9 @@ pub mod tasks {
             Ok(set(f.15, -1i64))
         } else {
             let typed = trimmed_end(cut(text, 0i64, kept));
-            set(f.13, cons(string_append(typed, string_append(str_lit(" %hole"), closers(size(open)))), cons(string_append(typed, string_append(str_lit(" %hole"), closers_filled(0i64, size(open), -1i64))), each_filled(string_append(typed, str_lit(" %hole")), 1i64, size(open)))));
+            set(f.13, cons(string_append(typed, string_append(str_lit!(" %hole"), closers(size(open)))), cons(string_append(typed, string_append(str_lit!(" %hole"), closers_filled(0i64, size(open), -1i64))), each_filled(string_append(typed, str_lit!(" %hole")), 1i64, size(open)))));
             set(f.15, i64_plus(string_length_i64(typed), 1i64));
-            let tagcase_ = worked(hole_items(string_append(cut(text, car(open), kept), str_lit(")"))));
+            let tagcase_ = worked(hole_items(string_append(cut(text, car(open), kept), str_lit!(")"))));
             match *tagcase_ {
                 Done::ItemsDone(n, op) => {
                     set(f.17, n);
@@ -3279,7 +3279,7 @@ pub mod tasks {
                 _ => {
                     let other = tagcase_;
                     set(f.17, 0i64);
-                    Ok(set(f.16, str_lit("")))
+                    Ok(set(f.16, str_lit!("")))
                 }
             }
         }
@@ -3289,25 +3289,25 @@ pub mod tasks {
     /// 2`, if the checker said it is one), with its operator if a name; else
     /// what goes next.
     pub fn f_hint_words<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, what: Str, argument: Str) -> Str {
-        let (want, op) = (str_lit("an expression of type "), get(f.16));
-        if (has_prefix_p(what, want) && not(string_eq_p(argument, str_lit("")))) {
-            string_append(argument, string_append(if string_eq_p(op, str_lit("")) {
-                str_lit("")
+        let (want, op) = (str_lit!("an expression of type "), get(f.16));
+        if (has_prefix_p(what, want) && not(string_eq_p(argument, str_lit!("")))) {
+            string_append(argument, string_append(if string_eq_p(op, str_lit!("")) {
+                str_lit!("")
             } else {
-                string_append(str_lit(" of "), op)
-            }, string_append(str_lit(" wants "), cut(what, string_length_i64(want), string_length_i64(what)))))
-        } else if (string_eq_p(what, str_lit("an expression")) && not(string_eq_p(argument, str_lit("")))) {
-            string_append(argument, if string_eq_p(op, str_lit("")) {
-                str_lit(": anything")
+                string_append(str_lit!(" of "), op)
+            }, string_append(str_lit!(" wants "), cut(what, string_length_i64(want), string_length_i64(what)))))
+        } else if (string_eq_p(what, str_lit!("an expression")) && not(string_eq_p(argument, str_lit!("")))) {
+            string_append(argument, if string_eq_p(op, str_lit!("")) {
+                str_lit!(": anything")
             } else {
-                string_append(str_lit(" of "), string_append(op, str_lit(": anything")))
+                string_append(str_lit!(" of "), string_append(op, str_lit!(": anything")))
             })
-        } else if (has_prefix_p(what, str_lit("nothing, the call has its ")) && not(string_eq_p(op, str_lit("")))) {
-            string_append(op, string_append(str_lit(" takes "), cut(what, 26i64, string_length_i64(what))))
-        } else if (string_eq_p(what, str_lit("an expression")) && i64_eq(get(f.17), 0i64)) {
-            str_lit("")
+        } else if (has_prefix_p(what, str_lit!("nothing, the call has its ")) && not(string_eq_p(op, str_lit!("")))) {
+            string_append(op, string_append(str_lit!(" takes "), cut(what, 26i64, string_length_i64(what))))
+        } else if (string_eq_p(what, str_lit!("an expression")) && i64_eq(get(f.17), 0i64)) {
+            str_lit!("")
         } else {
-            string_append(str_lit("next: "), what)
+            string_append(str_lit!("next: "), what)
         }
     }
 
@@ -3315,10 +3315,10 @@ pub mod tasks {
     /// says what that list must be.
     pub fn f_hints_said_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
         set(f.12, 4i64);
-        if string_eq_p(get(f.18), str_lit("")) {
+        if string_eq_p(get(f.18), str_lit!("")) {
             ()
         } else {
-            f_noted_x(f, string_append(str_lit("next: "), get(f.18)), false)
+            f_noted_x(f, string_append(str_lit!("next: "), get(f.18)), false)
         }
     }
 
@@ -3327,14 +3327,14 @@ pub mod tasks {
         set(f.6, r#type);
         if not(null_p(waiting)) {
             set(f.9, true);
-            f_noted_x(f, string_append(str_lit("…"), string_append(r#type, string_append(str_lit("  (run when ["), string_append(i64_to_string(car(waiting)), str_lit("] has ended)"))))), false)
+            f_noted_x(f, string_append(str_lit!("…"), string_append(r#type, string_append(str_lit!("  (run when ["), string_append(i64_to_string(car(waiting)), str_lit!("] has ended)"))))), false)
         } else if not(quiet_effect_p(effects)) {
-            f_noted_x(f, string_append(str_lit("…"), string_append(r#type, string_append(str_lit("  (not run early, for its "), string_append(show_effs(loud_atoms(effects)), str_lit(")"))))), false)
+            f_noted_x(f, string_append(str_lit!("…"), string_append(r#type, string_append(str_lit!("  (not run early, for its "), string_append(show_effs(loud_atoms(effects)), str_lit!(")"))))), false)
         } else {
             set(f.10, i64_plus(get(f.10), 1i64));
             f_asked_x(f, draft_asked(get(f.10), get(f.11), r#type, facts));
             set(f.7, 1i64);
-            f_noted_x(f, string_append(str_lit("…"), r#type), false)
+            f_noted_x(f, string_append(str_lit!("…"), r#type), false)
         }
     }
 
@@ -3363,14 +3363,14 @@ pub mod tasks {
             set(f.20, at);
             set(f.21, datum_end(get(f.26), at));
             f_noted_x(f, words, true)
-        } else if has_prefix_p(words, str_lit("the hole: ")) {
+        } else if has_prefix_p(words, str_lit!("the hole: ")) {
             set(f.12, 4i64);
-            f_noted_x(f, f_hint_words(f, cut(words, 10i64, string_length_i64(words)), str_lit("")), false)
-        } else if (has_prefix_p(words, str_lit("in argument ")) && i64_gt_eq(int_to_i64(string_search(words, str_lit(": the hole: "), int_lit(0))), 0i64)) {
-            let at2 = int_to_i64(string_search(words, str_lit(": the hole: "), int_lit(0)));
+            f_noted_x(f, f_hint_words(f, cut(words, 10i64, string_length_i64(words)), str_lit!("")), false)
+        } else if (has_prefix_p(words, str_lit!("in argument ")) && i64_gt_eq(int_to_i64(string_search(words, str_lit!(": the hole: "), int_lit(0))), 0i64)) {
+            let at2 = int_to_i64(string_search(words, str_lit!(": the hole: "), int_lit(0)));
             set(f.12, 4i64);
             f_noted_x(f, f_hint_words(f, cut(words, i64_plus(at2, 12i64), string_length_i64(words)), cut(words, 3i64, at2)), false)
-        } else if (i64_member_p(at, open) && i64_gt(at, get(f.19)) && i64_lt(int_to_i64(string_search(words, str_lit("%hole"), int_lit(0))), 0i64) && i64_lt(int_to_i64(string_search(words, str_lit("%fill"), int_lit(0))), 0i64)) {
+        } else if (i64_member_p(at, open) && i64_gt(at, get(f.19)) && i64_lt(int_to_i64(string_search(words, str_lit!("%hole"), int_lit(0))), 0i64) && i64_lt(int_to_i64(string_search(words, str_lit!("%fill"), int_lit(0))), 0i64)) {
             set(f.18, words);
             set(f.19, at)
         } else {
@@ -3390,18 +3390,18 @@ pub mod tasks {
             let tagcase_ = closing;
             match *tagcase_ {
                 Closing::Unclosable() => {
-                    str_lit("")
+                    str_lit!("")
                 }
                 Closing::ClosedAs(closed, kept, open, finished) => {
                     string_append(if finished {
-                        str_lit("f|")
+                        str_lit!("f|")
                     } else {
-                        str_lit("u|")
+                        str_lit!("u|")
                     }, trimmed_end(closed))
                 }
             }
         };
-        if (not(string_eq_p(key, str_lit(""))) && string_eq_p(key, get(f.8))) {
+        if (not(string_eq_p(key, str_lit!(""))) && string_eq_p(key, get(f.8))) {
             Ok(set(f.2, true))
         } else {
             f_speculation_dropped_x(f);
@@ -3423,7 +3423,7 @@ pub mod tasks {
                     } else {
                         1i64
                     });
-                    let tagcase_ = f_expanded(f, closed, str_lit("<draft>"), false)?;
+                    let tagcase_ = f_expanded(f, closed, str_lit!("<draft>"), false)?;
                     let tag_ = kayak_rt::sum_tag(tagcase_);
                     if tag_ == const { kayak_rt::tag_hash("refused") } {
                         let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -3470,7 +3470,7 @@ pub mod tasks {
             set(f.13, cdr(get(f.13)));
             set(f.14, true);
             {
-                let tagcase_ = f_expanded(f, text, str_lit("<draft>"), false)?;
+                let tagcase_ = f_expanded(f, text, str_lit!("<draft>"), false)?;
                 let tag_ = kayak_rt::sum_tag(tagcase_);
                 if tag_ == const { kayak_rt::tag_hash("refused") } {
                     let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -3589,7 +3589,7 @@ pub mod tasks {
     /// The session begun: the checker's environment, the history, the
     /// screen's size; the banner, if live.
     pub fn f_started_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, is_live: bool, height: i64, width: i64, path: Str) -> Result<Str, Unwind> {
-        let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
+        let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
         set(f.44, with_binds(empty, prim_binds(empty)));
         set(f.39, path);
         f_history_read_x(f);
@@ -3597,9 +3597,9 @@ pub mod tasks {
         set(f.23, height);
         set(f.24, width);
         if is_live {
-            Ok(string_append(repl_banner(), str_lit("\u{d}\n(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)\u{d}\n")))
+            Ok(string_append(repl_banner(), str_lit!("\u{d}\n(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)\u{d}\n")))
         } else {
-            Ok(str_lit(""))
+            Ok(str_lit!(""))
         }
     }
 
@@ -3608,7 +3608,7 @@ pub mod tasks {
     // load seeing the standard environment alone, where it may hold no
     // procedure of a place (Fixpt's `closed-code.md`).
     pub fn f_new<'r>(relay: Addr<kayak_rt::Handle<'static, Relayed>>, entry: kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, draft: kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, macros_p: kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>) -> Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>> {
-        Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p(new(str_lit("")), new(false), new(false), new(0i64), new(nil::<i64>()), new(false), new(str_lit("")), new(0i64), new(str_lit("")), new(false), new(0i64), new(str_lit("")), new(4i64), new(nil::<Str>()), new(false), new(-1i64), new(str_lit("")), new(0i64), new(str_lit("")), new(-1i64), new(0i64), new(0i64), new(false), new(24i64), new(80i64), new(nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>()), new(str_lit("")), new(0i64), new(0i64), new(true), new(false), new(0i64), new(nil::<char>()), new(0i64), new(0i64), new(0i64), new(nil::<Str>()), new(-1i64), new(str_lit("")), new(str_lit("")), new(-1i64), new(0i64), new(false), new(nil::<kayak_rt::Handle<'static, tasks::Asked>>()), new(cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>())), new(nil::<Str>()), new(0i64), new(false), relay, new(int_lit(0)), entry, draft, macros_p)
+        Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p(new(str_lit!("")), new(false), new(false), new(0i64), new(nil::<i64>()), new(false), new(str_lit!("")), new(0i64), new(str_lit!("")), new(false), new(0i64), new(str_lit!("")), new(4i64), new(nil::<Str>()), new(false), new(-1i64), new(str_lit!("")), new(0i64), new(str_lit!("")), new(-1i64), new(0i64), new(0i64), new(false), new(24i64), new(80i64), new(nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>()), new(str_lit!("")), new(0i64), new(0i64), new(true), new(false), new(0i64), new(nil::<char>()), new(0i64), new(0i64), new(0i64), new(nil::<Str>()), new(-1i64), new(str_lit!("")), new(str_lit!("")), new(-1i64), new(0i64), new(false), new(nil::<kayak_rt::Handle<'static, tasks::Asked>>()), new(cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>())), new(nil::<Str>()), new(0i64), new(false), relay, new(int_lit(0)), entry, draft, macros_p)
     }
 
     // A key read, as the key's code, or -1 at the input's end (which asks to
@@ -3901,7 +3901,7 @@ pub mod tasks {
         let path = if live {
             history
         } else {
-            str_lit("")
+            str_lit!("")
         };
         repl_start_x();
         set(m_live(), live);
@@ -3922,7 +3922,7 @@ pub mod tasks {
                         Ok(x.drive_entry(forms, k)?)
                     }), kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
                         x.drive_asker_x(kayak_rt::as_proc(kayak_rt::closure1s((), |(), r: Str| {
-                            str_lit("")
+                            str_lit!("")
                         })))?;
                         Ok(x.drive_draft(forms, k)?)
                     }), kayak_rt::closure1((x,), |(x,), k: Int| {
@@ -4049,7 +4049,7 @@ pub mod tasks {
                             f_written_x(f, now_ms());
                             if f_over_p(f) {
                                 if get(f.22) {
-                                    write_out(str_lit("\u{d}\n"));
+                                    write_out(str_lit!("\u{d}\n"));
                                     ()
                                 } else {
                                     ()
@@ -4082,7 +4082,7 @@ pub mod tasks {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            write_err(string_append(str_lit("kayak-fx26: "), string_append(path, string_append(str_lit(": "), string_append(e.1, str_lit("\n"))))));
+            write_err(string_append(str_lit!("kayak-fx26: "), string_append(path, string_append(str_lit!(": "), string_append(e.1, str_lit!("\n"))))));
             int_lit(66)
         } else if tag_ == const { kayak_rt::tag_hash("data") } {
             let bv: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
@@ -4101,13 +4101,13 @@ pub mod tasks {
                             Ok(x.drive_entry(forms, k)?)
                         }), kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
                             x.drive_asker_x(kayak_rt::as_proc(kayak_rt::closure1s((), |(), r: Str| {
-                                str_lit("")
+                                str_lit!("")
                             })))?;
                             Ok(x.drive_draft(forms, k)?)
                         }), kayak_rt::closure1((x,), |(x,), k: Int| {
                             Ok(x.drive_macros_p(k)?)
                         })));
-                        write_out(f_started_x(f, true, 24i64, 80i64, str_lit(""))?);
+                        write_out(f_started_x(f, true, 24i64, 80i64, str_lit!(""))?);
                         let go__knot = knot::<kayak_rt::Proc3<'p, List<kayak_rt::Handle<'static, Arrival>>, i64, bool, Result<(), Unwind>>>();
                         let go = kayak_rt::closure3((relay, f,), |(relay, f,), mut r#as: List<kayak_rt::Handle<'static, Arrival>>, mut clock: i64, mut ended: bool| {
                             loop {
@@ -4128,7 +4128,7 @@ pub mod tasks {
                                         f_each_news_x(f, news, after);
                                         f_written_x(f, after);
                                         if f_over_p(f) {
-                                            write_out(str_lit("\u{d}\n"));
+                                            write_out(str_lit!("\u{d}\n"));
                                             return Ok(kayak_rt::process::send(relay, from_front(front_ended())));
                                         } else {
                                             (r#as, clock, ended) = (left, if not(idle) {

@@ -9,7 +9,7 @@ use kayak_rt::*;
 
 #[inline]
 pub fn words() -> kayak_rt::value::Value {
-    kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("lambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("region"))), kayak_rt::value::Value::Nil)))
+    kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("lambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("region"))), kayak_rt::value::Value::Nil)))
 }
 
 pub mod m {
@@ -17,7 +17,7 @@ pub mod m {
 
     #[inline]
     pub fn table() -> kayak_rt::value::Value {
-        kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("step"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(1)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(2)), kayak_rt::value::Value::Nil)))
+        kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("step"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(1)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(2)), kayak_rt::value::Value::Nil)))
     }
 
     #[inline]
@@ -29,7 +29,7 @@ pub mod m {
 #[inline]
 pub fn both(c: bool, out: List<Str>) -> List<Str> {
     let o2 = if c {
-        kayak_rt::heap_cons(str_lit("a"), kayak_rt::heap_cons(str_lit("b"), out))
+        kayak_rt::heap_cons(str_lit!("a"), kayak_rt::heap_cons(str_lit!("b"), out))
     } else {
         out
     };
@@ -43,14 +43,14 @@ pub fn first_name(d: kayak_rt::value::Value) -> Str {
         if symbol_p(a) {
             symbol_to_string(kayak_rt::value::unbox::<Symbol>(a))
         } else {
-            str_lit("?")
+            str_lit!("?")
         }
     } else {
-        str_lit("?")
+        str_lit!("?")
     }
 }
 
 pub fn main() -> Str {
-    string_append(first_name(words()), string_append(str_lit(" "), string_append(first_name(m::table()), string_append(str_lit(" "), string_append(i64_to_string(m::step(41i64)), string_append(str_lit(" "), car(both(true, kayak_rt::heap_cons(str_lit("c"), kayak_rt::nil())))))))))
+    string_append(first_name(words()), string_append(str_lit!(" "), string_append(first_name(m::table()), string_append(str_lit!(" "), string_append(i64_to_string(m::step(41i64)), string_append(str_lit!(" "), car(both(true, kayak_rt::heap_cons(str_lit!("c"), kayak_rt::nil())))))))))
 }
 

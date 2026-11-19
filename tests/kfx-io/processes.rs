@@ -14,13 +14,13 @@ pub fn wait_for(mut p: Int, mut acc: Str) -> Str {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("exited") } {
             let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            return string_append(more, string_append(str_lit("exited "), int_to_string(c)));
+            return string_append(more, string_append(str_lit!("exited "), int_to_string(c)));
         } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
             let s: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            return string_append(more, string_append(str_lit("signalled "), int_to_string(s)));
+            return string_append(more, string_append(str_lit!("signalled "), int_to_string(s)));
         } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            return string_append(more, str_lit("unknown"));
+            return string_append(more, str_lit!("unknown"));
         } else if tag_ == const { kayak_rt::tag_hash("running") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
             sleep_until(i64_plus(clock(), 1000000i64));
@@ -32,7 +32,7 @@ pub fn wait_for(mut p: Int, mut acc: Str) -> Str {
 
 #[inline]
 pub fn script() -> Str {
-    str_lit("printf 'a\\nb\\n'; echo err >&2; read x; echo got $x; exit 3")
+    str_lit!("printf 'a\\nb\\n'; echo err >&2; read x; echo got $x; exit 3")
 }
 
 pub fn ended(p: Int) -> Str {
@@ -40,37 +40,37 @@ pub fn ended(p: Int) -> Str {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("exited") } {
         let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        string_append(str_lit("exited "), int_to_string(c))
+        string_append(str_lit!("exited "), int_to_string(c))
     } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
         let s: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        string_append(str_lit("signalled "), int_to_string(s))
+        string_append(str_lit!("signalled "), int_to_string(s))
     } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        str_lit("unknown")
+        str_lit!("unknown")
     } else { unreachable!() }
 }
 
 pub fn main() -> Int {
     {
-        let tagcase_ = process_start(the::<List<Str>>(kayak_rt::heap_cons(str_lit("/bin/sh"), kayak_rt::heap_cons(str_lit("-c"), kayak_rt::heap_cons(script(), kayak_rt::nil())))), str_lit(""));
+        let tagcase_ = process_start(the::<List<Str>>(kayak_rt::heap_cons(str_lit!("/bin/sh"), kayak_rt::heap_cons(str_lit!("-c"), kayak_rt::heap_cons(script(), kayak_rt::nil())))), str_lit!(""));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("started") } {
             let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            process_write(p, str_lit("hi\n"));
+            process_write(p, str_lit!("hi\n"));
             process_close_input(p);
-            write_out(string_append(wait_for(p, str_lit("")), str_lit("\n")));
-            write_out(string_append(str_lit("then "), string_append(ended(p), str_lit("\n"))))
+            write_out(string_append(wait_for(p, str_lit!("")), str_lit!("\n")));
+            write_out(string_append(str_lit!("then "), string_append(ended(p), str_lit!("\n"))))
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            write_out(str_lit("failed\n"))
+            write_out(str_lit!("failed\n"))
         } else { unreachable!() }
     };
     {
-        let tagcase_ = process_start(the::<List<Str>>(kayak_rt::heap_cons(str_lit("/no/such/program"), kayak_rt::nil())), str_lit(""));
+        let tagcase_ = process_start(the::<List<Str>>(kayak_rt::heap_cons(str_lit!("/no/such/program"), kayak_rt::nil())), str_lit!(""));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("started") } {
             let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            write_out(str_lit("started\n"))
+            write_out(str_lit!("started\n"))
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
             write_out({
@@ -78,15 +78,15 @@ pub fn main() -> Int {
                 let tag_ = kayak_rt::sum_tag(tagcase_);
                 if tag_ == const { kayak_rt::tag_hash("not-found") } {
                     let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                    str_lit("failed not-found\n")
+                    str_lit!("failed not-found\n")
                 } else {
                     let y = tagcase_;
-                    str_lit("failed other\n")
+                    str_lit!("failed other\n")
                 }
             })
         } else { unreachable!() }
     };
-    write_out(string_append(str_lit("news "), string_append(int_to_string(process_news()), str_lit("\n"))));
+    write_out(string_append(str_lit!("news "), string_append(int_to_string(process_news()), str_lit!("\n"))));
     int_lit(0)
 }
 

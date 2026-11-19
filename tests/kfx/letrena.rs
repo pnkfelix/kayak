@@ -131,6 +131,6 @@ pub fn find(n: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(total(1000i64, 0i64)), string_append(str_lit(" "), string_append(i64_to_string(add_to(41i64)), string_append(str_lit(" "), string_append(i64_to_string(tally(5i64)), string_append(str_lit(" "), string_append(i64_to_string(find(1i64)), string_append(str_lit(" "), i64_to_string(find(5i64))))))))))
+    string_append(i64_to_string(total(1000i64, 0i64)), string_append(str_lit!(" "), string_append(i64_to_string(add_to(41i64)), string_append(str_lit!(" "), string_append(i64_to_string(tally(5i64)), string_append(str_lit!(" "), string_append(i64_to_string(find(1i64)), string_append(str_lit!(" "), i64_to_string(find(5i64))))))))))
 }
 

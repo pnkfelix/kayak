@@ -32,7 +32,7 @@ pub mod made__load__1__loaded_family {
 
     #[inline]
     pub fn made() -> Product_3fst_3snd<i64, Str> {
-        Product_3fst_3snd(1i64, str_lit("one"))
+        Product_3fst_3snd(1i64, str_lit!("one"))
     }
 }
 

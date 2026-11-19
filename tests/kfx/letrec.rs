@@ -19,7 +19,7 @@ pub fn count_to(n: i64, step: i64) -> Str {
         }
     }));
     go__knot.set(go);
-    go.call(0i64, str_lit(""))
+    go.call(0i64, str_lit!(""))
 }
 
 pub fn parity(n: i64) -> Str {
@@ -42,9 +42,9 @@ pub fn parity(n: i64) -> Str {
     ev_p__knot.set(ev_p);
     od_p__knot.set(od_p);
     if ev_p.call(n) {
-        str_lit("even")
+        str_lit!("even")
     } else {
-        str_lit("odd")
+        str_lit!("odd")
     }
 }
 
@@ -60,6 +60,6 @@ pub fn shadow(x: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(count_to(9i64, 3i64), string_append(str_lit(" "), string_append(parity(10i64), string_append(str_lit(" "), string_append(parity(7i64), string_append(str_lit(" "), i64_to_string(shadow(21i64))))))))
+    string_append(count_to(9i64, 3i64), string_append(str_lit!(" "), string_append(parity(10i64), string_append(str_lit!(" "), string_append(parity(7i64), string_append(str_lit!(" "), i64_to_string(shadow(21i64))))))))
 }
 

@@ -10,11 +10,11 @@ pub type Ints = List<i64>;
 
 pub fn words(xs: List<Str>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 

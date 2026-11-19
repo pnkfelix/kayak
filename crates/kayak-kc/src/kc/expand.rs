@@ -1643,7 +1643,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn mx_keyword_name_p(n: Str) -> bool {
-        (_gt(string_length(n), int_lit(2)) && string_eq_p(substring(n, int_lit(0), int_lit(2)), str_lit("#:")) && not(char_numeric_p(string_ref(n, int_lit(2)))))
+        (_gt(string_length(n), int_lit(2)) && string_eq_p(substring(n, int_lit(0), int_lit(2)), str_lit!("#:")) && not(char_numeric_p(string_ref(n, int_lit(2)))))
     }
 
     #[inline]
@@ -1656,13 +1656,13 @@ pub mod made__load__1__expand {
             let n = symbol_to_string(kayak_rt::value::unbox::<Symbol>(d));
             string_to_symbol(substring(n, int_lit(2), string_length(n)))
         } else {
-            string_to_symbol(str_lit(""))
+            string_to_symbol(str_lit!(""))
         }
     }
 
     #[inline]
     pub fn mx_symbol_to_keyword(n: Symbol) -> Symbol {
-        string_to_symbol(string_append(str_lit("#:"), symbol_to_string(n)))
+        string_to_symbol(string_append(str_lit!("#:"), symbol_to_string(n)))
     }
 
     #[inline]
@@ -1727,8 +1727,8 @@ pub mod made__load__1__expand {
     }
 
     pub fn mx_phase1_key(r: Str) -> Str {
-        if (_gt(string_length(r), int_lit(9)) && (string_eq_p(substring(r, int_lit(0), int_lit(9)), str_lit("%apply 1 ")) || string_eq_p(substring(r, int_lit(0), int_lit(9)), str_lit("%apply 2 ")))) {
-            string_append(substring(r, int_lit(0), int_lit(9)), string_append(str_lit("0"), substring(r, mx_phase1_tag_end(r, int_lit(9)), string_length(r))))
+        if (_gt(string_length(r), int_lit(9)) && (string_eq_p(substring(r, int_lit(0), int_lit(9)), str_lit!("%apply 1 ")) || string_eq_p(substring(r, int_lit(0), int_lit(9)), str_lit!("%apply 2 ")))) {
+            string_append(substring(r, int_lit(0), int_lit(9)), string_append(str_lit!("0"), substring(r, mx_phase1_tag_end(r, int_lit(9)), string_length(r))))
         } else {
             r
         }
@@ -1765,7 +1765,7 @@ pub mod made__load__1__expand {
                     continue;
                 }
             } else {
-                return str_lit("");
+                return str_lit!("");
             }
         }
     }
@@ -1773,12 +1773,12 @@ pub mod made__load__1__expand {
     pub fn mx_expand_procedural<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, asked: Str) -> Str {
         let request = mx_phase1_key(asked);
         let a = mx_phase1_in(request, get(maker_st.mx_phase1_given.get().unwrap()));
-        if not(string_eq_p(a, str_lit(""))) {
+        if not(string_eq_p(a, str_lit!(""))) {
             a
         } else {
             let b = (get(maker_st.mx_phase1_asker.get().unwrap())).call(request);
-            if string_eq_p(b, str_lit("")) {
-                str_lit("!a procedural macro's transformer, run as the program is read: not yet here")
+            if string_eq_p(b, str_lit!("")) {
+                str_lit!("!a procedural macro's transformer, run as the program is read: not yet here")
             } else {
                 set(maker_st.mx_phase1_given.get().unwrap(), the::<kayak_rt::value::Value>(kayak_rt::value::cons(the::<kayak_rt::value::Value>(kayak_rt::value::cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(request)), the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(b)))), get(maker_st.mx_phase1_given.get().unwrap()))));
                 b
@@ -1792,16 +1792,16 @@ pub mod made__load__1__expand {
     }
 
     pub fn mx_limit(name: Str) -> Str {
-        if string_eq_p(name, str_lit("USES")) {
-            str_lit("=10000")
-        } else if string_eq_p(name, str_lit("DEPTH")) {
-            str_lit("=1000")
-        } else if string_eq_p(name, str_lit("RECHECK")) {
-            str_lit("=0")
-        } else if string_eq_p(name, str_lit("CONTRACTS")) {
-            str_lit("=1")
+        if string_eq_p(name, str_lit!("USES")) {
+            str_lit!("=10000")
+        } else if string_eq_p(name, str_lit!("DEPTH")) {
+            str_lit!("=1000")
+        } else if string_eq_p(name, str_lit!("RECHECK")) {
+            str_lit!("=0")
+        } else if string_eq_p(name, str_lit!("CONTRACTS")) {
+            str_lit!("=1")
         } else {
-            string_append(str_lit("!no limit of macro expansion is named `"), string_append(name, str_lit("`")))
+            string_append(str_lit!("!no limit of macro expansion is named `"), string_append(name, str_lit!("`")))
         }
     }
 
@@ -1870,7 +1870,7 @@ pub mod made__load__1__expand {
         let go = kayak_rt::as_proc(kayak_rt::closure3s((text, at,), |(text, at,), mut i: Int, mut line: Int, mut col: Int| {
             loop {
                 if (_gt_eq(i, at) || _gt_eq(i, string_length(text))) {
-                    return string_append(int_to_string(line), string_append(str_lit(":"), int_to_string(col)));
+                    return string_append(int_to_string(line), string_append(str_lit!(":"), int_to_string(col)));
                 } else if char_eq_p(string_ref(text, i), '\n') {
                     (i, line, col) = (_plus(i, int_lit(1)), _plus(line, int_lit(1)), int_lit(1));
                     continue;
@@ -1889,7 +1889,7 @@ pub mod made__load__1__expand {
         if (null_p(f) || _lt(at, base) || _gt_eq(at, _plus(base, maker_st.load_base.get().unwrap()))) {
             m
         } else {
-            string_append(str_lit("in `"), string_append(path, string_append(str_lit("`, "), string_append(text_place(car(f).5, _minus(at, base)), string_append(str_lit(": "), m)))))
+            string_append(str_lit!("in `"), string_append(path, string_append(str_lit!("`, "), string_append(text_place(car(f).5, _minus(at, base)), string_append(str_lit!(": "), m)))))
         }
     }
 
@@ -1979,12 +1979,12 @@ pub mod made__load__1__expand {
                 if symbol_p(d) {
                     symbol_to_string(kayak_rt::value::unbox::<Symbol>(d))
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 }
             }
             _ => {
                 let x = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }
@@ -1996,12 +1996,12 @@ pub mod made__load__1__expand {
                 if symbol_p(d) {
                     kayak_rt::value::unbox::<Symbol>(d)
                 } else {
-                    string_to_symbol(str_lit("()"))
+                    string_to_symbol(str_lit!("()"))
                 }
             }
             _ => {
                 let x = tagcase_;
-                string_to_symbol(str_lit("()"))
+                string_to_symbol(str_lit!("()"))
             }
         }
     }
@@ -2011,7 +2011,7 @@ pub mod made__load__1__expand {
         if syn_symbol_p(s) {
             Ok(syn_head(s))
         } else {
-            Ok(match pfail(mxp, maker_st, str_lit("a name"), s)? {})
+            Ok(match pfail(mxp, maker_st, str_lit!("a name"), s)? {})
         }
     }
 
@@ -2024,7 +2024,7 @@ pub mod made__load__1__expand {
             }
             _ => {
                 let x = tagcase_;
-                Ok(match pfail(mxp, maker_st, string_append(what, str_lit(": expected a list")), s)? {})
+                Ok(match pfail(mxp, maker_st, string_append(what, str_lit!(": expected a list")), s)? {})
             }
         }
     }
@@ -2084,14 +2084,14 @@ pub mod made__load__1__expand {
         match *tagcase_ {
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, xpn) => {
                 if null_p(items) {
-                    string_to_symbol(str_lit("()"))
+                    string_to_symbol(str_lit!("()"))
                 } else {
                     syn_head(car(items))
                 }
             }
             _ => {
                 let x = tagcase_;
-                string_to_symbol(str_lit("()"))
+                string_to_symbol(str_lit!("()"))
             }
         }
     }
@@ -2123,19 +2123,19 @@ pub mod made__load__1__expand {
                 if string_p(d) {
                     kayak_rt::value::unbox::<Str>(d)
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 }
             }
             _ => {
                 let x = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }
 
     #[inline]
     pub fn datatype_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
-        form_of_p(s, symbol_lit(str_lit("define-datatype")))
+        form_of_p(s, symbol_lit(str_lit!("define-datatype")))
     }
 
     #[inline]
@@ -2149,20 +2149,20 @@ pub mod made__load__1__expand {
     }
 
     pub fn mk_pure_subr(mx_parser_types_members: SynsA, result: kayak_rt::Handle<'static, Syn>, a: Int, b: Int) -> kayak_rt::Handle<'static, Syn> {
-        let (pure, args) = (mk_symbol(str_lit("pure"), a, b), mk_list(mx_parser_types_members, a, b));
-        mk_form(str_lit("subr"), kayak_rt::heap_cons(pure, kayak_rt::heap_cons(args, kayak_rt::heap_cons(result, kayak_rt::nil()))), a, b)
+        let (pure, args) = (mk_symbol(str_lit!("pure"), a, b), mk_list(mx_parser_types_members, a, b));
+        mk_form(str_lit!("subr"), kayak_rt::heap_cons(pure, kayak_rt::heap_cons(args, kayak_rt::heap_cons(result, kayak_rt::nil()))), a, b)
     }
 
     #[inline]
     pub fn mk_poly(binders: SynsA, body: kayak_rt::Handle<'static, Syn>, a: Int, b: Int) -> kayak_rt::Handle<'static, Syn> {
-        mk_form(str_lit("poly"), kayak_rt::heap_cons(mk_list(binders, a, b), kayak_rt::heap_cons(body, kayak_rt::nil())), a, b)
+        mk_form(str_lit!("poly"), kayak_rt::heap_cons(mk_list(binders, a, b), kayak_rt::heap_cons(body, kayak_rt::nil())), a, b)
     }
 
     pub fn mx_parser_dt_vars(ms: SynsA, i: Int, a: Int, b: Int) -> SynsA {
         if null_p(ms) {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
         } else {
-            let x = mk_symbol(string_append(str_lit("%x"), int_to_string(i)), a, b);
+            let x = mk_symbol(string_append(str_lit!("%x"), int_to_string(i)), a, b);
             kayak_rt::heap_cons(x, mx_parser_dt_vars(cdr(ms), _plus(i, int_lit(1)), a, b))
         }
     }
@@ -2199,11 +2199,11 @@ pub mod made__load__1__expand {
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else {
             let v = car(vs);
-            let parts = syn_items(mxp, maker_st, v, str_lit("a variant"))?;
+            let parts = syn_items(mxp, maker_st, v, str_lit!("a variant"))?;
             if (null_p(parts) || not(syn_symbol_p(dt_tag(car(parts))))) {
-                Ok(match pfail(mxp, maker_st, str_lit("a variant is `(tag type …)` or `(#:tag type …)`"), v)? {})
+                Ok(match pfail(mxp, maker_st, str_lit!("a variant is `(tag type …)` or `(#:tag type …)`"), v)? {})
             } else {
-                let prod = mk_form(str_lit("productof"), dt_labelled(cdr(parts), int_lit(1), a, b), a, b);
+                let prod = mk_form(str_lit!("productof"), dt_labelled(cdr(parts), int_lit(1), a, b), a, b);
                 let arm = mk_list(kayak_rt::cons(dt_tag(car(parts)), kayak_rt::cons(prod, kayak_rt::nil())), a, b);
                 let rest = dt_arms(mxp, maker_st, cdr(vs), a, b)?;
                 Ok(cons(arm, rest))
@@ -2215,7 +2215,7 @@ pub mod made__load__1__expand {
         if null_p(vs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else {
-            let parts = syn_items(mxp, maker_st, car(vs), str_lit("a variant"))?;
+            let parts = syn_items(mxp, maker_st, car(vs), str_lit!("a variant"))?;
             let tag = dt_tag(car(parts));
             let mx_parser_types_members = cdr(parts);
             let mono = mk_pure_subr(mx_parser_types_members, used, a, b);
@@ -2225,10 +2225,10 @@ pub mod made__load__1__expand {
                 mono
             };
             let xs = mx_parser_dt_vars(mx_parser_types_members, int_lit(1), a, b);
-            let fields = mk_form(str_lit("product"), dt_labelled(xs, int_lit(1), a, b), a, b);
-            let body = mk_form(str_lit("sum"), kayak_rt::cons(tag, kayak_rt::cons(fields, kayak_rt::nil())), syn_start(car(vs)), syn_end(car(vs)));
-            let make = mk_form(str_lit("lambda"), kayak_rt::cons(mk_list(xs, a, b), kayak_rt::cons(body, kayak_rt::nil())), a, b);
-            let ctor = mk_form(str_lit("define"), kayak_rt::cons(tag, kayak_rt::cons(ty, kayak_rt::cons(make, kayak_rt::nil()))), a, b);
+            let fields = mk_form(str_lit!("product"), dt_labelled(xs, int_lit(1), a, b), a, b);
+            let body = mk_form(str_lit!("sum"), kayak_rt::cons(tag, kayak_rt::cons(fields, kayak_rt::nil())), syn_start(car(vs)), syn_end(car(vs)));
+            let make = mk_form(str_lit!("lambda"), kayak_rt::cons(mk_list(xs, a, b), kayak_rt::cons(body, kayak_rt::nil())), a, b);
+            let ctor = mk_form(str_lit!("define"), kayak_rt::cons(tag, kayak_rt::cons(ty, kayak_rt::cons(make, kayak_rt::nil()))), a, b);
             let rest = mx_parser_dt_constructors(mxp, maker_st, used, family_p, params, cdr(vs), a, b)?;
             Ok(cons(ctor, rest))
         }
@@ -2238,11 +2238,11 @@ pub mod made__load__1__expand {
         if null_p(ps) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else {
-            let p = syn_items(mxp, maker_st, car(ps), str_lit("a parameter"))?;
+            let p = syn_items(mxp, maker_st, car(ps), str_lit!("a parameter"))?;
             if (_eq(len(p), int_lit(2)) && syn_symbol_p(car(p))) {
                 Ok(cons(car(p), dt_param_names(mxp, maker_st, cdr(ps))?))
             } else {
-                Ok(match pfail(mxp, maker_st, str_lit("a parameter is `(name kind)`"), car(ps))? {})
+                Ok(match pfail(mxp, maker_st, str_lit!("a parameter is `(name kind)`"), car(ps))? {})
             }
         }
     }
@@ -2267,7 +2267,7 @@ pub mod made__load__1__expand {
             if null_p(vs) {
                 return Ok(true);
             } else {
-                let parts = syn_items(mxp, maker_st, car(vs), str_lit("a variant"))?;
+                let parts = syn_items(mxp, maker_st, car(vs), str_lit!("a variant"))?;
                 let tag = if null_p(parts) {
                     car(vs)
                 } else {
@@ -2275,7 +2275,7 @@ pub mod made__load__1__expand {
                 };
                 if (syn_symbol_p(tag) && dt_in_p(syn_symbol(mxp, maker_st, tag)?, maker_st.dt_type_forms.get().unwrap())) {
                     let t = syn_name(tag);
-                    return Ok(match pfail(mxp, maker_st, string_append(str_lit("`"), string_append(t, string_append(str_lit("` is a type form: this would be a variant named `"), string_append(t, string_append(str_lit("`, not the type; to name a type, write `(define-type "), string_append(syn_name(name), string_append(str_lit(" ("), string_append(t, str_lit(" …))`"))))))))), car(vs))? {});
+                    return Ok(match pfail(mxp, maker_st, string_append(str_lit!("`"), string_append(t, string_append(str_lit!("` is a type form: this would be a variant named `"), string_append(t, string_append(str_lit!("`, not the type; to name a type, write `(define-type "), string_append(syn_name(name), string_append(str_lit!(" ("), string_append(t, str_lit!(" …))`"))))))))), car(vs))? {});
                 } else {
                     vs = cdr(vs);
                     continue;
@@ -2285,17 +2285,17 @@ pub mod made__load__1__expand {
     }
 
     pub fn expand_datatype<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>) -> Result<SynsA, Unwind> {
-        let items = syn_items(mxp, maker_st, s, str_lit("a datatype"))?;
+        let items = syn_items(mxp, maker_st, s, str_lit!("a datatype"))?;
         let a = syn_start(s);
         let b = syn_end(s);
-        let usage = str_lit("`(define-datatype name (tag type …) …)`");
+        let usage = str_lit!("`(define-datatype name (tag type …) …)`");
         if _lt(len(items), int_lit(3)) {
             Ok(match pfail(mxp, maker_st, usage, s)? {})
         } else {
             let head = nth(items, int_lit(1));
             let family_p = not(syn_symbol_p(head));
             let hs = if family_p {
-                syn_items(mxp, maker_st, head, str_lit("a datatype's name"))?
+                syn_items(mxp, maker_st, head, str_lit!("a datatype's name"))?
             } else {
                 the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
             };
@@ -2317,9 +2317,9 @@ pub mod made__load__1__expand {
                 name
             };
             let named = dt_no_type_forms(mxp, maker_st, drop(items, int_lit(2)), name)?;
-            let sum = mk_form(str_lit("sumof"), dt_arms(mxp, maker_st, drop(items, int_lit(2)), a, b)?, a, b);
+            let sum = mk_form(str_lit!("sumof"), dt_arms(mxp, maker_st, drop(items, int_lit(2)), a, b)?, a, b);
             let ctors = mx_parser_dt_constructors(mxp, maker_st, used, family_p, params, drop(items, int_lit(2)), a, b)?;
-            Ok(cons(mk_form(str_lit("define-type"), kayak_rt::cons(head, kayak_rt::cons(sum, kayak_rt::nil())), a, b), ctors))
+            Ok(cons(mk_form(str_lit!("define-type"), kayak_rt::cons(head, kayak_rt::cons(sum, kayak_rt::nil())), a, b), ctors))
         }
     }
 
@@ -2448,27 +2448,27 @@ pub mod made__load__1__expand {
 
     pub fn show_datum(d: kayak_rt::value::Value) -> Str {
         if kayak_rt::value::null_p(d) {
-            str_lit("()")
+            str_lit!("()")
         } else if symbol_p(d) {
             symbol_to_string(kayak_rt::value::unbox::<Symbol>(d))
         } else if mx_keyword_p(d) {
-            string_append(str_lit("#:"), symbol_to_string(mx_keyword_to_symbol(d)))
+            string_append(str_lit!("#:"), symbol_to_string(mx_keyword_to_symbol(d)))
         } else if string_p(d) {
-            string_append(str_lit("\""), string_append(kayak_rt::value::unbox::<Str>(d), str_lit("\"")))
+            string_append(str_lit!("\""), string_append(kayak_rt::value::unbox::<Str>(d), str_lit!("\"")))
         } else if char_p(d) {
-            string_append(str_lit("#\\"), char_to_string(kayak_rt::value::unbox::<char>(d)))
+            string_append(str_lit!("#\\"), char_to_string(kayak_rt::value::unbox::<char>(d)))
         } else if int_p(d) {
             int_to_string(kayak_rt::value::unbox::<Int>(d))
         } else if f64_p(d) {
             f64_to_string(kayak_rt::value::unbox::<f64>(d))
         } else if bool_p(d) {
             if kayak_rt::value::unbox::<bool>(d) {
-                str_lit("#t")
+                str_lit!("#t")
             } else {
-                str_lit("#f")
+                str_lit!("#f")
             }
         } else {
-            str_lit("…")
+            str_lit!("…")
         }
     }
 
@@ -2477,16 +2477,16 @@ pub mod made__load__1__expand {
         match *tagcase_ {
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                 if null_p(items) {
-                    str_lit("()")
+                    str_lit!("()")
                 } else {
-                    string_append(str_lit("("), string_append(mx_syntax_show_each(items), str_lit(")")))
+                    string_append(str_lit!("("), string_append(mx_syntax_show_each(items), str_lit!(")")))
                 }
             }
             made__load__0__expander_kc::Syn::Dotted(items, tail, d, a, b, x) => {
-                string_append(str_lit("("), string_append(mx_syntax_show_each(items), string_append(str_lit(" . "), string_append(show_syn(tail), str_lit(")")))))
+                string_append(str_lit!("("), string_append(mx_syntax_show_each(items), string_append(str_lit!(" . "), string_append(show_syn(tail), str_lit!(")")))))
             }
             made__load__0__expander_kc::Syn::Vec(items, d, a, b, x) => {
-                string_append(str_lit("#("), string_append(mx_syntax_show_each(items), str_lit(")")))
+                string_append(str_lit!("#("), string_append(mx_syntax_show_each(items), str_lit!(")")))
             }
             made__load__0__expander_kc::Syn::Atom(d, a, b, x) => {
                 show_datum(d)
@@ -2496,11 +2496,11 @@ pub mod made__load__1__expand {
 
     pub fn mx_syntax_show_each(xs: SynsA) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else if null_p(cdr(xs)) {
             show_syn(car(xs))
         } else {
-            string_append(show_syn(car(xs)), string_append(str_lit(" "), mx_syntax_show_each(cdr(xs))))
+            string_append(show_syn(car(xs)), string_append(str_lit!(" "), mx_syntax_show_each(cdr(xs))))
         }
     }
 
@@ -2520,7 +2520,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn reserved_sym_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Symbol) -> bool {
-        (symbol_eq_p(n, string_to_symbol(str_lit("#%fx"))) || symbol_eq_p(n, string_to_symbol(str_lit("#%toplevel"))) || symbol_eq_p(n, symbol_lit(str_lit("define-syntax"))) || symbol_eq_p(n, symbol_lit(str_lit("define-syntax-rec"))) || words_have_p(n, maker_st.reserved_words.get().unwrap()))
+        (symbol_eq_p(n, string_to_symbol(str_lit!("#%fx"))) || symbol_eq_p(n, string_to_symbol(str_lit!("#%toplevel"))) || symbol_eq_p(n, symbol_lit(str_lit!("define-syntax"))) || symbol_eq_p(n, symbol_lit(str_lit!("define-syntax-rec"))) || words_have_p(n, maker_st.reserved_words.get().unwrap()))
     }
 
     #[inline]
@@ -2534,7 +2534,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn desc_word_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, name: Str, head: bool) -> bool {
-        ((_gt(string_length(name), int_lit(0)) && char_eq_p(string_ref(name, int_lit(0)), '@')) || (_gt(string_length(name), int_lit(1)) && string_eq_p(substring(name, int_lit(0), int_lit(2)), str_lit("#%"))) || word_in_p(name, maker_st.description_words.get().unwrap()) || (head && word_in_p(name, maker_st.description_heads.get().unwrap())))
+        ((_gt(string_length(name), int_lit(0)) && char_eq_p(string_ref(name, int_lit(0)), '@')) || (_gt(string_length(name), int_lit(1)) && string_eq_p(substring(name, int_lit(0), int_lit(2)), str_lit!("#%"))) || word_in_p(name, maker_st.description_words.get().unwrap()) || (head && word_in_p(name, maker_st.description_heads.get().unwrap())))
     }
 
     #[inline]
@@ -2750,15 +2750,15 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn no_trailmark(n: Str) -> Str {
-        string_append(str_lit("`"), string_append(n, string_append(str_lit("` names no trailmark here: `(define-syntax "), string_append(n, str_lit(" (trailmark))`")))))
+        string_append(str_lit!("`"), string_append(n, string_append(str_lit!("` names no trailmark here: `(define-syntax "), string_append(n, str_lit!(" (trailmark))`")))))
     }
 
     pub fn mark_in(mut n: Symbol, mut ms: Marked) -> Int {
         loop {
             if null_p(ms) {
-                if symbol_eq_p(n, symbol_lit(str_lit("else"))) {
+                if symbol_eq_p(n, symbol_lit(str_lit!("else"))) {
                     return int_lit(1);
-                } else if symbol_eq_p(n, symbol_lit(str_lit("=>"))) {
+                } else if symbol_eq_p(n, symbol_lit(str_lit!("=>"))) {
                     return int_lit(2);
                 } else {
                     return int_lit(0);
@@ -2773,7 +2773,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn pure_hole_p(h: List<Hole>) -> bool {
-        (not(null_p(h)) && not(null_p(car(h).1)) && syn_symbol_p(car(car(h).1)) && string_eq_p(syn_name(car(car(h).1)), str_lit("pure")))
+        (not(null_p(h)) && not(null_p(car(h).1)) && syn_symbol_p(car(car(h).1)) && string_eq_p(syn_name(car(car(h).1)), str_lit!("pure")))
     }
 
     pub fn mx_types_kind_of(t: kayak_rt::Handle<'static, Sty>) -> Int {
@@ -2904,7 +2904,7 @@ pub mod made__load__1__expand {
             }
             _ => {
                 let y = tagcase_;
-                string_to_symbol(str_lit(""))
+                string_to_symbol(str_lit!(""))
             }
         }
     }
@@ -3179,7 +3179,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn ellipsis_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
-        (syn_symbol_p(s) && string_eq_p(syn_name(s), str_lit("...")))
+        (syn_symbol_p(s) && string_eq_p(syn_name(s), str_lit!("...")))
     }
 
     pub fn scope_of(n: Symbol, scope: MuScope) -> Int {
@@ -3219,42 +3219,42 @@ pub mod made__load__1__expand {
             let t = mx_types_named_of(n, mx_types_named);
             if null_p(t) {
                 match n {
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("expr"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("expr"))) => {
                         Ok(s_expr())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("bvar"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("bvar"))) => {
                         Ok(s_bvar())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("id"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("id"))) => {
                         Ok(s_id())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("data"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("data"))) => {
                         Ok(s_data())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("lambda"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("lambda"))) => {
                         Ok(s_lambda())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("desc"))) || kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("mxp"))) || kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("maker-st"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("desc"))) || kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("mxp"))) || kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("maker-st"))) => {
                         Ok(s_type())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("label"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("label"))) => {
                         Ok(s_label())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("dvar"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("dvar"))) => {
                         Ok(s_dvar())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("kind"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("kind"))) => {
                         Ok(s_kind())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("item"))) => {
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("item"))) => {
                         Ok(s_item())
                     }
-                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit("type"))) => {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a syntax type: a part that is a "), string_append(str_lit("description is written `desc`, not "), str_lit("`type`"))), s)? {};
+                    case_ if kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!("type"))) => {
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a syntax type: a part that is a "), string_append(str_lit!("description is written `desc`, not "), str_lit!("`type`"))), s)? {};
                         Ok(s_nil())
                     }
                     _ => {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a syntax type: `"), string_append(symbol_to_string(n), string_append(str_lit("` is "), string_append(str_lit("none (`expr`, `bvar`, `id`, `data`, `desc`, "), string_append(str_lit("`label`, `lambda`, `dvar`, `kind`, `item`, "), str_lit("or a `mu`'s variable)")))))), s)? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a syntax type: `"), string_append(symbol_to_string(n), string_append(str_lit!("` is "), string_append(str_lit!("none (`expr`, `bvar`, `id`, `data`, `desc`, "), string_append(str_lit!("`label`, `lambda`, `dvar`, `kind`, `item`, "), str_lit!("or a `mu`'s variable)")))))), s)? {};
                         Ok(s_nil())
                     }
                 }
@@ -3352,23 +3352,23 @@ pub mod made__load__1__expand {
                 if mx_keyword_p(d) {
                     symbol_to_string(mx_keyword_to_symbol(d))
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 }
             }
             _ => {
                 let y = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }
 
     pub fn read_hole<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut parts: SynsA, mut kind: Str, mut s: kayak_rt::Handle<'static, Syn>, mut ty: SynsA, mut eff: SynsA) -> Result<Hole, Unwind> {
         loop {
-            let expr_p = string_eq_p(kind, str_lit("expr"));
-            let usage = string_append(str_lit("a syntax type: "), if expr_p {
-                str_lit("`(expr #:type T #:effect E)`, either left out")
+            let expr_p = string_eq_p(kind, str_lit!("expr"));
+            let usage = string_append(str_lit!("a syntax type: "), if expr_p {
+                str_lit!("`(expr #:type T #:effect E)`, either left out")
             } else {
-                string_append(str_lit("`("), string_append(kind, str_lit(" #:type T)`")))
+                string_append(str_lit!("`("), string_append(kind, str_lit!(" #:type T)`")))
             });
             if null_p(parts) {
                 return Ok(Product_11_12(ty, eff));
@@ -3380,16 +3380,16 @@ pub mod made__load__1__expand {
                 let word = if syn_keyword_p(k) {
                     keyword_name(k)
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 };
-                if (string_eq_p(word, str_lit("type")) && null_p(ty)) {
+                if (string_eq_p(word, str_lit!("type")) && null_p(ty)) {
                     (parts, ty) = (cdr(cdr(parts)), kayak_rt::cons(nth(parts, int_lit(1)), kayak_rt::nil()));
                     continue;
-                } else if (expr_p && string_eq_p(word, str_lit("effect")) && null_p(eff)) {
+                } else if (expr_p && string_eq_p(word, str_lit!("effect")) && null_p(eff)) {
                     (parts, eff) = (cdr(cdr(parts)), kayak_rt::cons(nth(parts, int_lit(1)), kayak_rt::nil()));
                     continue;
-                } else if (string_eq_p(word, str_lit("type")) || (expr_p && string_eq_p(word, str_lit("effect")))) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(usage, str_lit(", each once")), k)? {};
+                } else if (string_eq_p(word, str_lit!("type")) || (expr_p && string_eq_p(word, str_lit!("effect")))) {
+                    match fail_at(mxp, maker_st, mx_fail, string_append(usage, str_lit!(", each once")), k)? {};
                     return Ok(Product_11_12(ty, eff));
                 } else {
                     match fail_at(mxp, maker_st, mx_fail, usage, k)? {};
@@ -3403,29 +3403,29 @@ pub mod made__load__1__expand {
         let (n, ds) = (if syn_symbol_p(d) {
             syn_name(d)
         } else {
-            str_lit("")
+            str_lit!("")
         }, proper_items(d));
-        if string_eq_p(n, str_lit("none")) {
+        if string_eq_p(n, str_lit!("none")) {
             Ok(int_lit(0))
-        } else if string_eq_p(n, str_lit("var")) {
+        } else if string_eq_p(n, str_lit!("var")) {
             Ok(int_lit(1))
-        } else if string_eq_p(n, str_lit("rib")) {
+        } else if string_eq_p(n, str_lit!("rib")) {
             Ok(int_lit(2))
-        } else if string_eq_p(n, str_lit("env")) {
+        } else if string_eq_p(n, str_lit!("env")) {
             Ok(int_lit(3))
-        } else if string_eq_p(n, str_lit("dvar")) {
+        } else if string_eq_p(n, str_lit!("dvar")) {
             Ok(int_lit(4))
-        } else if string_eq_p(n, str_lit("place")) {
+        } else if string_eq_p(n, str_lit!("place")) {
             Ok(int_lit(5))
-        } else if (_gt_eq(len(ds), int_lit(3)) && syn_symbol_p(car(ds)) && (string_eq_p(syn_name(car(ds)), str_lit("macro/addressed")) || string_eq_p(syn_name(car(ds)), str_lit("macro")))) {
+        } else if (_gt_eq(len(ds), int_lit(3)) && syn_symbol_p(car(ds)) && (string_eq_p(syn_name(car(ds)), str_lit!("macro/addressed")) || string_eq_p(syn_name(car(ds)), str_lit!("macro")))) {
             let k = len(get(maker_st.syntax_sigs.get().unwrap()));
             set(maker_st.syntax_sigs.get().unwrap(), append(get(maker_st.syntax_sigs.get().unwrap()), kayak_rt::cons(d, kayak_rt::nil())));
             Ok(_plus(int_lit(100), k))
-        } else if (pair_p(ds) && syn_symbol_p(car(ds)) && string_eq_p(syn_name(car(ds)), str_lit("syntax"))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a macro's binder is written with its signature, "), str_lit("`(macro …)`, not `(syntax …)`")), d)? {};
+        } else if (pair_p(ds) && syn_symbol_p(car(ds)) && string_eq_p(syn_name(car(ds)), str_lit!("syntax"))) {
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a macro's binder is written with its signature, "), str_lit!("`(macro …)`, not `(syntax …)`")), d)? {};
             Ok(int_lit(0))
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("δ is `none`, `var`, `dvar`, `place`, "), string_append(str_lit("`rib`, `env` or a macro's signature, "), str_lit("`(macro σ made)`"))), d)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("δ is `none`, `var`, `dvar`, `place`, "), string_append(str_lit!("`rib`, `env` or a macro's signature, "), str_lit!("`(macro σ made)`"))), d)? {};
             Ok(int_lit(0))
         }
     }
@@ -3435,9 +3435,9 @@ pub mod made__load__1__expand {
             Ok(nil::<bool>())
         } else {
             let k = keyword_name(car(ks));
-            if string_eq_p(k, str_lit("a")) {
+            if string_eq_p(k, str_lit!("a")) {
                 Ok(cons(true, path_steps(mxp, maker_st, mx_fail, cdr(ks))?))
-            } else if string_eq_p(k, str_lit("d")) {
+            } else if string_eq_p(k, str_lit!("d")) {
                 Ok(cons(false, path_steps(mxp, maker_st, mx_fail, cdr(ks))?))
             } else {
                 match fail_at(mxp, maker_st, mx_fail, maker_st.path_usage.get().unwrap(), car(ks))? {};
@@ -3476,13 +3476,13 @@ pub mod made__load__1__expand {
         let name = if syn_symbol_p(a) {
             syn_name(a)
         } else {
-            str_lit("")
+            str_lit!("")
         };
         if syn_nil_p(a) {
             Ok(nil::<bool>())
         } else if {
             let ps = proper_items(a);
-            (pair_p(ps) && syn_symbol_p(car(ps)) && string_eq_p(syn_name(car(ps)), str_lit("path")))
+            (pair_p(ps) && syn_symbol_p(car(ps)) && string_eq_p(syn_name(car(ps)), str_lit!("path")))
         } {
             Ok(path_steps(mxp, maker_st, mx_fail, cdr(proper_items(a)))?)
         } else if (_gt(string_length(name), int_lit(0)) && a_or_d_p(name, int_lit(0))) {
@@ -3515,13 +3515,13 @@ pub mod made__load__1__expand {
             let head = if (pair_p(parts) && syn_symbol_p(car(parts))) {
                 syn_name(car(parts))
             } else {
-                str_lit("")
+                str_lit!("")
             };
-            let r = if string_eq_p(head, str_lit("rho")) {
+            let r = if string_eq_p(head, str_lit!("rho")) {
                 ring_rib(read_rib(mxp, maker_st, mx_fail, cdr(parts))?)
-            } else if (string_eq_p(head, str_lit("at")) && _eq(len(parts), int_lit(2))) {
+            } else if (string_eq_p(head, str_lit!("at")) && _eq(len(parts), int_lit(2))) {
                 ring_at(read_addr(mxp, maker_st, mx_fail, nth(parts, int_lit(1)))?)
-            } else if (string_eq_p(head, str_lit("shape")) && _eq(len(parts), int_lit(2))) {
+            } else if (string_eq_p(head, str_lit!("shape")) && _eq(len(parts), int_lit(2))) {
                 ring_shape(read_addr(mxp, maker_st, mx_fail, nth(parts, int_lit(1)))?)
             } else {
                 match fail_at(mxp, maker_st, mx_fail, maker_st.bind_usage.get().unwrap(), car(rs))? {};
@@ -3536,13 +3536,13 @@ pub mod made__load__1__expand {
         let head = if (pair_p(items) && syn_symbol_p(car(items))) {
             syn_name(car(items))
         } else {
-            str_lit("")
+            str_lit!("")
         };
-        if string_eq_p(head, str_lit("rho")) {
+        if string_eq_p(head, str_lit!("rho")) {
             Ok(bind_rib(read_rib(mxp, maker_st, mx_fail, cdr(items))?))
-        } else if string_eq_p(head, str_lit("cage")) {
+        } else if string_eq_p(head, str_lit!("cage")) {
             Ok(bind_cage(read_rings(mxp, maker_st, mx_fail, cdr(items))?))
-        } else if (string_eq_p(head, str_lit("shape")) && _eq(len(items), int_lit(2))) {
+        } else if (string_eq_p(head, str_lit!("shape")) && _eq(len(items), int_lit(2))) {
             Ok(bind_shape(read_addr(mxp, maker_st, mx_fail, nth(items, int_lit(1)))?))
         } else {
             match fail_at(mxp, maker_st, mx_fail, maker_st.bind_usage.get().unwrap(), b)? {};
@@ -3580,21 +3580,21 @@ pub mod made__load__1__expand {
             let head = if (syn_symbol_p(hd) && proper_p(s)) {
                 syn_name(hd)
             } else {
-                str_lit("")
+                str_lit!("")
             };
             if null_p(parts) {
-                match fail_at(mxp, maker_st, mx_fail, str_lit("a syntax type: not one"), s)? {};
+                match fail_at(mxp, maker_st, mx_fail, str_lit!("a syntax type: not one"), s)? {};
                 Ok(s_nil())
             } else if {
                 let items = proper_items(s);
                 (_gt_eq(len(items), int_lit(2)) && ellipsis_p(nth(items, _minus(len(items), int_lit(1)))))
             } {
                 Ok(read_seq_list(mxp, maker_st, mx_fail, s, proper_items(s), mx_types_named, scope)?)
-            } else if (string_eq_p(head, str_lit("import")) || string_eq_p(head, str_lit("export"))) {
+            } else if (string_eq_p(head, str_lit!("import")) || string_eq_p(head, str_lit!("export"))) {
                 let args = proper_items(s);
                 if _eq(len(args), int_lit(3)) {
                     let (body, b) = (read_sty(mxp, maker_st, mx_fail, nth(args, int_lit(1)), mx_types_named, scope)?, read_bind(mxp, maker_st, mx_fail, nth(args, int_lit(2)))?);
-                    if not(string_eq_p(head, str_lit("import"))) {
+                    if not(string_eq_p(head, str_lit!("import"))) {
                         Ok(s_export(body, b))
                     } else if {
                         let tagcase_ = b;
@@ -3608,7 +3608,7 @@ pub mod made__load__1__expand {
                             }
                         }
                     } {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a syntax type: a macro's "), string_append(str_lit("binder, `(macro …)`, says what a "), string_append(str_lit("use defines, in what its "), str_lit("signature makes, `(defn D …)`")))), s)? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a syntax type: a macro's "), string_append(str_lit!("binder, `(macro …)`, says what a "), string_append(str_lit!("use defines, in what its "), str_lit!("signature makes, `(defn D …)`")))), s)? {};
                         Ok(s_import(body, b))
                     } else {
                         Ok(s_import(body, b))
@@ -3616,9 +3616,9 @@ pub mod made__load__1__expand {
                 } else {
                     Ok(read_pair(mxp, maker_st, mx_fail, s, parts, mx_types_named, scope)?)
                 }
-            } else if string_eq_p(head, str_lit("mu")) {
+            } else if string_eq_p(head, str_lit!("mu")) {
                 Ok(read_mu(mxp, maker_st, mx_fail, s, mx_types_named, scope)?)
-            } else if (string_eq_p(head, str_lit("union")) || string_eq_p(head, str_lit("oneof"))) {
+            } else if (string_eq_p(head, str_lit!("union")) || string_eq_p(head, str_lit!("oneof"))) {
                 let ms = read_each(mxp, maker_st, mx_fail, cdr(proper_items(s)), mx_types_named, scope)?;
                 if (not(any_free_p(mxp, maker_st, ms)) && any_overlap_p(mxp, maker_st, ms)) {
                     match fail_at(mxp, maker_st, mx_fail, maker_st.oneof_apart.get().unwrap(), s)? {}
@@ -3626,34 +3626,34 @@ pub mod made__load__1__expand {
                     ()
                 };
                 Ok(s_union(ms))
-            } else if ((string_eq_p(head, str_lit("expr")) || string_eq_p(head, str_lit("bvar")) || string_eq_p(head, str_lit("lambda"))) && _gt(len(proper_items(s)), int_lit(1)) && syn_keyword_p(nth(proper_items(s), int_lit(1)))) {
-                Ok(s_typed(if string_eq_p(head, str_lit("expr")) {
+            } else if ((string_eq_p(head, str_lit!("expr")) || string_eq_p(head, str_lit!("bvar")) || string_eq_p(head, str_lit!("lambda"))) && _gt(len(proper_items(s)), int_lit(1)) && syn_keyword_p(nth(proper_items(s), int_lit(1)))) {
+                Ok(s_typed(if string_eq_p(head, str_lit!("expr")) {
                     s_expr()
-                } else if string_eq_p(head, str_lit("bvar")) {
+                } else if string_eq_p(head, str_lit!("bvar")) {
                     s_bvar()
                 } else {
                     s_lambda()
                 }, read_hole(mxp, maker_st, mx_fail, cdr(proper_items(s)), head, s, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())?))
-            } else if (string_eq_p(head, str_lit("many")) && _eq(len(proper_items(s)), int_lit(2))) {
+            } else if (string_eq_p(head, str_lit!("many")) && _eq(len(proper_items(s)), int_lit(2))) {
                 Ok(s_many(read_sty(mxp, maker_st, mx_fail, nth(proper_items(s), int_lit(1)), mx_types_named, scope)?))
-            } else if (string_eq_p(head, str_lit("literal")) && _eq(len(proper_items(s)), int_lit(2))) {
+            } else if (string_eq_p(head, str_lit!("literal")) && _eq(len(proper_items(s)), int_lit(2))) {
                 let n = nth(proper_items(s), int_lit(1));
                 if not(syn_symbol_p(n)) {
-                    match fail_at(mxp, maker_st, mx_fail, str_lit("a syntax type: `(literal name)`"), s)? {};
+                    match fail_at(mxp, maker_st, mx_fail, str_lit!("a syntax type: `(literal name)`"), s)? {};
                     Ok(s_nil())
                 } else if (null_p(mx_types_named) && not(reserved_syn_p(mxp, maker_st, n)?)) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a syntax type: `(literal "), string_append(syn_name(n), string_append(str_lit(")` is a kernel form's word; a name a "), string_append(str_lit("macro's pattern matches is a "), string_append(str_lit("trailmark's, `(trailmark "), string_append(syn_name(n), str_lit(")`"))))))), s)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a syntax type: `(literal "), string_append(syn_name(n), string_append(str_lit!(")` is a kernel form's word; a name a "), string_append(str_lit!("macro's pattern matches is a "), string_append(str_lit!("trailmark's, `(trailmark "), string_append(syn_name(n), str_lit!(")`"))))))), s)? {};
                     Ok(s_nil())
                 } else {
                     Ok(s_literal(syn_symbol(mxp, maker_st, n)?))
                 }
-            } else if (string_eq_p(head, str_lit("trailmark")) && _eq(len(proper_items(s)), int_lit(2))) {
+            } else if (string_eq_p(head, str_lit!("trailmark")) && _eq(len(proper_items(s)), int_lit(2))) {
                 let n = nth(proper_items(s), int_lit(1));
                 if not(syn_symbol_p(n)) {
-                    match fail_at(mxp, maker_st, mx_fail, str_lit("a syntax type: `(trailmark name)`"), s)? {};
+                    match fail_at(mxp, maker_st, mx_fail, str_lit!("a syntax type: `(trailmark name)`"), s)? {};
                     Ok(s_nil())
                 } else if _eq(mark_in(syn_symbol(mxp, maker_st, n)?, get(maker_st.marks.get().unwrap())), int_lit(0)) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a syntax type: "), no_trailmark(syn_name(n))), s)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a syntax type: "), no_trailmark(syn_name(n))), s)? {};
                     Ok(s_nil())
                 } else {
                     Ok(s_mark(syn_symbol(mxp, maker_st, n)?, mark_in(syn_symbol(mxp, maker_st, n)?, get(maker_st.marks.get().unwrap()))))
@@ -3666,7 +3666,7 @@ pub mod made__load__1__expand {
 
     pub fn read_seq_list<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, items: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
         if null_p(cdr(cdr(items))) {
-            Ok(mu_read(mxp, maker_st, mx_fail, seq_type(mxp, maker_st, read_sty(mxp, maker_st, mx_fail, car(items), mx_types_named, cons(Product_11_12(string_to_symbol(str_lit("")), false), scope))?), s, scope)?)
+            Ok(mu_read(mxp, maker_st, mx_fail, seq_type(mxp, maker_st, read_sty(mxp, maker_st, mx_fail, car(items), mx_types_named, cons(Product_11_12(string_to_symbol(str_lit!("")), false), scope))?), s, scope)?)
         } else {
             let first = read_sty(mxp, maker_st, mx_fail, car(items), mx_types_named, scope)?;
             Ok(s_pair(first, read_seq_list(mxp, maker_st, mx_fail, s, cdr(items), mx_types_named, scope)?))
@@ -3693,11 +3693,11 @@ pub mod made__load__1__expand {
             if guarded_p(body, int_lit(0)) {
                 ()
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a syntax type: a `mu`'s variable is used where no "), string_append(str_lit("pair is around it (Herman's types are "), str_lit("contractive)"))), s)? {}
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a syntax type: a `mu`'s variable is used where no "), string_append(str_lit!("pair is around it (Herman's types are "), str_lit!("contractive)"))), s)? {}
             };
             Ok(mu_read(mxp, maker_st, mx_fail, s_mu(body, int_lit(-1), int_lit(-1)), s, scope)?)
         } else {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("a syntax type: `(mu variable type)`"), s)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("a syntax type: `(mu variable type)`"), s)? {};
             Ok(s_nil())
         }
     }
@@ -4338,11 +4338,11 @@ pub mod made__load__1__expand {
             let head = if (not(null_p(items)) && syn_symbol_p(car(items))) {
                 syn_name(car(items))
             } else {
-                str_lit("")
+                str_lit!("")
             };
-            if (string_eq_p(head, str_lit("lambda")) || string_eq_p(head, str_lit("rlambda")) || string_eq_p(head, str_lit("vlambda"))) {
+            if (string_eq_p(head, str_lit!("lambda")) || string_eq_p(head, str_lit!("rlambda")) || string_eq_p(head, str_lit!("vlambda"))) {
                 return true;
-            } else if ((string_eq_p(head, str_lit("plambda")) || string_eq_p(head, str_lit("the"))) && _eq(len(items), int_lit(3))) {
+            } else if ((string_eq_p(head, str_lit!("plambda")) || string_eq_p(head, str_lit!("the"))) && _eq(len(items), int_lit(3))) {
                 s = nth(items, int_lit(2));
                 continue;
             } else {
@@ -4360,10 +4360,10 @@ pub mod made__load__1__expand {
                 let t = read_sty(mxp, maker_st, mx_fail, nth(items, int_lit(2)), mx_types_named, nil::<Product_11_12<Symbol, bool>>())?;
                 let n = syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?;
                 let what = syn_name(car(items));
-                if string_eq_p(what, str_lit("define")) {
+                if string_eq_p(what, str_lit!("define")) {
                     (fs, mx_types_named) = (cdr(fs), cons(Product_11_12(n, t), mx_types_named));
                     continue;
-                } else if string_eq_p(what, str_lit("definition")) {
+                } else if string_eq_p(what, str_lit!("definition")) {
                     (fs, defs) = (cdr(fs), cons(Product_11_12(n, t), defs));
                     continue;
                 } else {
@@ -4376,7 +4376,7 @@ pub mod made__load__1__expand {
 
     pub fn kernel_tables<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>) -> Result<Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>, Unwind> {
         if null_p(get(maker_st.kernel_read.get().unwrap()).0) {
-            set(maker_st.kernel_read.get().unwrap(), read_kernel(mxp, maker_st, mx_fail, proper_items(datum_to_syn(maker_st.kernel_forms.get().unwrap())), kayak_rt::cons(Product_11_12(symbol_lit(str_lit("defn")), s_defn()), kayak_rt::nil()), nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>(), nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>())?)
+            set(maker_st.kernel_read.get().unwrap(), read_kernel(mxp, maker_st, mx_fail, proper_items(datum_to_syn(maker_st.kernel_forms.get().unwrap())), kayak_rt::cons(Product_11_12(symbol_lit(str_lit!("defn")), s_defn()), kayak_rt::nil()), nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>(), nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>())?)
         } else {
             ()
         };
@@ -4936,7 +4936,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn def_env_top() -> DefEnv {
-        Product_11_12_13(int_lit(0), symbol_lit(str_lit("top")), the::<MxParserTypesNames>(nil::<Symbol>()))
+        Product_11_12_13(int_lit(0), symbol_lit(str_lit!("top")), the::<MxParserTypesNames>(nil::<Symbol>()))
     }
 
     pub fn macro_of(mut n: Symbol, mut mx_env_indexed_env: MacroEnv) -> List<Macro> {
@@ -5010,7 +5010,7 @@ pub mod made__load__1__expand {
         if null_p(cdr(ss)) {
             car(ss)
         } else {
-            string_append(car(ss), string_append(str_lit(", "), mx_nodes_joined(cdr(ss))))
+            string_append(car(ss), string_append(str_lit!(", "), mx_nodes_joined(cdr(ss))))
         }
     }
 
@@ -5386,7 +5386,7 @@ pub mod made__load__1__expand {
                         }
                     }
                 } else {
-                    if (syn_symbol_p(s) && ((_eq(mode, int_lit(0)) && not(_eq(mx_types_kind_of(u), int_lit(7))) && not(_eq(mx_types_kind_of(u), int_lit(15))) && not(string_eq_p(syn_name(s), str_lit("_"))) && not(string_eq_p(syn_name(s), str_lit("...")))) || (_eq(mode, int_lit(1)) && _gt(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not((_eq(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(1)) && (_eq(mx_types_kind_of(u), int_lit(8)) || _eq(mx_types_kind_of(u), int_lit(6)) || _eq(mx_types_kind_of(u), int_lit(10)))))))) {
+                    if (syn_symbol_p(s) && ((_eq(mode, int_lit(0)) && not(_eq(mx_types_kind_of(u), int_lit(7))) && not(_eq(mx_types_kind_of(u), int_lit(15))) && not(string_eq_p(syn_name(s), str_lit!("_"))) && not(string_eq_p(syn_name(s), str_lit!("...")))) || (_eq(mode, int_lit(1)) && _gt(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not((_eq(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(1)) && (_eq(mx_types_kind_of(u), int_lit(8)) || _eq(mx_types_kind_of(u), int_lit(6)) || _eq(mx_types_kind_of(u), int_lit(10)))))))) {
                         return Ok(true);
                     } else {
                         let tagcase_ = u;
@@ -5568,7 +5568,7 @@ pub mod made__load__1__expand {
         let tagcase_ = s;
         match *tagcase_ {
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
-                (_eq(len(items), int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && syn_symbol_p(nth(items, int_lit(2))) && (string_eq_p(syn_name(nth(items, int_lit(1))), str_lit("#%fx")) || string_eq_p(syn_name(nth(items, int_lit(1))), str_lit("#%toplevel"))))
+                (_eq(len(items), int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && syn_symbol_p(nth(items, int_lit(2))) && (string_eq_p(syn_name(nth(items, int_lit(1))), str_lit!("#%fx")) || string_eq_p(syn_name(nth(items, int_lit(1))), str_lit!("#%toplevel"))))
             }
             _ => {
                 let y = tagcase_;
@@ -5596,9 +5596,9 @@ pub mod made__load__1__expand {
     pub fn kind_form_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, k: kayak_rt::Handle<'static, Syn>) -> Result<bool, Unwind> {
         let parts = proper_items(k);
         if not(null_p(parts)) {
-            Ok((syn_symbol_p(car(parts)) && string_eq_p(syn_name(car(parts)), str_lit("=>"))))
+            Ok((syn_symbol_p(car(parts)) && string_eq_p(syn_name(car(parts)), str_lit!("=>"))))
         } else {
-            Ok((syn_symbol_p(k) && mx_syntax_name_in_p(syn_symbol(mxp, maker_st, k)?, kayak_rt::cons(symbol_lit(str_lit("region")), kayak_rt::cons(symbol_lit(str_lit("place")), kayak_rt::cons(symbol_lit(str_lit("effect")), kayak_rt::cons(symbol_lit(str_lit("type")), kayak_rt::cons(symbol_lit(str_lit("data")), kayak_rt::cons(symbol_lit(str_lit("sendable")), kayak_rt::cons(symbol_lit(str_lit("flat")), kayak_rt::cons(symbol_lit(str_lit("size")), kayak_rt::cons(symbol_lit(str_lit("conv")), kayak_rt::nil()))))))))))))
+            Ok((syn_symbol_p(k) && mx_syntax_name_in_p(syn_symbol(mxp, maker_st, k)?, kayak_rt::cons(symbol_lit(str_lit!("region")), kayak_rt::cons(symbol_lit(str_lit!("place")), kayak_rt::cons(symbol_lit(str_lit!("effect")), kayak_rt::cons(symbol_lit(str_lit!("type")), kayak_rt::cons(symbol_lit(str_lit!("data")), kayak_rt::cons(symbol_lit(str_lit!("sendable")), kayak_rt::cons(symbol_lit(str_lit!("flat")), kayak_rt::cons(symbol_lit(str_lit!("size")), kayak_rt::cons(symbol_lit(str_lit!("conv")), kayak_rt::nil()))))))))))))
         }
     }
 
@@ -5607,7 +5607,7 @@ pub mod made__load__1__expand {
         if _eq(len(parts), int_lit(2)) {
             Ok(kind_form_p(mxp, maker_st, nth(parts, int_lit(1)))?)
         } else if _eq(len(parts), int_lit(3)) {
-            Ok((kind_form_p(mxp, maker_st, nth(parts, int_lit(1)))? || not((syn_symbol_p(nth(parts, int_lit(2))) && string_eq_p(syn_name(nth(parts, int_lit(2))), str_lit("qualified"))))))
+            Ok((kind_form_p(mxp, maker_st, nth(parts, int_lit(1)))? || not((syn_symbol_p(nth(parts, int_lit(2))) && string_eq_p(syn_name(nth(parts, int_lit(2))), str_lit!("qualified"))))))
         } else {
             Ok(true)
         }
@@ -5666,7 +5666,7 @@ pub mod made__load__1__expand {
 
     pub fn rules_word_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol) -> Result<bool, Unwind> {
         let name = symbol_to_string(n);
-        Ok((string_eq_p(name, str_lit("_")) || reserved_p(mxp, maker_st, name) || not(null_p(sig_of_name(n, kernel_sigs(mxp, maker_st, mx_fail)?))) || not(null_p(sig_of_name(n, kernel_definitions(mxp, maker_st, mx_fail)?))) || desc_word_p(mxp, maker_st, name, true) || type_form_p(mxp, maker_st, name) || mx_syntax_name_in_p(n, kayak_rt::cons(symbol_lit(str_lit("else")), kayak_rt::cons(symbol_lit(str_lit("=>")), kayak_rt::cons(symbol_lit(str_lit("quote")), kayak_rt::cons(symbol_lit(str_lit("quasiquote")), kayak_rt::cons(symbol_lit(str_lit("unquote")), kayak_rt::cons(symbol_lit(str_lit("unquote-splicing")), kayak_rt::cons(symbol_lit(str_lit("syntax-rules")), kayak_rt::cons(symbol_lit(str_lit("trailmark")), kayak_rt::cons(symbol_lit(str_lit("er-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit("sc-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit("rsc-macro-transformer")), kayak_rt::nil())))))))))))) || macro_p(mxp, maker_st, n) || _gt(mark_now(mxp, maker_st, n), int_lit(0))))
+        Ok((string_eq_p(name, str_lit!("_")) || reserved_p(mxp, maker_st, name) || not(null_p(sig_of_name(n, kernel_sigs(mxp, maker_st, mx_fail)?))) || not(null_p(sig_of_name(n, kernel_definitions(mxp, maker_st, mx_fail)?))) || desc_word_p(mxp, maker_st, name, true) || type_form_p(mxp, maker_st, name) || mx_syntax_name_in_p(n, kayak_rt::cons(symbol_lit(str_lit!("else")), kayak_rt::cons(symbol_lit(str_lit!("=>")), kayak_rt::cons(symbol_lit(str_lit!("quote")), kayak_rt::cons(symbol_lit(str_lit!("quasiquote")), kayak_rt::cons(symbol_lit(str_lit!("unquote")), kayak_rt::cons(symbol_lit(str_lit!("unquote-splicing")), kayak_rt::cons(symbol_lit(str_lit!("syntax-rules")), kayak_rt::cons(symbol_lit(str_lit!("trailmark")), kayak_rt::cons(symbol_lit(str_lit!("er-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit!("sc-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit!("rsc-macro-transformer")), kayak_rt::nil())))))))))))) || macro_p(mxp, maker_st, n) || _gt(mark_now(mxp, maker_st, n), int_lit(0))))
     }
 
     pub fn rules_items(s: kayak_rt::Handle<'static, Syn>) -> SynsA {
@@ -5716,7 +5716,7 @@ pub mod made__load__1__expand {
 
     pub fn rules_define_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper_items(s);
-        (_eq(len(items), int_lit(4)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("define-syntax")))
+        (_eq(len(items), int_lit(4)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("define-syntax")))
     }
 
     pub fn sig_of(mut n: Symbol, mut mx_types_named: MxTypesNamed) -> Stys {
@@ -5738,7 +5738,7 @@ pub mod made__load__1__expand {
                 return nil::<Symbol>();
             } else if {
                 let h = symbol_to_string(car(ns).0);
-                (_gt(string_length(h), int_lit(0)) && string_eq_p(substring(h, int_lit(0), int_lit(1)), str_lit("%")))
+                (_gt(string_length(h), int_lit(0)) && string_eq_p(substring(h, int_lit(0), int_lit(1)), str_lit!("%")))
             } {
                 return kayak_rt::heap_cons(car(ns).0, percent_of(cdr(ns)));
             } else {
@@ -5794,7 +5794,7 @@ pub mod made__load__1__expand {
                 }
                 _ => {
                     let y = tagcase_;
-                    return (syn_symbol_p(s) && (string_eq_p(syn_name(s), str_lit("unquote")) || string_eq_p(syn_name(s), str_lit("unquote-splicing"))));
+                    return (syn_symbol_p(s) && (string_eq_p(syn_name(s), str_lit!("unquote")) || string_eq_p(syn_name(s), str_lit!("unquote-splicing"))));
                 }
             }
         }
@@ -5809,11 +5809,11 @@ pub mod made__load__1__expand {
         let head = if (not(null_p(items)) && syn_symbol_p(car(items))) {
             syn_name(car(items))
         } else {
-            str_lit("")
+            str_lit!("")
         };
-        if string_eq_p(head, str_lit("")) {
+        if string_eq_p(head, str_lit!("")) {
             Ok(false)
-        } else if string_eq_p(head, str_lit("begin")) {
+        } else if string_eq_p(head, str_lit!("begin")) {
             Ok((not(null_p(cdr(items))) && all_define_p(mxp, maker_st, mx_fail, cdr(items))?))
         } else {
             let n = syn_symbol(mxp, maker_st, car(items))?;
@@ -5936,7 +5936,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn logic_word_p(h: Str) -> bool {
-        (string_eq_p(h, str_lit("<")) || string_eq_p(h, str_lit("<=")) || string_eq_p(h, str_lit("=")) || string_eq_p(h, str_lit(">")) || string_eq_p(h, str_lit(">=")) || string_eq_p(h, str_lit("not")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("implies")) || string_eq_p(h, str_lit("+")) || string_eq_p(h, str_lit("-")) || string_eq_p(h, str_lit("*")))
+        (string_eq_p(h, str_lit!("<")) || string_eq_p(h, str_lit!("<=")) || string_eq_p(h, str_lit!("=")) || string_eq_p(h, str_lit!(">")) || string_eq_p(h, str_lit!(">=")) || string_eq_p(h, str_lit!("not")) || string_eq_p(h, str_lit!("and")) || string_eq_p(h, str_lit!("or")) || string_eq_p(h, str_lit!("implies")) || string_eq_p(h, str_lit!("+")) || string_eq_p(h, str_lit!("-")) || string_eq_p(h, str_lit!("*")))
     }
 
     pub fn under<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, at: Int) -> List<Int> {
@@ -6033,11 +6033,11 @@ pub mod made__load__1__expand {
 
     pub fn fill_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, at: Int, s: kayak_rt::Handle<'static, Syn>, d: bool) -> Result<(), Unwind> {
         if (syn_symbol_p(s) && _eq(mode, int_lit(1)) && macro_p(mxp, maker_st, syn_symbol(mxp, maker_st, s)?)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), str_lit("` is a macro's name, which is not bound"))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(s), str_lit!("` is a macro's name, which is not bound"))), s)? {})
         } else if (syn_symbol_p(s) && _eq(mode, int_lit(3))) {
             Ok(with_kids(mxp, maker_st, at, k_binder(syn_symbol(mxp, maker_st, s)?, d)))
         } else if (syn_symbol_p(s) && _gt(mark_now(mxp, maker_st, syn_symbol(mxp, maker_st, s)?), int_lit(0))) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), str_lit("` is a trailmark, which is not bound"))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(s), str_lit!("` is a trailmark, which is not bound"))), s)? {})
         } else if (syn_symbol_p(s) && _eq(mode, int_lit(2)) && not(d)) {
             Ok(())
         } else if (syn_symbol_p(s) && not(reserved_syn_p(mxp, maker_st, s)?) && not((d && desc_word_p(mxp, maker_st, syn_name(s), false)))) {
@@ -6047,13 +6047,13 @@ pub mod made__load__1__expand {
                 Ok(())
             }
         } else {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(show_syn(s), str_lit("` is not a name that may be bound"))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(s), str_lit!("` is not a name that may be bound"))), s)? {})
         }
     }
 
     #[inline]
     pub fn not_definition<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, what: Str) -> Result<(), Unwind> {
-        Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(show_syn(s), string_append(str_lit("` is not a definition: a macro that makes "), string_append(str_lit("definitions makes "), what)))), s)? {})
+        Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(s), string_append(str_lit!("` is not a definition: a macro that makes "), string_append(str_lit!("definitions makes "), what)))), s)? {})
     }
 
     #[inline]
@@ -6119,7 +6119,7 @@ pub mod made__load__1__expand {
             with_kids(mxp, maker_st, at, k_binder(syn_symbol(mxp, maker_st, n)?, d));
             Ok(atm_lit(at, d))
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(show_syn(n), string_append(str_lit("` is not a name that may "), str_lit("be bound")))), n)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(n), string_append(str_lit!("` is not a name that may "), str_lit!("be bound")))), n)? {};
             Ok(atm_lit(at, d))
         }
     }
@@ -6140,7 +6140,7 @@ pub mod made__load__1__expand {
                 let a = desc_binder(mxp, maker_st, mx_fail, ps, car(p), car(parts))?;
                 Ok(cons(Product_11_12_13(a, kid(p, int_lit(1)), nth(parts, int_lit(1))), dletrec_parts(mxp, maker_st, mx_fail, ps, cdr(ks), cdr(es))?))
             } else {
-                match fail_at(mxp, maker_st, mx_fail, str_lit("`(name description)`"), car(es))? {};
+                match fail_at(mxp, maker_st, mx_fail, str_lit!("`(name description)`"), car(es))? {};
                 Ok(the::<Dparts>(nil::<Product_11_12_13<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>, Int, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>()))
             }
         }
@@ -6157,7 +6157,7 @@ pub mod made__load__1__expand {
 
     pub fn mx_align_spec_clause_p(c: kayak_rt::Handle<'static, Syn>) -> bool {
         let parts = proper_items(c);
-        (not(null_p(parts)) && syn_symbol_p(car(parts)) && (string_eq_p(syn_name(car(parts)), str_lit("requires")) || string_eq_p(syn_name(car(parts)), str_lit("ensures"))))
+        (not(null_p(parts)) && syn_symbol_p(car(parts)) && (string_eq_p(syn_name(car(parts)), str_lit!("requires")) || string_eq_p(syn_name(car(parts)), str_lit!("ensures"))))
     }
 
     #[inline]
@@ -6191,7 +6191,7 @@ pub mod made__load__1__expand {
                     ks = cdr(ks);
                     continue;
                 } else {
-                    return Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("a name"), s)? {});
+                    return Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("a name"), s)? {});
                 }
             }
         }
@@ -6210,13 +6210,13 @@ pub mod made__load__1__expand {
                     } else if syn_symbol_p(h) {
                         desc_values(mxp, maker_st, mx_fail, ps, kayak_rt::cons(car(mx_nodes_kids), kayak_rt::nil()), int_lit(2))?
                     } else {
-                        match fail_at(mxp, maker_st, mx_fail, str_lit("a specification's proposition or integer"), s)? {}
+                        match fail_at(mxp, maker_st, mx_fail, str_lit!("a specification's proposition or integer"), s)? {}
                     };
                     Ok(spec_each(mxp, maker_st, mx_fail, ps, cdr(mx_nodes_kids), cdr(items))?)
                 }
             }
             made__load__0__expander_kc::Syn::Dotted(items, tail, d, a, b, x) => {
-                Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("a specification's proposition is a list, not a dotted one"), s)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("a specification's proposition is a list, not a dotted one"), s)? {})
             }
             _ => {
                 let y = tagcase_;
@@ -6245,15 +6245,15 @@ pub mod made__load__1__expand {
         let parts = proper_items(c);
         let q = desc_kids(mxp, maker_st, at, parts);
         let head = syn_name(car(parts));
-        if (string_eq_p(head, str_lit("requires")) && _eq(len_kids(q), int_lit(2))) {
+        if (string_eq_p(head, str_lit!("requires")) && _eq(len_kids(q), int_lit(2))) {
             with_import(mxp, maker_st, kid(q, int_lit(1)), bind_direct(r#as), kid(q, int_lit(1)));
             Ok(spec(mxp, maker_st, mx_fail, ps, kid(q, int_lit(1)), nth(parts, int_lit(1)))?)
-        } else if (string_eq_p(head, str_lit("ensures")) && _eq(len_kids(q), int_lit(3))) {
+        } else if (string_eq_p(head, str_lit!("ensures")) && _eq(len_kids(q), int_lit(3))) {
             let a = value_binder(mxp, maker_st, mx_fail, ps, kid(q, int_lit(1)), nth(parts, int_lit(1)))?;
             with_import(mxp, maker_st, kid(q, int_lit(2)), bind_direct(append(r#as, the::<Atms>(kayak_rt::cons(a, kayak_rt::nil())))), kid(q, int_lit(2)));
             Ok(spec(mxp, maker_st, mx_fail, ps, kid(q, int_lit(2)), nth(parts, int_lit(2)))?)
         } else {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a specification is `(requires proposition)`, "), str_lit("then `(ensures name proposition)`")), c)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a specification is `(requires proposition)`, "), str_lit!("then `(ensures name proposition)`")), c)? {})
         }
     }
 
@@ -6263,11 +6263,11 @@ pub mod made__load__1__expand {
                 return Ok(desc_values(mxp, maker_st, mx_fail, ps, kayak_rt::cons(at, kayak_rt::nil()), int_lit(1))?);
             } else {
                 let items = proper_items(s);
-                if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("with")) && syn_symbol_p(nth(items, int_lit(2)))) {
+                if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("with")) && syn_symbol_p(nth(items, int_lit(2)))) {
                     (at, s) = (kid(desc_kids(mxp, maker_st, at, items), int_lit(1)), nth(items, int_lit(1)));
                     continue;
                 } else {
-                    return Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("a module's name, or a path to one, `(with module name)`"), s)? {});
+                    return Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("a module's name, or a path to one, `(with module name)`"), s)? {});
                 }
             }
         }
@@ -6308,7 +6308,7 @@ pub mod made__load__1__expand {
         let tagcase_ = node_kids(mxp, maker_st, at);
         match *tagcase_ {
             made__load__0__expander_kc::MxNodesKids::KDesc(mx_nodes_kids) => {
-                if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("poly")) && not(pvar_p(syn_symbol(mxp, maker_st, car(items))?, ps))) {
+                if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("poly")) && not(pvar_p(syn_symbol(mxp, maker_st, car(items))?, ps))) {
                     Ok(append(entry_binders(mxp, maker_st, {
                         let tagcase_ = node_kids(mxp, maker_st, kid(mx_nodes_kids, int_lit(1)));
                         match *tagcase_ {
@@ -6367,7 +6367,7 @@ pub mod made__load__1__expand {
                         t = body;
                         continue;
                     } else {
-                        return Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("two exports at one part"), s)? {});
+                        return Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("two exports at one part"), s)? {});
                     }
                 }
                 _ => {
@@ -6381,8 +6381,8 @@ pub mod made__load__1__expand {
     pub fn fill_core<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, root: Int) -> Result<(), Unwind> {
         with_core(mxp, maker_st, at, t);
         if (_eq(mode, int_lit(0)) && syn_symbol_p(s) && _gt(mark_now(mxp, maker_st, syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not((_eq(mx_types_kind_of(unfold(mxp, maker_st, t)), int_lit(15)) || mx_nodes_union_p(unfold(mxp, maker_st, t))))) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), string_append(str_lit("` is a trailmark, which a pattern "), string_append(str_lit("matches where its signature writes `(trailmark "), string_append(syn_name(s), str_lit(")`, and no pattern variable")))))), s)? {})
-        } else if (syn_symbol_p(s) && ((_eq(mode, int_lit(0)) && not(_eq(mx_types_kind_of(unfold(mxp, maker_st, t)), int_lit(7))) && not(_eq(mx_types_kind_of(unfold(mxp, maker_st, t)), int_lit(15))) && _eq(mark_now(mxp, maker_st, syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not(string_eq_p(syn_name(s), str_lit("_"))) && not(ellipsis_p(s))) || (_eq(mode, int_lit(1)) && pvar_p(syn_symbol(mxp, maker_st, s)?, ps)))) {
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(s), string_append(str_lit!("` is a trailmark, which a pattern "), string_append(str_lit!("matches where its signature writes `(trailmark "), string_append(syn_name(s), str_lit!(")`, and no pattern variable")))))), s)? {})
+        } else if (syn_symbol_p(s) && ((_eq(mode, int_lit(0)) && not(_eq(mx_types_kind_of(unfold(mxp, maker_st, t)), int_lit(7))) && not(_eq(mx_types_kind_of(unfold(mxp, maker_st, t)), int_lit(15))) && _eq(mark_now(mxp, maker_st, syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not(string_eq_p(syn_name(s), str_lit!("_"))) && not(ellipsis_p(s))) || (_eq(mode, int_lit(1)) && pvar_p(syn_symbol(mxp, maker_st, s)?, ps)))) {
             let one = if _eq(mode, int_lit(0)) {
                 name_fit_of(mxp, maker_st, unfold(mxp, maker_st, t))
             } else {
@@ -6398,7 +6398,7 @@ pub mod made__load__1__expand {
         } else if (_lt(mode, int_lit(2)) && not(null_p(ellipsis_of(s)))) {
             Ok(fill_seq(mxp, maker_st, mx_fail, mode, ps, at, t, s, car(ellipsis_of(s)))?)
         } else if (_lt(mode, int_lit(2)) && ellipsis_p(s)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("`...` follows the part it repeats, last in a list"), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("`...` follows the part it repeats, last in a list"), s)? {})
         } else {
             Ok(fill_shape(mxp, maker_st, mx_fail, mode, ps, at, t, s, root)?)
         }
@@ -6428,7 +6428,7 @@ pub mod made__load__1__expand {
             Ok(match fail_at(mxp, maker_st, mx_fail, maker_st.rules_escape.get().unwrap(), s)? {})
         } else if any_ellipsis_p(items) {
             Ok(match fail_at(mxp, maker_st, mx_fail, maker_st.rules_dots.get().unwrap(), s)? {})
-        } else if (syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("quote"))) {
+        } else if (syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("quote"))) {
             with_many(mxp, maker_st, at);
             Ok(fill(mxp, maker_st, mx_fail, mode, ps, at, s_data(), s, root)?)
         } else if rules_define_p(s) {
@@ -6443,7 +6443,7 @@ pub mod made__load__1__expand {
     pub fn fill_seq<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, x: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let elem = seq_elem(mxp, maker_st, t);
         if null_p(elem) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(show_syn(s), string_append(str_lit("` repeats a part by `...` where the form "), str_lit("takes no list of them")))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(s), string_append(str_lit!("` repeats a part by `...` where the form "), str_lit!("takes no list of them")))), s)? {})
         } else {
             let e = align(mxp, maker_st, mx_fail, mode, ps, car(elem), x, int_lit(-1), path_plus(mxp, maker_st, node_path(mxp, maker_st, at), true))?;
             repeated_x(mxp, maker_st, e);
@@ -6478,7 +6478,7 @@ pub mod made__load__1__expand {
         let (said, shown) = (kayak_rt::closure1((mxp, maker_st, mx_fail, s,), |(mxp, maker_st, mx_fail, s,), why: Str| {
             Ok(match fail_at(mxp, maker_st, mx_fail, why, s)? {})
         }), the::<kayak_rt::Proc0<'mxp, Str>>(kayak_rt::closure0((s,), |(s,)| {
-            string_append(str_lit("`"), string_append(show_syn(s), str_lit("`")))
+            string_append(str_lit!("`"), string_append(show_syn(s), str_lit!("`")))
         })));
         let tagcase_ = t;
         match *tagcase_ {
@@ -6493,17 +6493,17 @@ pub mod made__load__1__expand {
                     all
                 };
                 if null_p(fit) {
-                    Ok(match said.call(string_append(shown.call(), string_append(str_lit(" is of none of the shapes this part "), str_lit("may have"))))? {})
+                    Ok(match said.call(string_append(shown.call(), string_append(str_lit!(" is of none of the shapes this part "), str_lit!("may have"))))? {})
                 } else if null_p(cdr(fit)) {
                     Ok(fill(mxp, maker_st, mx_fail, mode, ps, at, car(fit), s, at)?)
                 } else {
-                    Ok(match said.call(string_append(shown.call(), string_append(str_lit(" could be of more than one of this part's "), str_lit("shapes"))))? {})
+                    Ok(match said.call(string_append(shown.call(), string_append(str_lit!(" could be of more than one of this part's "), str_lit!("shapes"))))? {})
                 }
             }
             made__load__0__expander_kc::Sty::SPair(a, d) => {
                 let parts = split(s);
                 if null_p(parts) {
-                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a list as this part must be")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit!(" is not a list as this part must be")))? {})
                 } else {
                     let path = node_path(mxp, maker_st, at);
                     let no = _eq(mode, int_lit(2));
@@ -6524,21 +6524,21 @@ pub mod made__load__1__expand {
                 if syn_nil_p(s) {
                     Ok(with_kids(mxp, maker_st, at, k_nil()))
                 } else {
-                    Ok(match said.call(string_append(shown.call(), str_lit(" is more than this part may have")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit!(" is more than this part may have")))? {})
                 }
             }
             made__load__0__expander_kc::Sty::SLiteral(n) => {
                 if (syn_symbol_p(s) && symbol_eq_p(syn_symbol(mxp, maker_st, s)?, n)) {
                     Ok(())
                 } else {
-                    Ok(match said.call(string_append(shown.call(), string_append(str_lit(" where `"), string_append(symbol_to_string(n), str_lit("` is written")))))? {})
+                    Ok(match said.call(string_append(shown.call(), string_append(str_lit!(" where `"), string_append(symbol_to_string(n), str_lit!("` is written")))))? {})
                 }
             }
             made__load__0__expander_kc::Sty::SMark(n, i) => {
                 if (syn_symbol_p(s) && _eq(mark_now(mxp, maker_st, syn_symbol(mxp, maker_st, s)?), i)) {
                     Ok(())
                 } else {
-                    Ok(match said.call(string_append(shown.call(), string_append(str_lit(" where the trailmark `"), string_append(symbol_to_string(n), str_lit("` is written")))))? {})
+                    Ok(match said.call(string_append(shown.call(), string_append(str_lit!(" where the trailmark `"), string_append(symbol_to_string(n), str_lit!("` is written")))))? {})
                 }
             }
             made__load__0__expander_kc::Sty::SBvar() => {
@@ -6558,7 +6558,7 @@ pub mod made__load__1__expand {
                         Ok(())
                     }
                 } else {
-                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a variable")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit!(" is not a variable")))? {})
                 }
             }
             made__load__0__expander_kc::Sty::SLabel() => {
@@ -6569,35 +6569,35 @@ pub mod made__load__1__expand {
                 } else if (_eq(mode, int_lit(3)) && syn_number_p(s)) {
                     Ok(())
                 } else if syn_symbol_p(s) {
-                    Ok(match said.call(string_append(str_lit("a tag or label in a template is a keyword: `#:"), string_append(syn_name(s), string_append(str_lit("`, not `"), string_append(syn_name(s), str_lit("`"))))))? {})
+                    Ok(match said.call(string_append(str_lit!("a tag or label in a template is a keyword: `#:"), string_append(syn_name(s), string_append(str_lit!("`, not `"), string_append(syn_name(s), str_lit!("`"))))))? {})
                 } else {
-                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a tag or label")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit!(" is not a tag or label")))? {})
                 }
             }
             made__load__0__expander_kc::Sty::SLambda() => {
                 if _eq(mode, int_lit(3)) {
                     Ok(fill(mxp, maker_st, mx_fail, mode, ps, at, s_expr(), s, root)?)
-                } else if (_eq(mode, int_lit(1)) && not(null_p(split(s))) && syn_symbol_p(car(split(s))) && string_eq_p(syn_name(car(split(s))), str_lit("lambda")) && proper_p(s)) {
+                } else if (_eq(mode, int_lit(1)) && not(null_p(split(s))) && syn_symbol_p(car(split(s))) && string_eq_p(syn_name(car(split(s))), str_lit!("lambda")) && proper_p(s)) {
                     Ok(mx_align_form(mxp, maker_st, mx_fail, ps, at, s, false)?)
                 } else if (_eq(mode, int_lit(2)) && lambda_shaped_p(s)) {
                     Ok(())
                 } else {
-                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a lambda, as this part must be")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit!(" is not a lambda, as this part must be")))? {})
                 }
             }
             made__load__0__expander_kc::Sty::SExpr() => {
                 if _eq(mode, int_lit(3)) {
                     Ok(program_expr(mxp, maker_st, mx_fail, ps, at, s)?)
                 } else if reserved_syn_p(mxp, maker_st, s)? {
-                    Ok(match said.call(string_append(str_lit("`"), string_append(syn_name(s), str_lit("` is a form's name, not an expression"))))? {})
-                } else if (syn_symbol_p(s) && string_eq_p(syn_name(s), str_lit("#u"))) {
+                    Ok(match said.call(string_append(str_lit!("`"), string_append(syn_name(s), str_lit!("` is a form's name, not an expression"))))? {})
+                } else if (syn_symbol_p(s) && string_eq_p(syn_name(s), str_lit!("#u"))) {
                     Ok(())
                 } else if (syn_symbol_p(s) && _eq(mode, int_lit(1))) {
                     Ok(with_kids(mxp, maker_st, at, k_ref(syn_symbol(mxp, maker_st, s)?, false, int_lit(0))))
                 } else if (not(syn_nil_p(s)) && not(null_p(split(s))) && _eq(mode, int_lit(1))) {
                     Ok(mx_align_form(mxp, maker_st, mx_fail, ps, at, s, false)?)
                 } else if syn_nil_p(s) {
-                    Ok(match said.call(str_lit("`()` is not an expression"))? {})
+                    Ok(match said.call(str_lit!("`()` is not an expression"))? {})
                 } else {
                     Ok(())
                 }
@@ -6606,7 +6606,7 @@ pub mod made__load__1__expand {
                 if (writes_p(mode) && not(syn_nil_p(s)) && not(null_p(split(s)))) {
                     Ok(mx_align_form(mxp, maker_st, mx_fail, ps, at, s, true)?)
                 } else {
-                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a definition")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit!(" is not a definition")))? {})
                 }
             }
             made__load__0__expander_kc::Sty::SType() => {
@@ -6635,7 +6635,7 @@ pub mod made__load__1__expand {
                 let z = tagcase_;
                 let inside = pvar_inside(mxp, maker_st, s, ps)?;
                 if (_eq(mode, int_lit(1)) && not(null_p(inside))) {
-                    Ok(match said.call(string_append(str_lit("pattern variable `"), string_append(symbol_to_string(car(inside)), str_lit("` inside a quoted datum: only a whole one is placed"))))? {})
+                    Ok(match said.call(string_append(str_lit!("pattern variable `"), string_append(symbol_to_string(car(inside)), str_lit!("` inside a quoted datum: only a whole one is placed"))))? {})
                 } else {
                     Ok(())
                 }
@@ -6658,26 +6658,26 @@ pub mod made__load__1__expand {
         let head = if (syn_symbol_p(hd) && not(pvar_p(syn_symbol(mxp, maker_st, hd)?, ps))) {
             syn_name(hd)
         } else {
-            str_lit("")
+            str_lit!("")
         };
         let kernel = kernel_sigs(mxp, maker_st, mx_fail)?;
         let defs = kernel_definitions(mxp, maker_st, mx_fail)?;
-        let r#macro = (not(string_eq_p(head, str_lit(""))) && macro_p(mxp, maker_st, syn_symbol(mxp, maker_st, hd)?));
+        let r#macro = (not(string_eq_p(head, str_lit!(""))) && macro_p(mxp, maker_st, syn_symbol(mxp, maker_st, hd)?));
         if (get(maker_st.heads_on.get().unwrap()) && syn_symbol_p(hd) && unknown_head_p(mxp, maker_st, mx_fail, syn_symbol(mxp, maker_st, hd)?, ps)?) {
             Ok(pending_form(mxp, maker_st, mx_fail, ps, at, s, defn)?)
         } else if (r#macro && _eq(makes(mxp, maker_st, syn_symbol(mxp, maker_st, hd)?), int_lit(3))) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(head, string_append(str_lit("` is a procedural macro, whose binding structure "), str_lit("no signature says: not in a template")))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(head, string_append(str_lit!("` is a procedural macro, whose binding structure "), str_lit!("no signature says: not in a template")))), s)? {})
         } else if defn {
             Ok(defn_form(mxp, maker_st, mx_fail, ps, at, s, int_lit(1))?)
         } else if constructs_p(mxp, maker_st, hd, ps)? {
-            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(1), ps, car(sig_of(symbol_lit(str_lit("%construct")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
+            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(1), ps, car(sig_of(symbol_lit(str_lit!("%construct")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
         } else if (r#macro && makes_defns_p(mxp, maker_st, syn_symbol(mxp, maker_st, hd)?)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(head, string_append(str_lit("` makes definitions, which are made at the top "), str_lit("level, not where an expression is")))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(head, string_append(str_lit!("` makes definitions, which are made at the top "), str_lit!("level, not where an expression is")))), s)? {})
         } else if (r#macro && makes_desc_p(mxp, maker_st, syn_symbol(mxp, maker_st, hd)?)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(head, str_lit("` makes a description, not an expression"))), s)? {})
-        } else if (not(string_eq_p(head, str_lit(""))) && not(null_p(sig_of(string_to_symbol(head), defs))) && null_p(sig_of(string_to_symbol(head), kernel))) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(head, string_append(str_lit("` makes a definition, made at the top level by a "), str_lit("macro that makes definitions, not where an expression is")))), s)? {})
-        } else if string_eq_p(head, str_lit("with")) {
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(head, str_lit!("` makes a description, not an expression"))), s)? {})
+        } else if (not(string_eq_p(head, str_lit!(""))) && not(null_p(sig_of(string_to_symbol(head), defs))) && null_p(sig_of(string_to_symbol(head), kernel))) {
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(head, string_append(str_lit!("` makes a definition, made at the top level by a "), str_lit!("macro that makes definitions, not where an expression is")))), s)? {})
+        } else if string_eq_p(head, str_lit!("with")) {
             if standard_with_p(s) {
                 Ok(())
             } else if (_eq(len(proper_items(s)), int_lit(3)) && syn_symbol_p(nth(proper_items(s), int_lit(1))) && syn_symbol_p(nth(proper_items(s), int_lit(2)))) {
@@ -6705,21 +6705,21 @@ pub mod made__load__1__expand {
                 };
                 Ok(with_kids(mxp, maker_st, at, k_form(x)))
             } else {
-                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a template's `with` is `(with module name)`, the "), string_append(str_lit("value `name` of the module, or `(with #%fx name)` or "), string_append(str_lit("`(with #%toplevel name)` (one opening a module over "), str_lit("a body waits for scopes of a module's names)")))), s)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a template's `with` is `(with module name)`, the "), string_append(str_lit!("value `name` of the module, or `(with #%fx name)` or "), string_append(str_lit!("`(with #%toplevel name)` (one opening a module over "), str_lit!("a body waits for scopes of a module's names)")))), s)? {})
             }
         } else if r#macro {
             Ok(operands_as(mxp, maker_st, mx_fail, int_lit(1), ps, at, car(macro_of(syn_symbol(mxp, maker_st, hd)?, get(maker_st.defined.get().unwrap()))).0, nth(parts, int_lit(1)))?)
-        } else if (not(string_eq_p(head, str_lit(""))) && not(string_eq_p(substring(head, int_lit(0), int_lit(1)), str_lit("%"))) && not(null_p(sig_of(string_to_symbol(head), kernel)))) {
+        } else if (not(string_eq_p(head, str_lit!(""))) && not(string_eq_p(substring(head, int_lit(0), int_lit(1)), str_lit!("%"))) && not(null_p(sig_of(string_to_symbol(head), kernel)))) {
             Ok(operands(mxp, maker_st, mx_fail, ps, at, car(sig_of(string_to_symbol(head), kernel)), nth(parts, int_lit(1)))?)
-        } else if (not(string_eq_p(head, str_lit(""))) && {
+        } else if (not(string_eq_p(head, str_lit!(""))) && {
             let sig = sig_of(string_to_symbol(head), scope_sigs(mxp, maker_st, mx_fail)?);
             (not(null_p(sig)) && binds_nothing_p(car(sig)))
         }) {
             Ok(operands(mxp, maker_st, mx_fail, ps, at, car(sig_of(string_to_symbol(head), scope_sigs(mxp, maker_st, mx_fail)?)), nth(parts, int_lit(1)))?)
-        } else if (not(string_eq_p(head, str_lit(""))) && reserved_p(mxp, maker_st, head)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("the prototype does not know `"), string_append(head, string_append(str_lit("`'s binding "), str_lit("structure: not yet in a template")))), s)? {})
+        } else if (not(string_eq_p(head, str_lit!(""))) && reserved_p(mxp, maker_st, head)) {
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("the prototype does not know `"), string_append(head, string_append(str_lit!("`'s binding "), str_lit!("structure: not yet in a template")))), s)? {})
         } else {
-            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(1), ps, car(sig_of(symbol_lit(str_lit("%app")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
+            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(1), ps, car(sig_of(symbol_lit(str_lit!("%app")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
         }
     }
 
@@ -6730,20 +6730,20 @@ pub mod made__load__1__expand {
             let t = car(syntax_sig_read(mxp, maker_st, car(read)));
             let made = t.1;
             if (not(defn) && _eq(made, int_lit(1))) {
-                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(n, string_append(str_lit("` makes definitions, which are made "), string_append(str_lit("at the top level, not where an expression "), str_lit("is"))))), s)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(n, string_append(str_lit!("` makes definitions, which are made "), string_append(str_lit!("at the top level, not where an expression "), str_lit!("is"))))), s)? {})
             } else if (not(defn) && _eq(made, int_lit(2))) {
-                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(n, string_append(str_lit("` makes a description, not an "), str_lit("expression")))), s)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(n, string_append(str_lit!("` makes a description, not an "), str_lit!("expression")))), s)? {})
             } else if (defn && _eq(made, int_lit(2))) {
-                Ok(not_definition(mxp, maker_st, mx_fail, s, string_append(str_lit("them by a macro that makes "), str_lit("definitions, not a description's")))?)
+                Ok(not_definition(mxp, maker_st, mx_fail, s, string_append(str_lit!("them by a macro that makes "), str_lit!("definitions, not a description's")))?)
             } else if (defn && _eq(made, int_lit(0))) {
-                Ok(not_definition(mxp, maker_st, mx_fail, s, string_append(str_lit("them by a macro that makes "), str_lit("definitions, not an expression's")))?)
+                Ok(not_definition(mxp, maker_st, mx_fail, s, string_append(str_lit!("them by a macro that makes "), str_lit!("definitions, not an expression's")))?)
             } else {
                 Ok(operands(mxp, maker_st, mx_fail, ps, at, t.0, nth(split(s), int_lit(1)))?)
             }
         } else if defn {
             Ok(with_export(mxp, maker_st, at, bind_rib(nil::<Product_11_12<List<bool>, Int>>()), at))
         } else {
-            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(1), ps, car(sig_of(symbol_lit(str_lit("%app")), kernel_sigs(mxp, maker_st, mx_fail)?)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
+            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(1), ps, car(sig_of(symbol_lit(str_lit!("%app")), kernel_sigs(mxp, maker_st, mx_fail)?)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
         }
     }
 
@@ -6751,14 +6751,14 @@ pub mod made__load__1__expand {
         if syn_symbol_p(s) {
             if {
                 let n = syn_symbol(mxp, maker_st, s)?;
-                (symbol_eq_p(n, string_to_symbol(str_lit("#t"))) || symbol_eq_p(n, string_to_symbol(str_lit("#f"))) || symbol_eq_p(n, string_to_symbol(str_lit("#u"))))
+                (symbol_eq_p(n, string_to_symbol(str_lit!("#t"))) || symbol_eq_p(n, string_to_symbol(str_lit!("#f"))) || symbol_eq_p(n, string_to_symbol(str_lit!("#u"))))
             } {
                 Ok(())
             } else {
                 Ok(with_kids(mxp, maker_st, at, k_ref(syn_symbol(mxp, maker_st, s)?, false, int_lit(0))))
             }
         } else if syn_nil_p(s) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("`()` is not an expression"), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("`()` is not an expression"), s)? {})
         } else if not(null_p(split(s))) {
             Ok(mx_align_form(mxp, maker_st, mx_fail, ps, at, s, false)?)
         } else {
@@ -6772,7 +6772,7 @@ pub mod made__load__1__expand {
         let n = if syn_symbol_p(hd) {
             syn_symbol(mxp, maker_st, hd)?
         } else {
-            string_to_symbol(str_lit(""))
+            string_to_symbol(str_lit!(""))
         };
         let kernel = kernel_sigs(mxp, maker_st, mx_fail)?;
         let sforms = scope_sigs(mxp, maker_st, mx_fail)?;
@@ -6781,19 +6781,19 @@ pub mod made__load__1__expand {
         if (get(maker_st.scoped_on.get().unwrap()) && macro_p(mxp, maker_st, n) && scoped_read_x(mxp, maker_st, mx_fail, ps, at, s, defn)?) {
             Ok(())
         } else if (macro_p(mxp, maker_st, n) && _eq(makes(mxp, maker_st, n), int_lit(3))) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is a procedural macro, whose "), str_lit("binding structure no signature says: not in a template")))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is a procedural macro, whose "), str_lit!("binding structure no signature says: not in a template")))), s)? {})
         } else if defn {
             Ok(defn_form(mxp, maker_st, mx_fail, ps, at, s, int_lit(3))?)
         } else if syn_keyword_p(hd) {
-            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(3), ps, car(sig_of(symbol_lit(str_lit("%construct")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
-        } else if (symbol_eq_p(n, symbol_lit(str_lit("quasiquote"))) && _eq(len(proper_items(s)), int_lit(2))) {
+            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(3), ps, car(sig_of(symbol_lit(str_lit!("%construct")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
+        } else if (symbol_eq_p(n, symbol_lit(str_lit!("quasiquote"))) && _eq(len(proper_items(s)), int_lit(2))) {
             Ok(with_kids(mxp, maker_st, at, k_desc(unquoted(mxp, maker_st, mx_fail, ps, nth(proper_items(s), int_lit(1)), path_plus(mxp, maker_st, path_plus(mxp, maker_st, node_path(mxp, maker_st, at), false), true), int_lit(1), nil::<Int>())?)))
-        } else if (symbol_eq_p(n, symbol_lit(str_lit("with"))) && standard_with_p(s)) {
+        } else if (symbol_eq_p(n, symbol_lit(str_lit!("with"))) && standard_with_p(s)) {
             Ok(())
         } else if (macro_p(mxp, maker_st, n) && makes_defns_p(mxp, maker_st, n)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` makes definitions, which are made "), str_lit("at the top level, not where an expression is")))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` makes definitions, which are made "), str_lit!("at the top level, not where an expression is")))), s)? {})
         } else if (macro_p(mxp, maker_st, n) && makes_desc_p(mxp, maker_st, n)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` makes a description, not an "), str_lit("expression")))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` makes a description, not an "), str_lit!("expression")))), s)? {})
         } else if macro_p(mxp, maker_st, n) {
             Ok(operands_as(mxp, maker_st, mx_fail, int_lit(3), ps, at, car(macro_of(n, get(maker_st.defined.get().unwrap()))).0, nth(parts, int_lit(1)))?)
         } else if not(null_p(sig_of(n, sforms))) {
@@ -6801,7 +6801,7 @@ pub mod made__load__1__expand {
         } else if (not(null_p(sig_of(n, kernel))) && not(mx_syntax_name_in_p(n, percent_named(mxp, maker_st, kernel)))) {
             Ok(operands_as(mxp, maker_st, mx_fail, int_lit(3), ps, at, car(sig_of(n, kernel)), nth(parts, int_lit(1)))?)
         } else {
-            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(3), ps, car(sig_of(symbol_lit(str_lit("%app")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
+            Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(3), ps, car(sig_of(symbol_lit(str_lit!("%app")), kernel)), s, int_lit(-1), node_path(mxp, maker_st, at))?)))
         }
     }
 
@@ -6814,7 +6814,7 @@ pub mod made__load__1__expand {
             not_definition(mxp, maker_st, mx_fail, s, maker_st.definitions_said.get().unwrap())?;
             Ok(true)
         } else if app {
-            let app_sig = car(sig_of(symbol_lit(str_lit("%app")), kernel_sigs(mxp, maker_st, mx_fail)?));
+            let app_sig = car(sig_of(symbol_lit(str_lit!("%app")), kernel_sigs(mxp, maker_st, mx_fail)?));
             with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(3), ps, app_sig, s, int_lit(-1), node_path(mxp, maker_st, at))?));
             Ok(true)
         } else if get(maker_st.scoped_whole.get().unwrap()) {
@@ -6842,14 +6842,14 @@ pub mod made__load__1__expand {
                     let (head, inner) = (if (not(null_p(items)) && syn_symbol_p(car(items))) {
                         syn_name(car(items))
                     } else {
-                        str_lit("")
+                        str_lit!("")
                     }, path_plus(mxp, maker_st, path_plus(mxp, maker_st, path, false), true));
-                    if (_eq(len(items), int_lit(2)) && _eq(depth, int_lit(1)) && (string_eq_p(head, str_lit("unquote")) || string_eq_p(head, str_lit("unquote-splicing")))) {
+                    if (_eq(len(items), int_lit(2)) && _eq(depth, int_lit(1)) && (string_eq_p(head, str_lit!("unquote")) || string_eq_p(head, str_lit!("unquote-splicing")))) {
                         return Ok(cons(align(mxp, maker_st, mx_fail, int_lit(3), ps, s_expr(), nth(items, int_lit(1)), int_lit(-1), inner)?, mx_nodes_kids));
-                    } else if (_eq(len(items), int_lit(2)) && (string_eq_p(head, str_lit("unquote")) || string_eq_p(head, str_lit("unquote-splicing")))) {
+                    } else if (_eq(len(items), int_lit(2)) && (string_eq_p(head, str_lit!("unquote")) || string_eq_p(head, str_lit!("unquote-splicing")))) {
                         (s, path, depth) = (nth(items, int_lit(1)), inner, _minus(depth, int_lit(1)));
                         continue;
-                    } else if (_eq(len(items), int_lit(2)) && string_eq_p(head, str_lit("quasiquote"))) {
+                    } else if (_eq(len(items), int_lit(2)) && string_eq_p(head, str_lit!("quasiquote"))) {
                         (s, path, depth) = (nth(items, int_lit(1)), inner, _plus(depth, int_lit(1)));
                         continue;
                     } else {
@@ -6895,7 +6895,7 @@ pub mod made__load__1__expand {
         let n = if (syn_symbol_p(hd) && not(pvar_p(syn_symbol(mxp, maker_st, hd)?, ps))) {
             syn_symbol(mxp, maker_st, hd)?
         } else {
-            string_to_symbol(str_lit(""))
+            string_to_symbol(str_lit!(""))
         };
         let defs = kernel_definitions(mxp, maker_st, mx_fail)?;
         let sdefs = if program {
@@ -6904,24 +6904,24 @@ pub mod made__load__1__expand {
             nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>()
         };
         let r#macro = macro_p(mxp, maker_st, n);
-        if (program && symbol_eq_p(n, symbol_lit(str_lit("module-parameters"))) && _eq(len(items), int_lit(2))) {
+        if (program && symbol_eq_p(n, symbol_lit(str_lit!("module-parameters"))) && _eq(len(items), int_lit(2))) {
             Ok(operands_as(mxp, maker_st, mx_fail, int_lit(3), ps, at, parameters_sig(mxp, maker_st, nth(items, int_lit(1)))?, nth(parts, int_lit(1)))?)
-        } else if (symbol_eq_p(n, symbol_lit(str_lit("define-syntax"))) && proper_p(s) && (_eq(len(items), int_lit(3)) || _eq(len(items), int_lit(4)))) {
+        } else if (symbol_eq_p(n, symbol_lit(str_lit!("define-syntax"))) && proper_p(s) && (_eq(len(items), int_lit(3)) || _eq(len(items), int_lit(4)))) {
             let t = nth(items, _minus(len(items), int_lit(1)));
             let ts = proper_items(t);
-            if (not(program) && not((pair_p(ts) && syn_symbol_p(car(ts)) && string_eq_p(syn_name(car(ts)), str_lit("syntax-rules"))))) {
+            if (not(program) && not((pair_p(ts) && syn_symbol_p(car(ts)) && string_eq_p(syn_name(car(ts)), str_lit!("syntax-rules"))))) {
                 Ok(match fail_at(mxp, maker_st, mx_fail, maker_st.rules_procedural.get().unwrap(), t)? {})
             } else {
                 Ok(operands_as(mxp, maker_st, mx_fail, mode, ps, at, define_syntax_sig(_eq(len(items), int_lit(4))), nth(parts, int_lit(1)))?)
             }
-        } else if (not(program) && symbol_eq_p(n, symbol_lit(str_lit("define-generative"))) && _eq(len(items), int_lit(3))) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a template's `define-generative` names its "), str_lit("conversions, `#:seal` and `#:unseal`")), s)? {})
+        } else if (not(program) && symbol_eq_p(n, symbol_lit(str_lit!("define-generative"))) && _eq(len(items), int_lit(3))) {
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a template's `define-generative` names its "), str_lit!("conversions, `#:seal` and `#:unseal`")), s)? {})
         } else if (r#macro && makes_defns_p(mxp, maker_st, n)) {
             Ok(operands_as(mxp, maker_st, mx_fail, mode, ps, at, car(macro_of(n, get(maker_st.defined.get().unwrap()))).0, nth(parts, int_lit(1)))?)
         } else if (r#macro && makes_desc_p(mxp, maker_st, n)) {
-            Ok(not_definition(mxp, maker_st, mx_fail, s, str_lit("them by a macro that makes definitions, not a description's"))?)
+            Ok(not_definition(mxp, maker_st, mx_fail, s, str_lit!("them by a macro that makes definitions, not a description's"))?)
         } else if r#macro {
-            Ok(not_definition(mxp, maker_st, mx_fail, s, str_lit("them by a macro that makes definitions, not an expression's"))?)
+            Ok(not_definition(mxp, maker_st, mx_fail, s, str_lit!("them by a macro that makes definitions, not an expression's"))?)
         } else if not(null_p(sig_of(n, defs))) {
             Ok(operands_as(mxp, maker_st, mx_fail, mode, ps, at, car(sig_of(n, defs)), nth(parts, int_lit(1)))?)
         } else if not(null_p(sig_of(n, sdefs))) {
@@ -6946,7 +6946,7 @@ pub mod made__load__1__expand {
                 }
             }
             made__load__0__expander_kc::Syn::Dotted(items, tail, d, a, b, x) => {
-                Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("a description is a list, not a dotted one"), s)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("a description is a list, not a dotted one"), s)? {})
             }
             _ => {
                 let y = tagcase_;
@@ -6981,11 +6981,11 @@ pub mod made__load__1__expand {
         } else if makes_desc_p(mxp, maker_st, n) {
             Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(1), ps, car(macro_of(n, get(maker_st.defined.get().unwrap()))).0, nth(split(s), int_lit(1)), int_lit(-1), path_plus(mxp, maker_st, node_path(mxp, maker_st, at), false))?)))
         } else {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` makes "), string_append(if makes_defns_p(mxp, maker_st, n) {
-                str_lit("definitions")
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` makes "), string_append(if makes_defns_p(mxp, maker_st, n) {
+                str_lit!("definitions")
             } else {
-                str_lit("an expression")
-            }, str_lit(", not a description"))))), s)? {})
+                str_lit!("an expression")
+            }, str_lit!(", not a description"))))), s)? {})
         }
     }
 
@@ -6995,49 +6995,49 @@ pub mod made__load__1__expand {
         let head = if (syn_symbol_p(h) && not(pvar_p(syn_symbol(mxp, maker_st, h)?, ps))) {
             syn_name(h)
         } else {
-            str_lit("")
+            str_lit!("")
         };
-        if ((string_eq_p(head, str_lit("poly")) || string_eq_p(head, str_lit("dlambda"))) && get(maker_st.program_walk.get().unwrap()) && _gt(len(items), int_lit(3))) {
+        if ((string_eq_p(head, str_lit!("poly")) || string_eq_p(head, str_lit!("dlambda"))) && get(maker_st.program_walk.get().unwrap()) && _gt(len(items), int_lit(3))) {
             Ok(desc_each_scoped(mxp, maker_st, mx_fail, ps, cdr(cdr(mx_nodes_kids)), cdr(cdr(items)), desc_binders(mxp, maker_st, mx_fail, ps, kid(mx_nodes_kids, int_lit(1)), nth(items, int_lit(1)))?)?)
-        } else if (string_eq_p(head, str_lit("poly")) || string_eq_p(head, str_lit("dlambda"))) {
+        } else if (string_eq_p(head, str_lit!("poly")) || string_eq_p(head, str_lit!("dlambda"))) {
             if _eq(len(items), int_lit(3)) {
                 Ok(desc_scoped(mxp, maker_st, mx_fail, ps, kid(mx_nodes_kids, int_lit(2)), nth(items, int_lit(2)), desc_binders(mxp, maker_st, mx_fail, ps, kid(mx_nodes_kids, int_lit(1)), nth(items, int_lit(1)))?)?)
             } else {
-                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`("), string_append(head, str_lit(" ((name kind) …) description)`"))), s)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`("), string_append(head, str_lit!(" ((name kind) …) description)`"))), s)? {})
             }
-        } else if string_eq_p(head, str_lit("mu")) {
+        } else if string_eq_p(head, str_lit!("mu")) {
             if _eq(len(items), int_lit(3)) {
                 Ok(desc_scoped(mxp, maker_st, mx_fail, ps, kid(mx_nodes_kids, int_lit(2)), nth(items, int_lit(2)), kayak_rt::cons(desc_binder(mxp, maker_st, mx_fail, ps, kid(mx_nodes_kids, int_lit(1)), nth(items, int_lit(1)))?, kayak_rt::nil()))?)
             } else {
-                Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("`(mu name type)`"), s)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("`(mu name type)`"), s)? {})
             }
-        } else if string_eq_p(head, str_lit("dletrec")) {
+        } else if string_eq_p(head, str_lit!("dletrec")) {
             if _eq(len(items), int_lit(3)) {
                 Ok(desc_dletrec(mxp, maker_st, mx_fail, ps, mx_nodes_kids, items)?)
             } else {
-                Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("`(dletrec ((name description) …) description)`"), s)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("`(dletrec ((name description) …) description)`"), s)? {})
             }
-        } else if (string_eq_p(head, str_lit("productof")) || string_eq_p(head, str_lit("sumof"))) {
+        } else if (string_eq_p(head, str_lit!("productof")) || string_eq_p(head, str_lit!("sumof"))) {
             Ok(desc_fields(mxp, maker_st, mx_fail, ps, cdr(mx_nodes_kids), cdr(items))?)
-        } else if (string_eq_p(head, str_lit("restrict")) && _gt_eq(len(items), int_lit(2))) {
+        } else if (string_eq_p(head, str_lit!("restrict")) && _gt_eq(len(items), int_lit(2))) {
             Ok(desc(mxp, maker_st, mx_fail, ps, kid(mx_nodes_kids, int_lit(1)), nth(items, int_lit(1)))?)
-        } else if string_eq_p(head, str_lit("io")) {
+        } else if string_eq_p(head, str_lit!("io")) {
             Ok(())
-        } else if string_eq_p(head, str_lit("globals")) {
+        } else if string_eq_p(head, str_lit!("globals")) {
             Ok(desc_values(mxp, maker_st, mx_fail, ps, cdr(mx_nodes_kids), int_lit(2))?)
-        } else if string_eq_p(head, str_lit("select")) {
+        } else if string_eq_p(head, str_lit!("select")) {
             if null_p(cdr(mx_nodes_kids)) {
                 Ok(())
             } else {
                 Ok(select_path(mxp, maker_st, mx_fail, ps, kid(mx_nodes_kids, int_lit(1)), nth(items, int_lit(1)))?)
             }
-        } else if (get(maker_st.program_walk.get().unwrap()) && (string_eq_p(head, str_lit("load-moduleof")) || string_eq_p(head, str_lit("load-input-moduleof")))) {
+        } else if (get(maker_st.program_walk.get().unwrap()) && (string_eq_p(head, str_lit!("load-moduleof")) || string_eq_p(head, str_lit!("load-input-moduleof")))) {
             Ok(set(maker_st.unplaced.get().unwrap(), symbols_onto(mxp, maker_st, cdr(cdr(items)), get(maker_st.unplaced.get().unwrap()))?))
-        } else if string_eq_p(head, str_lit("moduleof")) {
+        } else if string_eq_p(head, str_lit!("moduleof")) {
             Ok(desc_members(mxp, maker_st, mx_fail, ps, cdr(mx_nodes_kids), cdr(items), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>>(), not(get(maker_st.program_walk.get().unwrap())))?)
-        } else if (string_eq_p(head, str_lit("subr")) || string_eq_p(head, str_lit("->")) || string_eq_p(head, str_lit("->*"))) {
+        } else if (string_eq_p(head, str_lit!("subr")) || string_eq_p(head, str_lit!("->")) || string_eq_p(head, str_lit!("->*"))) {
             Ok(desc_subr(mxp, maker_st, mx_fail, ps, s, items, mx_nodes_kids)?)
-        } else if (not(string_eq_p(head, str_lit(""))) && desc_word_p(mxp, maker_st, head, true)) {
+        } else if (not(string_eq_p(head, str_lit!(""))) && desc_word_p(mxp, maker_st, head, true)) {
             Ok(desc_each(mxp, maker_st, mx_fail, ps, cdr(mx_nodes_kids), cdr(items))?)
         } else {
             Ok(desc_each(mxp, maker_st, mx_fail, ps, mx_nodes_kids, items)?)
@@ -7086,7 +7086,7 @@ pub mod made__load__1__expand {
                     (ks, es, out) = (cdr(ks), cdr(es), append(out, the::<Atms>(kayak_rt::cons(a, kayak_rt::nil()))));
                     continue;
                 } else {
-                    match fail_at(mxp, maker_st, mx_fail, str_lit("a binder is `(name kind)`"), car(es))? {};
+                    match fail_at(mxp, maker_st, mx_fail, str_lit!("a binder is `(name kind)`"), car(es))? {};
                     return Ok(out);
                 }
             }
@@ -7136,7 +7136,7 @@ pub mod made__load__1__expand {
                         (ks, fs) = (cdr(ks), cdr(fs));
                         continue;
                     } else {
-                        return Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("`(label type)`"), car(fs))? {});
+                        return Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("`(label type)`"), car(fs))? {});
                     }
                 }
             }
@@ -7164,7 +7164,7 @@ pub mod made__load__1__expand {
                 let word = if (not(null_p(parts)) && syn_symbol_p(car(parts))) {
                     syn_name(car(parts))
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 };
                 if _lt(len(parts), int_lit(2)) {
                     desc(mxp, maker_st, mx_fail, ps, car(ks), car(ms))?;
@@ -7173,18 +7173,18 @@ pub mod made__load__1__expand {
                 } else {
                     let p = desc_kids(mxp, maker_st, car(ks), parts);
                     let n = nth(parts, int_lit(1));
-                    let binds = (string_eq_p(word, str_lit("abs")) || string_eq_p(word, str_lit("desc")));
+                    let binds = (string_eq_p(word, str_lit!("abs")) || string_eq_p(word, str_lit!("desc")));
                     let kw = syn_keyword_p(n);
                     let apart = (binds && kw && _eq(len(parts), int_lit(4)) && syn_symbol_p(nth(parts, int_lit(2))));
                     let given = (syn_symbol_p(n) && pvar_p(syn_symbol(mxp, maker_st, n)?, ps));
                     if (not(template) || kw || given) {
                         ()
                     } else if not(syn_symbol_p(n)) {
-                        match fail_at(mxp, maker_st, mx_fail, str_lit("a list of names in a template's `moduleof`: not yet"), n)? {}
+                        match fail_at(mxp, maker_st, mx_fail, str_lit!("a list of names in a template's `moduleof`: not yet"), n)? {}
                     } else if binds {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a template's `abs` or `desc` writes "), string_append(str_lit("its label as a keyword, its binder "), str_lit("after it: `(abs #:t t type)`"))), n)? {}
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a template's `abs` or `desc` writes "), string_append(str_lit!("its label as a keyword, its binder "), str_lit!("after it: `(abs #:t t type)`"))), n)? {}
                     } else {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a template's `val` writes its label "), str_lit("as a keyword: `(val #:x type)`")), n)? {}
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a template's `val` writes its label "), str_lit!("as a keyword: `(val #:x type)`")), n)? {}
                     };
                     if (given && not(binds)) {
                         with_core(mxp, maker_st, kid(p, int_lit(1)), s_label());
@@ -7192,7 +7192,7 @@ pub mod made__load__1__expand {
                     } else {
                         ()
                     };
-                    if string_eq_p(word, str_lit("abs")) {
+                    if string_eq_p(word, str_lit!("abs")) {
                         ()
                     } else {
                         desc_each_scoped(mxp, maker_st, mx_fail, ps, if apart {
@@ -7221,7 +7221,7 @@ pub mod made__load__1__expand {
     pub fn desc_subr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, s: kayak_rt::Handle<'static, Syn>, items: SynsA, mx_nodes_kids: List<Int>) -> Result<(), Unwind> {
         let plain = _minus(len(items), clauses_at_end(reverse(items)));
         if (_lt(plain, int_lit(3)) || not(_eq(len_kids(mx_nodes_kids), len(items)))) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`(subr effect (param …) result)` or `(-> (param …) "), str_lit("result)`, then a specification's clauses")), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`(subr effect (param …) result)` or `(-> (param …) "), str_lit!("result)`, then a specification's clauses")), s)? {})
         } else {
             Ok(desc_subr_parts(mxp, maker_st, mx_fail, ps, mx_nodes_kids, items, int_lit(0), _minus(plain, int_lit(2)), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>>())?)
         }
@@ -7254,7 +7254,7 @@ pub mod made__load__1__expand {
         if syn_nil_p(s) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>>())
         } else if null_p(proper_items(s)) {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("a procedure type's parameters are a list"), s)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("a procedure type's parameters are a list"), s)? {};
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>>())
         } else {
             Ok(desc_params_from(mxp, maker_st, mx_fail, ps, desc_kids(mxp, maker_st, at, proper_items(s)), proper_items(s), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>>())?)
@@ -7267,7 +7267,7 @@ pub mod made__load__1__expand {
                 return Ok(r#as);
             } else {
                 let parts = proper_items(car(xs));
-                if (_eq(len(parts), int_lit(3)) && syn_symbol_p(nth(parts, int_lit(1))) && string_eq_p(syn_name(nth(parts, int_lit(1))), str_lit(":"))) {
+                if (_eq(len(parts), int_lit(3)) && syn_symbol_p(nth(parts, int_lit(1))) && string_eq_p(syn_name(nth(parts, int_lit(1))), str_lit!(":"))) {
                     let q = desc_kids(mxp, maker_st, car(ks), parts);
                     let a = value_binder(mxp, maker_st, mx_fail, ps, car(q), car(parts))?;
                     with_import(mxp, maker_st, kid(q, int_lit(2)), bind_direct(r#as), kid(q, int_lit(2)));
@@ -7290,12 +7290,12 @@ pub mod made__load__1__expand {
 
     pub fn desc_result<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, r: kayak_rt::Handle<'static, Syn>, r#as: Atms) -> Result<(), Unwind> {
         let parts = proper_items(r);
-        if (not(null_p(parts)) && syn_symbol_p(car(parts)) && string_eq_p(syn_name(car(parts)), str_lit("bool")) && not(pvar_p(syn_symbol(mxp, maker_st, car(parts))?, ps))) {
+        if (not(null_p(parts)) && syn_symbol_p(car(parts)) && string_eq_p(syn_name(car(parts)), str_lit!("bool")) && not(pvar_p(syn_symbol(mxp, maker_st, car(parts))?, ps))) {
             let inside = pvar_inside(mxp, maker_st, r, ps)?;
             if null_p(inside) {
                 Ok(())
             } else {
-                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("pattern variable `"), string_append(symbol_to_string(car(inside)), str_lit("` in a `(bool …)` result's propositions: not yet"))), r)? {})
+                Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("pattern variable `"), string_append(symbol_to_string(car(inside)), str_lit!("` in a `(bool …)` result's propositions: not yet"))), r)? {})
             }
         } else {
             Ok(desc_scoped(mxp, maker_st, mx_fail, ps, at, r, r#as)?)
@@ -7390,11 +7390,11 @@ pub mod made__load__1__expand {
         if mx_eq_p(desc_p, d) {
             ()
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("the signature says a "), string_append(if d {
-                str_lit("description's")
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("the signature says a "), string_append(if d {
+                str_lit!("description's")
             } else {
-                str_lit("value's")
-            }, str_lit(" binder is here"))), node_syn(mxp, maker_st, t))? {}
+                str_lit!("value's")
+            }, str_lit!(" binder is here"))), node_syn(mxp, maker_st, t))? {}
         };
         if _eq(delta, int_lit(5)) {
             Ok(kayak_rt::cons(one.call(true), kayak_rt::cons(one.call(false), kayak_rt::nil())))
@@ -7405,7 +7405,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn env_in_rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
-        Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("a ribcage (`env`) in a rib: write it `(at ℓ)` in a `cage`"), s)? {})
+        Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("a ribcage (`env`) in a rib: write it `(at ℓ)` in a `cage`"), s)? {})
     }
 
     pub fn gathered_each(r#as: Atms) -> Atms {
@@ -7489,12 +7489,12 @@ pub mod made__load__1__expand {
                         continue;
                     }
                     made__load__0__expander_kc::MxNodesKids::KPvar(n) => {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("an address into pattern variable `"), string_append(symbol_to_string(n), string_append(str_lit("`: the prototype names a part "), str_lit("only where the pattern names it")))), s)? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("an address into pattern variable `"), string_append(symbol_to_string(n), string_append(str_lit!("`: the prototype names a part "), str_lit!("only where the pattern names it")))), s)? {};
                         return Ok(root);
                     }
                     _ => {
                         let y = tagcase_;
-                        match fail_at(mxp, maker_st, mx_fail, str_lit("an address to no part"), s)? {};
+                        match fail_at(mxp, maker_st, mx_fail, str_lit!("an address to no part"), s)? {};
                         return Ok(root);
                     }
                 }
@@ -7561,7 +7561,7 @@ pub mod made__load__1__expand {
             if mx_scopes_form_node_p(mxp, maker_st, t) {
                 Ok(the::<Atms>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>>()))
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("the signature says what is here exports a rib, "), str_lit("and it exports none")), ts)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("the signature says what is here exports a rib, "), str_lit!("and it exports none")), ts)? {};
                 Ok(the::<Atms>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>>()))
             }
         } else {
@@ -7575,7 +7575,7 @@ pub mod made__load__1__expand {
                 }
                 _ => {
                     let y = tagcase_;
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("the signature says what is here exports "), str_lit("a rib, and it exports none")), ts)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("the signature says what is here exports "), str_lit!("a rib, and it exports none")), ts)? {};
                     Ok(the::<Atms>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Atm>>()))
                 }
             }
@@ -7673,7 +7673,7 @@ pub mod made__load__1__expand {
         } else if mx_scopes_form_node_p(mxp, maker_st, t) {
             Ok(the::<Levels>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Level>>()))
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("the signature says what is here exports a "), str_lit("ribcage, and it exports none")), node_syn(mxp, maker_st, t))? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("the signature says what is here exports a "), str_lit!("ribcage, and it exports none")), node_syn(mxp, maker_st, t))? {};
             Ok(the::<Levels>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Level>>()))
         }
     }
@@ -8129,7 +8129,7 @@ pub mod made__load__1__expand {
         let kh = mx_types_kind_of(have);
         let kw = mx_types_kind_of(unfold(mxp, maker_st, want));
         let said = kayak_rt::closure1((mxp, maker_st, mx_fail, s, name,), |(mxp, maker_st, mx_fail, s, name,), why: Str| {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` "), why))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` "), why))), s)? {})
         });
         let simple_p = kayak_rt::closure1s((), |(), k: Int| {
             simple_kind_p(k)
@@ -8140,7 +8140,7 @@ pub mod made__load__1__expand {
             let d = _eq(kw, int_lit(4));
             let i = rib_binding(n, d, mx_env_indexed_env, int_lit(0));
             if _lt(i, int_lit(0)) {
-                Ok(match said.call(str_lit("is referred to where the template does not bind it"))? {})
+                Ok(match said.call(str_lit!("is referred to where the template does not bind it"))? {})
             } else if {
                 let tagcase_ = nth_level(mx_env_indexed_env, i);
                 match *tagcase_ {
@@ -8155,12 +8155,12 @@ pub mod made__load__1__expand {
             } {
                 Ok(match said.call(maker_st.mx_scopes_repeats_said.get().unwrap())? {})
             } else if shadowing_p(mx_env_indexed_env, i, ps, d) {
-                Ok(match said.call(string_append(str_lit("is referred to where another of the pattern's binders "), string_append(str_lit("may shadow it (Herman's shadow restriction): a use "), str_lit("giving both one name would change what it refers to"))))? {})
+                Ok(match said.call(string_append(str_lit!("is referred to where another of the pattern's binders "), string_append(str_lit!("may shadow it (Herman's shadow restriction): a use "), str_lit!("giving both one name would change what it refers to"))))? {})
             } else {
                 Ok(())
             }
         } else if (_eq(kh, int_lit(0)) && _eq(kw, int_lit(10)) && not(null_p(info.3))) {
-            Ok(match said.call(string_append(str_lit("is placed where a lambda is wanted: a typed hole there is a "), str_lit("lambda, `(lambda #:type T)`")))? {})
+            Ok(match said.call(string_append(str_lit!("is placed where a lambda is wanted: a typed hole there is a "), str_lit!("lambda, `(lambda #:type T)`")))? {})
         } else if ((_eq(kh, int_lit(3)) && _eq(kw, int_lit(3))) || (_eq(kh, int_lit(4)) && _eq(kw, int_lit(4))) || (_eq(kh, int_lit(5)) && _eq(kw, int_lit(5))) || (_eq(kh, int_lit(13)) && _eq(kw, int_lit(13)))) {
             Ok(())
         } else {
@@ -8180,9 +8180,9 @@ pub mod made__load__1__expand {
                 sub_p(mxp, maker_st, have, want, nil::<Product_11_12<kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>())
             };
             if not(fits) {
-                Ok(match said.call(str_lit("is placed where its syntax type is not one the form takes there"))? {})
+                Ok(match said.call(str_lit!("is placed where its syntax type is not one the form takes there"))? {})
             } else if not(levels_eq_p(normal(mx_env_indexed_env), normal(info.1))) {
-                Ok(match said.call(str_lit("is placed in the scope of other bindings than its signature says it is"))? {})
+                Ok(match said.call(str_lit!("is placed in the scope of other bindings than its signature says it is"))? {})
             } else {
                 Ok(())
             }
@@ -8241,7 +8241,7 @@ pub mod made__load__1__expand {
                             mx_env_indexed_env = cdr(mx_env_indexed_env);
                             continue;
                         } else {
-                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` "), maker_st.mx_scopes_repeats_said.get().unwrap()))), s)? {};
+                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` "), maker_st.mx_scopes_repeats_said.get().unwrap()))), s)? {};
                             return Ok(nil::<Int>());
                         }
                     }
@@ -8279,9 +8279,9 @@ pub mod made__load__1__expand {
             let now = car(rs).1;
             let said = kayak_rt::closure1s((), |(), r: List<Int>| {
                 if null_p(r) {
-                    str_lit("an application")
+                    str_lit!("an application")
                 } else {
-                    str_lit("a use of the macro a use before it defines")
+                    str_lit!("a use of the macro a use before it defines")
                 }
             });
             let rest = new_heads(mxp, maker_st, mx_fail, cdr(rs))?;
@@ -8292,7 +8292,7 @@ pub mod made__load__1__expand {
             } else if (not(null_p(now)) && _eq(car(was), car(now))) {
                 Ok(rest)
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("this template's scopes have no one reading: `"), string_append(show_syn(s), string_append(str_lit("`, headed by `"), string_append(symbol_to_string(syn_symbol(mxp, maker_st, car(split(s)))?), string_append(str_lit("`, is read as "), string_append(said.call(was), string_append(str_lit(" and then as "), said.call(now)))))))), s)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("this template's scopes have no one reading: `"), string_append(show_syn(s), string_append(str_lit!("`, headed by `"), string_append(symbol_to_string(syn_symbol(mxp, maker_st, car(split(s)))?), string_append(str_lit!("`, is read as "), string_append(said.call(was), string_append(str_lit!(" and then as "), said.call(now)))))))), s)? {};
                 Ok(rest)
             }
         }
@@ -8663,7 +8663,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn path_named_p(n: Str) -> bool {
-        (_gt(string_length(n), int_lit(0)) && not(char_eq_p(string_ref(n, int_lit(0)), '%')) && _gt_eq(string_search(n, str_lit("::"), int_lit(0)), int_lit(0)))
+        (_gt(string_length(n), int_lit(0)) && not(char_eq_p(string_ref(n, int_lit(0)), '%')) && _gt_eq(string_search(n, str_lit!("::"), int_lit(0)), int_lit(0)))
     }
 
     pub fn indices(mut steps: Addr, mut k: Int) -> Ixs {
@@ -8705,7 +8705,7 @@ pub mod made__load__1__expand {
                         }
                         made__load__0__expander_kc::MxNodesKids::KBinder(x, d) => {
                             if path_named_p(symbol_to_string(x)) {
-                                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(x), string_append(str_lit("` is a path, "), string_append(str_lit("`module::name`, not a name that may "), str_lit("be bound"))))), node_syn(mxp, maker_st, i))? {};
+                                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(x), string_append(str_lit!("` is a path, "), string_append(str_lit!("`module::name`, not a name that may "), str_lit!("be bound"))))), node_syn(mxp, maker_st, i))? {};
                                 out
                             } else {
                                 out
@@ -8855,7 +8855,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn quote_headed_p(xs: SynsA) -> bool {
-        (not(null_p(xs)) && syn_symbol_p(car(xs)) && string_eq_p(syn_name(car(xs)), str_lit("quote")))
+        (not(null_p(xs)) && syn_symbol_p(car(xs)) && string_eq_p(syn_name(car(xs)), str_lit!("quote")))
     }
 
     pub fn names_macro_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut s: kayak_rt::Handle<'static, Syn>) -> Result<bool, Unwind> {
@@ -9055,7 +9055,7 @@ pub mod made__load__1__expand {
 
     pub fn pattern_names<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, p: kayak_rt::Handle<'static, Syn>) -> Result<MxParserTypesNames, Unwind> {
         if syn_symbol_p(p) {
-            if (string_eq_p(syn_name(p), str_lit("_")) || ellipsis_p(p) || reserved_syn_p(mxp, maker_st, p)?) {
+            if (string_eq_p(syn_name(p), str_lit!("_")) || ellipsis_p(p) || reserved_syn_p(mxp, maker_st, p)?) {
                 Ok(nil::<Symbol>())
             } else {
                 Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, p)?, kayak_rt::nil()))
@@ -9122,7 +9122,7 @@ pub mod made__load__1__expand {
                     return Ok(nil::<List<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>());
                 }
             } else if syn_symbol_p(p) {
-                if string_eq_p(syn_name(p), str_lit("_")) {
+                if string_eq_p(syn_name(p), str_lit!("_")) {
                     return Ok(kayak_rt::cons(bs, kayak_rt::nil()));
                 } else if reserved_syn_p(mxp, maker_st, p)? {
                     if (syn_symbol_p(s) && symbol_eq_p(syn_symbol(mxp, maker_st, s)?, syn_symbol(mxp, maker_st, p)?)) {
@@ -9390,10 +9390,10 @@ pub mod made__load__1__expand {
             let tagcase_ = car(r#as);
             match *tagcase_ {
                 made__load__0__expander_kc::Atm::AtmVar(n, d, g) => {
-                    kayak_rt::heap_cons(string_append(str_lit("`"), string_append(symbol_to_string(n), str_lit("`"))), rest)
+                    kayak_rt::heap_cons(string_append(str_lit!("`"), string_append(symbol_to_string(n), str_lit!("`"))), rest)
                 }
                 made__load__0__expander_kc::Atm::AtmRibOf(n) => {
-                    kayak_rt::heap_cons(string_append(str_lit("what `"), string_append(symbol_to_string(n), str_lit("` defines"))), rest)
+                    kayak_rt::heap_cons(string_append(str_lit!("what `"), string_append(symbol_to_string(n), str_lit!("` defines"))), rest)
                 }
                 made__load__0__expander_kc::Atm::AtmLit(t, d) => {
                     rest
@@ -9407,14 +9407,14 @@ pub mod made__load__1__expand {
         if null_p(ns) {
             nil::<Str>()
         } else {
-            kayak_rt::heap_cons(string_append(str_lit("what `"), string_append(symbol_to_string(car(ns)), str_lit("` defines"))), cage_strings(cdr(ns)))
+            kayak_rt::heap_cons(string_append(str_lit!("what `"), string_append(symbol_to_string(car(ns)), str_lit!("` defines"))), cage_strings(cdr(ns)))
         }
     }
 
     pub fn shown_exports(e: MxExportsExported) -> Str {
         let ss = mx_nodes_sorted_strings(append(atm_strings(e.0), cage_strings(e.1)), nil::<Str>());
         if null_p(ss) {
-            str_lit("nothing")
+            str_lit!("nothing")
         } else {
             mx_nodes_joined(ss)
         }
@@ -9517,7 +9517,7 @@ pub mod made__load__1__expand {
         let m = nested_of(n, nested);
         if (null_p(b) && not(null_p(m))) {
             let n = symbol_to_string(n);
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(n, string_append(str_lit("` is bound in a use of `"), string_append(symbol_to_string(car(m)), string_append(str_lit("`, whose signature does not say its uses define it: "), string_append(str_lit("say so (`(macro σ (defn (ℓ δ) …))`), or write `(with "), string_append(str_lit("#%toplevel "), string_append(n, str_lit(")` for the top level's"))))))))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(n, string_append(str_lit!("` is bound in a use of `"), string_append(symbol_to_string(car(m)), string_append(str_lit!("`, whose signature does not say its uses define it: "), string_append(str_lit!("say so (`(macro σ (defn (ℓ δ) …))`), or write `(with "), string_append(str_lit!("#%toplevel "), string_append(n, str_lit!(")` for the top level's"))))))))), s)? {})
         } else {
             Ok(())
         }
@@ -9564,7 +9564,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn note_projection<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>, items: SynsA, hd: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
-        if (not(_eq(syn_expansion(hd), int_lit(0))) && _eq(len(items), int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && syn_symbol_p(nth(items, int_lit(2))) && not(string_eq_p(syn_name(nth(items, int_lit(1))), str_lit("#%fx"))) && not(string_eq_p(syn_name(nth(items, int_lit(1))), str_lit("#%toplevel")))) {
+        if (not(_eq(syn_expansion(hd), int_lit(0))) && _eq(len(items), int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && syn_symbol_p(nth(items, int_lit(2))) && not(string_eq_p(syn_name(nth(items, int_lit(1))), str_lit!("#%fx"))) && not(string_eq_p(syn_name(nth(items, int_lit(1))), str_lit!("#%toplevel")))) {
             Ok(set(maker_st.with_uses.get().unwrap(), cons(Product_11_12_13_14_15_16(syn_start(s), syn_end(s), syn_symbol(mxp, maker_st, nth(items, int_lit(2)))?, syn_start(nth(items, int_lit(2))), syn_end(nth(items, int_lit(2))), int_lit(1)), get(maker_st.with_uses.get().unwrap()))))
         } else {
             Ok(())
@@ -9585,7 +9585,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn path_refused<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
-        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), string_append(str_lit("` is not a path: a path is names joined "), str_lit("by `::`, `module::name`")))), s)? {};
+        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(s), string_append(str_lit!("` is not a path: a path is names joined "), str_lit!("by `::`, `module::name`")))), s)? {};
         Ok(s)
     }
 
@@ -9603,7 +9603,7 @@ pub mod made__load__1__expand {
         loop {
             let n = syn_name(s);
             let start = _plus(len, int_lit(2));
-            let k = string_search(n, str_lit("::"), start);
+            let k = string_search(n, str_lit!("::"), start);
             let end = if _lt(k, int_lit(0)) {
                 string_length(n)
             } else {
@@ -9613,9 +9613,9 @@ pub mod made__load__1__expand {
             if _eq(start, end) {
                 return Ok(path_refused(mxp, maker_st, mx_fail, s)?);
             } else if (_lt(k, int_lit(0)) && d) {
-                return Ok(mx_exports_list_of(kayak_rt::cons(named_at(str_lit("select"), int_lit(0), end, s), kayak_rt::cons(out, kayak_rt::cons(x, kayak_rt::nil()))), end, s));
+                return Ok(mx_exports_list_of(kayak_rt::cons(named_at(str_lit!("select"), int_lit(0), end, s), kayak_rt::cons(out, kayak_rt::cons(x, kayak_rt::nil()))), end, s));
             } else {
-                let f = mx_exports_list_of(kayak_rt::cons(named_at(str_lit("with"), int_lit(0), end, s), kayak_rt::cons(out, kayak_rt::cons(x, kayak_rt::nil()))), end, s);
+                let f = mx_exports_list_of(kayak_rt::cons(named_at(str_lit!("with"), int_lit(0), end, s), kayak_rt::cons(out, kayak_rt::cons(x, kayak_rt::nil()))), end, s);
                 set(maker_st.with_uses.get().unwrap(), cons(Product_11_12_13_14_15_16(syn_start(f), syn_end(f), string_to_symbol(substring(n, int_lit(0), end)), syn_start(x), syn_end(x), int_lit(2)), get(maker_st.with_uses.get().unwrap())));
                 if _lt(k, int_lit(0)) {
                     return Ok(f);
@@ -9628,7 +9628,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn path_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, d: bool) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
-        let k = string_search(syn_name(s), str_lit("::"), int_lit(0));
+        let k = string_search(syn_name(s), str_lit!("::"), int_lit(0));
         if _eq(k, int_lit(0)) {
             Ok(path_refused(mxp, maker_st, mx_fail, s)?)
         } else {
@@ -9675,7 +9675,7 @@ pub mod made__load__1__expand {
 
     pub fn repeated_ref<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, b: List<Int>, depth: Int, bd: Depths, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         if (not(null_p(b)) && _gt(depth_of(car(b), bd), depth)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is bound in each repetition of a "), string_append(str_lit("part, and referred to under fewer ellipses than it is "), str_lit("bound: which repetition's it is is not said"))))), s)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is bound in each repetition of a "), string_append(str_lit!("part, and referred to under fewer ellipses than it is "), str_lit!("bound: which repetition's it is is not said"))))), s)? {})
         } else {
             Ok(())
         }
@@ -9705,7 +9705,7 @@ pub mod made__load__1__expand {
                 let s = node_syn(mxp, maker_st, at);
                 let b = car(rs).2;
                 if (null_p(car(rs).1) && pending_defn_p(at, get(maker_st.pending.get().unwrap()))) {
-                    not_definition(mxp, maker_st, mx_fail, s, string_append(str_lit("`define`, `define*`, `define-rec`, "), string_append(str_lit("a `begin` of them, or a use of "), str_lit("another such"))))?;
+                    not_definition(mxp, maker_st, mx_fail, s, string_append(str_lit!("`define`, `define*`, `define-rec`, "), string_append(str_lit!("a `begin` of them, or a use of "), str_lit!("another such"))))?;
                     return Ok(nil::<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Action>>>());
                 } else if null_p(car(rs).1) {
                     rs = cdr(rs);
@@ -9736,7 +9736,7 @@ pub mod made__load__1__expand {
 
     pub fn contract_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper_items(s);
-        (_gt_eq(len(items), int_lit(3)) && mx_facts_head_is_p(s, str_lit("macro")) && (mx_facts_head_is_p(nth(items, int_lit(1)), str_lit("_")) || mx_facts_head_is_p(nth(items, int_lit(1)), str_lit("letrec-shape"))))
+        (_gt_eq(len(items), int_lit(3)) && mx_facts_head_is_p(s, str_lit!("macro")) && (mx_facts_head_is_p(nth(items, int_lit(1)), str_lit!("_")) || mx_facts_head_is_p(nth(items, int_lit(1)), str_lit!("letrec-shape"))))
     }
 
     #[inline]
@@ -9811,7 +9811,7 @@ pub mod made__load__1__expand {
                 if (not(_eq(len(d), int_lit(2))) || not(syn_symbol_p(car(d)))) {
                     return Ok(match fail_at(mxp, maker_st, mx_fail, maker_st.shape_usage.get().unwrap(), car(ds))? {});
                 } else if not(null_p(mx_facts_named_of(syn_symbol(mxp, maker_st, car(d))?, get(maker_st.mx_facts_named.get().unwrap())))) {
-                    return Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(car(d)), str_lit("` is a shape's name twice"))), car(d))? {});
+                    return Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(car(d)), str_lit!("` is a shape's name twice"))), car(d))? {});
                 } else {
                     set(maker_st.mx_facts_named.get().unwrap(), cons(Product_11_12_13(syn_symbol(mxp, maker_st, car(d))?, nth(d, int_lit(1)), int_lit(0)), get(maker_st.mx_facts_named.get().unwrap())));
                     ds = cdr(ds);
@@ -9825,10 +9825,10 @@ pub mod made__load__1__expand {
         loop {
             if null_p(fs) {
                 return g;
-            } else if mx_facts_head_is_p(car(fs), str_lit("export")) {
+            } else if mx_facts_head_is_p(car(fs), str_lit!("export")) {
                 (fs, g) = (cdr(fs), int_lit(4));
                 continue;
-            } else if mx_facts_head_is_p(car(fs), str_lit("export*")) {
+            } else if mx_facts_head_is_p(car(fs), str_lit!("export*")) {
                 (fs, g) = (cdr(fs), int_lit(5));
                 continue;
             } else {
@@ -9840,7 +9840,7 @@ pub mod made__load__1__expand {
 
     pub fn def_gives<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, def: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
         let items = proper_items(def);
-        if mx_facts_head_is_p(def, str_lit("union")) {
+        if mx_facts_head_is_p(def, str_lit!("union")) {
             Ok(members_gives(mxp, maker_st, mx_fail, cdr(items), int_lit(0))?)
         } else {
             Ok(node_gives(if _gt(len(items), int_lit(2)) {
@@ -9861,7 +9861,7 @@ pub mod made__load__1__expand {
                     ms = cdr(ms);
                     continue;
                 } else if (not(_eq(g, int_lit(0))) && not(_eq(g, mg))) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a union's members export a rib and a "), str_lit("ribcage, `export` and `export*`: one kind")), car(ms))? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a union's members export a rib and a "), str_lit!("ribcage, `export` and `export*`: one kind")), car(ms))? {};
                     return Ok(g);
                 } else {
                     (ms, g) = (cdr(ms), mg);
@@ -9880,7 +9880,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn mx_facts_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
-        if not(mx_facts_head_is_p(s, str_lit("letrec-shape"))) {
+        if not(mx_facts_head_is_p(s, str_lit!("letrec-shape"))) {
             Ok(s)
         } else {
             let items = proper_items(s);
@@ -9921,7 +9921,7 @@ pub mod made__load__1__expand {
 
     pub fn labelled_name<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, l: Product_11_12_13_14<Int, MxFactsSteps, MxFactsSteps, Int>, ls: MxFactsLabels, at: kayak_rt::Handle<'static, Syn>) -> Result<MxFactsLabels, Unwind> {
         if not(null_p(mx_facts_label_of(n, ls))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), str_lit("` labels two parts"))), at)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), str_lit!("` labels two parts"))), at)? {};
             Ok(ls)
         } else {
             Ok(cons(Product_11_12_13_14_15(n, l.0, l.1, l.2, l.3), ls))
@@ -9933,7 +9933,7 @@ pub mod made__load__1__expand {
             if null_p(inner) {
                 return Ok(ls);
             } else if _eq(car(inner).1, int_lit(1)) {
-                match fail_at(mxp, maker_st, mx_fail, str_lit("a repeated part in a repeated part: not yet"), t)? {};
+                match fail_at(mxp, maker_st, mx_fail, str_lit!("a repeated part in a repeated part: not yet"), t)? {};
                 return Ok(ls);
             } else {
                 (inner, ls) = (cdr(inner), labelled_name(mxp, maker_st, mx_fail, car(inner).0, Product_11_12_13_14(int_lit(1), p, car(inner).2, car(inner).4), ls, t)?);
@@ -9944,7 +9944,7 @@ pub mod made__load__1__expand {
 
     pub fn mx_facts_labelled<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: kayak_rt::Handle<'static, Syn>, l: Product_11_12_13_14<Int, MxFactsSteps, MxFactsSteps, Int>, ls: MxFactsLabels) -> Result<MxFactsLabels, Unwind> {
         if not(syn_symbol_p(n)) {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("a part's label is a name, `name @ σ`"), n)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("a part's label is a name, `name @ σ`"), n)? {};
             Ok(ls)
         } else {
             Ok(labelled_name(mxp, maker_st, mx_fail, syn_symbol(mxp, maker_st, n)?, l, ls, n)?)
@@ -9952,15 +9952,15 @@ pub mod made__load__1__expand {
     }
 
     pub fn gives<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, t: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
-        if mx_facts_sym_is_p(t, str_lit("bvar")) {
+        if mx_facts_sym_is_p(t, str_lit!("bvar")) {
             Ok(int_lit(1))
-        } else if mx_facts_sym_is_p(t, str_lit("dvar")) {
+        } else if mx_facts_sym_is_p(t, str_lit!("dvar")) {
             Ok(int_lit(2))
-        } else if mx_facts_sym_is_p(t, str_lit("place")) {
+        } else if mx_facts_sym_is_p(t, str_lit!("place")) {
             Ok(int_lit(3))
         } else if (syn_symbol_p(t) && not(null_p(mx_facts_named_of(syn_symbol(mxp, maker_st, t)?, get(maker_st.mx_facts_named.get().unwrap()))))) {
             Ok(car(mx_facts_named_of(syn_symbol(mxp, maker_st, t)?, get(maker_st.mx_facts_named.get().unwrap()))).2)
-        } else if mx_facts_head_is_p(t, str_lit("bvar")) {
+        } else if mx_facts_head_is_p(t, str_lit!("bvar")) {
             Ok(int_lit(1))
         } else {
             Ok(int_lit(0))
@@ -9969,7 +9969,7 @@ pub mod made__load__1__expand {
 
     pub fn form_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper_items(s);
-        (mx_facts_head_is_p(s, str_lit("many")) || mx_facts_head_is_p(s, str_lit("literal")) || mx_facts_head_is_p(s, str_lit("trailmark")) || mx_facts_head_is_p(s, str_lit("oneof")) || mx_facts_head_is_p(s, str_lit("union")) || ((mx_facts_head_is_p(s, str_lit("expr")) || mx_facts_head_is_p(s, str_lit("bvar")) || mx_facts_head_is_p(s, str_lit("lambda"))) && _gt(len(items), int_lit(1)) && syn_keyword_p(nth(items, int_lit(1)))))
+        (mx_facts_head_is_p(s, str_lit!("many")) || mx_facts_head_is_p(s, str_lit!("literal")) || mx_facts_head_is_p(s, str_lit!("trailmark")) || mx_facts_head_is_p(s, str_lit!("oneof")) || mx_facts_head_is_p(s, str_lit!("union")) || ((mx_facts_head_is_p(s, str_lit!("expr")) || mx_facts_head_is_p(s, str_lit!("bvar")) || mx_facts_head_is_p(s, str_lit!("lambda"))) && _gt(len(items), int_lit(1)) && syn_keyword_p(nth(items, int_lit(1)))))
     }
 
     pub fn mx_facts_name_in_p(mut n: Symbol, mut ns: MxParserTypesNames) -> bool {
@@ -9992,9 +9992,9 @@ pub mod made__load__1__expand {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
         } else {
             kayak_rt::heap_cons(atom(kayak_rt::value::ToValue::to_value(mx_symbol_to_keyword(if car(p) {
-                symbol_lit(str_lit("a"))
+                symbol_lit(str_lit!("a"))
             } else {
-                symbol_lit(str_lit("d"))
+                symbol_lit(str_lit!("d"))
             })), a, b, int_lit(0)), mx_facts_path_keys(cdr(p), a, b))
         }
     }
@@ -10003,21 +10003,21 @@ pub mod made__load__1__expand {
         if null_p(p) {
             mk_list(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), a, b)
         } else {
-            mk_list(kayak_rt::heap_cons(mk_symbol(str_lit("path"), a, b), mx_facts_path_keys(p, a, b)), a, b)
+            mk_list(kayak_rt::heap_cons(mk_symbol(str_lit!("path"), a, b), mx_facts_path_keys(p, a, b)), a, b)
         }
     }
 
     pub fn rib_entry<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, a: Int, b: Int, p: MxFactsSteps, g: Int) -> kayak_rt::Handle<'static, Syn> {
         mk_list(kayak_rt::cons(path_syn(p, a, b), kayak_rt::cons(mk_symbol(if _eq(g, int_lit(1)) {
-            str_lit("var")
+            str_lit!("var")
         } else if _eq(g, int_lit(2)) {
-            str_lit("dvar")
+            str_lit!("dvar")
         } else if _eq(g, int_lit(3)) {
-            str_lit("place")
+            str_lit!("place")
         } else if _eq(g, int_lit(4)) {
-            str_lit("rib")
+            str_lit!("rib")
         } else {
-            str_lit("none")
+            str_lit!("none")
         }, a, b), kayak_rt::nil())), a, b)
     }
 
@@ -10039,9 +10039,9 @@ pub mod made__load__1__expand {
     }
 
     pub fn each_bound<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, f: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels) -> Result<Eaches, Unwind> {
-        let (items, a, b, outside) = (proper_items(f), syn_start(f), syn_end(f), string_append(str_lit("a fact under `...` that names what is outside its "), str_lit("repetition: not yet (TODO §289)")));
-        if not((mx_facts_head_is_p(f, str_lit("bind")) && _eq(len(items), int_lit(4)) && mx_facts_sym_is_p(nth(items, int_lit(2)), str_lit("in")))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a fact under `...` is a `bind`, each repetition's: "), string_append(str_lit("what a list exports is every repetition's, `(export "), str_lit("(x ...))`"))), f)? {};
+        let (items, a, b, outside) = (proper_items(f), syn_start(f), syn_end(f), string_append(str_lit!("a fact under `...` that names what is outside its "), str_lit!("repetition: not yet (TODO §289)")));
+        if not((mx_facts_head_is_p(f, str_lit!("bind")) && _eq(len(items), int_lit(4)) && mx_facts_sym_is_p(nth(items, int_lit(2)), str_lit!("in")))) {
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a fact under `...` is a `bind`, each repetition's: "), string_append(str_lit!("what a list exports is every repetition's, `(export "), str_lit!("(x ...))`"))), f)? {};
             Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())
         } else {
             let l = nth(items, int_lit(1));
@@ -10057,30 +10057,30 @@ pub mod made__load__1__expand {
                 nil::<Product_11_12_13_14_15<Symbol, Int, List<bool>, List<bool>, Int>>()
             };
             if (syn_symbol_p(l) && null_p(ll)) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(l), string_append(str_lit("` labels no part of this "), str_lit("node")))), l)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(l), string_append(str_lit!("` labels no part of this "), str_lit!("node")))), l)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())
             } else if (null_p(ll) || _eq(car(ll).1, int_lit(0))) {
                 match fail_at(mxp, maker_st, mx_fail, outside, l)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())
             } else if (syn_symbol_p(m) && null_p(ml)) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(m), string_append(str_lit("` labels no part of this "), str_lit("node")))), m)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(m), string_append(str_lit!("` labels no part of this "), str_lit!("node")))), m)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())
             } else if (null_p(ml) || _eq(car(ml).1, int_lit(0))) {
                 match fail_at(mxp, maker_st, mx_fail, outside, m)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())
             } else if not(steps_eq_p(car(ll).2, car(ml).2)) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a fact under `...` names one list's "), str_lit("repetition: these are of two lists")), f)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a fact under `...` names one list's "), str_lit!("repetition: these are of two lists")), f)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())
             } else if _eq(car(ll).4, int_lit(0)) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(l), string_append(str_lit("` labels a part that binds "), str_lit("nothing")))), l)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(l), string_append(str_lit!("` labels a part that binds "), str_lit!("nothing")))), l)? {};
                 Ok(nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())
             } else {
                 let g = car(ll).4;
                 let ep = car(ll).3;
                 let bd = if _eq(g, int_lit(5)) {
-                    mk_list(kayak_rt::cons(mk_symbol(str_lit("cage"), a, b), kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(str_lit("at"), a, b), kayak_rt::cons(path_syn(ep, a, b), kayak_rt::nil())), a, b), kayak_rt::nil())), a, b)
+                    mk_list(kayak_rt::cons(mk_symbol(str_lit!("cage"), a, b), kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(str_lit!("at"), a, b), kayak_rt::cons(path_syn(ep, a, b), kayak_rt::nil())), a, b), kayak_rt::nil())), a, b)
                 } else {
-                    mk_list(kayak_rt::cons(mk_symbol(str_lit("rho"), a, b), kayak_rt::cons(rib_entry(mxp, maker_st, mx_fail, a, b, ep, g), kayak_rt::nil())), a, b)
+                    mk_list(kayak_rt::cons(mk_symbol(str_lit!("rho"), a, b), kayak_rt::cons(rib_entry(mxp, maker_st, mx_fail, a, b, ep, g), kayak_rt::nil())), a, b)
                 };
                 Ok(kayak_rt::cons(Product_11_12_13(car(ll).2, car(ml).3, bd), kayak_rt::nil()))
             }
@@ -10091,9 +10091,9 @@ pub mod made__load__1__expand {
         loop {
             if null_p(fs) {
                 return Ok(Product_11_12(reverse(out), each));
-            } else if (not(null_p(cdr(fs))) && mx_facts_sym_is_p(car(cdr(fs)), str_lit("..."))) {
-                if (not(null_p(cdr(cdr(fs)))) && mx_facts_sym_is_p(car(cdr(cdr(fs))), str_lit("..."))) {
-                    match fail_at(mxp, maker_st, mx_fail, str_lit("a fact under more than one `...`: not yet"), car(cdr(cdr(fs))))? {}
+            } else if (not(null_p(cdr(fs))) && mx_facts_sym_is_p(car(cdr(fs)), str_lit!("..."))) {
+                if (not(null_p(cdr(cdr(fs)))) && mx_facts_sym_is_p(car(cdr(cdr(fs))), str_lit!("..."))) {
+                    match fail_at(mxp, maker_st, mx_fail, str_lit!("a fact under more than one `...`: not yet"), car(cdr(cdr(fs))))? {}
                 } else {
                     ()
                 };
@@ -10122,7 +10122,7 @@ pub mod made__load__1__expand {
         } else {
             let ps = split(sigma);
             if null_p(ps) {
-                match fail_at(mxp, maker_st, mx_fail, str_lit("a label's part not found in its tree"), sigma)? {};
+                match fail_at(mxp, maker_st, mx_fail, str_lit!("a label's part not found in its tree"), sigma)? {};
                 Ok(sigma)
             } else {
                 if car(path) {
@@ -10137,10 +10137,10 @@ pub mod made__load__1__expand {
     pub fn in_element<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sigma: kayak_rt::Handle<'static, Syn>, lp: MxFactsSteps, p: MxFactsSteps, bd: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let ps = split(sigma);
         if null_p(ps) {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("a repeated part not found in its tree"), sigma)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("a repeated part not found in its tree"), sigma)? {};
             Ok(sigma)
         } else if null_p(lp) {
-            Ok(cons_syn(annotate(mxp, maker_st, mx_fail, car(ps), p, str_lit("import"), bd)?, nth(ps, int_lit(1)), sigma))
+            Ok(cons_syn(annotate(mxp, maker_st, mx_fail, car(ps), p, str_lit!("import"), bd)?, nth(ps, int_lit(1)), sigma))
         } else if car(lp) {
             Ok(cons_syn(in_element(mxp, maker_st, mx_fail, car(ps), cdr(lp), p, bd)?, nth(ps, int_lit(1)), sigma))
         } else {
@@ -10161,7 +10161,7 @@ pub mod made__load__1__expand {
 
     pub fn mx_facts_entry<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, l: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels, ring: bool) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Adds>, Unwind> {
         let items = proper_items(l);
-        let rep = (_eq(len(items), int_lit(2)) && mx_facts_sym_is_p(nth(items, int_lit(1)), str_lit("...")));
+        let rep = (_eq(len(items), int_lit(2)) && mx_facts_sym_is_p(nth(items, int_lit(1)), str_lit!("...")));
         let n = if rep {
             car(items)
         } else {
@@ -10171,18 +10171,18 @@ pub mod made__load__1__expand {
         let b = syn_end(l);
         let none = Product_11_12(mk_list(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), a, b), the::<Adds>(nil::<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>()));
         if not(syn_symbol_p(n)) {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("a fact names a label, or `(label ...)`, every repetition's"), l)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("a fact names a label, or `(label ...)`, every repetition's"), l)? {};
             Ok(none)
         } else {
             let (found, name) = (mx_facts_label_of(syn_symbol(mxp, maker_st, n)?, ls), syn_name(n));
             if null_p(found) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, str_lit("` labels no part of this node"))), l)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, str_lit!("` labels no part of this node"))), l)? {};
                 Ok(none)
             } else if (_eq(car(found).1, int_lit(0)) && rep) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` is not repeated: named alone, not `("), string_append(name, str_lit(" ...)`"))))), l)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` is not repeated: named alone, not `("), string_append(name, str_lit!(" ...)`"))))), l)? {};
                 Ok(none)
             } else if (_eq(car(found).1, int_lit(1)) && not(rep)) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` is a repeated part's: `("), string_append(name, string_append(str_lit(" ...)`, every repetition's, or a fact under "), str_lit("`...`, each repetition's")))))), l)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` is a repeated part's: `("), string_append(name, string_append(str_lit!(" ...)`, every repetition's, or a fact under "), str_lit!("`...`, each repetition's")))))), l)? {};
                 Ok(none)
             } else {
                 let lab = car(found);
@@ -10198,12 +10198,12 @@ pub mod made__load__1__expand {
                     nil::<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>()
                 };
                 if _eq(g, int_lit(0)) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` labels a part that binds "), str_lit("nothing")))), l)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` labels a part that binds "), str_lit!("nothing")))), l)? {};
                     Ok(none)
                 } else if _eq(g, int_lit(5)) {
-                    Ok(Product_11_12(mk_list(kayak_rt::cons(mk_symbol(str_lit("at"), a, b), kayak_rt::cons(path_syn(p, a, b), kayak_rt::nil())), a, b), adds))
+                    Ok(Product_11_12(mk_list(kayak_rt::cons(mk_symbol(str_lit!("at"), a, b), kayak_rt::cons(path_syn(p, a, b), kayak_rt::nil())), a, b), adds))
                 } else if ring {
-                    Ok(Product_11_12(mk_list(kayak_rt::cons(mk_symbol(str_lit("rho"), a, b), kayak_rt::cons(rib_entry(mxp, maker_st, mx_fail, a, b, p, g), kayak_rt::nil())), a, b), adds))
+                    Ok(Product_11_12(mk_list(kayak_rt::cons(mk_symbol(str_lit!("rho"), a, b), kayak_rt::cons(rib_entry(mxp, maker_st, mx_fail, a, b, p, g), kayak_rt::nil())), a, b), adds))
                 } else {
                     Ok(Product_11_12(rib_entry(mxp, maker_st, mx_fail, a, b, p, g), adds))
                 }
@@ -10227,11 +10227,11 @@ pub mod made__load__1__expand {
         let e = mx_facts_entry(mxp, maker_st, mx_fail, l, ls, false)?;
         let a = syn_start(l);
         let b = syn_end(l);
-        let cage = mx_facts_head_is_p(e.0, str_lit("at"));
+        let cage = mx_facts_head_is_p(e.0, str_lit!("at"));
         Ok(Product_11_12(mk_list(kayak_rt::cons(mk_symbol(if cage {
-            str_lit("cage")
+            str_lit!("cage")
         } else {
-            str_lit("rho")
+            str_lit!("rho")
         }, a, b), kayak_rt::cons(e.0, kayak_rt::nil())), a, b), e.1))
     }
 
@@ -10242,7 +10242,7 @@ pub mod made__load__1__expand {
             } else {
                 let f = car(fs);
                 let items = proper_items(f);
-                if (mx_facts_head_is_p(f, str_lit("bind")) && _eq(len(items), int_lit(4)) && mx_facts_sym_is_p(nth(items, int_lit(2)), str_lit("in"))) {
+                if (mx_facts_head_is_p(f, str_lit!("bind")) && _eq(len(items), int_lit(4)) && mx_facts_sym_is_p(nth(items, int_lit(2)), str_lit!("in"))) {
                     let m = nth(items, int_lit(3));
                     let target = if syn_symbol_p(m) {
                         mx_facts_label_of(syn_symbol(mxp, maker_st, m)?, ls)
@@ -10250,29 +10250,29 @@ pub mod made__load__1__expand {
                         nil::<Product_11_12_13_14_15<Symbol, Int, List<bool>, List<bool>, Int>>()
                     };
                     if null_p(target) {
-                        match fail_at(mxp, maker_st, mx_fail, str_lit("`(bind L in name)`: `name` a label of this node"), m)? {};
+                        match fail_at(mxp, maker_st, mx_fail, str_lit!("`(bind L in name)`: `name` a label of this node"), m)? {};
                         return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                     } else if _eq(car(target).1, int_lit(1)) {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a fact binding in a repeated part is "), str_lit("each repetition's: followed by `...`")), m)? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a fact binding in a repeated part is "), str_lit!("each repetition's: followed by `...`")), m)? {};
                         return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                     } else {
                         let e = mx_facts_bound(mxp, maker_st, mx_fail, nth(items, int_lit(1)), ls)?;
                         (fs, imports, elems) = (cdr(fs), cons(Product_11_12(car(target).2, e.0), imports), append(e.1, elems));
                         continue;
                     }
-                } else if (mx_facts_head_is_p(f, str_lit("export")) && not(top)) {
+                } else if (mx_facts_head_is_p(f, str_lit!("export")) && not(top)) {
                     let r = mx_facts_entries_of(mxp, maker_st, mx_fail, cdr(items), ls, false, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), elems)?;
                     (fs, rib, elems) = (cdr(fs), append(r.0, rib), r.1);
                     continue;
-                } else if (mx_facts_head_is_p(f, str_lit("export*")) && not(top)) {
+                } else if (mx_facts_head_is_p(f, str_lit!("export*")) && not(top)) {
                     let r = mx_facts_entries_of(mxp, maker_st, mx_fail, cdr(items), ls, true, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), elems)?;
                     (fs, rings, star, elems) = (cdr(fs), r.0, kayak_rt::cons(f, kayak_rt::nil()), r.1);
                     continue;
-                } else if (mx_facts_head_is_p(f, str_lit("export")) || mx_facts_head_is_p(f, str_lit("export*"))) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("what a use defines is said in what its "), string_append(str_lit("signature makes, `(defn label …)`: the top node "), str_lit("exports nothing"))), f)? {};
+                } else if (mx_facts_head_is_p(f, str_lit!("export")) || mx_facts_head_is_p(f, str_lit!("export*"))) {
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("what a use defines is said in what its "), string_append(str_lit!("signature makes, `(defn label …)`: the top node "), str_lit!("exports nothing"))), f)? {};
                     return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                 } else {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a fact is `(bind L in name)`, `(export L …)` or "), str_lit("`(export* L …)`")), f)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a fact is `(bind L in name)`, `(export L …)` or "), str_lit!("`(export* L …)`")), f)? {};
                     return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
                 }
             }
@@ -10284,7 +10284,7 @@ pub mod made__load__1__expand {
             if null_p(xs) {
                 return Ok(sigma);
             } else {
-                (sigma, xs) = (annotate(mxp, maker_st, mx_fail, sigma, car(xs).0, str_lit("import"), car(xs).1)?, cdr(xs));
+                (sigma, xs) = (annotate(mxp, maker_st, mx_fail, sigma, car(xs).0, str_lit!("import"), car(xs).1)?, cdr(xs));
                 continue;
             }
         }
@@ -10347,10 +10347,10 @@ pub mod made__load__1__expand {
     pub fn element_annotated<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sigma: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, es: SynsA) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let (ps, a, b) = (split(sigma), syn_start(sigma), syn_end(sigma));
         if null_p(ps) {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("a repeated part not found in its tree"), sigma)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("a repeated part not found in its tree"), sigma)? {};
             Ok(sigma)
         } else if null_p(path) {
-            Ok(cons_syn(mk_list(kayak_rt::cons(mk_symbol(str_lit("export"), a, b), kayak_rt::cons(car(ps), kayak_rt::cons(mk_list(cons(mk_symbol(str_lit("rho"), a, b), es), a, b), kayak_rt::nil()))), a, b), nth(ps, int_lit(1)), sigma))
+            Ok(cons_syn(mk_list(kayak_rt::cons(mk_symbol(str_lit!("export"), a, b), kayak_rt::cons(car(ps), kayak_rt::cons(mk_list(cons(mk_symbol(str_lit!("rho"), a, b), es), a, b), kayak_rt::nil()))), a, b), nth(ps, int_lit(1)), sigma))
         } else if car(path) {
             Ok(cons_syn(element_annotated(mxp, maker_st, mx_fail, car(ps), cdr(path), es)?, nth(ps, int_lit(1)), sigma))
         } else {
@@ -10385,12 +10385,12 @@ pub mod made__load__1__expand {
         let s1 = elements_annotated(mxp, maker_st, mx_fail, s0, reverse(elems))?;
         let s2 = imports_annotated(mxp, maker_st, mx_fail, s1, reverse(imports))?;
         if (not(null_p(rib)) && not(null_p(r.3))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a node exports one level, `export`, or nested "), str_lit("ones, `export*`, not both")), sigma)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a node exports one level, `export`, or nested "), str_lit!("ones, `export*`, not both")), sigma)? {};
             Ok(s2)
         } else if not(null_p(rib)) {
-            Ok(annotate(mxp, maker_st, mx_fail, s2, nil::<bool>(), str_lit("export"), mk_list(cons(mk_symbol(str_lit("rho"), a, b), reverse(rib)), a, b))?)
+            Ok(annotate(mxp, maker_st, mx_fail, s2, nil::<bool>(), str_lit!("export"), mk_list(cons(mk_symbol(str_lit!("rho"), a, b), reverse(rib)), a, b))?)
         } else if not(null_p(r.3)) {
-            Ok(annotate(mxp, maker_st, mx_fail, s2, nil::<bool>(), str_lit("export"), mk_list(cons(mk_symbol(str_lit("cage"), a, b), rings), a, b))?)
+            Ok(annotate(mxp, maker_st, mx_fail, s2, nil::<bool>(), str_lit!("export"), mk_list(cons(mk_symbol(str_lit!("cage"), a, b), rings), a, b))?)
         } else {
             Ok(s2)
         }
@@ -10407,8 +10407,8 @@ pub mod made__load__1__expand {
             Ok(Product_11_12(list_with(r.0, r.1, syn_start(s), syn_end(s)), r.2))
         } else if (syn_symbol_p(s) && not(null_p(mx_facts_named_of(syn_symbol(mxp, maker_st, s)?, get(maker_st.mx_facts_named.get().unwrap()))))) {
             Ok(Product_11_12(mx_facts_reference(mxp, maker_st, mx_fail, s, syn_symbol(mxp, maker_st, s)?)?, ls))
-        } else if mx_facts_sym_is_p(s, str_lit("place")) {
-            Ok(Product_11_12(mk_symbol(str_lit("dvar"), syn_start(s), syn_end(s)), ls))
+        } else if mx_facts_sym_is_p(s, str_lit!("place")) {
+            Ok(Product_11_12(mk_symbol(str_lit!("dvar"), syn_start(s), syn_end(s)), ls))
         } else {
             Ok(Product_11_12(s, ls))
         }
@@ -10423,12 +10423,12 @@ pub mod made__load__1__expand {
                     let r = tree(mxp, maker_st, mx_fail, car(t), p, ls)?;
                     return Ok(Product_11_12_13(reverse(out), kayak_rt::cons(r.0, kayak_rt::nil()), r.1));
                 }
-            } else if (_eq(len(xs), int_lit(2)) && not(null_p(t)) && mx_facts_sym_is_p(nth(xs, int_lit(1)), str_lit("@"))) {
+            } else if (_eq(len(xs), int_lit(2)) && not(null_p(t)) && mx_facts_sym_is_p(nth(xs, int_lit(1)), str_lit!("@"))) {
                 let ls2 = mx_facts_labelled(mxp, maker_st, mx_fail, car(xs), Product_11_12_13_14(int_lit(0), p, the::<MxFactsSteps>(nil::<bool>()), gives(mxp, maker_st, car(t))?), ls)?;
                 let r = tree(mxp, maker_st, mx_fail, car(t), p, ls2)?;
                 return Ok(Product_11_12_13(reverse(out), kayak_rt::cons(r.0, kayak_rt::nil()), r.1));
             } else {
-                let lab = (_gt(len(xs), int_lit(2)) && mx_facts_sym_is_p(nth(xs, int_lit(1)), str_lit("@")));
+                let lab = (_gt(len(xs), int_lit(2)) && mx_facts_sym_is_p(nth(xs, int_lit(1)), str_lit!("@")));
                 let used = if lab {
                     int_lit(3)
                 } else {
@@ -10441,7 +10441,7 @@ pub mod made__load__1__expand {
                 };
                 let rest = list_drop(xs, used);
                 let ap = append(p, the::<MxFactsSteps>(kayak_rt::cons(true, kayak_rt::nil())));
-                if (not(null_p(rest)) && mx_facts_sym_is_p(car(rest), str_lit("..."))) {
+                if (not(null_p(rest)) && mx_facts_sym_is_p(car(rest), str_lit!("..."))) {
                     let r = tree(mxp, maker_st, mx_fail, t1, nil::<bool>(), nil::<Product_11_12_13_14_15<Symbol, Int, List<bool>, List<bool>, Int>>())?;
                     let inner = if lab {
                         mx_facts_labelled(mxp, maker_st, mx_fail, car(xs), Product_11_12_13_14(int_lit(0), the::<MxFactsSteps>(nil::<bool>()), the::<MxFactsSteps>(nil::<bool>()), gives(mxp, maker_st, t1)?), r.1)?
@@ -10450,7 +10450,7 @@ pub mod made__load__1__expand {
                     };
                     let ls2 = repeated_labels(mxp, maker_st, mx_fail, inner, p, ls, t1)?;
                     if (not(null_p(cdr(rest))) || not(null_p(t))) {
-                        match fail_at(mxp, maker_st, mx_fail, str_lit("`...` comes last in a list"), car(rest))? {}
+                        match fail_at(mxp, maker_st, mx_fail, str_lit!("`...` comes last in a list"), car(rest))? {}
                     } else {
                         ()
                     };
@@ -10471,11 +10471,11 @@ pub mod made__load__1__expand {
 
     pub fn mx_facts_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, MxFactsLabels>, Unwind> {
         let (items, a, b) = (proper_items(s), syn_start(s), syn_end(s));
-        if (mx_facts_head_is_p(s, str_lit("many")) && _eq(len(items), int_lit(2))) {
+        if (mx_facts_head_is_p(s, str_lit!("many")) && _eq(len(items), int_lit(2))) {
             let r = tree(mxp, maker_st, mx_fail, nth(items, int_lit(1)), path, ls)?;
             Ok(Product_11_12(mk_list(kayak_rt::cons(car(items), kayak_rt::cons(r.0, kayak_rt::nil())), a, b), r.1))
-        } else if (mx_facts_head_is_p(s, str_lit("union")) || mx_facts_head_is_p(s, str_lit("oneof"))) {
-            Ok(Product_11_12(mk_list(cons(mk_symbol(str_lit("oneof"), a, b), unlabelled_members(mxp, maker_st, mx_fail, cdr(items))?), a, b), ls))
+        } else if (mx_facts_head_is_p(s, str_lit!("union")) || mx_facts_head_is_p(s, str_lit!("oneof"))) {
+            Ok(Product_11_12(mk_list(cons(mk_symbol(str_lit!("oneof"), a, b), unlabelled_members(mxp, maker_st, mx_fail, cdr(items))?), a, b), ls))
         } else {
             Ok(Product_11_12(s, ls))
         }
@@ -10489,7 +10489,7 @@ pub mod made__load__1__expand {
             if null_p(r.1) {
                 ()
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a label in a union's member that has no name: name "), string_append(str_lit("the member, a node in a `letrec-shape`, whose facts "), str_lit("may say it"))), car(ms))? {}
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a label in a union's member that has no name: name "), string_append(str_lit!("the member, a node in a `letrec-shape`, whose facts "), str_lit!("may say it"))), car(ms))? {}
             };
             Ok(cons(r.0, unlabelled_members(mxp, maker_st, mx_fail, cdr(ms))?))
         }
@@ -10502,14 +10502,14 @@ pub mod made__load__1__expand {
             let pushed = set(maker_st.open.get().unwrap(), cons(n, get(maker_st.open.get().unwrap())));
             let r = def_sigma(mxp, maker_st, mx_fail, car(mx_facts_named_of(n, get(maker_st.mx_facts_named.get().unwrap()))).1)?;
             let popped = set(maker_st.open.get().unwrap(), cdr(get(maker_st.open.get().unwrap())));
-            Ok(mk_list(kayak_rt::cons(mk_symbol(str_lit("mu"), syn_start(s), syn_end(s)), kayak_rt::cons(s, kayak_rt::cons(r, kayak_rt::nil()))), syn_start(s), syn_end(s)))
+            Ok(mk_list(kayak_rt::cons(mk_symbol(str_lit!("mu"), syn_start(s), syn_end(s)), kayak_rt::cons(s, kayak_rt::cons(r, kayak_rt::nil()))), syn_start(s), syn_end(s)))
         }
     }
 
     pub fn def_sigma<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, def: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
-        if mx_facts_head_is_p(def, str_lit("union")) {
+        if mx_facts_head_is_p(def, str_lit!("union")) {
             let (kind, a, b) = (def_gives(mxp, maker_st, mx_fail, def)?, syn_start(def), syn_end(def));
-            Ok(mk_list(cons(mk_symbol(str_lit("oneof"), a, b), members_sigma(mxp, maker_st, mx_fail, cdr(proper_items(def)), kind)?), a, b))
+            Ok(mk_list(cons(mk_symbol(str_lit!("oneof"), a, b), members_sigma(mxp, maker_st, mx_fail, cdr(proper_items(def)), kind)?), a, b))
         } else {
             Ok(node_sigma(mxp, maker_st, mx_fail, def)?)
         }
@@ -10523,10 +10523,10 @@ pub mod made__load__1__expand {
             let a = syn_start(car(ms));
             let b = syn_end(car(ms));
             let t2 = if (not(_eq(kind, int_lit(0))) && _eq(def_gives(mxp, maker_st, mx_fail, car(ms))?, int_lit(0))) {
-                mk_list(kayak_rt::cons(mk_symbol(str_lit("export"), a, b), kayak_rt::cons(t, kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(if _eq(kind, int_lit(5)) {
-                    str_lit("cage")
+                mk_list(kayak_rt::cons(mk_symbol(str_lit!("export"), a, b), kayak_rt::cons(t, kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(if _eq(kind, int_lit(5)) {
+                    str_lit!("cage")
                 } else {
-                    str_lit("rho")
+                    str_lit!("rho")
                 }, a, b), kayak_rt::nil()), a, b), kayak_rt::nil()))), a, b)
             } else {
                 t
@@ -10538,7 +10538,7 @@ pub mod made__load__1__expand {
     pub fn node_sigma<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, node: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let items = proper_items(node);
         if _lt(len(items), int_lit(2)) {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("a node is `(node-name tree fact …)`"), node)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("a node is `(node-name tree fact …)`"), node)? {};
             Ok(node)
         } else {
             let r = tree(mxp, maker_st, mx_fail, nth(items, int_lit(1)), nil::<bool>(), nil::<Product_11_12_13_14_15<Symbol, Int, List<bool>, List<bool>, Int>>())?;
@@ -10554,7 +10554,7 @@ pub mod made__load__1__expand {
                 let d = car(ds);
                 let two = proper_items(d);
                 let pair = _eq(len(two), int_lit(2));
-                let every = (pair && mx_facts_sym_is_p(nth(two, int_lit(1)), str_lit("...")));
+                let every = (pair && mx_facts_sym_is_p(nth(two, int_lit(1)), str_lit!("...")));
                 let n = if pair {
                     car(two)
                 } else {
@@ -10568,7 +10568,7 @@ pub mod made__load__1__expand {
                     nil::<Product_11_12_13_14_15<Symbol, Int, List<bool>, List<bool>, Int>>()
                 };
                 if (every && not(syn_symbol_p(n))) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("every repetition's macro binder, `((label "), str_lit("(macro …)) ...)`: not yet")), d)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("every repetition's macro binder, `((label "), str_lit!("(macro …)) ...)`: not yet")), d)? {};
                     ds = cdr(ds);
                     continue;
                 } else if every {
@@ -10576,15 +10576,15 @@ pub mod made__load__1__expand {
                     (ds, out, adds) = (cdr(ds), cons(e.0, out), append(reverse(e.1), adds));
                     continue;
                 } else if not(syn_symbol_p(n)) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("what a use defines is a label, `(label ...)` "), str_lit("or `(label (macro …))`")), n)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("what a use defines is a label, `(label ...)` "), str_lit!("or `(label (macro …))`")), n)? {};
                     ds = cdr(ds);
                     continue;
                 } else if null_p(found) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(n), string_append(str_lit("` labels no part of this "), str_lit("signature's top")))), n)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(n), string_append(str_lit!("` labels no part of this "), str_lit!("signature's top")))), n)? {};
                     ds = cdr(ds);
                     continue;
                 } else if _eq(car(found).1, int_lit(1)) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(n), string_append(str_lit("` is a repeated part's: `("), string_append(syn_name(n), str_lit(" ...)`, every repetition's"))))), n)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(n), string_append(str_lit!("` is a repeated part's: `("), string_append(syn_name(n), str_lit!(" ...)`, every repetition's"))))), n)? {};
                     ds = cdr(ds);
                     continue;
                 } else if pair {
@@ -10599,7 +10599,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn mx_facts_made_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, m: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Adds>, Unwind> {
-        if not(mx_facts_head_is_p(m, str_lit("defn"))) {
+        if not(mx_facts_head_is_p(m, str_lit!("defn"))) {
             Ok(Product_11_12(m, the::<Adds>(nil::<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())))
         } else {
             let r = made_entries(mxp, maker_st, mx_fail, cdr(proper_items(m)), ls, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), nil::<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())?;
@@ -10617,8 +10617,8 @@ pub mod made__load__1__expand {
             mx_facts_shape(mxp, maker_st, mx_fail, nth(items, int_lit(1)))?
         };
         let mx_facts_parts = list_parts(top);
-        if (null_p(mx_facts_parts.0) || not(mx_facts_sym_is_p(car(mx_facts_parts.0), str_lit("_")))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a signature's shape is `(_ part …)`, as a "), str_lit("`syntax-rules` pattern is")), top)? {};
+        if (null_p(mx_facts_parts.0) || not(mx_facts_sym_is_p(car(mx_facts_parts.0), str_lit!("_")))) {
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a signature's shape is `(_ part …)`, as a "), str_lit!("`syntax-rules` pattern is")), top)? {};
             Ok(s)
         } else {
             let operands = list_with(cdr(mx_facts_parts.0), mx_facts_parts.1, a, b);
@@ -10626,7 +10626,7 @@ pub mod made__load__1__expand {
             let m = mx_facts_made_of(mxp, maker_st, mx_fail, nth(items, int_lit(2)), r.1)?;
             let sigma = mx_facts_facts(mxp, maker_st, mx_fail, r.0, cdr(cdr(cdr(items))), r.1, true, m.1)?;
             let made = m.0;
-            let out = mk_list(kayak_rt::cons(mk_symbol(str_lit("macro/addressed"), a, b), kayak_rt::cons(sigma, kayak_rt::cons(made, kayak_rt::nil()))), a, b);
+            let out = mk_list(kayak_rt::cons(mk_symbol(str_lit!("macro/addressed"), a, b), kayak_rt::cons(sigma, kayak_rt::cons(made, kayak_rt::nil()))), a, b);
             set(maker_st.mx_facts_named.get().unwrap(), saved);
             Ok(out)
         }
@@ -10676,12 +10676,12 @@ pub mod made__load__1__expand {
 
     pub fn defines_syntax_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper(s);
-        (not(null_p(items)) && syn_symbol_p(car(items)) && (string_eq_p(syn_name(car(items)), str_lit("define-syntax")) || string_eq_p(syn_name(car(items)), str_lit("define-syntax-rec"))))
+        (not(null_p(items)) && syn_symbol_p(car(items)) && (string_eq_p(syn_name(car(items)), str_lit!("define-syntax")) || string_eq_p(syn_name(car(items)), str_lit!("define-syntax-rec"))))
     }
 
     pub fn for_syntax_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper(s);
-        (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("begin-for-syntax")))
+        (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("begin-for-syntax")))
     }
 
     pub fn member_names<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ms: SynsA) -> Result<MxParserTypesNames, Unwind> {
@@ -10701,7 +10701,7 @@ pub mod made__load__1__expand {
         let items = proper(s);
         if not(defines_syntax_p(s)) {
             Ok(nil::<Symbol>())
-        } else if string_eq_p(syn_name(car(items)), str_lit("define-syntax")) {
+        } else if string_eq_p(syn_name(car(items)), str_lit!("define-syntax")) {
             if (_gt(len(items), int_lit(1)) && syn_symbol_p(nth(items, int_lit(1)))) {
                 Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, kayak_rt::nil()))
             } else {
@@ -10717,13 +10717,13 @@ pub mod made__load__1__expand {
         if (not(null_p(items)) && syn_symbol_p(car(items))) {
             syn_name(car(items))
         } else {
-            str_lit("")
+            str_lit!("")
         }
     }
 
     pub fn load_path(s: kayak_rt::Handle<'static, Syn>) -> List<Str> {
         let items = proper(s);
-        if (_eq(len(items), int_lit(2)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("load-module"))) {
+        if (_eq(len(items), int_lit(2)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("load-module"))) {
             let tagcase_ = nth(items, int_lit(1));
             match *tagcase_ {
                 made__load__0__expander_kc::Syn::Atom(d, a, b, x) => {
@@ -10750,7 +10750,7 @@ pub mod made__load__1__expand {
         } else {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
         };
-        if (_gt_eq(len(applied), int_lit(2)) && syn_symbol_p(car(applied)) && string_eq_p(syn_name(car(applied)), str_lit("proj"))) {
+        if (_gt_eq(len(applied), int_lit(2)) && syn_symbol_p(car(applied)) && string_eq_p(syn_name(car(applied)), str_lit!("proj"))) {
             load_path(nth(applied, int_lit(1)))
         } else {
             nil::<Str>()
@@ -10795,7 +10795,7 @@ pub mod made__load__1__expand {
 
     pub fn imports_syntax_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper(s);
-        (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("import-with-syntax")))
+        (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("import-with-syntax")))
     }
 
     pub fn all_names<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut xs: SynsA) -> Result<(), Unwind> {
@@ -10816,11 +10816,11 @@ pub mod made__load__1__expand {
         let head = if (not(null_p(items)) && syn_symbol_p(car(items))) {
             syn_name(car(items))
         } else {
-            str_lit("")
+            str_lit!("")
         };
-        if (string_eq_p(head, str_lit("only")) || string_eq_p(head, str_lit("except"))) {
+        if (string_eq_p(head, str_lit!("only")) || string_eq_p(head, str_lit!("except"))) {
             all_names(mxp, maker_st, mx_fail, cdr(items))?;
-            Ok(Product_11_12(string_eq_p(head, str_lit("only")), cdr(items)))
+            Ok(Product_11_12(string_eq_p(head, str_lit!("only")), cdr(items)))
         } else {
             match fail_at(mxp, maker_st, mx_fail, maker_st.import_usage.get().unwrap(), f)? {};
             Ok(Product_11_12(true, the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())))
@@ -10884,7 +10884,7 @@ pub mod made__load__1__expand {
     #[inline]
     pub fn hide_form_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper(s);
-        string_eq_p(mx_files_head_name(s), str_lit("hide"))
+        string_eq_p(mx_files_head_name(s), str_lit!("hide"))
     }
 
     pub fn file_syntax(mut forms: SynsA) -> List<FileMacro> {
@@ -10985,16 +10985,16 @@ pub mod made__load__1__expand {
                 } else {
                     defined_name(mxp, maker_st, nth(items, int_lit(1)))?
                 };
-                if (string_eq_p(head, str_lit("define")) || string_eq_p(head, str_lit("define*"))) {
+                if (string_eq_p(head, str_lit!("define")) || string_eq_p(head, str_lit!("define*"))) {
                     (forms, vs) = (cdr(forms), append(named, vs));
                     continue;
-                } else if string_eq_p(head, str_lit("define-rec")) {
+                } else if string_eq_p(head, str_lit!("define-rec")) {
                     (forms, vs) = (cdr(forms), append(rec_names(mxp, maker_st, cdr(items))?, vs));
                     continue;
-                } else if string_eq_p(head, str_lit("define-generative")) {
+                } else if string_eq_p(head, str_lit!("define-generative")) {
                     (forms, vs, ts) = (cdr(forms), append(generative_values(mxp, maker_st, named, mx_files_drop_n(items, int_lit(3)))?, vs), append(named, ts));
                     continue;
-                } else if (string_eq_p(head, str_lit("define-type")) || string_eq_p(head, str_lit("define-effect"))) {
+                } else if (string_eq_p(head, str_lit!("define-type")) || string_eq_p(head, str_lit!("define-effect"))) {
                     (forms, ts) = (cdr(forms), append(named, ts));
                     continue;
                 } else {
@@ -11017,7 +11017,7 @@ pub mod made__load__1__expand {
         if null_p(ns) {
             nil::<Product_11_12<Symbol, Symbol>>()
         } else {
-            kayak_rt::heap_cons(Product_11_12(car(ns), string_to_symbol(string_append(str_lit("%syntax:"), string_append(key, string_append(str_lit(":"), symbol_to_string(car(ns))))))), internal_names(key, cdr(ns)))
+            kayak_rt::heap_cons(Product_11_12(car(ns), string_to_symbol(string_append(str_lit!("%syntax:"), string_append(key, string_append(str_lit!(":"), symbol_to_string(car(ns))))))), internal_names(key, cdr(ns)))
         }
     }
 
@@ -11044,7 +11044,7 @@ pub mod made__load__1__expand {
 
     pub fn load_noted<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, x: kayak_rt::Handle<'static, Syn>, ls: LoadDefs) -> Result<LoadDefs, Unwind> {
         let items = proper(x);
-        if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(x), str_lit("define")) && syn_symbol_p(nth(items, int_lit(1)))) {
+        if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(x), str_lit!("define")) && syn_symbol_p(nth(items, int_lit(1)))) {
             let n = syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?;
             let path = def_path(nth(items, _minus(len(items), int_lit(1))));
             let kept = without_load(n, ls);
@@ -11121,7 +11121,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn lenient_filter(f: kayak_rt::Handle<'static, Syn>) -> MxFilesFilter {
-        Product_11_12(string_eq_p(mx_files_head_name(f), str_lit("only")), names_only(cdr(proper(f))))
+        Product_11_12(string_eq_p(mx_files_head_name(f), str_lit!("only")), names_only(cdr(proper(f))))
     }
 
     pub fn forms_give_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut n: Symbol, mut xs: SynsA, mut fs: Files, mut ls: List<Product_11_12<Symbol, Int>>, mut h: bool) -> Result<bool, Unwind> {
@@ -11131,7 +11131,7 @@ pub mod made__load__1__expand {
             } else {
                 let x = car(xs);
                 let items = proper(x);
-                let ls2 = if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(x), str_lit("define")) && syn_symbol_p(nth(items, int_lit(1))) && not(null_p(load_path(nth(items, _minus(len(items), int_lit(1))))))) {
+                let ls2 = if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(x), str_lit!("define")) && syn_symbol_p(nth(items, int_lit(1))) && not(null_p(load_path(nth(items, _minus(len(items), int_lit(1))))))) {
                     cons(Product_11_12(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, syn_start(nth(items, _minus(len(items), int_lit(1))))), ls)
                 } else {
                     ls
@@ -11224,7 +11224,7 @@ pub mod made__load__1__expand {
                     let lit = (_eq(k, int_lit(7)) || _eq(k, int_lit(15)));
                     let n = syn_symbol(mxp, maker_st, s)?;
                     if (_eq(k, int_lit(15)) && not(mx_files_name_in_p(n, lits))) {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), string_append(str_lit("` is the trailmark the "), string_append(str_lit("signature writes here, `(trailmark "), string_append(syn_name(s), string_append(str_lit(")`, and is not among the `syntax-rules`' "), str_lit("`#:trailmarks`"))))))), s)? {}
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(s), string_append(str_lit!("` is the trailmark the "), string_append(str_lit!("signature writes here, `(trailmark "), string_append(syn_name(s), string_append(str_lit!(")`, and is not among the `syntax-rules`' "), str_lit!("`#:trailmarks`"))))))), s)? {}
                     } else if (not(lit) && {
                         let tagcase_ = node_kids(mxp, maker_st, i);
                         match *tagcase_ {
@@ -11237,7 +11237,7 @@ pub mod made__load__1__expand {
                             }
                         }
                     } && mx_files_name_in_p(n, lits)) {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), string_append(str_lit("` is among the `syntax-rules`' "), string_append(str_lit("`#:trailmarks`, and the signature has a part "), string_append(str_lit("here, not `(trailmark "), string_append(syn_name(s), str_lit(")`"))))))), s)? {}
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(s), string_append(str_lit!("` is among the `syntax-rules`' "), string_append(str_lit!("`#:trailmarks`, and the signature has a part "), string_append(str_lit!("here, not `(trailmark "), string_append(syn_name(s), str_lit!(")`"))))))), s)? {}
                     } else {
                         ()
                     }
@@ -11267,7 +11267,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn rules_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
-        string_eq_p(mx_files_head_name(s), str_lit("syntax-rules"))
+        string_eq_p(mx_files_head_name(s), str_lit!("syntax-rules"))
     }
 
     pub fn names_only_unmarked<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut ns: MxParserTypesNames) -> MxParserTypesNames {
@@ -11312,22 +11312,22 @@ pub mod made__load__1__expand {
         if null_p(parts) {
             match fail_at(mxp, maker_st, mx_fail, maker_st.rules_usage.get().unwrap(), rules)? {};
             Ok(none)
-        } else if (syn_keyword_p(car(parts)) && string_eq_p(keyword_name(car(parts)), str_lit("trailmarks")) && not(null_p(cdr(parts)))) {
+        } else if (syn_keyword_p(car(parts)) && string_eq_p(keyword_name(car(parts)), str_lit!("trailmarks")) && not(null_p(cdr(parts)))) {
             let ns = proper(nth(parts, int_lit(1)));
             if (not(null_p(ns)) && all_names_p(ns)) {
                 Ok(Product_11_12(names_of_syns(mxp, maker_st, ns)?, cdr(cdr(parts))))
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a `syntax-rules`' `#:trailmarks` are a list "), str_lit("of names, one or more")), nth(parts, int_lit(1)))? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a `syntax-rules`' `#:trailmarks` are a list "), str_lit!("of names, one or more")), nth(parts, int_lit(1)))? {};
                 Ok(none)
             }
         } else if syn_keyword_p(car(parts)) {
             match fail_at(mxp, maker_st, mx_fail, maker_st.rules_usage.get().unwrap(), car(parts))? {};
             Ok(none)
         } else if syn_nil_p(car(parts)) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a `syntax-rules` has no list of literals: drop the "), string_append(str_lit("`()` (names its patterns match are written "), str_lit("`#:trailmarks (name …)`)"))), car(parts))? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a `syntax-rules` has no list of literals: drop the "), string_append(str_lit!("`()` (names its patterns match are written "), str_lit!("`#:trailmarks (name …)`)"))), car(parts))? {};
             Ok(none)
         } else if (not(null_p(proper(car(parts)))) && all_names_p(proper(car(parts)))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a `syntax-rules`' names its patterns match are its "), string_append(str_lit("trailmarks: `#:trailmarks "), string_append(show_syn(car(parts)), str_lit("`, each defined `(define-syntax name (trailmark))`")))), car(parts))? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a `syntax-rules`' names its patterns match are its "), string_append(str_lit!("trailmarks: `#:trailmarks "), string_append(show_syn(car(parts)), str_lit!("`, each defined `(define-syntax name (trailmark))`")))), car(parts))? {};
             Ok(none)
         } else {
             Ok(Product_11_12(the::<MxParserTypesNames>(nil::<Symbol>()), parts))
@@ -11348,23 +11348,23 @@ pub mod made__load__1__expand {
 
     pub fn trailmark_p(t: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper(t);
-        (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("trailmark")))
+        (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("trailmark")))
     }
 
     pub fn written_one<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, name: kayak_rt::Handle<'static, Syn>, rest: SynsA, at: kayak_rt::Handle<'static, Syn>, usage: Str) -> Result<MxFilesWritten, Unwind> {
-        let none = Product_11_12_13_14_15(string_to_symbol(str_lit("")), the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), the::<MxParserTypesNames>(nil::<Symbol>()), the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), at);
+        let none = Product_11_12_13_14_15(string_to_symbol(str_lit!("")), the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), the::<MxParserTypesNames>(nil::<Symbol>()), the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), at);
         if (not(syn_symbol_p(name)) || reserved_syn_p(mxp, maker_st, name)?) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(usage, str_lit(": a macro's name, not a form's")), name)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(usage, str_lit!(": a macro's name, not a form's")), name)? {};
             Ok(none)
         } else if (_eq(len(rest), int_lit(1)) && trailmark_p(car(rest))) {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("a trailmark is defined alone, by `define-syntax`"), at)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("a trailmark is defined alone, by `define-syntax`"), at)? {};
             Ok(none)
         } else if (_eq(len(rest), int_lit(1)) && rules_p(car(rest))) {
             Ok(rules_written(mxp, maker_st, mx_fail, syn_symbol(mxp, maker_st, name)?, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), car(rest), at)?)
         } else if (_eq(len(rest), int_lit(2)) && rules_p(nth(rest, int_lit(1)))) {
             Ok(rules_written(mxp, maker_st, mx_fail, syn_symbol(mxp, maker_st, name)?, kayak_rt::cons(car(rest), kayak_rt::nil()), nth(rest, int_lit(1)), at)?)
         } else if (_gt_eq(len(rest), int_lit(2)) && _eq(len(proper(nth(rest, int_lit(1)))), int_lit(2))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a macro's clauses are a transformer's: "), string_append(maker_st.rules_usage.get().unwrap(), str_lit(", after its signature if it is written"))), nth(rest, int_lit(1)))? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a macro's clauses are a transformer's: "), string_append(maker_st.rules_usage.get().unwrap(), str_lit!(", after its signature if it is written"))), nth(rest, int_lit(1)))? {};
             Ok(none)
         } else {
             match fail_at(mxp, maker_st, mx_fail, usage, at)? {};
@@ -11384,7 +11384,7 @@ pub mod made__load__1__expand {
                 } else {
                     let w = written_one(mxp, maker_st, mx_fail, car(parts), cdr(parts), car(ms), maker_st.rec_usage.get().unwrap())?;
                     if written_in_p(w.0, out) {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(w.0), string_append(str_lit("` is defined twice in this "), str_lit("`define-syntax-rec`")))), car(parts))? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(w.0), string_append(str_lit!("` is defined twice in this "), str_lit!("`define-syntax-rec`")))), car(parts))? {};
                         return Ok(nil::<Product_11_12_13_14_15<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, List<Symbol>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>());
                     } else {
                         (ms, out) = (cdr(ms), cons(w, out));
@@ -11398,13 +11398,13 @@ pub mod made__load__1__expand {
     pub fn mx_files_written_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>) -> Result<Writtens, Unwind> {
         let items = proper(form);
         if _lt(len(items), int_lit(2)) {
-            match fail_at(mxp, maker_st, mx_fail, if string_eq_p(mx_files_head_name(form), str_lit("define-syntax-rec")) {
+            match fail_at(mxp, maker_st, mx_fail, if string_eq_p(mx_files_head_name(form), str_lit!("define-syntax-rec")) {
                 maker_st.rec_usage.get().unwrap()
             } else {
                 maker_st.define_usage.get().unwrap()
             }, form)? {};
             Ok(nil::<Product_11_12_13_14_15<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, List<Symbol>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())
-        } else if string_eq_p(mx_files_head_name(form), str_lit("define-syntax-rec")) {
+        } else if string_eq_p(mx_files_head_name(form), str_lit!("define-syntax-rec")) {
             Ok(written_members(mxp, maker_st, mx_fail, cdr(items), nil::<Product_11_12_13_14_15<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, List<Symbol>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())?)
         } else {
             Ok(kayak_rt::cons(written_one(mxp, maker_st, mx_fail, nth(items, int_lit(1)), cdr(cdr(items)), form, maker_st.define_usage.get().unwrap())?, kayak_rt::nil()))
@@ -11413,7 +11413,7 @@ pub mod made__load__1__expand {
 
     pub fn trailmark_form(form: kayak_rt::Handle<'static, Syn>) -> SynsA {
         let items = proper(form);
-        if (_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(form), str_lit("define-syntax")) && trailmark_p(nth(items, int_lit(2)))) {
+        if (_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(form), str_lit!("define-syntax")) && trailmark_p(nth(items, int_lit(2)))) {
             kayak_rt::heap_cons(nth(items, int_lit(2)), kayak_rt::nil())
         } else {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
@@ -11438,10 +11438,10 @@ pub mod made__load__1__expand {
         let t = nth(proper(form), int_lit(2));
         let said = cdr(proper(t));
         if (not(syn_symbol_p(name)) || reserved_syn_p(mxp, maker_st, name)?) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(maker_st.define_usage.get().unwrap(), str_lit(": a macro's name, not a form's")), name)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(maker_st.define_usage.get().unwrap(), str_lit!(": a macro's name, not a form's")), name)? {};
             Ok(nil::<Symbol>())
         } else if not((null_p(said) || (null_p(cdr(said)) && syn_string_p(car(said))))) {
-            match fail_at(mxp, maker_st, mx_fail, str_lit("`(trailmark)`, or `(trailmark \"where it belongs\")`"), t)? {};
+            match fail_at(mxp, maker_st, mx_fail, str_lit!("`(trailmark)`, or `(trailmark \"where it belongs\")`"), t)? {};
             Ok(nil::<Symbol>())
         } else {
             set(maker_st.defined.get().unwrap(), macros_but(syn_symbol(mxp, maker_st, name)?, get(maker_st.defined.get().unwrap())));
@@ -11465,11 +11465,11 @@ pub mod made__load__1__expand {
 
     pub fn signature_poly<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<SynsA, kayak_rt::Handle<'static, Syn>>, Unwind> {
         let items = proper(s);
-        if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("poly"))) {
+        if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("poly"))) {
             if (syn_nil_p(nth(items, int_lit(1))) || not(null_p(proper(nth(items, int_lit(1)))))) {
                 Ok(Product_11_12(proper(nth(items, int_lit(1))), nth(items, int_lit(2))))
             } else {
-                match fail_at(mxp, maker_st, mx_fail, str_lit("a signature's `(poly ((name kind) …) σ)`"), nth(items, int_lit(1)))? {};
+                match fail_at(mxp, maker_st, mx_fail, str_lit!("a signature's `(poly ((name kind) …) σ)`"), nth(items, int_lit(1)))? {};
                 Ok(Product_11_12(the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), s))
             }
         } else {
@@ -11515,11 +11515,11 @@ pub mod made__load__1__expand {
         let head = if (pair_p(items) && syn_symbol_p(car(items))) {
             syn_name(car(items))
         } else {
-            str_lit("")
+            str_lit!("")
         };
-        let here = if (string_eq_p(head, str_lit("rho")) || string_eq_p(head, str_lit("defn"))) {
+        let here = if (string_eq_p(head, str_lit!("rho")) || string_eq_p(head, str_lit!("defn"))) {
             lettered_entries(cdr(items))
-        } else if ((string_eq_p(head, str_lit("at")) || string_eq_p(head, str_lit("shape"))) && _eq(len(items), int_lit(2)) && letters_p(nth(items, int_lit(1)))) {
+        } else if ((string_eq_p(head, str_lit!("at")) || string_eq_p(head, str_lit!("shape"))) && _eq(len(items), int_lit(2)) && letters_p(nth(items, int_lit(1)))) {
             kayak_rt::heap_cons(nth(items, int_lit(1)), kayak_rt::nil())
         } else {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
@@ -11551,51 +11551,51 @@ pub mod made__load__1__expand {
         let (bs, a, b) = (proper_items(body), syn_start(made), syn_end(made));
         if null_p(entries) {
             Ok(body)
-        } else if (pair_p(bs) && syn_symbol_p(car(bs)) && string_eq_p(syn_name(car(bs)), str_lit("export"))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("what a use defines is said once, in what it "), string_append(str_lit("makes, `(defn (ℓ δ) …)`, not by an `export` "), str_lit("around its parts too"))), body)? {};
+        } else if (pair_p(bs) && syn_symbol_p(car(bs)) && string_eq_p(syn_name(car(bs)), str_lit!("export"))) {
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("what a use defines is said once, in what it "), string_append(str_lit!("makes, `(defn (ℓ δ) …)`, not by an `export` "), str_lit!("around its parts too"))), body)? {};
             Ok(body)
         } else {
-            let rho = mk_list(cons(mk_symbol(str_lit("rho"), a, b), entries), a, b);
-            Ok(mk_list(kayak_rt::cons(mk_symbol(str_lit("export"), a, b), kayak_rt::cons(body, kayak_rt::cons(rho, kayak_rt::nil()))), a, b))
+            let rho = mk_list(cons(mk_symbol(str_lit!("rho"), a, b), entries), a, b);
+            Ok(mk_list(kayak_rt::cons(mk_symbol(str_lit!("export"), a, b), kayak_rt::cons(body, kayak_rt::cons(rho, kayak_rt::nil()))), a, b))
         }
     }
 
     pub fn signature_made<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Int>, Unwind> {
         let items = proper_items(s);
-        if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("macro/addressed"))) {
+        if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("macro/addressed"))) {
             let m = nth(items, int_lit(2));
             let ms = proper_items(m);
             let made = if syn_symbol_p(m) {
                 syn_name(m)
-            } else if (pair_p(ms) && syn_symbol_p(car(ms)) && string_eq_p(syn_name(car(ms)), str_lit("defn"))) {
-                str_lit("(defn")
+            } else if (pair_p(ms) && syn_symbol_p(car(ms)) && string_eq_p(syn_name(car(ms)), str_lit!("defn"))) {
+                str_lit!("(defn")
             } else {
-                str_lit("")
+                str_lit!("")
             };
-            if string_eq_p(made, str_lit("defn")) {
+            if string_eq_p(made, str_lit!("defn")) {
                 Ok(Product_11_12(nth(items, int_lit(1)), int_lit(1)))
-            } else if string_eq_p(made, str_lit("(defn")) {
+            } else if string_eq_p(made, str_lit!("(defn")) {
                 Ok(Product_11_12(defined_in(mxp, maker_st, mx_fail, nth(items, int_lit(1)), m, cdr(ms))?, int_lit(1)))
-            } else if string_eq_p(made, str_lit("desc")) {
+            } else if string_eq_p(made, str_lit!("desc")) {
                 Ok(Product_11_12(nth(items, int_lit(1)), int_lit(2)))
-            } else if string_eq_p(made, str_lit("expr")) {
+            } else if string_eq_p(made, str_lit!("expr")) {
                 Ok(Product_11_12(nth(items, int_lit(1)), int_lit(0)))
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("what a signature's uses make is "), string_append(str_lit("`expr`, `defn`, `(defn D …)` or "), str_lit("`desc`"))), nth(items, int_lit(2)))? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("what a signature's uses make is "), string_append(str_lit!("`expr`, `defn`, `(defn D …)` or "), str_lit!("`desc`"))), nth(items, int_lit(2)))? {};
                 Ok(Product_11_12(s, int_lit(0)))
             }
         } else {
             let h = if (pair_p(items) && syn_symbol_p(car(items))) {
                 syn_name(car(items))
             } else {
-                str_lit("")
+                str_lit!("")
             };
-            match fail_at(mxp, maker_st, mx_fail, if string_eq_p(h, str_lit("->")) {
-                string_append(str_lit("a macro's signature is `(macro (_ part …) "), str_lit("made fact …)`: `->` is a procedure's type"))
-            } else if string_eq_p(h, str_lit("macro")) {
-                string_append(str_lit("a signature in shapes and facts is `(macro "), string_append(str_lit("(_ part …) made fact …)`; Herman's, "), str_lit("`(macro/addressed σ made)`")))
+            match fail_at(mxp, maker_st, mx_fail, if string_eq_p(h, str_lit!("->")) {
+                string_append(str_lit!("a macro's signature is `(macro (_ part …) "), str_lit!("made fact …)`: `->` is a procedure's type"))
+            } else if string_eq_p(h, str_lit!("macro")) {
+                string_append(str_lit!("a signature in shapes and facts is `(macro "), string_append(str_lit!("(_ part …) made fact …)`; Herman's, "), str_lit!("`(macro/addressed σ made)`")))
             } else {
-                string_append(str_lit("a signature is `(macro (_ part …) made "), string_append(str_lit("fact …)`, what its uses make written: "), str_lit("`expr`, `defn`, `(defn D …)` or `desc`")))
+                string_append(str_lit!("a signature is `(macro (_ part …) made "), string_append(str_lit!("fact …)`, what its uses make written: "), str_lit!("`expr`, `defn`, `(defn D …)` or `desc`")))
             }, s)? {};
             Ok(Product_11_12(s, int_lit(0)))
         }
@@ -11610,7 +11610,7 @@ pub mod made__load__1__expand {
         };
         let sig = poly.1;
         let sigs = proper_items(sig);
-        let lettered = if (pair_p(sigs) && syn_symbol_p(car(sigs)) && string_eq_p(syn_name(car(sigs)), str_lit("macro/addressed"))) {
+        let lettered = if (pair_p(sigs) && syn_symbol_p(car(sigs)) && string_eq_p(syn_name(car(sigs)), str_lit!("macro/addressed"))) {
             lettered_in(sig)
         } else {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
@@ -11618,7 +11618,7 @@ pub mod made__load__1__expand {
         let said = if null_p(lettered) {
             ()
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(show_syn(car(lettered)), string_append(str_lit("` is an address "), string_append(str_lit("in Herman's letters: "), maker_st.path_usage.get().unwrap())))), car(lettered))? {}
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(show_syn(car(lettered)), string_append(str_lit!("` is an address "), string_append(str_lit!("in Herman's letters: "), maker_st.path_usage.get().unwrap())))), car(lettered))? {}
         };
         let made = signature_made(mxp, maker_st, mx_fail, poly.1)?;
         let t = read_sty(mxp, maker_st, mx_fail, made.0, nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>(), nil::<Product_11_12<Symbol, bool>>())?;
@@ -11655,7 +11655,7 @@ pub mod made__load__1__expand {
                 if null_p(r.0) {
                     syntax_read_x(mxp, maker_st, car(es).1, r.1, r.2)
                 } else {
-                    match fail_at(mxp, maker_st, mx_fail, str_lit("a `(macro σ made)` entry's signature has no `poly`, not yet"), syntax_sig_of(mxp, maker_st, car(es).1))? {}
+                    match fail_at(mxp, maker_st, mx_fail, str_lit!("a `(macro σ made)` entry's signature has no `poly`, not yet"), syntax_sig_of(mxp, maker_st, car(es).1))? {}
                 };
                 es = cdr(es);
                 continue;
@@ -11722,7 +11722,7 @@ pub mod made__load__1__expand {
 
     pub fn said_fail<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Str, shown: Str) -> kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>> {
         kayak_rt::closure3((mx_fail, n, shown,), |(mx_fail, n, shown,), m: Str, a: Int, b: Int| {
-            Ok(match mx_fail.call(string_append(str_lit("`"), string_append(n, string_append(str_lit("` is refused: no signature is written, and the one inferred "), string_append(str_lit("from its clauses does not fit them: "), string_append(m, string_append(str_lit("\n  inferred: "), string_append(shown, string_append(str_lit("\n  write one: (define-syntax "), string_append(n, str_lit(" SIGNATURE (syntax-rules …))")))))))))), a, b)? {})
+            Ok(match mx_fail.call(string_append(str_lit!("`"), string_append(n, string_append(str_lit!("` is refused: no signature is written, and the one inferred "), string_append(str_lit!("from its clauses does not fit them: "), string_append(m, string_append(str_lit!("\n  inferred: "), string_append(shown, string_append(str_lit!("\n  write one: (define-syntax "), string_append(n, str_lit!(" SIGNATURE (syntax-rules …))")))))))))), a, b)? {})
         })
     }
 
@@ -11999,10 +11999,10 @@ pub mod made__load__1__expand {
             Ok(cl_seq(car(x)))
         } else if syn_symbol_p(s) {
             let name = syn_name(s);
-            if string_eq_p(name, str_lit("_")) {
+            if string_eq_p(name, str_lit!("_")) {
                 Ok(cl_wild())
-            } else if string_eq_p(name, str_lit("...")) {
-                match fail_at(mxp, maker_st, mx_fail, str_lit("`...` follows the part it repeats, last in a list"), s)? {};
+            } else if string_eq_p(name, str_lit!("...")) {
+                match fail_at(mxp, maker_st, mx_fail, str_lit!("`...` follows the part it repeats, last in a list"), s)? {};
                 Ok(cl_wild())
             } else if (mx_syntax_name_in_p(syn_symbol(mxp, maker_st, s)?, nth_names(lits, it.0)) || reserved_p(mxp, maker_st, name)) {
                 Ok(cl_lit(syn_symbol(mxp, maker_st, s)?))
@@ -12574,9 +12574,9 @@ pub mod made__load__1__expand {
     #[inline]
     pub fn ints_text(is: MxInferInts) -> Str {
         if null_p(is) {
-            str_lit(".")
+            str_lit!(".")
         } else {
-            string_append(int_to_string(car(is)), string_append(str_lit(" "), ints_text(cdr(is))))
+            string_append(int_to_string(car(is)), string_append(str_lit!(" "), ints_text(cdr(is))))
         }
     }
 
@@ -12584,22 +12584,22 @@ pub mod made__load__1__expand {
         let tagcase_ = sh;
         match *tagcase_ {
             made__load__0__expander_kc::MxInferShape::ShNil() => {
-                str_lit("n")
+                str_lit!("n")
             }
             made__load__0__expander_kc::MxInferShape::ShPair(a, d) => {
-                string_append(str_lit("p"), string_append(int_to_string(a), string_append(str_lit(","), int_to_string(d))))
+                string_append(str_lit!("p"), string_append(int_to_string(a), string_append(str_lit!(","), int_to_string(d))))
             }
             made__load__0__expander_kc::MxInferShape::ShSeq(e) => {
-                string_append(str_lit("s"), int_to_string(e))
+                string_append(str_lit!("s"), int_to_string(e))
             }
             made__load__0__expander_kc::MxInferShape::ShLit(n) => {
                 symbol_to_string(n)
             }
             made__load__0__expander_kc::MxInferShape::ShLeaf() => {
-                str_lit("l")
+                str_lit!("l")
             }
             made__load__0__expander_kc::MxInferShape::ShUnion(ms) => {
-                string_append(str_lit("u"), ints_text(ms))
+                string_append(str_lit!("u"), ints_text(ms))
             }
         }
     }
@@ -12607,12 +12607,12 @@ pub mod made__load__1__expand {
     #[inline]
     pub fn addr_text(a: Addr) -> Str {
         if null_p(a) {
-            str_lit("/")
+            str_lit!("/")
         } else {
             string_append(if car(a) {
-                str_lit("A")
+                str_lit!("A")
             } else {
-                str_lit("D")
+                str_lit!("D")
             }, addr_text(cdr(a)))
         }
     }
@@ -12622,7 +12622,7 @@ pub mod made__load__1__expand {
             if _lt(i, int_lit(0)) {
                 return out;
             } else {
-                (i, out) = (_minus(i, int_lit(1)), string_append(shape_text(mx_infer_shape_of(mxp, maker_st, i)), string_append(addr_text(path_of(mxp, maker_st, i)), string_append(int_to_string(mx_infer_region(mxp, maker_st, i)), string_append(str_lit(";"), out)))));
+                (i, out) = (_minus(i, int_lit(1)), string_append(shape_text(mx_infer_shape_of(mxp, maker_st, i)), string_append(addr_text(path_of(mxp, maker_st, i)), string_append(int_to_string(mx_infer_region(mxp, maker_st, i)), string_append(str_lit!(";"), out)))));
                 continue;
             }
         }
@@ -12630,7 +12630,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn fingerprint<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>) -> Str {
-        string_append(ints_text(get(maker_st.mx_infer_roots.get().unwrap())), parts_text(mxp, maker_st, _minus(get(maker_st.nparts.get().unwrap()), int_lit(1)), str_lit("")))
+        string_append(ints_text(get(maker_st.mx_infer_roots.get().unwrap())), parts_text(mxp, maker_st, _minus(get(maker_st.nparts.get().unwrap()), int_lit(1)), str_lit!("")))
     }
 
     pub fn kind_at(mut p: Int, mut ks: Kinds) -> Kds {
@@ -12871,11 +12871,11 @@ pub mod made__load__1__expand {
     #[inline]
     pub fn made_said(k: Int) -> Str {
         if _eq(k, int_lit(1)) {
-            str_lit("definitions")
+            str_lit!("definitions")
         } else if _eq(k, int_lit(2)) {
-            str_lit("a description")
+            str_lit!("a description")
         } else {
-            str_lit("an expression")
+            str_lit!("an expression")
         }
     }
 
@@ -12912,7 +12912,7 @@ pub mod made__load__1__expand {
     pub fn pattern_vars_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, p: kayak_rt::Handle<'static, Syn>, lits: MxParserTypesNames) -> Result<MxParserTypesNames, Unwind> {
         if syn_symbol_p(p) {
             let n = syn_name(p);
-            if (string_eq_p(n, str_lit("_")) || string_eq_p(n, str_lit("...")) || reserved_p(mxp, maker_st, n) || mx_syntax_name_in_p(syn_symbol(mxp, maker_st, p)?, lits)) {
+            if (string_eq_p(n, str_lit!("_")) || string_eq_p(n, str_lit!("...")) || reserved_p(mxp, maker_st, n) || mx_syntax_name_in_p(syn_symbol(mxp, maker_st, p)?, lits)) {
                 Ok(nil::<Symbol>())
             } else {
                 Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, p)?, kayak_rt::nil()))
@@ -12975,7 +12975,7 @@ pub mod made__load__1__expand {
 
     pub fn makes_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, t: kayak_rt::Handle<'static, Syn>, pv: MxParserTypesNames, us: Unsigneds, known: MakesKnown) -> Result<MxInferInts, Unwind> {
         if syn_symbol_p(t) {
-            if (string_eq_p(syn_name(t), str_lit("#t")) || string_eq_p(syn_name(t), str_lit("#f"))) {
+            if (string_eq_p(syn_name(t), str_lit!("#t")) || string_eq_p(syn_name(t), str_lit!("#f"))) {
                 Ok(kayak_rt::cons(int_lit(0), kayak_rt::nil()))
             } else {
                 Ok(nil::<Int>())
@@ -13013,9 +13013,9 @@ pub mod made__load__1__expand {
     }
 
     pub fn head_makes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Str, mx_infer_items: SynsA, pv: MxParserTypesNames, us: Unsigneds, known: MakesKnown) -> Result<MxInferInts, Unwind> {
-        if (string_eq_p(n, str_lit("define")) || string_eq_p(n, str_lit("define*")) || string_eq_p(n, str_lit("define-rec")) || string_eq_p(n, str_lit("define-type")) || string_eq_p(n, str_lit("define-effect"))) {
+        if (string_eq_p(n, str_lit!("define")) || string_eq_p(n, str_lit!("define*")) || string_eq_p(n, str_lit!("define-rec")) || string_eq_p(n, str_lit!("define-type")) || string_eq_p(n, str_lit!("define-effect"))) {
             Ok(kayak_rt::cons(int_lit(1), kayak_rt::nil()))
-        } else if string_eq_p(n, str_lit("begin")) {
+        } else if string_eq_p(n, str_lit!("begin")) {
             let each = each_makes(mxp, maker_st, cdr(mx_infer_items), pv, us, known)?;
             if mx_infer_int_in_p(int_lit(1), each) {
                 Ok(kayak_rt::cons(int_lit(1), kayak_rt::nil()))
@@ -13057,7 +13057,7 @@ pub mod made__load__1__expand {
                 } else {
                     let j = nth_known(next, mi);
                     if (not(null_p(j)) && not(_eq(car(j), car(k)))) {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("this template makes "), string_append(made_said(car(k)), string_append(str_lit(", and another of `"), string_append(symbol_to_string(u.0), string_append(str_lit("`'s "), made_said(car(j))))))), t)? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("this template makes "), string_append(made_said(car(k)), string_append(str_lit!(", and another of `"), string_append(symbol_to_string(u.0), string_append(str_lit!("`'s "), made_said(car(j))))))), t)? {};
                         return Ok(next);
                     } else {
                         (rs, next) = (cdr(rs), set_known(next, mi, k));
@@ -13679,17 +13679,17 @@ pub mod made__load__1__expand {
 
     pub fn delta_name(d: Int) -> Str {
         if _eq(d, int_lit(0)) {
-            str_lit("none")
+            str_lit!("none")
         } else if _eq(d, int_lit(1)) {
-            str_lit("var")
+            str_lit!("var")
         } else if _eq(d, int_lit(2)) {
-            str_lit("rib")
+            str_lit!("rib")
         } else if _eq(d, int_lit(3)) {
-            str_lit("env")
+            str_lit!("env")
         } else if _eq(d, int_lit(4)) {
-            str_lit("dvar")
+            str_lit!("dvar")
         } else {
-            str_lit("place")
+            str_lit!("place")
         }
     }
 
@@ -13698,9 +13698,9 @@ pub mod made__load__1__expand {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
         } else {
             kayak_rt::heap_cons(atom(kayak_rt::value::ToValue::to_value(mx_symbol_to_keyword(if car(x) {
-                symbol_lit(str_lit("a"))
+                symbol_lit(str_lit!("a"))
             } else {
-                symbol_lit(str_lit("d"))
+                symbol_lit(str_lit!("d"))
             })), a, b, int_lit(0)), mx_show_path_keys(cdr(x), a, b))
         }
     }
@@ -13709,7 +13709,7 @@ pub mod made__load__1__expand {
         if null_p(x) {
             mk_list(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), a, b)
         } else {
-            mk_list(kayak_rt::heap_cons(mk_symbol(str_lit("path"), a, b), mx_show_path_keys(x, a, b)), a, b)
+            mk_list(kayak_rt::heap_cons(mk_symbol(str_lit!("path"), a, b), mx_show_path_keys(x, a, b)), a, b)
         }
     }
 
@@ -13730,7 +13730,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn show_rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, es: Entries, a: Int, b: Int) -> kayak_rt::Handle<'static, Syn> {
-        mk_list(cons(mk_symbol(str_lit("rho"), a, b), show_entries(mxp, maker_st, es, a, b)), a, b)
+        mk_list(cons(mk_symbol(str_lit!("rho"), a, b), show_entries(mxp, maker_st, es, a, b)), a, b)
     }
 
     pub fn show_rings<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, rs: Rings, a: Int, b: Int) -> SynsA {
@@ -13744,10 +13744,10 @@ pub mod made__load__1__expand {
                         show_rib(mxp, maker_st, es, a, b)
                     }
                     made__load__0__expander_kc::Ring::RingAt(x) => {
-                        mk_list(kayak_rt::cons(mk_symbol(str_lit("at"), a, b), kayak_rt::cons(show_addr(x, a, b), kayak_rt::nil())), a, b)
+                        mk_list(kayak_rt::cons(mk_symbol(str_lit!("at"), a, b), kayak_rt::cons(show_addr(x, a, b), kayak_rt::nil())), a, b)
                     }
                     made__load__0__expander_kc::Ring::RingShape(x) => {
-                        mk_list(kayak_rt::cons(mk_symbol(str_lit("shape"), a, b), kayak_rt::cons(show_addr(x, a, b), kayak_rt::nil())), a, b)
+                        mk_list(kayak_rt::cons(mk_symbol(str_lit!("shape"), a, b), kayak_rt::cons(show_addr(x, a, b), kayak_rt::nil())), a, b)
                     }
                 }
             }, show_rings(mxp, maker_st, cdr(rs), a, b))
@@ -13761,7 +13761,7 @@ pub mod made__load__1__expand {
                 show_rib(mxp, maker_st, es, a, b)
             }
             made__load__0__expander_kc::MxTypesBind::BindCage(rs) => {
-                mk_list(cons(mk_symbol(str_lit("cage"), a, b), show_rings(mxp, maker_st, rs, a, b)), a, b)
+                mk_list(cons(mk_symbol(str_lit!("cage"), a, b), show_rings(mxp, maker_st, rs, a, b)), a, b)
             }
             _ => {
                 let y = tagcase_;
@@ -13772,7 +13772,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn word_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Symbol) -> bool {
-        (reserved_sym_p(mxp, maker_st, n) && not(symbol_eq_p(n, symbol_lit(str_lit("else")))) && not(symbol_eq_p(n, symbol_lit(str_lit("=>")))))
+        (reserved_sym_p(mxp, maker_st, n) && not(symbol_eq_p(n, symbol_lit(str_lit!("else")))) && not(symbol_eq_p(n, symbol_lit(str_lit!("=>")))))
     }
 
     pub fn show_sty<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut t: kayak_rt::Handle<'static, Sty>, mut a: Int, mut b: Int) -> kayak_rt::Handle<'static, Syn> {
@@ -13783,72 +13783,72 @@ pub mod made__load__1__expand {
             let tagcase_ = t;
             match *tagcase_ {
                 made__load__0__expander_kc::Sty::SExpr() => {
-                    return sym.call(str_lit("expr"));
+                    return sym.call(str_lit!("expr"));
                 }
                 made__load__0__expander_kc::Sty::SLambda() => {
-                    return sym.call(str_lit("lambda"));
+                    return sym.call(str_lit!("lambda"));
                 }
                 made__load__0__expander_kc::Sty::SBvar() => {
-                    return sym.call(str_lit("bvar"));
+                    return sym.call(str_lit!("bvar"));
                 }
                 made__load__0__expander_kc::Sty::SId() => {
-                    return sym.call(str_lit("id"));
+                    return sym.call(str_lit!("id"));
                 }
                 made__load__0__expander_kc::Sty::SData() => {
-                    return sym.call(str_lit("data"));
+                    return sym.call(str_lit!("data"));
                 }
                 made__load__0__expander_kc::Sty::SType() => {
-                    return sym.call(str_lit("desc"));
+                    return sym.call(str_lit!("desc"));
                 }
                 made__load__0__expander_kc::Sty::SLabel() => {
-                    return sym.call(str_lit("label"));
+                    return sym.call(str_lit!("label"));
                 }
                 made__load__0__expander_kc::Sty::SDvar() => {
-                    return sym.call(str_lit("dvar"));
+                    return sym.call(str_lit!("dvar"));
                 }
                 made__load__0__expander_kc::Sty::SKind() => {
-                    return sym.call(str_lit("kind"));
+                    return sym.call(str_lit!("kind"));
                 }
                 made__load__0__expander_kc::Sty::SDefn() => {
-                    return sym.call(str_lit("defn"));
+                    return sym.call(str_lit!("defn"));
                 }
                 made__load__0__expander_kc::Sty::SItem() => {
-                    return sym.call(str_lit("item"));
+                    return sym.call(str_lit!("item"));
                 }
                 made__load__0__expander_kc::Sty::SRules() => {
-                    return sym.call(str_lit("rules"));
+                    return sym.call(str_lit!("rules"));
                 }
                 made__load__0__expander_kc::Sty::SNil() => {
                     return mk_list(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), a, b);
                 }
                 made__load__0__expander_kc::Sty::SLiteral(n) => {
                     return mk_list(kayak_rt::cons(sym.call(if word_p(mxp, maker_st, n) {
-                        str_lit("literal")
+                        str_lit!("literal")
                     } else {
-                        str_lit("trailmark")
+                        str_lit!("trailmark")
                     }), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(n), a, b, int_lit(0)), kayak_rt::nil())), a, b);
                 }
                 made__load__0__expander_kc::Sty::SMark(n, i) => {
-                    return mk_list(kayak_rt::cons(sym.call(str_lit("trailmark")), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(n), a, b, int_lit(0)), kayak_rt::nil())), a, b);
+                    return mk_list(kayak_rt::cons(sym.call(str_lit!("trailmark")), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(n), a, b, int_lit(0)), kayak_rt::nil())), a, b);
                 }
                 made__load__0__expander_kc::Sty::SPair(x, y) => {
                     return show_pair(mxp, maker_st, t, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), a, b);
                 }
                 made__load__0__expander_kc::Sty::SImport(x, bd) => {
-                    return mk_list(kayak_rt::cons(sym.call(str_lit("import")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::cons(show_bind(mxp, maker_st, bd, a, b), kayak_rt::nil()))), a, b);
+                    return mk_list(kayak_rt::cons(sym.call(str_lit!("import")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::cons(show_bind(mxp, maker_st, bd, a, b), kayak_rt::nil()))), a, b);
                 }
                 made__load__0__expander_kc::Sty::SExport(x, bd) => {
-                    return mk_list(kayak_rt::cons(sym.call(str_lit("export")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::cons(show_bind(mxp, maker_st, bd, a, b), kayak_rt::nil()))), a, b);
+                    return mk_list(kayak_rt::cons(sym.call(str_lit!("export")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::cons(show_bind(mxp, maker_st, bd, a, b), kayak_rt::nil()))), a, b);
                 }
                 made__load__0__expander_kc::Sty::SMany(x) => {
-                    return mk_list(kayak_rt::cons(sym.call(str_lit("many")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::nil())), a, b);
+                    return mk_list(kayak_rt::cons(sym.call(str_lit!("many")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::nil())), a, b);
                 }
                 made__load__0__expander_kc::Sty::STyped(x, h) => {
                     t = x;
                     continue;
                 }
                 made__load__0__expander_kc::Sty::SUnion(ms) => {
-                    return mk_list(cons(sym.call(str_lit("oneof")), mx_show_show_each(mxp, maker_st, ms, a, b)), a, b);
+                    return mk_list(cons(sym.call(str_lit!("oneof")), mx_show_show_each(mxp, maker_st, ms, a, b)), a, b);
                 }
                 made__load__0__expander_kc::Sty::SVar(j) => {
                     set(maker_st.shown.get().unwrap(), used_x(j, get(maker_st.shown.get().unwrap())));
@@ -13885,7 +13885,7 @@ pub mod made__load__1__expand {
                     if null_p(e) {
                         return joined_list(items, show_sty(mxp, maker_st, cur, a, b), a, b);
                     } else {
-                        return mk_list(append(items, the::<SynsA>(kayak_rt::cons(show_sty(mxp, maker_st, car(e), a, b), kayak_rt::cons(mk_symbol(str_lit("..."), a, b), kayak_rt::nil())))), a, b);
+                        return mk_list(append(items, the::<SynsA>(kayak_rt::cons(show_sty(mxp, maker_st, car(e), a, b), kayak_rt::cons(mk_symbol(str_lit!("..."), a, b), kayak_rt::nil())))), a, b);
                     }
                 }
                 _ => {
@@ -13910,15 +13910,15 @@ pub mod made__load__1__expand {
             }
         });
         if not(null_p(e)) {
-            mk_list(kayak_rt::cons(show_sty(mxp, maker_st, car(e), a, b), kayak_rt::cons(mk_symbol(str_lit("..."), a, b), kayak_rt::nil())), a, b)
+            mk_list(kayak_rt::cons(show_sty(mxp, maker_st, car(e), a, b), kayak_rt::cons(mk_symbol(str_lit!("..."), a, b), kayak_rt::nil())), a, b)
         } else {
-            let name = string_append(str_lit("m"), int_to_string(_plus(len_shown(get(maker_st.shown.get().unwrap())), int_lit(1))));
+            let name = string_append(str_lit!("m"), int_to_string(_plus(len_shown(get(maker_st.shown.get().unwrap())), int_lit(1))));
             set(maker_st.shown.get().unwrap(), cons(Product_11_12(name, false), get(maker_st.shown.get().unwrap())));
             let shown_body = show_sty(mxp, maker_st, body, a, b);
             let used = car(get(maker_st.shown.get().unwrap())).1;
             set(maker_st.shown.get().unwrap(), cdr(get(maker_st.shown.get().unwrap())));
             if (used || open_p(body)) {
-                mk_list(kayak_rt::cons(mk_symbol(str_lit("mu"), a, b), kayak_rt::cons(mk_symbol(name, a, b), kayak_rt::cons(shown_body, kayak_rt::nil()))), a, b)
+                mk_list(kayak_rt::cons(mk_symbol(str_lit!("mu"), a, b), kayak_rt::cons(mk_symbol(name, a, b), kayak_rt::cons(shown_body, kayak_rt::nil()))), a, b)
             } else {
                 shown_body
             }
@@ -13928,7 +13928,7 @@ pub mod made__load__1__expand {
     pub fn sig_word_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         (syn_symbol_p(s) && {
             let n = syn_name(s);
-            (string_eq_p(n, str_lit("import")) || string_eq_p(n, str_lit("export")) || string_eq_p(n, str_lit("union")) || string_eq_p(n, str_lit("oneof")) || string_eq_p(n, str_lit("mu")) || string_eq_p(n, str_lit("trailmark")) || string_eq_p(n, str_lit("many")) || string_eq_p(n, str_lit("literal")))
+            (string_eq_p(n, str_lit!("import")) || string_eq_p(n, str_lit!("export")) || string_eq_p(n, str_lit!("union")) || string_eq_p(n, str_lit!("oneof")) || string_eq_p(n, str_lit!("mu")) || string_eq_p(n, str_lit!("trailmark")) || string_eq_p(n, str_lit!("many")) || string_eq_p(n, str_lit!("literal")))
         })
     }
 
@@ -13937,13 +13937,13 @@ pub mod made__load__1__expand {
         match *tagcase_ {
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                 if null_p(items) {
-                    str_lit("()")
+                    str_lit!("()")
                 } else {
-                    string_append(str_lit("("), string_append(sig_items(items, true, a, b), str_lit(")")))
+                    string_append(str_lit!("("), string_append(sig_items(items, true, a, b), str_lit!(")")))
                 }
             }
             made__load__0__expander_kc::Syn::Dotted(items, tl, d, a, b, x) => {
-                string_append(str_lit("("), string_append(sig_items(items, false, a, b), string_append(str_lit(" . "), string_append(sig_text(tl), str_lit(")")))))
+                string_append(str_lit!("("), string_append(sig_items(items, false, a, b), string_append(str_lit!(" . "), string_append(sig_text(tl), str_lit!(")")))))
             }
             _ => {
                 let y = tagcase_;
@@ -13959,21 +13959,21 @@ pub mod made__load__1__expand {
 
     pub fn sig_items_from(xs: SynsA, first: bool, proper: bool, a: Int, b: Int) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else if (not(first) && proper && sig_word_p(car(xs))) {
-            string_append(str_lit(" . "), sig_text(mk_list(xs, a, b)))
+            string_append(str_lit!(" . "), sig_text(mk_list(xs, a, b)))
         } else {
             string_append(if first {
-                str_lit("")
+                str_lit!("")
             } else {
-                str_lit(" ")
+                str_lit!(" ")
             }, string_append(sig_text(car(xs)), sig_items_from(cdr(xs), false, proper, a, b)))
         }
     }
 
     #[inline]
     pub fn cannot<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>) -> Result<Void, Unwind> {
-        Ok(match pfail_at(mxp, maker_st, str_lit("not in shapes and facts"), syn_start(s), syn_end(s))? {})
+        Ok(match pfail_at(mxp, maker_st, str_lit!("not in shapes and facts"), syn_start(s), syn_end(s))? {})
     }
 
     pub fn pattern_of(clause: SynsA) -> SynsA {
@@ -14012,14 +14012,14 @@ pub mod made__load__1__expand {
             let tagcase_ = s;
             match *tagcase_ {
                 made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
-                    return string_append(str_lit("("), string_append(flat_items(items, true), str_lit(")")));
+                    return string_append(str_lit!("("), string_append(flat_items(items, true), str_lit!(")")));
                 }
                 made__load__0__expander_kc::Syn::Dotted(items, tl, d, a, b, x) => {
                     if (syn_nil_p(tl) || not(null_p(split(tl)))) {
                         s = list_with(items, kayak_rt::heap_cons(tl, kayak_rt::nil()), a, b);
                         continue;
                     } else {
-                        return string_append(str_lit("("), string_append(flat_items(items, true), string_append(str_lit(" . "), string_append(flat(tl), str_lit(")")))));
+                        return string_append(str_lit!("("), string_append(flat_items(items, true), string_append(str_lit!(" . "), string_append(flat(tl), str_lit!(")")))));
                     }
                 }
                 _ => {
@@ -14032,12 +14032,12 @@ pub mod made__load__1__expand {
 
     pub fn flat_items(xs: SynsA, first: bool) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else {
             string_append(if first {
-                str_lit("")
+                str_lit!("")
             } else {
-                str_lit(" ")
+                str_lit!(" ")
             }, string_append(flat(car(xs)), flat_items(cdr(xs), false)))
         }
     }
@@ -14128,7 +14128,7 @@ pub mod made__load__1__expand {
         let p = read_addr(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(parts))?;
         let d = syn_name(nth(parts, int_lit(1)));
         let er = element_of(mxp, maker_st, r, p);
-        if (string_eq_p(d, str_lit("rib")) && _gt_eq(er, int_lit(0))) {
+        if (string_eq_p(d, str_lit!("rib")) && _gt_eq(er, int_lit(0))) {
             let ex = region_export(mxp, maker_st, er);
             let items = if null_p(ex) {
                 match cannot(mxp, maker_st, e)? {};
@@ -14136,7 +14136,7 @@ pub mod made__load__1__expand {
             } else {
                 proper_items(car(ex))
             };
-            let inner = if (_eq(len(items), int_lit(2)) && mx_facts_sym_is_p(car(items), str_lit("rho"))) {
+            let inner = if (_eq(len(items), int_lit(2)) && mx_facts_sym_is_p(car(items), str_lit!("rho"))) {
                 mx_shown_entry(mxp, maker_st, nth(items, int_lit(1)), er)?
             } else {
                 match cannot(mxp, maker_st, e)? {};
@@ -14150,7 +14150,7 @@ pub mod made__load__1__expand {
             }
         } else {
             want_x(mxp, maker_st, r, p);
-            if string_eq_p(d, str_lit("place")) {
+            if string_eq_p(d, str_lit!("place")) {
                 set(maker_st.mx_shown_places.get().unwrap(), cons(Product_11_12(r, p), get(maker_st.mx_shown_places.get().unwrap())))
             } else {
                 ()
@@ -14162,12 +14162,12 @@ pub mod made__load__1__expand {
     pub fn mx_shown_bound<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut b: kayak_rt::Handle<'static, Syn>, mut r: Int) -> Result<MxShownLabel, Unwind> {
         loop {
             let items = proper_items(b);
-            if (mx_facts_head_is_p(b, str_lit("rho")) && _eq(len(items), int_lit(2))) {
+            if (mx_facts_head_is_p(b, str_lit!("rho")) && _eq(len(items), int_lit(2))) {
                 return Ok(mx_shown_entry(mxp, maker_st, nth(items, int_lit(1)), r)?);
-            } else if (mx_facts_head_is_p(b, str_lit("cage")) && _eq(len(items), int_lit(2)) && mx_facts_head_is_p(nth(items, int_lit(1)), str_lit("at"))) {
+            } else if (mx_facts_head_is_p(b, str_lit!("cage")) && _eq(len(items), int_lit(2)) && mx_facts_head_is_p(nth(items, int_lit(1)), str_lit!("at"))) {
                 b = nth(items, int_lit(1));
                 continue;
-            } else if (mx_facts_head_is_p(b, str_lit("at")) && _eq(len(items), int_lit(2))) {
+            } else if (mx_facts_head_is_p(b, str_lit!("at")) && _eq(len(items), int_lit(2))) {
                 let p = read_addr(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), nth(items, int_lit(1)))?;
                 let w = want_x(mxp, maker_st, r, p);
                 return Ok(Product_11_12_13(int_lit(0), r, p));
@@ -14210,9 +14210,9 @@ pub mod made__load__1__expand {
 
     pub fn mx_shown_exports_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, b: kayak_rt::Handle<'static, Syn>) -> Result<MxShownLabels, Unwind> {
         let items = proper_items(b);
-        if mx_facts_head_is_p(b, str_lit("rho")) {
+        if mx_facts_head_is_p(b, str_lit!("rho")) {
             Ok(mx_shown_entries_of(mxp, maker_st, cdr(items), int_lit(0))?)
-        } else if mx_facts_head_is_p(b, str_lit("cage")) {
+        } else if mx_facts_head_is_p(b, str_lit!("cage")) {
             Ok(mx_shown_rings_of(mxp, maker_st, reverse(cdr(items)))?)
         } else {
             match cannot(mxp, maker_st, b)? {};
@@ -14245,8 +14245,8 @@ pub mod made__load__1__expand {
     pub fn name_in<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut r: Int, mut p: Addr, mut xs: Givens) -> Result<Symbol, Unwind> {
         loop {
             if null_p(xs) {
-                match pfail_at(mxp, maker_st, str_lit("a part not named"), int_lit(0), int_lit(0))? {};
-                return Ok(string_to_symbol(str_lit("_")));
+                match pfail_at(mxp, maker_st, str_lit!("a part not named"), int_lit(0), int_lit(0))? {};
+                return Ok(string_to_symbol(str_lit!("_")));
             } else if (_eq(car(xs).0, r) && steps_eq_p(car(xs).1, p)) {
                 return Ok(car(xs).2);
             } else {
@@ -14266,7 +14266,7 @@ pub mod made__load__1__expand {
         if _eq(l.0, int_lit(0)) {
             Ok(n)
         } else {
-            Ok(mk_list(kayak_rt::cons(n, kayak_rt::cons(mk_symbol(str_lit("..."), a, b), kayak_rt::nil())), a, b))
+            Ok(mk_list(kayak_rt::cons(n, kayak_rt::cons(mk_symbol(str_lit!("..."), a, b), kayak_rt::nil())), a, b))
         }
     }
 
@@ -14288,12 +14288,12 @@ pub mod made__load__1__expand {
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else {
             let r = car(bs).0;
-            let f = mk_list(kayak_rt::cons(mk_symbol(str_lit("bind"), a, b), kayak_rt::cons(mx_shown_said(mxp, maker_st, car(bs).2, a, b)?, kayak_rt::cons(mk_symbol(str_lit("in"), a, b), kayak_rt::cons(name_syn(mx_shown_name_of(mxp, maker_st, r, car(bs).1)?, a, b), kayak_rt::nil())))), a, b);
+            let f = mk_list(kayak_rt::cons(mk_symbol(str_lit!("bind"), a, b), kayak_rt::cons(mx_shown_said(mxp, maker_st, car(bs).2, a, b)?, kayak_rt::cons(mk_symbol(str_lit!("in"), a, b), kayak_rt::cons(name_syn(mx_shown_name_of(mxp, maker_st, r, car(bs).1)?, a, b), kayak_rt::nil())))), a, b);
             let rest = bind_facts(mxp, maker_st, cdr(bs), a, b)?;
             if _eq(r, int_lit(0)) {
                 Ok(cons(f, rest))
             } else {
-                Ok(cons(f, cons(mk_symbol(str_lit("..."), a, b), rest)))
+                Ok(cons(f, cons(mk_symbol(str_lit!("..."), a, b), rest)))
             }
         }
     }
@@ -14337,7 +14337,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn rest_word_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
-        (mx_facts_sym_is_p(s, str_lit("import")) || mx_facts_sym_is_p(s, str_lit("export")) || mx_facts_sym_is_p(s, str_lit("mu")) || mx_facts_sym_is_p(s, str_lit("oneof")) || mx_facts_sym_is_p(s, str_lit("union")) || mx_facts_sym_is_p(s, str_lit("many")) || mx_facts_sym_is_p(s, str_lit("literal")) || mx_facts_sym_is_p(s, str_lit("trailmark")))
+        (mx_facts_sym_is_p(s, str_lit!("import")) || mx_facts_sym_is_p(s, str_lit!("export")) || mx_facts_sym_is_p(s, str_lit!("mu")) || mx_facts_sym_is_p(s, str_lit!("oneof")) || mx_facts_sym_is_p(s, str_lit!("union")) || mx_facts_sym_is_p(s, str_lit!("many")) || mx_facts_sym_is_p(s, str_lit!("literal")) || mx_facts_sym_is_p(s, str_lit!("trailmark")))
     }
 
     pub fn parts_split(mut xs: SynsA, mut t: SynsA, mut out: SynsA, mut a: Int, mut b: Int) -> Product_11_12<SynsA, SynsA> {
@@ -14462,13 +14462,13 @@ pub mod made__load__1__expand {
     }
 
     pub fn free_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: Str) -> bool {
-        not((string_eq_p(s, str_lit("_")) || string_eq_p(s, str_lit("...")) || string_eq_p(s, str_lit("@")) || string_eq_p(s, str_lit(".")) || string_eq_p(s, str_lit("in")) || string_in_p(s, get(maker_st.used.get().unwrap())) || shape_named_p(s, get(maker_st.mx_shown_shapes.get().unwrap()))))
+        not((string_eq_p(s, str_lit!("_")) || string_eq_p(s, str_lit!("...")) || string_eq_p(s, str_lit!("@")) || string_eq_p(s, str_lit!(".")) || string_eq_p(s, str_lit!("in")) || string_in_p(s, get(maker_st.used.get().unwrap())) || shape_named_p(s, get(maker_st.mx_shown_shapes.get().unwrap()))))
     }
 
     pub fn next_free<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>) -> Str {
         loop {
             set(maker_st.counter.get().unwrap(), _plus(get(maker_st.counter.get().unwrap()), int_lit(1)));
-            let v = string_append(str_lit("p"), int_to_string(get(maker_st.counter.get().unwrap())));
+            let v = string_append(str_lit!("p"), int_to_string(get(maker_st.counter.get().unwrap())));
             if free_p(mxp, maker_st, v) {
                 return v;
             } else {
@@ -14491,8 +14491,8 @@ pub mod made__load__1__expand {
     }
 
     pub fn mx_shown_typed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, t: kayak_rt::Handle<'static, Syn>, r: Int, p: Addr) -> kayak_rt::Handle<'static, Syn> {
-        if (spot_in_p(r, p, get(maker_st.mx_shown_places.get().unwrap())) && mx_facts_sym_is_p(t, str_lit("dvar"))) {
-            mk_symbol(str_lit("place"), syn_start(t), syn_end(t))
+        if (spot_in_p(r, p, get(maker_st.mx_shown_places.get().unwrap())) && mx_facts_sym_is_p(t, str_lit!("dvar"))) {
+            mk_symbol(str_lit!("place"), syn_start(t), syn_end(t))
         } else {
             t
         }
@@ -14517,7 +14517,7 @@ pub mod made__load__1__expand {
                     if spot_in_p(r, p, get(maker_st.wanted.get().unwrap())) {
                         if syn_symbol_p(w) {
                             let n = fresh_x(mxp, maker_st, r, p);
-                            return Ok(list_with(reverse(cons(mk_symbol(str_lit("@"), a, b), cons(name_syn(n, a, b), out))), kayak_rt::cons(w, kayak_rt::nil()), a, b));
+                            return Ok(list_with(reverse(cons(mk_symbol(str_lit!("@"), a, b), cons(name_syn(n, a, b), out))), kayak_rt::cons(w, kayak_rt::nil()), a, b));
                         } else {
                             match cannot(mxp, maker_st, w)? {};
                             return Ok(w);
@@ -14526,7 +14526,7 @@ pub mod made__load__1__expand {
                         return Ok(list_with(reverse(out), kayak_rt::cons(w, kayak_rt::nil()), a, b));
                     }
                 }
-            } else if (_eq(len(xs), int_lit(2)) && null_p(t) && mx_facts_sym_is_p(nth(xs, int_lit(1)), str_lit("..."))) {
+            } else if (_eq(len(xs), int_lit(2)) && null_p(t) && mx_facts_sym_is_p(nth(xs, int_lit(1)), str_lit!("..."))) {
                 let er = element_of(mxp, maker_st, r, p);
                 let checked = if _lt(er, int_lit(0)) {
                     match cannot(mxp, maker_st, car(xs))? {}
@@ -14535,7 +14535,7 @@ pub mod made__load__1__expand {
                 };
                 let out2 = if spot_in_p(er, nil::<bool>(), get(maker_st.wanted.get().unwrap())) {
                     let n = fresh_x(mxp, maker_st, er, nil::<bool>());
-                    cons(mk_symbol(str_lit("@"), a, b), cons(name_syn(n, a, b), out))
+                    cons(mk_symbol(str_lit!("@"), a, b), cons(name_syn(n, a, b), out))
                 } else {
                     out
                 };
@@ -14545,7 +14545,7 @@ pub mod made__load__1__expand {
                 let ap = append(p, the::<Addr>(kayak_rt::cons(true, kayak_rt::nil())));
                 let out2 = if spot_in_p(r, ap, get(maker_st.wanted.get().unwrap())) {
                     let n = fresh_x(mxp, maker_st, r, ap);
-                    cons(mk_symbol(str_lit("@"), a, b), cons(name_syn(n, a, b), out))
+                    cons(mk_symbol(str_lit!("@"), a, b), cons(name_syn(n, a, b), out))
                 } else {
                     out
                 };
@@ -14559,7 +14559,7 @@ pub mod made__load__1__expand {
     pub fn mx_shown_node<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, sigma0: kayak_rt::Handle<'static, Syn>, pattern: SynsA, made: SynsA) -> Result<Product_11_12_13<kayak_rt::Handle<'static, Syn>, SynsA, SynsA>, Unwind> {
         let saved = node_state(mxp, maker_st);
         let reset = node_reset_x(mxp, maker_st, pattern);
-        let ex = (null_p(made) && mx_facts_head_is_p(sigma0, str_lit("export")));
+        let ex = (null_p(made) && mx_facts_head_is_p(sigma0, str_lit!("export")));
         let sigma = if ex {
             nth(proper_items(sigma0), int_lit(1))
         } else {
@@ -14572,13 +14572,13 @@ pub mod made__load__1__expand {
         };
         let bare = strip(mxp, maker_st, sigma, int_lit(0), nil::<bool>())?;
         let binds = binds_of(mxp, maker_st, reverse(get(maker_st.mx_shown_imported.get().unwrap())))?;
-        let cage = (ex && mx_facts_head_is_p(car(export), str_lit("cage")));
+        let cage = (ex && mx_facts_head_is_p(car(export), str_lit!("cage")));
         let exports = if ex {
             mx_shown_exports_of(mxp, maker_st, car(export))?
         } else {
             nil::<Product_11_12_13<Int, Int, List<bool>>>()
         };
-        let defined = if (pair_p(made) && mx_facts_head_is_p(car(made), str_lit("defn"))) {
+        let defined = if (pair_p(made) && mx_facts_head_is_p(car(made), str_lit!("defn"))) {
             defined_of(mxp, maker_st, cdr(proper_items(car(made))))?
         } else {
             nil::<Product_11_12<Product_11_12_13<Int, Int, List<bool>>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>()
@@ -14595,15 +14595,15 @@ pub mod made__load__1__expand {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
         } else {
             kayak_rt::cons(mk_list(cons(mk_symbol(if cage {
-                str_lit("export*")
+                str_lit!("export*")
             } else {
-                str_lit("export")
+                str_lit!("export")
             }, a, b), said_each(mxp, maker_st, exports, a, b)?), a, b), kayak_rt::nil())
         });
         let made2 = if null_p(made) {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
-        } else if mx_facts_head_is_p(car(made), str_lit("defn")) {
-            kayak_rt::cons(mk_list(cons(mk_symbol(str_lit("defn"), a, b), defined_said(mxp, maker_st, defined, a, b)?), syn_start(car(made)), syn_end(car(made))), kayak_rt::nil())
+        } else if mx_facts_head_is_p(car(made), str_lit!("defn")) {
+            kayak_rt::cons(mk_list(cons(mk_symbol(str_lit!("defn"), a, b), defined_said(mxp, maker_st, defined, a, b)?), syn_start(car(made)), syn_end(car(made))), kayak_rt::nil())
         } else {
             made
         };
@@ -14613,7 +14613,7 @@ pub mod made__load__1__expand {
 
     pub fn strip<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>, r: Int, path: Addr) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let (items, a, b) = (proper_items(s), syn_start(s), syn_end(s));
-        if mx_facts_head_is_p(s, str_lit("import")) {
+        if mx_facts_head_is_p(s, str_lit!("import")) {
             if _eq(len(items), int_lit(3)) {
                 let bare = strip(mxp, maker_st, nth(items, int_lit(1)), r, path)?;
                 set(maker_st.mx_shown_imported.get().unwrap(), cons(Product_11_12_13(r, path, nth(items, int_lit(2))), get(maker_st.mx_shown_imported.get().unwrap())));
@@ -14622,10 +14622,10 @@ pub mod made__load__1__expand {
                 match cannot(mxp, maker_st, s)? {};
                 Ok(s)
             }
-        } else if (mx_facts_head_is_p(s, str_lit("export")) || mx_facts_head_is_p(s, str_lit("path")) || mx_facts_head_is_p(s, str_lit("rho")) || mx_facts_head_is_p(s, str_lit("cage"))) {
+        } else if (mx_facts_head_is_p(s, str_lit!("export")) || mx_facts_head_is_p(s, str_lit!("path")) || mx_facts_head_is_p(s, str_lit!("rho")) || mx_facts_head_is_p(s, str_lit!("cage"))) {
             match cannot(mxp, maker_st, s)? {};
             Ok(s)
-        } else if mx_facts_head_is_p(s, str_lit("mu")) {
+        } else if mx_facts_head_is_p(s, str_lit!("mu")) {
             if (_eq(len(items), int_lit(3)) && syn_symbol_p(nth(items, int_lit(1)))) {
                 shape_x(mxp, maker_st, syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, nth(items, int_lit(2)))?;
                 Ok(nth(items, int_lit(1)))
@@ -14633,9 +14633,9 @@ pub mod made__load__1__expand {
                 match cannot(mxp, maker_st, s)? {};
                 Ok(s)
             }
-        } else if (mx_facts_head_is_p(s, str_lit("oneof")) || mx_facts_head_is_p(s, str_lit("union"))) {
-            Ok(mk_list(cons(mk_symbol(str_lit("oneof"), a, b), plain_each(mxp, maker_st, cdr(items))?), a, b))
-        } else if mx_facts_head_is_p(s, str_lit("many")) {
+        } else if (mx_facts_head_is_p(s, str_lit!("oneof")) || mx_facts_head_is_p(s, str_lit!("union"))) {
+            Ok(mk_list(cons(mk_symbol(str_lit!("oneof"), a, b), plain_each(mxp, maker_st, cdr(items))?), a, b))
+        } else if mx_facts_head_is_p(s, str_lit!("many")) {
             if _eq(len(items), int_lit(2)) {
                 Ok(mk_list(kayak_rt::cons(car(items), kayak_rt::cons(plain(mxp, maker_st, nth(items, int_lit(1)))?, kayak_rt::nil())), a, b))
             } else {
@@ -14660,7 +14660,7 @@ pub mod made__load__1__expand {
                 } else {
                     kayak_rt::cons(strip(mxp, maker_st, car(t), r, p)?, kayak_rt::nil())
                 }, a, b));
-            } else if (_eq(len(xs), int_lit(2)) && null_p(t) && mx_facts_sym_is_p(nth(xs, int_lit(1)), str_lit("..."))) {
+            } else if (_eq(len(xs), int_lit(2)) && null_p(t) && mx_facts_sym_is_p(nth(xs, int_lit(1)), str_lit!("..."))) {
                 let pc = at_path(region_pattern(mxp, maker_st, r), p);
                 let pe = {
                     let ps = if null_p(pc) {
@@ -14676,7 +14676,7 @@ pub mod made__load__1__expand {
                 };
                 let er = zones_len(get(maker_st.mx_shown_regions.get().unwrap()));
                 let pushed = set(maker_st.mx_shown_regions.get().unwrap(), cons(Product_11_12_13_14_15(er, r, p, pe, the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())), get(maker_st.mx_shown_regions.get().unwrap())));
-                let ex = mx_facts_head_is_p(car(xs), str_lit("export"));
+                let ex = mx_facts_head_is_p(car(xs), str_lit!("export"));
                 let elem = if ex {
                     nth(proper_items(car(xs)), int_lit(1))
                 } else {
@@ -14726,8 +14726,8 @@ pub mod made__load__1__expand {
             let pushed = set(maker_st.mx_shown_shapes.get().unwrap(), cons(Product_11_12(n, the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())), get(maker_st.mx_shown_shapes.get().unwrap())));
             let a = syn_start(body);
             let b = syn_end(body);
-            let def = if (mx_facts_head_is_p(body, str_lit("oneof")) || mx_facts_head_is_p(body, str_lit("union"))) {
-                mk_list(cons(mk_symbol(str_lit("union"), a, b), mx_shown_members(mxp, maker_st, cdr(proper_items(body)), int_lit(0))?), a, b)
+            let def = if (mx_facts_head_is_p(body, str_lit!("oneof")) || mx_facts_head_is_p(body, str_lit!("union"))) {
+                mk_list(cons(mk_symbol(str_lit!("union"), a, b), mx_shown_members(mxp, maker_st, cdr(proper_items(body)), int_lit(0))?), a, b)
             } else {
                 let r = mx_shown_node(mxp, maker_st, body, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>(), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())?;
                 mk_list(cons(name_syn(n, a, b), cons(r.0, r.1)), a, b)
@@ -14750,11 +14750,11 @@ pub mod made__load__1__expand {
                 _plus(more, int_lit(1))
             };
             let mx_shown_label = if end {
-                str_lit("end")
+                str_lit!("end")
             } else if _eq(k, int_lit(1)) {
-                str_lit("more")
+                str_lit!("more")
             } else {
-                string_append(str_lit("more"), int_to_string(k))
+                string_append(str_lit!("more"), int_to_string(k))
             };
             let m = mk_list(cons(mk_symbol(mx_shown_label, a, b), cons(r.0, r.1)), a, b);
             Ok(cons(m, mx_shown_members(mxp, maker_st, cdr(ms), k)?))
@@ -14763,14 +14763,14 @@ pub mod made__load__1__expand {
 
     pub fn shown_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, sig: kayak_rt::Handle<'static, Syn>, clause: SynsA) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let (items, a, b) = (proper_items(sig), syn_start(sig), syn_end(sig));
-        if not((_eq(len(items), int_lit(3)) && mx_facts_sym_is_p(car(items), str_lit("macro/addressed")))) {
+        if not((_eq(len(items), int_lit(3)) && mx_facts_sym_is_p(car(items), str_lit!("macro/addressed")))) {
             match cannot(mxp, maker_st, sig)? {};
             Ok(sig)
         } else {
             let reset = set(maker_st.mx_shown_shapes.get().unwrap(), nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>());
             let r = mx_shown_node(mxp, maker_st, nth(items, int_lit(1)), pattern_of(clause), kayak_rt::cons(nth(items, int_lit(2)), kayak_rt::nil()))?;
             let tree = r.0;
-            let under = mk_symbol(str_lit("_"), a, b);
+            let under = mk_symbol(str_lit!("_"), a, b);
             let top = if syn_nil_p(tree) {
                 mk_list(kayak_rt::cons(under, kayak_rt::nil()), a, b)
             } else if not(null_p(split(tree))) {
@@ -14783,9 +14783,9 @@ pub mod made__load__1__expand {
             let shape = if null_p(defs) {
                 top
             } else {
-                mk_list(kayak_rt::cons(mk_symbol(str_lit("letrec-shape"), a, b), kayak_rt::cons(mk_list(defs, a, b), kayak_rt::cons(top, kayak_rt::nil()))), a, b)
+                mk_list(kayak_rt::cons(mk_symbol(str_lit!("letrec-shape"), a, b), kayak_rt::cons(mk_list(defs, a, b), kayak_rt::cons(top, kayak_rt::nil()))), a, b)
             };
-            let shown = mk_list(cons(mk_symbol(str_lit("macro"), a, b), cons(shape, cons(car(r.2), r.1))), a, b);
+            let shown = mk_list(cons(mk_symbol(str_lit!("macro"), a, b), cons(shape, cons(car(r.2), r.1))), a, b);
             let back = elaborated(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), shown)?;
             if string_eq_p(flat(back), flat(sig)) {
                 Ok(shown)
@@ -16265,16 +16265,16 @@ pub mod made__load__1__expand {
 
     pub fn defn_arrow(s: kayak_rt::Handle<'static, Syn>, a: Int, b: Int) -> kayak_rt::Handle<'static, Syn> {
         let ps = proper_items(s);
-        let rho = if (_eq(len(ps), int_lit(3)) && mx_solve_head_is_p(s, str_lit("export")) && mx_solve_head_is_p(nth(ps, int_lit(2)), str_lit("rho"))) {
+        let rho = if (_eq(len(ps), int_lit(3)) && mx_solve_head_is_p(s, str_lit!("export")) && mx_solve_head_is_p(nth(ps, int_lit(2)), str_lit!("rho"))) {
             proper_items(nth(ps, int_lit(2)))
         } else {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
         };
         if null_p(rho) {
-            mk_list(kayak_rt::heap_cons(mk_symbol(str_lit("macro/addressed"), a, b), kayak_rt::heap_cons(s, kayak_rt::heap_cons(mk_symbol(str_lit("defn"), a, b), kayak_rt::nil()))), a, b)
+            mk_list(kayak_rt::heap_cons(mk_symbol(str_lit!("macro/addressed"), a, b), kayak_rt::heap_cons(s, kayak_rt::heap_cons(mk_symbol(str_lit!("defn"), a, b), kayak_rt::nil()))), a, b)
         } else {
-            let made = mk_list(kayak_rt::heap_cons(mk_symbol(str_lit("defn"), a, b), cdr(rho)), a, b);
-            mk_list(kayak_rt::heap_cons(mk_symbol(str_lit("macro/addressed"), a, b), kayak_rt::heap_cons(nth(ps, int_lit(1)), kayak_rt::heap_cons(made, kayak_rt::nil()))), a, b)
+            let made = mk_list(kayak_rt::heap_cons(mk_symbol(str_lit!("defn"), a, b), cdr(rho)), a, b);
+            mk_list(kayak_rt::heap_cons(mk_symbol(str_lit!("macro/addressed"), a, b), kayak_rt::heap_cons(nth(ps, int_lit(1)), kayak_rt::heap_cons(made, kayak_rt::nil()))), a, b)
         }
     }
 
@@ -16288,10 +16288,10 @@ pub mod made__load__1__expand {
             cons(if _eq(car(makes), int_lit(1)) {
                 defn_arrow(car(sigs), a, b)
             } else {
-                mk_list(kayak_rt::cons(mk_symbol(str_lit("macro/addressed"), a, b), kayak_rt::cons(car(sigs), kayak_rt::cons(mk_symbol(if _eq(car(makes), int_lit(0)) {
-                    str_lit("expr")
+                mk_list(kayak_rt::cons(mk_symbol(str_lit!("macro/addressed"), a, b), kayak_rt::cons(car(sigs), kayak_rt::cons(mk_symbol(if _eq(car(makes), int_lit(0)) {
+                    str_lit!("expr")
                 } else {
-                    str_lit("desc")
+                    str_lit!("desc")
                 }, a, b), kayak_rt::nil()))), a, b)
             }, made_sigs(mxp, maker_st, cdr(sigs), cdr(makes), cdr(us)))
         }
@@ -16499,7 +16499,7 @@ pub mod made__load__1__expand {
         let rs = rules_of(mxp, maker_st, mx_fail, us, int_lit(0))?;
         let makes = makes_all(mxp, maker_st, mx_fail, us, rs)?;
         let saved = get(maker_st.defined.get().unwrap());
-        let sigs = infer_loop(mxp, maker_st, mx_fail, us, rs, makes, sol_empty(), nil::<Product_11_12<Int, Int>>(), str_lit(""), nil::<Product_11_12<List<Str>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>(), int_lit(16), saved)?;
+        let sigs = infer_loop(mxp, maker_st, mx_fail, us, rs, makes, sol_empty(), nil::<Product_11_12<Int, Int>>(), str_lit!(""), nil::<Product_11_12<List<Str>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>(), int_lit(16), saved)?;
         set(maker_st.defined.get().unwrap(), saved);
         Ok(made_sigs(mxp, maker_st, sigs, makes, us))
     }
@@ -16551,7 +16551,7 @@ pub mod made__load__1__expand {
 
     pub fn arrow_parts(s: kayak_rt::Handle<'static, Syn>) -> SynsA {
         let ps = proper_items(s);
-        if (_eq(len(ps), int_lit(3)) && syn_symbol_p(car(ps)) && string_eq_p(syn_name(car(ps)), str_lit("macro/addressed"))) {
+        if (_eq(len(ps), int_lit(3)) && syn_symbol_p(car(ps)) && string_eq_p(syn_name(car(ps)), str_lit!("macro/addressed"))) {
             ps
         } else {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
@@ -16562,7 +16562,7 @@ pub mod made__load__1__expand {
     pub fn mx_solve_made_of(s: kayak_rt::Handle<'static, Syn>) -> Str {
         let ps = arrow_parts(s);
         if null_p(ps) {
-            str_lit("")
+            str_lit!("")
         } else {
             syn_name(nth(ps, int_lit(2)))
         }
@@ -16607,11 +16607,11 @@ pub mod made__load__1__expand {
             if (null_p(ms) || not(same_made_p(cdr(ms), mx_solve_made_of(car(ms))))) {
                 Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
             } else {
-                let union = mk_list(cons(mk_symbol(str_lit("oneof"), a, b), sig_bodies(ms)), a, b);
-                if string_eq_p(mx_solve_made_of(car(ms)), str_lit("")) {
+                let union = mk_list(cons(mk_symbol(str_lit!("oneof"), a, b), sig_bodies(ms)), a, b);
+                if string_eq_p(mx_solve_made_of(car(ms)), str_lit!("")) {
                     Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
                 } else {
-                    Ok(kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(str_lit("macro/addressed"), a, b), kayak_rt::cons(union, kayak_rt::cons(mk_symbol(mx_solve_made_of(car(ms)), a, b), kayak_rt::nil()))), a, b), kayak_rt::nil()))
+                    Ok(kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(str_lit!("macro/addressed"), a, b), kayak_rt::cons(union, kayak_rt::cons(mk_symbol(mx_solve_made_of(car(ms)), a, b), kayak_rt::nil()))), a, b), kayak_rt::nil()))
                 }
             }
         }
@@ -16694,9 +16694,9 @@ pub mod made__load__1__expand {
         let n = seen_count(h, get(maker_st.keys_seen.get().unwrap()));
         set(maker_st.keys_seen.get().unwrap(), cons(Product_11_12(h, _plus(n, int_lit(1))), get(maker_st.keys_seen.get().unwrap())));
         set(maker_st.form_key.get().unwrap(), string_append(get(maker_st.module_prefix.get().unwrap()), string_append(int_to_string(h), if _eq(n, int_lit(0)) {
-            str_lit("")
+            str_lit!("")
         } else {
-            string_append(str_lit("-"), int_to_string(n))
+            string_append(str_lit!("-"), int_to_string(n))
         })));
         set(maker_st.fresh_count.get().unwrap(), int_lit(0));
         set(maker_st.captors_made.get().unwrap(), int_lit(0));
@@ -16707,18 +16707,18 @@ pub mod made__load__1__expand {
     #[inline]
     pub fn fresh_tag<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>) -> Str {
         set(maker_st.fresh_count.get().unwrap(), _plus(get(maker_st.fresh_count.get().unwrap()), int_lit(1)));
-        string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit("."), int_to_string(get(maker_st.fresh_count.get().unwrap()))))
+        string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit!("."), int_to_string(get(maker_st.fresh_count.get().unwrap()))))
     }
 
     #[inline]
     pub fn captor_tag<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>) -> Str {
         set(maker_st.captors_made.get().unwrap(), _plus(get(maker_st.captors_made.get().unwrap()), int_lit(1)));
-        string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit("."), int_to_string(get(maker_st.captors_made.get().unwrap()))))
+        string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit!("."), int_to_string(get(maker_st.captors_made.get().unwrap()))))
     }
 
     pub fn expansion_begun_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, made: Int) -> Str {
         set(maker_st.mx_fresh_expanded.get().unwrap(), _plus(get(maker_st.mx_fresh_expanded.get().unwrap()), int_lit(1)));
-        let t = string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit("."), int_to_string(get(maker_st.mx_fresh_expanded.get().unwrap()))));
+        let t = string_append(get(maker_st.form_key.get().unwrap()), string_append(str_lit!("."), int_to_string(get(maker_st.mx_fresh_expanded.get().unwrap()))));
         set(maker_st.form_tags.get().unwrap(), cons(Product_11_12(made, t), get(maker_st.form_tags.get().unwrap())));
         t
     }
@@ -16726,7 +16726,7 @@ pub mod made__load__1__expand {
     pub fn tag_in(mut made: Int, mut ts: Tags) -> Str {
         loop {
             if null_p(ts) {
-                return str_lit("0");
+                return str_lit!("0");
             } else if _eq(made, car(ts).0) {
                 return car(ts).1;
             } else {
@@ -16759,25 +16759,25 @@ pub mod made__load__1__expand {
 
     pub fn tagged_name(mut n: Str, mut i: Int, mut tag: Str, mut out: Str, mut any: bool) -> Str {
         loop {
-            let c = if (_lt_eq(_plus(i, int_lit(2)), string_length(n)) && string_eq_p(substring(n, i, _plus(i, int_lit(2))), str_lit("%~"))) {
+            let c = if (_lt_eq(_plus(i, int_lit(2)), string_length(n)) && string_eq_p(substring(n, i, _plus(i, int_lit(2))), str_lit!("%~"))) {
                 tag_end(n, _plus(i, int_lit(2)))
             } else {
                 int_lit(-1)
             };
             if (_gt_eq(c, int_lit(0)) && _lt(c, string_length(n)) && char_eq_p(string_ref(n, c), ':')) {
                 let t = substring(n, _plus(i, int_lit(2)), c);
-                let seg = string_append(str_lit("%~"), string_append(if string_eq_p(t, str_lit("")) {
+                let seg = string_append(str_lit!("%~"), string_append(if string_eq_p(t, str_lit!("")) {
                     tag
                 } else {
                     t
-                }, str_lit(":")));
-                (i, out, any) = (_plus(c, int_lit(1)), string_append(out, seg), (any || string_eq_p(t, str_lit(""))));
+                }, str_lit!(":")));
+                (i, out, any) = (_plus(c, int_lit(1)), string_append(out, seg), (any || string_eq_p(t, str_lit!(""))));
                 continue;
             } else {
                 if any {
                     return string_append(out, substring(n, i, string_length(n)));
                 } else {
-                    return str_lit("");
+                    return str_lit!("");
                 }
             }
         }
@@ -16788,8 +16788,8 @@ pub mod made__load__1__expand {
         match *tagcase_ {
             made__load__0__expander_kc::Syn::Atom(d, a, b, x) => {
                 if symbol_p(d) {
-                    let n = tagged_name(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)), int_lit(0), mx_fresh_tag_of(mxp, maker_st, made), str_lit(""), false);
-                    if string_eq_p(n, str_lit("")) {
+                    let n = tagged_name(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)), int_lit(0), mx_fresh_tag_of(mxp, maker_st, made), str_lit!(""), false);
+                    if string_eq_p(n, str_lit!("")) {
                         s
                     } else {
                         atom(kayak_rt::value::ToValue::to_value(string_to_symbol(n)), a, b, x)
@@ -16822,22 +16822,22 @@ pub mod made__load__1__expand {
     }
 
     pub fn file_prefix<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, key: Str, imported: bool) -> Str {
-        let path = if (_gt(string_length(key), int_lit(6)) && string_eq_p(substring(key, int_lit(0), int_lit(6)), str_lit("input:"))) {
+        let path = if (_gt(string_length(key), int_lit(6)) && string_eq_p(substring(key, int_lit(0), int_lit(6)), str_lit!("input:"))) {
             substring(key, int_lit(6), string_length(key))
         } else {
             key
         };
         let f = mix(mxp, maker_st, int_lit(2), remainder(string_hash(path), maker_st.hash_p.get().unwrap()));
-        string_append(str_lit("m"), string_append(int_to_string(f), if imported {
-            str_lit("mm")
+        string_append(str_lit!("m"), string_append(int_to_string(f), if imported {
+            str_lit!("mm")
         } else {
-            str_lit("m")
+            str_lit!("m")
         }))
     }
 
     #[inline]
     pub fn instance_prefix<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, prefix: Str, lib: Symbol) -> Str {
-        string_append(prefix, string_append(int_to_string(mix(mxp, maker_st, int_lit(1), text_hash(mxp, maker_st, symbol_to_string(lib)))), str_lit("m")))
+        string_append(prefix, string_append(int_to_string(mix(mxp, maker_st, int_lit(1), text_hash(mxp, maker_st, symbol_to_string(lib)))), str_lit!("m")))
     }
 
     pub fn fresh_scope_begin_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, prefix: Str) -> FreshSaved {
@@ -16943,7 +16943,7 @@ pub mod made__load__1__expand {
                 if null_p(node_hole(mxp, maker_st, i)) {
                     ()
                 } else {
-                    match fail_at(mxp, maker_st, mx_fail, str_lit("a procedural macro's contract of typed parts: not yet"), node_syn(mxp, maker_st, i))? {}
+                    match fail_at(mxp, maker_st, mx_fail, str_lit!("a procedural macro's contract of typed parts: not yet"), node_syn(mxp, maker_st, i))? {}
                 };
                 (i, out) = (_plus(i, int_lit(1)), if leaf_sty_p(node_core(mxp, maker_st, i)) {
                     cons(Product_11_12(syn_start(node_syn(mxp, maker_st, i)), syn_end(node_syn(mxp, maker_st, i))), out)
@@ -16974,7 +16974,7 @@ pub mod made__load__1__expand {
         if place_in_p(syn_start(s), syn_end(s), leaves) {
             let k = len(get(maker_st.pseudo_parts.get().unwrap()));
             set(maker_st.pseudo_parts.get().unwrap(), cons(s, get(maker_st.pseudo_parts.get().unwrap())));
-            atom(kayak_rt::value::ToValue::to_value(string_to_symbol(string_append(str_lit("%part:"), int_to_string(k)))), syn_start(s), syn_end(s), syn_expansion(s))
+            atom(kayak_rt::value::ToValue::to_value(string_to_symbol(string_append(str_lit!("%part:"), int_to_string(k)))), syn_start(s), syn_end(s), syn_expansion(s))
         } else {
             let tagcase_ = s;
             match *tagcase_ {
@@ -17005,7 +17005,7 @@ pub mod made__load__1__expand {
 
     pub fn part_number(n: Symbol) -> Int {
         let s = symbol_to_string(n);
-        if (_gt(string_length(s), int_lit(6)) && string_eq_p(substring(s, int_lit(0), int_lit(6)), str_lit("%part:"))) {
+        if (_gt(string_length(s), int_lit(6)) && string_eq_p(substring(s, int_lit(0), int_lit(6)), str_lit!("%part:"))) {
             mx_parse_nat(substring(s, int_lit(6), string_length(s)), int_lit(10))
         } else {
             int_lit(-1)
@@ -17025,7 +17025,7 @@ pub mod made__load__1__expand {
                     }
                     _ => {
                         let y = tagcase_;
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a part in the scope of the binders another "), string_append(str_lit("part exports: not yet in a procedural "), str_lit("macro's contract"))), part)? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a part in the scope of the binders another "), string_append(str_lit!("part exports: not yet in a procedural "), str_lit!("macro's contract"))), part)? {};
                         return Ok(out);
                     }
                 }
@@ -17050,7 +17050,7 @@ pub mod made__load__1__expand {
                     }
                     _ => {
                         let y = tagcase_;
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a part in the scope of a ribcage or a "), string_append(str_lit("module: not yet in a procedural macro's "), str_lit("contract"))), part)? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a part in the scope of a ribcage or a "), string_append(str_lit!("module: not yet in a procedural macro's "), str_lit!("contract"))), part)? {};
                         return Ok(out);
                     }
                 }
@@ -17123,7 +17123,7 @@ pub mod made__load__1__expand {
         if null_p(bs) {
             nil::<Product_11_12<Int, Symbol>>()
         } else {
-            kayak_rt::heap_cons(Product_11_12(car(bs).0, string_to_symbol(string_append(str_lit("%contract:"), string_append(int_to_string(car(bs).0), string_append(str_lit(":"), symbol_to_string(car(bs).1)))))), fresh_names(cdr(bs)))
+            kayak_rt::heap_cons(Product_11_12(car(bs).0, string_to_symbol(string_append(str_lit!("%contract:"), string_append(int_to_string(car(bs).0), string_append(str_lit!(":"), symbol_to_string(car(bs).1)))))), fresh_names(cdr(bs)))
         }
     }
 
@@ -17676,7 +17676,7 @@ pub mod made__load__1__expand {
         loop {
             if null_p(fresh) {
                 return nil::<Symbol>();
-            } else if (symbol_eq_p(n, car(fresh).0) || string_eq_p(symbol_to_string(n), string_append(str_lit("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), string_append(str_lit(":"), symbol_to_string(car(fresh).0)))))) {
+            } else if (symbol_eq_p(n, car(fresh).0) || string_eq_p(symbol_to_string(n), string_append(str_lit!("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), string_append(str_lit!(":"), symbol_to_string(car(fresh).0)))))) {
                 return kayak_rt::cons(car(fresh).1, kayak_rt::nil());
             } else {
                 fresh = cdr(fresh);
@@ -17707,7 +17707,7 @@ pub mod made__load__1__expand {
 
     pub fn contract_held<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, in_use: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, out: kayak_rt::Handle<'static, Syn>, out2: kayak_rt::Handle<'static, Syn>, fresh: MxContractsRenames, made: Int, ty: kayak_rt::Handle<'static, Sty>) -> Result<(), Unwind> {
         let ours = kayak_rt::closure3((in_use, s,), |(in_use, s,), m: Str, a: Int, b: Int| {
-            Ok(match in_use.call(string_append(str_lit("its expansion: "), m), syn_start(s), syn_end(s))? {})
+            Ok(match in_use.call(string_append(str_lit!("its expansion: "), m), syn_start(s), syn_end(s))? {})
         });
         let a = alpha_nodes(mxp, maker_st, ours, out, ty)?;
         let b = alpha_nodes(mxp, maker_st, ours, out2, ty)?;
@@ -17716,9 +17716,9 @@ pub mod made__load__1__expand {
         } else {
             let x = mx_contracts_escaped(mxp, maker_st, b, fresh, made);
             Ok(match in_use.call(if null_p(x) {
-                str_lit("its expansion depends on how its use's bound names are spelled")
+                str_lit!("its expansion depends on how its use's bound names are spelled")
             } else {
-                string_append(str_lit("its expansion places `"), string_append(symbol_to_string(car(x)), string_append(str_lit("` where its contract does not put it in `"), string_append(symbol_to_string(car(x)), str_lit("`'s scope")))))
+                string_append(str_lit!("its expansion places `"), string_append(symbol_to_string(car(x)), string_append(str_lit!("` where its contract does not put it in `"), string_append(symbol_to_string(car(x)), str_lit!("`'s scope")))))
             }, syn_start(s), syn_end(s))? {})
         }
     }
@@ -17758,7 +17758,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn said_not_yet<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
-        Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("a contract whose uses define what a part of theirs defines: not yet"), at)? {})
+        Ok(match fail_at(mxp, maker_st, mx_fail, str_lit!("a contract whose uses define what a part of theirs defines: not yet"), at)? {})
     }
 
     pub fn said_names<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut r#as: Atms, mut parts: SynsA, mut at: kayak_rt::Handle<'static, Syn>) -> Result<NamedNs, Unwind> {
@@ -17773,7 +17773,7 @@ pub mod made__load__1__expand {
                         if syn_symbol_p(p) {
                             return Ok(cons(Product_11_12(syn_symbol(mxp, maker_st, p)?, d), said_names(mxp, maker_st, mx_fail, cdr(r#as), parts, at)?));
                         } else {
-                            match fail_at(mxp, maker_st, mx_fail, str_lit("a binder that is not a name"), p)? {};
+                            match fail_at(mxp, maker_st, mx_fail, str_lit!("a binder that is not a name"), p)? {};
                             return Ok(nil::<Product_11_12<Symbol, bool>>());
                         }
                     }
@@ -17922,16 +17922,16 @@ pub mod made__load__1__expand {
     pub fn defined_held<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>, out: kayak_rt::Handle<'static, Syn>, made: Int) -> Result<(), Unwind> {
         let said = contract_said(mxp, maker_st, mx_fail, sig, operands)?;
         let ours = kayak_rt::closure3((mx_fail,), |(mx_fail,), m: Str, a: Int, b: Int| {
-            Ok(match mx_fail.call(string_append(str_lit("its expansion: "), m), a, b)? {})
+            Ok(match mx_fail.call(string_append(str_lit!("its expansion: "), m), a, b)? {})
         });
         let defines = expansion_defines(mxp, maker_st, ours, out)?;
-        let own = string_append(str_lit("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), str_lit(":")));
+        let own = string_append(str_lit!("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), str_lit!(":")));
         let extra = named_not_in(defines, said, own);
-        let missing = named_not_in(said, defines, str_lit(""));
+        let missing = named_not_in(said, defines, str_lit!(""));
         if not(null_p(extra)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("its expansion defines `"), string_append(symbol_to_string(car(extra)), string_append(str_lit("`, which its contract does not say a use defines, "), str_lit("nor is it its own (an alias, as `rename` makes one)")))), out)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("its expansion defines `"), string_append(symbol_to_string(car(extra)), string_append(str_lit!("`, which its contract does not say a use defines, "), str_lit!("nor is it its own (an alias, as `rename` makes one)")))), out)? {})
         } else if not(null_p(missing)) {
-            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("its contract says a use defines `"), string_append(symbol_to_string(car(missing)), str_lit("`, and its expansion does not"))), out)? {})
+            Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("its contract says a use defines `"), string_append(symbol_to_string(car(missing)), str_lit!("`, and its expansion does not"))), out)? {})
         } else {
             Ok(())
         }
@@ -18015,17 +18015,17 @@ pub mod made__load__1__expand {
                     let x = if (not(null_p(part)) && syn_symbol_p(car(part))) {
                         syn_name(car(part))
                     } else {
-                        str_lit("")
+                        str_lit!("")
                     };
                     let refused = kayak_rt::closure1((mx_fail, name, s,), |(mx_fail, name, s,), m: Str| {
-                        Ok(match mx_fail.call(string_append(str_lit("a use of `"), string_append(symbol_to_string(name), string_append(str_lit("`: "), m))), syn_start(s), syn_end(s))? {})
+                        Ok(match mx_fail.call(string_append(str_lit!("a use of `"), string_append(symbol_to_string(name), string_append(str_lit!("`: "), m))), syn_start(s), syn_end(s))? {})
                     });
-                    if string_eq_p(x, str_lit("")) {
-                        return Ok(match refused.call(string_append(str_lit("its signature says a macro of `"), string_append(shown, string_append(str_lit("` is "), str_lit("defined at a part that is not a name")))))? {});
+                    if string_eq_p(x, str_lit!("")) {
+                        return Ok(match refused.call(string_append(str_lit!("its signature says a macro of `"), string_append(shown, string_append(str_lit!("` is "), str_lit!("defined at a part that is not a name")))))? {});
                     } else if not(name_in_from_p(string_to_symbol(x), get(maker_st.made_syntax.get().unwrap()), from)) {
-                        return Ok(match refused.call(string_append(str_lit("its signature says it defines `"), string_append(x, string_append(str_lit("`, a macro "), string_append(str_lit("of `"), string_append(shown, str_lit("`, and its expansion does not")))))))? {});
+                        return Ok(match refused.call(string_append(str_lit!("its signature says it defines `"), string_append(x, string_append(str_lit!("`, a macro "), string_append(str_lit!("of `"), string_append(shown, str_lit!("`, and its expansion does not")))))))? {});
                     } else if not(same_signature_p(mxp, maker_st, mx_fail, string_to_symbol(x), said)?) {
-                        return Ok(match refused.call(string_append(str_lit("its signature says `"), string_append(x, string_append(str_lit("` is a macro of `"), string_append(shown, string_append(str_lit("`, and its expansion defines one of "), str_lit("another signature")))))))? {});
+                        return Ok(match refused.call(string_append(str_lit!("its signature says `"), string_append(x, string_append(str_lit!("` is a macro of `"), string_append(shown, string_append(str_lit!("`, and its expansion defines one of "), str_lit!("another signature")))))))? {});
                     } else {
                         es = cdr(es);
                         continue;
@@ -18064,11 +18064,11 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn style_named(n: Str) -> Int {
-        if string_eq_p(n, str_lit("er-macro-transformer")) {
+        if string_eq_p(n, str_lit!("er-macro-transformer")) {
             int_lit(0)
-        } else if string_eq_p(n, str_lit("sc-macro-transformer")) {
+        } else if string_eq_p(n, str_lit!("sc-macro-transformer")) {
             int_lit(1)
-        } else if string_eq_p(n, str_lit("rsc-macro-transformer")) {
+        } else if string_eq_p(n, str_lit!("rsc-macro-transformer")) {
             int_lit(2)
         } else {
             int_lit(-1)
@@ -18077,23 +18077,23 @@ pub mod made__load__1__expand {
 
     pub fn forms_given(fs: List<Str>) -> Str {
         if null_p(fs) {
-            str_lit("")
+            str_lit!("")
         } else {
-            string_append(int_to_string(string_length(car(fs))), string_append(str_lit("\n"), string_append(car(fs), forms_given(cdr(fs)))))
+            string_append(int_to_string(string_length(car(fs))), string_append(str_lit!("\n"), string_append(car(fs), forms_given(cdr(fs)))))
         }
     }
 
     pub fn checked_text(s: Int, code: Str, fs: List<Str>) -> Str {
-        string_append(str_lit("%define "), string_append(int_to_string(s), string_append(str_lit(" "), string_append(int_to_string(length(fs)), string_append(str_lit("\n"), string_append(forms_given(fs), code))))))
+        string_append(str_lit!("%define "), string_append(int_to_string(s), string_append(str_lit!(" "), string_append(int_to_string(length(fs)), string_append(str_lit!("\n"), string_append(forms_given(fs), code))))))
     }
 
     #[inline]
     pub fn forms_text(fs: List<Str>) -> Str {
-        string_append(str_lit("%forms "), string_append(int_to_string(length(fs)), string_append(str_lit("\n"), forms_given(fs))))
+        string_append(str_lit!("%forms "), string_append(int_to_string(length(fs)), string_append(str_lit!("\n"), forms_given(fs))))
     }
 
     pub fn applied_text(s: Int, code: Str, form: Str, made: Int, fs: List<Str>) -> Str {
-        string_append(str_lit("%apply "), string_append(int_to_string(s), string_append(str_lit(" 0 "), string_append(int_to_string(string_length(code)), string_append(str_lit(" "), string_append(int_to_string(length(fs)), string_append(str_lit("\n"), string_append(forms_given(fs), string_append(code, form)))))))))
+        string_append(str_lit!("%apply "), string_append(int_to_string(s), string_append(str_lit!(" 0 "), string_append(int_to_string(string_length(code)), string_append(str_lit!(" "), string_append(int_to_string(length(fs)), string_append(str_lit!("\n"), string_append(forms_given(fs), string_append(code, form)))))))))
     }
 
     pub fn mx_procedural_run<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, code: Str) -> kayak_rt::Sum {
@@ -18116,11 +18116,11 @@ pub mod made__load__1__expand {
             } else {
                 let c = string_ref(s, i);
                 (i, out) = (_plus(i, int_lit(1)), string_append(out, if char_eq_p(c, '"') {
-                    str_lit("\\\"")
+                    str_lit!("\\\"")
                 } else if char_eq_p(c, '\\') {
-                    str_lit("\\\\")
+                    str_lit!("\\\\")
                 } else if char_eq_p(c, integer_to_char(int_lit(10))) {
-                    str_lit("\\n")
+                    str_lit!("\\n")
                 } else {
                     char_to_string(c)
                 }));
@@ -18131,25 +18131,25 @@ pub mod made__load__1__expand {
 
     pub fn char_text(c: char) -> Str {
         if char_eq_p(c, ' ') {
-            str_lit("#\\space")
+            str_lit!("#\\space")
         } else if char_eq_p(c, integer_to_char(int_lit(10))) {
-            str_lit("#\\newline")
+            str_lit!("#\\newline")
         } else if char_eq_p(c, integer_to_char(int_lit(9))) {
-            str_lit("#\\tab")
+            str_lit!("#\\tab")
         } else {
-            string_append(str_lit("#\\"), char_to_string(c))
+            string_append(str_lit!("#\\"), char_to_string(c))
         }
     }
 
     pub fn datum_text(d: kayak_rt::value::Value) -> Str {
         if kayak_rt::value::null_p(d) {
-            str_lit("()")
+            str_lit!("()")
         } else if symbol_p(d) {
             symbol_to_string(kayak_rt::value::unbox::<Symbol>(d))
         } else if mx_keyword_p(d) {
-            string_append(str_lit("#:"), symbol_to_string(mx_keyword_to_symbol(d)))
+            string_append(str_lit!("#:"), symbol_to_string(mx_keyword_to_symbol(d)))
         } else if string_p(d) {
-            string_append(str_lit("\""), string_append(mx_procedural_escaped(kayak_rt::value::unbox::<Str>(d), int_lit(0), str_lit("")), str_lit("\"")))
+            string_append(str_lit!("\""), string_append(mx_procedural_escaped(kayak_rt::value::unbox::<Str>(d), int_lit(0), str_lit!("")), str_lit!("\"")))
         } else if char_p(d) {
             char_text(kayak_rt::value::unbox::<char>(d))
         } else if int_p(d) {
@@ -18158,12 +18158,12 @@ pub mod made__load__1__expand {
             f64_to_string(kayak_rt::value::unbox::<f64>(d))
         } else if bool_p(d) {
             if kayak_rt::value::unbox::<bool>(d) {
-                str_lit("#t")
+                str_lit!("#t")
             } else {
-                str_lit("#f")
+                str_lit!("#f")
             }
         } else {
-            str_lit("#u")
+            str_lit!("#u")
         }
     }
 
@@ -18174,24 +18174,24 @@ pub mod made__load__1__expand {
                 datum_text(d)
             }
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
-                string_append(str_lit("("), string_append(syns_text(items), str_lit(")")))
+                string_append(str_lit!("("), string_append(syns_text(items), str_lit!(")")))
             }
             made__load__0__expander_kc::Syn::Dotted(items, tail, d, a, b, x) => {
-                string_append(str_lit("("), string_append(syns_text(items), string_append(str_lit(" . "), string_append(syn_text(tail), str_lit(")")))))
+                string_append(str_lit!("("), string_append(syns_text(items), string_append(str_lit!(" . "), string_append(syn_text(tail), str_lit!(")")))))
             }
             made__load__0__expander_kc::Syn::Vec(items, d, a, b, x) => {
-                string_append(str_lit("#("), string_append(syns_text(items), str_lit(")")))
+                string_append(str_lit!("#("), string_append(syns_text(items), str_lit!(")")))
             }
         }
     }
 
     pub fn syns_text(xs: SynsA) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else if null_p(cdr(xs)) {
             syn_text(car(xs))
         } else {
-            string_append(syn_text(car(xs)), string_append(str_lit(" "), syns_text(cdr(xs))))
+            string_append(syn_text(car(xs)), string_append(str_lit!(" "), syns_text(cdr(xs))))
         }
     }
 
@@ -18298,11 +18298,11 @@ pub mod made__load__1__expand {
     }
 
     pub fn mx_procedural_char_named(n: Str) -> kayak_rt::value::Value {
-        if string_eq_p(n, str_lit("space")) {
+        if string_eq_p(n, str_lit!("space")) {
             kayak_rt::value::ToValue::to_value(' ')
-        } else if string_eq_p(n, str_lit("newline")) {
+        } else if string_eq_p(n, str_lit!("newline")) {
             kayak_rt::value::ToValue::to_value(integer_to_char(int_lit(10)))
-        } else if string_eq_p(n, str_lit("tab")) {
+        } else if string_eq_p(n, str_lit!("tab")) {
             kayak_rt::value::ToValue::to_value(integer_to_char(int_lit(9)))
         } else {
             kayak_rt::value::ToValue::to_value(string_ref(n, int_lit(0)))
@@ -18314,13 +18314,13 @@ pub mod made__load__1__expand {
         let n = mx_parse_number(t, int_lit(10));
         kayak_rt::heap_cons(Product_11_12(atom(if not(null_p(n)) {
             car(n)
-        } else if string_eq_p(t, str_lit("#t")) {
+        } else if string_eq_p(t, str_lit!("#t")) {
             kayak_rt::value::ToValue::to_value(true)
-        } else if string_eq_p(t, str_lit("#f")) {
+        } else if string_eq_p(t, str_lit!("#f")) {
             kayak_rt::value::ToValue::to_value(false)
-        } else if (_gt(string_length(t), int_lit(2)) && string_eq_p(substring(t, int_lit(0), int_lit(2)), str_lit("#\\"))) {
+        } else if (_gt(string_length(t), int_lit(2)) && string_eq_p(substring(t, int_lit(0), int_lit(2)), str_lit!("#\\"))) {
             mx_procedural_char_named(substring(t, int_lit(2), string_length(t)))
-        } else if (_gt(string_length(t), int_lit(2)) && string_eq_p(substring(t, int_lit(0), int_lit(2)), str_lit("#:"))) {
+        } else if (_gt(string_length(t), int_lit(2)) && string_eq_p(substring(t, int_lit(0), int_lit(2)), str_lit!("#:"))) {
             kayak_rt::value::ToValue::to_value(mx_symbol_to_keyword(string_to_symbol(substring(t, int_lit(2), string_length(t)))))
         } else {
             kayak_rt::value::ToValue::to_value(string_to_symbol(t))
@@ -18356,13 +18356,13 @@ pub mod made__load__1__expand {
             if char_eq_p(c, '(') {
                 mx_procedural_read_items(s, mx_procedural_skip(s, _plus(i, int_lit(1))), a, b, x, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
             } else if char_eq_p(c, '"') {
-                read_string_at(s, _plus(i, int_lit(1)), str_lit(""), a, b, x)
+                read_string_at(s, _plus(i, int_lit(1)), str_lit!(""), a, b, x)
             } else if char_eq_p(c, '\'') {
                 let r = mx_procedural_read_at(s, mx_procedural_skip(s, _plus(i, int_lit(1))), a, b, x);
                 if null_p(r) {
                     nil::<Product_11_12<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>, Int>>()
                 } else {
-                    let q = kayak_rt::heap_cons(atom(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("quote"))), a, b, x), kayak_rt::heap_cons(car(r).0, kayak_rt::nil()));
+                    let q = kayak_rt::heap_cons(atom(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("quote"))), a, b, x), kayak_rt::heap_cons(car(r).0, kayak_rt::nil()));
                     kayak_rt::heap_cons(Product_11_12(mx_eager_reader_types_lst(q, kayak_rt::value::list(syn_datums(q)), a, b, x), car(r).1), kayak_rt::nil())
                 }
             } else if (char_eq_p(c, '#') && _lt(_plus(i, int_lit(1)), string_length(s)) && char_eq_p(string_ref(s, _plus(i, int_lit(1))), '(')) {
@@ -18429,7 +18429,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn mx_procedural_alias<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Str, made: Int) -> Str {
-        string_append(str_lit("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), string_append(str_lit(":"), n)))
+        string_append(str_lit!("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), string_append(str_lit!(":"), n)))
     }
 
     #[inline]
@@ -18437,7 +18437,7 @@ pub mod made__load__1__expand {
         if (not(null_p(items)) && syn_symbol_p(car(items))) {
             syn_name(car(items))
         } else {
-            str_lit("")
+            str_lit!("")
         }
     }
 
@@ -18495,9 +18495,9 @@ pub mod made__load__1__expand {
             }
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                 let head = mx_procedural_head_of(items);
-                if string_eq_p(head, str_lit("quote")) {
+                if string_eq_p(head, str_lit!("quote")) {
                     Ok(s)
-                } else if string_eq_p(head, str_lit("%sc")) {
+                } else if string_eq_p(head, str_lit!("%sc")) {
                     Ok(opened_closure(mxp, maker_st, mx_fail, s, items, macro_env, made)?)
                 } else {
                     let xs = mx_procedural_closed_each(mxp, maker_st, mx_fail, items, macro_env, made)?;
@@ -18524,7 +18524,7 @@ pub mod made__load__1__expand {
 
     pub fn opened_closure<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, items: SynsA, outer: bool, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if not(_eq(len(items), int_lit(4))) {
-            match mx_fail.call(str_lit("a syntactic closure is `(%sc env (free …) form)`"), syn_start(s), syn_end(s))? {};
+            match mx_fail.call(str_lit!("a syntactic closure is `(%sc env (free …) form)`"), syn_start(s), syn_end(s))? {};
             Ok(s)
         } else {
             let env = car(cdr(items));
@@ -18533,13 +18533,13 @@ pub mod made__load__1__expand {
             let e = if syn_symbol_p(env) {
                 syn_name(env)
             } else {
-                str_lit("")
+                str_lit!("")
             };
-            if not((string_eq_p(e, str_lit("%env:use")) || string_eq_p(e, str_lit("%env:macro")))) {
-                match mx_fail.call(str_lit("a syntactic closure's environment is one a transformer was given"), syn_start(env), syn_end(env))? {};
+            if not((string_eq_p(e, str_lit!("%env:use")) || string_eq_p(e, str_lit!("%env:macro")))) {
+                match mx_fail.call(str_lit!("a syntactic closure's environment is one a transformer was given"), syn_start(env), syn_end(env))? {};
                 Ok(s)
             } else {
-                Ok(opened(mxp, maker_st, mx_fail, form, string_eq_p(e, str_lit("%env:macro")), outer, free_names(mxp, maker_st, free)?, made)?)
+                Ok(opened(mxp, maker_st, mx_fail, form, string_eq_p(e, str_lit!("%env:macro")), outer, free_names(mxp, maker_st, free)?, made)?)
             }
         }
     }
@@ -18556,7 +18556,7 @@ pub mod made__load__1__expand {
             }
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                 let head = mx_procedural_head_of(items);
-                if (string_eq_p(head, str_lit("quote")) || string_eq_p(head, str_lit("%sc"))) {
+                if (string_eq_p(head, str_lit!("quote")) || string_eq_p(head, str_lit!("%sc"))) {
                     Ok(closed(mxp, maker_st, mx_fail, s, inner, made)?)
                 } else {
                     let xs = opened_each(mxp, maker_st, mx_fail, items, inner, outer, free, made)?;
@@ -18594,7 +18594,7 @@ pub mod made__load__1__expand {
 
     pub fn mx_procedural_alias_base_from(mut n: Str, mut any: bool) -> Str {
         loop {
-            let c = if (_gt(string_length(n), int_lit(2)) && string_eq_p(substring(n, int_lit(0), int_lit(2)), str_lit("%~"))) {
+            let c = if (_gt(string_length(n), int_lit(2)) && string_eq_p(substring(n, int_lit(0), int_lit(2)), str_lit!("%~"))) {
                 mx_procedural_digits_end(n, int_lit(2))
             } else {
                 int_lit(-1)
@@ -18606,7 +18606,7 @@ pub mod made__load__1__expand {
                 if any {
                     return n;
                 } else {
-                    return str_lit("");
+                    return str_lit!("");
                 }
             }
         }
@@ -18633,7 +18633,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn mx_procedural_keyword_name_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Str) -> Result<bool, Unwind> {
-        Ok((reserved_p(mxp, maker_st, n) || desc_word_p(mxp, maker_st, n, true) || type_form_p(mxp, maker_st, n) || named_p(n, kernel_sigs(mxp, maker_st, mx_fail)?) || named_p(n, kernel_definitions(mxp, maker_st, mx_fail)?) || string_eq_p(n, str_lit("else")) || string_eq_p(n, str_lit("=>")) || string_eq_p(n, str_lit("quote")) || string_eq_p(n, str_lit("quasiquote")) || string_eq_p(n, str_lit("unquote")) || string_eq_p(n, str_lit("unquote-splicing")) || string_eq_p(n, str_lit("syntax-rules")) || string_eq_p(n, str_lit("trailmark")) || _gt_eq(style_named(n), int_lit(0)) || macro_p(mxp, maker_st, string_to_symbol(n))))
+        Ok((reserved_p(mxp, maker_st, n) || desc_word_p(mxp, maker_st, n, true) || type_form_p(mxp, maker_st, n) || named_p(n, kernel_sigs(mxp, maker_st, mx_fail)?) || named_p(n, kernel_definitions(mxp, maker_st, mx_fail)?) || string_eq_p(n, str_lit!("else")) || string_eq_p(n, str_lit!("=>")) || string_eq_p(n, str_lit!("quote")) || string_eq_p(n, str_lit!("quasiquote")) || string_eq_p(n, str_lit!("unquote")) || string_eq_p(n, str_lit!("unquote-splicing")) || string_eq_p(n, str_lit!("syntax-rules")) || string_eq_p(n, str_lit!("trailmark")) || _gt_eq(style_named(n), int_lit(0)) || macro_p(mxp, maker_st, string_to_symbol(n))))
     }
 
     pub fn unaliased(s: kayak_rt::Handle<'static, Syn>) -> kayak_rt::Handle<'static, Syn> {
@@ -18642,7 +18642,7 @@ pub mod made__load__1__expand {
             made__load__0__expander_kc::Syn::Atom(d, a, b, x) => {
                 if symbol_p(d) {
                     let base = mx_procedural_alias_base(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)));
-                    if string_eq_p(base, str_lit("")) {
+                    if string_eq_p(base, str_lit!("")) {
                         s
                     } else {
                         atom(kayak_rt::value::ToValue::to_value(string_to_symbol(base)), a, b, x)
@@ -18681,7 +18681,7 @@ pub mod made__load__1__expand {
             made__load__0__expander_kc::Syn::Atom(d, a, b, x) => {
                 if symbol_p(d) {
                     let base = mx_procedural_alias_base(symbol_to_string(kayak_rt::value::unbox::<Symbol>(d)));
-                    if (not(string_eq_p(base, str_lit(""))) && mx_procedural_keyword_name_p(mxp, maker_st, mx_fail, base)?) {
+                    if (not(string_eq_p(base, str_lit!(""))) && mx_procedural_keyword_name_p(mxp, maker_st, mx_fail, base)?) {
                         Ok(atom(kayak_rt::value::ToValue::to_value(string_to_symbol(base)), a, b, x))
                     } else {
                         Ok(s)
@@ -18693,12 +18693,12 @@ pub mod made__load__1__expand {
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                 let head = mx_procedural_head_of(items);
                 let base = mx_procedural_alias_base(head);
-                let h = if string_eq_p(base, str_lit("")) {
+                let h = if string_eq_p(base, str_lit!("")) {
                     head
                 } else {
                     base
                 };
-                if (string_eq_p(h, str_lit("quote")) || string_eq_p(h, str_lit("quasiquote"))) {
+                if (string_eq_p(h, str_lit!("quote")) || string_eq_p(h, str_lit!("quasiquote"))) {
                     Ok(unaliased(s))
                 } else {
                     let xs = keywords_each(mxp, maker_st, mx_fail, items)?;
@@ -18772,7 +18772,7 @@ pub mod made__load__1__expand {
         let a = syn_start(s);
         let b = syn_end(s);
         let in_use = kayak_rt::closure1((mx_fail, name, a, b,), |(mx_fail, name, a, b,), m: Str| {
-            Ok(match mx_fail.call(string_append(str_lit("a use of `"), string_append(symbol_to_string(name), string_append(str_lit("`: "), m))), a, b)? {})
+            Ok(match mx_fail.call(string_append(str_lit!("a use of `"), string_append(symbol_to_string(name), string_append(str_lit!("`: "), m))), a, b)? {})
         });
         let opened = kayak_rt::closure1((mxp, maker_st, mx_fail, made, style,), |(mxp, maker_st, mx_fail, made, style,), at: kayak_rt::Handle<'static, Syn>| {
             Ok(keywords(mxp, maker_st, mx_fail, if _eq(style, int_lit(1)) {
@@ -18790,7 +18790,7 @@ pub mod made__load__1__expand {
             Ok(opened.call(syn_of_datum(d, new_source_key(mxp, maker_st, a, made), new_source_key(mxp, maker_st, b, made), made))?)
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            match in_use.call(string_append(str_lit("its transformer: "), why))? {};
+            match in_use.call(string_append(str_lit!("its transformer: "), why))? {};
             Ok(s)
         } else if tag_ == const { kayak_rt::tag_hash("apart") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -18798,13 +18798,13 @@ pub mod made__load__1__expand {
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                match in_use.call(string_append(str_lit("its transformer: "), why))? {};
+                match in_use.call(string_append(str_lit!("its transformer: "), why))? {};
                 Ok(s)
             } else if tag_ == const { kayak_rt::tag_hash("ok") } {
                 let out: Str = kayak_rt::sum_payload::<Str>(tagcase_);
                 let read = read_answer(out, new_source_key(mxp, maker_st, a, made), new_source_key(mxp, maker_st, b, made), made);
                 if null_p(read) {
-                    match in_use.call(string_append(str_lit("its transformer gave `"), string_append(out, str_lit("`, not one form"))))? {};
+                    match in_use.call(string_append(str_lit!("its transformer gave `"), string_append(out, str_lit!("`, not one form"))))? {};
                     Ok(s)
                 } else {
                     Ok(opened.call(car(read))?)
@@ -18814,7 +18814,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn procedural_expanded<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, name: Symbol, s: kayak_rt::Handle<'static, Syn>, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
-        let shown = string_append(str_lit("a use of `"), string_append(symbol_to_string(name), str_lit("`: ")));
+        let shown = string_append(str_lit!("a use of `"), string_append(symbol_to_string(name), str_lit!("`: ")));
         let in_use = kayak_rt::closure3((mx_fail, shown,), |(mx_fail, shown,), m: Str, a: Int, b: Int| {
             Ok(match mx_fail.call(string_append(shown, m), a, b)? {})
         });
@@ -18987,7 +18987,7 @@ pub mod made__load__1__expand {
         } else {
             align(mxp, maker_st, if trusted {
                 kayak_rt::closure3((in_use,), |(in_use,), msg: Str, a: Int, b: Int| {
-                    Ok(match in_use.call(string_append(msg, string_append(str_lit(" (a use a template made, which its macro's "), string_append(str_lit("definition found fits: a fault in the "), str_lit("binding-shape check, not in the program)")))), a, b)? {})
+                    Ok(match in_use.call(string_append(msg, string_append(str_lit!(" (a use a template made, which its macro's "), string_append(str_lit!("definition found fits: a fault in the "), str_lit!("binding-shape check, not in the program)")))), a, b)? {})
                 })
             } else {
                 in_use
@@ -19065,7 +19065,7 @@ pub mod made__load__1__expand {
             Ok(set(maker_st.phase1_forms.get().unwrap(), fs))
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            Ok(match mx_fail.call(string_append(str_lit("`begin-for-syntax`: "), why), syn_start(s), syn_end(s))? {})
+            Ok(match mx_fail.call(string_append(str_lit!("`begin-for-syntax`: "), why), syn_start(s), syn_end(s))? {})
         } else { unreachable!() }
     }
 
@@ -19073,7 +19073,7 @@ pub mod made__load__1__expand {
         let tagcase_ = form;
         match *tagcase_ {
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
-                if ((_eq(len(items), int_lit(3)) || _eq(len(items), int_lit(4))) && string_eq_p(mx_procedural_head_of(items), str_lit("define-syntax"))) {
+                if ((_eq(len(items), int_lit(3)) || _eq(len(items), int_lit(4))) && string_eq_p(mx_procedural_head_of(items), str_lit!("define-syntax"))) {
                     let (t, sig) = (if _eq(len(items), int_lit(4)) {
                         nth(items, int_lit(3))
                     } else {
@@ -19125,10 +19125,10 @@ pub mod made__load__1__expand {
             car(signed).1
         };
         if (not(syn_symbol_p(name)) || reserved_p(mxp, maker_st, syn_name(name))) {
-            match mx_fail.call(str_lit("a macro's name, not a form's"), syn_start(name), syn_end(name))? {};
+            match mx_fail.call(str_lit!("a macro's name, not a form's"), syn_start(name), syn_end(name))? {};
             Ok(nil::<Symbol>())
         } else if (not(null_p(signed)) && (not(null_p(car(signed).0)) || _eq(car(signed).2, int_lit(2)))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(name), string_append(str_lit("`'s contract: a procedural "), string_append(str_lit("macro's is an expression's or definitions', of "), str_lit("untyped parts, not yet another"))))), car(p.3))? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(name), string_append(str_lit!("`'s contract: a procedural "), string_append(str_lit!("macro's is an expression's or definitions', of "), str_lit!("untyped parts, not yet another"))))), car(p.3))? {};
             Ok(nil::<Symbol>())
         } else {
             let tagcase_ = mx_procedural_run(mxp, maker_st, checked_text(p.1, text, get(maker_st.phase1_forms.get().unwrap())));
@@ -19144,7 +19144,7 @@ pub mod made__load__1__expand {
                 Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, name)?, kayak_rt::nil()))
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                match mx_fail.call(string_append(str_lit("`"), string_append(syn_name(name), string_append(str_lit("`'s transformer: "), why))), syn_start(code), syn_end(code))? {};
+                match mx_fail.call(string_append(str_lit!("`"), string_append(syn_name(name), string_append(str_lit!("`'s transformer: "), why))), syn_start(code), syn_end(code))? {};
                 Ok(nil::<Symbol>())
             } else { unreachable!() }
         }
@@ -19176,7 +19176,7 @@ pub mod made__load__1__expand {
         let saved = Product_11_12_13_14_15(get(maker_st.defined.get().unwrap()), get(maker_st.procedurals.get().unwrap()), get(maker_st.def_env_now.get().unwrap()), get(maker_st.marks.get().unwrap()), get(maker_st.phase1_forms.get().unwrap()));
         set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, Int>>>());
         set(maker_st.procedurals.get().unwrap(), nil::<Product_11_12_13_14_15_16<Symbol, Int, Str, Product_11_12_13<Int, Symbol, List<Symbol>>, bool, List<Str>>>());
-        set(maker_st.def_env_now.get().unwrap(), Product_11_12_13(int_lit(2), symbol_lit(str_lit("within")), nil::<Symbol>()));
+        set(maker_st.def_env_now.get().unwrap(), Product_11_12_13(int_lit(2), symbol_lit(str_lit!("within")), nil::<Symbol>()));
         set(maker_st.phase1_forms.get().unwrap(), nil::<Str>());
         set(maker_st.marks.get().unwrap(), nil::<Product_11_12<Symbol, Int>>());
         saved
@@ -19274,21 +19274,21 @@ pub mod made__load__1__expand {
     }
 
     pub fn chain_begun_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
-        let u = limit_of(mxp, maker_st, mx_fail, s, str_lit("USES"))?;
+        let u = limit_of(mxp, maker_st, mx_fail, s, str_lit!("USES"))?;
         let d = if _lt(u, int_lit(0)) {
             int_lit(-1)
         } else {
-            limit_of(mxp, maker_st, mx_fail, s, str_lit("DEPTH"))?
+            limit_of(mxp, maker_st, mx_fail, s, str_lit!("DEPTH"))?
         };
         let r = if _lt(d, int_lit(0)) {
             int_lit(-1)
         } else {
-            limit_of(mxp, maker_st, mx_fail, s, str_lit("RECHECK"))?
+            limit_of(mxp, maker_st, mx_fail, s, str_lit!("RECHECK"))?
         };
         let c = if _lt(r, int_lit(0)) {
             int_lit(-1)
         } else {
-            limit_of(mxp, maker_st, mx_fail, s, str_lit("CONTRACTS"))?
+            limit_of(mxp, maker_st, mx_fail, s, str_lit!("CONTRACTS"))?
         };
         set(maker_st.chain.get().unwrap(), nil::<Product_11_12_13<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>, Int>>());
         set(maker_st.chain_depth.get().unwrap(), int_lit(0));
@@ -19435,18 +19435,18 @@ pub mod made__load__1__expand {
 
     pub fn names_said(ns: MxParserTypesNames) -> Str {
         if null_p(cdr(ns)) {
-            string_append(str_lit("`"), string_append(symbol_to_string(car(ns)), str_lit("`")))
+            string_append(str_lit!("`"), string_append(symbol_to_string(car(ns)), str_lit!("`")))
         } else {
-            string_append(str_lit("`"), string_append(symbol_to_string(car(ns)), string_append(str_lit("`, "), names_said(cdr(ns)))))
+            string_append(str_lit!("`"), string_append(symbol_to_string(car(ns)), string_append(str_lit!("`, "), names_said(cdr(ns)))))
         }
     }
 
     #[inline]
     pub fn through_said(ns: MxParserTypesNames) -> Str {
         if null_p(ns) {
-            str_lit("")
+            str_lit!("")
         } else {
-            string_append(str_lit(", through "), names_said(reverse(each_once(ns, nil::<Symbol>()))))
+            string_append(str_lit!(", through "), names_said(reverse(each_once(ns, nil::<Symbol>()))))
         }
     }
 
@@ -19455,7 +19455,7 @@ pub mod made__load__1__expand {
         if null_p(r) {
             match fail_at(mxp, maker_st, mx_fail, why, s)? {}
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("this use of `"), string_append(symbol_to_string(car(r).1), string_append(str_lit("` is one it was expanded from, unchanged"), string_append(through_said(car(r).2), str_lit(": its expansion would never end"))))), car(r).0)? {}
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("this use of `"), string_append(symbol_to_string(car(r).1), string_append(str_lit!("` is one it was expanded from, unchanged"), string_append(through_said(car(r).2), str_lit!(": its expansion would never end"))))), car(r).0)? {}
         };
         Ok(false)
     }
@@ -19465,22 +19465,22 @@ pub mod made__load__1__expand {
             if (null_p(ls) || _eq(k, int_lit(0))) {
                 return out;
             } else {
-                (ls, k, out) = (cdr(ls), _minus(k, int_lit(1)), string_append(out, string_append(if string_eq_p(out, str_lit("")) {
-                    str_lit(", inside ")
+                (ls, k, out) = (cdr(ls), _minus(k, int_lit(1)), string_append(out, string_append(if string_eq_p(out, str_lit!("")) {
+                    str_lit!(", inside ")
                 } else {
-                    str_lit(", ")
-                }, string_append(str_lit("`"), string_append(symbol_to_string(car(ls).0), str_lit("`"))))));
+                    str_lit!(", ")
+                }, string_append(str_lit!("`"), string_append(symbol_to_string(car(ls).0), str_lit!("`"))))));
                 continue;
             }
         }
     }
 
     pub fn use_entered_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, s: kayak_rt::Handle<'static, Syn>, fuel: Int) -> Result<bool, Unwind> {
-        let (ls, shown) = (get(maker_st.chain.get().unwrap()), string_append(str_lit("`"), string_append(symbol_to_string(n), str_lit("`"))));
+        let (ls, shown) = (get(maker_st.chain.get().unwrap()), string_append(str_lit!("`"), string_append(symbol_to_string(n), str_lit!("`"))));
         if _eq(fuel, int_lit(0)) {
-            Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit("this macro's expansion does not end: "), string_append(int_to_string(get(maker_st.max_uses.get().unwrap())), string_append(str_lit(" uses expanded in one form, the last of "), string_append(shown, inside_said(ls, int_lit(4), str_lit("")))))))?)
+            Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit!("this macro's expansion does not end: "), string_append(int_to_string(get(maker_st.max_uses.get().unwrap())), string_append(str_lit!(" uses expanded in one form, the last of "), string_append(shown, inside_said(ls, int_lit(4), str_lit!("")))))))?)
         } else if _eq(get(maker_st.chain_depth.get().unwrap()), get(maker_st.max_depth.get().unwrap())) {
-            Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit("this macro's expansion does not end: its uses are "), string_append(int_to_string(get(maker_st.max_depth.get().unwrap())), string_append(str_lit(" deep, each in the "), string_append(str_lit("expansion of the one before, the last of "), string_append(shown, inside_said(ls, int_lit(4), str_lit(""))))))))?)
+            Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit!("this macro's expansion does not end: its uses are "), string_append(int_to_string(get(maker_st.max_depth.get().unwrap())), string_append(str_lit!(" deep, each in the "), string_append(str_lit!("expansion of the one before, the last of "), string_append(shown, inside_said(ls, int_lit(4), str_lit!(""))))))))?)
         } else {
             set(maker_st.chain.get().unwrap(), cons(Product_11_12_13(n, s, int_lit(-1)), ls));
             set(maker_st.chain_depth.get().unwrap(), _plus(get(maker_st.chain_depth.get().unwrap()), int_lit(1)));
@@ -19508,13 +19508,13 @@ pub mod made__load__1__expand {
                 let a = syn_start(ty);
                 let b = syn_end(ty);
                 let m = if null_p(file) {
-                    str_lit("#%toplevel")
+                    str_lit!("#%toplevel")
                 } else if (syn_symbol_p(ty) && not(mx_files_name_in_p(syn_symbol(mxp, maker_st, ty)?, car(file).2))) {
-                    str_lit("#%fx")
+                    str_lit!("#%fx")
                 } else {
                     symbol_to_string(car(file).0)
                 };
-                Ok(cons(Product_11_12(n, mk_list(kayak_rt::cons(mk_symbol(str_lit("select"), a, b), kayak_rt::cons(mk_symbol(m, a, b), kayak_rt::cons(ty, kayak_rt::nil()))), a, b)), rest))
+                Ok(cons(Product_11_12(n, mk_list(kayak_rt::cons(mk_symbol(str_lit!("select"), a, b), kayak_rt::cons(mk_symbol(m, a, b), kayak_rt::cons(ty, kayak_rt::nil()))), a, b)), rest))
             }
         }
     }
@@ -19522,7 +19522,7 @@ pub mod made__load__1__expand {
     pub fn clause_def_env<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: kayak_rt::Handle<'static, Syn>, ps: Pvars, poly: SynsA, file: Scopes) -> Result<DefEnv, Unwind> {
         let (e, cs) = (def_env_of_file(mxp, maker_st, file), contracts_of(mxp, maker_st, ps, binder_names(mxp, maker_st, poly)?, file)?);
         if (_eq(e.0, int_lit(2)) && not(null_p(cs))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(car(cs).0), string_append(str_lit("`: a typed "), str_lit("hole in a macro a file uses itself, not yet")))), c)? {}
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(car(cs).0), string_append(str_lit!("`: a typed "), str_lit!("hole in a macro a file uses itself, not yet")))), c)? {}
         } else {
             ()
         };
@@ -19547,17 +19547,17 @@ pub mod made__load__1__expand {
                 match *tagcase_ {
                     made__load__0__expander_kc::MxNodesKids::KPvar(n) => {
                         if (_gt(car(fs).3, int_lit(0)) && not(null_p(node_hole(mxp, maker_st, at)))) {
-                            match fail_at(mxp, maker_st, mx_fail, str_lit("a typed part under an ellipsis: not yet"), node_syn(mxp, maker_st, at))? {};
+                            match fail_at(mxp, maker_st, mx_fail, str_lit!("a typed part under an ellipsis: not yet"), node_syn(mxp, maker_st, at))? {};
                             return Ok(ps);
                         } else if pvar_p(n, ps) {
-                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is a pattern "), str_lit("variable twice")))), node_syn(mxp, maker_st, at))? {};
+                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is a pattern "), str_lit!("variable twice")))), node_syn(mxp, maker_st, at))? {};
                             return Ok(ps);
                         } else {
                             if (_eq(defn, int_lit(1)) && not(null_p(node_hole(mxp, maker_st, at)))) {
-                                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a macro that makes definitions has no "), string_append(str_lit("typed parts, not yet: what each use "), str_lit("defines is checked where it is"))), node_syn(mxp, maker_st, at))? {};
+                                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a macro that makes definitions has no "), string_append(str_lit!("typed parts, not yet: what each use "), str_lit!("defines is checked where it is"))), node_syn(mxp, maker_st, at))? {};
                                 return Ok(ps);
                             } else if (_eq(defn, int_lit(2)) && not(null_p(node_hole(mxp, maker_st, at)))) {
-                                match fail_at(mxp, maker_st, mx_fail, str_lit("a macro that makes a description has no typed parts"), node_syn(mxp, maker_st, at))? {};
+                                match fail_at(mxp, maker_st, mx_fail, str_lit!("a macro that makes a description has no typed parts"), node_syn(mxp, maker_st, at))? {};
                                 return Ok(ps);
                             } else {
                                 (fs, ps) = (cdr(fs), append(ps, the::<Pvars>(kayak_rt::cons(Product_11_12(n, pinfo_at(mxp, maker_st, at, car(fs))), kayak_rt::nil()))));
@@ -19651,7 +19651,7 @@ pub mod made__load__1__expand {
                 rs = cdr(rs);
                 continue;
             } else {
-                return Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`...` follows a part with no pattern variable in "), string_append(str_lit("it under as many ellipses in the pattern, nor a "), str_lit("binder repeated as deep, to say how many times"))), node_syn(mxp, maker_st, car(rs).0))? {});
+                return Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`...` follows a part with no pattern variable in "), string_append(str_lit!("it under as many ellipses in the pattern, nor a "), str_lit!("binder repeated as deep, to say how many times"))), node_syn(mxp, maker_st, car(rs).0))? {});
             }
         }
     }
@@ -19661,12 +19661,12 @@ pub mod made__load__1__expand {
             Ok(kayak_rt::cons(act_rename(node_path(mxp, maker_st, car(b)), depth_of(car(b), bd)), kayak_rt::nil()))
         } else if _eq(free, int_lit(2)) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Action>>())
-        } else if (not(_eq(free, int_lit(3))) && not(string_eq_p(mx_procedural_alias_base(symbol_to_string(n)), str_lit("")))) {
+        } else if (not(_eq(free, int_lit(3))) && not(string_eq_p(mx_procedural_alias_base(symbol_to_string(n)), str_lit!("")))) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Action>>())
         } else if _eq(free, int_lit(4)) {
             Ok(kayak_rt::cons(act_alias(), kayak_rt::nil()))
         } else if _eq(free, int_lit(3)) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("`, the module a template's "), string_append(str_lit("`(with module name)` takes from, is bound by the "), str_lit("template or given by a use: a top level's, not yet"))))), s)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("`, the module a template's "), string_append(str_lit!("`(with module name)` takes from, is bound by the "), str_lit!("template or given by a use: a top level's, not yet"))))), s)? {};
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Action>>())
         } else if _eq(free, int_lit(1)) {
             if null_p(file) {
@@ -19683,7 +19683,7 @@ pub mod made__load__1__expand {
         } else if (null_p(file) || mx_files_name_in_p(n, car(file).1) || mx_files_name_in_p(n, car(file).4)) {
             Ok(kayak_rt::cons(act_alias(), kayak_rt::nil()))
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is neither a value the file's "), string_append(str_lit("module shows nor a standard binding: a file's macro "), str_lit("names only those, as they are where it is imported"))))), s)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is neither a value the file's "), string_append(str_lit!("module shows nor a standard binding: a file's macro "), str_lit!("names only those, as they are where it is imported"))))), s)? {};
             Ok(kayak_rt::cons(act_alias(), kayak_rt::nil()))
         }
     }
@@ -19707,22 +19707,22 @@ pub mod made__load__1__expand {
                         let affine = (not(info.2) && not(pure_hole_p(info.3)) && affine_kind_p(info.0));
                         mx_scopes_placed(mxp, maker_st, mx_fail, n, info, node_core(mxp, maker_st, at), mx_env_indexed_env, s, ps)?;
                         if _lt(depth, info.4) {
-                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` is placed under "), string_append(int_to_string(depth), string_append(str_lit(" ellipses, and the pattern has it under "), int_to_string(info.4)))))), s)? {}
+                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` is placed under "), string_append(int_to_string(depth), string_append(str_lit!(" ellipses, and the pattern has it under "), int_to_string(info.4)))))), s)? {}
                         } else {
                             ()
                         };
                         if (affine && _gt(depth, info.4)) {
-                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` is placed under more ellipses than "), string_append(str_lit("the pattern has it, so in each repetition, and "), string_append(str_lit("an expression in it may do something each "), string_append(str_lit("time it runs: its signature says `(many …)` "), str_lit("if it may"))))))), s)? {}
+                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` is placed under more ellipses than "), string_append(str_lit!("the pattern has it, so in each repetition, and "), string_append(str_lit!("an expression in it may do something each "), string_append(str_lit!("time it runs: its signature says `(many …)` "), str_lit!("if it may"))))))), s)? {}
                         } else {
                             ()
                         };
                         if (affine && many) {
-                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` is placed where it may be placed "), string_append(str_lit("more than once (a `many` part), and an "), string_append(str_lit("expression in it may do something each time "), string_append(str_lit("it runs: its signature says `(many …)` if it "), str_lit("may"))))))), s)? {}
+                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` is placed where it may be placed "), string_append(str_lit!("more than once (a `many` part), and an "), string_append(str_lit!("expression in it may do something each time "), string_append(str_lit!("it runs: its signature says `(many …)` if it "), str_lit!("may"))))))), s)? {}
                         } else {
                             ()
                         };
                         if (affine && mx_files_name_in_p(n, mx_scopes_uses)) {
-                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` is placed twice, and an expression "), string_append(str_lit("in it may do something each time it runs: its "), str_lit("signature says `(many …)` if it may"))))), s)? {}
+                            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(name, string_append(str_lit!("` is placed twice, and an expression "), string_append(str_lit!("in it may do something each time it runs: its "), str_lit!("signature says `(many …)` if it may"))))), s)? {}
                         } else {
                             ()
                         };
@@ -19835,7 +19835,7 @@ pub mod made__load__1__expand {
             if exports_eq_p(made, car(declared)) {
                 ()
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("this template defines "), string_append(shown_exports(made), string_append(str_lit(", and its signature says its uses define "), shown_exports(car(declared))))), template)? {}
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("this template defines "), string_append(shown_exports(made), string_append(str_lit!(", and its signature says its uses define "), shown_exports(car(declared))))), template)? {}
             }
         };
         Ok(type_actions(mxp, maker_st, mx_fail, int_lit(0), get(maker_st.nnodes.get().unwrap()), file, named)?)
@@ -20002,7 +20002,7 @@ pub mod made__load__1__expand {
                 said_fail(mxp, maker_st, mx_fail, symbol_to_string(w.0), car(shown))
             };
             let empty = if null_p(w.3) {
-                match fail_at(mxp, maker_st, mx_fail, str_lit("a macro has at least one clause"), w.4)? {}
+                match fail_at(mxp, maker_st, mx_fail, str_lit!("a macro has at least one clause"), w.4)? {}
             } else {
                 ()
             };
@@ -20154,7 +20154,7 @@ pub mod made__load__1__expand {
 
     pub fn selected<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, m: Symbol, t: kayak_rt::Handle<'static, Syn>, made: Int) -> kayak_rt::Handle<'static, Syn> {
         let (items, a) = (proper(t), source_key(mxp, maker_st, syn_start(t), made));
-        if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("->*")) && (syn_nil_p(nth(items, int_lit(1))) || not(null_p(proper(nth(items, int_lit(1))))))) {
+        if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("->*")) && (syn_nil_p(nth(items, int_lit(1))) || not(null_p(proper(nth(items, int_lit(1))))))) {
             let h = in_expansion(mxp, maker_st, car(items), made);
             let params = nth(items, int_lit(1));
             let pa = source_key(mxp, maker_st, syn_start(params), made);
@@ -20166,7 +20166,7 @@ pub mod made__load__1__expand {
         } else {
             let ty = in_expansion(mxp, maker_st, t, made);
             let b = source_key(mxp, maker_st, syn_end(t), made);
-            list_at(a, b, made, kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select"))), a, b, made), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(m), a, b, made), kayak_rt::cons(ty, kayak_rt::nil()))), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
+            list_at(a, b, made, kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("select"))), a, b, made), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(m), a, b, made), kayak_rt::cons(ty, kayak_rt::nil()))), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         }
     }
 
@@ -20275,7 +20275,7 @@ pub mod made__load__1__expand {
         let is = ints_prefix(get(maker_st.iters.get().unwrap()), d);
         let known = mx_top_fresh_of(binder, is, get(maker_st.mx_top_fresh.get().unwrap()));
         if null_p(known) {
-            let f = string_to_symbol(string_append(str_lit("%"), string_append(symbol_to_string(n), string_append(str_lit(":"), fresh_tag(mxp, maker_st)))));
+            let f = string_to_symbol(string_append(str_lit!("%"), string_append(symbol_to_string(n), string_append(str_lit!(":"), fresh_tag(mxp, maker_st)))));
             set(maker_st.mx_top_fresh.get().unwrap(), cons(Product_11_12_13(binder, is, f), get(maker_st.mx_top_fresh.get().unwrap())));
             f
         } else {
@@ -20308,7 +20308,7 @@ pub mod made__load__1__expand {
                 let ga = syn_start(g);
                 let gb = syn_end(g);
                 let gx = syn_expansion(g);
-                list_at(ga, gb, gx, kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("the"))), ga, gb, gx), kayak_rt::cons(in_expansion(mxp, maker_st, car(contract), made), kayak_rt::cons(g, kayak_rt::nil()))), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
+                list_at(ga, gb, gx, kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("the"))), ga, gb, gx), kayak_rt::cons(in_expansion(mxp, maker_st, car(contract), made), kayak_rt::cons(g, kayak_rt::nil()))), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
             }
         } else {
             if null_p(act) {
@@ -20339,12 +20339,12 @@ pub mod made__load__1__expand {
         let tb = syn_end(t);
         let act = action_at(path, c.2);
         let typed = if null_p(act) {
-            str_lit("")
+            str_lit!("")
         } else {
             let tagcase_ = car(act);
             match *tagcase_ {
                 made__load__0__expander_kc::Action::ActStandardType() => {
-                    str_lit("#%fx")
+                    str_lit!("#%fx")
                 }
                 made__load__0__expander_kc::Action::ActModuleType(m) => {
                     symbol_to_string(m)
@@ -20354,11 +20354,11 @@ pub mod made__load__1__expand {
                 }
                 _ => {
                     let y = tagcase_;
-                    str_lit("")
+                    str_lit!("")
                 }
             }
         };
-        if not(string_eq_p(typed, str_lit(""))) {
+        if not(string_eq_p(typed, str_lit!(""))) {
             Ok(selected(mxp, maker_st, string_to_symbol(typed), t, made))
         } else if syn_symbol_p(t) {
             let a = source_key(mxp, maker_st, ta, made);
@@ -20376,7 +20376,7 @@ pub mod made__load__1__expand {
                 }
             }
         } {
-            Ok(atom(kayak_rt::value::ToValue::to_value(string_to_symbol(str_lit("..."))), source_key(mxp, maker_st, ta, made), source_key(mxp, maker_st, tb, made), made))
+            Ok(atom(kayak_rt::value::ToValue::to_value(string_to_symbol(str_lit!("..."))), source_key(mxp, maker_st, ta, made), source_key(mxp, maker_st, tb, made), made))
         } else if not(null_p(list_items(t))) {
             let a = source_key(mxp, maker_st, ta, made);
             let tr = trust_if_x(mxp, maker_st, c, ta, a, made);
@@ -20464,13 +20464,13 @@ pub mod made__load__1__expand {
             kayak_rt::cons(len(car(lists)), kayak_rt::nil())
         });
         if _gt_eq(odd, int_lit(0)) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(car(drivers)), string_append(str_lit("` and `"), string_append(symbol_to_string(mx_match_nth_name(drivers, odd)), string_append(str_lit("`, repeated together, are given "), string_append(int_to_string(len(car(lists))), string_append(str_lit(" and "), string_append(int_to_string(len(nth_list(lists, odd))), str_lit(" times"))))))))), x)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(car(drivers)), string_append(str_lit!("` and `"), string_append(symbol_to_string(mx_match_nth_name(drivers, odd)), string_append(str_lit!("`, repeated together, are given "), string_append(int_to_string(len(car(lists))), string_append(str_lit!(" and "), string_append(int_to_string(len(nth_list(lists, odd))), str_lit!(" times"))))))))), x)? {};
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else if null_p(known) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("this part is repeated before the repetition that "), str_lit("binds what it refers to")), x)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("this part is repeated before the repetition that "), str_lit!("binds what it refers to")), x)? {};
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else if not(all_ints_p(known, car(known))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("this part repeats binders and parts that were "), str_lit("repeated, or given, different numbers of times")), x)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("this part repeats binders and parts that were "), str_lit!("repeated, or given, different numbers of times")), x)? {};
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else {
             note_counts(mxp, maker_st, under, car(known));
@@ -20492,7 +20492,7 @@ pub mod made__load__1__expand {
     pub fn first_match<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut name: Symbol, mut s: kayak_rt::Handle<'static, Syn>, mut operands: kayak_rt::Handle<'static, Syn>, mut cs: Clauses) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         loop {
             if null_p(cs) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a use of `"), string_append(symbol_to_string(name), string_append(str_lit("` that no clause "), str_lit("of it matches")))), s)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("a use of `"), string_append(symbol_to_string(name), string_append(str_lit!("` that no clause "), str_lit!("of it matches")))), s)? {};
                 return Ok(s);
             } else {
                 let mx_match_binds = matched(mxp, maker_st, car(cs).0, operands, name_pvars(car(cs).3), car(cs).6, nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())?;
@@ -20504,7 +20504,7 @@ pub mod made__load__1__expand {
                     let shown = symbol_to_string(name);
                     let noted = def_env_x(mxp, maker_st, made, car(cs).5);
                     let in_use = kayak_rt::closure3((mx_fail, s, shown,), |(mx_fail, s, shown,), msg: Str, a: Int, b: Int| {
-                        Ok(match mx_fail.call(string_append(str_lit("a use of `"), string_append(shown, string_append(str_lit("`: "), msg))), syn_start(s), syn_end(s))? {})
+                        Ok(match mx_fail.call(string_append(str_lit!("a use of `"), string_append(shown, string_append(str_lit!("`: "), msg))), syn_start(s), syn_end(s))? {})
                     });
                     return Ok(transcribe(mxp, maker_st, in_use, car(cs), car(cs).1, nil::<bool>(), car(mx_match_binds), made)?);
                 }
@@ -20517,7 +20517,7 @@ pub mod made__load__1__expand {
         let operands = nth(split(s), int_lit(1));
         let shown = symbol_to_string(name);
         let in_use = kayak_rt::closure3((mx_fail, shown,), |(mx_fail, shown,), msg: Str, a: Int, b: Int| {
-            Ok(match mx_fail.call(string_append(str_lit("a use of `"), string_append(shown, string_append(str_lit("`: "), msg))), a, b)? {})
+            Ok(match mx_fail.call(string_append(str_lit!("a use of `"), string_append(shown, string_append(str_lit!("`: "), msg))), a, b)? {})
         });
         if not(null_p(procedural_of(mxp, maker_st, name))) {
             let made = record_expansion(mxp, maker_st, name, s, false);
@@ -20549,9 +20549,9 @@ pub mod made__load__1__expand {
         let head = if syn_symbol_p(hd) {
             syn_name(hd)
         } else {
-            str_lit("")
+            str_lit!("")
         };
-        let noted = if string_eq_p(head, str_lit("with")) {
+        let noted = if string_eq_p(head, str_lit!("with")) {
             note_projection(mxp, maker_st, s, items, hd)?
         } else {
             ()
@@ -20568,20 +20568,20 @@ pub mod made__load__1__expand {
             }
         } else if null_p(items) {
             Ok(s)
-        } else if string_eq_p(head, str_lit("quote")) {
+        } else if string_eq_p(head, str_lit!("quote")) {
             Ok(s)
-        } else if ((string_eq_p(head, str_lit("define")) || string_eq_p(head, str_lit("define*"))) && not(null_p(cdr(items))) && syn_symbol_p(nth(items, int_lit(1))) && macro_p(mxp, maker_st, syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?)) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(nth(items, int_lit(1))), string_append(str_lit("` is a macro's name, "), str_lit("which is not defined again")))), nth(items, int_lit(1)))? {};
+        } else if ((string_eq_p(head, str_lit!("define")) || string_eq_p(head, str_lit!("define*"))) && not(null_p(cdr(items))) && syn_symbol_p(nth(items, int_lit(1))) && macro_p(mxp, maker_st, syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?)) {
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(nth(items, int_lit(1))), string_append(str_lit!("` is a macro's name, "), str_lit!("which is not defined again")))), nth(items, int_lit(1)))? {};
             Ok(s)
         } else {
-            Ok(rebuilt(s, expand_items(mxp, maker_st, mx_fail, items, int_lit(0), us, string_eq_p(head, str_lit("with")), s, withs)?, expand_tail(mxp, maker_st, mx_fail, s, len(items), us, withs)?))
+            Ok(rebuilt(s, expand_items(mxp, maker_st, mx_fail, items, int_lit(0), us, string_eq_p(head, str_lit!("with")), s, withs)?, expand_tail(mxp, maker_st, mx_fail, s, len(items), us, withs)?))
         }
     }
 
     pub fn expand_one<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, h: Symbol, bound: MxParserTypesNames, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let hd = car(list_items(s));
         if makes_defns_p(mxp, maker_st, h) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(hd), string_append(str_lit("` makes definitions, which are "), str_lit("made at the top level, not where an expression is")))), s)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(syn_name(hd), string_append(str_lit!("` makes definitions, which are "), str_lit!("made at the top level, not where an expression is")))), s)? {};
             Ok(s)
         } else if use_entered_p(mxp, maker_st, mx_fail, h, s, get(maker_st.budget.get().unwrap()))? {
             set(maker_st.budget.get().unwrap(), _minus(get(maker_st.budget.get().unwrap()), int_lit(1)));
@@ -20657,7 +20657,7 @@ pub mod made__load__1__expand {
         let head = if syn_symbol_p(hd) {
             syn_name(hd)
         } else {
-            str_lit("")
+            str_lit!("")
         };
         if (syn_symbol_p(hd) && macro_p(mxp, maker_st, syn_symbol(mxp, maker_st, hd)?)) {
             if use_entered_p(mxp, maker_st, mx_fail, syn_symbol(mxp, maker_st, hd)?, s, get(maker_st.budget.get().unwrap()))? {
@@ -20670,9 +20670,9 @@ pub mod made__load__1__expand {
             } else {
                 Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
             }
-        } else if string_eq_p(head, str_lit("begin")) {
+        } else if string_eq_p(head, str_lit!("begin")) {
             Ok(expand_defns(mxp, maker_st, mx_fail, cdr(items))?)
-        } else if (string_eq_p(head, str_lit("define-syntax")) || string_eq_p(head, str_lit("define-syntax-rec"))) {
+        } else if (string_eq_p(head, str_lit!("define-syntax")) || string_eq_p(head, str_lit!("define-syntax-rec"))) {
             made_syntax_add_x(mxp, maker_st, define_macro(mxp, maker_st, mx_fail, s, nil::<Product_11_12_13_14_15<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>>>())?);
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else {
@@ -20774,11 +20774,11 @@ pub mod made__load__1__expand {
                     ps = cdr(ps);
                     continue;
                 } else if _eq(k, int_lit(1)) {
-                    let f = fresh_symbol(mxp, maker_st, string_append(str_lit("%"), string_append(symbol_to_string(n), str_lit(":"))));
+                    let f = fresh_symbol(mxp, maker_st, string_append(str_lit!("%"), string_append(symbol_to_string(n), str_lit!(":"))));
                     (ps, out) = (cdr(ps), append(out, the::<MxMatchBinds>(kayak_rt::cons(Product_11_12(n, mk_symbol(symbol_to_string(f), int_lit(0), int_lit(0))), kayak_rt::nil()))));
                     continue;
                 } else {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is not an `expr`, a "), string_append(str_lit("`lambda` or a `bvar`: a macro whose parts are "), str_lit("typed is checked once, of those alone, not yet"))))), pattern_place(mxp, maker_st, c, n)?)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is not an `expr`, a "), string_append(str_lit!("`lambda` or a `bvar`: a macro whose parts are "), str_lit!("typed is checked once, of those alone, not yet"))))), pattern_place(mxp, maker_st, c, n)?)? {};
                     return Ok(out);
                 }
             }
@@ -20805,10 +20805,10 @@ pub mod made__load__1__expand {
         } else {
             proper_of(car(ty))
         };
-        if (_eq(len(items), int_lit(4)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("subr")) && (not(null_p(proper_of(nth(items, int_lit(2))))) || syn_nil_p(nth(items, int_lit(2))))) {
+        if (_eq(len(items), int_lit(4)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("subr")) && (not(null_p(proper_of(nth(items, int_lit(2))))) || syn_nil_p(nth(items, int_lit(2))))) {
             Ok(kayak_rt::cons(car(ty), kayak_rt::nil()))
         } else {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is a `lambda` part: its "), string_append(str_lit("type is written, `(lambda #:type (subr E (A …) "), str_lit("R))`, which its stand-in in the check is made of"))))), pattern_place(mxp, maker_st, c, n)?)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is a `lambda` part: its "), string_append(str_lit!("type is written, `(lambda #:type (subr E (A …) "), str_lit!("R))`, which its stand-in in the check is made of"))))), pattern_place(mxp, maker_st, c, n)?)? {};
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         }
     }
@@ -20817,7 +20817,7 @@ pub mod made__load__1__expand {
         if null_p(ts) {
             nil::<Symbol>()
         } else {
-            let v = fresh_symbol(mxp, maker_st, str_lit("%a:"));
+            let v = fresh_symbol(mxp, maker_st, str_lit!("%a:"));
             cons(v, arg_names(mxp, maker_st, cdr(ts)))
         }
     }
@@ -20841,14 +20841,14 @@ pub mod made__load__1__expand {
 
     pub fn lambda_stand_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, call: kayak_rt::Handle<'static, Syn>, ty: kayak_rt::Handle<'static, Syn>, a: Int, b: Int) -> kayak_rt::Handle<'static, Syn> {
         let names = arg_names(mxp, maker_st, proper_of(nth(proper_of(ty), int_lit(2))));
-        mk_list(kayak_rt::cons(mk_symbol(str_lit("lambda"), a, b), kayak_rt::cons(list_at(a, b, int_lit(0), arg_params(names, proper_of(nth(proper_of(ty), int_lit(2))), a, b), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::cons(list_at(a, b, int_lit(0), cons(call, arg_refs(names, a, b)), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::nil()))), a, b)
+        mk_list(kayak_rt::cons(mk_symbol(str_lit!("lambda"), a, b), kayak_rt::cons(list_at(a, b, int_lit(0), arg_params(names, proper_of(nth(proper_of(ty), int_lit(2))), a, b), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::cons(list_at(a, b, int_lit(0), cons(call, arg_refs(names, a, b)), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::nil()))), a, b)
     }
 
     pub fn hole_part(given: SynsA, kind: Str, n: Str, a: Int, b: Int) -> SynsA {
         if not(null_p(given)) {
             kayak_rt::heap_cons(car(given), kayak_rt::nil())
         } else {
-            let v = mk_symbol(string_append(str_lit("%"), string_append(kind, string_append(str_lit("-of-"), n))), a, b);
+            let v = mk_symbol(string_append(str_lit!("%"), string_append(kind, string_append(str_lit!("-of-"), n))), a, b);
             kayak_rt::heap_cons(v, kayak_rt::heap_cons(mk_list(kayak_rt::heap_cons(v, kayak_rt::heap_cons(mk_symbol(kind, a, b), kayak_rt::nil())), a, b), kayak_rt::nil()))
         }
     }
@@ -20867,7 +20867,7 @@ pub mod made__load__1__expand {
                         car(info).3
                     };
                     if (null_p(h) || null_p(car(h).0)) {
-                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(v), string_append(str_lit("` binds a variable `"), string_append(symbol_to_string(n), string_append(str_lit("` is in the scope of: its type is written, "), string_append(str_lit("`(bvar #:type T)`, where a macro's parts "), str_lit("are typed"))))))), pattern_place(mxp, maker_st, c, v)?)? {};
+                        match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(v), string_append(str_lit!("` binds a variable `"), string_append(symbol_to_string(n), string_append(str_lit!("` is in the scope of: its type is written, "), string_append(str_lit!("`(bvar #:type T)`, where a macro's parts "), str_lit!("are typed"))))))), pattern_place(mxp, maker_st, c, v)?)? {};
                         Ok(the::<ScopeVars>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>()))
                     } else {
                         Ok(cons(Product_11_12(v, car(car(h).0)), rib_scope(mxp, maker_st, mx_fail, c, n, cdr(r#as), ps)?))
@@ -20875,7 +20875,7 @@ pub mod made__load__1__expand {
                 }
                 _ => {
                     let y = tagcase_;
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is in the scope of the "), string_append(str_lit("binders a part exports: not yet where a macro's "), str_lit("parts are typed"))))), pattern_place(mxp, maker_st, c, n)?)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is in the scope of the "), string_append(str_lit!("binders a part exports: not yet where a macro's "), str_lit!("parts are typed"))))), pattern_place(mxp, maker_st, c, n)?)? {};
                     Ok(the::<ScopeVars>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>()))
                 }
             }
@@ -20893,7 +20893,7 @@ pub mod made__load__1__expand {
                 }
                 _ => {
                     let y = tagcase_;
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is in the scope of a "), string_append(str_lit("part's ribcage: not yet where a macro's parts "), str_lit("are typed"))))), pattern_place(mxp, maker_st, c, n)?)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is in the scope of a "), string_append(str_lit!("part's ribcage: not yet where a macro's parts "), str_lit!("are typed"))))), pattern_place(mxp, maker_st, c, n)?)? {};
                     Ok(the::<ScopeVars>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>()))
                 }
             }
@@ -20932,7 +20932,7 @@ pub mod made__load__1__expand {
                     ps = cdr(ps);
                     continue;
                 } else if null_p(h) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(shown, string_append(str_lit("` has no type or effect, and another "), string_append(str_lit("part of this macro does: a macro whose parts "), string_append(str_lit("are typed is checked once, each `expr` and "), str_lit("`lambda` part typed")))))), pattern_place(mxp, maker_st, c, n)?)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(shown, string_append(str_lit!("` has no type or effect, and another "), string_append(str_lit!("part of this macro does: a macro whose parts "), string_append(str_lit!("are typed is checked once, each `expr` and "), str_lit!("`lambda` part typed")))))), pattern_place(mxp, maker_st, c, n)?)? {};
                     return Ok(acc);
                 } else {
                     let scope = hole_scope(mxp, maker_st, mx_fail, c, n, reverse(info.1), c.3)?;
@@ -20941,14 +20941,14 @@ pub mod made__load__1__expand {
                     } else {
                         nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
                     };
-                    let ty = hole_part(car(h).0, str_lit("type"), shown, a, b);
+                    let ty = hole_part(car(h).0, str_lit!("type"), shown, a, b);
                     let eff = if _eq(k, int_lit(10)) {
-                        kayak_rt::cons(mk_symbol(str_lit("pure"), a, b), kayak_rt::nil())
+                        kayak_rt::cons(mk_symbol(str_lit!("pure"), a, b), kayak_rt::nil())
                     } else {
-                        hole_part(car(h).1, str_lit("effect"), shown, a, b)
+                        hole_part(car(h).1, str_lit!("effect"), shown, a, b)
                     };
-                    let hole = mk_symbol(symbol_to_string(fresh_symbol(mxp, maker_st, string_append(str_lit("%h:"), string_append(shown, str_lit(":"))))), a, b);
-                    let subr = mk_list(kayak_rt::cons(mk_symbol(str_lit("subr"), a, b), kayak_rt::cons(car(eff), kayak_rt::cons(list_at(a, b, int_lit(0), scope_types(scope), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::cons(car(ty), kayak_rt::nil())))), a, b);
+                    let hole = mk_symbol(symbol_to_string(fresh_symbol(mxp, maker_st, string_append(str_lit!("%h:"), string_append(shown, str_lit!(":"))))), a, b);
+                    let subr = mk_list(kayak_rt::cons(mk_symbol(str_lit!("subr"), a, b), kayak_rt::cons(car(eff), kayak_rt::cons(list_at(a, b, int_lit(0), scope_types(scope), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::cons(car(ty), kayak_rt::nil())))), a, b);
                     let call = list_at(a, b, int_lit(0), cons(hole, scope_calls(scope, acc.1)), nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>());
                     let stand_in = if null_p(lambda_ty) {
                         call
@@ -20978,14 +20978,14 @@ pub mod made__load__1__expand {
         };
         let params = made.0;
         let poly = made.2;
-        let lam = mk_list(kayak_rt::cons(mk_symbol(str_lit("lambda"), a, b), kayak_rt::cons(list_at(a, b, int_lit(0), params, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::cons(body, kayak_rt::nil()))), a, b);
+        let lam = mk_list(kayak_rt::cons(mk_symbol(str_lit!("lambda"), a, b), kayak_rt::cons(list_at(a, b, int_lit(0), params, nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()), kayak_rt::cons(body, kayak_rt::nil()))), a, b);
         let proc = if null_p(poly) {
             lam
         } else {
-            mk_list(kayak_rt::cons(mk_symbol(str_lit("plambda"), a, b), kayak_rt::cons(mk_list(poly, a, b), kayak_rt::cons(lam, kayak_rt::nil()))), a, b)
+            mk_list(kayak_rt::cons(mk_symbol(str_lit!("plambda"), a, b), kayak_rt::cons(mk_list(poly, a, b), kayak_rt::cons(lam, kayak_rt::nil()))), a, b)
         };
-        let hidden = fresh_symbol(mxp, maker_st, string_append(str_lit("%template:"), string_append(symbol_to_string(n), str_lit(":"))));
-        Ok(mk_list(kayak_rt::cons(mk_symbol(str_lit("define"), a, b), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(hidden), a, b, int_lit(0)), kayak_rt::cons(proc, kayak_rt::nil()))), a, b))
+        let hidden = fresh_symbol(mxp, maker_st, string_append(str_lit!("%template:"), string_append(symbol_to_string(n), str_lit!(":"))));
+        Ok(mk_list(kayak_rt::cons(mk_symbol(str_lit!("define"), a, b), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(hidden), a, b, int_lit(0)), kayak_rt::cons(proc, kayak_rt::nil()))), a, b))
     }
 
     pub fn checks_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut n: Symbol, mut m: Macro, mut cs: Clauses) -> Result<SynsA, Unwind> {
@@ -21026,7 +21026,7 @@ pub mod made__load__1__expand {
 
     pub fn note_load_def_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, form: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let items = proper(form);
-        if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(form), str_lit("define")) && syn_symbol_p(nth(items, int_lit(1)))) {
+        if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(form), str_lit!("define")) && syn_symbol_p(nth(items, int_lit(1)))) {
             let n = syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?;
             let init = nth(items, _minus(len(items), int_lit(1)));
             let path = def_path(init);
@@ -21099,11 +21099,11 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn not_load(lib: Symbol) -> Str {
-        string_append(str_lit("`import-with-syntax` takes a name defined as `(load-module \"path\")`, "), string_append(str_lit("and `"), string_append(symbol_to_string(lib), str_lit("` is not one"))))
+        string_append(str_lit!("`import-with-syntax` takes a name defined as `(load-module \"path\")`, "), string_append(str_lit!("and `"), string_append(symbol_to_string(lib), str_lit!("` is not one"))))
     }
 
     pub fn include_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, lib: kayak_rt::Handle<'static, Syn>, mx_files_filter: List<MxFilesFilter>, exported: MxParserTypesNames, a: Int, b: Int) -> Result<SynsA, Unwind> {
-        let head = kayak_rt::cons(mk_symbol(str_lit("include"), a, b), kayak_rt::cons(lib, kayak_rt::nil()));
+        let head = kayak_rt::cons(mk_symbol(str_lit!("include"), a, b), kayak_rt::cons(lib, kayak_rt::nil()));
         if null_p(mx_files_filter) {
             Ok(kayak_rt::cons(mk_list(head, a, b), kayak_rt::nil()))
         } else {
@@ -21112,9 +21112,9 @@ pub mod made__load__1__expand {
                 Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
             } else {
                 Ok(kayak_rt::cons(mk_list(append(head, kayak_rt::cons(mk_list(cons(mk_symbol(if car(mx_files_filter).0 {
-                    str_lit("only")
+                    str_lit!("only")
                 } else {
-                    str_lit("except")
+                    str_lit!("except")
                 }, a, b), rest), a, b), kayak_rt::nil())), a, b), kayak_rt::nil()))
             }
         }
@@ -21144,7 +21144,7 @@ pub mod made__load__1__expand {
 
     pub fn file_load_noted<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, x: kayak_rt::Handle<'static, Syn>, ls: FileLoads) -> Result<FileLoads, Unwind> {
         let items = proper(x);
-        if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(x), str_lit("define")) && syn_symbol_p(nth(items, int_lit(1)))) {
+        if (_gt_eq(len(items), int_lit(3)) && string_eq_p(mx_files_head_name(x), str_lit!("define")) && syn_symbol_p(nth(items, int_lit(1)))) {
             let (n, init) = (syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?, nth(items, _minus(len(items), int_lit(1))));
             if (not(null_p(def_path(init))) && _lt_eq(len(items), int_lit(4))) {
                 Ok(cons(Product_11_12(n, init), without_file_load(n, ls)))
@@ -21180,7 +21180,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn instance_in_file(lib: Symbol) -> Str {
-        string_append(str_lit("`"), string_append(symbol_to_string(lib), string_append(str_lit("` is an instance of a file with module parameters: "), str_lit("a module file cannot import its macros, not yet"))))
+        string_append(str_lit!("`"), string_append(symbol_to_string(lib), string_append(str_lit!("` is an instance of a file with module parameters: "), str_lit!("a module file cannot import its macros, not yet"))))
     }
 
     #[inline]
@@ -21265,7 +21265,7 @@ pub mod made__load__1__expand {
     #[inline]
     pub fn internal_name_p(n: Symbol) -> bool {
         let s = symbol_to_string(n);
-        (_gt(string_length(s), int_lit(8)) && string_eq_p(substring(s, int_lit(0), int_lit(8)), str_lit("%syntax:")))
+        (_gt(string_length(s), int_lit(8)) && string_eq_p(substring(s, int_lit(0), int_lit(8)), str_lit!("%syntax:")))
     }
 
     pub fn internal_macros(mut own: MacroEnv) -> MacroEnv {
@@ -21299,13 +21299,13 @@ pub mod made__load__1__expand {
         if taken_p(mxp, maker_st, n, mx_files_filter)? {
             if _gt(k, int_lit(0)) {
                 if (macro_p(mxp, maker_st, n) || _gt(own_mark(n, get(maker_st.marks.get().unwrap())), int_lit(0))) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is defined already: "), str_lit("a file's trailmark may not be defined again")))), first)? {}
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is defined already: "), str_lit!("a file's trailmark may not be defined again")))), first)? {}
                 } else {
                     set(maker_st.marks.get().unwrap(), cons(Product_11_12(n, k), get(maker_st.marks.get().unwrap())))
                 }
             } else {
                 if macro_p(mxp, maker_st, n) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is a macro defined "), str_lit("already: a file's may not be defined again")))), first)? {}
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is a macro defined "), str_lit!("already: a file's may not be defined again")))), first)? {}
                 } else {
                     set(maker_st.defined.get().unwrap(), cons(Product_11_12(n, car(macro_of(n, own))), get(maker_st.defined.get().unwrap())))
                 }
@@ -21322,7 +21322,7 @@ pub mod made__load__1__expand {
         } else {
             let n = car(made).0;
             let twice = if mx_files_name_in_p(n, seen) {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is a macro this "), str_lit("file gives twice")))), first)? {}
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(symbol_to_string(n), string_append(str_lit!("` is a macro this "), str_lit!("file gives twice")))), first)? {}
             } else {
                 ()
             };
@@ -21337,8 +21337,8 @@ pub mod made__load__1__expand {
 
     pub fn file_macros_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>, f: LoadedFile, mx_files_filter: List<MxFilesFilter>, fs: Files, inst: MxParserTypesNames) -> Result<MxImportsGiven, Unwind> {
         let (forms, path) = (raw_forms(mxp, maker_st, f), f.3);
-        if (null_p(inst) && not(null_p(forms)) && string_eq_p(mx_files_head_name(car(forms)), str_lit("module-parameters"))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(path, string_append(str_lit("` takes module parameters: import the "), string_append(str_lit("macros of an instance of it, `(define name ((proj "), string_append(str_lit("(load-module \""), string_append(path, str_lit("\") arg …)))`"))))))), form)? {};
+        if (null_p(inst) && not(null_p(forms)) && string_eq_p(mx_files_head_name(car(forms)), str_lit!("module-parameters"))) {
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(path, string_append(str_lit!("` takes module parameters: import the "), string_append(str_lit!("macros of an instance of it, `(define name ((proj "), string_append(str_lit!("(load-module \""), string_append(path, str_lit!("\") arg …)))`"))))))), form)? {};
             Ok(nil::<Product_11_12<Symbol, Symbol>>())
         } else {
             let key = f.6;
@@ -21356,7 +21356,7 @@ pub mod made__load__1__expand {
             let ikey = if null_p(inst) {
                 key
             } else {
-                string_append(key, string_append(str_lit("@"), symbol_to_string(car(inst))))
+                string_append(key, string_append(str_lit!("@"), symbol_to_string(car(inst))))
             };
             let prefix = if null_p(inst) {
                 file_prefix(mxp, maker_st, key, true)
@@ -21365,7 +21365,7 @@ pub mod made__load__1__expand {
             };
             let internal = internal_names(ikey, macro_names(mxp, maker_st, ms)?);
             let shared = if null_p(inst) {
-                string_to_symbol(string_append(str_lit("%shared:"), key))
+                string_to_symbol(string_append(str_lit!("%shared:"), key))
             } else {
                 car(inst)
             };
@@ -21490,7 +21490,7 @@ pub mod made__load__1__expand {
             } else {
                 let f = loaded_path(car(path), fs);
                 if null_p(f) {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("cannot read `"), string_append(car(path), str_lit("`"))), form)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("cannot read `"), string_append(car(path), str_lit!("`"))), form)? {};
                     Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
                 } else {
                     let inst = if mx_files_name_in_p(lib, get(maker_st.instances.get().unwrap())) {
@@ -21537,7 +21537,7 @@ pub mod made__load__1__expand {
                 match fail_at(mxp, maker_st, mx_fail, not_load(syn_symbol(mxp, maker_st, nth(items, int_lit(1)))?), form)? {};
                 Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
             } else {
-                Ok(include_of(mxp, maker_st, mk_symbol(string_append(str_lit("%shared:"), car(f).6), a, b), mx_files_filter, mx_imports_given_names(file_macros_of(mxp, maker_st, mx_fail, form, car(f), mx_files_filter, fs, nil::<Symbol>())?), a, b)?)
+                Ok(include_of(mxp, maker_st, mk_symbol(string_append(str_lit!("%shared:"), car(f).6), a, b), mx_files_filter, mx_imports_given_names(file_macros_of(mxp, maker_st, mx_fail, form, car(f), mx_files_filter, fs, nil::<Symbol>())?), a, b)?)
             }
         }
     }
@@ -21808,7 +21808,7 @@ pub mod made__load__1__expand {
             if null_p(bs) {
                 return out;
             } else {
-                (bs, k, out) = (cdr(bs), _plus(k, int_lit(1)), cons(Product_11_12(node_path(mxp, maker_st, car(bs)), string_append(syn_name(node_syn(mxp, maker_st, car(bs))), string_append(str_lit("%"), int_to_string(k)))), out));
+                (bs, k, out) = (cdr(bs), _plus(k, int_lit(1)), cons(Product_11_12(node_path(mxp, maker_st, car(bs)), string_append(syn_name(node_syn(mxp, maker_st, car(bs))), string_append(str_lit!("%"), int_to_string(k)))), out));
                 continue;
             }
         }
@@ -21865,7 +21865,7 @@ pub mod made__load__1__expand {
             }
             made__load__0__expander_kc::Syn::Atom(dt, a, b, x) => {
                 if string_p(dt) {
-                    atom(kayak_rt::value::ToValue::to_value(str_lit("")), a, b, x)
+                    atom(kayak_rt::value::ToValue::to_value(str_lit!("")), a, b, x)
                 } else if syn_symbol_p(s) {
                     let nm = mx_walk_name_at(path, rs);
                     if null_p(nm) {
@@ -21928,7 +21928,7 @@ pub mod made__load__1__expand {
         let tagcase_ = r;
         match *tagcase_ {
             made__load__0__expander_kc::Presult::PErr(why, a, b) => {
-                Ok(string_append(str_lit("walk: "), why))
+                Ok(string_append(str_lit!("walk: "), why))
             }
             _ => {
                 let y = tagcase_;
@@ -22634,7 +22634,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn input_key_p(k: Str) -> bool {
-        (_gt(string_length(k), int_lit(6)) && string_eq_p(substring(k, int_lit(0), int_lit(6)), str_lit("input:")))
+        (_gt(string_length(k), int_lit(6)) && string_eq_p(substring(k, int_lit(0), int_lit(6)), str_lit!("input:")))
     }
 
     #[inline]
@@ -22644,9 +22644,9 @@ pub mod made__load__1__expand {
             raw
         } else {
             string_append(if input_p {
-                str_lit("input:")
+                str_lit!("input:")
             } else {
-                str_lit("")
+                str_lit!("")
             }, raw)
         }
     }
@@ -22681,7 +22681,7 @@ pub mod made__load__1__expand {
             if null_p(g) {
                 nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>()
             } else {
-                let v = names_find(string_to_symbol(string_append(str_lit("%shared:"), file_key(car(g), load_input_at_p(mxp, maker_st, a)))), get(maker_st.top_vals.get().unwrap()));
+                let v = names_find(string_to_symbol(string_append(str_lit!("%shared:"), file_key(car(g), load_input_at_p(mxp, maker_st, a)))), get(maker_st.top_vals.get().unwrap()));
                 let s = if null_p(v) {
                     nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>()
                 } else {
@@ -22808,7 +22808,7 @@ pub mod made__load__1__expand {
             if _eq(i, n) {
                 return Ok(());
             } else {
-                if (mx_shaper_form_node_p(mxp, maker_st, i) && mx_shaper_head_is_p(mxp, maker_st, node_syn(mxp, maker_st, i), symbol_lit(str_lit("include")))?) {
+                if (mx_shaper_form_node_p(mxp, maker_st, i) && mx_shaper_head_is_p(mxp, maker_st, node_syn(mxp, maker_st, i), symbol_lit(str_lit!("include")))?) {
                     let m = elem(mxp, maker_st, i, int_lit(1));
                     if _gt_eq(m, int_lit(0)) {
                         mark_under(mxp, maker_st, m)
@@ -22849,7 +22849,7 @@ pub mod made__load__1__expand {
         if (not(null_p(items)) && syn_symbol_p(car(items))) {
             syn_name(car(items))
         } else {
-            str_lit("")
+            str_lit!("")
         }
     }
 
@@ -22857,13 +22857,13 @@ pub mod made__load__1__expand {
         let mx_list = node_syn(mxp, maker_st, q);
         let n = len(proper_items(mx_list));
         let head = mx_shaper_head_of(mx_list);
-        if (string_eq_p(head, str_lit("define")) && _eq(i, int_lit(1)) && _eq(n, int_lit(3))) {
-            Product_11_12_13_14_15(int_lit(0), elem(mxp, maker_st, q, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit("-")))
-        } else if ((string_eq_p(head, str_lit("define")) || string_eq_p(head, str_lit("define*"))) && _eq(i, int_lit(1)) && _eq(n, int_lit(4))) {
-            Product_11_12_13_14_15(int_lit(1), elem(mxp, maker_st, q, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit("-")))
-        } else if (string_eq_p(head, str_lit("define-type")) && _eq(i, int_lit(1)) && _eq(n, int_lit(3))) {
-            Product_11_12_13_14_15(int_lit(1), elem(mxp, maker_st, q, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit("-")))
-        } else if (string_eq_p(head, str_lit("import")) && _gt_eq(i, int_lit(2))) {
+        if (string_eq_p(head, str_lit!("define")) && _eq(i, int_lit(1)) && _eq(n, int_lit(3))) {
+            Product_11_12_13_14_15(int_lit(0), elem(mxp, maker_st, q, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit!("-")))
+        } else if ((string_eq_p(head, str_lit!("define")) || string_eq_p(head, str_lit!("define*"))) && _eq(i, int_lit(1)) && _eq(n, int_lit(4))) {
+            Product_11_12_13_14_15(int_lit(1), elem(mxp, maker_st, q, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit!("-")))
+        } else if (string_eq_p(head, str_lit!("define-type")) && _eq(i, int_lit(1)) && _eq(n, int_lit(3))) {
+            Product_11_12_13_14_15(int_lit(1), elem(mxp, maker_st, q, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit!("-")))
+        } else if (string_eq_p(head, str_lit!("import")) && _gt_eq(i, int_lit(2))) {
             let tagcase_ = node_kids(mxp, maker_st, b);
             match *tagcase_ {
                 made__load__0__expander_kc::MxNodesKids::KBinder(m, d) => {
@@ -22891,12 +22891,12 @@ pub mod made__load__1__expand {
             let fh = if _gt_eq(f, int_lit(0)) {
                 mx_shaper_head_of(node_syn(mxp, maker_st, f))
             } else {
-                str_lit("")
+                str_lit!("")
             };
-            if (_eq(k, int_lit(1)) && (string_eq_p(fh, str_lit("let")) || string_eq_p(fh, str_lit("let*")) || string_eq_p(fh, str_lit("par")))) {
-                Product_11_12_13_14_15(int_lit(0), second, int_lit(0), int_lit(0), symbol_lit(str_lit("-")))
-            } else if ((_eq(k, int_lit(1)) && (string_eq_p(fh, str_lit("letrec")) || string_eq_p(fh, str_lit("lambda")) || string_eq_p(fh, str_lit("module-parameters")))) || (_eq(k, int_lit(2)) && string_eq_p(fh, str_lit("rlambda")))) {
-                Product_11_12_13_14_15(int_lit(1), second, int_lit(0), int_lit(0), symbol_lit(str_lit("-")))
+            if (_eq(k, int_lit(1)) && (string_eq_p(fh, str_lit!("let")) || string_eq_p(fh, str_lit!("let*")) || string_eq_p(fh, str_lit!("par")))) {
+                Product_11_12_13_14_15(int_lit(0), second, int_lit(0), int_lit(0), symbol_lit(str_lit!("-")))
+            } else if ((_eq(k, int_lit(1)) && (string_eq_p(fh, str_lit!("letrec")) || string_eq_p(fh, str_lit!("lambda")) || string_eq_p(fh, str_lit!("module-parameters")))) || (_eq(k, int_lit(2)) && string_eq_p(fh, str_lit!("rlambda")))) {
+                Product_11_12_13_14_15(int_lit(1), second, int_lit(0), int_lit(0), symbol_lit(str_lit!("-")))
             } else {
                 maker_st.no_source.get().unwrap()
             }
@@ -22913,16 +22913,16 @@ pub mod made__load__1__expand {
             let h = if _gt_eq(p, int_lit(0)) {
                 mx_shaper_head_of(node_syn(mxp, maker_st, p))
             } else {
-                str_lit("")
+                str_lit!("")
             };
             if _lt(p, int_lit(0)) {
                 return int_lit(-1);
-            } else if (string_eq_p(h, str_lit("plambda")) && _eq(i, int_lit(2))) {
+            } else if (string_eq_p(h, str_lit!("plambda")) && _eq(i, int_lit(2))) {
                 at = p;
                 continue;
-            } else if ((string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) && _eq(i, int_lit(3))) {
+            } else if ((string_eq_p(h, str_lit!("define")) || string_eq_p(h, str_lit!("define*"))) && _eq(i, int_lit(3))) {
                 return elem(mxp, maker_st, p, int_lit(2));
-            } else if (string_eq_p(h, str_lit("the")) && _eq(i, int_lit(2))) {
+            } else if (string_eq_p(h, str_lit!("the")) && _eq(i, int_lit(2))) {
                 return elem(mxp, maker_st, p, int_lit(1));
             } else {
                 return int_lit(-1);
@@ -22932,7 +22932,7 @@ pub mod made__load__1__expand {
 
     pub fn dependent_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper_items(s);
-        (_eq(len(items), int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && string_eq_p(syn_name(nth(items, int_lit(1))), str_lit(":")))
+        (_eq(len(items), int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && string_eq_p(syn_name(nth(items, int_lit(1))), str_lit!(":")))
     }
 
     pub fn param_of_type<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut t: Int, mut k: Int) -> Result<Source, Unwind> {
@@ -22942,8 +22942,8 @@ pub mod made__load__1__expand {
             let items = proper_items(s);
             if syn_symbol_p(s) {
                 return Ok(Product_11_12_13_14_15(int_lit(3), int_lit(0), int_lit(0), k, syn_symbol(mxp, maker_st, s)?));
-            } else if (string_eq_p(h, str_lit("allof")) || string_eq_p(h, str_lit("poly"))) {
-                let x = elem(mxp, maker_st, t, if string_eq_p(h, str_lit("allof")) {
+            } else if (string_eq_p(h, str_lit!("allof")) || string_eq_p(h, str_lit!("poly"))) {
+                let x = elem(mxp, maker_st, t, if string_eq_p(h, str_lit!("allof")) {
                     int_lit(1)
                 } else {
                     _minus(len(items), int_lit(1))
@@ -22954,9 +22954,9 @@ pub mod made__load__1__expand {
                     t = x;
                     continue;
                 }
-            } else if (string_eq_p(h, str_lit("->")) || string_eq_p(h, str_lit("subr"))) {
-                let conv = (string_eq_p(h, str_lit("subr")) && _gt(len(items), int_lit(1)) && string_eq_p(mx_shaper_head_of(nth(items, int_lit(1))), str_lit("conv")));
-                let ps = elem(mxp, maker_st, t, if string_eq_p(h, str_lit("->")) {
+            } else if (string_eq_p(h, str_lit!("->")) || string_eq_p(h, str_lit!("subr"))) {
+                let conv = (string_eq_p(h, str_lit!("subr")) && _gt(len(items), int_lit(1)) && string_eq_p(mx_shaper_head_of(nth(items, int_lit(1))), str_lit!("conv")));
+                let ps = elem(mxp, maker_st, t, if string_eq_p(h, str_lit!("->")) {
                     int_lit(1)
                 } else if conv {
                     int_lit(3)
@@ -22971,9 +22971,9 @@ pub mod made__load__1__expand {
                 if _lt(p, int_lit(0)) {
                     return Ok(maker_st.no_source.get().unwrap());
                 } else if dependent_p(node_syn(mxp, maker_st, p)) {
-                    return Ok(Product_11_12_13_14_15(int_lit(1), elem(mxp, maker_st, p, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit("-"))));
+                    return Ok(Product_11_12_13_14_15(int_lit(1), elem(mxp, maker_st, p, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit!("-"))));
                 } else {
-                    return Ok(Product_11_12_13_14_15(int_lit(1), p, int_lit(0), int_lit(0), symbol_lit(str_lit("-"))));
+                    return Ok(Product_11_12_13_14_15(int_lit(1), p, int_lit(0), int_lit(0), symbol_lit(str_lit!("-"))));
                 }
             } else {
                 return Ok(maker_st.no_source.get().unwrap());
@@ -23027,7 +23027,7 @@ pub mod made__load__1__expand {
             int_lit(-1)
         };
         if (_gt_eq(op, int_lit(0)) && _gt_eq(j, int_lit(1))) {
-            Product_11_12_13_14_15(int_lit(4), op, _minus(j, int_lit(1)), i, symbol_lit(str_lit("-")))
+            Product_11_12_13_14_15(int_lit(4), op, _minus(j, int_lit(1)), i, symbol_lit(str_lit!("-")))
         } else {
             maker_st.no_source.get().unwrap()
         }
@@ -23041,15 +23041,15 @@ pub mod made__load__1__expand {
             Ok(maker_st.no_source.get().unwrap())
         } else {
             let fq = position(mxp, maker_st, q);
-            if (_eq(fq.1, int_lit(1)) && _gt_eq(fq.0, int_lit(0)) && string_eq_p(mx_shaper_head_of(node_syn(mxp, maker_st, fq.0)), str_lit("lambda"))) {
+            if (_eq(fq.1, int_lit(1)) && _gt_eq(fq.0, int_lit(0)) && string_eq_p(mx_shaper_head_of(node_syn(mxp, maker_st, fq.0)), str_lit!("lambda"))) {
                 let d = declared_param(mxp, maker_st, fq.0, i)?;
                 if _gt_eq(d.0, int_lit(0)) {
                     Ok(d)
                 } else {
                     Ok(argument_param(mxp, maker_st, fq.0, i))
                 }
-            } else if (_eq(i, int_lit(0)) && _eq(fq.1, int_lit(1)) && _gt_eq(fq.0, int_lit(0)) && string_eq_p(mx_shaper_head_of(node_syn(mxp, maker_st, fq.0)), str_lit("define-type"))) {
-                Ok(Product_11_12_13_14_15(int_lit(1), elem(mxp, maker_st, fq.0, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit("-"))))
+            } else if (_eq(i, int_lit(0)) && _eq(fq.1, int_lit(1)) && _gt_eq(fq.0, int_lit(0)) && string_eq_p(mx_shaper_head_of(node_syn(mxp, maker_st, fq.0)), str_lit!("define-type"))) {
+                Ok(Product_11_12_13_14_15(int_lit(1), elem(mxp, maker_st, fq.0, int_lit(2)), int_lit(0), int_lit(0), symbol_lit(str_lit!("-"))))
             } else {
                 Ok(source_in_list(mxp, maker_st, b, q, i))
             }
@@ -23075,7 +23075,7 @@ pub mod made__load__1__expand {
 
     pub fn included_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, m: Int) -> Result<bool, Unwind> {
         let fi = position(mxp, maker_st, m);
-        Ok((_eq(fi.1, int_lit(1)) && _gt_eq(fi.0, int_lit(0)) && mx_shaper_head_is_p(mxp, maker_st, node_syn(mxp, maker_st, fi.0), symbol_lit(str_lit("include")))?))
+        Ok((_eq(fi.1, int_lit(1)) && _gt_eq(fi.0, int_lit(0)) && mx_shaper_head_is_p(mxp, maker_st, node_syn(mxp, maker_st, fi.0), symbol_lit(str_lit!("include")))?))
     }
 
     pub fn ask_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, m: Int, n: Symbol, d: bool, given: bool, unknown: bool) -> () {
@@ -23153,7 +23153,7 @@ pub mod made__load__1__expand {
 
     pub fn top_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, n: Symbol, d: bool) -> MxParserTypesShapes {
         let name = symbol_to_string(n);
-        let shared = (not(d) && _gt(string_length(name), int_lit(8)) && string_eq_p(substring(name, int_lit(0), int_lit(8)), str_lit("%shared:")));
+        let shared = (not(d) && _gt(string_length(name), int_lit(8)) && string_eq_p(substring(name, int_lit(0), int_lit(8)), str_lit!("%shared:")));
         let m = if get(maker_st.shaping_top.get().unwrap()) {
             names_find(n, get(if d {
                 maker_st.top_descs.get().unwrap()
@@ -23208,7 +23208,7 @@ pub mod made__load__1__expand {
                 let w = if (_gt(len(parts), int_lit(1)) && syn_symbol_p(car(parts))) {
                     syn_name(car(parts))
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 };
                 let n = if _gt(len(parts), int_lit(1)) {
                     nth(parts, int_lit(1))
@@ -23220,13 +23220,13 @@ pub mod made__load__1__expand {
                     continue;
                 } else if not(syn_symbol_p(n)) {
                     return Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>());
-                } else if string_eq_p(w, str_lit("val")) {
+                } else if string_eq_p(w, str_lit!("val")) {
                     (ms, vs) = (cdr(ms), cons(Product_11_12(syn_symbol(mxp, maker_st, n)?, the::<MxParserTypesShapes>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())), vs));
                     continue;
-                } else if string_eq_p(w, str_lit("modnames")) {
+                } else if string_eq_p(w, str_lit!("modnames")) {
                     (ms, vs) = (cdr(ms), cons(Product_11_12(syn_symbol(mxp, maker_st, n)?, modnames_shape(mxp, maker_st, cdr(cdr(parts)))?), vs));
                     continue;
-                } else if (string_eq_p(w, str_lit("abs")) || string_eq_p(w, str_lit("desc")) || string_eq_p(w, str_lit("eff"))) {
+                } else if (string_eq_p(w, str_lit!("abs")) || string_eq_p(w, str_lit!("desc")) || string_eq_p(w, str_lit!("eff"))) {
                     (ms, ds) = (cdr(ms), cons(Product_11_12(syn_symbol(mxp, maker_st, n)?, the::<MxParserTypesShapes>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())), ds));
                     continue;
                 } else {
@@ -23579,33 +23579,33 @@ pub mod made__load__1__expand {
                 });
                 if _eq(k, int_lit(0)) {
                     Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())
-                } else if string_eq_p(h, str_lit("module")) {
+                } else if string_eq_p(h, str_lit!("module")) {
                     Ok(module_shape(mxp, maker_st, mx_fail, cdr(e))?)
-                } else if (string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("load-input")) || string_eq_p(h, str_lit("%loaded"))) {
+                } else if (string_eq_p(h, str_lit!("load-module")) || string_eq_p(h, str_lit!("load-input")) || string_eq_p(h, str_lit!("%loaded"))) {
                     Ok(load_shape(mxp, maker_st, syn_start_of_list(s), false))
-                } else if string_eq_p(h, str_lit("the")) {
+                } else if string_eq_p(h, str_lit!("the")) {
                     Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?)
-                } else if string_eq_p(h, str_lit("extend")) {
+                } else if string_eq_p(h, str_lit!("extend")) {
                     Ok(extended(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, exp_shape(mxp, maker_st, mx_fail, last)?))
-                } else if (string_eq_p(h, str_lit("with")) && _eq(k, int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && string_eq_p(syn_name(nth(items, int_lit(1))), str_lit("#%toplevel")) && syn_symbol_p(nth(items, int_lit(2)))) {
+                } else if (string_eq_p(h, str_lit!("with")) && _eq(k, int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && string_eq_p(syn_name(nth(items, int_lit(1))), str_lit!("#%toplevel")) && syn_symbol_p(nth(items, int_lit(2)))) {
                     Ok(top_shape(mxp, maker_st, syn_symbol(mxp, maker_st, nth(items, int_lit(2)))?, false))
-                } else if name_in_list_p(h, kayak_rt::cons(str_lit("with"), kayak_rt::cons(str_lit("let"), kayak_rt::cons(str_lit("let*"), kayak_rt::cons(str_lit("letrec"), kayak_rt::cons(str_lit("begin"), kayak_rt::cons(str_lit("letregion"), kayak_rt::cons(str_lit("letfreeze"), kayak_rt::cons(str_lit("letrena"), kayak_rt::cons(str_lit("letreap"), kayak_rt::cons(str_lit("plambda"), kayak_rt::cons(str_lit("dlambda"), kayak_rt::nil())))))))))))) {
+                } else if name_in_list_p(h, kayak_rt::cons(str_lit!("with"), kayak_rt::cons(str_lit!("let"), kayak_rt::cons(str_lit!("let*"), kayak_rt::cons(str_lit!("letrec"), kayak_rt::cons(str_lit!("begin"), kayak_rt::cons(str_lit!("letregion"), kayak_rt::cons(str_lit!("letfreeze"), kayak_rt::cons(str_lit!("letrena"), kayak_rt::cons(str_lit!("letreap"), kayak_rt::cons(str_lit!("plambda"), kayak_rt::cons(str_lit!("dlambda"), kayak_rt::nil())))))))))))) {
                     if _gt_eq(last, int_lit(0)) {
                         Ok(exp_shape(mxp, maker_st, mx_fail, last)?)
                     } else {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())
                     }
-                } else if string_eq_p(h, str_lit("proj")) {
+                } else if string_eq_p(h, str_lit!("proj")) {
                     Ok(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?)
-                } else if (string_eq_p(h, str_lit("if")) && _eq(k, int_lit(4))) {
+                } else if (string_eq_p(h, str_lit!("if")) && _eq(k, int_lit(4))) {
                     let (a, b) = (exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(2)))?, exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(3)))?);
                     if (not(null_p(a)) && shapes_eq_p(a, b)) {
                         Ok(a)
                     } else {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())
                     }
-                } else if (string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("rlambda"))) {
-                    let formals = at_e.call(if string_eq_p(h, str_lit("lambda")) {
+                } else if (string_eq_p(h, str_lit!("lambda")) || string_eq_p(h, str_lit!("rlambda"))) {
+                    let formals = at_e.call(if string_eq_p(h, str_lit!("lambda")) {
                         int_lit(1)
                     } else {
                         int_lit(2)
@@ -23672,13 +23672,13 @@ pub mod made__load__1__expand {
             } else {
                 let x = car(items);
                 let h = if _lt(x, int_lit(0)) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     mx_shaper_head_of(node_syn(mxp, maker_st, x))
                 };
                 if _lt(x, int_lit(0)) {
                     return Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>());
-                } else if string_eq_p(h, str_lit("module-parameters")) {
+                } else if string_eq_p(h, str_lit!("module-parameters")) {
                     items = cdr(items);
                     continue;
                 } else {
@@ -23693,7 +23693,7 @@ pub mod made__load__1__expand {
                                 let got = levels_members(mxp, maker_st, mx_fail, mx_shaper_exported(mxp, maker_st, mx_fail, ex, node_syn(mxp, maker_st, x))?, Product_11_12_13(the::<MxParserTypesMembers>(nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>>>()), the::<MxParserTypesMembers>(nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>>>()), true))?;
                                 if not(got.2) {
                                     return Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>());
-                                } else if string_eq_p(h, str_lit("hide")) {
+                                } else if string_eq_p(h, str_lit!("hide")) {
                                     (items, hvs, hds) = (cdr(items), append(got.0, hvs), append(got.1, hds));
                                     continue;
                                 } else {
@@ -23810,7 +23810,7 @@ pub mod made__load__1__expand {
                 let at_e = kayak_rt::closure1s((e,), |(e,), i: Int| {
                     mx_shaper_int_at(e, i)
                 });
-                if (syn_symbol_p(s) && _gt(string_length(syn_name(s)), int_lit(11)) && string_eq_p(substring(syn_name(s), int_lit(0), int_lit(11)), str_lit("#%toplevel:"))) {
+                if (syn_symbol_p(s) && _gt(string_length(syn_name(s)), int_lit(11)) && string_eq_p(substring(syn_name(s), int_lit(0), int_lit(11)), str_lit!("#%toplevel:"))) {
                     let m = names_find(string_to_symbol(substring(syn_name(s), int_lit(11), string_length(syn_name(s)))), get(maker_st.top_descs.get().unwrap()));
                     if null_p(m) {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())
@@ -23819,13 +23819,13 @@ pub mod made__load__1__expand {
                     }
                 } else if _eq(k, int_lit(0)) {
                     Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())
-                } else if string_eq_p(h, str_lit("moduleof")) {
+                } else if string_eq_p(h, str_lit!("moduleof")) {
                     Ok(moduleof_shape(mxp, maker_st, mx_fail, cdr(items), cdr(e), nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>>>(), nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>>>())?)
-                } else if string_eq_p(h, str_lit("modnames")) {
+                } else if string_eq_p(h, str_lit!("modnames")) {
                     Ok(modnames_shape(mxp, maker_st, cdr(items))?)
-                } else if (string_eq_p(h, str_lit("load-moduleof")) || string_eq_p(h, str_lit("load-input-moduleof"))) {
+                } else if (string_eq_p(h, str_lit!("load-moduleof")) || string_eq_p(h, str_lit!("load-input-moduleof"))) {
                     Ok(load_shape(mxp, maker_st, syn_start_of_list(s), true))
-                } else if string_eq_p(h, str_lit("restrict")) {
+                } else if string_eq_p(h, str_lit!("restrict")) {
                     let (m, kept) = (mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, mx_shaper_symbols_of(mxp, maker_st, cdr(cdr(items)))?);
                     if null_p(m) {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())
@@ -23841,18 +23841,18 @@ pub mod made__load__1__expand {
                             }
                         }
                     }
-                } else if string_eq_p(h, str_lit("poly")) {
+                } else if string_eq_p(h, str_lit!("poly")) {
                     Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(_minus(k, int_lit(1))))?)
-                } else if (string_eq_p(h, str_lit("select")) && _eq(k, int_lit(3)) && syn_symbol_p(nth(items, int_lit(2)))) {
+                } else if (string_eq_p(h, str_lit!("select")) && _eq(k, int_lit(3)) && syn_symbol_p(nth(items, int_lit(2)))) {
                     Ok(mx_shaper_member_shape(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, syn_symbol(mxp, maker_st, nth(items, int_lit(2)))?, true))
-                } else if (string_eq_p(h, str_lit("->")) && _eq(k, int_lit(3))) {
+                } else if (string_eq_p(h, str_lit!("->")) && _eq(k, int_lit(3))) {
                     if _lt(at_e.call(int_lit(1)), int_lit(0)) {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())
                     } else {
                         Ok(sh_fun_of(param_types(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(2)))?))
                     }
-                } else if string_eq_p(h, str_lit("subr")) {
-                    let conv = (_gt(k, int_lit(1)) && string_eq_p(mx_shaper_head_of(nth(items, int_lit(1))), str_lit("conv")));
+                } else if string_eq_p(h, str_lit!("subr")) {
+                    let conv = (_gt(k, int_lit(1)) && string_eq_p(mx_shaper_head_of(nth(items, int_lit(1))), str_lit!("conv")));
                     let j = if conv {
                         int_lit(4)
                     } else {
@@ -23919,14 +23919,14 @@ pub mod made__load__1__expand {
                 let word = if (not(null_p(parts)) && syn_symbol_p(car(parts))) {
                     syn_name(car(parts))
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 };
                 let second = if _gt(len(parts), int_lit(1)) {
                     nth(parts, int_lit(1))
                 } else {
                     car(ms)
                 };
-                let at = if (syn_keyword_p(second) && not(string_eq_p(word, str_lit("val"))) && _eq(len(parts), int_lit(4))) {
+                let at = if (syn_keyword_p(second) && not(string_eq_p(word, str_lit!("val"))) && _eq(len(parts), int_lit(4))) {
                     int_lit(3)
                 } else {
                     int_lit(2)
@@ -23950,7 +23950,7 @@ pub mod made__load__1__expand {
                     }
                 } else if null_p(proper_items(second)) {
                     nil::<Symbol>()
-                } else if string_eq_p(word, str_lit("abs")) {
+                } else if string_eq_p(word, str_lit!("abs")) {
                     if all_symbols_p(proper_items(second)) {
                         mx_shaper_symbols_of(mxp, maker_st, proper_items(second))?
                     } else {
@@ -23971,23 +23971,23 @@ pub mod made__load__1__expand {
                         }
                     }
                 });
-                if (_lt(len(parts), int_lit(2)) || (null_p(mx_parser_types_names) && not(string_eq_p(word, str_lit("abs"))))) {
+                if (_lt(len(parts), int_lit(2)) || (null_p(mx_parser_types_names) && not(string_eq_p(word, str_lit!("abs"))))) {
                     return Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>());
-                } else if string_eq_p(word, str_lit("val")) {
+                } else if string_eq_p(word, str_lit!("val")) {
                     (ms, es, vs) = (cdr(ms), if null_p(es) {
                         nil::<Int>()
                     } else {
                         cdr(es)
                     }, cons(Product_11_12(car(mx_parser_types_names), t.call()?), vs));
                     continue;
-                } else if string_eq_p(word, str_lit("abs")) {
+                } else if string_eq_p(word, str_lit!("abs")) {
                     (ms, es, ds) = (cdr(ms), if null_p(es) {
                         nil::<Int>()
                     } else {
                         cdr(es)
                     }, abs_onto(mx_parser_types_names, ds));
                     continue;
-                } else if string_eq_p(word, str_lit("desc")) {
+                } else if string_eq_p(word, str_lit!("desc")) {
                     (ms, es, ds) = (cdr(ms), if null_p(es) {
                         nil::<Int>()
                     } else {
@@ -24081,12 +24081,12 @@ pub mod made__load__1__expand {
     }
 
     pub fn opens_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>) -> Result<bool, Unwind> {
-        Ok((mx_shaper_head_is_p(mxp, maker_st, s, symbol_lit(str_lit("with")))? || mx_shaper_head_is_p(mxp, maker_st, s, symbol_lit(str_lit("extend")))? || mx_shaper_head_is_p(mxp, maker_st, s, symbol_lit(str_lit("include")))? || mx_shaper_head_is_p(mxp, maker_st, s, symbol_lit(str_lit("import-with-syntax")))?))
+        Ok((mx_shaper_head_is_p(mxp, maker_st, s, symbol_lit(str_lit!("with")))? || mx_shaper_head_is_p(mxp, maker_st, s, symbol_lit(str_lit!("extend")))? || mx_shaper_head_is_p(mxp, maker_st, s, symbol_lit(str_lit!("include")))? || mx_shaper_head_is_p(mxp, maker_st, s, symbol_lit(str_lit!("import-with-syntax")))?))
     }
 
     pub fn toplevel_or_fx_p(s: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper_items(s);
-        (_gt(len(items), int_lit(1)) && syn_symbol_p(nth(items, int_lit(1))) && (string_eq_p(syn_name(nth(items, int_lit(1))), str_lit("#%fx")) || string_eq_p(syn_name(nth(items, int_lit(1))), str_lit("#%toplevel"))))
+        (_gt(len(items), int_lit(1)) && syn_symbol_p(nth(items, int_lit(1))) && (string_eq_p(syn_name(nth(items, int_lit(1))), str_lit!("#%fx")) || string_eq_p(syn_name(nth(items, int_lit(1))), str_lit!("#%toplevel"))))
     }
 
     pub fn writing_at(mut p: Addr, mut ws: List<Writing>) -> List<Writing> {
@@ -24236,8 +24236,8 @@ pub mod made__load__1__expand {
         let record = if null_p(here) {
             the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else {
-            kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(mx_symbol_to_keyword(symbol_lit(str_lit("relied")))), a, b, int_lit(0)), kayak_rt::cons(if null_p(car(here)) {
-                mk_symbol(str_lit("#f"), a, b)
+            kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(mx_symbol_to_keyword(symbol_lit(str_lit!("relied")))), a, b, int_lit(0)), kayak_rt::cons(if null_p(car(here)) {
+                mk_symbol(str_lit!("#f"), a, b)
             } else {
                 car(car(here))
             }, kayak_rt::nil()))
@@ -24378,9 +24378,9 @@ pub mod made__load__1__expand {
             match *tagcase_ {
                 made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                     let h = head_sym(mxp, maker_st, s)?;
-                    let hoisted = (symbol_eq_p(h, symbol_lit(str_lit("%loaded"))) && _gt(len(items), int_lit(1)) && syn_string_p(nth(items, int_lit(1))));
-                    let input = (symbol_eq_p(h, symbol_lit(str_lit("load-input"))) || symbol_eq_p(h, symbol_lit(str_lit("load-input-moduleof"))) || (hoisted && input_key_p(syn_string(nth(items, int_lit(1))))));
-                    let load = (hoisted || ((input || symbol_eq_p(h, symbol_lit(str_lit("load-module"))) || symbol_eq_p(h, symbol_lit(str_lit("load-moduleof")))) && _gt(len(items), int_lit(1)) && syn_string_p(nth(items, int_lit(1)))));
+                    let hoisted = (symbol_eq_p(h, symbol_lit(str_lit!("%loaded"))) && _gt(len(items), int_lit(1)) && syn_string_p(nth(items, int_lit(1))));
+                    let input = (symbol_eq_p(h, symbol_lit(str_lit!("load-input"))) || symbol_eq_p(h, symbol_lit(str_lit!("load-input-moduleof"))) || (hoisted && input_key_p(syn_string(nth(items, int_lit(1))))));
+                    let load = (hoisted || ((input || symbol_eq_p(h, symbol_lit(str_lit!("load-module"))) || symbol_eq_p(h, symbol_lit(str_lit!("load-moduleof")))) && _gt(len(items), int_lit(1)) && syn_string_p(nth(items, int_lit(1)))));
                     let out2 = if load {
                         if input {
                             set(maker_st.inputs_at.get().unwrap(), cons(a, get(maker_st.inputs_at.get().unwrap())))
@@ -24444,7 +24444,7 @@ pub mod made__load__1__expand {
             let tagcase_ = nth(xs, int_lit(2));
             match *tagcase_ {
                 made__load__0__expander_kc::Syn::Atom(d, a, b, x) => {
-                    (mx_keyword_p(d) && symbol_eq_p(mx_keyword_to_symbol(d), symbol_lit(str_lit("relied"))))
+                    (mx_keyword_p(d) && symbol_eq_p(mx_keyword_to_symbol(d), symbol_lit(str_lit!("relied"))))
                 }
                 _ => {
                     let y = tagcase_;
@@ -24585,7 +24585,7 @@ pub mod made__load__1__expand {
                 nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>()
             };
             let m = if input_p {
-                mx_shaper_member_shape(whole, symbol_lit(str_lit("input")), false)
+                mx_shaper_member_shape(whole, symbol_lit(str_lit!("input")), false)
             } else {
                 whole
             };
@@ -24647,7 +24647,7 @@ pub mod made__load__1__expand {
     pub fn mx_shapes_shape_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, t: kayak_rt::Handle<'static, Syn>) -> Result<List<kayak_rt::Handle<'static, Syn>>, Unwind> {
         if syn_symbol_p(t) {
             Ok(shape_named(mxp, maker_st, syn_symbol(mxp, maker_st, t)?))
-        } else if string_eq_p(mx_shaper_head_of(t), str_lit("modnames")) {
+        } else if string_eq_p(mx_shaper_head_of(t), str_lit!("modnames")) {
             Ok(kayak_rt::cons(t, kayak_rt::nil()))
         } else {
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
@@ -24659,17 +24659,17 @@ pub mod made__load__1__expand {
         match *tagcase_ {
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                 let h = head_sym(mxp, maker_st, s)?;
-                if (symbol_eq_p(h, symbol_lit(str_lit("quote"))) || symbol_eq_p(h, symbol_lit(str_lit("quasiquote"))) || symbol_eq_p(h, symbol_lit(str_lit("%datum")))) {
+                if (symbol_eq_p(h, symbol_lit(str_lit!("quote"))) || symbol_eq_p(h, symbol_lit(str_lit!("quasiquote"))) || symbol_eq_p(h, symbol_lit(str_lit!("%datum")))) {
                     Ok(s)
                 } else if (not(symbol_eq_p(h, maker_st.no_head.get().unwrap())) && not(null_p(shape_named(mxp, maker_st, h)))) {
-                    match mx_fail.call(string_append(str_lit("`"), string_append(symbol_to_string(h), string_append(str_lit("` is a shape, not a macro: it is "), str_lit("written as a `define`'s or `the`'s type")))), a, b)? {};
+                    match mx_fail.call(string_append(str_lit!("`"), string_append(symbol_to_string(h), string_append(str_lit!("` is a shape, not a macro: it is "), str_lit!("written as a `define`'s or `the`'s type")))), a, b)? {};
                     Ok(s)
                 } else {
                     let xs = sealed_each(mxp, maker_st, mx_fail, items)?;
                     let n = len(xs);
-                    let ys = if (symbol_eq_p(h, symbol_lit(str_lit("define"))) && _eq(n, int_lit(4)) && not(null_p(mx_shapes_shape_of(mxp, maker_st, nth(xs, int_lit(2)))?))) {
-                        kayak_rt::cons(car(xs), kayak_rt::cons(nth(xs, int_lit(1)), kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(str_lit("the"), a, b), kayak_rt::cons(car(mx_shapes_shape_of(mxp, maker_st, nth(xs, int_lit(2)))?), kayak_rt::cons(nth(xs, int_lit(3)), kayak_rt::nil()))), a, b), kayak_rt::nil())))
-                    } else if (symbol_eq_p(h, symbol_lit(str_lit("the"))) && _eq(n, int_lit(3)) && not(null_p(mx_shapes_shape_of(mxp, maker_st, nth(xs, int_lit(1)))?))) {
+                    let ys = if (symbol_eq_p(h, symbol_lit(str_lit!("define"))) && _eq(n, int_lit(4)) && not(null_p(mx_shapes_shape_of(mxp, maker_st, nth(xs, int_lit(2)))?))) {
+                        kayak_rt::cons(car(xs), kayak_rt::cons(nth(xs, int_lit(1)), kayak_rt::cons(mk_list(kayak_rt::cons(mk_symbol(str_lit!("the"), a, b), kayak_rt::cons(car(mx_shapes_shape_of(mxp, maker_st, nth(xs, int_lit(2)))?), kayak_rt::cons(nth(xs, int_lit(3)), kayak_rt::nil()))), a, b), kayak_rt::nil())))
+                    } else if (symbol_eq_p(h, symbol_lit(str_lit!("the"))) && _eq(n, int_lit(3)) && not(null_p(mx_shapes_shape_of(mxp, maker_st, nth(xs, int_lit(1)))?))) {
                         kayak_rt::cons(car(xs), kayak_rt::cons(car(mx_shapes_shape_of(mxp, maker_st, nth(xs, int_lit(1)))?), kayak_rt::cons(nth(xs, int_lit(2)), kayak_rt::nil())))
                     } else {
                         xs
@@ -24733,7 +24733,7 @@ pub mod made__load__1__expand {
 
     pub fn file_kept_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, key: Str, forms0: SynsA, input_p: bool) -> Result<(), Unwind> {
         let forms = sealed_items(mxp, maker_st, unshaped_items(forms0))?;
-        let params = (not(null_p(forms)) && string_eq_p(mx_shaper_head_of(car(forms)), str_lit("module-parameters")));
+        let params = (not(null_p(forms)) && string_eq_p(mx_shaper_head_of(car(forms)), str_lit!("module-parameters")));
         let wrapped = not((input_p && not(params)));
         let form = if null_p(forms) {
             nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>()
@@ -24741,7 +24741,7 @@ pub mod made__load__1__expand {
             let ab = syn_span(car(forms));
             let a = ab.0;
             let b = ab.1;
-            kayak_rt::cons(mk_list(cons(mk_symbol(str_lit("module"), a, b), forms), a, b), kayak_rt::nil())
+            kayak_rt::cons(mk_list(cons(mk_symbol(str_lit!("module"), a, b), forms), a, b), kayak_rt::nil())
         } else if null_p(cdr(forms)) {
             kayak_rt::cons(car(forms), kayak_rt::nil())
         } else {
@@ -24968,7 +24968,7 @@ pub mod made__load__1__expand {
 
     pub fn shape_definition_p(x: kayak_rt::Handle<'static, Syn>) -> bool {
         let items = proper_items(x);
-        (_eq(len(items), int_lit(3)) && string_eq_p(mx_shaper_head_of(x), str_lit("define-syntax")) && syn_symbol_p(nth(items, int_lit(1))) && string_eq_p(mx_shaper_head_of(nth(items, int_lit(2))), str_lit("modnames")))
+        (_eq(len(items), int_lit(3)) && string_eq_p(mx_shaper_head_of(x), str_lit!("define-syntax")) && syn_symbol_p(nth(items, int_lit(1))) && string_eq_p(mx_shaper_head_of(nth(items, int_lit(2))), str_lit!("modnames")))
     }
 
     pub fn named_without(mut n: Symbol, mut ns: MxShapesNamed) -> MxShapesNamed {
@@ -25032,7 +25032,7 @@ pub mod made__load__1__expand {
 
     pub fn mx_shapes_alias_base_from(mut n: Str, mut any: bool) -> Str {
         loop {
-            let c = if (_gt(string_length(n), int_lit(2)) && string_eq_p(substring(n, int_lit(0), int_lit(2)), str_lit("%~"))) {
+            let c = if (_gt(string_length(n), int_lit(2)) && string_eq_p(substring(n, int_lit(0), int_lit(2)), str_lit!("%~"))) {
                 mx_shapes_digits_end(n, int_lit(2))
             } else {
                 int_lit(-1)
@@ -25044,7 +25044,7 @@ pub mod made__load__1__expand {
                 if any {
                     return n;
                 } else {
-                    return str_lit("");
+                    return str_lit!("");
                 }
             }
         }
@@ -25060,11 +25060,11 @@ pub mod made__load__1__expand {
             let tagcase_ = s;
             match *tagcase_ {
                 made__load__0__expander_kc::Syn::Atom(d, a, b, x) => {
-                    return Ok((syn_symbol_p(s) && not(string_eq_p(mx_shapes_alias_base(syn_name(s)), str_lit("")))));
+                    return Ok((syn_symbol_p(s) && not(string_eq_p(mx_shapes_alias_base(syn_name(s)), str_lit!("")))));
                 }
                 made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                     let h = head_sym(mxp, maker_st, s)?;
-                    return Ok((not((symbol_eq_p(h, symbol_lit(str_lit("quote"))) || symbol_eq_p(h, symbol_lit(str_lit("quasiquote"))) || symbol_eq_p(h, symbol_lit(str_lit("%datum"))))) && aliases_in_p(mxp, maker_st, items)?));
+                    return Ok((not((symbol_eq_p(h, symbol_lit(str_lit!("quote"))) || symbol_eq_p(h, symbol_lit(str_lit!("quasiquote"))) || symbol_eq_p(h, symbol_lit(str_lit!("%datum"))))) && aliases_in_p(mxp, maker_st, items)?));
                 }
                 made__load__0__expander_kc::Syn::Dotted(items, t, d, a, b, x) => {
                     if aliases_in_p(mxp, maker_st, items)? {
@@ -25139,7 +25139,7 @@ pub mod made__load__1__expand {
             }, cdrs_of(p, int_lit(0)));
             if null_p(items) {
                 return false;
-            } else if (not(null_p(p)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("module"))) {
+            } else if (not(null_p(p)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("module"))) {
                 return true;
             } else if (null_p(list_tail_of(p, k)) || _gt_eq(k, len(items))) {
                 return false;
@@ -25169,14 +25169,14 @@ pub mod made__load__1__expand {
         if _eq(c, int_lit(-1)) {
             Ok(cs)
         } else if (_gt_eq(c, int_lit(0)) && not(mx_shapes_int_in_p(c, top)) && within_module_p(x, reverse(node_path(mxp, maker_st, c)))) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(base, string_append(str_lit("`, which an expansion here names as its "), string_append(str_lit("macro has it, is bound inside a `module` around "), string_append(str_lit("the use, where renaming it may change what the "), str_lit("module gives: not yet")))))), s)? {};
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(base, string_append(str_lit!("`, which an expansion here names as its "), string_append(str_lit!("macro has it, is bound inside a `module` around "), string_append(str_lit!("the use, where renaming it may change what the "), str_lit!("module gives: not yet")))))), s)? {};
             Ok(cs)
         } else if _eq(c, int_lit(-2)) {
-            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(base, string_append(if inst {
-                str_lit("`, the instance an imported macro names, ")
+            match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(base, string_append(if inst {
+                str_lit!("`, the instance an imported macro names, ")
             } else {
-                str_lit("`, which a macro of this file names, ")
-            }, string_append(str_lit("where a `with` or `include` around its use may "), str_lit("give it: not yet"))))), s)? {};
+                str_lit!("`, which a macro of this file names, ")
+            }, string_append(str_lit!("where a `with` or `include` around its use may "), str_lit!("give it: not yet"))))), s)? {};
             Ok(cs)
         } else if (mx_shapes_int_in_p(c, top) || mx_shapes_int_in_p(c, cs)) {
             Ok(cs)
@@ -25205,16 +25205,16 @@ pub mod made__load__1__expand {
         let a = ab.0;
         let b = ab.1;
         let with_of = kayak_rt::closure1s((base, a, b,), |(base, a, b,), m: Str| {
-            mk_list(kayak_rt::cons(mk_symbol(str_lit("with"), a, b), kayak_rt::cons(mk_symbol(m, a, b), kayak_rt::cons(mk_symbol(base, a, b), kayak_rt::nil()))), a, b)
+            mk_list(kayak_rt::cons(mk_symbol(str_lit!("with"), a, b), kayak_rt::cons(mk_symbol(m, a, b), kayak_rt::cons(mk_symbol(base, a, b), kayak_rt::nil()))), a, b)
         });
         match h.0 {
             case_ if kayak_rt::_eq(case_, int_lit(0)) => {
                 if (_eq(free, int_lit(0)) || (_eq(free, int_lit(3)) && not(d))) {
-                    Ok(with_of.call(str_lit("#%toplevel")))
+                    Ok(with_of.call(str_lit!("#%toplevel")))
                 } else if _eq(free, int_lit(2)) {
                     Ok(mk_symbol(base, a, b))
                 } else {
-                    Ok(mk_symbol(string_append(str_lit("#%toplevel:"), base), a, b))
+                    Ok(mk_symbol(string_append(str_lit!("#%toplevel:"), base), a, b))
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(2)) => {
@@ -25226,11 +25226,11 @@ pub mod made__load__1__expand {
                 } else if instance_named_p(base, free, h) {
                     Ok(mk_symbol(base, a, b))
                 } else if _eq(free, int_lit(0)) {
-                    Ok(with_of.call(str_lit("#%fx")))
+                    Ok(with_of.call(str_lit!("#%fx")))
                 } else if _eq(free, int_lit(2)) {
                     Ok(mk_symbol(base, a, b))
                 } else {
-                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(base, string_append(str_lit("`: a file's macro's description "), str_lit("named apart from its module, not yet")))), s)? {};
+                    match fail_at(mxp, maker_st, mx_fail, string_append(str_lit!("`"), string_append(base, string_append(str_lit!("`: a file's macro's description "), str_lit!("named apart from its module, not yet")))), s)? {};
                     Ok(s)
                 }
             }
@@ -25251,7 +25251,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn alias_made(x: Str) -> Str {
-        let c = if (_gt(string_length(x), int_lit(2)) && string_eq_p(substring(x, int_lit(0), int_lit(2)), str_lit("%~"))) {
+        let c = if (_gt(string_length(x), int_lit(2)) && string_eq_p(substring(x, int_lit(0), int_lit(2)), str_lit!("%~"))) {
             mx_shapes_digits_end(x, int_lit(2))
         } else {
             int_lit(-1)
@@ -25259,7 +25259,7 @@ pub mod made__load__1__expand {
         if (_gt(c, int_lit(2)) && _lt(c, string_length(x)) && char_eq_p(string_ref(x, c), ':')) {
             substring(x, int_lit(2), c)
         } else {
-            str_lit("")
+            str_lit!("")
         }
     }
 
@@ -25320,7 +25320,7 @@ pub mod made__load__1__expand {
                             let h = def_env_of(alias_made(symbol_to_string(n)), hs);
                             let within = _eq(h.0, int_lit(2));
                             let inst = instance_named_p(base, free, h);
-                            if (string_eq_p(base, str_lit("")) || mx_shapes_bound_in_p(mxp, maker_st, n, d, mx_env_indexed_env) || (not(within) && alias_defined_p(mxp, maker_st, n, d))) {
+                            if (string_eq_p(base, str_lit!("")) || mx_shapes_bound_in_p(mxp, maker_st, n, d, mx_env_indexed_env) || (not(within) && alias_defined_p(mxp, maker_st, n, d))) {
                                 out
                             } else {
                                 let mx_shapes_parts = cons(Product_11_12(node_path(mxp, maker_st, at), alias_written(mxp, maker_st, mx_fail, base, d, free, h, node_syn(mxp, maker_st, at))?), out.0);
@@ -25408,7 +25408,7 @@ pub mod made__load__1__expand {
                 let tagcase_ = node_kids(mxp, maker_st, car(cs));
                 match *tagcase_ {
                     made__load__0__expander_kc::MxNodesKids::KBinder(n, e) => {
-                        (cs, out) = (cdr(cs), cons(Product_11_12(car(cs), string_to_symbol(string_append(str_lit("%"), string_append(symbol_to_string(n), string_append(str_lit("~"), tag.call()?))))), out));
+                        (cs, out) = (cdr(cs), cons(Product_11_12(car(cs), string_to_symbol(string_append(str_lit!("%"), string_append(symbol_to_string(n), string_append(str_lit!("~"), tag.call()?))))), out));
                         continue;
                     }
                     _ => {
@@ -25461,7 +25461,7 @@ pub mod made__load__1__expand {
                     let tagcase_ = node_kids(mxp, maker_st, at);
                     match *tagcase_ {
                         made__load__0__expander_kc::MxNodesKids::KRef(n, d, free) => {
-                            let f = if string_eq_p(mx_shapes_alias_base(symbol_to_string(n)), str_lit("")) {
+                            let f = if string_eq_p(mx_shapes_alias_base(symbol_to_string(n)), str_lit!("")) {
                                 captor_name(captor_of(mxp, maker_st, n, d, car(fs).1), fresh)
                             } else {
                                 nil::<Symbol>()
@@ -25495,7 +25495,7 @@ pub mod made__load__1__expand {
                             let tagcase_ = node_kids(mxp, maker_st, b);
                             match *tagcase_ {
                                 made__load__0__expander_kc::MxNodesKids::KBinder(n, e) => {
-                                    if string_eq_p(mx_shapes_alias_base(symbol_to_string(n)), str_lit("")) {
+                                    if string_eq_p(mx_shapes_alias_base(symbol_to_string(n)), str_lit!("")) {
                                         ()
                                     } else {
                                         set(maker_st.aliases_defined.get().unwrap(), cons(Product_11_12(n, d), get(maker_st.aliases_defined.get().unwrap())))
@@ -25804,7 +25804,7 @@ pub mod made__load__1__expand {
         let i = quotient(a, maker_st.load_base.get().unwrap());
         let fs = get(maker_st.drive_files.get().unwrap());
         if (_gt_eq(a, maker_st.source_base.get().unwrap()) || _gt_eq(i, drive_length(fs))) {
-            Product_11_12_13(str_lit(""), 0i64, 0i64)
+            Product_11_12_13(str_lit!(""), 0i64, 0i64)
         } else {
             Product_11_12_13(drive_nth(fs, i), drive_search(mxp, maker_st, int_to_i64(a), 0i64, get(maker_st.drive_count.get().unwrap())), int_to_i64(remainder(a, maker_st.load_base.get().unwrap())))
         }
@@ -25850,7 +25850,7 @@ pub mod made__load__1__expand {
         if string_p(d) {
             kayak_rt::value::unbox::<Str>(d)
         } else {
-            str_lit("")
+            str_lit!("")
         }
     }
 
@@ -25875,7 +25875,7 @@ pub mod made__load__1__expand {
             if (null_p(xs) || null_p(cdr(xs)) || null_p(cdr(cdr(xs)))) {
                 return false;
             } else if null_p(cdr(cdr(cdr(xs)))) {
-                return (loc_is_p(car(cdr(xs)), str_lit(".")) && not(loc_is_p(car(xs), str_lit("."))));
+                return (loc_is_p(car(cdr(xs)), str_lit!(".")) && not(loc_is_p(car(xs), str_lit!("."))));
             } else {
                 xs = cdr(xs);
                 continue;
@@ -25885,7 +25885,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn drive_before_dot(xs: List<kayak_rt::value::Value>) -> List<kayak_rt::value::Value> {
-        if loc_is_p(car(xs), str_lit(".")) {
+        if loc_is_p(car(xs), str_lit!(".")) {
             nil::<kayak_rt::value::Value>()
         } else {
             kayak_rt::heap_cons(car(xs), drive_before_dot(cdr(xs)))
@@ -25909,7 +25909,7 @@ pub mod made__load__1__expand {
         if _eq(loc_int(loc_nth(e, int_lit(0))), int_lit(1)) {
             let xs = loc_nodes(loc_after(e, int_lit(4)));
             set(maker_st.drive_met.get().unwrap(), cons(Product_11_12(a, loc_int(loc_nth(e, int_lit(2)))), get(maker_st.drive_met.get().unwrap())));
-            if (not(null_p(xs)) && loc_is_p(car(xs), str_lit("#vector"))) {
+            if (not(null_p(xs)) && loc_is_p(car(xs), str_lit!("#vector"))) {
                 let items = drive_syns(mxp, maker_st, cdr(xs));
                 vec(items, mx_datum_list(syn_datums(items)), a, a, int_lit(0))
             } else if drive_dotted_p(xs) {
@@ -25976,7 +25976,7 @@ pub mod made__load__1__expand {
             }
             made__load__0__expander_kc::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
                 let xs = drive_locs(mxp, maker_st, items);
-                let us = if (_gt_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("with"))) {
+                let us = if (_gt_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit!("with"))) {
                     drive_uses_in(with_uses_given(mxp, maker_st), a, b, f, l, p)
                 } else {
                     nil::<kayak_rt::value::Value>()
@@ -25984,14 +25984,14 @@ pub mod made__load__1__expand {
                 loc_node(int_lit(1), f, l, p, mx_datum_list(if null_p(us) {
                     xs
                 } else {
-                    cons(car(xs), cons(car(cdr(xs)), cons(loc_node(int_lit(0), f, l, p, the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(str_lit("#:uses"))))), cons(loc_node(int_lit(1), f, l, p, mx_datum_list(us)), cdr(cdr(xs))))))
+                    cons(car(xs), cons(car(cdr(xs)), cons(loc_node(int_lit(0), f, l, p, the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(str_lit!("#:uses"))))), cons(loc_node(int_lit(1), f, l, p, mx_datum_list(us)), cdr(cdr(xs))))))
                 }))
             }
             made__load__0__expander_kc::Syn::Dotted(items, tail, d, a, b, x) => {
-                loc_node(int_lit(1), f, l, p, mx_datum_list(append(drive_locs(mxp, maker_st, items), kayak_rt::cons(loc_node(int_lit(0), f, l, p, the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(str_lit("."))))), kayak_rt::cons(drive_loc(mxp, maker_st, tail), kayak_rt::nil())))))
+                loc_node(int_lit(1), f, l, p, mx_datum_list(append(drive_locs(mxp, maker_st, items), kayak_rt::cons(loc_node(int_lit(0), f, l, p, the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(str_lit!("."))))), kayak_rt::cons(drive_loc(mxp, maker_st, tail), kayak_rt::nil())))))
             }
             made__load__0__expander_kc::Syn::Vec(items, d, a, b, x) => {
-                loc_node(int_lit(1), f, l, p, mx_datum_list(cons(loc_node(int_lit(0), f, l, p, the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(str_lit("#vector"))))), drive_locs(mxp, maker_st, items))))
+                loc_node(int_lit(1), f, l, p, mx_datum_list(cons(loc_node(int_lit(0), f, l, p, the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(str_lit!("#vector"))))), drive_locs(mxp, maker_st, items))))
             }
         }
     }
@@ -26049,23 +26049,23 @@ pub mod made__load__1__expand {
         if (not(null_p(xs)) && syn_symbol_p(car(xs))) {
             syn_name(car(xs))
         } else {
-            str_lit("")
+            str_lit!("")
         }
     }
 
     pub fn drive_names<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>) -> Result<MxParserTypesNames, Unwind> {
         let (xs, h) = (proper_items(s), drive_head(s));
-        if ((string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) && _gt_eq(len(xs), int_lit(3)) && syn_symbol_p(nth(xs, int_lit(1)))) {
+        if ((string_eq_p(h, str_lit!("define")) || string_eq_p(h, str_lit!("define*"))) && _gt_eq(len(xs), int_lit(3)) && syn_symbol_p(nth(xs, int_lit(1)))) {
             Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, nth(xs, int_lit(1)))?, kayak_rt::nil()))
-        } else if string_eq_p(h, str_lit("define-rec")) {
+        } else if string_eq_p(h, str_lit!("define-rec")) {
             Ok(drive_rec_names(mxp, maker_st, cdr(xs))?)
-        } else if (string_eq_p(h, str_lit("import")) && _gt_eq(len(xs), int_lit(2))) {
+        } else if (string_eq_p(h, str_lit!("import")) && _gt_eq(len(xs), int_lit(2))) {
             Ok(drive_bare_names(mxp, maker_st, cdr(cdr(xs)))?)
-        } else if (string_eq_p(h, str_lit("define-datatype")) && _gt_eq(len(xs), int_lit(3))) {
+        } else if (string_eq_p(h, str_lit!("define-datatype")) && _gt_eq(len(xs), int_lit(3))) {
             Ok(drive_heads(mxp, maker_st, cdr(cdr(xs)))?)
-        } else if (string_eq_p(h, str_lit("define-generative")) && _gt(len(xs), int_lit(3))) {
+        } else if (string_eq_p(h, str_lit!("define-generative")) && _gt(len(xs), int_lit(3))) {
             Ok(drive_bare_names(mxp, maker_st, cdr(cdr(cdr(xs))))?)
-        } else if ((string_eq_p(h, str_lit("define-syscall")) || string_eq_p(h, str_lit("define-optional-syscall"))) && _gt_eq(len(xs), int_lit(2)) && syn_symbol_p(nth(xs, int_lit(1)))) {
+        } else if ((string_eq_p(h, str_lit!("define-syscall")) || string_eq_p(h, str_lit!("define-optional-syscall"))) && _gt_eq(len(xs), int_lit(2)) && syn_symbol_p(nth(xs, int_lit(1)))) {
             Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, nth(xs, int_lit(1)))?, kayak_rt::nil()))
         } else {
             Ok(nil::<Symbol>())
@@ -26077,7 +26077,7 @@ pub mod made__load__1__expand {
             if null_p(ns) {
                 return Ok(());
             } else if macro_p(mxp, maker_st, car(ns)) {
-                return Ok(match pfail_at(mxp, maker_st, string_append(str_lit("`"), string_append(symbol_to_string(car(ns)), str_lit("` is a macro's name, which is not defined again"))), syn_start(s), syn_end(s))? {});
+                return Ok(match pfail_at(mxp, maker_st, string_append(str_lit!("`"), string_append(symbol_to_string(car(ns)), str_lit!("` is a macro's name, which is not defined again"))), syn_start(s), syn_end(s))? {});
             } else {
                 globals_x(mxp, maker_st, kayak_rt::cons(car(ns), kayak_rt::nil()));
                 ns = cdr(ns);
@@ -26103,7 +26103,7 @@ pub mod made__load__1__expand {
             if null_p(ns) {
                 return Ok(());
             } else if global_now_p(mxp, maker_st, car(ns)) {
-                return Ok(match pfail_at(mxp, maker_st, string_append(str_lit("`"), string_append(symbol_to_string(car(ns)), str_lit("` is defined already: a macro may not take its name"))), syn_start(s), syn_end(s))? {});
+                return Ok(match pfail_at(mxp, maker_st, string_append(str_lit!("`"), string_append(symbol_to_string(car(ns)), str_lit!("` is defined already: a macro may not take its name"))), syn_start(s), syn_end(s))? {});
             } else {
                 ns = cdr(ns);
                 continue;
@@ -26113,7 +26113,7 @@ pub mod made__load__1__expand {
 
     pub fn drive_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, x: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let h = drive_head(x);
-        if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("import")) || string_eq_p(h, str_lit("define-datatype"))) {
+        if (string_eq_p(h, str_lit!("include")) || string_eq_p(h, str_lit!("import")) || string_eq_p(h, str_lit!("define-datatype"))) {
             Ok(x)
         } else {
             Ok(top_shaped(mxp, maker_st, aliases_resolved(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), sealed_written(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), x)?, def_envs_given(mxp, maker_st), kayak_rt::closure0((mxp, maker_st,), |(mxp, maker_st,)| Ok((kayak_rt::closure0((mxp, maker_st,), |(mxp, maker_st,)| captor_tag(mxp, maker_st))).call())))?)?)
@@ -26147,7 +26147,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn drive_not_yet<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>, what: Str) -> Result<SynsA, Unwind> {
-        match pfail_at(mxp, maker_st, string_append(what, str_lit(": not yet in kayak's expander")), syn_start(s), syn_end(s))? {};
+        match pfail_at(mxp, maker_st, string_append(what, str_lit!(": not yet in kayak's expander")), syn_start(s), syn_end(s))? {};
         Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
     }
 
@@ -26173,8 +26173,8 @@ pub mod made__load__1__expand {
             for_syntax_x(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?;
             Ok(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())
         } else if imports_syntax_p(s) {
-            Ok(drive_not_yet(mxp, maker_st, s, str_lit("a file's macros, `import-with-syntax`"))?)
-        } else if string_eq_p(drive_head(s), str_lit("hide")) {
+            Ok(drive_not_yet(mxp, maker_st, s, str_lit!("a file's macros, `import-with-syntax`"))?)
+        } else if string_eq_p(drive_head(s), str_lit!("hide")) {
             Ok(drive_forms(mxp, maker_st, cdr(proper_items(s)))?)
         } else {
             let xs = expand_top(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?;
@@ -26197,7 +26197,7 @@ pub mod made__load__1__expand {
 
     pub fn drive_refused<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, m: Str, a: Int) -> Void {
         let w = drive_placed(mxp, maker_st, a);
-        error(string_append(str_lit("kfx: "), string_append(w.0, string_append(str_lit(":"), string_append(int_to_string(i64_to_int(w.1)), string_append(str_lit(": "), m))))))
+        error(string_append(str_lit!("kfx: "), string_append(w.0, string_append(str_lit!(":"), string_append(int_to_string(i64_to_int(w.1)), string_append(str_lit!(": "), m))))))
     }
 
     pub fn drive_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, xs: SynsA) -> Result<List<kayak_rt::value::Value>, Unwind> {
@@ -26255,7 +26255,7 @@ pub mod made__load__1__expand {
     pub fn drive_each_said<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, mut xs: SynsA, mut out: List<kayak_rt::value::Value>) -> Result<Product_11_12<List<kayak_rt::value::Value>, Str>, Unwind> {
         loop {
             if null_p(xs) {
-                return Ok(Product_11_12(reverse(out), str_lit("")));
+                return Ok(Product_11_12(reverse(out), str_lit!("")));
             } else {
                 let r = {
                     let prompt_tag__ = maker_st.parse_tag.get().unwrap();
@@ -26274,7 +26274,7 @@ pub mod made__load__1__expand {
                 match *tagcase_ {
                     made__load__0__expander_kc::Presult::PErr(m, a, b) => {
                         let w = drive_placed(mxp, maker_st, a);
-                        return Ok(Product_11_12(nil::<kayak_rt::value::Value>(), string_append(str_lit("kfx: "), string_append(w.0, string_append(str_lit(":"), string_append(int_to_string(i64_to_int(w.1)), string_append(str_lit(": "), m)))))));
+                        return Ok(Product_11_12(nil::<kayak_rt::value::Value>(), string_append(str_lit!("kfx: "), string_append(w.0, string_append(str_lit!(":"), string_append(int_to_string(i64_to_int(w.1)), string_append(str_lit!(": "), m)))))));
                     }
                     made__load__0__expander_kc::Presult::POk(ts) => {
                         (xs, out) = (cdr(xs), drive_rev_onto(drive_locs(mxp, maker_st, get(maker_st.drive_out.get().unwrap())), out));
@@ -26295,14 +26295,14 @@ pub mod made__load__1__expand {
 
     pub fn drive_entry_star<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, forms: List<kayak_rt::value::Value>, s: Int) -> Result<Product_11_12_13<List<kayak_rt::value::Value>, Str, Int>, Unwind> {
         let r = drive_from(mxp, maker_st, forms, s)?;
-        if string_eq_p(r.1, str_lit("")) {
+        if string_eq_p(r.1, str_lit!("")) {
             let k = {
                 set(maker_st.drive_states.get().unwrap(), _plus(get(maker_st.drive_states.get().unwrap()), int_lit(1)));
                 get(maker_st.drive_states.get().unwrap())
             };
             macros_after_x(mxp, maker_st, k);
             shapes_after_x(mxp, maker_st, k);
-            Ok(Product_11_12_13(r.0, str_lit(""), k))
+            Ok(Product_11_12_13(r.0, str_lit!(""), k))
         } else {
             Ok(Product_11_12_13(nil::<kayak_rt::value::Value>(), r.1, s))
         }
@@ -26402,7 +26402,7 @@ pub mod made__load__1__expand {
         if symbol_p(d) {
             kayak_rt::value::unbox::<Symbol>(d)
         } else {
-            string_to_symbol(str_lit("?"))
+            string_to_symbol(str_lit!("?"))
         }
     }
 
@@ -26410,10 +26410,10 @@ pub mod made__load__1__expand {
         let tagcase_ = x;
         match *tagcase_ {
             made__load__0__expander_kc::MxParserTypesShape::ShModule(vs, ds) => {
-                mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit("m")), kayak_rt::heap_cons(drive_members_datum(vs), kayak_rt::heap_cons(drive_members_datum(ds), kayak_rt::nil()))))
+                mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit!("m")), kayak_rt::heap_cons(drive_members_datum(vs), kayak_rt::heap_cons(drive_members_datum(ds), kayak_rt::nil()))))
             }
             made__load__0__expander_kc::MxParserTypesShape::ShFun(ps, r) => {
-                mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit("f")), kayak_rt::heap_cons(mx_datum_list(drive_shapes_each(ps)), kayak_rt::heap_cons(drive_shapes_datum(r), kayak_rt::nil()))))
+                mx_datum_list(kayak_rt::heap_cons(drive_sym(str_lit!("f")), kayak_rt::heap_cons(mx_datum_list(drive_shapes_each(ps)), kayak_rt::heap_cons(drive_shapes_datum(r), kayak_rt::nil()))))
             }
         }
     }
@@ -26460,7 +26460,7 @@ pub mod made__load__1__expand {
     }
 
     pub fn drive_datum_shape(d: kayak_rt::value::Value) -> kayak_rt::Handle<'static, MxParserTypesShape> {
-        if loc_is_sym_p(loc_nth(d, int_lit(0)), str_lit("m")) {
+        if loc_is_sym_p(loc_nth(d, int_lit(0)), str_lit!("m")) {
             sh_module(drive_datum_members(loc_nth(d, int_lit(1))), drive_datum_members(loc_nth(d, int_lit(2))))
         } else {
             sh_fun(drive_datum_shapes_each(loc_nth(d, int_lit(1))), drive_datum_shapes(loc_nth(d, int_lit(2))))
@@ -26627,7 +26627,7 @@ pub mod made__load__1__expand {
 
     pub fn drive_desc_name<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>) -> Result<MxParserTypesNames, Unwind> {
         let (xs, h) = (proper_items(s), drive_head(s));
-        if ((string_eq_p(h, str_lit("define-type")) || string_eq_p(h, str_lit("define-datatype")) || string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-generative"))) && _gt_eq(len(xs), int_lit(2))) {
+        if ((string_eq_p(h, str_lit!("define-type")) || string_eq_p(h, str_lit!("define-datatype")) || string_eq_p(h, str_lit!("define-effect")) || string_eq_p(h, str_lit!("define-generative"))) && _gt_eq(len(xs), int_lit(2))) {
             let n = nth(xs, int_lit(1));
             if syn_symbol_p(n) {
                 Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, n)?, kayak_rt::nil()))
@@ -26643,7 +26643,7 @@ pub mod made__load__1__expand {
 
     pub fn drive_begun_hashes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, s: kayak_rt::Handle<'static, Syn>, out: List<kayak_rt::value::Value>) -> List<kayak_rt::value::Value> {
         let after = cons(the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(syn_hash(mxp, maker_st, s))), out);
-        if string_eq_p(drive_head(s), str_lit("hide")) {
+        if string_eq_p(drive_head(s), str_lit!("hide")) {
             drive_begun_each(mxp, maker_st, cdr(proper_items(s)), after)
         } else {
             after
@@ -26930,23 +26930,23 @@ pub mod made__load__1__expand {
         }).to_ref();
         maker_st.mx_phase1_given.set(Some(new(the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))));
         maker_st.mx_phase1_asker.set(Some(new(kayak_rt::closure1((), |(), r: Str| {
-            str_lit("")
+            str_lit!("")
         }))));
         maker_st.load_base.set(Some(int_lit(1000000000)));
         maker_st.parse_tag.set(Some(make_continuation_prompt_tag()));
-        maker_st.dt_type_forms.set(Some(kayak_rt::cons(symbol_lit(str_lit("arrayof")), kayak_rt::cons(symbol_lit(str_lit("narrayof")), kayak_rt::cons(symbol_lit(str_lit("bloblet")), kayak_rt::cons(symbol_lit(str_lit("composable")), kayak_rt::cons(symbol_lit(str_lit("dletrec")), kayak_rt::cons(symbol_lit(str_lit("icell")), kayak_rt::cons(symbol_lit(str_lit("listof")), kayak_rt::cons(symbol_lit(str_lit("mark-key")), kayak_rt::cons(symbol_lit(str_lit("moduleof")), kayak_rt::cons(symbol_lit(str_lit("mu")), kayak_rt::cons(symbol_lit(str_lit("nat")), kayak_rt::cons(symbol_lit(str_lit("nlist")), kayak_rt::cons(symbol_lit(str_lit("oneshot")), kayak_rt::cons(symbol_lit(str_lit("pairof")), kayak_rt::cons(symbol_lit(str_lit("place")), kayak_rt::cons(symbol_lit(str_lit("poly")), kayak_rt::cons(symbol_lit(str_lit("productof")), kayak_rt::cons(symbol_lit(str_lit("prompt-tag")), kayak_rt::cons(symbol_lit(str_lit("proves")), kayak_rt::cons(symbol_lit(str_lit("ref")), kayak_rt::cons(symbol_lit(str_lit("select")), kayak_rt::cons(symbol_lit(str_lit("subr")), kayak_rt::cons(symbol_lit(str_lit("sumof")), kayak_rt::cons(symbol_lit(str_lit("tupleof")), kayak_rt::cons(symbol_lit(str_lit("bool")), kayak_rt::cons(symbol_lit(str_lit("oneof")), kayak_rt::cons(symbol_lit(str_lit("union")), kayak_rt::cons(symbol_lit(str_lit("anyof")), kayak_rt::cons(symbol_lit(str_lit("allof")), kayak_rt::cons(symbol_lit(str_lit("->")), kayak_rt::cons(symbol_lit(str_lit("->*")), kayak_rt::cons(symbol_lit(str_lit("restrict")), kayak_rt::cons(symbol_lit(str_lit("modnames")), kayak_rt::nil())))))))))))))))))))))))))))))))))));
-        maker_st.kernel_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("es"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("es")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("formals"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("f"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("f"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("f"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let*-clauses"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letrec-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("lambda"))), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("defrec-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("lambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dbinders"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("kind"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("kind"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("descs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ds"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ds")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arms"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("else"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a")))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cond-clauses"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("else"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c")))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("fields"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("p"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("p")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("lambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("formals"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let-bindings"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let*"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let*-clauses"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letrec"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letrec-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("if"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("begin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("and"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("or"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("quote"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("the"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("sum"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("extract"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("product"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("fields"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tuple"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tagcase"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arms")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cond"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cond-clauses"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("plambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dbinders"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("proj"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("descs")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letregion"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letfreeze"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letrena"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letreap"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rlambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("formals"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("%app"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("%construct"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("defns"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("defn"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define*"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("lambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-rec"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("defrec-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-type"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dbinders")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-effect"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-generative"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::Value::Nil)))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADDD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADDDDD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dbinders")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::Value::Nil)))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADDD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADDDDD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("begin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("defns"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))));
-        maker_st.scope_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("items"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("item"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("d")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("clause"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arm1"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ids"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("i"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("id"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("i")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("given-opt"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("given"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ids")))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvars"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("d")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import-names"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("n"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("n")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("type"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvars")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("n")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("effect"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvars")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("n")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("variants"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("v"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("descs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("v")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("case-clauses"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("else"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c")))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("typecase-arm"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("kind"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("kind"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvars"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("n"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("n")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tag-arm"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvars"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tag-arms"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tag-arm"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("typecase-arms"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("typecase-arm"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select-arm"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs")))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select-arms"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select-arm"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("vlambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("stage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("clause"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("clause"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("given-opt"))))))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("session-check"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("clause"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("clause"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("given-opt"))))))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("reify-effect"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("given-opt")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("reify-region"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("given-opt")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("reify-type"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("given-opt")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("session-commit!"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("syscall-available?"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("send"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("receive"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("self"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell-get"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell-put!"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("spawn"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADDA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADDA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("spawn-monitored"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADDADD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AADD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ADDADD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("par"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let-bindings"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("race"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("attempt"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("attempt-within"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pselect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select-arms"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tagcase"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tag-arms")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("case"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("case-clauses")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("typecase"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("typecase-arms")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("confirm-length"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arm1"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("acyclic"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arm1"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("confirm-nat"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arm1"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("convention"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("make-bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rmake-bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-set!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-freeze"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-byte"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-set-byte!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-bytes"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref+"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-owner"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-offset"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-get"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-set!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-index"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-length"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-variant!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("module"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("items"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("at"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("extend"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("load-module"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("load-input"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("%loaded"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("with"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("%datum"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("prompt"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-datatype"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("variants"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dbinders")))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("variants"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-convention"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-syscall"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-optional-syscall"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("desc"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("include"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("id"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import-names")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("hide"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("items"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("module-parameters"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import-with-syntax"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-syntax"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-syntax-rec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("data"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
-        maker_st.reserved_words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("lambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("plambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("proj"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("if"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("begin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-type"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-generative"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("subr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("poly"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pairof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dletrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("void"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pure"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("maxeff"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("read"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("write"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("alloc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("goto"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("comefrom"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("region"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("effect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("type"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("prompt"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("prompt-tag"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("composable"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mark-key"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("listof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cond"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("case"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("else"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("and"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("or"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("let*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-effect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-convention"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-syscall"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-optional-syscall"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("syscall-available?"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("module-parameters"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("the"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("fields"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("frozen"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("await"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-rec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letrena"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letreap"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("quote"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("productof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("sumof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("product"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tupleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tuple"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("extract"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("sum"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tagcase"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("module"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("moduleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("with"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("load-module"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("define-datatype"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("make-bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-set!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-freeze"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-byte"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-set-byte!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet-bytes"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("rmake-bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("=>"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref+"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-owner"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-offset"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-get"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-set!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-index"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-length"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("blobref-variant!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("vlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("stage"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("session-check"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("session-commit!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("typecase"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("reify-type"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("reify-effect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("reify-region"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("confirm-length"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("confirm-nat"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("convention"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("extend"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("load-input"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("quasiquote"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letregion"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("letfreeze"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("spawn"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("spawn-monitored"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("send"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("receive"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("self"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("par"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("race"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("attempt"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("attempt-within"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pselect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell-get"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell-put!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("acyclic"))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
-        maker_st.description_heads.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("narrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("composable"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dletrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("listof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mark-key"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("moduleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nat"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nlist"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pairof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("poly"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("productof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("prompt-tag"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("proves"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("subr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("sumof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tupleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bool"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("anyof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("allof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("restrict"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("modnames"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("read"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("write"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("alloc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("goto"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("comefrom"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("await"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("init"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("send"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("receive"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("io"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("maxeff"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("globals"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("conv"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("fields"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("frozen"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("requires"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ensures"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("<="))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("+"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("-"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("acyclic"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("const"))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
-        maker_st.type_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("arrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("narrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("composable"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("dletrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("icell"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("listof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mark-key"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("moduleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nat"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nlist"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pairof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("place"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("poly"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("productof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("prompt-tag"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("proves"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("select"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("subr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("sumof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("tupleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("bool"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("oneof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("union"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("anyof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("allof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("->*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("restrict"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("modnames"))), kayak_rt::value::Value::Nil)))))))))))))))))))))))))))))))))));
-        maker_st.description_words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("void"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("pure"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("spin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("nondet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("stage"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("gensym"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("heap"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("const"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("acyclic"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("finite"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("cellular"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("native"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("fx"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("distinct"))), kayak_rt::value::Value::Nil))))))))))))))));
+        maker_st.dt_type_forms.set(Some(kayak_rt::cons(symbol_lit(str_lit!("arrayof")), kayak_rt::cons(symbol_lit(str_lit!("narrayof")), kayak_rt::cons(symbol_lit(str_lit!("bloblet")), kayak_rt::cons(symbol_lit(str_lit!("composable")), kayak_rt::cons(symbol_lit(str_lit!("dletrec")), kayak_rt::cons(symbol_lit(str_lit!("icell")), kayak_rt::cons(symbol_lit(str_lit!("listof")), kayak_rt::cons(symbol_lit(str_lit!("mark-key")), kayak_rt::cons(symbol_lit(str_lit!("moduleof")), kayak_rt::cons(symbol_lit(str_lit!("mu")), kayak_rt::cons(symbol_lit(str_lit!("nat")), kayak_rt::cons(symbol_lit(str_lit!("nlist")), kayak_rt::cons(symbol_lit(str_lit!("oneshot")), kayak_rt::cons(symbol_lit(str_lit!("pairof")), kayak_rt::cons(symbol_lit(str_lit!("place")), kayak_rt::cons(symbol_lit(str_lit!("poly")), kayak_rt::cons(symbol_lit(str_lit!("productof")), kayak_rt::cons(symbol_lit(str_lit!("prompt-tag")), kayak_rt::cons(symbol_lit(str_lit!("proves")), kayak_rt::cons(symbol_lit(str_lit!("ref")), kayak_rt::cons(symbol_lit(str_lit!("select")), kayak_rt::cons(symbol_lit(str_lit!("subr")), kayak_rt::cons(symbol_lit(str_lit!("sumof")), kayak_rt::cons(symbol_lit(str_lit!("tupleof")), kayak_rt::cons(symbol_lit(str_lit!("bool")), kayak_rt::cons(symbol_lit(str_lit!("oneof")), kayak_rt::cons(symbol_lit(str_lit!("union")), kayak_rt::cons(symbol_lit(str_lit!("anyof")), kayak_rt::cons(symbol_lit(str_lit!("allof")), kayak_rt::cons(symbol_lit(str_lit!("->")), kayak_rt::cons(symbol_lit(str_lit!("->*")), kayak_rt::cons(symbol_lit(str_lit!("restrict")), kayak_rt::cons(symbol_lit(str_lit!("modnames")), kayak_rt::nil())))))))))))))))))))))))))))))))))));
+        maker_st.kernel_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("es"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("es")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("formals"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("f"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("f"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("f"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let*-clauses"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letrec-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("lambda"))), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("defrec-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("lambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dbinders"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("kind"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("kind"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::Value::Nil))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("b")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("descs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ds"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ds")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arms"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("else"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a")))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cond-clauses"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("c")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("else"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("c")))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("fields"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("p"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("p")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("lambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("formals"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let-bindings"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let*"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let*-clauses"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letrec"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letrec-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("if"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("begin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("and"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("or"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("quote"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("the"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("sum"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("extract"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("product"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("fields"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tuple"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tagcase"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arms")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cond"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cond-clauses"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("plambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dbinders"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("proj"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("descs")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letregion"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letfreeze"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letrena"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letreap"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rlambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("formals"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("%app"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("%construct"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("defns"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("defn"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define*"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("lambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-rec"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("defrec-bindings"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-type"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dbinders")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-effect"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-generative"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::Value::Nil)))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADDD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADDDDD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dbinders")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::Value::Nil)))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADDD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADDDDD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("begin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("defns"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))));
+        maker_st.scope_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("items"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("item"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("d")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("clause"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arm1"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ids"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("i"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("id"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("i")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("given-opt"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("given"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ids")))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvars"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("d")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import-names"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("n"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("n")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("type"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvars")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("n")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("effect"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvars")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("n")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("variants"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("v"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("descs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("v")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("case-clauses"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("c"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("c")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("literal"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("else"))), kayak_rt::value::Value::Nil)), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs")))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("c")))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("typecase-arm"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("kind"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("kind"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvars"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("n"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("n")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tag-arm"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("label"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvars"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tag-arms"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tag-arm"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("typecase-arms"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("typecase-arm"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("select-arm"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs")))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("select-arms"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("select-arm"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("a")))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("vlambda"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("stage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("clause"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("clause"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("given-opt"))))))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("session-check"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("clause"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("clause"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("given-opt"))))))))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("reify-effect"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("given-opt")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("reify-region"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("given-opt")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("reify-type"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("given-opt")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("session-commit!"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("syscall-available?"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("send"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("receive"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("self"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("icell-get"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("icell-put!"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("spawn"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADDA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADDA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("spawn-monitored"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADDADD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AADD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ADDADD"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("place"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("par"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let-bindings"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("race"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("attempt"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("attempt-within"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("pselect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("select-arms"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tagcase"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tag-arms")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("case"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("case-clauses")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("typecase"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("typecase-arms")))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("confirm-length"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arm1"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("acyclic"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arm1"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("confirm-nat"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arm1"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("convention"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("make-bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rmake-bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-set!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-freeze"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-byte"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-set-byte!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-bytes"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref+"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-owner"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-offset"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-get"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-set!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-index"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-length"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-variant!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("module"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("items"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cage"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("at"))), kayak_rt::value::cons(kayak_rt::value::Value::Nil, kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("extend"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("load-module"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("load-input"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("%loaded"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("with"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("exprs"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("%datum"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("form"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("prompt"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-datatype"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("variants"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dbinders")))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("variants"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("DA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("AA"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-convention"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dvar"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-syscall"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-optional-syscall"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bvar"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("desc"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("var"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("include"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("id"))), kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import-names")))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rho"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("D"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rib"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("hide"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("items"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("module-parameters"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import-with-syntax"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::Value::Nil), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("export"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("expr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("shape"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("A"))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-syntax"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("definition"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-syntax-rec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("data"))), kayak_rt::value::Value::Nil))), kayak_rt::value::Value::Nil)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+        maker_st.reserved_words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("lambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("plambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("proj"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("if"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("begin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-type"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-generative"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("subr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("->"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("->*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("poly"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("pairof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dletrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("void"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("pure"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("maxeff"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("read"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("write"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("alloc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("goto"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("comefrom"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("region"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("effect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("type"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("prompt"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("prompt-tag"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("composable"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mark-key"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("listof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cond"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("case"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("else"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("and"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("or"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("let*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-effect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-convention"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-syscall"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-optional-syscall"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("syscall-available?"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("module-parameters"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("the"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("fields"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("frozen"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("icell"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("await"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-rec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letrena"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letreap"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("quote"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("productof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("sumof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("product"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tupleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tuple"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("extract"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("sum"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tagcase"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("module"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("moduleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("with"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("select"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("load-module"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("import"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("define-datatype"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("make-bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-set!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-freeze"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-byte"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-set-byte!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet-bytes"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("rmake-bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("=>"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-at"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref+"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-owner"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-offset"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-get"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-set!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-index"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-length"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("blobref-variant!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("vlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("stage"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("session-check"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("session-commit!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("typecase"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("reify-type"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("reify-effect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("reify-region"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("confirm-length"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("confirm-nat"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("convention"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("extend"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("load-input"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("quasiquote"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letregion"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("letfreeze"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("spawn"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("spawn-monitored"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("send"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("receive"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("self"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("par"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("race"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("attempt"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("attempt-within"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("pselect"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("icell-get"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("icell-put!"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("acyclic"))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+        maker_st.description_heads.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("narrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("composable"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dletrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("icell"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("listof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mark-key"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("moduleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("nat"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("nlist"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("pairof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("place"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("poly"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("productof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("prompt-tag"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("proves"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("select"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("subr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("sumof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tupleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bool"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("oneof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("anyof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("allof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("->"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("->*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("restrict"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("modnames"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("read"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("write"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("alloc"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("goto"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("comefrom"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("await"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("init"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("send"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("receive"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("io"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("maxeff"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("globals"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("conv"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("fields"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("frozen"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("requires"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ensures"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("<="))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("+"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("-"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dlambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("acyclic"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("const"))), kayak_rt::value::Value::Nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+        maker_st.type_forms.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("arrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("narrayof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bloblet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("composable"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("dletrec"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("icell"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("listof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mark-key"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("moduleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("mu"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("nat"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("nlist"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("pairof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("place"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("poly"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("productof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("prompt-tag"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("proves"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("ref"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("select"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("subr"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("sumof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("tupleof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("bool"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("oneof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("union"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("anyof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("allof"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("->"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("->*"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("restrict"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("modnames"))), kayak_rt::value::Value::Nil)))))))))))))))))))))))))))))))))));
+        maker_st.description_words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("void"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("pure"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("spin"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("nondet"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("stage"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("gensym"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("heap"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("const"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("acyclic"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("finite"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("cellular"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("native"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("fx"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("distinct"))), kayak_rt::value::Value::Nil))))))))))))))));
         maker_st.marks.set(Some(new(nil::<Product_11_12<Symbol, Int>>())));
         maker_st.mark_count.set(Some(new(int_lit(2))));
-        maker_st.oneof_apart.set(Some(string_append(str_lit("a syntax type: a `oneof`'s members must be told apart by their shapes in the "), str_lit("source (an `expr` may be anything)"))));
-        maker_st.bind_usage.set(Some(str_lit("a binding is `(rho (address δ) …)` or `(cage (rho …) (at address) …)`")));
+        maker_st.oneof_apart.set(Some(string_append(str_lit!("a syntax type: a `oneof`'s members must be told apart by their shapes in the "), str_lit!("source (an `expr` may be anything)"))));
+        maker_st.bind_usage.set(Some(str_lit!("a binding is `(rho (address δ) …)` or `(cage (rho …) (at address) …)`")));
         maker_st.syntax_sigs.set(Some(new(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())));
-        maker_st.path_usage.set(Some(string_append(str_lit("an address is `(path #:a #:d …)`, its steps from the root, `#:a` the car "), str_lit("and `#:d` the cdr"))));
+        maker_st.path_usage.set(Some(string_append(str_lit!("an address is `(path #:a #:d …)`, its steps from the root, `#:a` the car "), str_lit!("and `#:d` the cdr"))));
         maker_st.kernel_read.set(Some(new(Product_11_12_13(the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>()), the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>()), the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>())))));
         maker_st.scope_read.set(Some(new(Product_11_12_13(the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>()), the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>()), the::<MxTypesNamed>(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>>>())))));
         maker_st.env_empty.set(Some(env_of(Product_11_12(the::<Levels>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Level>>()), the::<MxEnvIndexedGroups>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Group>>())))));
@@ -26973,25 +26973,25 @@ pub mod made__load__1__expand {
         maker_st.desc_roots.set(Some(new(nil::<Int>())));
         maker_st.pending.set(Some(new(nil::<Product_11_12<Int, bool>>())));
         maker_st.fits_depth.set(Some(int_lit(8)));
-        maker_st.rules_dots.set(Some(string_append(str_lit("`...` in a macro a template defines is the template's (R7RS), and repeats "), str_lit("nothing here: the defined macro's is written `(... ...)`"))));
-        maker_st.rules_procedural.set(Some(string_append(str_lit("a template's `define-syntax` defines a `syntax-rules` macro: a procedural "), str_lit("one's transformer is phase 1's code, not yet in a template"))));
-        maker_st.rules_escape.set(Some(str_lit("`(... template)` other than `(... ...)`: not yet")));
+        maker_st.rules_dots.set(Some(string_append(str_lit!("`...` in a macro a template defines is the template's (R7RS), and repeats "), str_lit!("nothing here: the defined macro's is written `(... ...)`"))));
+        maker_st.rules_procedural.set(Some(string_append(str_lit!("a template's `define-syntax` defines a `syntax-rules` macro: a procedural "), str_lit!("one's transformer is phase 1's code, not yet in a template"))));
+        maker_st.rules_escape.set(Some(str_lit!("`(... template)` other than `(... ...)`: not yet")));
         maker_st.percent_found.set(Some(new(false)));
         maker_st.percent_names.set(Some(new(nil::<Symbol>())));
         maker_st.heads_on.set(Some(new(false)));
         maker_st.heads.set(Some(new(nil::<Product_11_12_13<Int, Int, Int>>())));
         maker_st.syntax_read.set(Some(new(nil::<Product_11_12_13<Int, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>, Int>>())));
-        maker_st.definitions_said.set(Some(string_append(str_lit("`define`, `define*`, `define-rec`, a `begin` of them, or a use of another "), str_lit("such"))));
-        maker_st.mx_scopes_repeats_said.set(Some(string_append(str_lit("is bound by the repetitions before this one, which its name does not tell "), str_lit("apart: a repeated part refers to no binder it repeats in its own scope"))));
+        maker_st.definitions_said.set(Some(string_append(str_lit!("`define`, `define*`, `define-rec`, a `begin` of them, or a use of another "), str_lit!("such"))));
+        maker_st.mx_scopes_repeats_said.set(Some(string_append(str_lit!("is bound by the repetitions before this one, which its name does not tell "), str_lit!("apart: a repeated part refers to no binder it repeats in its own scope"))));
         maker_st.with_uses.set(Some(new(nil::<Product_11_12_13_14_15_16<Int, Int, Symbol, Int, Int, Int>>())));
         maker_st.heads_checked.set(Some(new(nil::<Int>())));
         maker_st.mx_facts_named.set(Some(new(nil::<Product_11_12_13<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>, Int>>())));
         maker_st.open.set(Some(new(nil::<Symbol>())));
-        maker_st.shape_usage.set(Some(string_append(str_lit("`(letrec-shape ((name node) …) (_ part …))`, a node `(node-name tree fact "), str_lit("…)` or `(union node …)`"))));
-        maker_st.import_usage.set(Some(string_append(str_lit("`(import-with-syntax name)`, the name a module loaded by `load-module`, or "), str_lit("`(import-with-syntax name (only name …))` or `(except name …)`"))));
-        maker_st.define_usage.set(Some(string_append(str_lit("`(define-syntax name [signature] (syntax-rules [#:trailmarks (name …)] "), str_lit("((_ . pattern) template) …))`"))));
-        maker_st.rec_usage.set(Some(str_lit("`(define-syntax-rec (name [signature] (syntax-rules [#:trailmarks (name …)] clause …)) …)`")));
-        maker_st.rules_usage.set(Some(str_lit("`(syntax-rules [#:trailmarks (name …)] ((_ . pattern) template) …)`")));
+        maker_st.shape_usage.set(Some(string_append(str_lit!("`(letrec-shape ((name node) …) (_ part …))`, a node `(node-name tree fact "), str_lit!("…)` or `(union node …)`"))));
+        maker_st.import_usage.set(Some(string_append(str_lit!("`(import-with-syntax name)`, the name a module loaded by `load-module`, or "), str_lit!("`(import-with-syntax name (only name …))` or `(except name …)`"))));
+        maker_st.define_usage.set(Some(string_append(str_lit!("`(define-syntax name [signature] (syntax-rules [#:trailmarks (name …)] "), str_lit!("((_ . pattern) template) …))`"))));
+        maker_st.rec_usage.set(Some(str_lit!("`(define-syntax-rec (name [signature] (syntax-rules [#:trailmarks (name …)] clause …)) …)`")));
+        maker_st.rules_usage.set(Some(str_lit!("`(syntax-rules [#:trailmarks (name …)] ((_ . pattern) template) …)`")));
         maker_st.mx_infer_parts.set(Some(new(make_array(int_lit(64), Product_11_12_13(sh_leaf(), the::<Addr>(nil::<bool>()), int_lit(0))))));
         maker_st.nparts.set(Some(new(int_lit(0))));
         maker_st.found_vars.set(Some(new(nil::<Product_11_12_13_14<Int, Symbol, Int, Int>>())));
@@ -27012,15 +27012,15 @@ pub mod made__load__1__expand {
         maker_st.mx_shown_shapes.set(Some(new(nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>())));
         maker_st.shown_result.set(Some(new(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())));
         maker_st.demands.set(Some(new(nil::<Product_11_12<Int, kayak_rt::Handle<'static, made__load__0__expander_kc::Demand>>>())));
-        maker_st.mx_solve_clause_usage.set(Some(str_lit("a clause is `((_ . pattern) template)`")));
+        maker_st.mx_solve_clause_usage.set(Some(str_lit!("a clause is `((_ . pattern) template)`")));
         maker_st.caught_sigs.set(Some(new(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())));
-        maker_st.form_key.set(Some(new(str_lit(""))));
+        maker_st.form_key.set(Some(new(str_lit!(""))));
         maker_st.fresh_count.set(Some(new(int_lit(0))));
         maker_st.captors_made.set(Some(new(int_lit(0))));
         maker_st.mx_fresh_expanded.set(Some(new(int_lit(0))));
         maker_st.form_tags.set(Some(new(nil::<Product_11_12<Int, Str>>())));
         maker_st.keys_seen.set(Some(new(nil::<Product_11_12<Int, Int>>())));
-        maker_st.module_prefix.set(Some(new(str_lit(""))));
+        maker_st.module_prefix.set(Some(new(str_lit!(""))));
         maker_st.hash_p.set(Some(int_lit(2147483647)));
         maker_st.pseudo_parts.set(Some(new(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())));
         maker_st.made_syntax.set(Some(new(nil::<Symbol>())));
@@ -27038,7 +27038,7 @@ pub mod made__load__1__expand {
         maker_st.chain_depth.set(Some(new(int_lit(0))));
         maker_st.max_uses.set(Some(new(int_lit(10000))));
         maker_st.max_depth.set(Some(new(int_lit(1000))));
-        maker_st.mx_top_clause_usage.set(Some(str_lit("a clause is `((_ . pattern) template)`")));
+        maker_st.mx_top_clause_usage.set(Some(str_lit!("a clause is `((_ . pattern) template)`")));
         maker_st.tried_sigs.set(Some(new(nil::<Product_11_12_13<List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>, Int>>())));
         maker_st.tried_checks.set(Some(new(nil::<List<Product_11_12_13_14_15_16_17_18<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>, List<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__0__expander_kc::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::Handle<'static, made__load__0__expander_kc::Sty>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Level>>, bool, List<Product_11_12<List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>>())));
         maker_st.loads.set(Some(new(nil::<Product_11_12<Symbol, Str>>())));
@@ -27056,7 +27056,7 @@ pub mod made__load__1__expand {
         maker_st.standard_names.set(Some(new(nil::<Symbol>())));
         maker_st.raw_files.set(Some(new(nil::<Product_11_12<Int, List<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>())));
         maker_st.mx_imports_imported.set(Some(new(nil::<Symbol>())));
-        maker_st.walked_out.set(Some(new(str_lit(""))));
+        maker_st.walked_out.set(Some(new(str_lit!(""))));
         maker_st.parents.set(Some(new(make_array(int_lit(1), int_lit(-1)))));
         maker_st.lists.set(Some(new(make_array(int_lit(1), int_lit(-1)))));
         maker_st.mx_tree_places.set(Some(new(make_array(int_lit(1), int_lit(0)))));
@@ -27084,11 +27084,11 @@ pub mod made__load__1__expand {
         maker_st.given_done.set(Some(new(make_array(int_lit(1), false))));
         maker_st.given_vals.set(Some(new(make_array(int_lit(1), nm_leaf()))));
         maker_st.given_descs.set(Some(new(make_array(int_lit(1), nm_leaf()))));
-        maker_st.no_head.set(Some(string_to_symbol(str_lit(""))));
-        maker_st.no_source.set(Some(Product_11_12_13_14_15(int_lit(-1), int_lit(0), int_lit(0), int_lit(0), symbol_lit(str_lit("-")))));
+        maker_st.no_head.set(Some(string_to_symbol(str_lit!(""))));
+        maker_st.no_source.set(Some(Product_11_12_13_14_15(int_lit(-1), int_lit(0), int_lit(0), int_lit(0), symbol_lit(str_lit!("-")))));
         maker_st.global_vals.set(Some(new(nm_leaf())));
         maker_st.global_descs.set(Some(new(nm_leaf())));
-        maker_st.file_out.set(Some(new(Product_11_12(mk_symbol(str_lit("-"), int_lit(0), int_lit(0)), the::<MxParserTypesShapes>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())))));
+        maker_st.file_out.set(Some(new(Product_11_12(mk_symbol(str_lit!("-"), int_lit(0), int_lit(0)), the::<MxParserTypesShapes>(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::MxParserTypesShape>>())))));
         maker_st.named_shapes.set(Some(new(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>())));
         maker_st.sealed_out.set(Some(new(nil::<kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>())));
         maker_st.shapes_by_state.set(Some(new(nil::<Product_11_12_13_14<Int, kayak_rt::Handle<'static, made__load__0__expander_kc::NameTree>, kayak_rt::Handle<'static, made__load__0__expander_kc::NameTree>, List<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__0__expander_kc::Syn>>>>>())));
@@ -27203,7 +27203,7 @@ pub fn kc_given(defs: kayak_rt::value::Value, es: kayak_rt::value::Value, target
 #[inline]
 pub fn kc_written_facts(forms: kayak_rt::value::Value) -> kayak_rt::value::Value {
     kc_instance(true, forms, the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil), kayak_rt::closure1((), |(), r: Str| {
-        str_lit("")
+        str_lit!("")
     })).0
 }
 
@@ -27240,14 +27240,14 @@ pub mod kc_expand {
     pub type Qbody = kc_front::Qbody;
 
     pub fn key3(q: Str, a: Str, b: Str, c: Str) -> kayak_rt::Handle<'static, Sexp> {
-        lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), kayak_rt::heap_cons(str(a, str_lit(""), 0i64), kayak_rt::heap_cons(str(b, str_lit(""), 0i64), kayak_rt::heap_cons(str(c, str_lit(""), 0i64), kayak_rt::nil())))), str_lit(""), 0i64, 0i64)
+        lst(kayak_rt::heap_cons(sym(q, str_lit!(""), 0i64), kayak_rt::heap_cons(str(a, str_lit!(""), 0i64), kayak_rt::heap_cons(str(b, str_lit!(""), 0i64), kayak_rt::heap_cons(str(c, str_lit!(""), 0i64), kayak_rt::nil())))), str_lit!(""), 0i64, 0i64)
     }
 
     #[inline]
     pub fn macro_heads() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("define-syntax"), kayak_rt::heap_cons(str_lit("define-syntax-rec"), kayak_rt::heap_cons(str_lit("begin-for-syntax"), kayak_rt::nil())))
+            kayak_rt::heap_cons(str_lit!("define-syntax"), kayak_rt::heap_cons(str_lit!("define-syntax-rec"), kayak_rt::heap_cons(str_lit!("begin-for-syntax"), kayak_rt::nil())))
         })
     }
 
@@ -27294,9 +27294,9 @@ pub mod kc_expand {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                if string_eq_p(n, str_lit("#t")) {
+                if string_eq_p(n, str_lit!("#t")) {
                     the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(true))
-                } else if string_eq_p(n, str_lit("#f")) {
+                } else if string_eq_p(n, str_lit!("#f")) {
                     the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(false))
                 } else {
                     the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(n)))
@@ -27362,11 +27362,11 @@ pub mod kc_expand {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
-                string_list_append(kayak_rt::heap_cons(str_lit("(1 "), kayak_rt::heap_cons(kc_datum().call(str(f, str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(l), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(p), kayak_rt::heap_cons(located_nodes(xs), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))
+                string_list_append(kayak_rt::heap_cons(str_lit!("(1 "), kayak_rt::heap_cons(kc_datum().call(str(f, str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(l), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(p), kayak_rt::heap_cons(located_nodes(xs), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))))
             }
             _ => {
                 let other = tagcase_;
-                string_list_append(kayak_rt::heap_cons(str_lit("(0 "), kayak_rt::heap_cons(kc_datum().call(str(atom_file(e), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" 0 "), kayak_rt::heap_cons(i64_to_string(datum_pos(e)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(kc_datum().call(e), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))))
+                string_list_append(kayak_rt::heap_cons(str_lit!("(0 "), kayak_rt::heap_cons(kc_datum().call(str(atom_file(e), str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(" 0 "), kayak_rt::heap_cons(i64_to_string(datum_pos(e)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(kc_datum().call(e), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))))
             }
         }
     }
@@ -27374,9 +27374,9 @@ pub mod kc_expand {
     #[inline]
     pub fn located_nodes(xs: Sexps) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else {
-            string_append(str_lit(" "), string_append(located(car(xs)), located_nodes(cdr(xs))))
+            string_append(str_lit!(" "), string_append(located(car(xs)), located_nodes(cdr(xs))))
         }
     }
 
@@ -27414,13 +27414,13 @@ pub mod kc_expand {
 
     #[inline]
     pub fn form_file(key: Str) -> Str {
-        string_append(str_lit("%form:"), key)
+        string_append(str_lit!("%form:"), key)
     }
 
     // Form `key` as written, read alone, its file its key's.
     #[inline]
     pub fn written_form(d: Db, run: Runner, path: Str, key: Str) -> kayak_rt::Handle<'static, Sexp> {
-        car(read_all(db_get(d, run, key2(str_lit("written"), path, key)), form_file(key), 1i64))
+        car(read_all(db_get(d, run, key2(str_lit!("written"), path, key)), form_file(key), 1i64))
     }
 
     pub fn keys_in(d: Db, run: Runner, k: kayak_rt::Handle<'static, Sexp>) -> Strings {
@@ -27435,15 +27435,15 @@ pub mod kc_expand {
                 }
                 _ => {
                     let other = tagcase_;
-                    str_lit("")
+                    str_lit!("")
                 }
             }
-        })), items(car(read_all(db_get(d, run, k), str_lit("keys"), 1i64))))
+        })), items(car(read_all(db_get(d, run, k), str_lit!("keys"), 1i64))))
     }
 
     #[inline]
     pub fn wpos(d: Db, run: Runner, path: Str, key: Str) -> i64 {
-        string_to_i64(db_get(d, run, key2(str_lit("wpos"), path, key)))
+        string_to_i64(db_get(d, run, key2(str_lit!("wpos"), path, key)))
     }
 
     #[inline]
@@ -27462,7 +27462,7 @@ pub mod kc_expand {
             if symbol_p(x) {
                 symbol_to_string(kayak_rt::value::unbox::<Symbol>(x))
             } else {
-                str_lit("")
+                str_lit!("")
             }
         })), datum_items(d))
     }
@@ -27470,42 +27470,42 @@ pub mod kc_expand {
     // Of a key or name `kc-load-file!` set none of.
     #[inline]
     pub fn q_written(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
-        str_lit("")
+        str_lit!("")
     }
 
     #[inline]
     pub fn q_wseen(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
-        str_lit("()")
+        str_lit!("()")
     }
 
     #[inline]
     pub fn q_wpos(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
-        str_lit("-1")
+        str_lit!("-1")
     }
 
     #[inline]
     pub fn q_wkeys(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
-        str_lit("()")
+        str_lit!("()")
     }
 
     #[inline]
     pub fn q_syntax_at(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
-        str_lit("()")
+        str_lit!("()")
     }
 
     #[inline]
     pub fn q_defines_at(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
-        str_lit("()")
+        str_lit!("()")
     }
 
     #[inline]
     pub fn q_wnames(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
-        str_lit("()")
+        str_lit!("()")
     }
 
     #[inline]
     pub fn q_wforsyntax(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
-        str_lit("()")
+        str_lit!("()")
     }
 
     // `phase1 REQUEST` the driver set none of (C446): no answer yet.
@@ -27531,25 +27531,25 @@ pub mod kc_expand {
     // `macro-in PATH KEY NAME`.
     #[inline]
     pub fn q_macro_in(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, path: Str, key: Str, name: Str) -> Str {
-        last_before(d, run, path, keys_in(d, run, key2(str_lit("syntax-at"), path, name)), wpos(d, run, path, key), str_lit(""), -1i64)
+        last_before(d, run, path, keys_in(d, run, key2(str_lit!("syntax-at"), path, name)), wpos(d, run, path, key), str_lit!(""), -1i64)
     }
 
     // `global-in PATH KEY NAME`.
     #[inline]
     pub fn q_global_in(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, path: Str, key: Str, name: Str) -> Str {
-        last_before(d, run, path, keys_in(d, run, key2(str_lit("defines-at"), path, name)), wpos(d, run, path, key), str_lit(""), -1i64)
+        last_before(d, run, path, keys_in(d, run, key2(str_lit!("defines-at"), path, name)), wpos(d, run, path, key), str_lit!(""), -1i64)
     }
 
     // `entry PATH KEY NAME`: the entries of form `key`'s expansion of `name`,
     // `((NAME KIND SHAPES) ...)`; `()` of a refused one.
     pub fn q_entry(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, path: Str, key: Str, name: Str) -> Str {
-        let v = car(read_all(db_get(d, run, key2(str_lit("expansion"), path, key)), str_lit("expansion"), 1i64));
-        if sym_is_p(car(items(v)), str_lit("ok")) {
-            string_append(str_lit("("), string_append(words_of(map(kc_datum(), filter(kayak_rt::as_proc(kayak_rt::closure1s((name,), |(name,), e: kayak_rt::Handle<'static, Sexp>| {
+        let v = car(read_all(db_get(d, run, key2(str_lit!("expansion"), path, key)), str_lit!("expansion"), 1i64));
+        if sym_is_p(car(items(v)), str_lit!("ok")) {
+            string_append(str_lit!("("), string_append(words_of(map(kc_datum(), filter(kayak_rt::as_proc(kayak_rt::closure1s((name,), |(name,), e: kayak_rt::Handle<'static, Sexp>| {
                 sym_is_p(car(items(e)), name)
-            })), items(third(items(v)))))), str_lit(")")))
+            })), items(third(items(v)))))), str_lit!(")")))
         } else {
-            str_lit("()")
+            str_lit!("()")
         }
     }
 
@@ -27581,17 +27581,17 @@ pub mod kc_expand {
             } else {
                 let at = car(todo).0;
                 let n = car(todo).1;
-                let ask = string_append(at, string_append(str_lit(" "), n));
+                let ask = string_append(at, string_append(str_lit!(" "), n));
                 if string_member_p(ask, asked) {
                     todo = cdr(todo);
                     continue;
                 } else {
-                    let (m, names) = (db_get(d, run, key3(str_lit("macro-in"), path, at, n)), if string_member_p(n, names) {
+                    let (m, names) = (db_get(d, run, key3(str_lit!("macro-in"), path, at, n)), if string_member_p(n, names) {
                         names
                     } else {
                         kayak_rt::heap_cons(n, names)
                     });
-                    if (string_eq_p(m, str_lit("")) || string_member_p(m, defs)) {
+                    if (string_eq_p(m, str_lit!("")) || string_member_p(m, defs)) {
                         return needed(d, run, path, key, cdr(todo), kayak_rt::heap_cons(ask, asked), defs, names);
                     } else {
                         let ns = symbols_of(written_form(d, run, path, m), nil::<Str>());
@@ -27610,7 +27610,7 @@ pub mod kc_expand {
     pub fn transformer_heads() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("er-macro-transformer"), kayak_rt::heap_cons(str_lit("sc-macro-transformer"), kayak_rt::heap_cons(str_lit("rsc-macro-transformer"), kayak_rt::nil())))
+            kayak_rt::heap_cons(str_lit!("er-macro-transformer"), kayak_rt::heap_cons(str_lit!("sc-macro-transformer"), kayak_rt::heap_cons(str_lit!("rsc-macro-transformer"), kayak_rt::nil())))
         })
     }
 
@@ -27636,7 +27636,7 @@ pub mod kc_expand {
         if any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
             string_member_p(n, transformer_heads())
         })), ns) {
-            before_onto(d, run, path, keys_in(d, run, key1(str_lit("wforsyntax"), path)), wpos(d, run, path, m), defs)
+            before_onto(d, run, path, keys_in(d, run, key1(str_lit!("wforsyntax"), path)), wpos(d, run, path, m), defs)
         } else {
             defs
         }
@@ -27672,12 +27672,12 @@ pub mod kc_expand {
             if null_p(ns) {
                 return nil::<kayak_rt::Handle<'static, Sexp>>();
             } else {
-                let g = db_get(d, run, key3(str_lit("global-in"), path, key, car(ns)));
-                if string_eq_p(g, str_lit("")) {
+                let g = db_get(d, run, key3(str_lit!("global-in"), path, key, car(ns)));
+                if string_eq_p(g, str_lit!("")) {
                     ns = cdr(ns);
                     continue;
                 } else {
-                    return onto(items(car(read_all(db_get(d, run, key3(str_lit("entry"), path, g, car(ns))), str_lit("entry"), 1i64))), entries_of(d, run, path, key, cdr(ns)));
+                    return onto(items(car(read_all(db_get(d, run, key3(str_lit!("entry"), path, g, car(ns))), str_lit!("entry"), 1i64))), entries_of(d, run, path, key, cdr(ns)));
                 }
             }
         }
@@ -27685,7 +27685,7 @@ pub mod kc_expand {
 
     // Form `k`, as the expander is given it: `(form counts)`, located.
     pub fn given(d: Db, run: Runner, path: Str, k: Str) -> kayak_rt::value::Value {
-        the::<kayak_rt::value::Value>(kayak_rt::value::cons(sexp_located(written_form(d, run, path, k)), the::<kayak_rt::value::Value>(kayak_rt::value::cons(sexp_datum(car(read_all(db_get(d, run, key2(str_lit("wseen"), path, k)), str_lit("wseen"), 1i64))), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)))))
+        the::<kayak_rt::value::Value>(kayak_rt::value::cons(sexp_located(written_form(d, run, path, k)), the::<kayak_rt::value::Value>(kayak_rt::value::cons(sexp_datum(car(read_all(db_get(d, run, key2(str_lit!("wseen"), path, k)), str_lit!("wseen"), 1i64))), the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil)))))
     }
 
     pub fn given_each(d: Db, run: Runner, path: Str, ks: Strings) -> kayak_rt::value::Value {
@@ -27709,18 +27709,18 @@ pub mod kc_expand {
         };
         match *tagcase_ {
             KxNeeds::KxNeeds(defs, names) => {
-                string_list_append(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: Str| {
-                    kc_datum().call(str(k, str_lit(""), 0i64))
-                })), by_place(d, run, path, defs, nil::<Product_11_12<Str, i64>>()))), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
-                    kc_datum().call(str(n, str_lit(""), 0i64))
-                })), names)), kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))))
+                string_list_append(kayak_rt::heap_cons(str_lit!("(("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: Str| {
+                    kc_datum().call(str(k, str_lit!(""), 0i64))
+                })), by_place(d, run, path, defs, nil::<Product_11_12<Str, i64>>()))), kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
+                    kc_datum().call(str(n, str_lit!(""), 0i64))
+                })), names)), kayak_rt::heap_cons(str_lit!("))"), kayak_rt::nil()))))))
             }
         }
     }
 
     // `expansion PATH KEY`.
     pub fn q_expansion(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, path: Str, key: Str) -> Str {
-        let m = items(car(read_all(db_get(d, run, key2(str_lit("macros-for"), path, key)), str_lit("macros-for"), 1i64)));
+        let m = items(car(read_all(db_get(d, run, key2(str_lit!("macros-for"), path, key)), str_lit!("macros-for"), 1i64)));
         let strs = kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
             map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), y: kayak_rt::Handle<'static, Sexp>| {
                 let tagcase_ = y;
@@ -27730,7 +27730,7 @@ pub mod kc_expand {
                     }
                     _ => {
                         let other = tagcase_;
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             })), items(x))
@@ -27741,14 +27741,14 @@ pub mod kc_expand {
         let target = given(d, run, path, key);
         let ds = given_each(d, run, path, defs);
         let r = kc_given(ds, es, target, kayak_rt::closure1((d, run,), |(d, run,), request: Str| {
-            db_get(d, run, key1(str_lit("phase1"), request))
+            db_get(d, run, key1(str_lit!("phase1"), request))
         }));
         if pair_p(r.1) {
-            string_append(str_lit("(refused "), string_append(kc_data().call(items(datum_sexp(r.1, str_lit(""), 0i64, 0i64))), str_lit(")")))
+            string_append(str_lit!("(refused "), string_append(kc_data().call(items(datum_sexp(r.1, str_lit!(""), 0i64, 0i64))), str_lit!(")")))
         } else {
-            string_list_append(kayak_rt::heap_cons(str_lit("(ok ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(located), located_sexps(r.0))), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kc_datum(), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), e: kayak_rt::value::Value| {
-                datum_sexp(e, str_lit(""), 0i64, 0i64)
-            })), datum_items(r.2)))), kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))))
+            string_list_append(kayak_rt::heap_cons(str_lit!("(ok ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(located), located_sexps(r.0))), kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::heap_cons(words_of(map(kc_datum(), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), e: kayak_rt::value::Value| {
+                datum_sexp(e, str_lit!(""), 0i64, 0i64)
+            })), datum_items(r.2)))), kayak_rt::heap_cons(str_lit!("))"), kayak_rt::nil()))))))
         }
     }
 
@@ -27795,11 +27795,11 @@ pub mod kc_expand {
                 match *tagcase_ {
                     KxFact::KxFact(hs, names, ms) => {
                         let base = if not(null_p(ms)) {
-                            string_append(str_lit("%syntax:"), car(ms))
+                            string_append(str_lit!("%syntax:"), car(ms))
                         } else if not(null_p(names)) {
-                            string_append(str_lit("%def:"), car(names))
+                            string_append(str_lit!("%def:"), car(names))
                         } else {
-                            string_append(str_lit("#w"), i64_to_string(k))
+                            string_append(str_lit!("#w"), i64_to_string(k))
                         };
                         let key = unique(base, out, 1i64);
                         (fs, k, out) = (cdr(fs), if (null_p(ms) && null_p(names)) {
@@ -27819,7 +27819,7 @@ pub mod kc_expand {
             let k = if i64_eq(n, 1i64) {
                 b
             } else {
-                string_append(b, string_append(str_lit("~"), i64_to_string(n)))
+                string_append(b, string_append(str_lit!("~"), i64_to_string(n)))
             };
             if string_member_p(k, ks) {
                 n = i64_plus(n, 1i64);
@@ -27883,7 +27883,7 @@ pub mod kc_expand {
                 hs = cdr(hs);
                 continue;
             } else {
-                (hs, done, out) = (cdr(hs), kayak_rt::heap_cons(car(hs), done), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(i64_to_string(car(hs)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(count_of(car(hs), cs)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), out));
+                (hs, done, out) = (cdr(hs), kayak_rt::heap_cons(car(hs), done), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(i64_to_string(car(hs)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(count_of(car(hs), cs)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), out));
                 continue;
             }
         }
@@ -27965,9 +27965,9 @@ pub mod kc_expand {
 
     #[inline]
     pub fn named_text(ks: Strings) -> Str {
-        string_append(str_lit("("), string_append(words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: Str| {
-            kc_datum().call(str(k, str_lit(""), 0i64))
-        })), ks)), str_lit(")")))
+        string_append(str_lit!("("), string_append(words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: Str| {
+            kc_datum().call(str(k, str_lit!(""), 0i64))
+        })), ks)), str_lit!(")")))
     }
 
     // Each form's inputs, from the facts, the forms and their texts.
@@ -27979,9 +27979,9 @@ pub mod kc_expand {
                 let tagcase_ = car(fs);
                 match *tagcase_ {
                     KxFact::KxFact(hs, names, ms) => {
-                        db_set_x(d, key2(str_lit("written"), path, car(ks)), car(texts), 0i64);
-                        db_set_x(d, key2(str_lit("wseen"), path, car(ks)), string_append(str_lit("("), string_append(words_of(seen_text(hs, cs, nil::<i64>(), nil::<Str>())), str_lit(")"))), 0i64);
-                        db_set_x(d, key2(str_lit("wpos"), path, car(ks)), i64_to_string(i), 0i64);
+                        db_set_x(d, key2(str_lit!("written"), path, car(ks)), car(texts), 0i64);
+                        db_set_x(d, key2(str_lit!("wseen"), path, car(ks)), string_append(str_lit!("("), string_append(words_of(seen_text(hs, cs, nil::<i64>(), nil::<Str>())), str_lit!(")"))), 0i64);
+                        db_set_x(d, key2(str_lit!("wpos"), path, car(ks)), i64_to_string(i), 0i64);
                         (ks, texts, fs, i, cs) = (cdr(ks), cdr(texts), cdr(fs), i64_plus(i, 1i64), counts_after(hs, cs));
                         continue;
                     }
@@ -27995,9 +27995,9 @@ pub mod kc_expand {
             if null_p(ks) {
                 return ();
             } else {
-                db_set_x(d, key2(str_lit("written"), path, car(ks)), str_lit(""), 0i64);
-                db_set_x(d, key2(str_lit("wseen"), path, car(ks)), str_lit("()"), 0i64);
-                db_set_x(d, key2(str_lit("wpos"), path, car(ks)), str_lit("-1"), 0i64);
+                db_set_x(d, key2(str_lit!("written"), path, car(ks)), str_lit!(""), 0i64);
+                db_set_x(d, key2(str_lit!("wseen"), path, car(ks)), str_lit!("()"), 0i64);
+                db_set_x(d, key2(str_lit!("wpos"), path, car(ks)), str_lit!("-1"), 0i64);
                 ks = cdr(ks);
                 continue;
             }
@@ -28026,8 +28026,8 @@ pub mod kc_expand {
             if null_p(ns) {
                 return ();
             } else {
-                db_set_x(d, key2(str_lit("syntax-at"), path, car(ns)), str_lit("()"), 0i64);
-                db_set_x(d, key2(str_lit("defines-at"), path, car(ns)), str_lit("()"), 0i64);
+                db_set_x(d, key2(str_lit!("syntax-at"), path, car(ns)), str_lit!("()"), 0i64);
+                db_set_x(d, key2(str_lit!("defines-at"), path, car(ns)), str_lit!("()"), 0i64);
                 ns = cdr(ns);
                 continue;
             }
@@ -28102,7 +28102,7 @@ pub mod kc_expand {
     // alone (`%form:KEY`), its line and offset moved by its form's.
     pub fn moved(e: kayak_rt::Handle<'static, Sexp>, path: Str, ps: List<kayak_rt::Handle<'static, KxPlace>>) -> kayak_rt::Handle<'static, Sexp> {
         let f = atom_file(e);
-        let at = if has_prefix_p(f, str_lit("%form:")) {
+        let at = if has_prefix_p(f, str_lit!("%form:")) {
             place_of(substring(f, int_lit(6), string_length(f)), ps)
         } else {
             nil::<kayak_rt::Handle<'static, kc_expand::KxPlace>>()
@@ -28245,20 +28245,20 @@ pub mod kc_expand {
     pub fn defd_why(mut n: Str, mut xs: List<kayak_rt::Handle<'static, KxDefd>>, mut ms: Strings) -> Str {
         loop {
             if null_p(xs) {
-                return str_lit("");
+                return str_lit!("");
             } else {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     KxDefd::KxDefd(m, i, k, written, shaped) => {
                         if i64_eq(k, 2i64) {
-                            return string_list_append(kayak_rt::heap_cons(str_lit("`"), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("` is a macro a form makes, not one a `define-syntax` written at the top level defines: not yet in kc, which expands a form at a time"), kayak_rt::nil()))));
+                            return string_list_append(kayak_rt::heap_cons(str_lit!("`"), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit!("` is a macro a form makes, not one a `define-syntax` written at the top level defines: not yet in kc, which expands a form at a time"), kayak_rt::nil()))));
                         } else if written {
                             xs = cdr(xs);
                             continue;
                         } else if (i64_eq(k, 3i64) && string_member_p(n, ms)) {
-                            return string_list_append(kayak_rt::heap_cons(str_lit("`"), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("` is defined already: a macro may not take its name"), kayak_rt::nil()))));
+                            return string_list_append(kayak_rt::heap_cons(str_lit!("`"), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit!("` is defined already: a macro may not take its name"), kayak_rt::nil()))));
                         } else if (shaped && i64_lt(k, 2i64)) {
-                            return string_list_append(kayak_rt::heap_cons(str_lit("`"), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("` is defined by a use of a macro, its shape known: not yet in kc, which expands a form at a time"), kayak_rt::nil()))));
+                            return string_list_append(kayak_rt::heap_cons(str_lit!("`"), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit!("` is defined by a use of a macro, its shape known: not yet in kc, which expands a form at a time"), kayak_rt::nil()))));
                         } else {
                             xs = cdr(xs);
                             continue;
@@ -28274,10 +28274,10 @@ pub mod kc_expand {
     pub fn unwritten_why(mut ns: Strings, mut ds: List<kayak_rt::Handle<'static, KxDefd>>, mut ms: Strings) -> Str {
         loop {
             if null_p(ns) {
-                return str_lit("");
+                return str_lit!("");
             } else {
                 let why = defd_why(car(ns), defd_of(car(ns), ds, -1i64), ms);
-                if string_eq_p(why, str_lit("")) {
+                if string_eq_p(why, str_lit!("")) {
                     ns = cdr(ns);
                     continue;
                 } else {
@@ -28366,11 +28366,11 @@ pub mod kc_expand {
                             }
                         };
                         let why = unwritten_why(symbols_of(car(forms), nil::<Str>()), ds, ms);
-                        if not(string_eq_p(why, str_lit(""))) {
-                            return expanded_refused(string_list_append(kayak_rt::heap_cons(str_lit("kfx: "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit(":"), kayak_rt::heap_cons(i64_to_string(here), kayak_rt::heap_cons(str_lit(": "), kayak_rt::heap_cons(why, kayak_rt::nil()))))))));
+                        if not(string_eq_p(why, str_lit!(""))) {
+                            return expanded_refused(string_list_append(kayak_rt::heap_cons(str_lit!("kfx: "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit!(":"), kayak_rt::heap_cons(i64_to_string(here), kayak_rt::heap_cons(str_lit!(": "), kayak_rt::heap_cons(why, kayak_rt::nil()))))))));
                         } else {
-                            let v = car(read_all(db_get(d, run, key2(str_lit("expansion"), path, car(ks))), str_lit("expansion"), 1i64));
-                            if sym_is_p(car(items(v)), str_lit("refused")) {
+                            let v = car(read_all(db_get(d, run, key2(str_lit!("expansion"), path, car(ks))), str_lit!("expansion"), 1i64));
+                            if sym_is_p(car(items(v)), str_lit!("refused")) {
                                 let xs = cdr(items(v));
                                 let f = {
                                     let tagcase_ = car(xs);
@@ -28380,11 +28380,11 @@ pub mod kc_expand {
                                         }
                                         _ => {
                                             let other = tagcase_;
-                                            str_lit("")
+                                            str_lit!("")
                                         }
                                     }
                                 };
-                                let at = if has_prefix_p(f, str_lit("%form:")) {
+                                let at = if has_prefix_p(f, str_lit!("%form:")) {
                                     place_of(substring(f, int_lit(6), string_length(f)), ps)
                                 } else {
                                     nil::<kayak_rt::Handle<'static, kc_expand::KxPlace>>()
@@ -28419,15 +28419,15 @@ pub mod kc_expand {
                                         }
                                         _ => {
                                             let other = tagcase_;
-                                            str_lit("")
+                                            str_lit!("")
                                         }
                                     }
                                 };
-                                return expanded_refused(string_list_append(kayak_rt::heap_cons(str_lit("kfx: "), kayak_rt::heap_cons(if null_p(at) {
+                                return expanded_refused(string_list_append(kayak_rt::heap_cons(str_lit!("kfx: "), kayak_rt::heap_cons(if null_p(at) {
                                     f
                                 } else {
                                     path
-                                }, kayak_rt::heap_cons(str_lit(":"), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(": "), kayak_rt::heap_cons(m, kayak_rt::nil()))))))));
+                                }, kayak_rt::heap_cons(str_lit!(":"), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit!(": "), kayak_rt::heap_cons(m, kayak_rt::nil()))))))));
                             } else {
                                 (ks, fs, forms, i, ds, out) = (cdr(ks), cdr(fs), cdr(forms), i64_plus(i, 1i64), defined_onto(items(third(items(v))), names, i, ds), onto(reverse(map(kayak_rt::as_proc(kayak_rt::closure1s((path, ps,), |(path, ps,), x: kayak_rt::Handle<'static, Sexp>| {
                                     moved(kc_unlocated().call(x), path, ps)
@@ -28480,7 +28480,7 @@ pub mod kc_expand {
             ()
         } else {
             let forms = read_all(text, path, 1i64);
-            db_set_x(d, key1(str_lit("loads"), path), kc_loads_text(loaded), 0i64);
+            db_set_x(d, key1(str_lit!("loads"), path), kc_loads_text(loaded), 0i64);
             kc_forms_spliced_x(d, run, path, text, forms, loaded)
         }
     }
@@ -28491,14 +28491,14 @@ pub mod kc_expand {
             let tagcase_ = x;
             match *tagcase_ {
                 Filed::Filed(n, t) => {
-                    string_append(kc_datum().call(str(n, str_lit(""), 0i64)), string_append(str_lit(" "), kc_datum().call(str(t, str_lit(""), 0i64))))
+                    string_append(kc_datum().call(str(n, str_lit!(""), 0i64)), string_append(str_lit!(" "), kc_datum().call(str(t, str_lit!(""), 0i64))))
                 }
             }
         })), loaded))
     }
 
     pub fn kc_loads_as_was_p(d: Db, path: Str, loaded: Fileds) -> bool {
-        let t = db_node(d, key1(str_lit("loads"), path));
+        let t = db_node(d, key1(str_lit!("loads"), path));
         if null_p(t) {
             null_p(loaded)
         } else {
@@ -28509,14 +28509,14 @@ pub mod kc_expand {
     // Forms `xs`, the program's as read or expanded, set as its forms: if
     // it loads a file, with its loads spliced in (C471).
     pub fn kc_set_spliced_x(d: Db, path: Str, text: Str, xs: Sexps, loaded: Fileds, expanded: Str) -> () {
-        db_set_x(d, key1(str_lit("unspliced"), path), if any_p(kayak_rt::as_proc(loads_p), xs) {
-            if string_eq_p(expanded, str_lit("")) {
-                str_lit("%read")
+        db_set_x(d, key1(str_lit!("unspliced"), path), if any_p(kayak_rt::as_proc(loads_p), xs) {
+            if string_eq_p(expanded, str_lit!("")) {
+                str_lit!("%read")
             } else {
                 expanded
             }
         } else {
-            str_lit("")
+            str_lit!("")
         }, 0i64);
         if any_p(kayak_rt::as_proc(loads_p), xs) {
             let ys = with_loads(xs, path, loaded);
@@ -28528,7 +28528,7 @@ pub mod kc_expand {
 
     pub fn kc_forms_spliced_x(d: Db, run: Runner, path: Str, text: Str, forms: Sexps, loaded: Fileds) -> () {
         if not(mentions_p(forms, macro_heads())) {
-            kc_set_spliced_x(d, path, text, forms, loaded, str_lit(""))
+            kc_set_spliced_x(d, path, text, forms, loaded, str_lit!(""))
         } else {
             let fs = facts_of(forms);
             let ks = keys_of(fs, 0i64, nil::<Str>());
@@ -28550,8 +28550,8 @@ pub mod kc_expand {
             })), ks, forms);
             let macros = fold_named(fs, ks, true, nil::<kayak_rt::Handle<'static, kc_expand::KxNamed>>());
             let defs = fold_named(fs, ks, false, nil::<kayak_rt::Handle<'static, kc_expand::KxNamed>>());
-            let old_keys = keys_in(d, run, key1(str_lit("wkeys"), path));
-            let old_names = keys_in(d, run, key1(str_lit("wnames"), path));
+            let old_keys = keys_in(d, run, key1(str_lit!("wkeys"), path));
+            let old_names = keys_in(d, run, key1(str_lit!("wnames"), path));
             let names = onto(named_names(macros), named_names(defs));
             set_forms_x(d, path, ks, texts, fs, 0i64, nil::<kayak_rt::Handle<'static, kc_expand::KxCount>>());
             unset_forms_x(d, path, filter(kayak_rt::as_proc(kayak_rt::closure1s((ks,), |(ks,), k: Str| {
@@ -28560,24 +28560,24 @@ pub mod kc_expand {
             unset_named_x(d, path, filter(kayak_rt::as_proc(kayak_rt::closure1s((names,), |(names,), n: Str| {
                 not(string_member_p(n, names))
             })), old_names));
-            set_named_x(d, path, str_lit("syntax-at"), macros);
-            set_named_x(d, path, str_lit("defines-at"), defs);
-            set_named_x(d, path, str_lit("syntax-at"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
+            set_named_x(d, path, str_lit!("syntax-at"), macros);
+            set_named_x(d, path, str_lit!("defines-at"), defs);
+            set_named_x(d, path, str_lit!("syntax-at"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
                 kx_named(n, nil::<Str>())
             })), filter(kayak_rt::as_proc(kayak_rt::closure1s((macros,), |(macros,), n: Str| {
                 not(string_member_p(n, named_names(macros)))
             })), names)));
-            set_named_x(d, path, str_lit("defines-at"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
+            set_named_x(d, path, str_lit!("defines-at"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
                 kx_named(n, nil::<Str>())
             })), filter(kayak_rt::as_proc(kayak_rt::closure1s((defs,), |(defs,), n: Str| {
                 not(string_member_p(n, named_names(defs)))
             })), names)));
-            db_set_x(d, key1(str_lit("wkeys"), path), named_text(ks), 0i64);
-            db_set_x(d, key1(str_lit("wnames"), path), named_text(names), 0i64);
-            db_set_x(d, key1(str_lit("wforsyntax"), path), named_text(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12<Str, kayak_rt::Handle<'static, Sexp>>| {
+            db_set_x(d, key1(str_lit!("wkeys"), path), named_text(ks), 0i64);
+            db_set_x(d, key1(str_lit!("wnames"), path), named_text(names), 0i64);
+            db_set_x(d, key1(str_lit!("wforsyntax"), path), named_text(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12<Str, kayak_rt::Handle<'static, Sexp>>| {
                 x.0
             })), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12<Str, kayak_rt::Handle<'static, Sexp>>| {
-                mentions_p(kayak_rt::heap_cons(x.1, kayak_rt::nil()), kayak_rt::heap_cons(str_lit("begin-for-syntax"), kayak_rt::nil()))
+                mentions_p(kayak_rt::heap_cons(x.1, kayak_rt::nil()), kayak_rt::heap_cons(str_lit!("begin-for-syntax"), kayak_rt::nil()))
             })), map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, f: kayak_rt::Handle<'static, Sexp>| {
                 Product_11_12(k, f)
             })), ks, forms)))), 0i64);
@@ -28588,7 +28588,7 @@ pub mod kc_expand {
                     ()
                 }
                 KxExpanded::ExpandedRefused(m) => {
-                    kc_load_forms_x().call(d, path, text, nil::<kayak_rt::Handle<'static, Sexp>>(), string_append(str_lit("(refused "), string_append(kc_datum().call(str(m, str_lit(""), 0i64)), str_lit(")"))));
+                    kc_load_forms_x().call(d, path, text, nil::<kayak_rt::Handle<'static, Sexp>>(), string_append(str_lit!("(refused "), string_append(kc_datum().call(str(m, str_lit!(""), 0i64)), str_lit!(")"))));
                     ()
                 }
             }
@@ -28598,36 +28598,36 @@ pub mod kc_expand {
     // The program as expanded, located, each node a line, as the engine's
     // `--expanded-located` writes it (C445; scripts/kc-expanded.py).
     pub fn kc_expanded_lines(d: Db, run: Runner, path: Str) -> Strings {
-        let u = db_node(d, key1(str_lit("unspliced"), path));
+        let u = db_node(d, key1(str_lit!("unspliced"), path));
         let unspliced = if null_p(u) {
-            str_lit("")
+            str_lit!("")
         } else {
             node_value(d, car(u))
         };
-        let x = if string_eq_p(unspliced, str_lit("")) {
-            db_get(d, run, key1(str_lit("expanded"), path))
-        } else if string_eq_p(unspliced, str_lit("%read")) {
-            str_lit("")
+        let x = if string_eq_p(unspliced, str_lit!("")) {
+            db_get(d, run, key1(str_lit!("expanded"), path))
+        } else if string_eq_p(unspliced, str_lit!("%read")) {
+            str_lit!("")
         } else {
             unspliced
         };
-        if string_eq_p(x, str_lit("")) {
-            located_lines(sexps_located(read_all(db_get(d, run, key1(str_lit("text"), path)), path, 1i64)))
-        } else if has_prefix_p(x, str_lit("(refused ")) {
+        if string_eq_p(x, str_lit!("")) {
+            located_lines(sexps_located(read_all(db_get(d, run, key1(str_lit!("text"), path)), path, 1i64)))
+        } else if has_prefix_p(x, str_lit!("(refused ")) {
             kayak_rt::heap_cons(string_append({
-                let tagcase_ = second(items(car(read_all(x, str_lit("expanded"), 1i64))));
+                let tagcase_ = second(items(car(read_all(x, str_lit!("expanded"), 1i64))));
                 match *tagcase_ {
                     Sexp::Str(m, f, p) => {
                         m
                     }
                     _ => {
                         let other = tagcase_;
-                        str_lit("?")
+                        str_lit!("?")
                     }
                 }
-            }, str_lit("\n")), kayak_rt::nil())
+            }, str_lit!("\n")), kayak_rt::nil())
         } else {
-            located_lines(sexps_located(map(kc_unlocated(), read_all(x, str_lit("expanded"), 1i64))))
+            located_lines(sexps_located(map(kc_unlocated(), read_all(x, str_lit!("expanded"), 1i64))))
         }
     }
 }

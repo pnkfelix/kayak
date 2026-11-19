@@ -143,8 +143,8 @@ pub fn main() -> Str {
     let kids = the::<List<kayak_rt::Handle<'static, Rose<'static, i64>>>>(kayak_rt::heap_cons(leaf_heap(1i64), kayak_rt::heap_cons(leaf_heap(2i64), kayak_rt::nil())));
     let tree = the::<kayak_rt::Handle<'static, Rose<'static, i64>>>(node_heap(kayak_rt::heap_cons(node_heap(kids), kayak_rt::heap_cons(leaf_heap(4i64), nil::<kayak_rt::Handle<'static, Rose<'static, i64>>>()))));
     let xs = the::<Ints>(kayak_rt::heap_cons(7i64, kayak_rt::heap_cons(8i64, kayak_rt::heap_cons(9i64, kayak_rt::nil()))));
-    let p = the::<kayak_rt::Handle<'static, Both<Str, i64>>>(both(str_lit("x"), 5i64));
-    string_append(i64_to_string(total(tree)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(xs), 0i64)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(the::<Ints>(nil::<i64>())), -1i64)), string_append(str_lit(" "), {
+    let p = the::<kayak_rt::Handle<'static, Both<Str, i64>>>(both(str_lit!("x"), 5i64));
+    string_append(i64_to_string(total(tree)), string_append(str_lit!(" "), string_append(i64_to_string(or_else(first(xs), 0i64)), string_append(str_lit!(" "), string_append(i64_to_string(or_else(first(the::<Ints>(nil::<i64>())), -1i64)), string_append(str_lit!(" "), {
         let tagcase_ = swap(p);
         match *tagcase_ {
             Both::Both(n, s) => {

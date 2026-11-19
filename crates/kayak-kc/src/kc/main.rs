@@ -263,10 +263,10 @@ pub mod kc_driver {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("done") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("")
+            str_lit!("")
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1)))
+            string_append(str_lit!("cannot write "), string_append(path, string_append(str_lit!(": "), e.1)))
         } else { unreachable!() }
     }
 
@@ -285,13 +285,13 @@ pub mod kc_driver {
     // Whose a database is: kc's, of this kc's sources (`identity.kfx`, C399).
     #[inline]
     pub fn kc_whose() -> Str {
-        string_append(str_lit("kc "), kc_identity())
+        string_append(str_lit!("kc "), kc_identity())
     }
 
     #[inline]
     pub fn fail_with(message: Str, status: Int) -> Void {
         {
-            let tagcase_ = write_err(string_append(str_lit("kc: "), string_append(message, str_lit("\n"))));
+            let tagcase_ = write_err(string_append(str_lit!("kc: "), string_append(message, str_lit!("\n"))));
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("done") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -316,11 +316,11 @@ pub mod kc_driver {
                 s
             } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                 let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                match fail_with(string_append(path, str_lit(": not UTF-8")), int_lit(1)) {}
+                match fail_with(string_append(path, str_lit!(": not UTF-8")), int_lit(1)) {}
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+            match fail_with(string_append(str_lit!("cannot read "), string_append(path, string_append(str_lit!(": "), e.1))), int_lit(1)) {}
         } else { unreachable!() }
     }
 
@@ -366,11 +366,11 @@ pub mod kc_driver {
                 s
             } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                 let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                str_lit("")
+                str_lit!("")
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            str_lit("")
+            str_lit!("")
         } else { unreachable!() }
     }
 
@@ -382,7 +382,7 @@ pub mod kc_driver {
             ()
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+            match fail_with(string_append(str_lit!("cannot write "), string_append(path, string_append(str_lit!(": "), e.1))), int_lit(1)) {}
         } else { unreachable!() }
     }
 
@@ -394,7 +394,7 @@ pub mod kc_driver {
             ()
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+            match fail_with(string_append(str_lit!("cannot write "), string_append(path, string_append(str_lit!(": "), e.1))), int_lit(1)) {}
         } else { unreachable!() }
     }
 
@@ -404,15 +404,15 @@ pub mod kc_driver {
     // items when it is asked for.
     #[inline]
     pub fn db_path(dbp: Str, name: Str) -> Str {
-        if string_eq_p(name, str_lit("")) {
+        if string_eq_p(name, str_lit!("")) {
             dbp
         } else {
-            string_append(dbp, string_append(str_lit(".d/"), name))
+            string_append(dbp, string_append(str_lit!(".d/"), name))
         }
     }
 
     pub fn save_db(d: Db, dbp: Str) -> () {
-        let dir = string_append(dbp, str_lit(".d"));
+        let dir = string_append(dbp, str_lit!(".d"));
         {
             let tagcase_ = file_info(dir);
             let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -421,12 +421,12 @@ pub mod kc_driver {
                 ()
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                run_command(kayak_rt::heap_cons(str_lit("mkdir"), kayak_rt::heap_cons(str_lit("-p"), kayak_rt::heap_cons(dir, kayak_rt::nil()))), str_lit(""));
+                run_command(kayak_rt::heap_cons(str_lit!("mkdir"), kayak_rt::heap_cons(str_lit!("-p"), kayak_rt::heap_cons(dir, kayak_rt::nil()))), str_lit!(""));
                 ()
             } else { unreachable!() }
         };
         files_written(dbp, db_saved(d, kc_whose(), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
-            not((string_eq_p(key_query(k), str_lit("asm")) || string_eq_p(key_query(k), str_lit("rust"))))
+            not((string_eq_p(key_query(k), str_lit!("asm")) || string_eq_p(key_query(k), str_lit!("rust"))))
         }))))
     }
 
@@ -439,7 +439,7 @@ pub mod kc_driver {
                     let tagcase_ = car(fs);
                     match *tagcase_ {
                         DbFile::DbFile(name, text) => {
-                            if string_eq_p(name, str_lit("")) {
+                            if string_eq_p(name, str_lit!("")) {
                                 write_text(db_path(dbp, name), text)
                             } else {
                                 write_text_unflushed(db_path(dbp, name), text)
@@ -472,20 +472,20 @@ pub mod kc_driver {
             if tag_ == const { kayak_rt::tag_hash("exited") } {
                 let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
                 if i64_eq(int_to_i64(c), 0i64) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
-                    string_append(car(argv), string_append(str_lit(" failed:\n"), process_output(p)))
+                    string_append(car(argv), string_append(str_lit!(" failed:\n"), process_output(p)))
                 }
             } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
                 let g: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                string_append(car(argv), str_lit(" was signalled"))
+                string_append(car(argv), str_lit!(" was signalled"))
             } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                string_append(car(argv), str_lit(" ended, how is not known"))
+                string_append(car(argv), str_lit!(" ended, how is not known"))
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            string_append(str_lit("cannot run "), string_append(car(argv), string_append(str_lit(": "), e.1)))
+            string_append(str_lit!("cannot run "), string_append(car(argv), string_append(str_lit!(": "), e.1)))
         } else { unreachable!() }
     }
 
@@ -508,9 +508,9 @@ pub mod kc_driver {
                     }
                 };
                 (os, acc) = (cdr(os), kayak_rt::heap_cons(if i64_lt(fp, 0i64) {
-                    string_append(str_lit("o_"), i64_to_string(i64_minus(0i64, fp)))
+                    string_append(str_lit!("o_"), i64_to_string(i64_minus(0i64, fp)))
                 } else {
-                    string_append(str_lit("o"), i64_to_string(fp))
+                    string_append(str_lit!("o"), i64_to_string(fp))
                 }, acc));
                 continue;
             }
@@ -523,7 +523,7 @@ pub mod kc_driver {
             if null_p(ks) {
                 return string_list_append(reverse(acc));
             } else {
-                (ks, acc) = (cdr(ks), kayak_rt::heap_cons(x64_object_text().call(car(read_all(db_get(d, run, key2(str_lit("asm-item"), file, {
+                (ks, acc) = (cdr(ks), kayak_rt::heap_cons(x64_object_text().call(car(read_all(db_get(d, run, key2(str_lit!("asm-item"), file, {
                     let tagcase_ = car(ks);
                     match *tagcase_ {
                         Sexp::Str(t, f, p) => {
@@ -531,10 +531,10 @@ pub mod kc_driver {
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
-                })), str_lit("asm"), 1i64))), acc));
+                })), str_lit!("asm"), 1i64))), acc));
                 continue;
             }
         }
@@ -549,24 +549,24 @@ pub mod kc_driver {
             if null_p(os) {
                 return reverse(acc);
             } else {
-                if string_member_p(string_append(car(names), str_lit(".o")), have) {
+                if string_member_p(string_append(car(names), str_lit!(".o")), have) {
                     (os, names) = (cdr(os), cdr(names));
                     continue;
                 } else {
                     let ks = items(car(items(car(os))));
                     let text = if null_p(ks) {
-                        db_get(d, run, key1(str_lit("asm-entry"), file))
+                        db_get(d, run, key1(str_lit!("asm-entry"), file))
                     } else {
                         members_text(d, run, file, ks, nil::<Str>())
                     };
-                    let s = string_append(car(names), str_lit(".s"));
-                    write_text(string_append(dir, string_append(str_lit("/"), s)), text);
+                    let s = string_append(car(names), str_lit!(".s"));
+                    write_text(string_append(dir, string_append(str_lit!("/"), s)), text);
                     {
-                        let m = bytes_written(string_append(dir, string_append(str_lit("/"), string_append(car(names), str_lit(".o")))), asm_object().call(text));
-                        if string_eq_p(m, str_lit("")) {
+                        let m = bytes_written(string_append(dir, string_append(str_lit!("/"), string_append(car(names), str_lit!(".o")))), asm_object().call(text));
+                        if string_eq_p(m, str_lit!("")) {
                             ()
                         } else {
-                            error(string_append(str_lit("kc: "), m));
+                            error(string_append(str_lit!("kc: "), m));
                             ()
                         }
                     };
@@ -619,12 +619,12 @@ pub mod kc_driver {
             } else {
                 let f = car(files);
                 let n = string_length(f);
-                let base = if (_gt(n, int_lit(2)) && (has_suffix_p(f, str_lit(".o")) || has_suffix_p(f, str_lit(".s")))) {
+                let base = if (_gt(n, int_lit(2)) && (has_suffix_p(f, str_lit!(".o")) || has_suffix_p(f, str_lit!(".s")))) {
                     substring(f, int_lit(0), _minus(n, int_lit(2)))
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 };
-                (files, acc) = (cdr(files), if (string_eq_p(base, str_lit("")) || string_member_p(base, names)) {
+                (files, acc) = (cdr(files), if (string_eq_p(base, str_lit!("")) || string_member_p(base, names)) {
                     acc
                 } else {
                     kayak_rt::heap_cons(f, acc)
@@ -642,7 +642,7 @@ pub mod kc_driver {
         if null_p(stale) {
             ()
         } else {
-            run_command(kayak_rt::heap_cons(str_lit("rm"), kayak_rt::heap_cons(str_lit("-f"), stale)), dir);
+            run_command(kayak_rt::heap_cons(str_lit!("rm"), kayak_rt::heap_cons(str_lit!("-f"), stale)), dir);
             ()
         }
     }
@@ -650,28 +650,28 @@ pub mod kc_driver {
     /// The program of `file` built to `exe`, on the runtime `rt`: `` if
     /// it is, else what went wrong.
     pub fn build(d: Db, run: Runner, file: Str, exe: Str, rt: Str) -> Str {
-        let objs_text = db_get(d, run, key1(str_lit("objects"), file));
-        let manifest = string_append(objs_text, string_append(str_lit("\n"), rt));
-        let record = string_append(exe, str_lit(".objects"));
-        let dir = string_append(exe, str_lit(".o.d"));
+        let objs_text = db_get(d, run, key1(str_lit!("objects"), file));
+        let manifest = string_append(objs_text, string_append(str_lit!("\n"), rt));
+        let record = string_append(exe, str_lit!(".objects"));
+        let dir = string_append(exe, str_lit!(".o.d"));
         if (string_eq_p(manifest, read_text_or_none(record)) && exists_p(exe)) {
-            str_lit("")
+            str_lit!("")
         } else {
-            let os = items(car(read_all(objs_text, str_lit("objects"), 1i64)));
+            let os = items(car(read_all(objs_text, str_lit!("objects"), 1i64)));
             let names = object_names(os, nil::<Str>());
-            let made = run_command(kayak_rt::heap_cons(str_lit("mkdir"), kayak_rt::heap_cons(str_lit("-p"), kayak_rt::heap_cons(dir, kayak_rt::nil()))), str_lit(""));
+            let made = run_command(kayak_rt::heap_cons(str_lit!("mkdir"), kayak_rt::heap_cons(str_lit!("-p"), kayak_rt::heap_cons(dir, kayak_rt::nil()))), str_lit!(""));
             let new = objects_written(d, run, file, dir, os, names, listed(dir), nil::<Str>());
-            let linked = run_command(append(kayak_rt::heap_cons(str_lit("cc"), kayak_rt::heap_cons(str_lit("-o"), kayak_rt::heap_cons(exe, kayak_rt::nil()))), append(map(kayak_rt::as_proc(kayak_rt::closure1s((dir,), |(dir,), n: Str| {
-                string_append(dir, string_append(str_lit("/"), string_append(n, str_lit(".o"))))
-            })), names), if has_suffix_p(rt, str_lit(".so")) {
-                kayak_rt::heap_cons(rt, kayak_rt::heap_cons(string_append(str_lit("-Wl,-rpath,"), directory_of(rt)), kayak_rt::nil()))
+            let linked = run_command(append(kayak_rt::heap_cons(str_lit!("cc"), kayak_rt::heap_cons(str_lit!("-o"), kayak_rt::heap_cons(exe, kayak_rt::nil()))), append(map(kayak_rt::as_proc(kayak_rt::closure1s((dir,), |(dir,), n: Str| {
+                string_append(dir, string_append(str_lit!("/"), string_append(n, str_lit!(".o"))))
+            })), names), if has_suffix_p(rt, str_lit!(".so")) {
+                kayak_rt::heap_cons(rt, kayak_rt::heap_cons(string_append(str_lit!("-Wl,-rpath,"), directory_of(rt)), kayak_rt::nil()))
             } else {
-                kayak_rt::heap_cons(rt, kayak_rt::heap_cons(str_lit("-lgcc_s"), kayak_rt::heap_cons(str_lit("-lutil"), kayak_rt::heap_cons(str_lit("-lrt"), kayak_rt::heap_cons(str_lit("-lpthread"), kayak_rt::heap_cons(str_lit("-lm"), kayak_rt::heap_cons(str_lit("-ldl"), kayak_rt::heap_cons(str_lit("-lc"), kayak_rt::nil()))))))))
-            })), str_lit(""));
-            if string_eq_p(linked, str_lit("")) {
+                kayak_rt::heap_cons(rt, kayak_rt::heap_cons(str_lit!("-lgcc_s"), kayak_rt::heap_cons(str_lit!("-lutil"), kayak_rt::heap_cons(str_lit!("-lrt"), kayak_rt::heap_cons(str_lit!("-lpthread"), kayak_rt::heap_cons(str_lit!("-lm"), kayak_rt::heap_cons(str_lit!("-ldl"), kayak_rt::heap_cons(str_lit!("-lc"), kayak_rt::nil()))))))))
+            })), str_lit!(""));
+            if string_eq_p(linked, str_lit!("")) {
                 write_text(record, manifest);
                 stale_removed_x(dir, names);
-                str_lit("")
+                str_lit!("")
             } else {
                 linked
             }
@@ -684,7 +684,7 @@ pub mod kc_driver {
     pub fn phase1_name(defs: Str) -> Str {
         let fp = queries::fnv_string(defs, queries::fnv_offset());
         if i64_lt(fp, 0i64) {
-            string_append(str_lit("n"), i64_to_string(i64_minus(0i64, fp)))
+            string_append(str_lit!("n"), i64_to_string(i64_minus(0i64, fp)))
         } else {
             i64_to_string(fp)
         }
@@ -695,7 +695,7 @@ pub mod kc_driver {
         loop {
             if null_p(ls) {
                 return last;
-            } else if string_eq_p(car(ls), str_lit("")) {
+            } else if string_eq_p(car(ls), str_lit!("")) {
                 ls = cdr(ls);
                 continue;
             } else {
@@ -837,13 +837,13 @@ pub mod kc_driver {
 
     // A phase-1 program's image, sealed now, kept by none.
     pub fn phase1_image(d: Db, run: Runner, name: Str, program: Str) -> kayak_rt::Handle<'static, P1> {
-        let path = string_append(str_lit("%phase1-"), string_append(name, str_lit(".fx")));
+        let path = string_append(str_lit!("%phase1-"), string_append(name, str_lit!(".fx")));
         kc_load_file_x().call(d, run, path, program, nil::<kayak_rt::Handle<'static, Filed>>());
-        let refused = kc_refusal().call(db_get(d, run, key1(str_lit("checked"), path)));
-        if not(string_eq_p(refused, str_lit(""))) {
-            p1(nil::<kayak_rt::Handle<'static, kc_native::RunImage>>(), string_append(str_lit("!"), phase1_unplaced(refused)))
+        let refused = kc_refusal().call(db_get(d, run, key1(str_lit!("checked"), path)));
+        if not(string_eq_p(refused, str_lit!(""))) {
+            p1(nil::<kayak_rt::Handle<'static, kc_native::RunImage>>(), string_append(str_lit!("!"), phase1_unplaced(refused)))
         } else {
-            p1(kayak_rt::heap_cons(native_sealed().call(asm_image().call(string_append(x64_run_support().call(native_routines().call(x64_services())), db_get(d, run, key1(str_lit("asm"), path)))), the::<i64>(8388608i64)), kayak_rt::nil()), str_lit(""))
+            p1(kayak_rt::heap_cons(native_sealed().call(asm_image().call(string_append(x64_run_support().call(native_routines().call(x64_services())), db_get(d, run, key1(str_lit!("asm"), path)))), the::<i64>(8388608i64)), kayak_rt::nil()), str_lit!(""))
         }
     }
 
@@ -852,7 +852,7 @@ pub mod kc_driver {
         let had = sealed_named(get(transformers()), name);
         if not(null_p(had)) {
             set(transformers(), kayak_rt::heap_cons(named_sealed(name, car(had)), named_without(get(transformers()), name)));
-            p1(had, str_lit(""))
+            p1(had, str_lit!(""))
         } else {
             let tagcase_ = phase1_image(d, run, name, program);
             match *tagcase_ {
@@ -877,7 +877,7 @@ pub mod kc_driver {
                 if null_p(ss) {
                     why
                 } else {
-                    let a = phase1_ran(car(ss), false, str_lit(""));
+                    let a = phase1_ran(car(ss), false, str_lit!(""));
                     native_freed().call(car(ss));
                     a
                 }
@@ -891,15 +891,15 @@ pub mod kc_driver {
     // (`#u` of none), or `!` and why.
     pub fn phase1_ran(s: RunImage, apply: bool, input: Str) -> Str {
         let m = native_call().call(s, apply, input);
-        let last = last_line(lines_of(string_chars(native_output().call()), nil::<char>(), nil::<Str>()), str_lit(""));
-        if string_eq_p(m, str_lit("")) {
-            string_append(str_lit("="), if string_eq_p(last, str_lit("")) {
-                str_lit("#u")
+        let last = last_line(lines_of(string_chars(native_output().call()), nil::<char>(), nil::<Str>()), str_lit!(""));
+        if string_eq_p(m, str_lit!("")) {
+            string_append(str_lit!("="), if string_eq_p(last, str_lit!("")) {
+                str_lit!("#u")
             } else {
                 last
             })
         } else {
-            string_append(str_lit("!"), m)
+            string_append(str_lit!("!"), m)
         }
     }
 
@@ -921,10 +921,10 @@ pub mod kc_driver {
         let defs = ps.0;
         let r#use = phase1_use(request);
         let style = r#use.0;
-        if string_eq_p(defs, str_lit("")) {
-            str_lit("!a malformed transformer request")
+        if string_eq_p(defs, str_lit!("")) {
+            str_lit!("!a malformed transformer request")
         } else {
-            if string_eq_p(style, str_lit("")) {
+            if string_eq_p(style, str_lit!("")) {
                 phase1_once(d, run, defs)
             } else {
                 let program = string_append(defs, string_append(phase1_reader(), phase1_applier(style)));
@@ -933,11 +933,11 @@ pub mod kc_driver {
                     P1::P1(ss, why) => {
                         if null_p(ss) {
                             why
-                        } else if string_eq_p(r#use.2, str_lit("")) {
-                            phase1_ran(car(ss), false, str_lit(""))
+                        } else if string_eq_p(r#use.2, str_lit!("")) {
+                            phase1_ran(car(ss), false, str_lit!(""))
                         } else {
-                            let given = phase1_ran(car(ss), true, string_append(r#use.1, string_append(str_lit("\n"), r#use.2)));
-                            if not(string_eq_p(given, str_lit("=%phase1-unread"))) {
+                            let given = phase1_ran(car(ss), true, string_append(r#use.1, string_append(str_lit!("\n"), r#use.2)));
+                            if not(string_eq_p(given, str_lit!("=%phase1-unread"))) {
                                 given
                             } else {
                                 phase1_once(d, run, string_append(program, ps.1))
@@ -952,74 +952,74 @@ pub mod kc_driver {
     // Every query, by name.
     pub fn kc_run(d: Db, k: kayak_rt::Handle<'static, Sexp>) -> Str {
         let (q, a, b) = (key_query(k), key_arg(k, 0i64), key_arg(k, 1i64));
-        if string_eq_p(q, str_lit("checked")) {
+        if string_eq_p(q, str_lit!("checked")) {
             q_checked().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("kfx")) {
+        } else if string_eq_p(q, str_lit!("kfx")) {
             q_kfx().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("form")) {
+        } else if string_eq_p(q, str_lit!("form")) {
             q_form().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("interface")) {
+        } else if string_eq_p(q, str_lit!("interface")) {
             q_interface().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("position")) {
+        } else if string_eq_p(q, str_lit!("position")) {
             q_position().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("type")) {
+        } else if string_eq_p(q, str_lit!("type")) {
             q_type().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("l0-item")) {
+        } else if string_eq_p(q, str_lit!("l0-item")) {
             q_l0_item().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("rust-item")) {
+        } else if string_eq_p(q, str_lit!("rust-item")) {
             q_rust_item().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("rust")) {
+        } else if string_eq_p(q, str_lit!("rust")) {
             q_rust().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("asm-item")) {
+        } else if string_eq_p(q, str_lit!("asm-item")) {
             q_asm_item().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("asm")) {
+        } else if string_eq_p(q, str_lit!("asm")) {
             q_asm().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("asm-entry")) {
+        } else if string_eq_p(q, str_lit!("asm-entry")) {
             q_asm_entry().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("objects")) {
+        } else if string_eq_p(q, str_lit!("objects")) {
             q_objects().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("expanded")) {
+        } else if string_eq_p(q, str_lit!("expanded")) {
             q_expanded().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("expansion")) {
+        } else if string_eq_p(q, str_lit!("expansion")) {
             q_expansion().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("macros-for")) {
+        } else if string_eq_p(q, str_lit!("macros-for")) {
             q_macros_for().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("macro-in")) {
+        } else if string_eq_p(q, str_lit!("macro-in")) {
             q_macro_in().call(d, kayak_rt::as_proc(kc_run), a, b, key_arg(k, 2i64))
-        } else if string_eq_p(q, str_lit("global-in")) {
+        } else if string_eq_p(q, str_lit!("global-in")) {
             q_global_in().call(d, kayak_rt::as_proc(kc_run), a, b, key_arg(k, 2i64))
-        } else if string_eq_p(q, str_lit("entry")) {
+        } else if string_eq_p(q, str_lit!("entry")) {
             q_entry().call(d, kayak_rt::as_proc(kc_run), a, b, key_arg(k, 2i64))
-        } else if string_eq_p(q, str_lit("written")) {
+        } else if string_eq_p(q, str_lit!("written")) {
             q_written().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("wseen")) {
+        } else if string_eq_p(q, str_lit!("wseen")) {
             q_wseen().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("wpos")) {
+        } else if string_eq_p(q, str_lit!("wpos")) {
             q_wpos().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("wkeys")) {
+        } else if string_eq_p(q, str_lit!("wkeys")) {
             q_wkeys().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("syntax-at")) {
+        } else if string_eq_p(q, str_lit!("syntax-at")) {
             q_syntax_at().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("defines-at")) {
+        } else if string_eq_p(q, str_lit!("defines-at")) {
             q_defines_at().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("wnames")) {
+        } else if string_eq_p(q, str_lit!("wnames")) {
             q_wnames().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("wforsyntax")) {
+        } else if string_eq_p(q, str_lit!("wforsyntax")) {
             q_wforsyntax().call(d, kayak_rt::as_proc(kc_run), a, b)
-        } else if string_eq_p(q, str_lit("phase1")) {
+        } else if string_eq_p(q, str_lit!("phase1")) {
             phase1_asked(d, kayak_rt::as_proc(kc_run), a)
         } else {
-            error(string_append(str_lit("kc: no query "), key_text(k)));
-            str_lit("")
+            error(string_append(str_lit!("kc: no query "), key_text(k)));
+            str_lit!("")
         }
     }
 
     /// The first `n` of `ks`, oldest first, each after a space.
     pub fn ran_names(ks: Sexps, n: i64) -> Str {
         if (null_p(ks) || i64_lt_eq(n, 0i64)) {
-            str_lit("")
+            str_lit!("")
         } else {
-            string_append(ran_names(cdr(ks), i64_minus(n, 1i64)), string_append(str_lit(" "), key_query(car(ks))))
+            string_append(ran_names(cdr(ks), i64_minus(n, 1i64)), string_append(str_lit!(" "), key_query(car(ks))))
         }
     }
 
@@ -1043,13 +1043,13 @@ pub mod kc_driver {
         loop {
             if null_p(r#as) {
                 return opts(db, stats, rt, reverse(rest));
-            } else if (string_eq_p(car(r#as), str_lit("--db")) && not(null_p(cdr(r#as)))) {
+            } else if (string_eq_p(car(r#as), str_lit!("--db")) && not(null_p(cdr(r#as)))) {
                 (r#as, db) = (cdr(cdr(r#as)), car(cdr(r#as)));
                 continue;
-            } else if (string_eq_p(car(r#as), str_lit("--rt")) && not(null_p(cdr(r#as)))) {
+            } else if (string_eq_p(car(r#as), str_lit!("--rt")) && not(null_p(cdr(r#as)))) {
                 (r#as, rt) = (cdr(cdr(r#as)), car(cdr(r#as)));
                 continue;
-            } else if string_eq_p(car(r#as), str_lit("--stats")) {
+            } else if string_eq_p(car(r#as), str_lit!("--stats")) {
                 (r#as, stats) = (cdr(r#as), true);
                 continue;
             } else {
@@ -1127,12 +1127,12 @@ pub mod kc_driver {
     pub fn request(d: Db, at: Str, what: Str, file: Str, out: Str) -> kayak_rt::Handle<'static, Answer> {
         let (before, rt) = (db_runs(d), at);
         kc_read_file_x(d, kayak_rt::as_proc(kc_run), file);
-        let refused = kc_refusal().call(db_get(d, kayak_rt::as_proc(kc_run), key1(str_lit("checked"), file)));
-        if (string_eq_p(refused, str_lit("")) && not(string_eq_p(what, str_lit("check"))) && not(string_eq_p(what, str_lit("build")))) {
-            let key = key1(if string_eq_p(what, str_lit("rust")) {
-                str_lit("rust")
+        let refused = kc_refusal().call(db_get(d, kayak_rt::as_proc(kc_run), key1(str_lit!("checked"), file)));
+        if (string_eq_p(refused, str_lit!("")) && not(string_eq_p(what, str_lit!("check"))) && not(string_eq_p(what, str_lit!("build")))) {
+            let key = key1(if string_eq_p(what, str_lit!("rust")) {
+                str_lit!("rust")
             } else {
-                str_lit("asm")
+                str_lit!("asm")
             }, file);
             let fp = db_fingerprint(d, kayak_rt::as_proc(kc_run), key);
             let there = read_text_or_none(out);
@@ -1144,17 +1144,17 @@ pub mod kc_driver {
         } else {
             ()
         };
-        let failed = if (string_eq_p(refused, str_lit("")) && string_eq_p(what, str_lit("build"))) {
+        let failed = if (string_eq_p(refused, str_lit!("")) && string_eq_p(what, str_lit!("build"))) {
             build(d, kayak_rt::as_proc(kc_run), file, out, rt)
         } else {
             refused
         };
-        answer(not(string_eq_p(failed, str_lit(""))), failed, i64_minus(db_runs(d), before), ran_names(db_ran(d), i64_minus(db_runs(d), before)))
+        answer(not(string_eq_p(failed, str_lit!(""))), failed, i64_minus(db_runs(d), before), ran_names(db_ran(d), i64_minus(db_runs(d), before)))
     }
 
     #[inline]
     pub fn said(s: Str) -> () {
-        let tagcase_ = write_out(string_append(s, str_lit("\n")));
+        let tagcase_ = write_out(string_append(s, str_lit!("\n")));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("done") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -1174,52 +1174,52 @@ pub mod kc_driver {
                 let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
                 let ws = words_in(string_chars(s), nil::<char>(), nil::<Str>());
                 let n = size(ws);
-                if (i64_eq(n, 1i64) && string_eq_p(car(ws), str_lit("quit"))) {
-                    if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                if (i64_eq(n, 1i64) && string_eq_p(car(ws), str_lit!("quit"))) {
+                    if (string_eq_p(dbp, str_lit!("")) || not(db_dirty_p(d))) {
                         ()
                     } else {
                         save_db(d, dbp)
                     };
                     return int_lit(0);
-                } else if (i64_eq(n, 1i64) && string_eq_p(car(ws), str_lit("save"))) {
-                    if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                } else if (i64_eq(n, 1i64) && string_eq_p(car(ws), str_lit!("save"))) {
+                    if (string_eq_p(dbp, str_lit!("")) || not(db_dirty_p(d))) {
                         ()
                     } else {
                         save_db(d, dbp)
                     };
-                    said(str_lit("ok 0"));
+                    said(str_lit!("ok 0"));
                     continue;
-                } else if ((i64_eq(n, 2i64) && string_eq_p(car(ws), str_lit("check"))) || (i64_eq(n, 3i64) && (string_eq_p(car(ws), str_lit("asm")) || string_eq_p(car(ws), str_lit("rust")) || string_eq_p(car(ws), str_lit("build"))))) {
+                } else if ((i64_eq(n, 2i64) && string_eq_p(car(ws), str_lit!("check"))) || (i64_eq(n, 3i64) && (string_eq_p(car(ws), str_lit!("asm")) || string_eq_p(car(ws), str_lit!("rust")) || string_eq_p(car(ws), str_lit!("build"))))) {
                     let tagcase_ = request(d, at, car(ws), car(cdr(ws)), if i64_eq(n, 3i64) {
                         car(cdr(cdr(ws)))
                     } else {
-                        str_lit("")
+                        str_lit!("")
                     });
                     match *tagcase_ {
                         Answer::Answer(no, msg, k, names) => {
                             said(string_list_append(kayak_rt::heap_cons(if no {
-                                str_lit("refused ")
+                                str_lit!("refused ")
                             } else {
-                                str_lit("ok ")
+                                str_lit!("ok ")
                             }, kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(if no {
-                                string_append(str_lit(" "), one_line(string_chars(msg), nil::<char>()))
+                                string_append(str_lit!(" "), one_line(string_chars(msg), nil::<char>()))
                             } else {
-                                str_lit("")
+                                str_lit!("")
                             }, kayak_rt::heap_cons(if stats {
-                                string_append(str_lit("\t"), names)
+                                string_append(str_lit!("\t"), names)
                             } else {
-                                str_lit("")
+                                str_lit!("")
                             }, kayak_rt::nil()))))));
                             continue;
                         }
                     }
                 } else {
-                    said(string_append(str_lit("error not a request: "), s));
+                    said(string_append(str_lit!("error not a request: "), s));
                     continue;
                 }
             } else if tag_ == const { kayak_rt::tag_hash("eof") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                if (string_eq_p(dbp, str_lit!("")) || not(db_dirty_p(d))) {
                     ()
                 } else {
                     save_db(d, dbp)
@@ -1227,7 +1227,7 @@ pub mod kc_driver {
                 return int_lit(0);
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                if (string_eq_p(dbp, str_lit!("")) || not(db_dirty_p(d))) {
                     ()
                 } else {
                     save_db(d, dbp)
@@ -1238,57 +1238,57 @@ pub mod kc_driver {
     }
 
     pub fn kc_main() -> Int {
-        let tagcase_ = opts_of(the::<List<Str>>(args()), str_lit(""), false, str_lit(""), nil::<Str>());
+        let tagcase_ = opts_of(the::<List<Str>>(args()), str_lit!(""), false, str_lit!(""), nil::<Str>());
         match *tagcase_ {
             Opts::Opts(dbp, stats, rt0, rest) => {
-                let d = if string_eq_p(dbp, str_lit("")) {
+                let d = if string_eq_p(dbp, str_lit!("")) {
                     db_make()
                 } else {
                     db_opened(kayak_rt::closure1((dbp,), |(dbp,), name: Str| {
                         read_text_or_none(db_path(dbp, name))
                     }), kc_whose())
                 };
-                let rt = if not(string_eq_p(rt0, str_lit(""))) {
+                let rt = if not(string_eq_p(rt0, str_lit!(""))) {
                     rt0
                 } else {
-                    let tagcase_ = read_symlink(str_lit("/proc/self/exe"));
+                    let tagcase_ = read_symlink(str_lit!("/proc/self/exe"));
                     let tag_ = kayak_rt::sum_tag(tagcase_);
                     if tag_ == const { kayak_rt::tag_hash("target") } {
                         let x: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                        string_append(directory_of(x), str_lit("/libkayak_kcrt.a"))
+                        string_append(directory_of(x), str_lit!("/libkayak_kcrt.a"))
                     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                        str_lit("target/release/libkayak_kcrt.a")
+                        str_lit!("target/release/libkayak_kcrt.a")
                     } else { unreachable!() }
                 };
-                let shared = string_append(directory_of(rt), str_lit("/libkayak_kcrt.so"));
+                let shared = string_append(directory_of(rt), str_lit!("/libkayak_kcrt.so"));
                 let at = if exists_p(shared) {
                     shared
                 } else {
                     rt
                 };
                 let status = if null_p(rest) {
-                    match fail_with(str_lit("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run [--heap WORDS] FILE | serve)"), int_lit(2)) {}
-                } else if string_eq_p(car(rest), str_lit("serve")) {
+                    match fail_with(str_lit!("usage: kc [--db DB] [--stats] [--rt RUNTIME] (--check FILE | --rust FILE OUT | --asm FILE OUT | build FILE EXE | run [--heap WORDS] FILE | serve)"), int_lit(2)) {}
+                } else if string_eq_p(car(rest), str_lit!("serve")) {
                     serve(d, dbp, stats, at)
-                } else if (string_eq_p(car(rest), str_lit("--object")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
+                } else if (string_eq_p(car(rest), str_lit!("--object")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
                     let m = bytes_written(car(cdr(cdr(rest))), asm_object().call(read_text(car(cdr(rest)))));
-                    if string_eq_p(m, str_lit("")) {
+                    if string_eq_p(m, str_lit!("")) {
                         int_lit(0)
                     } else {
                         match fail_with(m, int_lit(1)) {};
                         int_lit(1)
                     }
-                } else if (string_eq_p(car(rest), str_lit("--image")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
+                } else if (string_eq_p(car(rest), str_lit!("--image")) && not(null_p(cdr(rest))) && not(null_p(cdr(cdr(rest))))) {
                     let m = bytes_written(car(cdr(cdr(rest))), asm_image().call(string_append(x64_run_support().call(native_routines().call(x64_services())), read_text(car(cdr(rest))))));
-                    if string_eq_p(m, str_lit("")) {
+                    if string_eq_p(m, str_lit!("")) {
                         int_lit(0)
                     } else {
                         match fail_with(m, int_lit(1)) {};
                         int_lit(1)
                     }
-                } else if (string_eq_p(car(rest), str_lit("run")) && not(null_p(cdr(rest)))) {
-                    let sized = (string_eq_p(car(cdr(rest)), str_lit("--heap")) && not(null_p(cdr(cdr(rest)))) && not(null_p(cdr(cdr(cdr(rest))))));
+                } else if (string_eq_p(car(rest), str_lit!("run")) && not(null_p(cdr(rest)))) {
+                    let sized = (string_eq_p(car(cdr(rest)), str_lit!("--heap")) && not(null_p(cdr(cdr(rest)))) && not(null_p(cdr(cdr(cdr(rest))))));
                     let words = if sized {
                         i64_plus(the::<i64>(16i64), string_to_i64(car(cdr(cdr(rest)))))
                     } else {
@@ -1300,15 +1300,15 @@ pub mod kc_driver {
                         car(cdr(rest))
                     };
                     kc_read_file_x(d, kayak_rt::as_proc(kc_run), file);
-                    let refused = kc_refusal().call(db_get(d, kayak_rt::as_proc(kc_run), key1(str_lit("checked"), file)));
-                    if not(string_eq_p(refused, str_lit(""))) {
-                        if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                    let refused = kc_refusal().call(db_get(d, kayak_rt::as_proc(kc_run), key1(str_lit!("checked"), file)));
+                    if not(string_eq_p(refused, str_lit!(""))) {
+                        if (string_eq_p(dbp, str_lit!("")) || not(db_dirty_p(d))) {
                             ()
                         } else {
                             save_db(d, dbp)
                         };
                         {
-                            let tagcase_ = write_err(string_append(refused, str_lit("\n")));
+                            let tagcase_ = write_err(string_append(refused, str_lit!("\n")));
                             let tag_ = kayak_rt::sum_tag(tagcase_);
                             if tag_ == const { kayak_rt::tag_hash("done") } {
                                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -1320,8 +1320,8 @@ pub mod kc_driver {
                         };
                         int_lit(1)
                     } else {
-                        let image = asm_image().call(string_append(x64_run_support().call(native_routines().call(x64_services())), db_get(d, kayak_rt::as_proc(kc_run), key1(str_lit("asm"), file))));
-                        if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                        let image = asm_image().call(string_append(x64_run_support().call(native_routines().call(x64_services())), db_get(d, kayak_rt::as_proc(kc_run), key1(str_lit!("asm"), file))));
+                        if (string_eq_p(dbp, str_lit!("")) || not(db_dirty_p(d))) {
                             ()
                         } else {
                             save_db(d, dbp)
@@ -1338,11 +1338,11 @@ pub mod kc_driver {
                                 ()
                             } else { unreachable!() }
                         };
-                        if string_eq_p(m, str_lit("")) {
+                        if string_eq_p(m, str_lit!("")) {
                             int_lit(0)
                         } else {
                             {
-                                let tagcase_ = write_err(string_append(str_lit("evaluation failed: "), string_append(m, str_lit("\n"))));
+                                let tagcase_ = write_err(string_append(str_lit!("evaluation failed: "), string_append(m, str_lit!("\n"))));
                                 let tag_ = kayak_rt::sum_tag(tagcase_);
                                 if tag_ == const { kayak_rt::tag_hash("done") } {
                                     let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -1355,7 +1355,7 @@ pub mod kc_driver {
                             int_lit(1)
                         }
                     }
-                } else if (string_eq_p(car(rest), str_lit("--expanded-located")) && not(null_p(cdr(rest)))) {
+                } else if (string_eq_p(car(rest), str_lit!("--expanded-located")) && not(null_p(cdr(rest)))) {
                     let file = car(cdr(rest));
                     kc_read_file_x(d, kayak_rt::as_proc(kc_run), file);
                     {
@@ -1369,7 +1369,7 @@ pub mod kc_driver {
                             ()
                         } else { unreachable!() }
                     };
-                    if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                    if (string_eq_p(dbp, str_lit!("")) || not(db_dirty_p(d))) {
                         ()
                     } else {
                         save_db(d, dbp)
@@ -1378,42 +1378,42 @@ pub mod kc_driver {
                 } else {
                     let what = car(rest);
                     let file = if null_p(cdr(rest)) {
-                        str_lit("")
+                        str_lit!("")
                     } else {
                         car(cdr(rest))
                     };
-                    if string_eq_p(file, str_lit("")) {
-                        match fail_with(str_lit("a FILE is wanted"), int_lit(2)) {}
+                    if string_eq_p(file, str_lit!("")) {
+                        match fail_with(str_lit!("a FILE is wanted"), int_lit(2)) {}
                     } else {
                         ()
                     };
-                    if not((string_eq_p(what, str_lit("--check")) || string_eq_p(what, str_lit("--rust")) || string_eq_p(what, str_lit("--asm")) || string_eq_p(what, str_lit("build")))) {
-                        match fail_with(string_append(str_lit("not an option: "), what), int_lit(2)) {}
+                    if not((string_eq_p(what, str_lit!("--check")) || string_eq_p(what, str_lit!("--rust")) || string_eq_p(what, str_lit!("--asm")) || string_eq_p(what, str_lit!("build")))) {
+                        match fail_with(string_append(str_lit!("not an option: "), what), int_lit(2)) {}
                     } else {
                         ()
                     };
-                    if (not(string_eq_p(what, str_lit("--check"))) && null_p(cdr(cdr(rest)))) {
-                        match fail_with(str_lit("an OUT is wanted"), int_lit(2)) {}
+                    if (not(string_eq_p(what, str_lit!("--check"))) && null_p(cdr(cdr(rest)))) {
+                        match fail_with(str_lit!("an OUT is wanted"), int_lit(2)) {}
                     } else {
                         ()
                     };
-                    let tagcase_ = request(d, at, if string_eq_p(what, str_lit("--check")) {
-                        str_lit("check")
-                    } else if string_eq_p(what, str_lit("--rust")) {
-                        str_lit("rust")
-                    } else if string_eq_p(what, str_lit("build")) {
-                        str_lit("build")
+                    let tagcase_ = request(d, at, if string_eq_p(what, str_lit!("--check")) {
+                        str_lit!("check")
+                    } else if string_eq_p(what, str_lit!("--rust")) {
+                        str_lit!("rust")
+                    } else if string_eq_p(what, str_lit!("build")) {
+                        str_lit!("build")
                     } else {
-                        str_lit("asm")
-                    }, file, if string_eq_p(what, str_lit("--check")) {
-                        str_lit("")
+                        str_lit!("asm")
+                    }, file, if string_eq_p(what, str_lit!("--check")) {
+                        str_lit!("")
                     } else {
                         car(cdr(cdr(rest)))
                     });
                     match *tagcase_ {
                         Answer::Answer(no, msg, k, names) => {
                             if stats {
-                                let tagcase_ = write_err(string_append(str_lit("kc: "), string_append(i64_to_string(k), string_append(str_lit(" query bodies ran:"), string_append(names, str_lit("\n"))))));
+                                let tagcase_ = write_err(string_append(str_lit!("kc: "), string_append(i64_to_string(k), string_append(str_lit!(" query bodies ran:"), string_append(names, str_lit!("\n"))))));
                                 let tag_ = kayak_rt::sum_tag(tagcase_);
                                 if tag_ == const { kayak_rt::tag_hash("done") } {
                                     let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -1425,14 +1425,14 @@ pub mod kc_driver {
                             } else {
                                 ()
                             };
-                            if (string_eq_p(dbp, str_lit("")) || not(db_dirty_p(d))) {
+                            if (string_eq_p(dbp, str_lit!("")) || not(db_dirty_p(d))) {
                                 ()
                             } else {
                                 save_db(d, dbp)
                             };
                             if no {
                                 {
-                                    let tagcase_ = write_err(string_append(msg, str_lit("\n")));
+                                    let tagcase_ = write_err(string_append(msg, str_lit!("\n")));
                                     let tag_ = kayak_rt::sum_tag(tagcase_);
                                     if tag_ == const { kayak_rt::tag_hash("done") } {
                                         let u: () = kayak_rt::sum_payload::<()>(tagcase_);

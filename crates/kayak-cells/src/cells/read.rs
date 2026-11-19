@@ -136,7 +136,7 @@ pub fn tok(f0: Str, f1: Chars, f2: i64) -> kayak_rt::Handle<'static, Tok> {
 
 #[inline]
 pub fn read_error(file: Str, line: i64, message: Str) -> Void {
-    error(string_append(str_lit("kfx: "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), string_append(str_lit(": "), message))))))
+    error(string_append(str_lit!("kfx: "), string_append(file, string_append(str_lit!(":"), string_append(i64_to_string(line), string_append(str_lit!(": "), message))))))
 }
 
 /// A comment's text, to the newline that ends it, which is left. The line
@@ -233,7 +233,7 @@ pub fn unescape(c: char) -> char {
 pub fn hex_escape(mut cs: Chars, mut n: i64, mut k: i64) -> kayak_rt::Handle<'static, Tok> {
     loop {
         if null_p(cs) {
-            return tok(str_lit(""), cs, k);
+            return tok(str_lit!(""), cs, k);
         } else if i64_eq(char_to_i64(car(cs)), 59i64) {
             return tok(char_to_string(i64_to_char(n)), cdr(cs), i64_plus(k, 1i64));
         } else {
@@ -259,15 +259,15 @@ pub fn hex_escape(mut cs: Chars, mut n: i64, mut k: i64) -> kayak_rt::Handle<'st
 pub fn string_body(mut cs: Chars, mut text: Str, mut runs: Strings, mut from: i64, mut file: Str, mut start: i64, mut at: i64, mut line: i64, mut pos: i64) -> kayak_rt::Handle<'static, Got> {
     loop {
         if null_p(cs) {
-            return match read_error(file, start, str_lit("a string is not closed")) {};
+            return match read_error(file, start, str_lit!("a string is not closed")) {};
         } else if char_eq_p(car(cs), '"') {
             return got(str(string_list_append(reverse(kayak_rt::heap_cons(substring(text, i64_to_int(from), i64_to_int(pos)), runs))), file, at), here(cdr(cs), line, i64_plus(pos, 1i64)));
         } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs))) && i64_eq(char_to_i64(car(cdr(cs))), 120i64)) {
             let tagcase_ = hex_escape(cdr(cdr(cs)), 0i64, 0i64);
             match *tagcase_ {
                 Tok::Tok(t, rest, k) => {
-                    if string_eq_p(t, str_lit("")) {
-                        return match read_error(file, start, str_lit("a string's hex escape is not closed by ;")) {};
+                    if string_eq_p(t, str_lit!("")) {
+                        return match read_error(file, start, str_lit!("a string's hex escape is not closed by ;")) {};
                     } else {
                         (cs, runs, from, pos) = (rest, kayak_rt::heap_cons(t, kayak_rt::heap_cons(substring(text, i64_to_int(from), i64_to_int(pos)), runs)), i64_plus(pos, i64_plus(k, 2i64)), i64_plus(pos, i64_plus(k, 2i64)));
                         continue;
@@ -297,7 +297,7 @@ pub fn digits_value(mut cs: Chars, mut n: i64, mut file: Str, mut line: i64) -> 
         } else {
             let d = i64_minus(char_to_i64(car(cs)), 48i64);
             if (i64_lt(n, -922337203685477580i64) || (i64_eq(n, -922337203685477580i64) && i64_gt(d, 8i64))) {
-                return match read_error(file, line, str_lit("a literal past an i64")) {};
+                return match read_error(file, line, str_lit!("a literal past an i64")) {};
             } else {
                 (cs, n) = (cdr(cs), i64_minus(i64_star(n, 10i64), d));
                 continue;
@@ -396,9 +396,9 @@ pub fn fits_i64_p(cs: Chars) -> bool {
         false
     } else {
         digits_at_most_p(ds, string_chars(if negative {
-            str_lit("9223372036854775808")
+            str_lit!("9223372036854775808")
         } else {
-            str_lit("9223372036854775807")
+            str_lit!("9223372036854775807")
         }))
     }
 }
@@ -507,7 +507,7 @@ pub fn hex_value(mut cs: Chars, mut n: i64, mut file: Str, mut line: i64) -> i64
                 i64_plus(10i64, i64_minus(char_to_i64(c), 97i64))
             };
             if i64_lt(n, -576460752303423487i64) {
-                return match read_error(file, line, str_lit("a hex literal past an i64, which KFX reads not yet")) {};
+                return match read_error(file, line, str_lit!("a hex literal past an i64, which KFX reads not yet")) {};
             } else {
                 (cs, n) = (cdr(cs), i64_minus(i64_star(n, 16i64), d));
                 continue;
@@ -527,15 +527,15 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> kayak_rt::Handle<'s
         } else {
             ds
         };
-        if (null_p(ds) || not(only_of_p(ds, str_lit("0123456789abcdefABCDEF")))) {
-            match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
+        if (null_p(ds) || not(only_of_p(ds, str_lit!("0123456789abcdefABCDEF")))) {
+            match read_error(file, line, string_append(str_lit!("no number KFX reads: "), s)) {}
         } else {
             let n = hex_value(ds, 0i64, file, line);
             if negative {
                 num(n, file, pos)
             } else {
                 if i64_eq(n, -9223372036854775808i64) {
-                    match read_error(file, line, str_lit("a hex literal past an i64, which KFX reads not yet")) {}
+                    match read_error(file, line, str_lit!("a hex literal past an i64, which KFX reads not yet")) {}
                 } else {
                     num(i64_minus(0i64, n), file, pos)
                 }
@@ -549,7 +549,7 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> kayak_rt::Handle<'s
         cdr(cs)
     } else {
         cs
-    }, str_lit("0123456789.eE+-"))) {
+    }, str_lit!("0123456789.eE+-"))) {
         // Not a number, though a digit begins it (`1x`, `0x10`): a name, as
         // FX-26 reads it.
         sym(s, file, pos)
@@ -557,24 +557,24 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> kayak_rt::Handle<'s
         if exponent_real_p(cs) {
             real(s, file, pos)
         } else {
-            match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
+            match read_error(file, line, string_append(str_lit!("no number KFX reads: "), s)) {}
         }
     } else if has_char_p(cs, '.') {
         if (real_token_p(cs) && only_of_p(if char_eq_p(car(cs), '-') {
             cdr(cs)
         } else {
             cs
-        }, str_lit("0123456789."))) {
+        }, str_lit!("0123456789."))) {
             real(s, file, pos)
         } else {
-            match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
+            match read_error(file, line, string_append(str_lit!("no number KFX reads: "), s)) {}
         }
     } else if not(only_of_p(if char_eq_p(car(cs), '-') {
         cdr(cs)
     } else {
         cs
-    }, str_lit("0123456789"))) {
-        match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
+    }, str_lit!("0123456789"))) {
+        match read_error(file, line, string_append(str_lit!("no number KFX reads: "), s)) {}
     } else if not(fits_i64_p(cs)) {
         big(s, file, pos)
     } else if char_eq_p(car(cs), '-') {
@@ -631,33 +631,33 @@ pub fn char_named(s: Str, file: Str, line: i64) -> char {
         string_ref_i64(s, 0i64)
     } else {
         let n = list_to_string(ascii_lowered(string_chars(s)));
-        if string_eq_p(n, str_lit("space")) {
+        if string_eq_p(n, str_lit!("space")) {
             ' '
-        } else if (string_eq_p(n, str_lit("newline")) || string_eq_p(n, str_lit("linefeed")) || string_eq_p(n, str_lit("nl"))) {
+        } else if (string_eq_p(n, str_lit!("newline")) || string_eq_p(n, str_lit!("linefeed")) || string_eq_p(n, str_lit!("nl"))) {
             '\n'
-        } else if string_eq_p(n, str_lit("tab")) {
+        } else if string_eq_p(n, str_lit!("tab")) {
             '\t'
-        } else if string_eq_p(n, str_lit("return")) {
+        } else if string_eq_p(n, str_lit!("return")) {
             i64_to_char(13i64)
-        } else if (string_eq_p(n, str_lit("null")) || string_eq_p(n, str_lit("nul"))) {
+        } else if (string_eq_p(n, str_lit!("null")) || string_eq_p(n, str_lit!("nul"))) {
             i64_to_char(0i64)
-        } else if string_eq_p(n, str_lit("alarm")) {
+        } else if string_eq_p(n, str_lit!("alarm")) {
             i64_to_char(7i64)
-        } else if string_eq_p(n, str_lit("backspace")) {
+        } else if string_eq_p(n, str_lit!("backspace")) {
             i64_to_char(8i64)
-        } else if (string_eq_p(n, str_lit("delete")) || string_eq_p(n, str_lit("rubout"))) {
+        } else if (string_eq_p(n, str_lit!("delete")) || string_eq_p(n, str_lit!("rubout"))) {
             i64_to_char(127i64)
-        } else if (string_eq_p(n, str_lit("escape")) || string_eq_p(n, str_lit("altmode")) || string_eq_p(n, str_lit("esc"))) {
+        } else if (string_eq_p(n, str_lit!("escape")) || string_eq_p(n, str_lit!("altmode")) || string_eq_p(n, str_lit!("esc"))) {
             i64_to_char(27i64)
         } else if char_eq_p(string_ref_i64(n, 0i64), 'x') {
             let k = char_hex_value(cdr(string_chars(n)), 0i64);
             if (i64_lt(k, 0i64) || i64_gt(k, 1114111i64) || (i64_gt_eq(k, 55296i64) && i64_lt_eq(k, 57343i64))) {
-                match read_error(file, line, string_append(str_lit("bad character name `#\\"), string_append(s, str_lit("`")))) {}
+                match read_error(file, line, string_append(str_lit!("bad character name `#\\"), string_append(s, str_lit!("`")))) {}
             } else {
                 i64_to_char(k)
             }
         } else {
-            match read_error(file, line, string_append(str_lit("no character is named "), s)) {}
+            match read_error(file, line, string_append(str_lit!("no character is named "), s)) {}
         }
     }
 }
@@ -677,17 +677,17 @@ pub fn read_datum(h: kayak_rt::Handle<'static, Here>, text: Str, file: Str) -> k
                     }
                 }
             } else if char_eq_p(c, ')') {
-                match read_error(file, line, str_lit("a ) with no (")) {}
-            } else if (i64_eq(char_to_i64(c), 39i64) && not(null_p(cdr(cs))) && not(string_eq_p(file, str_lit("")))) {
+                match read_error(file, line, str_lit!("a ) with no (")) {}
+            } else if (i64_eq(char_to_i64(c), 39i64) && not(null_p(cdr(cs))) && not(string_eq_p(file, str_lit!("")))) {
                 // `'d`, FX-26's `(quote d)` (C56), in a program's text; in the
                 // checker's own (a file named ``), `'r` is a region binder's name.
                 let tagcase_ = read_datum(skip_at(cdr(cs), line, i64_plus(pos, 1i64)), text, file);
                 match *tagcase_ {
                     Got::Got(x, after) => {
-                        got(lst(kayak_rt::heap_cons(sym(str_lit("quote"), file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
+                        got(lst(kayak_rt::heap_cons(sym(str_lit!("quote"), file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
                     }
                 }
-            } else if ((i64_eq(char_to_i64(c), 96i64) || i64_eq(char_to_i64(c), 44i64)) && not(null_p(cdr(cs))) && not(string_eq_p(file, str_lit("")))) {
+            } else if ((i64_eq(char_to_i64(c), 96i64) || i64_eq(char_to_i64(c), 44i64)) && not(null_p(cdr(cs))) && not(string_eq_p(file, str_lit!("")))) {
                 // `` `d ``, `,d` and `,@d`: FX-26's `quasiquote`, `unquote` and
                 // `unquote-splicing` (C79), in a program's text.
                 let splice = (i64_eq(char_to_i64(c), 44i64) && char_eq_p(car(cdr(cs)), '@'));
@@ -697,11 +697,11 @@ pub fn read_datum(h: kayak_rt::Handle<'static, Here>, text: Str, file: Str) -> k
                     cdr(cs)
                 };
                 let head = if i64_eq(char_to_i64(c), 96i64) {
-                    str_lit("quasiquote")
+                    str_lit!("quasiquote")
                 } else if splice {
-                    str_lit("unquote-splicing")
+                    str_lit!("unquote-splicing")
                 } else {
-                    str_lit("unquote")
+                    str_lit!("unquote")
                 };
                 let tagcase_ = read_datum(skip_at(rest, line, i64_plus(pos, if splice {
                     2i64
@@ -713,13 +713,13 @@ pub fn read_datum(h: kayak_rt::Handle<'static, Here>, text: Str, file: Str) -> k
                         got(lst(kayak_rt::heap_cons(sym(head, file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
                     }
                 }
-            } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '(') && not(string_eq_p(file, str_lit("")))) {
+            } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '(') && not(string_eq_p(file, str_lit!("")))) {
                 // `#(d ...)`, a vector (C80): `(#vector d ...)`, a head no KFX name
                 // is, which only a quote takes.
                 let tagcase_ = read_items(here(cdr(cdr(cs)), line, i64_plus(pos, 2i64)), text, file);
                 match *tagcase_ {
                     Gots::Gots(xs, after) => {
-                        got(lst(kayak_rt::heap_cons(sym(str_lit("#vector"), file, pos), xs), file, line, pos), after)
+                        got(lst(kayak_rt::heap_cons(sym(str_lit!("#vector"), file, pos), xs), file, line, pos), after)
                     }
                 }
             } else if char_eq_p(c, '"') {
@@ -750,7 +750,7 @@ pub fn read_items(h: kayak_rt::Handle<'static, Here>, text: Str, file: Str) -> k
     match *tagcase_ {
         Here::Here(cs, line, pos) => {
             if null_p(cs) {
-                match read_error(file, line, str_lit("a ( with no )")) {}
+                match read_error(file, line, str_lit!("a ( with no )")) {}
             } else if char_eq_p(car(cs), ')') {
                 gots(nil::<kayak_rt::Handle<'static, Sexp>>(), here(cdr(cs), line, i64_plus(pos, 1i64)))
             } else {
@@ -967,7 +967,7 @@ pub fn datum_label_of(e: kayak_rt::Handle<'static, Sexp>, mark: Str) -> i64 {
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
             let k = string_length_i64(n);
-            if (i64_gt_eq(k, 3i64) && char_eq_p(string_ref_i64(n, 0i64), '#') && string_eq_p(substring(n, i64_to_int(i64_minus(k, 1i64)), i64_to_int(k)), mark) && only_of_p(string_chars(substring(n, int_lit(1), i64_to_int(i64_minus(k, 1i64)))), str_lit("0123456789"))) {
+            if (i64_gt_eq(k, 3i64) && char_eq_p(string_ref_i64(n, 0i64), '#') && string_eq_p(substring(n, i64_to_int(i64_minus(k, 1i64)), i64_to_int(k)), mark) && only_of_p(string_chars(substring(n, int_lit(1), i64_to_int(i64_minus(k, 1i64)))), str_lit!("0123456789"))) {
                 i64_minus(0i64, digits_value(string_chars(substring(n, int_lit(1), i64_to_int(i64_minus(k, 1i64)))), 0i64, f, 0i64))
             } else {
                 -1i64
@@ -987,7 +987,7 @@ pub fn labels_resolved(mut xs: Sexps, mut ls: kayak_rt::Handle<'static, Labels>,
         if null_p(xs) {
             return resolved(reverse(acc), ls);
         } else {
-            let (def, r#use) = (datum_label_of(car(xs), str_lit("=")), datum_label_of(car(xs), str_lit("#")));
+            let (def, r#use) = (datum_label_of(car(xs), str_lit!("=")), datum_label_of(car(xs), str_lit!("#")));
             if (i64_gt_eq(def, 0i64) && not(null_p(cdr(xs)))) {
                 let tagcase_ = datum_resolved(car(cdr(xs)), ls);
                 match *tagcase_ {
@@ -999,7 +999,7 @@ pub fn labels_resolved(mut xs: Sexps, mut ls: kayak_rt::Handle<'static, Labels>,
             } else if i64_gt_eq(r#use, 0i64) {
                 let found = lb_get(ls, r#use);
                 if null_p(found) {
-                    error(string_append(str_lit("kfx: no datum is labelled #"), string_append(i64_to_string(r#use), str_lit("="))));
+                    error(string_append(str_lit!("kfx: no datum is labelled #"), string_append(i64_to_string(r#use), str_lit!("="))));
                     return resolved(nil::<kayak_rt::Handle<'static, Sexp>>(), ls);
                 } else {
                     (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(found), acc));
@@ -1114,7 +1114,7 @@ pub fn sym_name(e: kayak_rt::Handle<'static, Sexp>) -> Str {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("kfx: a name is expected"))
+            error(str_lit!("kfx: a name is expected"))
         }
     }
 }
@@ -1142,7 +1142,7 @@ pub fn items(e: kayak_rt::Handle<'static, Sexp>) -> Sexps {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("kfx: a list is expected"))
+            error(str_lit!("kfx: a list is expected"))
         }
     }
 }
@@ -1167,7 +1167,7 @@ pub fn without_conv(t: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'sta
     let tagcase_ = t;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            if (head_is_p(t, str_lit("subr")) && i64_eq(size(xs), 5i64) && head_is_p(car(cdr(xs)), str_lit("conv"))) {
+            if (head_is_p(t, str_lit!("subr")) && i64_eq(size(xs), 5i64) && head_is_p(car(cdr(xs)), str_lit!("conv"))) {
                 lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p)
             } else {
                 t
@@ -1203,7 +1203,7 @@ pub fn generative_core(f: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'
     let tagcase_ = f;
     match *tagcase_ {
         Sexp::Lst(xs, fl, l, p) => {
-            if (head_is_p(f, str_lit("define-generative")) && i64_gt(size(xs), 3i64)) {
+            if (head_is_p(f, str_lit!("define-generative")) && i64_gt(size(xs), 3i64)) {
                 lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), fl, l, p)
             } else {
                 f
@@ -1221,7 +1221,7 @@ pub fn generative_core(f: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'
 pub fn keyed_name(mut xs: Sexps, mut k: Str) -> Str {
     loop {
         if (null_p(xs) || null_p(cdr(xs))) {
-            return str_lit("");
+            return str_lit!("");
         } else if (sym_is_p(car(xs), k) && {
             let tagcase_ = second(xs);
             match *tagcase_ {
@@ -1249,12 +1249,12 @@ pub fn generative_named(f: kayak_rt::Handle<'static, Sexp>, k: Str) -> Str {
             if i64_gt(size(xs), 3i64) {
                 keyed_name(cdr(cdr(cdr(xs))), k)
             } else {
-                str_lit("")
+                str_lit!("")
             }
         }
         _ => {
             let other = tagcase_;
-            str_lit("")
+            str_lit!("")
         }
     }
 }
@@ -1262,13 +1262,13 @@ pub fn generative_named(f: kayak_rt::Handle<'static, Sexp>, k: Str) -> Str {
 /// A `define-generative`'s conversion into its type, `#:seal`'s name.
 #[inline]
 pub fn generative_seal(f: kayak_rt::Handle<'static, Sexp>) -> Str {
-    generative_named(f, str_lit("#:seal"))
+    generative_named(f, str_lit!("#:seal"))
 }
 
 /// Its conversion out of it, `#:unseal`'s.
 #[inline]
 pub fn generative_unseal(f: kayak_rt::Handle<'static, Sexp>) -> Str {
-    generative_named(f, str_lit("#:unseal"))
+    generative_named(f, str_lit!("#:unseal"))
 }
 
 /// A lambda's parameter's name: it is `x` or `(x T)`.
@@ -1290,6 +1290,6 @@ pub fn param_name(param: kayak_rt::Handle<'static, Sexp>) -> Str {
 
 #[inline]
 pub fn lambda_form_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
-    (head_is_p(e, str_lit("lambda")) || head_is_p(e, str_lit("plambda")))
+    (head_is_p(e, str_lit!("lambda")) || head_is_p(e, str_lit!("plambda")))
 }
 

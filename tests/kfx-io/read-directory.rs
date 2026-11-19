@@ -7,7 +7,7 @@ use kayak_rt::*;
 // is not a regular file could wait on another program.
 #[inline]
 pub fn said(s: Str) -> () {
-    let tagcase_ = write_out(string_append(s, str_lit("\n")));
+    let tagcase_ = write_out(string_append(s, str_lit!("\n")));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -19,11 +19,11 @@ pub fn said(s: Str) -> () {
 }
 
 pub fn main() -> Int {
-    let tagcase_ = read_file(str_lit("."));
+    let tagcase_ = read_file(str_lit!("."));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("data") } {
         let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-        said(str_lit("read"));
+        said(str_lit!("read"));
         int_lit(1)
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
@@ -32,10 +32,10 @@ pub fn main() -> Int {
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("is-a-directory") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                str_lit("is-a-directory")
+                str_lit!("is-a-directory")
             } else {
                 let k = tagcase_;
-                str_lit("other")
+                str_lit!("other")
             }
         });
         said(e.1);

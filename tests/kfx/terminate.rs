@@ -150,11 +150,11 @@ pub fn od_p(n: Int) -> bool {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(len(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))), string_append(str_lit(" "), string_append(int_to_string(count(int_lit(5))), string_append(str_lit(" "), string_append(int_to_string(sum_to(int_lit(10))), string_append(str_lit(" "), string_append(int_to_string(total(node(leaf(int_lit(1)), node(leaf(int_lit(2)), leaf(int_lit(3)))))), string_append(str_lit(" "), string_append(int_to_string(ack(int_lit(2), int_lit(3))), string_append(str_lit(" "), string_append(if ev_p(int_lit(10)) {
-        str_lit("even")
+    string_append(int_to_string(len(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))), string_append(str_lit!(" "), string_append(int_to_string(count(int_lit(5))), string_append(str_lit!(" "), string_append(int_to_string(sum_to(int_lit(10))), string_append(str_lit!(" "), string_append(int_to_string(total(node(leaf(int_lit(1)), node(leaf(int_lit(2)), leaf(int_lit(3)))))), string_append(str_lit!(" "), string_append(int_to_string(ack(int_lit(2), int_lit(3))), string_append(str_lit!(" "), string_append(if ev_p(int_lit(10)) {
+        str_lit!("even")
     } else {
-        str_lit("odd")
-    }, string_append(str_lit(" "), int_to_string(len(map_pure(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: i64| {
+        str_lit!("odd")
+    }, string_append(str_lit!(" "), int_to_string(len(map_pure(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: i64| {
         i64_star(x, 2i64)
     })), kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil())))))))))))))))))))
 }

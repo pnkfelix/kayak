@@ -89,6 +89,6 @@ pub fn in_a_branch(a: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(in_a_list(true)), string_append(str_lit(" "), string_append(i64_to_string(in_a_list(false)), string_append(str_lit(" "), string_append(i64_to_string(in_a_product()), string_append(str_lit(" "), string_append(i64_to_string(in_a_branch(1i64)), string_append(str_lit(" "), i64_to_string(in_a_branch(99i64))))))))))
+    string_append(i64_to_string(in_a_list(true)), string_append(str_lit!(" "), string_append(i64_to_string(in_a_list(false)), string_append(str_lit!(" "), string_append(i64_to_string(in_a_product()), string_append(str_lit!(" "), string_append(i64_to_string(in_a_branch(1i64)), string_append(str_lit!(" "), i64_to_string(in_a_branch(99i64))))))))))
 }
 

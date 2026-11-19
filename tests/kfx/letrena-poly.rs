@@ -22,6 +22,6 @@ pub fn second_of<A: Copy + 'static + kayak_rt::Trace>(x: A, y: A) -> A {
 
 #[inline]
 pub fn main() -> Str {
-    string_append(i64_to_string(second_of(the::<i64>(1i64), the::<i64>(2i64))), second_of(str_lit("a"), str_lit("b")))
+    string_append(i64_to_string(second_of(the::<i64>(1i64), the::<i64>(2i64))), second_of(str_lit!("a"), str_lit!("b")))
 }
 

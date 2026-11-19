@@ -133,7 +133,7 @@ pub fn rpadded(mut s: Str, mut n: i64) -> Str {
         if i64_gt_eq(string_length_i64(s), n) {
             return s;
         } else {
-            s = string_append(str_lit(" "), s);
+            s = string_append(str_lit!(" "), s);
             continue;
         }
     }
@@ -141,7 +141,7 @@ pub fn rpadded(mut s: Str, mut n: i64) -> Str {
 
 #[inline]
 pub fn rline(at: i64, text: Str) -> Str {
-    string_append(str_lit("  "), string_append(rpadded(i64_to_string(at), 6i64), string_append(str_lit(": "), text)))
+    string_append(str_lit!("  "), string_append(rpadded(i64_to_string(at), 6i64), string_append(str_lit!(": "), text)))
 }
 
 // An operand as register code lists it: a word as a constant, as its
@@ -153,7 +153,7 @@ pub fn ropnd_text(o: kayak_rt::Handle<'static, Opnd>) -> Str {
             let tagcase_ = l;
             match *tagcase_ {
                 Lit::LWord(w) => {
-                    string_append(str_lit("#word \""), string_append(shown_name(w), str_lit("\"")))
+                    string_append(str_lit!("#word \""), string_append(shown_name(w), str_lit!("\"")))
                 }
                 _ => {
                     let y = tagcase_;
@@ -169,13 +169,13 @@ pub fn ropnd_text(o: kayak_rt::Handle<'static, Opnd>) -> Str {
 }
 
 pub fn rop_text(name: Str, os: List<kayak_rt::Handle<'static, Opnd>>) -> Str {
-    if string_eq_p(name, str_lit("lambda")) {
-        string_append(str_lit("lambda "), string_append(opnd_text(car(os)), string_append(str_lit(" over "), opnd_text(second_opnd(os)))))
+    if string_eq_p(name, str_lit!("lambda")) {
+        string_append(str_lit!("lambda "), string_append(opnd_text(car(os)), string_append(str_lit!(" over "), opnd_text(second_opnd(os)))))
     } else {
         if null_p(os) {
             name
         } else {
-            string_append(name, string_append(str_lit(" "), put_sep_words(map(kayak_rt::as_proc(ropnd_text), os))))
+            string_append(name, string_append(str_lit!(" "), put_sep_words(map(kayak_rt::as_proc(ropnd_text), os))))
         }
     }
 }
@@ -200,15 +200,15 @@ pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'sta
                     continue;
                 }
                 Ritem::RiFrame(name) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit(" "), i64_to_string(frame)))), out));
+                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit!(" "), i64_to_string(frame)))), out));
                     continue;
                 }
                 Ritem::RiBranch(name, n) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit(" → "), i64_to_string(place_at(ps, n))))), out));
+                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit!(" → "), i64_to_string(place_at(ps, n))))), out));
                     continue;
                 }
                 Ritem::RiGuard(g, w, n) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(str_lit("global-guard "), string_append(g, string_append(str_lit(" written "), string_append(i64_to_string(w), string_append(str_lit(" else → "), i64_to_string(place_at(ps, n)))))))), out));
+                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(str_lit!("global-guard "), string_append(g, string_append(str_lit!(" written "), string_append(i64_to_string(w), string_append(str_lit!(" else → "), i64_to_string(place_at(ps, n)))))))), out));
                     continue;
                 }
                 Ritem::RiOp(name, os) => {
@@ -288,10 +288,10 @@ pub fn rcode_line_table(rc: kayak_rt::Handle<'static, Rcode>) -> Str {
     match *tagcase_ {
         Rcode::Rcode(xs, frame) => {
             let es = entries_shown(rtable_entries(xs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()), nil::<Str>());
-            if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
-                str_lit("")
+            if (null_p(es) || string_eq_p(get(cg_source()), str_lit!(""))) {
+                str_lit!("")
             } else {
-                string_append(str_lit("; regs at "), string_append(get(cg_source()), string_append(str_lit(" "), string_append(spaced(es), str_lit("\n")))))
+                string_append(str_lit!("; regs at "), string_append(get(cg_source()), string_append(str_lit!(" "), string_append(spaced(es), str_lit!("\n")))))
             }
         }
     }
@@ -306,7 +306,7 @@ pub fn rcode_said(rc: kayak_rt::Handle<'static, Rcode>) -> kayak_rt::Handle<'sta
             let tagcase_ = rlines_of(xs, 0i64, rplaces_of(xs, 0i64, nil::<kayak_rt::Handle<'static, LabelAt>>()), frame, nil::<Str>(), nil::<Str>());
             match *tagcase_ {
                 Wsaid::Wsaid(text, named) => {
-                    wsaid(string_append(str_lit("  its register code ("), string_append(i64_to_string(ritems_size(xs, 0i64)), string_append(str_lit(" cells, not compiled):\n"), text))), named)
+                    wsaid(string_append(str_lit!("  its register code ("), string_append(i64_to_string(ritems_size(xs, 0i64)), string_append(str_lit!(" cells, not compiled):\n"), text))), named)
                 }
             }
         }

@@ -14805,3 +14805,36 @@ opaque block; the stack and reachable bytes as C480 found them.
 - **The full check**: all passed in 316.1 s, its fifth run (the first
   four stopped at clippy, lang items, Fixpt's programs and the async
   check, each above); nextest 5603.
+
+## C482. A string as Fixpt's object: one word, self-describing (2026-11-18)
+
+The user, on C481's next step (strings, as FX-26's grammar has them):
+"self-describing in an unsafe strings module. But it isn't just strings;
+why not just handle all bloblets this way?" Asked first because safe Rust
+allocates no object of a size known at run time whose bytes follow its
+header, and kayak-rt had `unsafe` only in `sum.rs` (and C480's census).
+Strings here; the other bloblet-shaped objects next, the same way.
+
+What changed:
+- **kayak-rt's `obj.rs`** (`unsafe` allowed, as `sum.rs`): an object as
+  Fixpt's `fixpt-heap` lays it, a header word (`kayak_jit::layout::
+  header`: kind, fields, suffix's bytes, frozen bits), its fields, a
+  trailer word (its distance back), its suffix. `Str` is one word to a
+  string's object (kind 1, no fields, frozen, the text the suffix),
+  `Send + Sync` (never written after it is made, nor freed); its text
+  checked UTF-8 when made. Made by bumping in chunks of words, as C364's
+  strings were. Its trailer keeps whether the text is ASCII (bit 62):
+  the trailer's payload is the runtime's (`docs/object-model.md`), and
+  Fixpt's keeps the distance alone, so a gap, in TODO §54.
+- **Literals**: `str_lit!("...")`, a `static` of the object's words made
+  at compile time (`StrLit<W>`); the emitters (kfx's, and kc's Rust back
+  end) write it. `str_lit(&str)`, a function still, makes a string now,
+  for kayak-rt's hand-written Rust.
+- **Tests**: a literal and a made string alike; one not UTF-8 refused.
+
+Measured, the 1000-procedure bench: an edit's build 0.27 to 0.28 s, as
+before; a cold build 0.63 s (C481: 0.69); an edit's build allocates
+137 MB (155); at each census mark, values reachable 25% fewer bytes
+(5.7 MB, not 7.8, at the second); the deepest stack 89,311 words
+(142,547). kc's binary 8.91 MB (C481: 7.73): a `static` a literal.
+- **The full check**: all passed in 521.5 s, its first run; nextest 5605.

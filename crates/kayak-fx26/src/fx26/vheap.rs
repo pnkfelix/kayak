@@ -456,7 +456,7 @@ pub fn header_at(v: i64) -> i64 {
 pub fn bump_x(n: i64) -> i64 {
     let at = get(heap_top());
     if i64_gt(i64_plus(at, n), get(limit())) {
-        error(str_lit("the engine's heap: a step allocated past the room it was given"));
+        error(str_lit!("the engine's heap: a step allocated past the room it was given"));
         0i64
     } else {
         set(heap_top(), i64_plus(at, n));
@@ -645,7 +645,7 @@ pub fn collect_x(roots: FlatArray<i64>, globals: FlatArray<i64>, consts: FlatArr
 pub fn names() -> Ref<Array<Str>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(make_array(int_lit(64), str_lit("")))
+        kayak_rt::heap_new(make_array(int_lit(64), str_lit!("")))
     })
 }
 
@@ -690,7 +690,7 @@ pub fn intern_x(s: Str) -> i64 {
     } else {
         let n = get(name_count());
         if i64_gt_eq(n, int_to_i64(array_length(get(names())))) {
-            let bigger = the::<Array<Str>>(make_array(i64_to_int(i64_star(n, 2i64)), str_lit("")));
+            let bigger = the::<Array<Str>>(make_array(i64_to_int(i64_star(n, 2i64)), str_lit!("")));
             names_copied_x(get(names()), bigger, 0i64, n);
             set(names(), bigger)
         } else {

@@ -9,11 +9,11 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 
@@ -54,17 +54,17 @@ pub fn main() -> Str {
     let huge = power(int_lit(10), int_lit(40));
     let odd = _plus(power(int_lit(2), int_lit(70)), int_lit(12345));
     words(kayak_rt::heap_cons(int_to_string(big), kayak_rt::heap_cons(int_to_string(fib(int_lit(150), int_lit(0), int_lit(1))), kayak_rt::heap_cons(int_to_string(power(int_lit(2), int_lit(100))), kayak_rt::heap_cons(int_to_string(power(int_lit(-3), int_lit(41))), kayak_rt::heap_cons(int_to_string(quotient(huge, odd)), kayak_rt::heap_cons(int_to_string(remainder(huge, odd)), kayak_rt::heap_cons(int_to_string(remainder(_minus(int_lit(0), huge), int_lit(7))), kayak_rt::heap_cons(int_to_string(modulo(_minus(int_lit(0), huge), int_lit(7))), kayak_rt::heap_cons(int_to_string(quotient(int_lit(-7), int_lit(2))), kayak_rt::heap_cons(int_to_string(remainder(int_lit(-7), int_lit(2))), kayak_rt::heap_cons(int_to_string(modulo(int_lit(-7), int_lit(2))), kayak_rt::heap_cons(int_to_string(modulo(int_lit(7), int_lit(-2))), kayak_rt::heap_cons(i64_to_string(int_to_i64(_plus(power(int_lit(2), int_lit(64)), n))), kayak_rt::heap_cons(i64_to_string(int_to_i64(power(int_lit(2), int_lit(63)))), kayak_rt::heap_cons(int_to_string(i64_to_int(9223372036854775807i64)), kayak_rt::heap_cons(if _lt(power(int_lit(2), int_lit(63)), power(int_lit(2), int_lit(64))) {
-        str_lit("<")
+        str_lit!("<")
     } else {
-        str_lit("not <")
+        str_lit!("not <")
     }, kayak_rt::heap_cons(if _eq(_minus(power(int_lit(2), int_lit(64)), power(int_lit(2), int_lit(64))), int_lit(0)) {
-        str_lit("=0")
+        str_lit!("=0")
     } else {
-        str_lit("not =0")
+        str_lit!("not =0")
     }, kayak_rt::heap_cons(if _gt(_minus(int_lit(0), power(int_lit(2), int_lit(64))), _minus(int_lit(0), power(int_lit(2), int_lit(65)))) {
-        str_lit(">")
+        str_lit!(">")
     } else {
-        str_lit("not >")
+        str_lit!("not >")
     }, kayak_rt::heap_cons(int_to_string(_star(n, n)), kayak_rt::nil()))))))))))))))))))))
 }
 

@@ -54,7 +54,7 @@ pub fn live() -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answe
                     Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("text") }, "text", s))
                 } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                     let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                    Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit("not UTF-8")))
+                    Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit!("not UTF-8")))
                 } else { unreachable!() }
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);

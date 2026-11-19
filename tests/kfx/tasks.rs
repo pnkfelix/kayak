@@ -114,9 +114,9 @@ pub async fn pinger(mut who: i64, mut n: i64) -> Result<(), Unwind> {
 #[inline]
 pub fn show(xs: List<i64>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(i64_to_string(car(xs)), string_append(str_lit(" "), show(cdr(xs))))
+        string_append(i64_to_string(car(xs)), string_append(str_lit!(" "), show(cdr(xs))))
     }
 }
 

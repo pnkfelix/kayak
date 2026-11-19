@@ -72,7 +72,7 @@ pub mod incremental {
         let tagcase_ = x;
         match *tagcase_ {
             Typed::Typed(n, t) => {
-                string_append(n, string_append(str_lit(" "), show_sexp(t)))
+                string_append(n, string_append(str_lit!(" "), show_sexp(t)))
             }
         }
     }
@@ -82,27 +82,27 @@ pub mod incremental {
     /// hidden item's, marked; not a body (C91).
     pub fn item_signature(f: kayak_rt::Handle<'static, Sexp>) -> Strings {
         let xs = items(f);
-        if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
+        if (head_is_p(f, str_lit!("define")) || head_is_p(f, str_lit!("define*"))) {
             if module_def_p(f) {
-                kayak_rt::heap_cons(string_append(str_lit("module "), show_sexp(second(xs))), concat(map(kayak_rt::as_proc(item_signature), module_written(f))))
+                kayak_rt::heap_cons(string_append(str_lit!("module "), show_sexp(second(xs))), concat(map(kayak_rt::as_proc(item_signature), module_written(f))))
             } else {
                 the::<Strings>(kayak_rt::heap_cons(string_append(show_sexp(second(xs)), string_append(if i64_eq(size(xs), 4i64) {
                     show_sexp(third(xs))
                 } else {
-                    str_lit("?")
+                    str_lit!("?")
                 }, if lambda_form_p(last(xs)) {
-                    str_lit(" lambda")
+                    str_lit!(" lambda")
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 })), kayak_rt::nil()))
             }
-        } else if head_is_p(f, str_lit("define-rec")) {
+        } else if head_is_p(f, str_lit!("define-rec")) {
             map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                 string_append(show_sexp(car(items(b))), show_sexp(second(items(b))))
             })), cdr(xs))
-        } else if head_is_p(f, str_lit("hide")) {
+        } else if head_is_p(f, str_lit!("hide")) {
             map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
-                string_append(str_lit("hidden "), x)
+                string_append(str_lit!("hidden "), x)
             })), concat(map(kayak_rt::as_proc(item_signature), cdr(xs))))
         } else if {
             let tagcase_ = f;
@@ -129,7 +129,7 @@ pub mod incremental {
         let tagcase_ = x;
         match *tagcase_ {
             Typed::Typed(n, t) => {
-                if head_is_p(t, str_lit("module")) {
+                if head_is_p(t, str_lit!("module")) {
                     kayak_rt::heap_cons(n, concat(map(kayak_rt::as_proc(item_signature), cdr(items(t)))))
                 } else {
                     the::<Strings>(kayak_rt::heap_cons(typed_text(x), kayak_rt::nil()))
@@ -149,7 +149,7 @@ pub mod incremental {
                 match *tagcase_ {
                     Fact::Fact(f, p, w) => {
                         if (i64_gt_eq(p, start) && i64_lt(p, end)) {
-                            return kayak_rt::heap_cons(string_append(i64_to_string(i64_minus(p, start)), string_append(str_lit(" "), w)), facts_text(cdr(fs), start, end));
+                            return kayak_rt::heap_cons(string_append(i64_to_string(i64_minus(p, start)), string_append(str_lit!(" "), w)), facts_text(cdr(fs), start, end));
                         } else {
                             fs = cdr(fs);
                             continue;
@@ -171,11 +171,11 @@ pub mod incremental {
                 return emitted(acc, made);
             } else if comment_p(car(its)) {
                 let doc = (not(null_p(cdr(its))) && definition_p(second(its)));
-                let acc = put_comment(string_chars(comment_text(car(its))), str_lit("//"), 0i64, true, acc);
+                let acc = put_comment(string_chars(comment_text(car(its))), str_lit!("//"), 0i64, true, acc);
                 return put_items_memo(c, fs, global, old, cdr(its), text, start, end, put(if doc {
-                    str_lit("\n")
+                    str_lit!("\n")
                 } else {
-                    str_lit("\n\n")
+                    str_lit!("\n\n")
                 }, acc), made);
             } else {
                 let p = datum_pos(car(its));
@@ -226,25 +226,25 @@ pub mod incremental {
         let tagcase_ = c;
         match *tagcase_ {
             Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("tags"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: kayak_rt::Handle<'static, Tagof>| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("tags"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: kayak_rt::Handle<'static, Tagof>| {
                     let tagcase_ = t;
                     match *tagcase_ {
                         Tagof::Tagof(n, d) => {
-                            string_append(n, string_append(str_lit(" "), d))
+                            string_append(n, string_append(str_lit!(" "), d))
                         }
                     }
-                })), ts)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("constants"), ks), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("locals"), ls), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("typeds"), map(kayak_rt::as_proc(typed_text), xs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("families"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Family>| {
+                })), ts)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("constants"), ks), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("locals"), ls), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("typeds"), map(kayak_rt::as_proc(typed_text), xs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("families"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Family>| {
                     let tagcase_ = f;
                     match *tagcase_ {
                         Family::Family(n, d, kinds) => {
                             string_append(n, string_append(if d {
-                                str_lit(" datatype ")
+                                str_lit!(" datatype ")
                             } else {
-                                str_lit(" ")
+                                str_lit!(" ")
                             }, words_of(kinds)))
                         }
                     }
-                })), ms)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(kayak_rt::as_proc(typed_text), es)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("modules"), concat(map(kayak_rt::as_proc(module_entry_strings), mods))), kayak_rt::nil()))))))))), fnv_offset())
+                })), ms)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("effects"), map(kayak_rt::as_proc(typed_text), es)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("modules"), concat(map(kayak_rt::as_proc(module_entry_strings), mods))), kayak_rt::nil()))))))))), fnv_offset())
             }
         }
     }
@@ -258,16 +258,16 @@ pub mod incremental {
         match *tagcase_ {
             Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 ereads(entries_put(concat(kayak_rt::heap_cons(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
-                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("datatype"), kayak_rt::nil())))
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit!("datatype"), kayak_rt::nil())))
                 })), ds), kayak_rt::heap_cons(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: kayak_rt::Handle<'static, Tagof>| {
                     let tagcase_ = t;
                     match *tagcase_ {
                         Tagof::Tagof(n, d) => {
-                            the::<List<Strings>>(kayak_rt::heap_cons(kayak_rt::heap_cons(n, kayak_rt::heap_cons(string_append(str_lit("tag "), d), kayak_rt::nil())), kayak_rt::heap_cons(kayak_rt::heap_cons(d, kayak_rt::heap_cons(string_append(str_lit("has "), n), kayak_rt::nil())), kayak_rt::nil())))
+                            the::<List<Strings>>(kayak_rt::heap_cons(kayak_rt::heap_cons(n, kayak_rt::heap_cons(string_append(str_lit!("tag "), d), kayak_rt::nil())), kayak_rt::heap_cons(kayak_rt::heap_cons(d, kayak_rt::heap_cons(string_append(str_lit!("has "), n), kayak_rt::nil())), kayak_rt::nil())))
                         }
                     }
                 })), ts)), kayak_rt::heap_cons(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
-                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit("constant"), kayak_rt::nil())))
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit!("constant"), kayak_rt::nil())))
                 })), ks), kayak_rt::heap_cons(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Typed>| {
                     let tagcase_ = x;
                     match *tagcase_ {
@@ -280,9 +280,9 @@ pub mod incremental {
                     match *tagcase_ {
                         Family::Family(n, d, kinds) => {
                             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(string_append(if d {
-                                str_lit("datatype ")
+                                str_lit!("datatype ")
                             } else {
-                                str_lit("family ")
+                                str_lit!("family ")
                             }, words_of(kinds)), kayak_rt::nil())))
                         }
                     }
@@ -290,7 +290,7 @@ pub mod incremental {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Typed::Typed(n, t) => {
-                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(string_append(str_lit("effect "), typed_text(x)), kayak_rt::nil())))
+                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::heap_cons(string_append(str_lit!("effect "), typed_text(x)), kayak_rt::nil())))
                         }
                     }
                 })), es), kayak_rt::heap_cons(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Typed>| {
@@ -303,7 +303,7 @@ pub mod incremental {
                             })), split_words(n))
                         }
                     }
-                })), mods)), kayak_rt::nil())))))))), fm_none()), fnv_strings(kayak_rt::heap_cons(str_lit("locals"), ls), h))
+                })), mods)), kayak_rt::nil())))))))), fm_none()), fnv_strings(kayak_rt::heap_cons(str_lit!("locals"), ls), h))
             }
         }
     }
@@ -391,11 +391,11 @@ pub mod incremental {
                 return emitted(acc, made);
             } else if comment_p(car(forms)) {
                 let doc = (not(null_p(cdr(forms))) && definition_p(second(forms)));
-                let acc = put_comment(string_chars(comment_text(car(forms))), str_lit("//"), 0i64, true, acc);
+                let acc = put_comment(string_chars(comment_text(car(forms))), str_lit!("//"), 0i64, true, acc);
                 return put_tops_memo(c, fs, global, old, cdr(forms), cdr(texts), cdr(starts), put(if doc {
-                    str_lit("\n")
+                    str_lit!("\n")
                 } else {
-                    str_lit("\n\n")
+                    str_lit!("\n\n")
                 }, acc), made);
             } else if module_def_p(car(forms)) {
                 // A module (C91): its items each with a memo of its own, in the
@@ -413,7 +413,7 @@ pub mod incremental {
                         let tagcase_ = put_items_memo(inner, fs, emit_reads(inner, fnv_strings(concat(map(kayak_rt::as_proc(item_signature), module_written(car(forms)))), fnv_string(m, fnv_offset()))), old, its, car(texts), start, end, nil::<char>(), made);
                         match *tagcase_ {
                             Emitted::Emitted(body, made2) => {
-                                let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
+                                let body = if string_member_p(str_lit!("%toplevel"), ctx_locals(c)) {
                                     put_show_generatives(its, body)
                                 } else {
                                     body

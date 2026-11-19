@@ -12,9 +12,9 @@ use super::*;
 /// 4), here; within data, those two as tier 1 sees them.
 pub fn show_word(w: i64) -> Str {
     if (immediate_p(w) && i64_eq(immediate_kind(w), imm_prim())) {
-        str_lit("#<procedure>")
+        str_lit!("#<procedure>")
     } else if is_obj_p(w, ob_ctor()) {
-        str_lit("#<procedure>")
+        str_lit!("#<procedure>")
     } else {
         written(w)
     }

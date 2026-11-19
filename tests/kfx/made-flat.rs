@@ -8,7 +8,7 @@ use kayak_rt::*;
 // code, the answer it would give.
 #[inline]
 pub fn here_p() -> bool {
-    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
+    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit!("(target arm64)")))
 }
 
 pub mod made__load__0__fx26_arm64 {
@@ -843,9 +843,9 @@ pub fn main() -> Str {
         int_lit(42)
     };
     string_append(if here_p() {
-        str_lit("native ")
+        str_lit!("native ")
     } else {
-        str_lit("interpreted ")
-    }, string_append(int_to_string(r), string_append(str_lit(" "), i64_to_string(flatarray_ref_i64(a, 2i64)))))
+        str_lit!("interpreted ")
+    }, string_append(int_to_string(r), string_append(str_lit!(" "), i64_to_string(flatarray_ref_i64(a, 2i64)))))
 }
 

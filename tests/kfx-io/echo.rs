@@ -7,7 +7,7 @@ use kayak_rt::*;
 // sees, `invalid-data`; at the end, the count of lines, which is the status.
 #[inline]
 pub fn said(n: Int, s: Str) -> () {
-    let tagcase_ = write_out(string_append(int_to_string(n), string_append(str_lit(": "), string_append(s, str_lit("\n")))));
+    let tagcase_ = write_out(string_append(int_to_string(n), string_append(str_lit!(": "), string_append(s, str_lit!("\n")))));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -37,10 +37,10 @@ pub fn echo(mut n: Int) -> Int {
                 let tag_ = kayak_rt::sum_tag(tagcase_);
                 if tag_ == const { kayak_rt::tag_hash("invalid-data") } {
                     let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                    str_lit("bad")
+                    str_lit!("bad")
                 } else {
                     let k = tagcase_;
-                    str_lit("?")
+                    str_lit!("?")
                 }
             });
             n = _plus(n, int_lit(1));

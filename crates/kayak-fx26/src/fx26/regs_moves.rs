@@ -156,17 +156,17 @@ pub type Rlocs = List<kayak_rt::Handle<'static, Rloc>>;
 // inlined, and so not inlined again inside it.
 #[inline]
 pub fn genv_name() -> Str {
-    str_lit("%genv")
+    str_lit!("%genv")
 }
 
 #[inline]
 pub fn const_name(g: Str) -> Str {
-    string_append(str_lit("%const:"), g)
+    string_append(str_lit!("%const:"), g)
 }
 
 #[inline]
 pub fn inlining_name(g: Str) -> Str {
-    string_append(str_lit("%inlining:"), g)
+    string_append(str_lit!("%inlining:"), g)
 }
 
 pub enum Rbind {
@@ -281,9 +281,9 @@ pub fn move_item(m: kayak_rt::Handle<'static, Rmove>) -> kayak_rt::Handle<'stati
     match *tagcase_ {
         Rmove::Rmove(s, d) => {
             if i64_eq(s, 0i64) {
-                ri_op(str_lit("setreg"), kayak_rt::heap_cons(o_int(d), kayak_rt::nil()))
+                ri_op(str_lit!("setreg"), kayak_rt::heap_cons(o_int(d), kayak_rt::nil()))
             } else {
-                ri_op(str_lit("movereg"), kayak_rt::heap_cons(o_int(s), kayak_rt::heap_cons(o_int(d), kayak_rt::nil())))
+                ri_op(str_lit!("movereg"), kayak_rt::heap_cons(o_int(s), kayak_rt::heap_cons(o_int(d), kayak_rt::nil())))
             }
         }
     }
@@ -367,7 +367,7 @@ pub fn par_move_items(mut ms: Rmoves, mut acc: Ritems) -> Ritems {
                 continue;
             } else {
                 let d = move_to(car(ms));
-                (ms, acc) = (reread(ms, d), kayak_rt::heap_cons(ri_op(str_lit("reg"), kayak_rt::heap_cons(o_int(d), kayak_rt::nil())), acc));
+                (ms, acc) = (reread(ms, d), kayak_rt::heap_cons(ri_op(str_lit!("reg"), kayak_rt::heap_cons(o_int(d), kayak_rt::nil())), acc));
                 continue;
             }
         }

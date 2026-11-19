@@ -9,27 +9,27 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 
 pub fn main() -> Str {
     words(kayak_rt::heap_cons(i64_to_string(i64_plus(9223372036854775807i64, 1i64)), kayak_rt::heap_cons(i64_to_string(i64_minus(-9223372036854775808i64, 1i64)), kayak_rt::heap_cons(i64_to_string(i64_star(4611686018427387904i64, 4i64)), kayak_rt::heap_cons(i64_to_string(i64_quotient(-9223372036854775808i64, -1i64)), kayak_rt::heap_cons(i64_to_string(i64_quotient(-7i64, 2i64)), kayak_rt::heap_cons(i64_to_string(i64_quotient(7i64, -2i64)), kayak_rt::heap_cons(i64_to_string(i64_remainder(-7i64, 2i64)), kayak_rt::heap_cons(i64_to_string(i64_remainder(-9223372036854775808i64, -1i64)), kayak_rt::heap_cons(i64_to_string(i64_and(12i64, 10i64)), kayak_rt::heap_cons(i64_to_string(i64_or(12i64, 10i64)), kayak_rt::heap_cons(i64_to_string(i64_xor(12i64, 10i64)), kayak_rt::heap_cons(i64_to_string(i64_not(0i64)), kayak_rt::heap_cons(if i64_lt_eq(3i64, 3i64) {
-        str_lit("<=")
+        str_lit!("<=")
     } else {
-        str_lit("not <=")
+        str_lit!("not <=")
     }, kayak_rt::heap_cons(if i64_gt_eq(2i64, 3i64) {
-        str_lit(">=")
+        str_lit!(">=")
     } else {
-        str_lit("not >=")
+        str_lit!("not >=")
     }, kayak_rt::heap_cons(if i64_gt(4i64, 3i64) {
-        str_lit(">")
+        str_lit!(">")
     } else {
-        str_lit("not >")
+        str_lit!("not >")
     }, kayak_rt::nil()))))))))))))))))
 }
 

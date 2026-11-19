@@ -39,15 +39,15 @@ pub fn total(xs: Ints) -> i64 {
 
 pub fn show(xs: Ints) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         i64_to_string(car(xs))
     } else {
-        string_append(i64_to_string(car(xs)), string_append(str_lit(" "), show(cdr(xs))))
+        string_append(i64_to_string(car(xs)), string_append(str_lit!(" "), show(cdr(xs))))
     }
 }
 
 pub fn main() -> Str {
-    string_append(show(rev_onto(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))), nil::<i64>())), string_append(str_lit(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit(" | "), list_to_string(the::<Chars>(kayak_rt::heap_cons('o', kayak_rt::heap_cons('k', kayak_rt::nil()))))))))
+    string_append(show(rev_onto(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))), nil::<i64>())), string_append(str_lit!(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit!(" | "), list_to_string(the::<Chars>(kayak_rt::heap_cons('o', kayak_rt::heap_cons('k', kayak_rt::nil()))))))))
 }
 

@@ -13,6 +13,6 @@ pub fn x() -> f64 {
 
 #[inline]
 pub fn main() -> Str {
-    string_append(f64_to_string(x()), string_append(str_lit(" "), string_append(f64_to_string(-12345678901234567890123.5f64), string_append(str_lit(" "), f64_to_string(f64_star(x(), 1000.0f64))))))
+    string_append(f64_to_string(x()), string_append(str_lit!(" "), string_append(f64_to_string(-12345678901234567890123.5f64), string_append(str_lit!(" "), f64_to_string(f64_star(x(), 1000.0f64))))))
 }
 

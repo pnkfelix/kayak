@@ -15,12 +15,12 @@ pub type Rnode = Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<Op
 
 #[inline]
 pub fn hex_digit(d: Int) -> Str {
-    substring(str_lit("0123456789abcdef"), d, _plus(d, int_lit(1)))
+    substring(str_lit!("0123456789abcdef"), d, _plus(d, int_lit(1)))
 }
 
 pub fn hex_from(b: Bytes, i: Int) -> Str {
     if _gt_eq(i, bytevector_length(b)) {
-        str_lit("")
+        str_lit!("")
     } else {
         let k = u8_to_int(bytevector_u8_ref(b, i));
         string_append(hex_digit(quotient(k, int_lit(16))), string_append(hex_digit(remainder(k, int_lit(16))), hex_from(b, _plus(i, int_lit(1)))))
@@ -34,7 +34,7 @@ pub fn node(slot: Int, head: Symbol, binders: List<Symbol>, args: List<Operand>)
 
 #[inline]
 pub fn base(slot: Int, name: Symbol) -> Rnode {
-    node(slot, symbol_lit(str_lit("base")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", name)), kayak_rt::nil()))
+    node(slot, symbol_lit(str_lit!("base")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", name)), kayak_rt::nil()))
 }
 
 // Each type's nodes: `int`; `(listof int heap)` as `(pairof int SELF (heap) #t)`;
@@ -43,36 +43,36 @@ pub fn base(slot: Int, name: Symbol) -> Rnode {
 pub fn int_nodes() -> List<Rnode> {
     static ONCE: std::sync::OnceLock<List<Rnode>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(base(int_lit(0), symbol_lit(str_lit("int"))), kayak_rt::nil())
+        kayak_rt::heap_cons(base(int_lit(0), symbol_lit(str_lit!("int"))), kayak_rt::nil())
     })
 }
 
 pub fn list_nodes() -> List<Rnode> {
     static ONCE: std::sync::OnceLock<List<Rnode>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(node(int_lit(0), symbol_lit(str_lit("pairof")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(1))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(0))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(2))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<bool>(const { kayak_rt::tag_hash("flag") }, "flag", true)), kayak_rt::nil()))))), kayak_rt::heap_cons(base(int_lit(1), symbol_lit(str_lit("int"))), kayak_rt::heap_cons(node(int_lit(2), symbol_lit(str_lit("heap")), nil::<Symbol>(), nil::<kayak_rt::Sum>()), kayak_rt::nil())))
+        kayak_rt::heap_cons(node(int_lit(0), symbol_lit(str_lit!("pairof")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(1))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(0))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(2))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<bool>(const { kayak_rt::tag_hash("flag") }, "flag", true)), kayak_rt::nil()))))), kayak_rt::heap_cons(base(int_lit(1), symbol_lit(str_lit!("int"))), kayak_rt::heap_cons(node(int_lit(2), symbol_lit(str_lit!("heap")), nil::<Symbol>(), nil::<kayak_rt::Sum>()), kayak_rt::nil())))
     })
 }
 
 pub fn poly_nodes() -> List<Rnode> {
     static ONCE: std::sync::OnceLock<List<Rnode>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(node(int_lit(0), symbol_lit(str_lit("poly")), kayak_rt::heap_cons(symbol_lit(str_lit("x")), kayak_rt::nil()), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(1))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(2))), kayak_rt::nil()))), kayak_rt::heap_cons(node(int_lit(1), symbol_lit(str_lit("binder")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", symbol_lit(str_lit("type")))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<bool>(const { kayak_rt::tag_hash("flag") }, "flag", false)), kayak_rt::nil()))), kayak_rt::heap_cons(node(int_lit(2), symbol_lit(str_lit("subr")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", symbol_lit(str_lit("native")))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(3))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(4))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Product_11_12<Int, Int>>(const { kayak_rt::tag_hash("bound") }, "bound", Product_11_12(int_lit(0), int_lit(0)))), kayak_rt::nil()))))), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(3), symbol_lit(str_lit("&effect")), true, nil::<Symbol>(), nil::<kayak_rt::Sum>()), kayak_rt::heap_cons(node(int_lit(4), symbol_lit(str_lit("params")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Product_11_12<Int, Int>>(const { kayak_rt::tag_hash("bound") }, "bound", Product_11_12(int_lit(0), int_lit(0)))), kayak_rt::nil())), kayak_rt::nil())))))
+        kayak_rt::heap_cons(node(int_lit(0), symbol_lit(str_lit!("poly")), kayak_rt::heap_cons(symbol_lit(str_lit!("x")), kayak_rt::nil()), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(1))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(2))), kayak_rt::nil()))), kayak_rt::heap_cons(node(int_lit(1), symbol_lit(str_lit!("binder")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", symbol_lit(str_lit!("type")))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<bool>(const { kayak_rt::tag_hash("flag") }, "flag", false)), kayak_rt::nil()))), kayak_rt::heap_cons(node(int_lit(2), symbol_lit(str_lit!("subr")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", symbol_lit(str_lit!("native")))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(3))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(4))), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Product_11_12<Int, Int>>(const { kayak_rt::tag_hash("bound") }, "bound", Product_11_12(int_lit(0), int_lit(0)))), kayak_rt::nil()))))), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(3), symbol_lit(str_lit!("&effect")), true, nil::<Symbol>(), nil::<kayak_rt::Sum>()), kayak_rt::heap_cons(node(int_lit(4), symbol_lit(str_lit!("params")), nil::<Symbol>(), kayak_rt::heap_cons(the::<Operand>(kayak_rt::sum_new::<Product_11_12<Int, Int>>(const { kayak_rt::tag_hash("bound") }, "bound", Product_11_12(int_lit(0), int_lit(0)))), kayak_rt::nil())), kayak_rt::nil())))))
     })
 }
 
 #[inline]
 pub fn heads(ns: List<Rnode>) -> Str {
     if null_p(ns) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(str_lit(" "), string_append(symbol_to_string(car(ns).1), heads(cdr(ns))))
+        string_append(str_lit!(" "), string_append(symbol_to_string(car(ns).1), heads(cdr(ns))))
     }
 }
 
 pub fn shown(ns: List<Rnode>, root: Int) -> Str {
     let b = the::<Bytes>(rep_of_nodes(ns, nil::<Symbol>(), root));
-    string_append(hex_from(b, int_lit(0)), string_append(str_lit(" :"), string_append(heads(rep_nodes(b, nil::<Str>()).0), str_lit("\n"))))
+    string_append(hex_from(b, int_lit(0)), string_append(str_lit!(" :"), string_append(heads(rep_nodes(b, nil::<Str>()).0), str_lit!("\n"))))
 }
 
 #[inline]

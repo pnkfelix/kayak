@@ -1892,8 +1892,13 @@ over its 1664 definitions, 335 of them refused:
   made once would do; and the corpus's programs of another machine
   (`made-*.rs` but x86_64's) are to be blessed again on it. Then the rest
   of the heap to the same grammar (the user: "everything conversion if
-  you can swing it"): a string (`Str`, two words: to a handle of a
-  string's bloblet), a dynamic value (`Value`, an enum), a product held by
+  you can swing it"): ~~a string~~ (done, C482: one word to an object of
+  Fixpt's layout, header, trailer and text, `obj.rs`; a gap: its trailer
+  keeps whether the text is ASCII, which Fixpt's runtime does not, and
+  finds again when it needs it), then every bloblet-shaped object the
+  same way (the user: "why not just handle all bloblets this way?"):
+  bytevectors, bloblets (`Bloblet`, `TBloblet`), arrays and flat arrays
+  (their elements the fields, counted at run time); a dynamic value (`Value`, an enum), a product held by
   value in its holder (a heap object of its own in FX-26), an integer
   (`Int`, a bignum's limbs a `Vec`), bloblets and flat arrays (plain
   references); then a

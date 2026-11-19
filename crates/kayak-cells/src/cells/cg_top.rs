@@ -23,7 +23,7 @@ pub fn c_rec_fill_x(mut bs: Cbinds, mut c: Code) -> () {
                     c_exp(x, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, false);
                     regs_form_twins_x();
                     r_note_constant_x(n, x);
-                    c_op1(c, str_lit("global!"), o_global(n));
+                    c_op1(c, str_lit!("global!"), o_global(n));
                     c_wrote_x(n);
                     bs = cdr(bs);
                     continue;
@@ -41,7 +41,7 @@ pub fn c_define_value_x(n: Str, x: kayak_rt::Handle<'static, Cx>, c: Code) -> ()
     regs_form_twins_x();
     c_push_global_x(n);
     r_note_constant_x(n, x);
-    c_op1(c, str_lit("global!"), o_global(n));
+    c_op1(c, str_lit!("global!"), o_global(n));
     c_wrote_x(n)
 }
 
@@ -57,7 +57,7 @@ pub fn c_tops(mut ts: List<kayak_rt::Handle<'static, Ctop>>, mut c: Code, mut ha
             match *tagcase_ {
                 Ctop::TDefine(n, typed, x) => {
                     if has_value {
-                        c_op(c, str_lit("drop"))
+                        c_op(c, str_lit!("drop"))
                     } else {
                         ()
                     };
@@ -75,7 +75,7 @@ pub fn c_tops(mut ts: List<kayak_rt::Handle<'static, Ctop>>, mut c: Code, mut ha
                                     c_lambda(ps, body, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, nil::<Str>(), nil::<kayak_rt::Handle<'static, Cx>>());
                                     regs_form_twins_x();
                                     r_note_inline_x(n, ps, body, a);
-                                    c_op1(c, str_lit("global!"), o_global(n));
+                                    c_op1(c, str_lit!("global!"), o_global(n));
                                     c_wrote_x(n)
                                 } else {
                                     c_define_value_x(n, x, c)
@@ -92,7 +92,7 @@ pub fn c_tops(mut ts: List<kayak_rt::Handle<'static, Ctop>>, mut c: Code, mut ha
                 }
                 Ctop::TDefineRec(bs) => {
                     if has_value {
-                        c_op(c, str_lit("drop"))
+                        c_op(c, str_lit!("drop"))
                     } else {
                         ()
                     };
@@ -111,7 +111,7 @@ pub fn c_tops(mut ts: List<kayak_rt::Handle<'static, Ctop>>, mut c: Code, mut ha
                 }
                 Ctop::TExp(x) => {
                     if has_value {
-                        c_op(c, str_lit("drop"))
+                        c_op(c, str_lit!("drop"))
                     } else {
                         ()
                     };
@@ -155,7 +155,7 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     let c = the::<Code>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Item>>()));
     set(cg_facts(), fs);
     set(cg_source(), if null_p(forms) {
-        str_lit("")
+        str_lit!("")
     } else {
         datum_file(car(forms))
     });
@@ -166,7 +166,7 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
-                (has_prefix_p(what, str_lit("convert ")) || has_prefix_p(what, str_lit("convention ")))
+                (has_prefix_p(what, str_lit!("convert ")) || has_prefix_p(what, str_lit!("convention ")))
             }
         }
     })), fs));
@@ -176,7 +176,7 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
-                (has_prefix_p(what, str_lit("with-spec ")) || has_prefix_p(what, str_lit("module-arg ")) || has_prefix_p(what, str_lit("module-had ")) || has_prefix_p(what, str_lit("module-made ")) || string_eq_p(what, str_lit("module-value")) || string_eq_p(what, str_lit("with-value")))
+                (has_prefix_p(what, str_lit!("with-spec ")) || has_prefix_p(what, str_lit!("module-arg ")) || has_prefix_p(what, str_lit!("module-had ")) || has_prefix_p(what, str_lit!("module-made ")) || string_eq_p(what, str_lit!("module-value")) || string_eq_p(what, str_lit!("with-value")))
             }
         }
     })), fs));
@@ -189,7 +189,7 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
-                (string_eq_p(what, str_lit("call-fx")) || string_eq_p(what, str_lit("call-native")))
+                (string_eq_p(what, str_lit!("call-fx")) || string_eq_p(what, str_lit!("call-native")))
             }
         }
     })), fs));
@@ -214,8 +214,8 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     } else {
         c_lit(c, l_unit())
     };
-    c_op(c, str_lit("exit"));
-    c_assemble(c, str_lit("program"));
+    c_op(c, str_lit!("exit"));
+    c_assemble(c, str_lit!("program"));
     ()
 }
 
@@ -365,12 +365,12 @@ pub fn q_written_x(l: kayak_rt::Handle<'static, Lit>) -> Str {
         Lit::LQuoted(n) => {
             let (ps, k) = (qnode_parts(get(cg_qnodes()), n), qseen_of(get(cg_qlabels()), n));
             if i64_gt(k, 0i64) {
-                string_append(str_lit("#"), string_append(i64_to_string(i64_minus(k, 1i64)), str_lit("#")))
+                string_append(str_lit!("#"), string_append(i64_to_string(i64_minus(k, 1i64)), str_lit!("#")))
             } else if i64_gt(qseen_of(get(cg_qreached()), n), 1i64) {
                 let m = get(cg_qnext());
                 set(cg_qnext(), i64_plus(m, 1i64));
                 set(cg_qlabels(), kayak_rt::heap_cons(qseen(n, i64_plus(m, 1i64)), get(cg_qlabels())));
-                string_append(str_lit("#"), string_append(i64_to_string(m), string_append(str_lit("="), q_pair_text(ps))))
+                string_append(str_lit!("#"), string_append(i64_to_string(m), string_append(str_lit!("="), q_pair_text(ps))))
             } else {
                 q_pair_text(ps)
             }
@@ -384,6 +384,6 @@ pub fn q_written_x(l: kayak_rt::Handle<'static, Lit>) -> Str {
 
 #[inline]
 pub fn q_pair_text(ps: List<kayak_rt::Handle<'static, Lit>>) -> Str {
-    string_append(str_lit("("), string_append(q_written_x(car(ps)), string_append(str_lit(" . "), string_append(q_written_x(car(cdr(ps))), str_lit(")")))))
+    string_append(str_lit!("("), string_append(q_written_x(car(ps)), string_append(str_lit!(" . "), string_append(q_written_x(car(cdr(ps))), str_lit!(")")))))
 }
 

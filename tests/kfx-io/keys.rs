@@ -10,7 +10,7 @@ use kayak_rt::*;
 
 #[inline]
 pub fn said(s: Str) -> () {
-    let tagcase_ = write_out(string_append(s, str_lit("\n")));
+    let tagcase_ = write_out(string_append(s, str_lit!("\n")));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -45,26 +45,26 @@ pub fn terminal() -> Str {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("done") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("raw")
+            str_lit!("raw")
         } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("no terminal")
+            str_lit!("no terminal")
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            str_lit("failed")
+            str_lit!("failed")
         } else { unreachable!() }
     }, {
         let tagcase_ = terminal_size();
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("size") } {
             let z: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
-            string_append(str_lit(", "), string_append(int_to_string(z.0), string_append(str_lit("x"), int_to_string(z.1))))
+            string_append(str_lit!(", "), string_append(int_to_string(z.0), string_append(str_lit!("x"), int_to_string(z.1))))
         } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit(", no size")
+            str_lit!(", no size")
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            str_lit(", failed")
+            str_lit!(", failed")
         } else { unreachable!() }
     })
 }
@@ -134,10 +134,10 @@ pub fn main() -> Int {
             s
         } else if tag_ == const { kayak_rt::tag_hash("eof") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("(end)")
+            str_lit!("(end)")
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            str_lit("(failed)")
+            str_lit!("(failed)")
         } else { unreachable!() }
     };
     let b1 = code(read_byte());
@@ -148,11 +148,11 @@ pub fn main() -> Int {
     let none = read_bytes(bv, int_lit(0), int_lit(0));
     let rest = counted(bv, int_lit(0));
     said(line);
-    said(string_append(int_to_string(b1), string_append(str_lit(" "), string_append(int_to_string(b2), string_append(str_lit(" "), int_to_string(k))))));
+    said(string_append(int_to_string(b1), string_append(str_lit!(" "), string_append(int_to_string(b2), string_append(str_lit!(" "), int_to_string(k))))));
     said(if ready {
-        str_lit("ready")
+        str_lit!("ready")
     } else {
-        str_lit("waiting")
+        str_lit!("waiting")
     });
     said({
         let tagcase_ = none;
@@ -162,7 +162,7 @@ pub fn main() -> Int {
             int_to_string(z)
         } else {
             let o = tagcase_;
-            str_lit("?")
+            str_lit!("?")
         }
     });
     said(terminal());

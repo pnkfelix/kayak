@@ -161,7 +161,7 @@ pub fn f32_op_word(i: i64, a: i64, b: i64) -> i64 {
     } else if i64_eq(i, 28i64) {
         f32_value(bits_to_f32(int_to_u32(int_of(a))))
     } else if not(is_f32_p(a)) {
-        refused_op_x(str_lit("an f32 expected"))
+        refused_op_x(str_lit!("an f32 expected"))
     } else if i64_gt_eq(i, 11i64) {
         let x = f32_of(a);
         if i64_eq(i, 11i64) {
@@ -190,7 +190,7 @@ pub fn f32_op_word(i: i64, a: i64, b: i64) -> i64 {
             if (f32_finite_p(x) && f32_eq(f32_truncate(x), x)) {
                 int_value_x(f32_to_int(x))
             } else {
-                refused_op_x(str_lit("f32->int: not an integer"))
+                refused_op_x(str_lit!("f32->int: not an integer"))
             }
         } else if i64_eq(i, 23i64) {
             make_flonum_x(f32_to_f64(x))
@@ -198,7 +198,7 @@ pub fn f32_op_word(i: i64, a: i64, b: i64) -> i64 {
             int_value_x(u32_to_int(f32_to_bits(x)))
         }
     } else if not(is_f32_p(b)) {
-        refused_op_x(str_lit("an f32 expected"))
+        refused_op_x(str_lit!("an f32 expected"))
     } else {
         let (x, y) = (f32_of(a), f32_of(b));
         if i64_eq(i, 0i64) {
@@ -269,7 +269,7 @@ pub fn blob_at(r: i64) -> i64 {
 /// where one is made.
 pub fn blobref_x(owner: i64, at: i64, size: i64) -> i64 {
     if (i64_lt(at, 0i64) || i64_gt(i64_plus(at, size), suffix_bytes(owner))) {
-        refused_op_x(string_append(str_lit("suffix ref: a flat of "), string_append(i64_to_string(size), string_append(str_lit(" bytes at byte "), string_append(i64_to_string(at), str_lit(" runs past the end of the suffix"))))))
+        refused_op_x(string_append(str_lit!("suffix ref: a flat of "), string_append(i64_to_string(size), string_append(str_lit!(" bytes at byte "), string_append(i64_to_string(at), str_lit!(" runs past the end of the suffix"))))))
     } else {
         suffix_ref(owner, at)
     }
@@ -453,7 +453,7 @@ pub fn flat_filled_x(mut a: i64, mut i: i64, mut n: i64, mut x: i64) -> () {
 
 pub fn flat_filled_made_x(code: i64, n: i64, w: i64) -> i64 {
     if i64_lt(n, 0i64) {
-        refused_op_x(str_lit("make-flatarray: a negative length"))
+        refused_op_x(str_lit!("make-flatarray: a negative length"))
     } else {
         let (a, x) = (flat_made_x(code, n), flat_bits_of(code, w));
         if i64_eq(x, 0i64) {
@@ -468,7 +468,7 @@ pub fn flat_filled_made_x(code: i64, n: i64, w: i64) -> i64 {
 #[inline]
 pub fn flat_index(a: i64, i: i64) -> i64 {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, flat_count(a))) {
-        refused_op_x(str_lit("flatarray: index out of range"));
+        refused_op_x(str_lit!("flatarray: index out of range"));
         -1i64
     } else {
         i
@@ -494,7 +494,7 @@ pub fn field_holding(mut owner: i64, mut w: i64, mut i: i64, mut n: i64) -> i64 
 #[inline]
 pub fn bloblet_x(n: i64, fields: i64) -> i64 {
     if (i64_lt(n, 0i64) || i64_gt(n, 4294967295i64)) {
-        refused_op_x(str_lit("a bloblet's suffix is 0 to 4 GiB"))
+        refused_op_x(str_lit!("a bloblet's suffix is 0 to 4 GiB"))
     } else {
         list_bloblet_x(n, fields)
     }
@@ -670,16 +670,16 @@ pub fn eq_delete_x(t: i64, key: i64) -> () {
 // native code could run, so `code:exec-view/1` gives -1 and `code:flush/1`
 // has nothing to do.
 pub fn engine_syscall_type(host: Str) -> Str {
-    if string_eq_p(host, str_lit("code:exec-view/1")) {
-        str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))")
-    } else if string_eq_p(host, str_lit("code:page-words/1")) {
-        str_lit("(subr (io sys) () int)")
-    } else if string_eq_p(host, str_lit("code:flush/1")) {
-        str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
-    } else if string_eq_p(host, str_lit("kayak:string-utf8-length/1")) {
-        str_lit("(subr pure (string) int)")
+    if string_eq_p(host, str_lit!("code:exec-view/1")) {
+        str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))")
+    } else if string_eq_p(host, str_lit!("code:page-words/1")) {
+        str_lit!("(subr (io sys) () int)")
+    } else if string_eq_p(host, str_lit!("code:flush/1")) {
+        str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))")
+    } else if string_eq_p(host, str_lit!("kayak:string-utf8-length/1")) {
+        str_lit!("(subr pure (string) int)")
     } else {
-        str_lit("")
+        str_lit!("")
     }
 }
 
@@ -687,26 +687,26 @@ pub fn engine_syscall_type(host: Str) -> Str {
 // syscall (C263).
 
 pub fn _pctsyscall_available_colonhost_utf8_length() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall host-utf8-length (\"kayak:string-utf8-length/1\")"), str_lit("kayak:string-utf8-length/1"), str_lit("(subr pure (string) int)"));
+    kayak_rt::syscall_require(str_lit!("syscall host-utf8-length (\"kayak:string-utf8-length/1\")"), str_lit!("kayak:string-utf8-length/1"), str_lit!("(subr pure (string) int)"));
     true
 }
 
 pub fn host_utf8_length(x1: Str) -> Int {
     _pctsyscall_available_colonhost_utf8_length();
-    kayak_rt::syscall1(str_lit("syscall host-utf8-length (\"kayak:string-utf8-length/1\")"), str_lit("kayak:string-utf8-length/1"), str_lit("(subr pure (string) int)"), x1)
+    kayak_rt::syscall1(str_lit!("syscall host-utf8-length (\"kayak:string-utf8-length/1\")"), str_lit!("kayak:string-utf8-length/1"), str_lit!("(subr pure (string) int)"), x1)
 }
 
 // The words in one page of the machine this runs on, as kayak-rt says,
 // asked as the engine's own syscall (C225).
 
 pub fn _pctsyscall_available_colonhost_page_words() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall host-page-words (\"code:page-words/1\")"), str_lit("code:page-words/1"), str_lit("(subr (io sys) () int)"));
+    kayak_rt::syscall_require(str_lit!("syscall host-page-words (\"code:page-words/1\")"), str_lit!("code:page-words/1"), str_lit!("(subr (io sys) () int)"));
     true
 }
 
 pub fn host_page_words() -> Int {
     _pctsyscall_available_colonhost_page_words();
-    kayak_rt::syscall0(str_lit("syscall host-page-words (\"code:page-words/1\")"), str_lit("code:page-words/1"), str_lit("(subr (io sys) () int)"))
+    kayak_rt::syscall0(str_lit!("syscall host-page-words (\"code:page-words/1\")"), str_lit!("code:page-words/1"), str_lit!("(subr (io sys) () int)"))
 }
 
 #[inline]
@@ -748,9 +748,9 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         i64_word_x(i64_star(word_i64(a), word_i64(b)))
     } else if ((i64_eq(op, 3i64) || i64_eq(op, 4i64)) && i64_eq(word_i64(b), 0i64)) {
         refused_op_x(if i64_eq(op, 3i64) {
-            str_lit("i64-quotient: division by zero")
+            str_lit!("i64-quotient: division by zero")
         } else {
-            str_lit("i64-remainder: division by zero")
+            str_lit!("i64-remainder: division by zero")
         })
     } else if i64_eq(op, 3i64) {
         i64_word_x(i64_quotient(word_i64(a), word_i64(b)))
@@ -786,9 +786,9 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         int_value_x(_star(int_of(a), int_of(b)))
     } else if (i64_gt_eq(op, 19i64) && i64_lt_eq(op, 21i64) && zero_p(int_of(b))) {
         refused_op_x(if i64_eq(op, 19i64) {
-            str_lit("quotient: division by zero")
+            str_lit!("quotient: division by zero")
         } else {
-            str_lit("remainder: division by zero")
+            str_lit!("remainder: division by zero")
         })
     } else if i64_eq(op, 19i64) {
         int_value_x(quotient(int_of(a), int_of(b)))
@@ -821,7 +821,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 33i64) {
         int_value_x(bitwise_not(int_of(a)))
     } else if (i64_eq(op, 34i64) && _gt(int_of(b), int_lit(4294967296)) && not(zero_p(int_of(a)))) {
-        refused_op_x(str_lit("arithmetic-shift: the count is too large"))
+        refused_op_x(str_lit!("arithmetic-shift: the count is too large"))
     } else if i64_eq(op, 34i64) {
         int_value_x(arithmetic_shift(int_of(a), int_of(b)))
     } else if i64_eq(op, 35i64) {
@@ -869,7 +869,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 56i64) {
         fixnum(immediate_value(a))
     } else if ((i64_eq(op, 57i64) || i64_eq(op, 58i64)) && not(char_code_p(fixnum_value(a)))) {
-        refused_op_x(str_lit("integer->char: no character has that code"))
+        refused_op_x(str_lit!("integer->char: no character has that code"))
     } else if i64_eq(op, 57i64) {
         immediate(imm_char(), fixnum_value(a))
     } else if i64_eq(op, 58i64) {
@@ -1026,7 +1026,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         if get(capturing()) {
             let text = word_string(a);
             if capture_x(text) {
-                sum_word_x(str_lit("done"), w_unit())
+                sum_word_x(str_lit!("done"), w_unit())
             } else {
                 written_word_x(write_out(text))
             }
@@ -1106,7 +1106,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 139i64) {
         make_flonum_x(int_to_f64(int_of(a)))
     } else if (i64_eq(op, 140i64) && not(integral_p(flonum_of(a)))) {
-        refused_op_x(str_lit("f64->int: not an integer"))
+        refused_op_x(str_lit!("f64->int: not an integer"))
     } else if i64_eq(op, 140i64) {
         int_value_x(f64_to_int(flonum_of(a)))
     } else if i64_eq(op, 141i64) {
@@ -1209,18 +1209,18 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if (i64_gt_eq(op, 229i64) && i64_lt_eq(op, 232i64)) {
         fixnum(0i64)
     } else if i64_eq(op, 233i64) {
-        refused_op_x(str_lit("seal-code: this machine runs no native code a program makes"))
+        refused_op_x(str_lit!("seal-code: this machine runs no native code a program makes"))
     } else if i64_eq(op, 234i64) {
-        refused_op_x(str_lit("native-procedure: this machine runs no native code"))
+        refused_op_x(str_lit!("native-procedure: this machine runs no native code"))
     } else if i64_eq(op, 235i64) {
         let label = word_string(a);
         let host = word_string(b);
         let text = word_string(c);
         let have = engine_syscall_type(host);
-        if string_eq_p(have, str_lit("")) {
-            refused_op_x(string_append(label, str_lit(": this runtime has none")))
+        if string_eq_p(have, str_lit!("")) {
+            refused_op_x(string_append(label, str_lit!(": this runtime has none")))
         } else if not(string_eq_p(have, text)) {
-            refused_op_x(string_append(label, string_append(str_lit(": declared "), string_append(text, string_append(str_lit("; this runtime's is "), have)))))
+            refused_op_x(string_append(label, string_append(str_lit!(": declared "), string_append(text, string_append(str_lit!("; this runtime's is "), have)))))
         } else {
             w_unit()
         }
@@ -1229,12 +1229,12 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if (i64_gt_eq(op, 237i64) && i64_lt_eq(op, 243i64)) {
         let host = word_string(b);
         if not(string_eq_p(engine_syscall_type(host), word_string(c))) {
-            refused_op_x(string_append(word_string(a), str_lit(": not available on this runtime")))
-        } else if string_eq_p(host, str_lit("code:page-words/1")) {
+            refused_op_x(string_append(word_string(a), str_lit!(": not available on this runtime")))
+        } else if string_eq_p(host, str_lit!("code:page-words/1")) {
             fixnum(engine_page_words())
-        } else if string_eq_p(host, str_lit("kayak:string-utf8-length/1")) {
+        } else if string_eq_p(host, str_lit!("kayak:string-utf8-length/1")) {
             fixnum(int_to_i64(host_utf8_length(word_string(pair_car(pair_cdr(r2))))))
-        } else if string_eq_p(host, str_lit("code:exec-view/1")) {
+        } else if string_eq_p(host, str_lit!("code:exec-view/1")) {
             fixnum(-1i64)
         } else {
             w_unit()
@@ -1310,7 +1310,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 201i64) {
         let (i, d) = (fixnum_value(b), pair_car(pair_cdr(r2)));
         if (i64_lt(i, 0i64) || i64_gt_eq(i, blob_length(a, fixnum_value(c), fixnum_value(d)))) {
-            refused_op_x(str_lit("blobref-index: out of range"))
+            refused_op_x(str_lit!("blobref-index: out of range"))
         } else {
             blobref_x(sref_owner(a), i64_plus(blob_at(a), i64_star(i, fixnum_value(c))), fixnum_value(c))
         }
@@ -1324,7 +1324,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         let owner = sref_owner(a);
         let i = field_holding(owner, b, 0i64, obj_size(owner));
         if i64_lt(i, 0i64) {
-            refused_op_x(str_lit("blobref-variant!: no field of the owner holds that label"))
+            refused_op_x(str_lit!("blobref-variant!: no field of the owner holds that label"))
         } else {
             bytes_written_x(blobref_bytes(a), blob_at(a), 1i64, i64_to_int(i));
             blobref_x(owner, i64_plus(blob_at(a), fixnum_value(c)), 0i64)
@@ -1361,7 +1361,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         string_copy_into_w_x(a, b, c, fourth_arg(args), fifth_arg(args));
         w_unit()
     } else {
-        failed_with_x(str_lit("the engine: a primitive of no number"));
+        failed_with_x(str_lit!("the engine: a primitive of no number"));
         0i64
     }
 }

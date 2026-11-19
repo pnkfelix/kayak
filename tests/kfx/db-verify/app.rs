@@ -45,7 +45,7 @@ pub fn k_words(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> Lis
 pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
     let ws = k_words(string_chars(s), nil::<char>(), nil::<Str>());
     if null_p(cdr(ws)) {
-        lst(kayak_rt::heap_cons(sym(car(ws), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
+        lst(kayak_rt::heap_cons(sym(car(ws), str_lit!(""), 0i64), kayak_rt::nil()), str_lit!(""), 0i64, 0i64)
     } else {
         key1(car(ws), car(cdr(ws)))
     }
@@ -53,10 +53,10 @@ pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
 
 #[inline]
 pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
-    if string_eq_p(key_arg(k, 0i64), str_lit("")) {
+    if string_eq_p(key_arg(k, 0i64), str_lit!("")) {
         key_query(k)
     } else {
-        string_append(key_query(k), string_append(str_lit(" "), key_arg(k, 0i64)))
+        string_append(key_query(k), string_append(str_lit!(" "), key_arg(k, 0i64)))
     }
 }
 
@@ -86,7 +86,7 @@ pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, m
 }
 
 pub fn reread(d: Db, whose: Str) -> Db {
-    let fs = db_saved(d, str_lit("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
+    let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
         true
     })));
     let before = db_reader(d);
@@ -114,7 +114,7 @@ pub fn num_of(s: Str) -> i64 {
 pub fn key_after(mut cs: List<char>) -> Str {
     loop {
         if null_p(cs) {
-            return str_lit("");
+            return str_lit!("");
         } else if char_eq_p(car(cs), ' ') {
             return list_to_string(cdr(cs));
         } else {
@@ -128,24 +128,24 @@ pub fn run(d: Db, key: kayak_rt::Handle<'static, Sexp>) -> Str {
     let k = k_text(key);
     let h = string_ref_i64(k, 0i64);
     if char_eq_p(h, 'm') {
-        i64_to_string(i64_remainder(num_of(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit("x "), key_after(string_chars(k)))))), 3i64))
+        i64_to_string(i64_remainder(num_of(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit!("x "), key_after(string_chars(k)))))), 3i64))
     } else if char_eq_p(h, 's') {
-        if string_eq_p(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 0"))), str_lit("0")) {
-            i64_to_string(i64_plus(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 1")))), num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 2"))))))
+        if string_eq_p(db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("m 0"))), str_lit!("0")) {
+            i64_to_string(i64_plus(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("m 1")))), num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("m 2"))))))
         } else {
-            db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 3")))
+            db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("m 3")))
         }
     } else if char_eq_p(h, 't') {
-        i64_to_string(i64_plus(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("s")))), num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 4"))))))
+        i64_to_string(i64_plus(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("s")))), num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("m 4"))))))
     } else if char_eq_p(h, 'u') {
-        if i64_gt(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("t")))), 3i64) {
-            string_append(str_lit("big:"), db_get(d, kayak_rt::as_proc(run), k_of(str_lit("x 0"))))
+        if i64_gt(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("t")))), 3i64) {
+            string_append(str_lit!("big:"), db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("x 0"))))
         } else {
-            str_lit("small")
+            str_lit!("small")
         }
     } else {
-        error(string_append(str_lit("no query "), k));
-        str_lit("")
+        error(string_append(str_lit!("no query "), k));
+        str_lit!("")
     }
 }
 
@@ -183,7 +183,7 @@ pub fn put_at(xs: List<i64>, i: i64, x: i64) -> List<i64> {
 pub fn query_keys() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("m 0"), kayak_rt::heap_cons(str_lit("m 1"), kayak_rt::heap_cons(str_lit("m 2"), kayak_rt::heap_cons(str_lit("m 3"), kayak_rt::heap_cons(str_lit("m 4"), kayak_rt::heap_cons(str_lit("s"), kayak_rt::heap_cons(str_lit("t"), kayak_rt::heap_cons(str_lit("u"), kayak_rt::nil()))))))))
+        kayak_rt::heap_cons(str_lit!("m 0"), kayak_rt::heap_cons(str_lit!("m 1"), kayak_rt::heap_cons(str_lit!("m 2"), kayak_rt::heap_cons(str_lit!("m 3"), kayak_rt::heap_cons(str_lit!("m 4"), kayak_rt::heap_cons(str_lit!("s"), kayak_rt::heap_cons(str_lit!("t"), kayak_rt::heap_cons(str_lit!("u"), kayak_rt::nil()))))))))
     })
 }
 
@@ -204,7 +204,7 @@ pub fn set_all_x(mut d: Db, mut vals: List<i64>, mut durs: List<i64>, mut i: i64
         if null_p(vals) {
             return ();
         } else {
-            db_set_x(d, k_of(string_append(str_lit("x "), i64_to_string(i))), i64_to_string(car(vals)), car(durs));
+            db_set_x(d, k_of(string_append(str_lit!("x "), i64_to_string(i))), i64_to_string(car(vals)), car(durs));
             (vals, durs, i) = (cdr(vals), cdr(durs), i64_plus(i, 1i64));
             continue;
         }
@@ -241,7 +241,7 @@ pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: ka
         let k = nth_key(query_keys(), below(s4, 8i64));
         let vals = put_at(vals, i, x);
         let durs = put_at(durs, i, du);
-        db_set_x(d, k_of(string_append(str_lit("x "), i64_to_string(i))), i64_to_string(x), du);
+        db_set_x(d, k_of(string_append(str_lit!("x "), i64_to_string(i))), i64_to_string(x), du);
         let before = db_runs(d);
         let got = db_get(d, kayak_rt::as_proc(run), k_of(k));
         let ours = i64_minus(db_runs(d), before);
@@ -269,14 +269,14 @@ pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: ka
 // took it as current, 0.
 pub fn regression() -> Str {
     let d = db_make();
-    db_set_x(d, k_of(str_lit("x 0")), str_lit("0"), 2i64);
-    db_set_x(d, k_of(str_lit("x 1")), str_lit("0"), 2i64);
-    db_set_x(d, k_of(str_lit("x 2")), str_lit("0"), 2i64);
-    db_get(d, kayak_rt::as_proc(run), k_of(str_lit("s")));
-    db_set_x(d, k_of(str_lit("x 1")), str_lit("0"), 0i64);
-    db_get(d, kayak_rt::as_proc(run), k_of(str_lit("s")));
-    db_set_x(d, k_of(str_lit("x 1")), str_lit("1"), 0i64);
-    string_append(str_lit("regression s="), db_get(d, kayak_rt::as_proc(run), k_of(str_lit("s"))))
+    db_set_x(d, k_of(str_lit!("x 0")), str_lit!("0"), 2i64);
+    db_set_x(d, k_of(str_lit!("x 1")), str_lit!("0"), 2i64);
+    db_set_x(d, k_of(str_lit!("x 2")), str_lit!("0"), 2i64);
+    db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("s")));
+    db_set_x(d, k_of(str_lit!("x 1")), str_lit!("0"), 0i64);
+    db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("s")));
+    db_set_x(d, k_of(str_lit!("x 1")), str_lit!("1"), 0i64);
+    string_append(str_lit!("regression s="), db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("s"))))
 }
 
 pub fn main() -> Str {
@@ -287,7 +287,7 @@ pub fn main() -> Str {
     let tagcase_ = steps(d, 300i64, 20261112i64, vals, durs, tally(0i64, 0i64, 0i64));
     match *tagcase_ {
         Tally::Tally(wrong, mine, theirs) => {
-            string_list_append(kayak_rt::heap_cons(regression(), kayak_rt::heap_cons(str_lit("; 300 steps, "), kayak_rt::heap_cons(i64_to_string(wrong), kayak_rt::heap_cons(str_lit(" disagreed; bodies run "), kayak_rt::heap_cons(i64_to_string(mine), kayak_rt::heap_cons(str_lit(" against "), kayak_rt::heap_cons(i64_to_string(theirs), kayak_rt::heap_cons(str_lit(" from scratch"), kayak_rt::nil())))))))))
+            string_list_append(kayak_rt::heap_cons(regression(), kayak_rt::heap_cons(str_lit!("; 300 steps, "), kayak_rt::heap_cons(i64_to_string(wrong), kayak_rt::heap_cons(str_lit!(" disagreed; bodies run "), kayak_rt::heap_cons(i64_to_string(mine), kayak_rt::heap_cons(str_lit!(" against "), kayak_rt::heap_cons(i64_to_string(theirs), kayak_rt::heap_cons(str_lit!(" from scratch"), kayak_rt::nil())))))))))
         }
     }
 }

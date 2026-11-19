@@ -60,7 +60,7 @@ pub fn total<Mod_M: Checks>(a: i64, b: i64, c: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(total::<strict::Module>(1i64, 2i64, 3i64)), string_append(str_lit(" "), string_append(i64_to_string(total::<strict::Module>(1i64, -2i64, 3i64)), string_append(str_lit(" "), i64_to_string(total::<lax::Module>(1i64, -2i64, 3i64))))))
+    string_append(i64_to_string(total::<strict::Module>(1i64, 2i64, 3i64)), string_append(str_lit!(" "), string_append(i64_to_string(total::<strict::Module>(1i64, -2i64, 3i64)), string_append(str_lit!(" "), i64_to_string(total::<lax::Module>(1i64, -2i64, 3i64))))))
 }
 
 impl Checks for strict::Module {

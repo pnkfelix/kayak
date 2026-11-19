@@ -17,7 +17,7 @@ pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
     let thunk = staged_thunk(code_sexp_x(code));
     let prog = staged_program(thunk);
     let why = stage_worked(prog, t);
-    if not(string_eq_p(why, str_lit(""))) {
+    if not(string_eq_p(why, str_lit!(""))) {
         refused_word_x(why)
     } else {
         let s = stage_checked(prog, t);
@@ -29,7 +29,7 @@ pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
                 }
             }
         });
-        let body = lower(thunk, kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("stage-module"), kayak_rt::nil()), kayak_rt::nil()), gs);
+        let body = lower(thunk, kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("stage-module"), kayak_rt::nil()), kayak_rt::nil()), gs);
         let l = number_x(body);
         let e = alloc_x(ob_env(), 2i64);
         let p = alloc_x(ob_proc(), 2i64);
@@ -37,7 +37,7 @@ pub fn stage_run_x(m: i64, code: i64, given: i64, rep: i64, names: i64) -> i64 {
         bloblet_value_set_x(e, 1i64, m);
         bloblet_value_set_x(p, 0i64, code_word(l));
         bloblet_value_set_x(p, 1i64, e);
-        sum_word_x(str_lit("ok"), p)
+        sum_word_x(str_lit!("ok"), p)
     }
 }
 
@@ -55,7 +55,7 @@ pub fn globals() -> Ref<FlatArray<i64>> {
 pub fn global_name_table() -> Ref<Array<Str>> {
     kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(make_array(int_lit(1), str_lit("")))
+        kayak_rt::heap_new(make_array(int_lit(1), str_lit!("")))
     })
 }
 
@@ -109,7 +109,7 @@ pub fn session_global_x(k: i64, n: Str, w: i64) -> i64 {
     if i64_lt(i, int_to_i64(array_length(names))) {
         ()
     } else {
-        let more = the::<Array<Str>>(make_array(i64_to_int(i64_star(i64_plus(i, 1i64), 2i64)), str_lit("")));
+        let more = the::<Array<Str>>(make_array(i64_to_int(i64_star(i64_plus(i, 1i64), 2i64)), str_lit!("")));
         names_copied_x(names, more, 0i64, int_to_i64(array_length(names)));
         set(global_name_table(), more)
     };
@@ -127,7 +127,7 @@ pub fn seeded(mut k: i64, mut v: kayak_rt::Handle<'static, Cv>, mut gl: Sglobals
             return sess(v, gl, nil::<kayak_rt::Handle<'static, Defn>>(), 0i64);
         } else {
             let n = car(ns);
-            let form = lst(kayak_rt::heap_cons(sym(str_lit("define"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("with"), stage_file(), 0i64), kayak_rt::heap_cons(sym(str_lit("stage-module"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x()), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
+            let form = lst(kayak_rt::heap_cons(sym(str_lit!("define"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("with"), stage_file(), 0i64), kayak_rt::heap_cons(sym(str_lit!("stage-module"), stage_file(), 0i64), kayak_rt::heap_cons(sym(n, stage_file(), 0i64), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x()), kayak_rt::nil()))), stage_file(), 1i64, stage_at_x());
             let v2 = session_top(v, form);
             let g = session_global_x(k, n, bloblet_value(m, i));
             (v, gl, ns, i) = (v2, kayak_rt::heap_cons(sglobal(n, g), gl), cdr(ns), i64_plus(i, 1i64));
@@ -145,16 +145,16 @@ pub fn session_state_x(sw: i64, mt: kayak_rt::Handle<'static, Ty>) -> i64 {
     } else {
         let k2 = size(get(sessions()));
         let m = obj_ref(sw, 0i64);
-        let rp_abs = data_names_with(str_lit("rp.."), mt);
+        let rp_abs = data_names_with(str_lit!("rp.."), mt);
         let mt = data_renamed(rp_abs, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
-            string_append(str_lit("stage-module.."), after_prefix(n, str_lit("rp..")))
+            string_append(str_lit!("stage-module.."), after_prefix(n, str_lit!("rp..")))
         })), rp_abs), mt);
-        let v = module_types_opened(with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit("stage-module"), scheme(nil::<Str>(), mt), str_lit("global")), session_marks())), mt);
-        let gm = session_global_x(k2, str_lit("stage-module"), m);
+        let v = module_types_opened(with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit!("stage-module"), scheme(nil::<Str>(), mt), str_lit!("global")), session_marks())), mt);
+        let gm = session_global_x(k2, str_lit!("stage-module"), m);
         let vals = map(kayak_rt::as_proc(mitem_name), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Ty>| {
-            string_eq_p(mitem_kind(x), str_lit("%val"))
+            string_eq_p(mitem_kind(x), str_lit!("%val"))
         })), mtype_items(mt)));
-        let made = seeded(k2, v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals, 0i64);
+        let made = seeded(k2, v, kayak_rt::heap_cons(sglobal(str_lit!("stage-module"), gm), kayak_rt::nil()), m, vals, 0i64);
         set(sessions(), onto(get(sessions()), kayak_rt::heap_cons(made, kayak_rt::nil())));
         obj_set_x(sw, 1i64, fixnum(k2));
         k2
@@ -175,7 +175,7 @@ pub fn thunk_word_x(lam: kayak_rt::Handle<'static, Ir>) -> i64 {
 
 #[inline]
 pub fn session_scope() -> Scope {
-    kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("%session"), kayak_rt::nil()), kayak_rt::nil())
+    kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("%session"), kayak_rt::nil()), kayak_rt::nil())
 }
 
 /// An expression in session `k`: `(sum ok (sum expression p))`, `p` the
@@ -187,11 +187,11 @@ pub fn session_expression_x(k: i64, st: kayak_rt::Handle<'static, Sess>, code: k
         Sess::Sess(v, gl, ds, g) => {
             let thunk = session_thunk(code);
             let why = session_worked(v, thunk, t, 0i64);
-            if not(string_eq_p(why, str_lit(""))) {
+            if not(string_eq_p(why, str_lit!(""))) {
                 refused_word_x(why)
             } else {
                 let s = {
-                    let tagcase_ = expressions::check(at(v, str_lit("staged code"), nil::<Str>()), new_state(), thunk, t);
+                    let tagcase_ = expressions::check(at(v, str_lit!("staged code"), nil::<Str>()), new_state(), thunk, t);
                     match *tagcase_ {
                         Res::Res(u, es, s) => {
                             s
@@ -207,7 +207,7 @@ pub fn session_expression_x(k: i64, st: kayak_rt::Handle<'static, Sess>, code: k
                     }
                 }, cv_facts(v)));
                 let p = thunk_word_x(lower(thunk, session_scope(), gs));
-                sum_word_x(str_lit("ok"), sum_word_x(str_lit("expression"), p))
+                sum_word_x(str_lit!("ok"), sum_word_x(str_lit!("expression"), p))
             }
         }
     }
@@ -245,7 +245,7 @@ pub fn session_run_x(sw: i64, code: i64, given: i64, rep: i64, names: i64) -> i6
     let k = session_state_x(sw, mt);
     let st = nth_sess(get(sessions()), k);
     let c = code_sexp_x(code);
-    if head_is_p(c, str_lit("define")) {
+    if head_is_p(c, str_lit!("define")) {
         session_define_x(sw, k, st, c, t)
     } else {
         session_expression_x(k, st, c, t)
@@ -279,19 +279,19 @@ pub fn ready_word_x(sw: i64, d: i64, decision: i64) -> i64 {
                         let tagcase_ = car(found);
                         match *tagcase_ {
                             Bind::Bind(n, sc, w) => {
-                                (string_eq_p(w, str_lit("global")) || string_eq_p(w, str_lit("broken")))
+                                (string_eq_p(w, str_lit!("global")) || string_eq_p(w, str_lit!("broken")))
                             }
                         }
                     });
                     let how = decision_tag(decision);
                     if not(i64_eq(obj_ref(d, 0i64), sw)) {
-                        stage_failed_word_x(str_lit("stale"), str_lit("this definition was checked against another session"))
+                        stage_failed_word_x(str_lit!("stale"), str_lit!("this definition was checked against another session"))
                     } else if used {
-                        stage_failed_word_x(str_lit("stale"), str_lit("this definition was committed already"))
+                        stage_failed_word_x(str_lit!("stale"), str_lit!("this definition was committed already"))
                     } else if not(i64_eq(g, g2)) {
-                        stage_failed_word_x(str_lit("stale"), str_lit("the session changed since this definition was checked: check it again"))
-                    } else if (existed && string_eq_p(how, str_lit("refuse"))) {
-                        stage_failed_word_x(str_lit("refused"), string_append(str_lit("`"), string_append(name, str_lit("` is defined already, and the redefinition was refused"))))
+                        stage_failed_word_x(str_lit!("stale"), str_lit!("the session changed since this definition was checked: check it again"))
+                    } else if (existed && string_eq_p(how, str_lit!("refuse"))) {
+                        stage_failed_word_x(str_lit!("refused"), string_append(str_lit!("`"), string_append(name, str_lit!("` is defined already, and the redefinition was refused"))))
                     } else {
                         let v2 = session_top(v, form);
                         let needed = (existed && rerun_needed_p(v, v2, kayak_rt::heap_cons(name, kayak_rt::nil())));
@@ -308,7 +308,7 @@ pub fn ready_word_x(sw: i64, d: i64, decision: i64) -> i64 {
                         let kept = filter(kayak_rt::as_proc(kayak_rt::closure1s((name,), |(name,), x: kayak_rt::Handle<'static, Defn>| {
                             not(string_member_p(name, defn_names(x)))
                         })), ds);
-                        let again = if (needed && string_eq_p(how, str_lit("rerun"))) {
+                        let again = if (needed && string_eq_p(how, str_lit!("rerun"))) {
                             session_reruns(v2, gl2, users_of(kept, kayak_rt::heap_cons(name, kayak_rt::nil())), name, nil::<kayak_rt::Handle<'static, Runs>>())
                         } else {
                             rerun_made(v2, gl2, nil::<kayak_rt::Handle<'static, Runs>>())
@@ -320,10 +320,10 @@ pub fn ready_word_x(sw: i64, d: i64, decision: i64) -> i64 {
                                 let body = i_seq(onto(map(kayak_rt::as_proc(kayak_rt::closure1s((gs,), |(gs,), r: kayak_rt::Handle<'static, Runs>| {
                                     run_ir(gs, r)
                                 })), kayak_rt::heap_cons(runs(i, form), more)), kayak_rt::heap_cons(i_lit(v_unit()), kayak_rt::nil())));
-                                let p = thunk_word_x(i_lambda(0i64, body, str_lit(""), str_lit("")));
+                                let p = thunk_word_x(i_lambda(0i64, body, str_lit!(""), str_lit!("")));
                                 set(sessions(), sess_replaced(get(sessions()), k, sess(v3, gl3, onto(kept, kayak_rt::heap_cons(defn(kayak_rt::heap_cons(name, kayak_rt::nil()), form), kayak_rt::nil())), i64_plus(g2, 1i64))));
                                 set(pendings(), pend_replaced(get(pendings()), fixnum_value(obj_ref(d, 1i64)), pend(k, g, name, form, dt, true)));
-                                sum_word_x(str_lit("go"), p)
+                                sum_word_x(str_lit!("go"), p)
                             }
                         }
                     }

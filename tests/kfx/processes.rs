@@ -175,9 +175,9 @@ pub fn dataflow() -> Int {
 #[inline]
 pub fn show(xs: List<Int>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(int_to_string(car(xs)), string_append(str_lit(" "), show(cdr(xs))))
+        string_append(int_to_string(car(xs)), string_append(str_lit!(" "), show(cdr(xs))))
     }
 }
 

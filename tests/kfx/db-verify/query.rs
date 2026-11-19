@@ -70,12 +70,12 @@ pub mod queries {
     // file of another format gives no memos, as none at all.
     #[inline]
     pub fn memos_format() -> Str {
-        str_lit("kayak memos 3")
+        str_lit!("kayak memos 3")
     }
 
     #[inline]
     pub fn memos_head(whose: Str) -> Str {
-        string_append(memos_format(), string_append(str_lit(" "), string_append(whose, str_lit("\n"))))
+        string_append(memos_format(), string_append(str_lit!(" "), string_append(whose, str_lit!("\n"))))
     }
 
     pub fn memos_runs(mut ms: Memos, mut acc: Strings) -> Strings {
@@ -86,7 +86,7 @@ pub mod queries {
                 let tagcase_ = car(ms);
                 match *tagcase_ {
                     Memo::Memo(h, t) => {
-                        (ms, acc) = (cdr(ms), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(i64_to_string(string_length_i64(t)), kayak_rt::heap_cons(str_lit("\t"), kayak_rt::heap_cons(i64_to_string(h), acc)))))));
+                        (ms, acc) = (cdr(ms), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(i64_to_string(string_length_i64(t)), kayak_rt::heap_cons(str_lit!("\t"), kayak_rt::heap_cons(i64_to_string(h), acc)))))));
                         continue;
                     }
                 }

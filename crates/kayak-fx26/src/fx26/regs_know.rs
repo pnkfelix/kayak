@@ -161,7 +161,7 @@ pub fn s_none() -> kayak_rt::Handle<'static, Rstd> {
 }
 
 pub fn r_fixed_width_op_p(n: Str) -> bool {
-    (has_prefix_p(n, str_lit("%fx26-i8")) || has_prefix_p(n, str_lit("%fx26-u8")) || has_prefix_p(n, str_lit("%fx26-i32")) || has_prefix_p(n, str_lit("%fx26-u32")) || has_prefix_p(n, str_lit("%fx26-i64")) || has_prefix_p(n, str_lit("%fx26-u64")) || has_prefix_p(n, str_lit("%fx26-f64")) || has_prefix_p(n, str_lit("%fx26-f32")) || has_prefix_p(n, str_lit("%fx26-int->")))
+    (has_prefix_p(n, str_lit!("%fx26-i8")) || has_prefix_p(n, str_lit!("%fx26-u8")) || has_prefix_p(n, str_lit!("%fx26-i32")) || has_prefix_p(n, str_lit!("%fx26-u32")) || has_prefix_p(n, str_lit!("%fx26-i64")) || has_prefix_p(n, str_lit!("%fx26-u64")) || has_prefix_p(n, str_lit!("%fx26-f64")) || has_prefix_p(n, str_lit!("%fx26-f32")) || has_prefix_p(n, str_lit!("%fx26-int->")))
 }
 
 // Names `r-never-collects` tests against, made once (C264): a list written in place is
@@ -169,7 +169,7 @@ pub fn r_fixed_width_op_p(n: Str) -> bool {
 pub fn r_never_collects_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("%fx26-mul"), kayak_rt::heap_cons(str_lit("%fx26-quotient"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("%fx26-arithmetic-shift"), kayak_rt::heap_cons(str_lit("%bloblet-fields"), kayak_rt::heap_cons(str_lit("%fx26-string->f64"), kayak_rt::heap_cons(str_lit("%fx26-remainder"), kayak_rt::heap_cons(str_lit("%fx26-flatarray-ref"), kayak_rt::heap_cons(str_lit("%fx26-flatarray-length"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("%string-hash"), kayak_rt::heap_cons(str_lit("%symbol-hash"), kayak_rt::heap_cons(str_lit("%fx26-string-compare"), kayak_rt::heap_cons(str_lit("%fx26-symbol-compare"), kayak_rt::heap_cons(str_lit("%fx26-string<?"), kayak_rt::heap_cons(str_lit("%fx26-string<=?"), kayak_rt::heap_cons(str_lit("%fx26-string>?"), kayak_rt::heap_cons(str_lit("%fx26-string>=?"), kayak_rt::heap_cons(str_lit("%fx26-char<?"), kayak_rt::heap_cons(str_lit("%fx26-char<=?"), kayak_rt::heap_cons(str_lit("%fx26-char>?"), kayak_rt::heap_cons(str_lit("%fx26-char>=?"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("exact-integer?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("boolean?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("%fx26-procedure?"), kayak_rt::heap_cons(str_lit("%fx26-array?"), kayak_rt::heap_cons(str_lit("%fx26-f32?"), kayak_rt::heap_cons(str_lit("%fx26-box?"), kayak_rt::heap_cons(str_lit("%fx26-sum?"), kayak_rt::heap_cons(str_lit("%fx26-product?"), kayak_rt::heap_cons(str_lit("%fx26-suffix-ref-get"), kayak_rt::heap_cons(str_lit("%suffix-ref-owner"), kayak_rt::heap_cons(str_lit("%suffix-ref-offset"), kayak_rt::heap_cons(str_lit("%suffix-ref+"), kayak_rt::heap_cons(str_lit("%suffix-ref"), kayak_rt::heap_cons(str_lit("%fx26-flat-tag"), kayak_rt::heap_cons(str_lit("%fx26-flat-no-arm"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit("%fx26-suffix-ref-length"), kayak_rt::heap_cons(str_lit("%fx26-suffix-fits"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-has?"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-count"), kayak_rt::heap_cons(str_lit("%fx26-eqtable-delete!"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("%fx26-mul"), kayak_rt::heap_cons(str_lit!("%fx26-quotient"), kayak_rt::heap_cons(str_lit!("modulo"), kayak_rt::heap_cons(str_lit!("%fx26-arithmetic-shift"), kayak_rt::heap_cons(str_lit!("%bloblet-fields"), kayak_rt::heap_cons(str_lit!("%fx26-string->f64"), kayak_rt::heap_cons(str_lit!("%fx26-remainder"), kayak_rt::heap_cons(str_lit!("%fx26-flatarray-ref"), kayak_rt::heap_cons(str_lit!("%fx26-flatarray-length"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::heap_cons(str_lit!("string-length"), kayak_rt::heap_cons(str_lit!("string-ref"), kayak_rt::heap_cons(str_lit!("%string-hash"), kayak_rt::heap_cons(str_lit!("%symbol-hash"), kayak_rt::heap_cons(str_lit!("%fx26-string-compare"), kayak_rt::heap_cons(str_lit!("%fx26-symbol-compare"), kayak_rt::heap_cons(str_lit!("%fx26-string<?"), kayak_rt::heap_cons(str_lit!("%fx26-string<=?"), kayak_rt::heap_cons(str_lit!("%fx26-string>?"), kayak_rt::heap_cons(str_lit!("%fx26-string>=?"), kayak_rt::heap_cons(str_lit!("%fx26-char<?"), kayak_rt::heap_cons(str_lit!("%fx26-char<=?"), kayak_rt::heap_cons(str_lit!("%fx26-char>?"), kayak_rt::heap_cons(str_lit!("%fx26-char>=?"), kayak_rt::heap_cons(str_lit!("null?"), kayak_rt::heap_cons(str_lit!("pair?"), kayak_rt::heap_cons(str_lit!("exact-integer?"), kayak_rt::heap_cons(str_lit!("char?"), kayak_rt::heap_cons(str_lit!("boolean?"), kayak_rt::heap_cons(str_lit!("string?"), kayak_rt::heap_cons(str_lit!("symbol?"), kayak_rt::heap_cons(str_lit!("%fx26-procedure?"), kayak_rt::heap_cons(str_lit!("%fx26-array?"), kayak_rt::heap_cons(str_lit!("%fx26-f32?"), kayak_rt::heap_cons(str_lit!("%fx26-box?"), kayak_rt::heap_cons(str_lit!("%fx26-sum?"), kayak_rt::heap_cons(str_lit!("%fx26-product?"), kayak_rt::heap_cons(str_lit!("%fx26-suffix-ref-get"), kayak_rt::heap_cons(str_lit!("%suffix-ref-owner"), kayak_rt::heap_cons(str_lit!("%suffix-ref-offset"), kayak_rt::heap_cons(str_lit!("%suffix-ref+"), kayak_rt::heap_cons(str_lit!("%suffix-ref"), kayak_rt::heap_cons(str_lit!("%fx26-flat-tag"), kayak_rt::heap_cons(str_lit!("%fx26-flat-no-arm"), kayak_rt::heap_cons(str_lit!("bytevector-length"), kayak_rt::heap_cons(str_lit!("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit!("%fx26-suffix-ref-length"), kayak_rt::heap_cons(str_lit!("%fx26-suffix-fits"), kayak_rt::heap_cons(str_lit!("%fx26-eqtable-has?"), kayak_rt::heap_cons(str_lit!("%fx26-eqtable-count"), kayak_rt::heap_cons(str_lit!("%fx26-eqtable-delete!"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))))
     })
 }
 
@@ -198,7 +198,7 @@ pub fn r_prim_std(p: Str, n: i64, k: i64) -> kayak_rt::Handle<'static, Rstd> {
 pub fn r_prim_name_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil()))))))))))
+        kayak_rt::heap_cons(str_lit!("modulo"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::heap_cons(str_lit!("string-append"), kayak_rt::heap_cons(str_lit!("string-length"), kayak_rt::heap_cons(str_lit!("string-ref"), kayak_rt::heap_cons(str_lit!("substring"), kayak_rt::heap_cons(str_lit!("string=?"), kayak_rt::heap_cons(str_lit!("string->symbol"), kayak_rt::heap_cons(str_lit!("symbol->string"), kayak_rt::nil()))))))))))
     })
 }
 
@@ -213,7 +213,7 @@ pub fn r_prim_name_p(n: Str) -> bool {
 pub fn r_standard_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("make-escape-tag"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::nil())))
+        kayak_rt::heap_cons(str_lit!("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit!("make-escape-tag"), kayak_rt::heap_cons(str_lit!("make-continuation-mark-key"), kayak_rt::nil())))
     })
 }
 
@@ -223,85 +223,85 @@ pub fn r_standard(name: Str, n: i64) -> kayak_rt::Handle<'static, Rstd> {
     let is = kayak_rt::closure2s((name, n,), |(name, n,), s: Str, k: i64| {
         (string_eq_p(name, s) && i64_eq(n, k))
     });
-    if is.call(str_lit("+"), 2i64) {
-        s_op2(str_lit("int-add"), false, false)
-    } else if is.call(str_lit("-"), 2i64) {
-        s_op2(str_lit("int-sub"), false, false)
-    } else if is.call(str_lit("<"), 2i64) {
-        s_op2(str_lit("int-less"), false, false)
-    } else if is.call(str_lit(">"), 2i64) {
-        s_op2(str_lit("int-less"), true, false)
-    } else if is.call(str_lit("<="), 2i64) {
-        s_op2(str_lit("int-less"), true, true)
-    } else if is.call(str_lit(">="), 2i64) {
-        s_op2(str_lit("int-less"), false, true)
-    } else if is.call(str_lit("="), 2i64) {
-        s_op2(str_lit("int-eq"), false, false)
+    if is.call(str_lit!("+"), 2i64) {
+        s_op2(str_lit!("int-add"), false, false)
+    } else if is.call(str_lit!("-"), 2i64) {
+        s_op2(str_lit!("int-sub"), false, false)
+    } else if is.call(str_lit!("<"), 2i64) {
+        s_op2(str_lit!("int-less"), false, false)
+    } else if is.call(str_lit!(">"), 2i64) {
+        s_op2(str_lit!("int-less"), true, false)
+    } else if is.call(str_lit!("<="), 2i64) {
+        s_op2(str_lit!("int-less"), true, true)
+    } else if is.call(str_lit!(">="), 2i64) {
+        s_op2(str_lit!("int-less"), false, true)
+    } else if is.call(str_lit!("="), 2i64) {
+        s_op2(str_lit!("int-eq"), false, false)
     } else if (std_eq_name_p(name) && i64_eq(n, 2i64)) {
-        s_op2(str_lit("eq"), false, false)
-    } else if is.call(str_lit("not"), 1i64) {
-        s_op2imm(str_lit("eq"), l_bool(false))
-    } else if is.call(str_lit("null?"), 1i64) {
-        s_op2imm(str_lit("eq"), l_nil())
-    } else if is.call(str_lit("car"), 1i64) {
-        s_op1(str_lit("pair-car"))
-    } else if is.call(str_lit("cdr"), 1i64) {
-        s_op1(str_lit("pair-cdr"))
-    } else if is.call(str_lit("get"), 1i64) {
+        s_op2(str_lit!("eq"), false, false)
+    } else if is.call(str_lit!("not"), 1i64) {
+        s_op2imm(str_lit!("eq"), l_bool(false))
+    } else if is.call(str_lit!("null?"), 1i64) {
+        s_op2imm(str_lit!("eq"), l_nil())
+    } else if is.call(str_lit!("car"), 1i64) {
+        s_op1(str_lit!("pair-car"))
+    } else if is.call(str_lit!("cdr"), 1i64) {
+        s_op1(str_lit!("pair-cdr"))
+    } else if is.call(str_lit!("get"), 1i64) {
         s_field(2i64)
-    } else if is.call(str_lit("cons"), 2i64) {
-        s_cellular(str_lit("cons"))
-    } else if is.call(str_lit("set"), 2i64) {
+    } else if is.call(str_lit!("cons"), 2i64) {
+        s_cellular(str_lit!("cons"))
+    } else if is.call(str_lit!("set"), 2i64) {
         s_set()
-    } else if (is.call(str_lit("abort-current-continuation"), 2i64) || is.call(str_lit("escape"), 2i64)) {
-        s_cellular(str_lit("abort"))
-    } else if is.call(str_lit("call-with-composable-continuation"), 2i64) {
-        s_cellular(str_lit("callcomp"))
-    } else if is.call(str_lit("call-with-oneshot-continuation"), 2i64) {
-        s_cellular(str_lit("callone"))
-    } else if is.call(str_lit("cwcc"), 1i64) {
-        s_cellular(str_lit("callcc"))
-    } else if is.call(str_lit("with-mark"), 3i64) {
-        s_cellular(str_lit("withmark"))
-    } else if is.call(str_lit("first-mark"), 2i64) {
-        s_cellular(str_lit("firstmark"))
-    } else if is.call(str_lit("current-marks"), 1i64) {
-        s_cellular(str_lit("currentmarks"))
-    } else if is.call(str_lit("marks-of"), 2i64) {
-        s_cellular(str_lit("marksof"))
-    } else if is.call(str_lit("array-ref"), 2i64) {
-        s_special(str_lit("array-ref"))
-    } else if is.call(str_lit("array-set!"), 3i64) {
-        s_special(str_lit("array-set!"))
-    } else if is.call(str_lit("array-length"), 1i64) {
-        s_special(str_lit("array-length"))
-    } else if is.call(str_lit("make-array"), 2i64) {
-        s_special(str_lit("make-array"))
-    } else if is.call(str_lit("apply"), 2i64) {
+    } else if (is.call(str_lit!("abort-current-continuation"), 2i64) || is.call(str_lit!("escape"), 2i64)) {
+        s_cellular(str_lit!("abort"))
+    } else if is.call(str_lit!("call-with-composable-continuation"), 2i64) {
+        s_cellular(str_lit!("callcomp"))
+    } else if is.call(str_lit!("call-with-oneshot-continuation"), 2i64) {
+        s_cellular(str_lit!("callone"))
+    } else if is.call(str_lit!("cwcc"), 1i64) {
+        s_cellular(str_lit!("callcc"))
+    } else if is.call(str_lit!("with-mark"), 3i64) {
+        s_cellular(str_lit!("withmark"))
+    } else if is.call(str_lit!("first-mark"), 2i64) {
+        s_cellular(str_lit!("firstmark"))
+    } else if is.call(str_lit!("current-marks"), 1i64) {
+        s_cellular(str_lit!("currentmarks"))
+    } else if is.call(str_lit!("marks-of"), 2i64) {
+        s_cellular(str_lit!("marksof"))
+    } else if is.call(str_lit!("array-ref"), 2i64) {
+        s_special(str_lit!("array-ref"))
+    } else if is.call(str_lit!("array-set!"), 3i64) {
+        s_special(str_lit!("array-set!"))
+    } else if is.call(str_lit!("array-length"), 1i64) {
+        s_special(str_lit!("array-length"))
+    } else if is.call(str_lit!("make-array"), 2i64) {
+        s_special(str_lit!("make-array"))
+    } else if is.call(str_lit!("apply"), 2i64) {
         s_apply()
-    } else if string_eq_p(name, str_lit("list")) {
+    } else if string_eq_p(name, str_lit!("list")) {
         s_list()
     } else if (i64_eq(n, 0i64) && string_member_p(name, r_standard_names())) {
-        s_special(str_lit("make-box"))
-    } else if (is.call(str_lit("set-car!"), 2i64) || is.call(str_lit("set-cdr!"), 2i64)) {
+        s_special(str_lit!("make-box"))
+    } else if (is.call(str_lit!("set-car!"), 2i64) || is.call(str_lit!("set-cdr!"), 2i64)) {
         s_special(name)
-    } else if string_eq_p(name, str_lit("new")) {
-        r_prim_std(str_lit("%make-box"), n, 1i64)
-    } else if string_eq_p(name, str_lit("char->string")) {
-        r_prim_std(str_lit("string"), n, 1i64)
+    } else if string_eq_p(name, str_lit!("new")) {
+        r_prim_std(str_lit!("%make-box"), n, 1i64)
+    } else if string_eq_p(name, str_lit!("char->string")) {
+        r_prim_std(str_lit!("string"), n, 1i64)
     } else if r_prim_name_p(name) {
         r_prim_std(name, n, n)
-    } else if string_eq_p(name, str_lit("%fx26-convert")) {
+    } else if string_eq_p(name, str_lit!("%fx26-convert")) {
         r_prim_std(name, n, 2i64)
     } else {
         let p = std_primitive(name);
-        if string_eq_p(p, str_lit("%fx26-identity")) {
+        if string_eq_p(p, str_lit!("%fx26-identity")) {
             if i64_eq(n, 1i64) {
                 s_identity()
             } else {
                 s_none()
             }
-        } else if string_eq_p(p, str_lit("")) {
+        } else if string_eq_p(p, str_lit!("")) {
             s_none()
         } else {
             r_prim_std(p, n, n)
@@ -422,12 +422,12 @@ pub fn r_standard_name(env: Renv, f: kayak_rt::Handle<'static, Cx>) -> Str {
             } else if null_p(r_where(env, n)) {
                 std_named(n)
             } else {
-                str_lit("")
+                str_lit!("")
             }
         }
         _ => {
             let y = tagcase_;
-            str_lit("")
+            str_lit!("")
         }
     }
 }
@@ -556,7 +556,7 @@ pub fn r_literal_p(x: kayak_rt::Handle<'static, Cx>) -> bool {
 
 #[inline]
 pub fn r_add_name_p(n: Str) -> bool {
-    (string_eq_p(n, str_lit("+")) || string_eq_p(n, str_lit("-")))
+    (string_eq_p(n, str_lit!("+")) || string_eq_p(n, str_lit!("-")))
 }
 
 #[inline]
@@ -612,17 +612,17 @@ pub fn r_fits_fixed_p(name: Str, c: kayak_rt::Handle<'static, Rconst>) -> bool {
     let tagcase_ = c;
     match *tagcase_ {
         Rconst::RcInt(n) => {
-            if string_eq_p(name, str_lit("int->i8")) {
+            if string_eq_p(name, str_lit!("int->i8")) {
                 (_gt_eq(n, int_lit(-128)) && _lt_eq(n, int_lit(127)))
-            } else if string_eq_p(name, str_lit("int->u8")) {
+            } else if string_eq_p(name, str_lit!("int->u8")) {
                 (_gt_eq(n, int_lit(0)) && _lt_eq(n, int_lit(255)))
-            } else if string_eq_p(name, str_lit("int->i32")) {
+            } else if string_eq_p(name, str_lit!("int->i32")) {
                 (_gt_eq(n, int_lit(-2147483648)) && _lt_eq(n, int_lit(2147483647)))
-            } else if string_eq_p(name, str_lit("int->u32")) {
+            } else if string_eq_p(name, str_lit!("int->u32")) {
                 (_gt_eq(n, int_lit(0)) && _lt_eq(n, int_lit(4294967295)))
-            } else if string_eq_p(name, str_lit("int->i64")) {
+            } else if string_eq_p(name, str_lit!("int->i64")) {
                 true
-            } else if string_eq_p(name, str_lit("int->u64")) {
+            } else if string_eq_p(name, str_lit!("int->u64")) {
                 _gt_eq(n, int_lit(0))
             } else {
                 false
@@ -650,30 +650,30 @@ pub fn r_fold(name: Str, vs: List<kayak_rt::Handle<'static, Rconst>>) -> List<ka
         nil::<Int>()
     };
     let ints = (not(null_p(a)) && not(null_p(b)));
-    if (ints && string_eq_p(name, str_lit("+"))) {
+    if (ints && string_eq_p(name, str_lit!("+"))) {
         kayak_rt::heap_cons(rc_int(_plus(car(a), car(b))), kayak_rt::nil())
-    } else if (ints && string_eq_p(name, str_lit("-"))) {
+    } else if (ints && string_eq_p(name, str_lit!("-"))) {
         kayak_rt::heap_cons(rc_int(_minus(car(a), car(b))), kayak_rt::nil())
-    } else if (ints && string_eq_p(name, str_lit("<"))) {
+    } else if (ints && string_eq_p(name, str_lit!("<"))) {
         kayak_rt::heap_cons(rc_bool(_lt(car(a), car(b))), kayak_rt::nil())
-    } else if (ints && string_eq_p(name, str_lit(">"))) {
+    } else if (ints && string_eq_p(name, str_lit!(">"))) {
         kayak_rt::heap_cons(rc_bool(_gt(car(a), car(b))), kayak_rt::nil())
-    } else if (ints && string_eq_p(name, str_lit("<="))) {
+    } else if (ints && string_eq_p(name, str_lit!("<="))) {
         kayak_rt::heap_cons(rc_bool(_lt_eq(car(a), car(b))), kayak_rt::nil())
-    } else if (ints && string_eq_p(name, str_lit(">="))) {
+    } else if (ints && string_eq_p(name, str_lit!(">="))) {
         kayak_rt::heap_cons(rc_bool(_gt_eq(car(a), car(b))), kayak_rt::nil())
-    } else if (ints && string_eq_p(name, str_lit("="))) {
+    } else if (ints && string_eq_p(name, str_lit!("="))) {
         kayak_rt::heap_cons(rc_bool(_eq(car(a), car(b))), kayak_rt::nil())
-    } else if (ints && string_eq_p(name, str_lit("*"))) {
+    } else if (ints && string_eq_p(name, str_lit!("*"))) {
         let p = _star(car(a), car(b));
         if r_small_p(p) {
             kayak_rt::heap_cons(rc_int(p), kayak_rt::nil())
         } else {
             nil::<kayak_rt::Handle<'static, Rconst>>()
         }
-    } else if (one && string_eq_p(name, str_lit("not"))) {
+    } else if (one && string_eq_p(name, str_lit!("not"))) {
         kayak_rt::heap_cons(rc_bool(r_const_false_p(car(vs))), kayak_rt::nil())
-    } else if (one && string_eq_p(name, str_lit("null?"))) {
+    } else if (one && string_eq_p(name, str_lit!("null?"))) {
         kayak_rt::heap_cons(rc_bool({
             let tagcase_ = car(vs);
             match *tagcase_ {
@@ -686,7 +686,7 @@ pub fn r_fold(name: Str, vs: List<kayak_rt::Handle<'static, Rconst>>) -> List<ka
                 }
             }
         }), kayak_rt::nil())
-    } else if (two && string_eq_p(name, str_lit("char=?"))) {
+    } else if (two && string_eq_p(name, str_lit!("char=?"))) {
         let tagcase_ = car(vs);
         match *tagcase_ {
             Rconst::RcChar(x) => {
@@ -1427,7 +1427,7 @@ pub fn r_room_if_all(es: Cxs, n: i64, w: bool) -> i64 {
 pub fn r_test_name_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::nil()))))))))))
+        kayak_rt::heap_cons(str_lit!("<"), kayak_rt::heap_cons(str_lit!(">"), kayak_rt::heap_cons(str_lit!("<="), kayak_rt::heap_cons(str_lit!(">="), kayak_rt::heap_cons(str_lit!("="), kayak_rt::heap_cons(str_lit!("eq?"), kayak_rt::heap_cons(str_lit!("symbol=?"), kayak_rt::heap_cons(str_lit!("char=?"), kayak_rt::heap_cons(str_lit!("null?"), kayak_rt::heap_cons(str_lit!("pair?"), kayak_rt::nil()))))))))))
     })
 }
 
@@ -1706,7 +1706,7 @@ pub fn r_known(mut env: Renv, mut x: kayak_rt::Handle<'static, Cx>) -> List<kaya
                 if null_p(c) {
                     return nil::<kayak_rt::Handle<'static, Rconst>>();
                 } else {
-                    return kayak_rt::heap_cons(rc_data(l_frozen(str_lit("sum"), kayak_rt::heap_cons(l_sym(t), kayak_rt::heap_cons(rconst_lit(car(c)), kayak_rt::nil())))), kayak_rt::nil());
+                    return kayak_rt::heap_cons(rc_data(l_frozen(str_lit!("sum"), kayak_rt::heap_cons(l_sym(t), kayak_rt::heap_cons(rconst_lit(car(c)), kayak_rt::nil())))), kayak_rt::nil());
                 }
             }
             Cx::XProduct(fs, a) => {
@@ -1714,7 +1714,7 @@ pub fn r_known(mut env: Renv, mut x: kayak_rt::Handle<'static, Cx>) -> List<kaya
                 if null_p(vs) {
                     return nil::<kayak_rt::Handle<'static, Rconst>>();
                 } else {
-                    return kayak_rt::heap_cons(rc_data(l_frozen(str_lit("product"), map(kayak_rt::as_proc(rconst_lit), car(vs)))), kayak_rt::nil());
+                    return kayak_rt::heap_cons(rc_data(l_frozen(str_lit!("product"), map(kayak_rt::as_proc(rconst_lit), car(vs)))), kayak_rt::nil());
                 }
             }
             Cx::XApp(f, args, a) => {
@@ -1726,7 +1726,7 @@ pub fn r_known(mut env: Renv, mut x: kayak_rt::Handle<'static, Cx>) -> List<kaya
                 };
                 if not(null_p(decided)) {
                     return decided;
-                } else if string_eq_p(name, str_lit("")) {
+                } else if string_eq_p(name, str_lit!("")) {
                     return nil::<kayak_rt::Handle<'static, Rconst>>();
                 } else {
                     let vs = r_knowns(env, args, nil::<kayak_rt::Handle<'static, Rconst>>());
@@ -1861,7 +1861,7 @@ pub fn r_knowing(env: Renv, t: kayak_rt::Handle<'static, Cx>, v: bool) -> Renv {
         let tagcase_ = car(d);
         match *tagcase_ {
             Rtest::Rtest(n, ops) => {
-                r_bind(str_lit("%if"), rl_test(n, ops, v), env)
+                r_bind(str_lit!("%if"), rl_test(n, ops, v), env)
             }
         }
     }
@@ -2107,7 +2107,7 @@ pub fn r_locals(mut ps: Strings, mut te: Cenv) -> Cenv {
 pub fn r_bloblet_quiet_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("%blobref-field"), kayak_rt::nil()))))))
+        kayak_rt::heap_cons(str_lit!("bloblet-ref"), kayak_rt::heap_cons(str_lit!("blobref-get"), kayak_rt::heap_cons(str_lit!("blobref-set!"), kayak_rt::heap_cons(str_lit!("blobref-index"), kayak_rt::heap_cons(str_lit!("blobref-variant!"), kayak_rt::heap_cons(str_lit!("%blobref-field"), kayak_rt::nil()))))))
     })
 }
 

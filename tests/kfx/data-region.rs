@@ -121,6 +121,6 @@ pub fn again(mut k: i64, mut acc: i64) -> i64 {
 
 #[inline]
 pub fn main() -> Str {
-    string_append(i64_to_string(again(1000i64, 0i64)), string_append(str_lit(" "), i64_to_string(total(kept()))))
+    string_append(i64_to_string(again(1000i64, 0i64)), string_append(str_lit!(" "), i64_to_string(total(kept()))))
 }
 

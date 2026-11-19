@@ -110,7 +110,7 @@ pub fn steps_from<Mod_M: Steps>(n: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(three::<counter::Module>()), string_append(str_lit(" "), string_append(i64_to_string(three::<tens::Module>()), string_append(str_lit(" "), string_append(i64_to_string(start::<counter::Module>()), string_append(str_lit(" "), i64_to_string(steps_from::<tens::Module>(5i64))))))))
+    string_append(i64_to_string(three::<counter::Module>()), string_append(str_lit!(" "), string_append(i64_to_string(three::<tens::Module>()), string_append(str_lit!(" "), string_append(i64_to_string(start::<counter::Module>()), string_append(str_lit!(" "), i64_to_string(steps_from::<tens::Module>(5i64))))))))
 }
 
 impl Steps for counter::Module {

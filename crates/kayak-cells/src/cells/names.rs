@@ -9,7 +9,7 @@ use super::*;
 pub fn rust_keywords() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("as"), kayak_rt::heap_cons(str_lit("async"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("break"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::heap_cons(str_lit("continue"), kayak_rt::heap_cons(str_lit("do"), kayak_rt::heap_cons(str_lit("dyn"), kayak_rt::heap_cons(str_lit("else"), kayak_rt::heap_cons(str_lit("enum"), kayak_rt::heap_cons(str_lit("extern"), kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("final"), kayak_rt::heap_cons(str_lit("fn"), kayak_rt::heap_cons(str_lit("for"), kayak_rt::heap_cons(str_lit("gen"), kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("impl"), kayak_rt::heap_cons(str_lit("in"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("loop"), kayak_rt::heap_cons(str_lit("macro"), kayak_rt::heap_cons(str_lit("match"), kayak_rt::heap_cons(str_lit("mod"), kayak_rt::heap_cons(str_lit("move"), kayak_rt::heap_cons(str_lit("mut"), kayak_rt::heap_cons(str_lit("override"), kayak_rt::heap_cons(str_lit("priv"), kayak_rt::heap_cons(str_lit("pub"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("static"), kayak_rt::heap_cons(str_lit("struct"), kayak_rt::heap_cons(str_lit("trait"), kayak_rt::heap_cons(str_lit("true"), kayak_rt::heap_cons(str_lit("try"), kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("typeof"), kayak_rt::heap_cons(str_lit("unsafe"), kayak_rt::heap_cons(str_lit("unsized"), kayak_rt::heap_cons(str_lit("use"), kayak_rt::heap_cons(str_lit("virtual"), kayak_rt::heap_cons(str_lit("where"), kayak_rt::heap_cons(str_lit("while"), kayak_rt::heap_cons(str_lit("yield"), kayak_rt::heap_cons(str_lit("abstract"), kayak_rt::heap_cons(str_lit("become"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("as"), kayak_rt::heap_cons(str_lit!("async"), kayak_rt::heap_cons(str_lit!("await"), kayak_rt::heap_cons(str_lit!("box"), kayak_rt::heap_cons(str_lit!("break"), kayak_rt::heap_cons(str_lit!("const"), kayak_rt::heap_cons(str_lit!("continue"), kayak_rt::heap_cons(str_lit!("do"), kayak_rt::heap_cons(str_lit!("dyn"), kayak_rt::heap_cons(str_lit!("else"), kayak_rt::heap_cons(str_lit!("enum"), kayak_rt::heap_cons(str_lit!("extern"), kayak_rt::heap_cons(str_lit!("false"), kayak_rt::heap_cons(str_lit!("final"), kayak_rt::heap_cons(str_lit!("fn"), kayak_rt::heap_cons(str_lit!("for"), kayak_rt::heap_cons(str_lit!("gen"), kayak_rt::heap_cons(str_lit!("if"), kayak_rt::heap_cons(str_lit!("impl"), kayak_rt::heap_cons(str_lit!("in"), kayak_rt::heap_cons(str_lit!("let"), kayak_rt::heap_cons(str_lit!("loop"), kayak_rt::heap_cons(str_lit!("macro"), kayak_rt::heap_cons(str_lit!("match"), kayak_rt::heap_cons(str_lit!("mod"), kayak_rt::heap_cons(str_lit!("move"), kayak_rt::heap_cons(str_lit!("mut"), kayak_rt::heap_cons(str_lit!("override"), kayak_rt::heap_cons(str_lit!("priv"), kayak_rt::heap_cons(str_lit!("pub"), kayak_rt::heap_cons(str_lit!("ref"), kayak_rt::heap_cons(str_lit!("return"), kayak_rt::heap_cons(str_lit!("static"), kayak_rt::heap_cons(str_lit!("struct"), kayak_rt::heap_cons(str_lit!("trait"), kayak_rt::heap_cons(str_lit!("true"), kayak_rt::heap_cons(str_lit!("try"), kayak_rt::heap_cons(str_lit!("type"), kayak_rt::heap_cons(str_lit!("typeof"), kayak_rt::heap_cons(str_lit!("unsafe"), kayak_rt::heap_cons(str_lit!("unsized"), kayak_rt::heap_cons(str_lit!("use"), kayak_rt::heap_cons(str_lit!("virtual"), kayak_rt::heap_cons(str_lit!("where"), kayak_rt::heap_cons(str_lit!("while"), kayak_rt::heap_cons(str_lit!("yield"), kayak_rt::heap_cons(str_lit!("abstract"), kayak_rt::heap_cons(str_lit!("become"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))
     })
 }
 
@@ -21,37 +21,37 @@ pub fn rust_keyword_p(s: Str) -> bool {
 pub fn mangle_char(c: char) -> Str {
     match c {
         '-' => {
-            str_lit("_")
+            str_lit!("_")
         }
         '?' => {
-            str_lit("_p")
+            str_lit!("_p")
         }
         '!' => {
-            str_lit("_x")
+            str_lit!("_x")
         }
         '+' => {
-            str_lit("_plus")
+            str_lit!("_plus")
         }
         '*' => {
-            str_lit("_star")
+            str_lit!("_star")
         }
         '/' => {
-            str_lit("_slash")
+            str_lit!("_slash")
         }
         '<' => {
-            str_lit("_lt")
+            str_lit!("_lt")
         }
         '>' => {
-            str_lit("_gt")
+            str_lit!("_gt")
         }
         '=' => {
-            str_lit("_eq")
+            str_lit!("_eq")
         }
         '%' => {
-            str_lit("_pct")
+            str_lit!("_pct")
         }
         ':' => {
-            str_lit("_colon")
+            str_lit!("_colon")
         }
         _ => {
             char_to_string(c)
@@ -112,10 +112,10 @@ pub fn mangle_runs(mut s: Str, mut from: i64, mut i: i64, mut n: i64, mut acc: S
         } else {
             let c = string_ref_i64(s, i);
             if (char_eq_p(c, '-') && i64_lt(i64_plus(i, 1i64), n) && char_eq_p(string_ref_i64(s, i64_plus(i, 1i64)), '>')) {
-                (from, i, acc) = (i64_plus(i, 2i64), i64_plus(i, 2i64), kayak_rt::heap_cons(str_lit("_to_"), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), acc)));
+                (from, i, acc) = (i64_plus(i, 2i64), i64_plus(i, 2i64), kayak_rt::heap_cons(str_lit!("_to_"), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), acc)));
                 continue;
             } else if (char_eq_p(c, '-') && i64_eq(i64_plus(i, 1i64), n)) {
-                return kayak_rt::heap_cons(str_lit("_minus"), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), acc));
+                return kayak_rt::heap_cons(str_lit!("_minus"), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), acc));
             } else if (char_eq_p(c, '-') || i64_gt(mangled_char_length(c), 1i64)) {
                 (from, i, acc) = (i64_plus(i, 1i64), i64_plus(i, 1i64), kayak_rt::heap_cons(mangle_char(c), kayak_rt::heap_cons(substring(s, i64_to_int(from), i64_to_int(i)), acc)));
                 continue;
@@ -129,13 +129,13 @@ pub fn mangle_runs(mut s: Str, mut from: i64, mut i: i64, mut n: i64, mut acc: S
 
 /// A KFX name as a Rust value's: `string->list` is `string_to_list`.
 pub fn mangle(s: Str) -> Str {
-    if string_eq_p(s, str_lit("-")) {
-        str_lit("_minus")
-    } else if (string_eq_p(s, str_lit("self")) || string_eq_p(s, str_lit("super")) || string_eq_p(s, str_lit("crate")) || string_eq_p(s, str_lit("Self"))) {
+    if string_eq_p(s, str_lit!("-")) {
+        str_lit!("_minus")
+    } else if (string_eq_p(s, str_lit!("self")) || string_eq_p(s, str_lit!("super")) || string_eq_p(s, str_lit!("crate")) || string_eq_p(s, str_lit!("Self"))) {
         // Keywords no raw identifier may be: a trailing `_`.
-        string_append(s, str_lit("_"))
+        string_append(s, str_lit!("_"))
     } else if rust_keyword_p(s) {
-        string_append(str_lit("r#"), s)
+        string_append(str_lit!("r#"), s)
     } else {
         string_list_append(reverse(mangle_runs(s, 0i64, 0i64, string_length_i64(s), nil::<Str>())))
     }
@@ -160,9 +160,9 @@ pub fn mangled_length_from(mut s: Str, mut i: i64, mut n: i64, mut acc: i64) -> 
 /// The length of `(mangle s)`, making nothing: to look for a name that
 /// mangles as another without mangling each.
 pub fn mangled_length(s: Str) -> i64 {
-    if string_eq_p(s, str_lit("-")) {
+    if string_eq_p(s, str_lit!("-")) {
         6i64
-    } else if (string_eq_p(s, str_lit("self")) || string_eq_p(s, str_lit("super")) || string_eq_p(s, str_lit("crate")) || string_eq_p(s, str_lit("Self"))) {
+    } else if (string_eq_p(s, str_lit!("self")) || string_eq_p(s, str_lit!("super")) || string_eq_p(s, str_lit!("crate")) || string_eq_p(s, str_lit!("Self"))) {
         i64_plus(string_length_i64(s), 1i64)
     } else if rust_keyword_p(s) {
         i64_plus(string_length_i64(s), 2i64)
@@ -186,8 +186,8 @@ pub fn mangle_bare(s: Str) -> Str {
 /// `'static_`, since `'static` is Rust's own and no raw lifetime.
 #[inline]
 pub fn lifetime(s: Str) -> Str {
-    string_append(str_lit("'"), if string_eq_p(s, str_lit("static")) {
-        str_lit("static_")
+    string_append(str_lit!("'"), if string_eq_p(s, str_lit!("static")) {
+        str_lit!("static_")
     } else {
         mangle(s)
     })

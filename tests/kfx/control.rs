@@ -8,22 +8,22 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 
 #[inline]
 pub fn sign(n: i64) -> Str {
     if i64_lt(n, 0i64) {
-        str_lit("negative")
+        str_lit!("negative")
     } else if i64_eq(n, 0i64) {
-        str_lit("zero")
+        str_lit!("zero")
     } else {
-        str_lit("positive")
+        str_lit!("positive")
     }
 }
 
@@ -31,13 +31,13 @@ pub fn sign(n: i64) -> Str {
 pub fn kind(c: char) -> Str {
     match c {
         'a' | 'e' | 'i' | 'o' | 'u' => {
-            str_lit("vowel")
+            str_lit!("vowel")
         }
         ' ' | '\n' => {
-            str_lit("space")
+            str_lit!("space")
         }
         _ => {
-            str_lit("other")
+            str_lit!("other")
         }
     }
 }
@@ -45,46 +45,46 @@ pub fn kind(c: char) -> Str {
 /// FX-26's case compares integers as ints, so on an i64 it is a cond.
 pub fn small(n: i64) -> Str {
     if i64_eq(n, 0i64) {
-        str_lit("none")
+        str_lit!("none")
     } else if (i64_eq(n, 1i64) || i64_eq(n, 2i64)) {
-        str_lit("few")
+        str_lit!("few")
     } else if i64_eq(n, -1i64) {
-        str_lit("minus-one")
+        str_lit!("minus-one")
     } else {
-        str_lit("many")
+        str_lit!("many")
     }
 }
 
 #[inline]
 pub fn both(a: bool, b: bool) -> Str {
     string_append(if (a && b) {
-        str_lit("and,")
+        str_lit!("and,")
     } else {
-        str_lit("nand,")
+        str_lit!("nand,")
     }, if (a || b) {
-        str_lit("or")
+        str_lit!("or")
     } else {
-        str_lit("nor")
+        str_lit!("nor")
     })
 }
 
 pub fn main() -> Str {
     words(kayak_rt::heap_cons(sign(-5i64), kayak_rt::heap_cons(sign(0i64), kayak_rt::heap_cons(sign(7i64), kayak_rt::heap_cons(kind('e'), kayak_rt::heap_cons(kind('\n'), kayak_rt::heap_cons(kind('z'), kayak_rt::heap_cons(small(0i64), kayak_rt::heap_cons(small(2i64), kayak_rt::heap_cons(small(-1i64), kayak_rt::heap_cons(small(9i64), kayak_rt::heap_cons(both(true, false), kayak_rt::heap_cons(both(true, true), kayak_rt::heap_cons(both(false, false), kayak_rt::heap_cons(if true {
-        str_lit("(and)")
+        str_lit!("(and)")
     } else {
-        str_lit("not-(and)")
+        str_lit!("not-(and)")
     }, kayak_rt::heap_cons(if false {
-        str_lit("(or)")
+        str_lit!("(or)")
     } else {
-        str_lit("not-(or)")
+        str_lit!("not-(or)")
     }, kayak_rt::heap_cons(if (true && true && false) {
-        str_lit("and3")
+        str_lit!("and3")
     } else {
-        str_lit("not-and3")
+        str_lit!("not-and3")
     }, kayak_rt::heap_cons(if (false || false || true) {
-        str_lit("or3")
+        str_lit!("or3")
     } else {
-        str_lit("not-or3")
+        str_lit!("not-or3")
     }, kayak_rt::nil()))))))))))))))))))
 }
 

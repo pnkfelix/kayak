@@ -66,13 +66,13 @@ pub fn to_vbase() -> Ref<i64> {
 pub fn trap_message() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
-        kayak_rt::heap_new(str_lit(""))
+        kayak_rt::heap_new(str_lit!(""))
     })
 }
 
 #[inline]
 pub fn trap_x(m: Str) -> () {
-    if string_eq_p(get(trap_message()), str_lit("")) {
+    if string_eq_p(get(trap_message()), str_lit!("")) {
         set(trap_message(), m)
     } else {
         ()
@@ -81,7 +81,7 @@ pub fn trap_x(m: Str) -> () {
 
 #[inline]
 pub fn trapped_p() -> bool {
-    not(string_eq_p(get(trap_message()), str_lit("")))
+    not(string_eq_p(get(trap_message()), str_lit!("")))
 }
 
 pub fn copied_into_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
@@ -104,7 +104,7 @@ pub fn room_x(n: i64) -> () {
     } else {
         let more = i64_star(2i64, i64_plus(get(limit()), n));
         if i64_gt(i64_plus(get(heap_top()), n), heap_capacity()) {
-            trap_x(str_lit("out of heap"))
+            trap_x(str_lit!("out of heap"))
         } else {
             set(limit(), if i64_gt(more, heap_capacity()) {
                 heap_capacity()
@@ -412,27 +412,27 @@ pub fn word_set_x(i: i64, w: i64) -> () {
 // mailbox.
 
 pub fn _pctsyscall_available_coloncode_view() -> bool {
-    kayak_rt::syscall_available(str_lit("code:exec-view/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))"))
+    kayak_rt::syscall_available(str_lit!("code:exec-view/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))"))
 }
 
 pub fn code_view(x1: FlatArray<i64>, x2: Int, x3: Int) -> Int {
-    kayak_rt::syscall3(str_lit("syscall code-view (\"code:exec-view/1\")"), str_lit("code:exec-view/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))"), x1, x2, x3)
+    kayak_rt::syscall3(str_lit!("syscall code-view (\"code:exec-view/1\")"), str_lit!("code:exec-view/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) int))"), x1, x2, x3)
 }
 
 pub fn _pctsyscall_available_coloncode_flush() -> bool {
-    kayak_rt::syscall_available(str_lit("code:flush/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))"))
+    kayak_rt::syscall_available(str_lit!("code:flush/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))"))
 }
 
 pub fn code_flush(x1: FlatArray<i64>, x2: Int, x3: Int) -> () {
-    kayak_rt::syscall3(str_lit("syscall code-flush (\"code:flush/1\")"), str_lit("code:flush/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))"), x1, x2, x3)
+    kayak_rt::syscall3(str_lit!("syscall code-flush (\"code:flush/1\")"), str_lit!("code:flush/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int) unit))"), x1, x2, x3)
 }
 
 pub fn _pctsyscall_available_coloncall_native() -> bool {
-    kayak_rt::syscall_available(str_lit("kayak:call-native/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1) (write r1)) ((flatarrayof i64 r1) int) int))"))
+    kayak_rt::syscall_available(str_lit!("kayak:call-native/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1) (write r1)) ((flatarrayof i64 r1) int) int))"))
 }
 
 pub fn call_native(x1: FlatArray<i64>, x2: Int) -> Int {
-    kayak_rt::syscall2(str_lit("syscall call-native (\"kayak:call-native/1\")"), str_lit("kayak:call-native/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1) (write r1)) ((flatarrayof i64 r1) int) int))"), x1, x2)
+    kayak_rt::syscall2(str_lit!("syscall call-native (\"kayak:call-native/1\")"), str_lit!("kayak:call-native/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1) (write r1)) ((flatarrayof i64 r1) int) int))"), x1, x2)
 }
 
 // Values.
@@ -1451,7 +1451,7 @@ pub fn make_code_word_x(name: Str, n: i64, entry: i64) -> i64 {
         let f = i64_plus(n, 4i64);
         let at = stub_alloc_x(i64_plus(f, 2i64));
         if i64_lt(at, 0i64) {
-            trap_x(str_lit("words: the code area's stubbed part is full"));
+            trap_x(str_lit!("words: the code area's stubbed part is full"));
             make_word_x(name, n, entry)
         } else {
             let w = i64_or(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(i64_plus(at, f), 1i64))), t_bloblet());

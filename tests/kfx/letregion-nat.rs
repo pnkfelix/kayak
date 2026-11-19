@@ -11,11 +11,11 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 
@@ -37,13 +37,13 @@ pub fn firsts<A: Copy + 'static + kayak_rt::Trace>(xs: List<A>, d: A) -> List<A>
 }
 
 pub fn main() -> Str {
-    let n = string_length(str_lit("héllo"));
+    let n = string_length(str_lit!("héllo"));
     let xs = the::<List<Int>>(kayak_rt::heap_cons(int_lit(3), kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::nil()))));
     let ys = reverse(append(xs, the::<List<Int>>(kayak_rt::heap_cons(int_lit(9), kayak_rt::nil()))));
     words(kayak_rt::heap_cons(i64_to_string(count_up(20i64)), kayak_rt::heap_cons(int_to_string(n), kayak_rt::heap_cons(int_to_string(length(xs)), kayak_rt::heap_cons(int_to_string(_plus(n, int_lit(1))), kayak_rt::heap_cons(if zero_p(_minus(n, int_lit(5))) {
-        str_lit("zero")
+        str_lit!("zero")
     } else {
-        str_lit("not zero")
+        str_lit!("not zero")
     }, kayak_rt::heap_cons(int_to_string(max(n, int_lit(2))), kayak_rt::heap_cons(int_to_string(min(n, int_lit(2))), kayak_rt::heap_cons(int_to_string(car(ys)), kayak_rt::heap_cons(int_to_string(car(firsts(xs, int_lit(0)))), kayak_rt::nil()))))))))))
 }
 

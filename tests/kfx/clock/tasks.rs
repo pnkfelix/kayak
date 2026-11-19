@@ -215,7 +215,7 @@ pub fn ivar_put_x<A: Copy + 'static + kayak_rt::Trace>(lp: Product_3tag_5ready_8
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("full") } {
         let w: A = kayak_rt::sum_payload::<A>(tagcase_);
-        error(str_lit("ivar-put!: written twice"))
+        error(str_lit!("ivar-put!: written twice"))
     } else if tag_ == const { kayak_rt::tag_hash("empty") } {
         let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
         set(iv, kayak_rt::sum_new::<A>(const { kayak_rt::tag_hash("full") }, "full", v));

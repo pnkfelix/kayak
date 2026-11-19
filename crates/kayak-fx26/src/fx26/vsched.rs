@@ -31,11 +31,11 @@ pub fn task_arg_p(a: i64) -> bool {
 /// `sched-op!`), each operand checked to be what the operation takes.
 pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
     if ((i64_eq(n, 1i64) || i64_eq(n, 2i64) || i64_eq(n, 24i64) || i64_eq(n, 35i64) || i64_eq(n, 36i64) || i64_eq(n, 39i64) || i64_eq(n, 40i64)) && not(task_arg_p(a))) {
-        sched_refused_x(string_append(str_lit("%fx26-sched: no such task (op "), string_append(i64_to_string(n), str_lit(")"))))
+        sched_refused_x(string_append(str_lit!("%fx26-sched: no such task (op "), string_append(i64_to_string(n), str_lit!(")"))))
     } else if ((i64_eq(n, 7i64) || i64_eq(n, 8i64) || i64_eq(n, 9i64) || i64_eq(n, 17i64) || i64_eq(n, 23i64)) && not(is_kind_p(a, k_mailbox()))) {
-        sched_refused_x(str_lit("expected a mailbox"))
+        sched_refused_x(str_lit!("expected a mailbox"))
     } else if ((i64_eq(n, 10i64) || i64_eq(n, 11i64) || i64_eq(n, 15i64) || i64_eq(n, 22i64) || i64_eq(n, 34i64)) && not(is_kind_p(a, k_icell()))) {
-        sched_refused_x(str_lit("expected an i-cell"))
+        sched_refused_x(str_lit!("expected an i-cell"))
     } else if i64_eq(n, 18i64) {
         timer_add_x(word_i64(a), b)
     } else if i64_eq(n, 19i64) {
@@ -201,7 +201,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         if mailbox_ready_p(a) {
             mailbox_take_x(a)
         } else {
-            sched_refused_x(str_lit("%fx26-sched: an empty mailbox taken from"))
+            sched_refused_x(str_lit!("%fx26-sched: an empty mailbox taken from"))
         }
     } else if i64_eq(n, 9i64) {
         if mailbox_ready_p(a) {
@@ -236,9 +236,9 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         w_unit()
     } else if i64_eq(n, 14i64) {
         if not(is_kind_p(a, k_icell())) {
-            sched_refused_x(str_lit("expected an i-cell"))
+            sched_refused_x(str_lit!("expected an i-cell"))
         } else if not(i64_eq(slot_of(a, 2i64), w_false())) {
-            sched_refused_x(str_lit("an i-cell written twice"))
+            sched_refused_x(str_lit!("an i-cell written twice"))
         } else {
             cell_put_x(a, b)
         }
@@ -250,9 +250,9 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         }
     } else if i64_eq(n, 12i64) {
         sum_word_x(if i64_eq(sched_st(s_tag()), w_false()) {
-            str_lit("none")
+            str_lit!("none")
         } else {
-            str_lit("some")
+            str_lit!("some")
         }, if i64_eq(sched_st(s_tag()), w_false()) {
             w_unit()
         } else {
@@ -265,7 +265,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         set(regions(), i64_plus(get(regions()), 1i64));
         fixnum(get(regions()))
     } else {
-        sched_refused_x(str_lit("%fx26-sched: no such operation"))
+        sched_refused_x(str_lit!("%fx26-sched: no such operation"))
     }
 }
 

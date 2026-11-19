@@ -7,7 +7,7 @@ use kayak_rt::*;
 // its operands the other way, `#x` literals besides.
 #[inline]
 pub fn here_p() -> bool {
-    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
+    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit!("(target arm64)")))
 }
 
 pub mod made__load__0__fx26_arm64 {
@@ -822,7 +822,7 @@ pub fn subtracter(n: Int, m: Int) -> kayak_rt::Proc2s<'static, Int, Int, Int> {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(a64::arm_add(int_lit(0), int_lit(1), int_lit(2))), string_append(str_lit(" "), string_append(int_to_string(_plus(_plus(int_lit(16), int_lit(-1)), int_lit(255))), string_append(str_lit(" "), int_to_string(if here_p() {
+    string_append(int_to_string(a64::arm_add(int_lit(0), int_lit(1), int_lit(2))), string_append(str_lit!(" "), string_append(int_to_string(_plus(_plus(int_lit(16), int_lit(-1)), int_lit(255))), string_append(str_lit!(" "), int_to_string(if here_p() {
         _plus((subtracter(int_lit(1), int_lit(2))).call(int_lit(50), int_lit(8)), (subtracter(int_lit(2), int_lit(1))).call(int_lit(50), int_lit(8)))
     } else {
         int_lit(0)

@@ -13,7 +13,7 @@ pub fn first(l: List<i64>) -> i64 {
 #[inline]
 pub fn checked(n: i64) -> i64 {
     if i64_lt(n, 0i64) {
-        error(str_lit("a negative number"))
+        error(str_lit!("a negative number"))
     } else {
         n
     }
@@ -22,7 +22,7 @@ pub fn checked(n: i64) -> i64 {
 #[inline]
 pub fn said(n: i64) -> Str {
     kayak_rt::attempt(|| { i64_to_string(checked(n)) }, |m: Str| {
-        string_append(str_lit("failed: "), m)
+        string_append(str_lit!("failed: "), m)
     })
 }
 
@@ -31,6 +31,6 @@ pub fn main() -> Str {
         the::<i64>(40i64)
     }), kayak_rt::attempt(|| { first(kayak_rt::heap_cons(2i64, kayak_rt::nil())) }, |m: Str| {
         the::<i64>(0i64)
-    }))), string_append(str_lit(" "), string_append(said(7i64), string_append(str_lit(" "), said(-1i64)))))
+    }))), string_append(str_lit!(" "), string_append(said(7i64), string_append(str_lit!(" "), said(-1i64)))))
 }
 

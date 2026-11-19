@@ -29,8 +29,8 @@ pub fn same_i64(a: i64, b: i64) -> bool {
 }
 
 pub fn main() -> Str {
-    let t = the::<One<'static, i64, Str>>(make_one(kayak_rt::as_proc(same_i64), 7i64, str_lit("seven")));
-    { let blob__ = t; blob__.fields.2.set(str_lit("sept")); kayak_rt::bloblet_written(blob__, 2) };
-    string_append(lookup(t, 7i64, str_lit("none")), string_append(str_lit(" "), lookup(t, 8i64, str_lit("none"))))
+    let t = the::<One<'static, i64, Str>>(make_one(kayak_rt::as_proc(same_i64), 7i64, str_lit!("seven")));
+    { let blob__ = t; blob__.fields.2.set(str_lit!("sept")); kayak_rt::bloblet_written(blob__, 2) };
+    string_append(lookup(t, 7i64, str_lit!("none")), string_append(str_lit!(" "), lookup(t, 8i64, str_lit!("none"))))
 }
 

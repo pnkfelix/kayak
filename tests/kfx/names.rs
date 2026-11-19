@@ -13,15 +13,15 @@ pub fn empty_string_p(s: Str) -> bool {
 #[inline]
 pub fn i64_to_yes(n: i64) -> Str {
     if i64_eq(n, 0i64) {
-        str_lit("no")
+        str_lit!("no")
     } else {
-        str_lit("yes")
+        str_lit!("yes")
     }
 }
 
 #[inline]
 pub fn _lt_plus_gt(a: Str, b: Str) -> Str {
-    string_append(a, string_append(str_lit("+"), b))
+    string_append(a, string_append(str_lit!("+"), b))
 }
 
 #[inline]
@@ -33,11 +33,11 @@ pub fn main() -> Str {
     let one = the::<i64>(1i64);
     let two_x = bump_x(one);
     let tw_starn = i64_star(two_x, 10i64);
-    let x_p = str_lit("x");
-    _lt_plus_gt(i64_to_string(tw_starn), _lt_plus_gt(i64_to_yes(one), _lt_plus_gt(x_p, if empty_string_p(str_lit("")) {
-        str_lit("empty")
+    let x_p = str_lit!("x");
+    _lt_plus_gt(i64_to_string(tw_starn), _lt_plus_gt(i64_to_yes(one), _lt_plus_gt(x_p, if empty_string_p(str_lit!("")) {
+        str_lit!("empty")
     } else {
-        str_lit("full")
+        str_lit!("full")
     })))
 }
 

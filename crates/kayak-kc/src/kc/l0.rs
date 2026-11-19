@@ -99,14 +99,14 @@ pub mod kc_l0 {
     pub fn unary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("reverse"), kayak_rt::heap_cons(str_lit("length"), kayak_rt::heap_cons(str_lit("int->string"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("char-whitespace?"), kayak_rt::heap_cons(str_lit("char-numeric?"), kayak_rt::heap_cons(str_lit("string-hash"), kayak_rt::heap_cons(str_lit("symbol-name-hash"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("f64->string"), kayak_rt::heap_cons(str_lit("datum-list->vector"), kayak_rt::heap_cons(str_lit("error"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit!("not"), kayak_rt::heap_cons(str_lit!("null?"), kayak_rt::heap_cons(str_lit!("zero?"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::heap_cons(str_lit!("car"), kayak_rt::heap_cons(str_lit!("cdr"), kayak_rt::heap_cons(str_lit!("pair?"), kayak_rt::heap_cons(str_lit!("string-length"), kayak_rt::heap_cons(str_lit!("symbol->string"), kayak_rt::heap_cons(str_lit!("string->symbol"), kayak_rt::heap_cons(str_lit!("string?"), kayak_rt::heap_cons(str_lit!("symbol?"), kayak_rt::heap_cons(str_lit!("array-length"), kayak_rt::heap_cons(str_lit!("new"), kayak_rt::heap_cons(str_lit!("get"), kayak_rt::heap_cons(str_lit!("int?"), kayak_rt::heap_cons(str_lit!("char?"), kayak_rt::heap_cons(str_lit!("bool?"), kayak_rt::heap_cons(str_lit!("procedure?"), kayak_rt::heap_cons(str_lit!("array?"), kayak_rt::heap_cons(str_lit!("ref?"), kayak_rt::heap_cons(str_lit!("sum?"), kayak_rt::heap_cons(str_lit!("product?"), kayak_rt::heap_cons(str_lit!("vector?"), kayak_rt::heap_cons(str_lit!("bytevector?"), kayak_rt::heap_cons(str_lit!("keyword?"), kayak_rt::heap_cons(str_lit!("cwcc"), kayak_rt::heap_cons(str_lit!("current-marks"), kayak_rt::heap_cons(str_lit!("reverse"), kayak_rt::heap_cons(str_lit!("length"), kayak_rt::heap_cons(str_lit!("int->string"), kayak_rt::heap_cons(str_lit!("char->string"), kayak_rt::heap_cons(str_lit!("char-whitespace?"), kayak_rt::heap_cons(str_lit!("char-numeric?"), kayak_rt::heap_cons(str_lit!("string-hash"), kayak_rt::heap_cons(str_lit!("symbol-name-hash"), kayak_rt::heap_cons(str_lit!("f64?"), kayak_rt::heap_cons(str_lit!("f64->string"), kayak_rt::heap_cons(str_lit!("datum-list->vector"), kayak_rt::heap_cons(str_lit!("error"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))
         })
     }
 
     pub fn binary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))))))))))))))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit!("cons"), kayak_rt::heap_cons(str_lit!("+"), kayak_rt::heap_cons(str_lit!("-"), kayak_rt::heap_cons(str_lit!("*"), kayak_rt::heap_cons(str_lit!("quotient"), kayak_rt::heap_cons(str_lit!("remainder"), kayak_rt::heap_cons(str_lit!("modulo"), kayak_rt::heap_cons(str_lit!("max"), kayak_rt::heap_cons(str_lit!("min"), kayak_rt::heap_cons(str_lit!("="), kayak_rt::heap_cons(str_lit!("<"), kayak_rt::heap_cons(str_lit!("<="), kayak_rt::heap_cons(str_lit!(">"), kayak_rt::heap_cons(str_lit!(">="), kayak_rt::heap_cons(str_lit!("char=?"), kayak_rt::heap_cons(str_lit!("char<?"), kayak_rt::heap_cons(str_lit!("char<=?"), kayak_rt::heap_cons(str_lit!("char>?"), kayak_rt::heap_cons(str_lit!("char>=?"), kayak_rt::heap_cons(str_lit!("eq?"), kayak_rt::heap_cons(str_lit!("string-ref"), kayak_rt::heap_cons(str_lit!("string=?"), kayak_rt::heap_cons(str_lit!("string<?"), kayak_rt::heap_cons(str_lit!("string-append"), kayak_rt::heap_cons(str_lit!("make-array"), kayak_rt::heap_cons(str_lit!("array-ref"), kayak_rt::heap_cons(str_lit!("set"), kayak_rt::heap_cons(str_lit!("symbol=?"), kayak_rt::heap_cons(str_lit!("abort-current-continuation"), kayak_rt::heap_cons(str_lit!("escape"), kayak_rt::heap_cons(str_lit!("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit!("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit!("first-mark"), kayak_rt::heap_cons(str_lit!("marks-of"), kayak_rt::nil()))))))))))))))))))))))))))))))))))
         })
     }
 
@@ -118,7 +118,7 @@ pub mod kc_l0 {
     pub fn l0_keywords() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("let*"), kayak_rt::heap_cons(str_lit("begin"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("proj"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("tuple"), kayak_rt::heap_cons(str_lit("extract"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("tagcase"), kayak_rt::heap_cons(str_lit("quasiquote"), kayak_rt::heap_cons(str_lit("typecase"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("and"), kayak_rt::heap_cons(str_lit("or"), kayak_rt::heap_cons(str_lit("cond"), kayak_rt::heap_cons(str_lit("case"), kayak_rt::nil()))))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit!("lambda"), kayak_rt::heap_cons(str_lit!("quote"), kayak_rt::heap_cons(str_lit!("let"), kayak_rt::heap_cons(str_lit!("let*"), kayak_rt::heap_cons(str_lit!("begin"), kayak_rt::heap_cons(str_lit!("the"), kayak_rt::heap_cons(str_lit!("plambda"), kayak_rt::heap_cons(str_lit!("proj"), kayak_rt::heap_cons(str_lit!("letrec"), kayak_rt::heap_cons(str_lit!("product"), kayak_rt::heap_cons(str_lit!("tuple"), kayak_rt::heap_cons(str_lit!("extract"), kayak_rt::heap_cons(str_lit!("sum"), kayak_rt::heap_cons(str_lit!("tagcase"), kayak_rt::heap_cons(str_lit!("quasiquote"), kayak_rt::heap_cons(str_lit!("typecase"), kayak_rt::heap_cons(str_lit!("prompt"), kayak_rt::heap_cons(str_lit!("if"), kayak_rt::heap_cons(str_lit!("and"), kayak_rt::heap_cons(str_lit!("or"), kayak_rt::heap_cons(str_lit!("cond"), kayak_rt::heap_cons(str_lit!("case"), kayak_rt::nil()))))))))))))))))))))))
         })
     }
 
@@ -127,14 +127,14 @@ pub mod kc_l0 {
     pub fn i64_as_int() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("i64+"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("i64-"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("i64*"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("i64="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("i64<"), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit("i64<="), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit("i64>"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("i64>="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("i64-quotient"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("i64-remainder"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::nil()))))))))))))))))))))
+            kayak_rt::heap_cons(str_lit!("i64+"), kayak_rt::heap_cons(str_lit!("+"), kayak_rt::heap_cons(str_lit!("i64-"), kayak_rt::heap_cons(str_lit!("-"), kayak_rt::heap_cons(str_lit!("i64*"), kayak_rt::heap_cons(str_lit!("*"), kayak_rt::heap_cons(str_lit!("i64="), kayak_rt::heap_cons(str_lit!("="), kayak_rt::heap_cons(str_lit!("i64<"), kayak_rt::heap_cons(str_lit!("<"), kayak_rt::heap_cons(str_lit!("i64<="), kayak_rt::heap_cons(str_lit!("<="), kayak_rt::heap_cons(str_lit!("i64>"), kayak_rt::heap_cons(str_lit!(">"), kayak_rt::heap_cons(str_lit!("i64>="), kayak_rt::heap_cons(str_lit!(">="), kayak_rt::heap_cons(str_lit!("i64-quotient"), kayak_rt::heap_cons(str_lit!("quotient"), kayak_rt::heap_cons(str_lit!("i64-remainder"), kayak_rt::heap_cons(str_lit!("remainder"), kayak_rt::nil()))))))))))))))))))))
         })
     }
 
     pub fn int_op_of(mut n: Str, mut ops: List<Str>) -> Str {
         loop {
             if (null_p(ops) || null_p(cdr(ops))) {
-                return str_lit("");
+                return str_lit!("");
             } else if string_eq_p(car(ops), n) {
                 return car(cdr(ops));
             } else {
@@ -148,14 +148,14 @@ pub mod kc_l0 {
     pub fn ternary_primitives() -> List<Str> {
         static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("string-search"), kayak_rt::nil()))))
+            kayak_rt::heap_cons(str_lit!("substring"), kayak_rt::heap_cons(str_lit!("array-set!"), kayak_rt::heap_cons(str_lit!("with-mark"), kayak_rt::heap_cons(str_lit!("string-search"), kayak_rt::nil()))))
         })
     }
 
     #[inline]
     pub fn not_yet(path: Str, what: Str) -> Str {
-        error(string_append(str_lit("kc: "), string_append(path, string_append(str_lit(": not yet: "), what))));
-        str_lit("")
+        error(string_append(str_lit!("kc: "), string_append(path, string_append(str_lit!(": not yet: "), what))));
+        str_lit!("")
     }
 
     /// A quoted datum's term (C447): a list's pairs made as `cons`es; an
@@ -164,37 +164,37 @@ pub mod kc_l0 {
         let tagcase_ = d;
         match *tagcase_ {
             Sexp::Num(k, f, p) => {
-                string_append(str_lit("(int "), string_append(i64_to_string(k), str_lit(")")))
+                string_append(str_lit!("(int "), string_append(i64_to_string(k), str_lit!(")")))
             }
             Sexp::Chr(c, f, p) => {
-                string_append(str_lit("(char "), string_append(i64_to_string(char_to_i64(c)), str_lit(")")))
+                string_append(str_lit!("(char "), string_append(i64_to_string(char_to_i64(c)), str_lit!(")")))
             }
             Sexp::Str(s, f, p) => {
-                string_append(str_lit("(string "), string_append(kc_datum().call(d), str_lit(")")))
+                string_append(str_lit!("(string "), string_append(kc_datum().call(d), str_lit!(")")))
             }
             Sexp::Sym(n, f, p) => {
-                if string_eq_p(n, str_lit("#t")) {
-                    str_lit("(bool 1)")
-                } else if string_eq_p(n, str_lit("#f")) {
-                    str_lit("(bool 0)")
-                } else if string_eq_p(n, str_lit("#u")) {
-                    str_lit("(unit)")
+                if string_eq_p(n, str_lit!("#t")) {
+                    str_lit!("(bool 1)")
+                } else if string_eq_p(n, str_lit!("#f")) {
+                    str_lit!("(bool 0)")
+                } else if string_eq_p(n, str_lit!("#u")) {
+                    str_lit!("(unit)")
                 } else {
-                    string_append(str_lit("(symbol "), string_append(kc_datum().call(str(n, str_lit(""), 0i64)), str_lit(")")))
+                    string_append(str_lit!("(symbol "), string_append(kc_datum().call(str(n, str_lit!(""), 0i64)), str_lit!(")")))
                 }
             }
             Sexp::Lst(ys, f, l, p) => {
-                if head_is_p(d, str_lit("#vector")) {
-                    error(str_lit("kc: not yet: a quoted vector"));
-                    str_lit("")
+                if head_is_p(d, str_lit!("#vector")) {
+                    error(str_lit!("kc: not yet: a quoted vector"));
+                    str_lit!("")
                 } else {
                     l0_quoted_items(ys)
                 }
             }
             _ => {
                 let other = tagcase_;
-                error(str_lit("kc: not yet: a quoted datum of this kind"));
-                str_lit("")
+                error(str_lit!("kc: not yet: a quoted datum of this kind"));
+                str_lit!("")
             }
         }
     }
@@ -203,11 +203,11 @@ pub mod kc_l0 {
     /// last item (C448: a dotted datum).
     pub fn l0_quoted_items(ys: Sexps) -> Str {
         if null_p(ys) {
-            str_lit("(nil)")
-        } else if (sym_is_p(car(ys), str_lit(".")) && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys)))) {
+            str_lit!("(nil)")
+        } else if (sym_is_p(car(ys), str_lit!(".")) && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys)))) {
             l0_quoted(second(ys))
         } else {
-            string_list_append(kayak_rt::heap_cons(str_lit("(prim cons "), kayak_rt::heap_cons(l0_quoted(car(ys)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(l0_quoted_items(cdr(ys)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+            string_list_append(kayak_rt::heap_cons(str_lit!("(prim cons "), kayak_rt::heap_cons(l0_quoted(car(ys)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(l0_quoted_items(cdr(ys)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))
         }
     }
 
@@ -297,23 +297,23 @@ pub mod kc_l0 {
     pub fn l0_global_kind(mut n: Str, mut scope: Sexps) -> Str {
         loop {
             if null_p(scope) {
-                error(string_append(str_lit("kc-need "), n));
-                return str_lit("");
+                error(string_append(str_lit!("kc-need "), n));
+                return str_lit!("");
             } else {
                 let i = items(car(scope));
                 if (not(null_p(cdr(i))) && sym_is_p(second(i), n)) {
                     let tagcase_ = car(i);
                     match *tagcase_ {
                         Sexp::Sym(k, f, p) => {
-                            if string_eq_p(k, str_lit("none")) {
-                                return str_lit("");
+                            if string_eq_p(k, str_lit!("none")) {
+                                return str_lit!("");
                             } else {
                                 return k;
                             }
                         }
                         _ => {
                             let other = tagcase_;
-                            return str_lit("");
+                            return str_lit!("");
                         }
                     }
                 } else {
@@ -350,13 +350,13 @@ pub mod kc_l0 {
                                 }
                                 _ => {
                                     let other = tagcase_;
-                                    str_lit("")
+                                    str_lit!("")
                                 }
                             }
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 }, {
@@ -364,18 +364,18 @@ pub mod kc_l0 {
                     match *tagcase_ {
                         Sexp::Lst(ys, f, l, p) => {
                             if null_p(cdr(ys)) {
-                                str_lit("")
+                                str_lit!("")
                             } else {
-                                string_append(str_lit(" "), kc_datum().call(second(ys)))
+                                string_append(str_lit!(" "), kc_datum().call(second(ys)))
                             }
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 });
-                (ps, k, env, done) = (cdr(ps), i64_plus(k, 1i64), kayak_rt::heap_cons(l0_bound(n, k), env), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(ty, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))), done));
+                (ps, k, env, done) = (cdr(ps), i64_plus(k, 1i64), kayak_rt::heap_cons(l0_bound(n, k), env), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(ty, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))), done));
                 continue;
             }
         }
@@ -445,9 +445,9 @@ pub mod kc_l0 {
             Sexp::Lst(xs, f, l, p) => {
                 if null_p(xs) {
                     acc
-                } else if sym_is_p(car(xs), str_lit("var")) {
+                } else if sym_is_p(car(xs), str_lit!("var")) {
                     kayak_rt::heap_cons(lst(cdr(xs), f, l, p), acc)
-                } else if sym_is_p(car(xs), str_lit("lambda")) {
+                } else if sym_is_p(car(xs), str_lit!("lambda")) {
                     onto(items(fourth(xs)), acc)
                 } else {
                     l0_used_all(xs, acc)
@@ -478,19 +478,19 @@ pub mod kc_l0 {
                 Sexp::Lst(xs, f, l, p) => {
                     if null_p(xs) {
                         return acc;
-                    } else if sym_is_p(car(xs), str_lit("lambda")) {
+                    } else if sym_is_p(car(xs), str_lit!("lambda")) {
                         return acc;
-                    } else if sym_is_p(car(xs), str_lit("let")) {
+                    } else if sym_is_p(car(xs), str_lit!("let")) {
                         return l0_let_bound_all(cdr(cdr(xs)), l0_let_bound_all(items(second(xs)), onto(l0_numbers_of(items(second(xs))), acc)));
-                    } else if sym_is_p(car(xs), str_lit("letrec")) {
+                    } else if sym_is_p(car(xs), str_lit!("letrec")) {
                         return l0_let_bound_all(cdr(cdr(xs)), onto(l0_numbers_of(items(second(xs))), acc));
-                    } else if sym_is_p(car(xs), str_lit("parts")) {
+                    } else if sym_is_p(car(xs), str_lit!("parts")) {
                         (t, acc) = (fourth(xs), onto(l0_numbers_of(items(third(xs))), acc));
                         continue;
-                    } else if sym_is_p(car(xs), str_lit("whole")) {
+                    } else if sym_is_p(car(xs), str_lit!("whole")) {
                         (t, acc) = (fourth(xs), onto(l0_numbers_of(kayak_rt::heap_cons(third(xs), kayak_rt::nil())), acc));
                         continue;
-                    } else if sym_is_p(car(xs), str_lit("else")) {
+                    } else if sym_is_p(car(xs), str_lit!("else")) {
                         (t, acc) = (third(xs), onto(l0_numbers_of(kayak_rt::heap_cons(second(xs), kayak_rt::nil())), acc));
                         continue;
                     } else {
@@ -575,7 +575,7 @@ pub mod kc_l0 {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
-                if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit("with")) && sym_is_p(second(xs), str_lit("#%toplevel"))) {
+                if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit!("with")) && sym_is_p(second(xs), str_lit!("#%toplevel"))) {
                     let tagcase_ = third(xs);
                     match *tagcase_ {
                         Sexp::Sym(n, f2, p2) => {
@@ -583,16 +583,16 @@ pub mod kc_l0 {
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 }
             }
             _ => {
                 let other = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }
@@ -605,35 +605,35 @@ pub mod kc_l0 {
             match *tagcase_ {
                 Sexp::Num(k, f, p) => {
                     if (i64_gt(k, fixnum_max()) || i64_lt(k, i64_minus(0i64, i64_plus(fixnum_max(), 1i64)))) {
-                        return l0_made(not_yet(path, str_lit("an integer past a fixnum")), next);
+                        return l0_made(not_yet(path, str_lit!("an integer past a fixnum")), next);
                     } else {
-                        return l0_made(string_append(str_lit("(int "), string_append(i64_to_string(k), str_lit(")"))), next);
+                        return l0_made(string_append(str_lit!("(int "), string_append(i64_to_string(k), str_lit!(")"))), next);
                     }
                 }
                 Sexp::Chr(c, f, p) => {
-                    return l0_made(string_append(str_lit("(char "), string_append(i64_to_string(char_to_i64(c)), str_lit(")"))), next);
+                    return l0_made(string_append(str_lit!("(char "), string_append(i64_to_string(char_to_i64(c)), str_lit!(")"))), next);
                 }
                 Sexp::Str(t, f, p) => {
-                    return l0_made(string_append(str_lit("(string "), string_append(kc_datum().call(e), str_lit(")"))), next);
+                    return l0_made(string_append(str_lit!("(string "), string_append(kc_datum().call(e), str_lit!(")"))), next);
                 }
                 Sexp::Sym(n, f, p) => {
                     let k = l0_number_of(n, env);
                     if i64_gt_eq(k, 0i64) {
-                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(var "), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), next);
-                    } else if string_eq_p(n, str_lit("#t")) {
-                        return l0_made(str_lit("(bool 1)"), next);
-                    } else if string_eq_p(n, str_lit("#f")) {
-                        return l0_made(str_lit("(bool 0)"), next);
-                    } else if string_eq_p(n, str_lit("#u")) {
-                        return l0_made(str_lit("(unit)"), next);
-                    } else if string_eq_p(l0_global_kind(n, scope), str_lit("value")) {
-                        return l0_made(string_append(str_lit("(gvar "), string_append(n, str_lit(")"))), next);
-                    } else if string_eq_p(l0_global_kind(n, scope), str_lit("proc")) {
-                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(gproc "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(l0_global_arity(n, scope)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), next);
-                    } else if string_eq_p(n, str_lit("nil")) {
-                        return l0_made(str_lit("(nil)"), next);
+                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(var "), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), next);
+                    } else if string_eq_p(n, str_lit!("#t")) {
+                        return l0_made(str_lit!("(bool 1)"), next);
+                    } else if string_eq_p(n, str_lit!("#f")) {
+                        return l0_made(str_lit!("(bool 0)"), next);
+                    } else if string_eq_p(n, str_lit!("#u")) {
+                        return l0_made(str_lit!("(unit)"), next);
+                    } else if string_eq_p(l0_global_kind(n, scope), str_lit!("value")) {
+                        return l0_made(string_append(str_lit!("(gvar "), string_append(n, str_lit!(")"))), next);
+                    } else if string_eq_p(l0_global_kind(n, scope), str_lit!("proc")) {
+                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(gproc "), kayak_rt::heap_cons(n, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(l0_global_arity(n, scope)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), next);
+                    } else if string_eq_p(n, str_lit!("nil")) {
+                        return l0_made(str_lit!("(nil)"), next);
                     } else {
-                        return l0_made(not_yet(path, string_append(str_lit("a global, "), n)), next);
+                        return l0_made(not_yet(path, string_append(str_lit!("a global, "), n)), next);
                     }
                 }
                 Sexp::Lst(xs, f, l, p) => {
@@ -645,48 +645,48 @@ pub mod kc_l0 {
                             }
                             _ => {
                                 let other = tagcase_;
-                                str_lit("")
+                                str_lit!("")
                             }
                         }
                     };
-                    if not(string_eq_p(l0_toplevel(e), str_lit(""))) {
+                    if not(string_eq_p(l0_toplevel(e), str_lit!(""))) {
                         let n = l0_toplevel(e);
                         if i64_gt_eq(l0_number_of(n, env), 0i64) {
-                            return l0_made(not_yet(path, string_append(str_lit("a global a local hides, "), n)), next);
+                            return l0_made(not_yet(path, string_append(str_lit!("a global a local hides, "), n)), next);
                         } else {
                             e = sym(n, f, p);
                             continue;
                         }
-                    } else if not(string_eq_p(l0_toplevel(car(xs)), str_lit(""))) {
+                    } else if not(string_eq_p(l0_toplevel(car(xs)), str_lit!(""))) {
                         let n = l0_toplevel(car(xs));
                         if i64_gt_eq(l0_number_of(n, env), 0i64) {
-                            return l0_made(not_yet(path, string_append(str_lit("a global a local hides, "), n)), next);
+                            return l0_made(not_yet(path, string_append(str_lit!("a global a local hides, "), n)), next);
                         } else {
                             e = lst(kayak_rt::heap_cons(sym(n, f, p), cdr(xs)), f, l, p);
                             continue;
                         }
-                    } else if (string_eq_p(h, str_lit("")) && head_is_p(car(xs), str_lit("proj"))) {
+                    } else if (string_eq_p(h, str_lit!("")) && head_is_p(car(xs), str_lit!("proj"))) {
                         e = lst(kayak_rt::heap_cons(second(items(car(xs))), cdr(xs)), f, l, p);
                         continue;
-                    } else if (string_eq_p(h, str_lit("")) || (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit("")))) || (not(string_member_p(h, l0_keywords())) && string_eq_p(l0_global_kind(h, scope), str_lit("value")))) {
+                    } else if (string_eq_p(h, str_lit!("")) || (i64_gt_eq(l0_number_of(h, env), 0i64) && not(string_eq_p(h, str_lit!("")))) || (not(string_member_p(h, l0_keywords())) && string_eq_p(l0_global_kind(h, scope), str_lit!("value")))) {
                         let tagcase_ = l0_terms(path, scope, env, next, xs, nil::<Str>());
                         match *tagcase_ {
                             L0Made::L0Made(ts, n1) => {
-                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(app "), kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))), n1);
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(app "), kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))), n1);
                             }
                         }
-                    } else if (not(string_member_p(h, l0_keywords())) && string_eq_p(l0_global_kind(h, scope), str_lit("proc"))) {
+                    } else if (not(string_member_p(h, l0_keywords())) && string_eq_p(l0_global_kind(h, scope), str_lit!("proc"))) {
                         let tagcase_ = l0_terms(path, scope, env, next, cdr(xs), nil::<Str>());
                         match *tagcase_ {
                             L0Made::L0Made(args, n1) => {
-                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(call "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(if string_eq_p(args, str_lit("")) {
-                                    str_lit("")
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(call "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(if string_eq_p(args, str_lit!("")) {
+                                    str_lit!("")
                                 } else {
-                                    str_lit(" ")
-                                }, kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                                    str_lit!(" ")
+                                }, kayak_rt::heap_cons(args, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n1);
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("lambda")) && i64_gt_eq(size(xs), 3i64) && {
+                    } else if (string_eq_p(h, str_lit!("lambda")) && i64_gt_eq(size(xs), 3i64) && {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -704,15 +704,15 @@ pub mod kc_l0 {
                                 let tagcase_ = l0_seq(path, scope, inner, k, cdr(cdr(xs)), nil::<Str>());
                                 match *tagcase_ {
                                     L0Made::L0Made(b, n1) => {
-                                        let body = car(read_all(b, str_lit("l0"), 1i64));
-                                        let own = l0_numbers_of(items(car(read_all(string_append(str_lit("("), string_append(ps, str_lit(")"))), str_lit("l0"), 1i64))));
+                                        let body = car(read_all(b, str_lit!("l0"), 1i64));
+                                        let own = l0_numbers_of(items(car(read_all(string_append(str_lit!("("), string_append(ps, str_lit!(")"))), str_lit!("l0"), 1i64))));
                                         let free = l0_free(reverse(l0_used(body, nil::<kayak_rt::Handle<'static, Sexp>>())), onto(own, l0_let_bound(body, nil::<i64>())), nil::<kayak_rt::Handle<'static, Sexp>>());
-                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(lambda "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kc_datum(), free)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))), n1);
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(lambda "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::heap_cons(words_of(map(kc_datum(), free)), kayak_rt::heap_cons(str_lit!(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))))), n1);
                                     }
                                 }
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("quote")) && i64_eq(size(xs), 2i64) && {
+                    } else if (string_eq_p(h, str_lit!("quote")) && i64_eq(size(xs), 2i64) && {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -724,12 +724,12 @@ pub mod kc_l0 {
                             }
                         }
                     }) {
-                        return l0_made(str_lit("(nil)"), next);
-                    } else if (string_eq_p(h, str_lit("quote")) && i64_eq(size(xs), 2i64) && {
+                        return l0_made(str_lit!("(nil)"), next);
+                    } else if (string_eq_p(h, str_lit!("quote")) && i64_eq(size(xs), 2i64) && {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Sym(n, f2, p2) => {
-                                not((string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))))
+                                not((string_eq_p(n, str_lit!("#t")) || string_eq_p(n, str_lit!("#f"))))
                             }
                             _ => {
                                 let other = tagcase_;
@@ -737,8 +737,8 @@ pub mod kc_l0 {
                             }
                         }
                     }) {
-                        return l0_made(string_append(str_lit("(symbol "), string_append(kc_datum().call(str(sym_name(second(xs)), str_lit(""), 0i64)), str_lit(")"))), next);
-                    } else if (string_eq_p(h, str_lit("let")) && i64_gt_eq(size(xs), 3i64) && {
+                        return l0_made(string_append(str_lit!("(symbol "), string_append(kc_datum().call(str(sym_name(second(xs)), str_lit!(""), 0i64)), str_lit!(")"))), next);
+                    } else if (string_eq_p(h, str_lit!("let")) && i64_gt_eq(size(xs), 3i64) && {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -751,7 +751,7 @@ pub mod kc_l0 {
                         }
                     }) {
                         return l0_let(path, scope, env, next, items(second(xs)), cdr(cdr(xs)), nil::<Str>(), env);
-                    } else if (string_eq_p(h, str_lit("let*")) && i64_gt_eq(size(xs), 3i64) && {
+                    } else if (string_eq_p(h, str_lit!("let*")) && i64_gt_eq(size(xs), 3i64) && {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -766,24 +766,24 @@ pub mod kc_l0 {
                         e = {
                             let bs = items(second(xs));
                             if (null_p(bs) || null_p(cdr(bs))) {
-                                lst(kayak_rt::heap_cons(sym(str_lit("let"), f, p), cdr(xs)), f, l, p)
+                                lst(kayak_rt::heap_cons(sym(str_lit!("let"), f, p), cdr(xs)), f, l, p)
                             } else {
-                                lst(kayak_rt::heap_cons(sym(str_lit("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(bs), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("let*"), f, p), kayak_rt::heap_cons(lst(cdr(bs), f, l, p), cdr(cdr(xs)))), f, l, p), kayak_rt::nil()))), f, l, p)
+                                lst(kayak_rt::heap_cons(sym(str_lit!("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(bs), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("let*"), f, p), kayak_rt::heap_cons(lst(cdr(bs), f, l, p), cdr(cdr(xs)))), f, l, p), kayak_rt::nil()))), f, l, p)
                             }
                         };
                         continue;
-                    } else if string_eq_p(h, str_lit("begin")) {
+                    } else if string_eq_p(h, str_lit!("begin")) {
                         return l0_seq(path, scope, env, next, cdr(xs), nil::<Str>());
-                    } else if (string_eq_p(h, str_lit("the")) && i64_eq(size(xs), 3i64)) {
+                    } else if (string_eq_p(h, str_lit!("the")) && i64_eq(size(xs), 3i64)) {
                         e = third(xs);
                         continue;
-                    } else if (string_eq_p(h, str_lit("plambda")) && i64_eq(size(xs), 3i64)) {
+                    } else if (string_eq_p(h, str_lit!("plambda")) && i64_eq(size(xs), 3i64)) {
                         e = third(xs);
                         continue;
-                    } else if (string_eq_p(h, str_lit("proj")) && i64_gt_eq(size(xs), 2i64)) {
+                    } else if (string_eq_p(h, str_lit!("proj")) && i64_gt_eq(size(xs), 2i64)) {
                         e = second(xs);
                         continue;
-                    } else if (string_eq_p(h, str_lit("letrec")) && i64_gt_eq(size(xs), 3i64) && {
+                    } else if (string_eq_p(h, str_lit!("letrec")) && i64_gt_eq(size(xs), 3i64) && {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -804,12 +804,12 @@ pub mod kc_l0 {
                                 }
                                 _ => {
                                     let other = tagcase_;
-                                    str_lit("?")
+                                    str_lit!("?")
                                 }
                             }
                         })), bs);
                         let tagcase_ = l0_params(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
-                            sym(n, str_lit(""), 0i64)
+                            sym(n, str_lit!(""), 0i64)
                         })), names), next, env, nil::<Str>());
                         match *tagcase_ {
                             L0MadeParams::L0MadeParams(ps, inner, k) => {
@@ -821,165 +821,165 @@ pub mod kc_l0 {
                                         let tagcase_ = l0_seq(path, scope, inner, n1, cdr(cdr(xs)), nil::<Str>());
                                         match *tagcase_ {
                                             L0Made::L0Made(body, n2) => {
-                                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(letrec ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(vs, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(body, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n2);
+                                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(letrec ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::heap_cons(vs, kayak_rt::heap_cons(str_lit!(") "), kayak_rt::heap_cons(body, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))), n2);
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    } else if string_eq_p(h, str_lit("product")) {
+                    } else if string_eq_p(h, str_lit!("product")) {
                         if not(l0_positional_p(cdr(xs), 1i64)) {
-                            return l0_made(not_yet(path, str_lit("a product's fields by name")), next);
+                            return l0_made(not_yet(path, str_lit!("a product's fields by name")), next);
                         } else {
                             let tagcase_ = l0_terms(path, scope, env, next, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
                                 second(items(f))
                             })), cdr(xs)), nil::<Str>());
                             match *tagcase_ {
                                 L0Made::L0Made(ts, n1) => {
-                                    return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(product"), kayak_rt::heap_cons(if string_eq_p(ts, str_lit("")) {
-                                        str_lit("")
+                                    return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(product"), kayak_rt::heap_cons(if string_eq_p(ts, str_lit!("")) {
+                                        str_lit!("")
                                     } else {
-                                        str_lit(" ")
-                                    }, kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))), n1);
+                                        str_lit!(" ")
+                                    }, kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))), n1);
                                 }
                             }
                         }
-                    } else if string_eq_p(h, str_lit("tuple")) {
+                    } else if string_eq_p(h, str_lit!("tuple")) {
                         let tagcase_ = l0_terms(path, scope, env, next, cdr(xs), nil::<Str>());
                         match *tagcase_ {
                             L0Made::L0Made(ts, n1) => {
-                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(product"), kayak_rt::heap_cons(if string_eq_p(ts, str_lit("")) {
-                                    str_lit("")
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(product"), kayak_rt::heap_cons(if string_eq_p(ts, str_lit!("")) {
+                                    str_lit!("")
                                 } else {
-                                    str_lit(" ")
-                                }, kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))), n1);
+                                    str_lit!(" ")
+                                }, kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))), n1);
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("extract")) && i64_eq(size(xs), 3i64)) {
+                    } else if (string_eq_p(h, str_lit!("extract")) && i64_eq(size(xs), 3i64)) {
                         let tagcase_ = third(xs);
                         match *tagcase_ {
                             Sexp::Num(k, f2, p2) => {
                                 let tagcase_ = l0_of(path, scope, env, next, second(xs));
                                 match *tagcase_ {
                                     L0Made::L0Made(t, n1) => {
-                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(extract "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(extract "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(k), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n1);
                                     }
                                 }
                             }
                             _ => {
                                 let other = tagcase_;
-                                return l0_made(not_yet(path, str_lit("a product's field by name")), next);
+                                return l0_made(not_yet(path, str_lit!("a product's field by name")), next);
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("sum")) && i64_eq(size(xs), 3i64)) {
+                    } else if (string_eq_p(h, str_lit!("sum")) && i64_eq(size(xs), 3i64)) {
                         let tagcase_ = l0_of(path, scope, env, next, third(xs));
                         match *tagcase_ {
                             L0Made::L0Made(t, n1) => {
-                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(sum "), kayak_rt::heap_cons(kc_datum().call(str(sym_name(second(xs)), str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(sum "), kayak_rt::heap_cons(kc_datum().call(str(sym_name(second(xs)), str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n1);
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("tagcase")) && i64_gt_eq(size(xs), 3i64)) {
+                    } else if (string_eq_p(h, str_lit!("tagcase")) && i64_gt_eq(size(xs), 3i64)) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
                         match *tagcase_ {
                             L0Made::L0Made(t, n1) => {
                                 let tagcase_ = l0_arms(path, scope, env, n1, cdr(cdr(xs)), nil::<Str>());
                                 match *tagcase_ {
                                     L0Made::L0Made(arms, n2) => {
-                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(tagcase "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(arms, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n2);
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(tagcase "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(arms, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n2);
                                     }
                                 }
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("quote")) && i64_eq(size(xs), 2i64)) {
+                    } else if (string_eq_p(h, str_lit!("quote")) && i64_eq(size(xs), 2i64)) {
                         return l0_made(l0_quoted(second(xs)), next);
-                    } else if (string_eq_p(h, str_lit("quasiquote")) && i64_eq(size(xs), 2i64)) {
+                    } else if (string_eq_p(h, str_lit!("quasiquote")) && i64_eq(size(xs), 2i64)) {
                         return l0_quasi(path, scope, env, next, second(xs), 1i64);
-                    } else if (string_eq_p(h, str_lit("typecase")) && i64_gt_eq(size(xs), 3i64)) {
+                    } else if (string_eq_p(h, str_lit!("typecase")) && i64_gt_eq(size(xs), 3i64)) {
                         e = l0_typecase_as_if(path, second(xs), cdr(cdr(xs)), f, l, p);
                         continue;
-                    } else if (string_eq_p(h, str_lit("list")) && null_p(cdr(xs))) {
-                        return l0_made(str_lit("(nil)"), next);
-                    } else if (string_eq_p(h, str_lit("append")) && null_p(cdr(xs))) {
-                        return l0_made(str_lit("(nil)"), next);
-                    } else if (string_eq_p(h, str_lit("append")) && null_p(cdr(cdr(xs)))) {
+                    } else if (string_eq_p(h, str_lit!("list")) && null_p(cdr(xs))) {
+                        return l0_made(str_lit!("(nil)"), next);
+                    } else if (string_eq_p(h, str_lit!("append")) && null_p(cdr(xs))) {
+                        return l0_made(str_lit!("(nil)"), next);
+                    } else if (string_eq_p(h, str_lit!("append")) && null_p(cdr(cdr(xs)))) {
                         e = second(xs);
                         continue;
-                    } else if string_eq_p(h, str_lit("append")) {
+                    } else if string_eq_p(h, str_lit!("append")) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
                         match *tagcase_ {
                             L0Made::L0Made(a, n1) => {
                                 let tagcase_ = l0_of(path, scope, env, n1, lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p));
                                 match *tagcase_ {
                                     L0Made::L0Made(b, n2) => {
-                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n2);
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prim append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n2);
                                     }
                                 }
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("string-append")) && null_p(cdr(xs))) {
-                        return l0_made(str_lit("(string \"\")"), next);
-                    } else if (string_eq_p(h, str_lit("string-append")) && null_p(cdr(cdr(xs)))) {
+                    } else if (string_eq_p(h, str_lit!("string-append")) && null_p(cdr(xs))) {
+                        return l0_made(str_lit!("(string \"\")"), next);
+                    } else if (string_eq_p(h, str_lit!("string-append")) && null_p(cdr(cdr(xs)))) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
                         match *tagcase_ {
                             L0Made::L0Made(a, n1) => {
-                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim string-append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" (string \"\"))"), kayak_rt::nil())))), n1);
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prim string-append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit!(" (string \"\"))"), kayak_rt::nil())))), n1);
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("string-append")) && i64_gt(size(xs), 3i64)) {
+                    } else if (string_eq_p(h, str_lit!("string-append")) && i64_gt(size(xs), 3i64)) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
                         match *tagcase_ {
                             L0Made::L0Made(a, n1) => {
                                 let tagcase_ = l0_of(path, scope, env, n1, lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p));
                                 match *tagcase_ {
                                     L0Made::L0Made(b, n2) => {
-                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim string-append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n2);
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prim string-append "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n2);
                                     }
                                 }
                             }
                         }
-                    } else if (i64_eq(size(xs), 2i64) && (string_eq_p(h, str_lit("int->i64")) || string_eq_p(h, str_lit("i64->int")))) {
+                    } else if (i64_eq(size(xs), 2i64) && (string_eq_p(h, str_lit!("int->i64")) || string_eq_p(h, str_lit!("i64->int")))) {
                         e = second(xs);
                         continue;
-                    } else if (i64_eq(size(xs), 3i64) && not(string_eq_p(int_op_of(h, i64_as_int()), str_lit("")))) {
+                    } else if (i64_eq(size(xs), 3i64) && not(string_eq_p(int_op_of(h, i64_as_int()), str_lit!("")))) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
                         match *tagcase_ {
                             L0Made::L0Made(a, n1) => {
                                 let tagcase_ = l0_of(path, scope, env, n1, third(xs));
                                 match *tagcase_ {
                                     L0Made::L0Made(b, n2) => {
-                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim "), kayak_rt::heap_cons(int_op_of(h, i64_as_int()), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n2);
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prim "), kayak_rt::heap_cons(int_op_of(h, i64_as_int()), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))), n2);
                                     }
                                 }
                             }
                         }
-                    } else if (null_p(cdr(xs)) && (string_eq_p(h, str_lit("make-continuation-prompt-tag")) || string_eq_p(h, str_lit("make-escape-tag")) || string_eq_p(h, str_lit("make-continuation-mark-key")))) {
-                        return l0_made(str_lit("(prim new (unit))"), next);
-                    } else if (string_eq_p(h, str_lit("prompt")) && i64_eq(size(xs), 4i64)) {
+                    } else if (null_p(cdr(xs)) && (string_eq_p(h, str_lit!("make-continuation-prompt-tag")) || string_eq_p(h, str_lit!("make-escape-tag")) || string_eq_p(h, str_lit!("make-continuation-mark-key")))) {
+                        return l0_made(str_lit!("(prim new (unit))"), next);
+                    } else if (string_eq_p(h, str_lit!("prompt")) && i64_eq(size(xs), 4i64)) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
                         match *tagcase_ {
                             L0Made::L0Made(t, n1) => {
                                 let tagcase_ = l0_of(path, scope, env, n1, fourth(xs));
                                 match *tagcase_ {
                                     L0Made::L0Made(hd, n2) => {
-                                        let tagcase_ = l0_of(path, scope, env, n2, lst(kayak_rt::heap_cons(sym(str_lit("lambda"), f, p), kayak_rt::heap_cons(lst(nil::<kayak_rt::Handle<'static, Sexp>>(), f, l, p), kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), f, l, p));
+                                        let tagcase_ = l0_of(path, scope, env, n2, lst(kayak_rt::heap_cons(sym(str_lit!("lambda"), f, p), kayak_rt::heap_cons(lst(nil::<kayak_rt::Handle<'static, Sexp>>(), f, l, p), kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), f, l, p));
                                         match *tagcase_ {
                                             L0Made::L0Made(b, n3) => {
-                                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prompt "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(hd, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n3);
+                                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prompt "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(hd, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))), n3);
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    } else if (string_eq_p(h, str_lit("list")) && not(null_p(cdr(xs)))) {
-                        e = lst(kayak_rt::heap_cons(sym(str_lit("cons"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(if null_p(cdr(cdr(xs))) {
-                            sym(str_lit("nil"), f, p)
+                    } else if (string_eq_p(h, str_lit!("list")) && not(null_p(cdr(xs)))) {
+                        e = lst(kayak_rt::heap_cons(sym(str_lit!("cons"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(if null_p(cdr(cdr(xs))) {
+                            sym(str_lit!("nil"), f, p)
                         } else {
                             lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p)
                         }, kayak_rt::nil()))), f, l, p);
                         continue;
-                    } else if (string_eq_p(h, str_lit("if")) && i64_eq(size(xs), 4i64)) {
+                    } else if (string_eq_p(h, str_lit!("if")) && i64_eq(size(xs), 4i64)) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
                         match *tagcase_ {
                             L0Made::L0Made(a, n1) => {
@@ -989,50 +989,50 @@ pub mod kc_l0 {
                                         let tagcase_ = l0_of(path, scope, env, n2, fourth(xs));
                                         match *tagcase_ {
                                             L0Made::L0Made(c, n3) => {
-                                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(if "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(c, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n3);
+                                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(if "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(c, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))), n3);
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    } else if string_eq_p(h, str_lit("and")) {
+                    } else if string_eq_p(h, str_lit!("and")) {
                         e = if null_p(cdr(xs)) {
-                            sym(str_lit("#t"), f, p)
+                            sym(str_lit!("#t"), f, p)
                         } else if null_p(cdr(cdr(xs))) {
                             second(xs)
                         } else {
-                            lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p), kayak_rt::heap_cons(sym(str_lit("#f"), f, p), kayak_rt::nil())))), f, l, p)
+                            lst(kayak_rt::heap_cons(sym(str_lit!("if"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p), kayak_rt::heap_cons(sym(str_lit!("#f"), f, p), kayak_rt::nil())))), f, l, p)
                         };
                         continue;
-                    } else if string_eq_p(h, str_lit("or")) {
+                    } else if string_eq_p(h, str_lit!("or")) {
                         e = if null_p(cdr(xs)) {
-                            sym(str_lit("#f"), f, p)
+                            sym(str_lit!("#f"), f, p)
                         } else if null_p(cdr(cdr(xs))) {
                             second(xs)
                         } else {
-                            lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(sym(str_lit("#t"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p), kayak_rt::nil())))), f, l, p)
+                            lst(kayak_rt::heap_cons(sym(str_lit!("if"), f, p), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(sym(str_lit!("#t"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p), kayak_rt::nil())))), f, l, p)
                         };
                         continue;
-                    } else if string_eq_p(h, str_lit("cond")) {
+                    } else if string_eq_p(h, str_lit!("cond")) {
                         e = l0_cond_as_if(path, cdr(xs), f, l, p);
                         continue;
-                    } else if (string_eq_p(h, str_lit("case")) && i64_gt_eq(size(xs), 3i64)) {
-                        let key = string_append(str_lit("%case"), i64_to_string(next));
-                        e = lst(kayak_rt::heap_cons(sym(str_lit("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(key, f, p), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(l0_case_as_if(path, key, cdr(cdr(xs)), f, l, p), kayak_rt::nil()))), f, l, p);
+                    } else if (string_eq_p(h, str_lit!("case")) && i64_gt_eq(size(xs), 3i64)) {
+                        let key = string_append(str_lit!("%case"), i64_to_string(next));
+                        e = lst(kayak_rt::heap_cons(sym(str_lit!("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(key, f, p), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(l0_case_as_if(path, key, cdr(cdr(xs)), f, l, p), kayak_rt::nil()))), f, l, p);
                         continue;
                     } else if (i64_eq(size(xs), 2i64) && string_member_p(h, unary_primitives())) {
                         let tagcase_ = l0_of(path, scope, env, next, second(xs));
                         match *tagcase_ {
                             L0Made::L0Made(a, n1) => {
-                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prim "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n1);
                             }
                         }
                     } else if (i64_eq(size(xs), 4i64) && string_member_p(h, ternary_primitives())) {
                         let tagcase_ = l0_terms(path, scope, env, next, cdr(xs), nil::<Str>());
                         match *tagcase_ {
                             L0Made::L0Made(ts, n1) => {
-                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                                return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prim "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(ts, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n1);
                             }
                         }
                     } else if (i64_eq(size(xs), 3i64) && string_member_p(h, binary_primitives())) {
@@ -1042,18 +1042,18 @@ pub mod kc_l0 {
                                 let tagcase_ = l0_of(path, scope, env, n1, third(xs));
                                 match *tagcase_ {
                                     L0Made::L0Made(b, n2) => {
-                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), n2);
+                                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prim "), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(a, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))), n2);
                                     }
                                 }
                             }
                         }
                     } else {
-                        return l0_made(not_yet(path, string_append(str_lit("a form, "), h)), next);
+                        return l0_made(not_yet(path, string_append(str_lit!("a form, "), h)), next);
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    return l0_made(not_yet(path, str_lit("this expression")), next);
+                    return l0_made(not_yet(path, str_lit!("this expression")), next);
                 }
             }
         }
@@ -1086,8 +1086,8 @@ pub mod kc_l0 {
             } else {
                 let a = items(car(arms));
                 let tag = sym_name(car(a));
-                let head = if string_eq_p(tag, str_lit("else")) {
-                    str_lit("else")
+                let head = if string_eq_p(tag, str_lit!("else")) {
+                    str_lit!("else")
                 } else if {
                     let tagcase_ = second(a);
                     match *tagcase_ {
@@ -1100,11 +1100,11 @@ pub mod kc_l0 {
                         }
                     }
                 } {
-                    str_lit("parts")
+                    str_lit!("parts")
                 } else {
-                    str_lit("whole")
+                    str_lit!("whole")
                 };
-                let names = if string_eq_p(head, str_lit("parts")) {
+                let names = if string_eq_p(head, str_lit!("parts")) {
                     items(second(a))
                 } else {
                     kayak_rt::heap_cons(second(a), kayak_rt::nil())
@@ -1115,12 +1115,12 @@ pub mod kc_l0 {
                         let tagcase_ = l0_seq(path, scope, inner, k, cdr(cdr(a)), nil::<Str>());
                         match *tagcase_ {
                             L0Made::L0Made(b, n1) => {
-                                (next, arms, done) = (n1, cdr(arms), kayak_rt::heap_cons(string_list_append(if string_eq_p(head, str_lit("else")) {
-                                    kayak_rt::heap_cons(str_lit("(else "), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))
-                                } else if string_eq_p(head, str_lit("parts")) {
-                                    kayak_rt::heap_cons(str_lit("(parts "), kayak_rt::heap_cons(kc_datum().call(str(tag, str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))
+                                (next, arms, done) = (n1, cdr(arms), kayak_rt::heap_cons(string_list_append(if string_eq_p(head, str_lit!("else")) {
+                                    kayak_rt::heap_cons(str_lit!("(else "), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))
+                                } else if string_eq_p(head, str_lit!("parts")) {
+                                    kayak_rt::heap_cons(str_lit!("(parts "), kayak_rt::heap_cons(kc_datum().call(str(tag, str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit!(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))
                                 } else {
-                                    kayak_rt::heap_cons(str_lit("(whole "), kayak_rt::heap_cons(kc_datum().call(str(tag, str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))
+                                    kayak_rt::heap_cons(str_lit!("(whole "), kayak_rt::heap_cons(kc_datum().call(str(tag, str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))
                                 }), done));
                                 continue;
                             }
@@ -1134,13 +1134,13 @@ pub mod kc_l0 {
     /// `cond`'s clauses as `if`s; it must end with `else`, as Fixpt has it.
     pub fn l0_cond_as_if(path: Str, clauses: Sexps, f: Str, l: i64, p: i64) -> kayak_rt::Handle<'static, Sexp> {
         if null_p(clauses) {
-            sym(not_yet(path, str_lit("a cond with no else")), f, p)
+            sym(not_yet(path, str_lit!("a cond with no else")), f, p)
         } else {
             let c = items(car(clauses));
-            if sym_is_p(car(c), str_lit("else")) {
-                lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p)
+            if sym_is_p(car(c), str_lit!("else")) {
+                lst(kayak_rt::heap_cons(sym(str_lit!("begin"), f, p), cdr(c)), f, l, p)
             } else {
-                lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(car(c), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p), kayak_rt::heap_cons(l0_cond_as_if(path, cdr(clauses), f, l, p), kayak_rt::nil())))), f, l, p)
+                lst(kayak_rt::heap_cons(sym(str_lit!("if"), f, p), kayak_rt::heap_cons(car(c), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("begin"), f, p), cdr(c)), f, l, p), kayak_rt::heap_cons(l0_cond_as_if(path, cdr(clauses), f, l, p), kayak_rt::nil())))), f, l, p)
             }
         }
     }
@@ -1148,28 +1148,28 @@ pub mod kc_l0 {
     /// `case`'s clauses as `if`s on the key's binder `key`.
     pub fn l0_case_as_if(path: Str, key: Str, clauses: Sexps, f: Str, l: i64, p: i64) -> kayak_rt::Handle<'static, Sexp> {
         if null_p(clauses) {
-            sym(not_yet(path, str_lit("a case with no else")), f, p)
+            sym(not_yet(path, str_lit!("a case with no else")), f, p)
         } else {
             let c = items(car(clauses));
-            if sym_is_p(car(c), str_lit("else")) {
-                lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p)
+            if sym_is_p(car(c), str_lit!("else")) {
+                lst(kayak_rt::heap_cons(sym(str_lit!("begin"), f, p), cdr(c)), f, l, p)
             } else {
-                lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("or"), f, p), map(kayak_rt::as_proc(kayak_rt::closure1s((key, f, l, p,), |(key, f, l, p,), d: kayak_rt::Handle<'static, Sexp>| {
+                lst(kayak_rt::heap_cons(sym(str_lit!("if"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("or"), f, p), map(kayak_rt::as_proc(kayak_rt::closure1s((key, f, l, p,), |(key, f, l, p,), d: kayak_rt::Handle<'static, Sexp>| {
                     lst(kayak_rt::heap_cons(sym({
                         let tagcase_ = d;
                         match *tagcase_ {
                             Sexp::Num(k, f2, p2) => {
-                                str_lit("=")
+                                str_lit!("=")
                             }
                             Sexp::Chr(ch, f2, p2) => {
-                                str_lit("char=?")
+                                str_lit!("char=?")
                             }
                             Sexp::Str(s, f2, p2) => {
-                                str_lit("string=?")
+                                str_lit!("string=?")
                             }
                             _ => {
                                 let other = tagcase_;
-                                str_lit("eq?")
+                                str_lit!("eq?")
                             }
                         }
                     }, f, p), kayak_rt::heap_cons(sym(key, f, p), kayak_rt::heap_cons({
@@ -1186,11 +1186,11 @@ pub mod kc_l0 {
                             }
                             _ => {
                                 let other = tagcase_;
-                                lst(kayak_rt::heap_cons(sym(str_lit("quote"), f, p), kayak_rt::heap_cons(d, kayak_rt::nil())), f, l, p)
+                                lst(kayak_rt::heap_cons(sym(str_lit!("quote"), f, p), kayak_rt::heap_cons(d, kayak_rt::nil())), f, l, p)
                             }
                         }
                     }, kayak_rt::nil()))), f, l, p)
-                })), items(car(c)))), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("begin"), f, p), cdr(c)), f, l, p), kayak_rt::heap_cons(l0_case_as_if(path, key, cdr(clauses), f, l, p), kayak_rt::nil())))), f, l, p)
+                })), items(car(c)))), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("begin"), f, p), cdr(c)), f, l, p), kayak_rt::heap_cons(l0_case_as_if(path, key, cdr(clauses), f, l, p), kayak_rt::nil())))), f, l, p)
             }
         }
     }
@@ -1199,28 +1199,28 @@ pub mod kc_l0 {
     /// (`int?`, ...), its arm's name a `let` of `x`; `else`'s too.
     pub fn l0_typecase_as_if(path: Str, x: kayak_rt::Handle<'static, Sexp>, arms: Sexps, f: Str, l: i64, p: i64) -> kayak_rt::Handle<'static, Sexp> {
         let a = items(car(arms));
-        if sym_is_p(car(a), str_lit("else")) {
+        if sym_is_p(car(a), str_lit!("else")) {
             if i64_eq(size(a), 3i64) {
-                lst(kayak_rt::heap_cons(sym(str_lit("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(third(a), kayak_rt::nil()))), f, l, p)
+                lst(kayak_rt::heap_cons(sym(str_lit!("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(third(a), kayak_rt::nil()))), f, l, p)
             } else {
                 second(a)
             }
         } else if null_p(cdr(arms)) {
-            sym(not_yet(path, str_lit("a typecase with no else")), f, p)
+            sym(not_yet(path, str_lit!("a typecase with no else")), f, p)
         } else {
             let shape = sym_name(car(a));
-            let test = if string_eq_p(shape, str_lit("nil")) {
-                str_lit("null?")
-            } else if string_member_p(shape, kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("procedure"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("vector"), kayak_rt::heap_cons(str_lit("bytevector"), kayak_rt::heap_cons(str_lit("keyword"), kayak_rt::nil()))))))))))))) {
-                string_append(shape, str_lit("?"))
-            } else if string_eq_p(shape, str_lit("bloblet")) {
-                str_lit("array?")
-            } else if string_eq_p(shape, str_lit("box")) {
-                str_lit("ref?")
+            let test = if string_eq_p(shape, str_lit!("nil")) {
+                str_lit!("null?")
+            } else if string_member_p(shape, kayak_rt::heap_cons(str_lit!("int"), kayak_rt::heap_cons(str_lit!("char"), kayak_rt::heap_cons(str_lit!("bool"), kayak_rt::heap_cons(str_lit!("pair"), kayak_rt::heap_cons(str_lit!("string"), kayak_rt::heap_cons(str_lit!("symbol"), kayak_rt::heap_cons(str_lit!("procedure"), kayak_rt::heap_cons(str_lit!("sum"), kayak_rt::heap_cons(str_lit!("product"), kayak_rt::heap_cons(str_lit!("vector"), kayak_rt::heap_cons(str_lit!("bytevector"), kayak_rt::heap_cons(str_lit!("keyword"), kayak_rt::nil()))))))))))))) {
+                string_append(shape, str_lit!("?"))
+            } else if string_eq_p(shape, str_lit!("bloblet")) {
+                str_lit!("array?")
+            } else if string_eq_p(shape, str_lit!("box")) {
+                str_lit!("ref?")
             } else {
-                not_yet(path, string_append(str_lit("a typecase of the shape "), shape))
+                not_yet(path, string_append(str_lit!("a typecase of the shape "), shape))
             };
-            lst(kayak_rt::heap_cons(sym(str_lit("if"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(test, f, p), kayak_rt::heap_cons(x, kayak_rt::nil())), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(third(a), kayak_rt::nil()))), f, l, p), kayak_rt::heap_cons(l0_typecase_as_if(path, x, cdr(arms), f, l, p), kayak_rt::nil())))), f, l, p)
+            lst(kayak_rt::heap_cons(sym(str_lit!("if"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(test, f, p), kayak_rt::heap_cons(x, kayak_rt::nil())), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit!("let"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, l, p), kayak_rt::nil()), f, l, p), kayak_rt::heap_cons(third(a), kayak_rt::nil()))), f, l, p), kayak_rt::heap_cons(l0_typecase_as_if(path, x, cdr(arms), f, l, p), kayak_rt::nil())))), f, l, p)
         }
     }
 
@@ -1231,17 +1231,17 @@ pub mod kc_l0 {
         match *tagcase_ {
             Sexp::Lst(ys, f, l, p) => {
                 if null_p(ys) {
-                    l0_made(str_lit("(nil)"), next)
-                } else if (i64_eq(size(ys), 2i64) && sym_is_p(car(ys), str_lit("unquote"))) {
+                    l0_made(str_lit!("(nil)"), next)
+                } else if (i64_eq(size(ys), 2i64) && sym_is_p(car(ys), str_lit!("unquote"))) {
                     if i64_eq(depth, 1i64) {
                         l0_of(path, scope, env, next, second(ys))
                     } else {
-                        l0_quasi_tagged(path, scope, env, next, str_lit("unquote"), second(ys), i64_minus(depth, 1i64))
+                        l0_quasi_tagged(path, scope, env, next, str_lit!("unquote"), second(ys), i64_minus(depth, 1i64))
                     }
-                } else if (i64_eq(size(ys), 2i64) && sym_is_p(car(ys), str_lit("quasiquote"))) {
-                    l0_quasi_tagged(path, scope, env, next, str_lit("quasiquote"), second(ys), i64_plus(depth, 1i64))
-                } else if head_is_p(d, str_lit("#vector")) {
-                    l0_made(not_yet(path, str_lit("a quasiquoted vector")), next)
+                } else if (i64_eq(size(ys), 2i64) && sym_is_p(car(ys), str_lit!("quasiquote"))) {
+                    l0_quasi_tagged(path, scope, env, next, str_lit!("quasiquote"), second(ys), i64_plus(depth, 1i64))
+                } else if head_is_p(d, str_lit!("#vector")) {
+                    l0_made(not_yet(path, str_lit!("a quasiquoted vector")), next)
                 } else {
                     l0_quasi_items(path, scope, env, next, ys, depth, nil::<Str>())
                 }
@@ -1258,7 +1258,7 @@ pub mod kc_l0 {
         let tagcase_ = l0_quasi(path, scope, env, next, d, depth);
         match *tagcase_ {
             L0Made::L0Made(t, n1) => {
-                l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(prim cons (symbol "), kayak_rt::heap_cons(kc_datum().call(str(tag, str_lit(""), 0i64)), kayak_rt::heap_cons(str_lit(") (prim cons "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit(" (nil)))"), kayak_rt::nil())))))), n1)
+                l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(prim cons (symbol "), kayak_rt::heap_cons(kc_datum().call(str(tag, str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(") (prim cons "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!(" (nil)))"), kayak_rt::nil())))))), n1)
             }
         }
     }
@@ -1267,28 +1267,28 @@ pub mod kc_l0 {
     /// `cons` or `,@`'s `append` open), then closed onto `nil`.
     pub fn l0_quasi_items(mut path: Str, mut scope: Sexps, mut env: List<kayak_rt::Handle<'static, L0Bound>>, mut next: i64, mut ys: Sexps, mut depth: i64, mut done: List<Str>) -> kayak_rt::Handle<'static, L0Made> {
         loop {
-            if (null_p(ys) || (sym_is_p(car(ys), str_lit(".")) && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys))))) {
+            if (null_p(ys) || (sym_is_p(car(ys), str_lit!(".")) && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys))))) {
                 let tagcase_ = if null_p(ys) {
-                    l0_made(str_lit("(nil)"), next)
+                    l0_made(str_lit!("(nil)"), next)
                 } else {
                     l0_quasi(path, scope, env, next, second(ys), depth)
                 };
                 match *tagcase_ {
                     L0Made::L0Made(tail, n1) => {
                         return l0_made(string_append(string_list_append(reverse(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), s: Str| {
-                            string_append(str_lit("(prim "), s)
-                        })), done))), string_append(string_append(str_lit(" "), tail), string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), s: Str| {
-                            str_lit(")")
+                            string_append(str_lit!("(prim "), s)
+                        })), done))), string_append(string_append(str_lit!(" "), tail), string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), s: Str| {
+                            str_lit!(")")
                         })), done)))), n1);
                     }
                 }
             } else {
                 let y = car(ys);
-                if (i64_eq(depth, 1i64) && head_is_p(y, str_lit("unquote-splicing")) && i64_eq(size(items(y)), 2i64)) {
+                if (i64_eq(depth, 1i64) && head_is_p(y, str_lit!("unquote-splicing")) && i64_eq(size(items(y)), 2i64)) {
                     let tagcase_ = l0_of(path, scope, env, next, second(items(y)));
                     match *tagcase_ {
                         L0Made::L0Made(t, n1) => {
-                            (next, ys, done) = (n1, cdr(ys), kayak_rt::heap_cons(string_append(str_lit("append "), t), done));
+                            (next, ys, done) = (n1, cdr(ys), kayak_rt::heap_cons(string_append(str_lit!("append "), t), done));
                             continue;
                         }
                     }
@@ -1296,7 +1296,7 @@ pub mod kc_l0 {
                     let tagcase_ = l0_quasi(path, scope, env, next, y, depth);
                     match *tagcase_ {
                         L0Made::L0Made(t, n1) => {
-                            (next, ys, done) = (n1, cdr(ys), kayak_rt::heap_cons(string_append(str_lit("cons "), t), done));
+                            (next, ys, done) = (n1, cdr(ys), kayak_rt::heap_cons(string_append(str_lit!("cons "), t), done));
                             continue;
                         }
                     }
@@ -1314,7 +1314,7 @@ pub mod kc_l0 {
                 let tagcase_ = l0_seq(path, scope, inner, next, body, nil::<Str>());
                 match *tagcase_ {
                     L0Made::L0Made(b, n1) => {
-                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit("(let ("), kayak_rt::heap_cons(words_of(reverse(done)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))), n1);
+                        return l0_made(string_list_append(kayak_rt::heap_cons(str_lit!("(let ("), kayak_rt::heap_cons(words_of(reverse(done)), kayak_rt::heap_cons(str_lit!(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), n1);
                     }
                 }
             } else {
@@ -1333,20 +1333,20 @@ pub mod kc_l0 {
                                 }
                                 _ => {
                                     let other = tagcase_;
-                                    str_lit("")
+                                    str_lit!("")
                                 }
                             }
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 };
                 let tagcase_ = l0_of(path, scope, env, i64_plus(next, 1i64), car(reverse(bx)));
                 match *tagcase_ {
                     L0Made::L0Made(v, n1) => {
-                        (next, bindings, done, inner) = (n1, cdr(bindings), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(name, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(v, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), done), kayak_rt::heap_cons(l0_bound(name, next), inner));
+                        (next, bindings, done, inner) = (n1, cdr(bindings), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(name, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(v, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))), done), kayak_rt::heap_cons(l0_bound(name, next), inner));
                         continue;
                     }
                 }
@@ -1361,7 +1361,7 @@ pub mod kc_l0 {
                 if (not(null_p(done)) && null_p(cdr(done))) {
                     return l0_made(car(done), next);
                 } else {
-                    return l0_made(string_append(str_lit("(seq "), string_append(words_of(reverse(done)), str_lit(")"))), next);
+                    return l0_made(string_append(str_lit!("(seq "), string_append(words_of(reverse(done)), str_lit!(")"))), next);
                 }
             } else {
                 let tagcase_ = l0_of(path, scope, env, next, car(es));
@@ -1384,19 +1384,19 @@ pub mod kc_l0 {
     // which would look its head up as a global's name first.
     #[inline]
     pub fn l0_run(t: Str, n: i64) -> Str {
-        string_list_append(kayak_rt::heap_cons(str_lit("(app (lambda "), kayak_rt::heap_cons(i64_to_string(n), kayak_rt::heap_cons(str_lit(" () () "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit("))"), kayak_rt::nil()))))))
+        string_list_append(kayak_rt::heap_cons(str_lit!("(app (lambda "), kayak_rt::heap_cons(i64_to_string(n), kayak_rt::heap_cons(str_lit!(" () () "), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!("))"), kayak_rt::nil()))))))
     }
 
     /// Form `f` as an item, its names' entries `scope`; a type's, none.
     pub fn l0_item_text(path: Str, f: kayak_rt::Handle<'static, Sexp>, scope: Sexps) -> Str {
         if type_form_p().call(f) {
-            str_lit("(none)")
+            str_lit!("(none)")
         } else {
-            if string_eq_p(form_name().call(f), str_lit("")) {
+            if string_eq_p(form_name().call(f), str_lit!("")) {
                 let tagcase_ = l0_of(path, scope, nil::<kayak_rt::Handle<'static, kc_l0::L0Bound>>(), 0i64, f);
                 match *tagcase_ {
                     L0Made::L0Made(t, n) => {
-                        string_append(str_lit("(expr "), string_append(l0_run(t, n), str_lit(")")))
+                        string_append(str_lit!("(expr "), string_append(l0_run(t, n), str_lit!(")")))
                     }
                 }
             } else {
@@ -1405,7 +1405,7 @@ pub mod kc_l0 {
                     let tagcase_ = l0_of(path, scope, nil::<kayak_rt::Handle<'static, kc_l0::L0Bound>>(), 0i64, define_value().call(f));
                     match *tagcase_ {
                         L0Made::L0Made(t, n) => {
-                            string_list_append(kayak_rt::heap_cons(str_lit("(global "), kayak_rt::heap_cons(form_name().call(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(l0_run(t, n), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                            string_list_append(kayak_rt::heap_cons(str_lit!("(global "), kayak_rt::heap_cons(form_name().call(f), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(l0_run(t, n), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))
                         }
                     }
                 } else {
@@ -1416,7 +1416,7 @@ pub mod kc_l0 {
                             let tagcase_ = l0_seq(path, scope, env, k, cdr(cdr(lx)), nil::<Str>());
                             match *tagcase_ {
                                 L0Made::L0Made(b, n) => {
-                                    string_list_append(kayak_rt::heap_cons(str_lit("(proc "), kayak_rt::heap_cons(form_name().call(f), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))))
+                                    string_list_append(kayak_rt::heap_cons(str_lit!("(proc "), kayak_rt::heap_cons(form_name().call(f), kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::heap_cons(ps, kayak_rt::heap_cons(str_lit!(") "), kayak_rt::heap_cons(b, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))))
                                 }
                             }
                         }
@@ -1431,14 +1431,14 @@ pub mod kc_l0 {
     pub fn l0_item_of(mut d: Db, mut run: Runner, mut path: Str, mut at: i64, mut f: kayak_rt::Handle<'static, Sexp>, mut scope: Sexps) -> Str {
         loop {
             let r = kayak_rt::attempt(|| { l0_item_text(path, f, scope) }, |m: Str| {
-                string_append(str_lit("%failed "), m)
+                string_append(str_lit!("%failed "), m)
             });
-            if has_prefix_p(r, str_lit("%failed kc-need ")) {
-                scope = kayak_rt::heap_cons(kc_scope_entry().call(d, run, path, at, after_prefix(r, str_lit("%failed kc-need "))), scope);
+            if has_prefix_p(r, str_lit!("%failed kc-need ")) {
+                scope = kayak_rt::heap_cons(kc_scope_entry().call(d, run, path, at, after_prefix(r, str_lit!("%failed kc-need "))), scope);
                 continue;
-            } else if has_prefix_p(r, str_lit("%failed ")) {
-                error(after_prefix(r, str_lit("%failed ")));
-                return str_lit("");
+            } else if has_prefix_p(r, str_lit!("%failed ")) {
+                error(after_prefix(r, str_lit!("%failed ")));
+                return str_lit!("");
             } else {
                 return r;
             }
@@ -1450,17 +1450,17 @@ pub mod kc_l0 {
         let key = a_key;
         let f = kc_form().call(d, run, path, key);
         let at = kc_position().call(d, run, path, key);
-        l0_item_of(d, run, path, at, f, if (string_eq_p(form_name().call(f), str_lit("")) || null_p(lambda_of().call(define_value().call(f)))) {
+        l0_item_of(d, run, path, at, f, if (string_eq_p(form_name().call(f), str_lit!("")) || null_p(lambda_of().call(define_value().call(f)))) {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         } else {
-            kayak_rt::heap_cons(car(read_all(db_get(d, run, key2(str_lit("interface"), path, key)), str_lit("scope"), 1i64)), kayak_rt::nil())
+            kayak_rt::heap_cons(car(read_all(db_get(d, run, key2(str_lit!("interface"), path, key)), str_lit!("scope"), 1i64)), kayak_rt::nil())
         })
     }
 
     // An item of the program, as a term.
     #[inline]
     pub fn l0_item(d: Db, run: Runner, path: Str, key: Str) -> kayak_rt::Handle<'static, Sexp> {
-        car(read_all(db_get(d, run, key2(str_lit("l0-item"), path, key)), str_lit("l0"), 1i64))
+        car(read_all(db_get(d, run, key2(str_lit!("l0-item"), path, key)), str_lit!("l0"), 1i64))
     }
 
     // A term's head, and its number (`(int N)`'s `N`, `(char C)`'s `C`, `(bool B)`'s `B`).
@@ -1475,13 +1475,13 @@ pub mod kc_l0 {
                     }
                     _ => {
                         let other = tagcase_;
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             _ => {
                 let other = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }
@@ -1498,7 +1498,7 @@ pub mod kc_l0 {
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
                 if null_p(cdr(xs)) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     let tagcase_ = second(xs);
                     match *tagcase_ {
@@ -1507,14 +1507,14 @@ pub mod kc_l0 {
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 }
             }
             _ => {
                 let other = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }
@@ -1658,13 +1658,13 @@ pub mod kc_l0 {
                     }
                     _ => {
                         let other = tagcase_;
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             _ => {
                 let other = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }
@@ -1703,7 +1703,7 @@ pub mod kc_l0 {
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
                 if null_p(cdr(xs)) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     let tagcase_ = second(xs);
                     match *tagcase_ {
@@ -1712,14 +1712,14 @@ pub mod kc_l0 {
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 }
             }
             _ => {
                 let other = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }

@@ -17,32 +17,32 @@ pub async fn say_x(lp: Wl, s: Str) -> Result<(), Unwind> {
 }
 
 pub async fn worker(lp: Wl, name: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body(say_x(lp, string_append(name, str_lit("1")))).await?;
+    kayak_rt::suspend::body(say_x(lp, string_append(name, str_lit!("1")))).await?;
     {
         let tagcase_ = kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", name))).await?;
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("failed") } {
             let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            kayak_rt::suspend::body(say_x(lp, string_append(name, if string_eq_p(m, str_lit("a fault, injected")) {
-                str_lit("!")
+            kayak_rt::suspend::body(say_x(lp, string_append(name, if string_eq_p(m, str_lit!("a fault, injected")) {
+                str_lit!("!")
             } else {
-                str_lit("?")
+                str_lit!("?")
             }))).await?
         } else {
             let other = tagcase_;
-            kayak_rt::suspend::body(say_x(lp, string_append(name, str_lit(".")))).await?
+            kayak_rt::suspend::body(say_x(lp, string_append(name, str_lit!(".")))).await?
         }
     };
-    Ok(kayak_rt::suspend::body(say_x(lp, string_append(name, str_lit("2")))).await?)
+    Ok(kayak_rt::suspend::body(say_x(lp, string_append(name, str_lit!("2")))).await?)
 }
 
 pub fn words(xs: List<Str>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(words(cdr(xs)), string_append(str_lit(" "), car(xs)))
+        string_append(words(cdr(xs)), string_append(str_lit!(" "), car(xs)))
     }
 }
 
@@ -50,13 +50,13 @@ pub fn words(xs: List<Str>) -> Str {
 pub async fn run_with(n: u64) -> Result<Str, Unwind> {
     let (lp, s, input, out) = (the::<Wl>(make_world_loop()), the::<Seed<'static>>(kayak_rt::heap_new(n)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())));
     kayak_rt::suspend::body(spawn_x(lp.0, kayak_rt::closure0((lp,), |(lp,)| kayak_rt::suspend::body(async move {
-        Ok(kayak_rt::suspend::body(worker(lp, str_lit("a"))).await?)
+        Ok(kayak_rt::suspend::body(worker(lp, str_lit!("a"))).await?)
     })))).await?;
     kayak_rt::suspend::body(spawn_x(lp.0, kayak_rt::closure0((lp,), |(lp,)| kayak_rt::suspend::body(async move {
-        Ok(kayak_rt::suspend::body(worker(lp, str_lit("b"))).await?)
+        Ok(kayak_rt::suspend::body(worker(lp, str_lit!("b"))).await?)
     })))).await?;
     kayak_rt::suspend::body(spawn_x(lp.0, kayak_rt::closure0((lp,), |(lp,)| kayak_rt::suspend::body(async move {
-        Ok(kayak_rt::suspend::body(worker(lp, str_lit("c"))).await?)
+        Ok(kayak_rt::suspend::body(worker(lp, str_lit!("c"))).await?)
     })))).await?;
     kayak_rt::suspend::body(run_seeded_x(lp, faulty(s, 40i64, sim(input, out)), s)).await?;
     Ok(words(get(out)))
@@ -66,10 +66,10 @@ pub async fn main() -> Result<Str, Unwind> {
     let one = kayak_rt::suspend::body(run_with(7u64)).await?;
     let again = kayak_rt::suspend::body(run_with(7u64)).await?;
     let other = kayak_rt::suspend::body(run_with(8u64)).await?;
-    Ok(string_append(str_lit("seed 7: "), string_append(one, string_append(if string_eq_p(one, again) {
-        str_lit("; again the same")
+    Ok(string_append(str_lit!("seed 7: "), string_append(one, string_append(if string_eq_p(one, again) {
+        str_lit!("; again the same")
     } else {
-        str_lit("; again OTHERWISE")
-    }, string_append(str_lit("; seed 8: "), other)))))
+        str_lit!("; again OTHERWISE")
+    }, string_append(str_lit!("; seed 8: "), other)))))
 }
 

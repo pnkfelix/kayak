@@ -98,7 +98,7 @@ pub fn main() -> Str {
                     x.bump();
                     x.bump();
                     y.bump();
-                    string_append(i64_to_string(x.total()), string_append(str_lit(" "), i64_to_string(y.total())))
+                    string_append(i64_to_string(x.total()), string_append(str_lit!(" "), i64_to_string(y.total())))
                 }
                 let b__arena = Region_B::default();
                 letrena__b(&b__arena, a)

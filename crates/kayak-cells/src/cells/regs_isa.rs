@@ -11,7 +11,7 @@ use super::*;
 pub fn rop_names() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::heap_cons(str_lit("global"), kayak_rt::heap_cons(str_lit("setglbl"), kayak_rt::heap_cons(str_lit("reg"), kayak_rt::heap_cons(str_lit("setreg"), kayak_rt::heap_cons(str_lit("movereg"), kayak_rt::heap_cons(str_lit("lexical"), kayak_rt::heap_cons(str_lit("save"), kayak_rt::heap_cons(str_lit("pop"), kayak_rt::heap_cons(str_lit("stack"), kayak_rt::heap_cons(str_lit("setstk"), kayak_rt::heap_cons(str_lit("load"), kayak_rt::heap_cons(str_lit("store"), kayak_rt::heap_cons(str_lit("op1"), kayak_rt::heap_cons(str_lit("op2"), kayak_rt::heap_cons(str_lit("op2imm"), kayak_rt::heap_cons(str_lit("field"), kayak_rt::heap_cons(str_lit("setfield"), kayak_rt::heap_cons(str_lit("prim"), kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("invoke"), kayak_rt::heap_cons(str_lit("tailinvoke"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("branch"), kayak_rt::heap_cons(str_lit("branchf"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("invokeself"), kayak_rt::heap_cons(str_lit("global-guard"), kayak_rt::heap_cons(str_lit("brancht"), kayak_rt::heap_cons(str_lit("vargs"), kayak_rt::heap_cons(str_lit("prim1"), kayak_rt::heap_cons(str_lit("prim2"), kayak_rt::heap_cons(str_lit("prim2imm"), kayak_rt::heap_cons(str_lit("prim3imm"), kayak_rt::nil())))))))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("args"), kayak_rt::heap_cons(str_lit!("const"), kayak_rt::heap_cons(str_lit!("global"), kayak_rt::heap_cons(str_lit!("setglbl"), kayak_rt::heap_cons(str_lit!("reg"), kayak_rt::heap_cons(str_lit!("setreg"), kayak_rt::heap_cons(str_lit!("movereg"), kayak_rt::heap_cons(str_lit!("lexical"), kayak_rt::heap_cons(str_lit!("save"), kayak_rt::heap_cons(str_lit!("pop"), kayak_rt::heap_cons(str_lit!("stack"), kayak_rt::heap_cons(str_lit!("setstk"), kayak_rt::heap_cons(str_lit!("load"), kayak_rt::heap_cons(str_lit!("store"), kayak_rt::heap_cons(str_lit!("op1"), kayak_rt::heap_cons(str_lit!("op2"), kayak_rt::heap_cons(str_lit!("op2imm"), kayak_rt::heap_cons(str_lit!("field"), kayak_rt::heap_cons(str_lit!("setfield"), kayak_rt::heap_cons(str_lit!("prim"), kayak_rt::heap_cons(str_lit!("lambda"), kayak_rt::heap_cons(str_lit!("invoke"), kayak_rt::heap_cons(str_lit!("tailinvoke"), kayak_rt::heap_cons(str_lit!("return"), kayak_rt::heap_cons(str_lit!("branch"), kayak_rt::heap_cons(str_lit!("branchf"), kayak_rt::heap_cons(str_lit!("cellular"), kayak_rt::heap_cons(str_lit!("invokeself"), kayak_rt::heap_cons(str_lit!("global-guard"), kayak_rt::heap_cons(str_lit!("brancht"), kayak_rt::heap_cons(str_lit!("vargs"), kayak_rt::heap_cons(str_lit!("prim1"), kayak_rt::heap_cons(str_lit!("prim2"), kayak_rt::heap_cons(str_lit!("prim2imm"), kayak_rt::heap_cons(str_lit!("prim3imm"), kayak_rt::nil())))))))))))))))))))))))))))))))))))
     })
 }
 
@@ -940,7 +940,7 @@ pub fn register_regs() -> i64 {
 pub fn rconv_names() -> List<Str> {
     static ONCE: std::sync::OnceLock<List<Str>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("fx"), kayak_rt::heap_cons(str_lit("cellular"), kayak_rt::heap_cons(str_lit("native"), kayak_rt::nil())))
+        kayak_rt::heap_cons(str_lit!("fx"), kayak_rt::heap_cons(str_lit!("cellular"), kayak_rt::heap_cons(str_lit!("native"), kayak_rt::nil())))
     })
 }
 

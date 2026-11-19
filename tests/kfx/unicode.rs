@@ -12,11 +12,11 @@ pub type Chars = List<char>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 
@@ -43,15 +43,15 @@ pub fn reversed(mut cs: Chars, mut acc: Chars) -> Chars {
 }
 
 pub fn main() -> Str {
-    let s = str_lit("héllo, wörld — ∑");
-    words(kayak_rt::heap_cons(s, kayak_rt::heap_cons(i64_to_string(string_length_i64(s)), kayak_rt::heap_cons(char_to_string(string_ref_i64(s, 1i64)), kayak_rt::heap_cons(char_to_string(string_ref_i64(s, 15i64)), kayak_rt::heap_cons(i64_to_string(char_to_i64(string_ref_i64(s, 1i64))), kayak_rt::heap_cons(i64_to_string(count_chars(string_to_list(s), 0i64)), kayak_rt::heap_cons(list_to_string(reversed(string_to_list(str_lit("äbç")), nil::<char>())), kayak_rt::heap_cons(char_to_string('λ'), kayak_rt::heap_cons(if char_eq_p(string_ref_i64(str_lit("αβγ"), 2i64), 'γ') {
-        str_lit("γ")
+    let s = str_lit!("héllo, wörld — ∑");
+    words(kayak_rt::heap_cons(s, kayak_rt::heap_cons(i64_to_string(string_length_i64(s)), kayak_rt::heap_cons(char_to_string(string_ref_i64(s, 1i64)), kayak_rt::heap_cons(char_to_string(string_ref_i64(s, 15i64)), kayak_rt::heap_cons(i64_to_string(char_to_i64(string_ref_i64(s, 1i64))), kayak_rt::heap_cons(i64_to_string(count_chars(string_to_list(s), 0i64)), kayak_rt::heap_cons(list_to_string(reversed(string_to_list(str_lit!("äbç")), nil::<char>())), kayak_rt::heap_cons(char_to_string('λ'), kayak_rt::heap_cons(if char_eq_p(string_ref_i64(str_lit!("αβγ"), 2i64), 'γ') {
+        str_lit!("γ")
     } else {
-        str_lit("not γ")
-    }, kayak_rt::heap_cons(if string_eq_p(string_append(str_lit("ü"), str_lit("ber")), str_lit("über")) {
-        str_lit("same")
+        str_lit!("not γ")
+    }, kayak_rt::heap_cons(if string_eq_p(string_append(str_lit!("ü"), str_lit!("ber")), str_lit!("über")) {
+        str_lit!("same")
     } else {
-        str_lit("differ")
+        str_lit!("differ")
     }, kayak_rt::nil())))))))))))
 }
 

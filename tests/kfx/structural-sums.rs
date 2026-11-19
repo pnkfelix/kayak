@@ -74,6 +74,6 @@ pub fn not_round(s: Shape) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(area(one())), string_append(str_lit(" "), string_append(i64_to_string(areas(rounds())), string_append(str_lit(" "), string_append(i64_to_string(not_round(kayak_rt::sum_new::<Product_1w_1h<i64, i64>>(const { kayak_rt::tag_hash("rect") }, "rect", Product_1w_1h(4i64, 5i64)))), string_append(str_lit(" "), string_append(i64_to_string(not_round(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("circle") }, "circle", 9i64))), string_append(str_lit(" "), i64_to_string(area(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("dot") }, "dot", ())))))))))))
+    string_append(i64_to_string(area(one())), string_append(str_lit!(" "), string_append(i64_to_string(areas(rounds())), string_append(str_lit!(" "), string_append(i64_to_string(not_round(kayak_rt::sum_new::<Product_1w_1h<i64, i64>>(const { kayak_rt::tag_hash("rect") }, "rect", Product_1w_1h(4i64, 5i64)))), string_append(str_lit!(" "), string_append(i64_to_string(not_round(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("circle") }, "circle", 9i64))), string_append(str_lit!(" "), i64_to_string(area(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("dot") }, "dot", ())))))))))))
 }
 

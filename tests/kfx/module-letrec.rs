@@ -85,9 +85,9 @@ pub mod m {
 #[inline]
 pub fn main() -> Str {
     string_append(i64_to_string(i64_plus(m::y(), m::size())), if m::even_p(10i64) {
-        str_lit(" even")
+        str_lit!(" even")
     } else {
-        str_lit(" odd")
+        str_lit!(" odd")
     })
 }
 

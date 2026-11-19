@@ -87,6 +87,6 @@ pub fn across(p: kayak_rt::Handle<'static, Point>) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(across(pt(3i64, 4i64))), string_append(str_lit(" "), string_append(i64_to_string(m::r#where(m::here(9i64))), string_append(str_lit(" "), i64_to_string(across(origin()))))))
+    string_append(i64_to_string(across(pt(3i64, 4i64))), string_append(str_lit!(" "), string_append(i64_to_string(m::r#where(m::here(9i64))), string_append(str_lit!(" "), i64_to_string(across(origin()))))))
 }
 

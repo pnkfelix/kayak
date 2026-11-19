@@ -17,7 +17,7 @@ pub async fn echo(mut r: Rt, mut n: i64) -> Result<i64, Unwind> {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("line") } {
             let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            kayak_rt::suspend::body(write_x::<i64>(r, string_append(i64_to_string(n), string_append(str_lit(": "), string_append(s, string_append(str_lit(" @"), i64_to_string(kayak_rt::suspend::body(clock_x::<i64>(r)).await?))))))).await?;
+            kayak_rt::suspend::body(write_x::<i64>(r, string_append(i64_to_string(n), string_append(str_lit!(": "), string_append(s, string_append(str_lit!(" @"), i64_to_string(kayak_rt::suspend::body(clock_x::<i64>(r)).await?))))))).await?;
             n = i64_plus(n, 1i64);
             continue;
         } else {
@@ -40,16 +40,16 @@ pub fn reverse_log(mut xs: Log<'static>, mut acc: Log<'static>) -> Log<'static> 
 
 pub fn words(xs: List<Str>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(words(cdr(xs)), string_append(str_lit(" | "), car(xs)))
+        string_append(words(cdr(xs)), string_append(str_lit!(" | "), car(xs)))
     }
 }
 
 pub async fn main() -> Result<Str, Unwind> {
-    let input = the::<Ref<List<Str>>>(kayak_rt::heap_new(kayak_rt::heap_cons(str_lit("alpha"), kayak_rt::heap_cons(str_lit("beta"), kayak_rt::nil()))));
+    let input = the::<Ref<List<Str>>>(kayak_rt::heap_new(kayak_rt::heap_cons(str_lit!("alpha"), kayak_rt::heap_cons(str_lit!("beta"), kayak_rt::nil()))));
     let out = the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>()));
     let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>()));
     let n = kayak_rt::suspend::body(run_under::<i64>(recording(sim(input, out), log), kayak_rt::closure1((), |(), r: Rt| kayak_rt::suspend::body(async move {
@@ -61,6 +61,6 @@ pub async fn main() -> Result<Str, Unwind> {
     let m = kayak_rt::suspend::body(run_under::<i64>(replaying(log), kayak_rt::closure1((), |(), r: Rt| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(echo(r, 1i64)).await?)
     })))).await?;
-    Ok(string_append(i64_to_string(i64_minus(n, 1i64)), string_append(str_lit(" lines: "), string_append(recorded, string_append(str_lit("; replayed, "), string_append(i64_to_string(i64_minus(m, 1i64)), str_lit(" lines")))))))
+    Ok(string_append(i64_to_string(i64_minus(n, 1i64)), string_append(str_lit!(" lines: "), string_append(recorded, string_append(str_lit!("; replayed, "), string_append(i64_to_string(i64_minus(m, 1i64)), str_lit!(" lines")))))))
 }
 

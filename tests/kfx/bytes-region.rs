@@ -43,11 +43,11 @@ pub fn joined(ws: List<Str>) -> Str {
                             return t;
                         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                            return str_lit("?");
+                            return str_lit!("?");
                         } else { unreachable!() }
                     } else {
                         let b = put_bytes(r, buf, at, car(xs));
-                        (buf, at, xs) = (put_bytes(r, b, _plus(at, bytevector_length(string_to_utf8(car(xs)))), str_lit(" ")), _plus(at, _plus(int_lit(1), bytevector_length(string_to_utf8(car(xs))))), cdr(xs));
+                        (buf, at, xs) = (put_bytes(r, b, _plus(at, bytevector_length(string_to_utf8(car(xs)))), str_lit!(" ")), _plus(at, _plus(int_lit(1), bytevector_length(string_to_utf8(car(xs))))), cdr(xs));
                         continue;
                     }
                 }
@@ -65,7 +65,7 @@ pub fn again(mut k: Int, mut last: Str) -> Str {
         if _eq(k, int_lit(0)) {
             return last;
         } else {
-            (k, last) = (_minus(k, int_lit(1)), joined(kayak_rt::heap_cons(str_lit("héllo,"), kayak_rt::heap_cons(str_lit("wörld"), kayak_rt::heap_cons(str_lit("of"), kayak_rt::heap_cons(str_lit("regions"), kayak_rt::heap_cons(int_to_string(k), kayak_rt::nil())))))));
+            (k, last) = (_minus(k, int_lit(1)), joined(kayak_rt::heap_cons(str_lit!("héllo,"), kayak_rt::heap_cons(str_lit!("wörld"), kayak_rt::heap_cons(str_lit!("of"), kayak_rt::heap_cons(str_lit!("regions"), kayak_rt::heap_cons(int_to_string(k), kayak_rt::nil())))))));
             continue;
         }
     }
@@ -73,6 +73,6 @@ pub fn again(mut k: Int, mut last: Str) -> Str {
 
 #[inline]
 pub fn main() -> Str {
-    again(int_lit(1000), str_lit(""))
+    again(int_lit(1000), str_lit!(""))
 }
 

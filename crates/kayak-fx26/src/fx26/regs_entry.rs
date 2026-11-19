@@ -142,15 +142,15 @@ pub fn r_store_params(mut g: kayak_rt::Handle<'static, Rgen>, mut i: i64, mut n:
                 3i64
             }));
             if (i64_lt_eq(n, register_regs()) || i64_lt(i64_plus(i, 1i64), register_regs())) {
-                r_opnn(g, str_lit("store"), i64_plus(i, 1i64), s)
+                r_opnn(g, str_lit!("store"), i64_plus(i, 1i64), s)
             } else {
-                r_opn(g, str_lit("reg"), register_regs());
-                r_ins(g, str_lit("op1"), kayak_rt::heap_cons(o_prim(str_lit("pair-car")), kayak_rt::nil()));
-                r_opn(g, str_lit("setstk"), s);
+                r_opn(g, str_lit!("reg"), register_regs());
+                r_ins(g, str_lit!("op1"), kayak_rt::heap_cons(o_prim(str_lit!("pair-car")), kayak_rt::nil()));
+                r_opn(g, str_lit!("setstk"), s);
                 if i64_lt(i64_plus(i, 1i64), n) {
-                    r_opn(g, str_lit("reg"), register_regs());
-                    r_ins(g, str_lit("op1"), kayak_rt::heap_cons(o_prim(str_lit("pair-cdr")), kayak_rt::nil()));
-                    r_opn(g, str_lit("setreg"), register_regs())
+                    r_opn(g, str_lit!("reg"), register_regs());
+                    r_ins(g, str_lit!("op1"), kayak_rt::heap_cons(o_prim(str_lit!("pair-cdr")), kayak_rt::nil()));
+                    r_opn(g, str_lit!("setreg"), register_regs())
                 } else {
                     ()
                 }
@@ -179,18 +179,18 @@ pub fn r_register_body_as(t: kayak_rt::Handle<'static, Twin>, assuming: bool, as
             } else {
                 the::<i64>(1i64)
             });
-            let labels = i64_plus(own_at, if string_eq_p(own, str_lit("")) {
+            let labels = i64_plus(own_at, if string_eq_p(own, str_lit!("")) {
                 the::<i64>(0i64)
             } else {
                 the::<i64>(1i64)
             });
-            let cx = rctx(kayak_rt::heap_new(false), assuming, assumed, kayak_rt::heap_new(false), own, n, if string_eq_p(own, str_lit("")) {
+            let cx = rctx(kayak_rt::heap_new(false), assuming, assumed, kayak_rt::heap_new(false), own, n, if string_eq_p(own, str_lit!("")) {
                 the::<i64>(-1i64)
             } else {
                 own_at
             }, kayak_rt::heap_new(the::<i64>(0i64)), spec, kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Rloc>>()), spec_at);
             let g = rgen(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Ritem>>()), leaf, kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(labels), me, the::<i64>(0i64), cx);
-            r_opn(g, str_lit("args"), n);
+            r_opn(g, str_lit!("args"), n);
             entry_pos_x(g, at, 0i64);
             let env = onto(r_env_of(g, inner, leaf), onto(folded, if null_p(spec) {
                 nil::<kayak_rt::Handle<'static, Rbind>>()
@@ -211,7 +211,7 @@ pub fn r_register_body_as(t: kayak_rt::Handle<'static, Twin>, assuming: bool, as
                 set(g_nreg(g), n)
             } else {
                 entry_pos_x(g, at, 2i64);
-                r_emit(g, ri_frame(str_lit("save")));
+                r_emit(g, ri_frame(str_lit!("save")));
                 r_store_params(g, 0i64, n, at)
             };
             if null_p(me) {
@@ -230,7 +230,7 @@ pub fn r_register_body_as(t: kayak_rt::Handle<'static, Twin>, assuming: bool, as
                     r_emit(g, ri_label(spec_at))
                 }
             };
-            if string_eq_p(own, str_lit("")) {
+            if string_eq_p(own, str_lit!("")) {
                 ()
             } else {
                 r_emit(g, ri_label(own_at))
@@ -500,9 +500,9 @@ pub fn r_fast_sound_p(t: kayak_rt::Handle<'static, Twin>) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
         Twin::Twin(w, ps, body, inner, me, own, at) => {
-            (i64_gt_eq(at, 0i64) && not(fact_at_p(get(cg_facts()), at, str_lit("suspends"))) && {
+            (i64_gt_eq(at, 0i64) && not(fact_at_p(get(cg_facts()), at, str_lit!("suspends"))) && {
                 let d = define_at(get(cg_define_at()), at);
-                (i64_lt(d, 0i64) || not(fact_at_p(get(cg_facts()), d, str_lit("suspends"))))
+                (i64_lt(d, 0i64) || not(fact_at_p(get(cg_facts()), d, str_lit!("suspends"))))
             } && r_closure_free_p(body))
         }
     }
@@ -514,7 +514,7 @@ pub fn r_fast_may_pay_p(t: kayak_rt::Handle<'static, Twin>) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
         Twin::Twin(w, ps, body, inner, me, own, at) => {
-            ((not(string_eq_p(own, str_lit(""))) && c_mentions_p(body, own)) || not(r_collects(twin_view(t, true, false), body, inner, me, true)))
+            ((not(string_eq_p(own, str_lit!(""))) && c_mentions_p(body, own)) || not(r_collects(twin_view(t, true, false), body, inner, me, true)))
         }
     }
 }
@@ -576,7 +576,7 @@ pub fn r_fast_code(t: kayak_rt::Handle<'static, Twin>, spec: List<kayak_rt::Hand
         let tagcase_ = b;
         match *tagcase_ {
             Rbind::Rbind(n, l) => {
-                after_prefix(n, str_lit("%const:"))
+                after_prefix(n, str_lit!("%const:"))
             }
         }
     })), consts)))));
@@ -629,7 +629,7 @@ pub fn r_standard_word(name: Str, n: i64) -> List<kayak_rt::Handle<'static, Rcod
                 true
             }
             Rstd::SCellular(r) => {
-                string_eq_p(r, str_lit("cons"))
+                string_eq_p(r, str_lit!("cons"))
             }
             _ => {
                 let y = tagcase_;
@@ -637,11 +637,11 @@ pub fn r_standard_word(name: Str, n: i64) -> List<kayak_rt::Handle<'static, Rcod
             }
         }
     };
-    let cx = rctx(kayak_rt::heap_new(false), false, kayak_rt::heap_new(nil::<Str>()), kayak_rt::heap_new(false), str_lit(""), -1i64, -1i64, kayak_rt::heap_new(the::<i64>(0i64)), nil::<kayak_rt::Handle<'static, Rspec>>(), kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Rloc>>()), -1i64);
+    let cx = rctx(kayak_rt::heap_new(false), false, kayak_rt::heap_new(nil::<Str>()), kayak_rt::heap_new(false), str_lit!(""), -1i64, -1i64, kayak_rt::heap_new(the::<i64>(0i64)), nil::<kayak_rt::Handle<'static, Rspec>>(), kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Rloc>>()), -1i64);
     let g = rgen(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Ritem>>()), not(callout), kayak_rt::heap_new(n), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), kayak_rt::heap_new(the::<i64>(0i64)), nil::<kayak_rt::Handle<'static, This>>(), the::<i64>(0i64), cx);
-    r_opn(g, str_lit("args"), n);
+    r_opn(g, str_lit!("args"), n);
     if callout {
-        r_emit(g, ri_frame(str_lit("save")))
+        r_emit(g, ri_frame(str_lit!("save")))
     } else {
         ()
     };
@@ -649,12 +649,12 @@ pub fn r_standard_word(name: Str, n: i64) -> List<kayak_rt::Handle<'static, Rcod
         let tagcase_ = std;
         match *tagcase_ {
             Rstd::SOp2(r, swap, negate) => {
-                r_opn(g, str_lit("reg"), if swap {
+                r_opn(g, str_lit!("reg"), if swap {
                     2i64
                 } else {
                     1i64
                 });
-                r_ins(g, str_lit("op2"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(if swap {
+                r_ins(g, str_lit!("op2"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(if swap {
                     1i64
                 } else {
                     2i64
@@ -667,40 +667,40 @@ pub fn r_standard_word(name: Str, n: i64) -> List<kayak_rt::Handle<'static, Rcod
                 true
             }
             Rstd::SOp1(r) => {
-                r_opn(g, str_lit("reg"), 1i64);
-                r_ins(g, str_lit("op1"), kayak_rt::heap_cons(o_prim(r), kayak_rt::nil()));
+                r_opn(g, str_lit!("reg"), 1i64);
+                r_ins(g, str_lit!("op1"), kayak_rt::heap_cons(o_prim(r), kayak_rt::nil()));
                 true
             }
             Rstd::SOp2imm(r, v) => {
-                r_opn(g, str_lit("reg"), 1i64);
+                r_opn(g, str_lit!("reg"), 1i64);
                 r_op2imm(g, r, v);
                 true
             }
             Rstd::SField(k) => {
-                r_opn(g, str_lit("reg"), 1i64);
-                r_opn(g, str_lit("field"), k);
+                r_opn(g, str_lit!("reg"), 1i64);
+                r_opn(g, str_lit!("field"), k);
                 true
             }
             Rstd::SIdentity() => {
-                r_opn(g, str_lit("reg"), 1i64);
+                r_opn(g, str_lit!("reg"), 1i64);
                 true
             }
             Rstd::SPrim(p) => {
-                r_ins(g, str_lit("prim"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
+                r_ins(g, str_lit!("prim"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
                 true
             }
             Rstd::SPure(p) => {
-                r_opn(g, str_lit("reg"), 1i64);
+                r_opn(g, str_lit!("reg"), 1i64);
                 if i64_eq(n, 1i64) {
-                    r_ins(g, str_lit("prim1"), kayak_rt::heap_cons(o_prim(p), kayak_rt::nil()))
+                    r_ins(g, str_lit!("prim1"), kayak_rt::heap_cons(o_prim(p), kayak_rt::nil()))
                 } else {
-                    r_ins(g, str_lit("prim2"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_int(2i64), kayak_rt::nil())))
+                    r_ins(g, str_lit!("prim2"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_int(2i64), kayak_rt::nil())))
                 };
                 true
             }
             Rstd::SCellular(r) => {
                 if callout {
-                    r_ins(g, str_lit("cellular"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
+                    r_ins(g, str_lit!("cellular"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
                     true
                 } else {
                     false
@@ -836,7 +836,7 @@ pub fn r_make_copy_x(sp: kayak_rt::Handle<'static, Rspecial>, lps: Strings, lbod
                 ()
             } else {
                 let lambdas = get(cg_form_lambdas());
-                set(c_word_name(), kayak_rt::heap_cons(string_append(n, string_append(str_lit("@lambda@"), filed_place_written(cx_start(lbody)))), kayak_rt::nil()));
+                set(c_word_name(), kayak_rt::heap_cons(string_append(n, string_append(str_lit!("@lambda@"), filed_place_written(cx_start(lbody)))), kayak_rt::nil()));
                 set(cg_lambda_at(), at);
                 let tagcase_ = c_lambda_word(ps, body, nil::<kayak_rt::Handle<'static, Centry>>(), nil::<Str>());
                 match *tagcase_ {
@@ -1058,12 +1058,12 @@ pub fn regs_form_twins_x() -> () {
 }
 
 pub fn r_note_inline_small_x(n: Str, ps: Strings, body: kayak_rt::Handle<'static, Cx>, at: i64) -> () {
-    if (not(c_mentions_p(body, str_lit("stay-cellular"))) && i64_gt_eq(r_room(body, r_inline_limit(), false), 0i64)) {
+    if (not(c_mentions_p(body, str_lit!("stay-cellular"))) && i64_gt_eq(r_room(body, r_inline_limit(), false), 0i64)) {
         if not(c_mentions_p(body, n)) {
             set(cg_inlines(), kayak_rt::heap_cons(rinline(n, ps, body, globals_count()), get(cg_inlines())))
-        } else if not((fact_at_p(get(cg_facts()), at, str_lit("suspends")) || {
+        } else if not((fact_at_p(get(cg_facts()), at, str_lit!("suspends")) || {
             let d = define_at(get(cg_define_at()), at);
-            (i64_gt_eq(d, 0i64) && fact_at_p(get(cg_facts()), d, str_lit("suspends")))
+            (i64_gt_eq(d, 0i64) && fact_at_p(get(cg_facts()), d, str_lit!("suspends")))
         })) {
             set(cg_unrolls(), kayak_rt::heap_cons(rinline(n, ps, body, globals_count()), get(cg_unrolls())))
         } else {
@@ -1080,7 +1080,7 @@ pub fn r_note_inline_small_x(n: Str, ps: Strings, body: kayak_rt::Handle<'static
 // and a parameter it only calls, specialized where called with a lambda
 // there (C260); as it sees the globals defined so far.
 pub fn r_note_inline_x(n: Str, ps: Strings, body: kayak_rt::Handle<'static, Cx>, at: i64) -> () {
-    if (not(c_mentions_p(body, str_lit("stay-cellular"))) && not((i64_gt_eq(r_room(body, r_inline_limit(), false), 0i64) && not(c_mentions_p(body, n)))) && i64_gt_eq(r_room(body, r_special_limit(), false), 0i64)) {
+    if (not(c_mentions_p(body, str_lit!("stay-cellular"))) && not((i64_gt_eq(r_room(body, r_inline_limit(), false), 0i64) && not(c_mentions_p(body, n)))) && i64_gt_eq(r_room(body, r_special_limit(), false), 0i64)) {
         let found = r_first_call_only(ps, body, n, 0i64, size(ps));
         if null_p(found) {
             ()

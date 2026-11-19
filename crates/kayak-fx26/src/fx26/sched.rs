@@ -922,10 +922,10 @@ pub fn make_icell_x() -> i64 {
 /// the order they began to wait (`icell_put`).
 pub fn cell_put_x(c: i64, v: i64) -> i64 {
     if not(is_kind_p(c, k_icell())) {
-        trap_x(str_lit("expected an i-cell"));
+        trap_x(str_lit!("expected an i-cell"));
         0i64
     } else if not(i64_eq(slot_of(c, 2i64), v_false())) {
-        trap_x(str_lit("an i-cell written twice"));
+        trap_x(str_lit!("an i-cell written twice"));
         0i64
     } else {
         let ws = slot_of(c, 4i64);
@@ -975,7 +975,7 @@ pub fn mailbox_take_x(m: i64) -> i64 {
     };
     if not(is_pair_p(front)) {
         slot_set_x(m, 2i64, v_null());
-        trap_x(str_lit("%fx26-sched: an empty mailbox taken from"));
+        trap_x(str_lit!("%fx26-sched: an empty mailbox taken from"));
         0i64
     } else {
         slot_set_x(m, 2i64, pair_cdr(front));
@@ -1086,13 +1086,13 @@ pub fn heap_cars(xs: List<i64>) -> List<i64> {
 // clock reaches a deadline (-1: none): kayak-rt's (C232).
 
 pub fn _pctsyscall_available_colonstdin_wait() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall stdin-wait (\"io:stdin-wait/1\")"), str_lit("io:stdin-wait/1"), str_lit("(subr (io sys) (i64) bool)"));
+    kayak_rt::syscall_require(str_lit!("syscall stdin-wait (\"io:stdin-wait/1\")"), str_lit!("io:stdin-wait/1"), str_lit!("(subr (io sys) (i64) bool)"));
     true
 }
 
 pub fn stdin_wait(x1: i64) -> bool {
     _pctsyscall_available_colonstdin_wait();
-    kayak_rt::syscall1(str_lit("syscall stdin-wait (\"io:stdin-wait/1\")"), str_lit("io:stdin-wait/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
+    kayak_rt::syscall1(str_lit!("syscall stdin-wait (\"io:stdin-wait/1\")"), str_lit!("io:stdin-wait/1"), str_lit!("(subr (io sys) (i64) bool)"), x1)
 }
 
 // Programs run beside this one (C298): whether one has output to take,
@@ -1101,33 +1101,33 @@ pub fn stdin_wait(x1: i64) -> bool {
 // `wait_processes`).
 
 pub fn _pctsyscall_available_colonprocess_output_ready_p() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall process-output-ready? (\"io:process-output-ready/1\")"), str_lit("io:process-output-ready/1"), str_lit("(subr (io sys) (i64) bool)"));
+    kayak_rt::syscall_require(str_lit!("syscall process-output-ready? (\"io:process-output-ready/1\")"), str_lit!("io:process-output-ready/1"), str_lit!("(subr (io sys) (i64) bool)"));
     true
 }
 
 pub fn process_output_ready_p(x1: i64) -> bool {
     _pctsyscall_available_colonprocess_output_ready_p();
-    kayak_rt::syscall1(str_lit("syscall process-output-ready? (\"io:process-output-ready/1\")"), str_lit("io:process-output-ready/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
+    kayak_rt::syscall1(str_lit!("syscall process-output-ready? (\"io:process-output-ready/1\")"), str_lit!("io:process-output-ready/1"), str_lit!("(subr (io sys) (i64) bool)"), x1)
 }
 
 pub fn _pctsyscall_available_colonprocess_ended_p() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall process-ended? (\"io:process-ended/1\")"), str_lit("io:process-ended/1"), str_lit("(subr (io sys) (i64) bool)"));
+    kayak_rt::syscall_require(str_lit!("syscall process-ended? (\"io:process-ended/1\")"), str_lit!("io:process-ended/1"), str_lit!("(subr (io sys) (i64) bool)"));
     true
 }
 
 pub fn process_ended_p(x1: i64) -> bool {
     _pctsyscall_available_colonprocess_ended_p();
-    kayak_rt::syscall1(str_lit("syscall process-ended? (\"io:process-ended/1\")"), str_lit("io:process-ended/1"), str_lit("(subr (io sys) (i64) bool)"), x1)
+    kayak_rt::syscall1(str_lit!("syscall process-ended? (\"io:process-ended/1\")"), str_lit!("io:process-ended/1"), str_lit!("(subr (io sys) (i64) bool)"), x1)
 }
 
 pub fn _pctsyscall_available_colonprocess_wait() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall process-wait (\"io:process-wait/1\")"), str_lit("io:process-wait/1"), str_lit("(subr (io sys) (i64 bool) bool)"));
+    kayak_rt::syscall_require(str_lit!("syscall process-wait (\"io:process-wait/1\")"), str_lit!("io:process-wait/1"), str_lit!("(subr (io sys) (i64 bool) bool)"));
     true
 }
 
 pub fn process_wait(x1: i64, x2: bool) -> bool {
     _pctsyscall_available_colonprocess_wait();
-    kayak_rt::syscall2(str_lit("syscall process-wait (\"io:process-wait/1\")"), str_lit("io:process-wait/1"), str_lit("(subr (io sys) (i64 bool) bool)"), x1, x2)
+    kayak_rt::syscall2(str_lit!("syscall process-wait (\"io:process-wait/1\")"), str_lit!("io:process-wait/1"), str_lit!("(subr (io sys) (i64 bool) bool)"), x1, x2)
 }
 
 /// Process waiters `l`, each `(p . waker)`, parted: those whose process is

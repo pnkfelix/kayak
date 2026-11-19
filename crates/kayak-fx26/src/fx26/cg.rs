@@ -41,1470 +41,1470 @@ pub mod made__load__1__cg {
         match k {
             case_ if kayak_rt::_eq(case_, int_lit(1)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("+")) => {
-                        str_lit("%fx26-add")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("+")) => {
+                        str_lit!("%fx26-add")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("-")) => {
-                        str_lit("%fx26-sub")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("-")) => {
+                        str_lit!("%fx26-sub")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("=")) => {
-                        str_lit("=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("=")) => {
+                        str_lit!("=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("<")) => {
-                        str_lit("<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("<")) => {
+                        str_lit!("<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit(">")) => {
-                        str_lit(">")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!(">")) => {
+                        str_lit!(">")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("*")) => {
-                        str_lit("%fx26-mul")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("*")) => {
+                        str_lit!("%fx26-mul")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(2)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("<=")) => {
-                        str_lit("<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("<=")) => {
+                        str_lit!("<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit(">=")) => {
-                        str_lit(">=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!(">=")) => {
+                        str_lit!(">=")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(3)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("car")) => {
-                        str_lit("car")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("car")) => {
+                        str_lit!("car")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("cdr")) => {
-                        str_lit("cdr")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("cdr")) => {
+                        str_lit!("cdr")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("not")) => {
-                        str_lit("not")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("not")) => {
+                        str_lit!("not")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8+")) => {
-                        str_lit("%fx26-i8+")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8+")) => {
+                        str_lit!("%fx26-i8+")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-")) => {
-                        str_lit("%fx26-i8-")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-")) => {
+                        str_lit!("%fx26-i8-")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8*")) => {
-                        str_lit("%fx26-i8*")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8*")) => {
+                        str_lit!("%fx26-i8*")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8<")) => {
-                        str_lit("%fx26-i8<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8<")) => {
+                        str_lit!("%fx26-i8<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8>")) => {
-                        str_lit("%fx26-i8>")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8>")) => {
+                        str_lit!("%fx26-i8>")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8=")) => {
-                        str_lit("%fx26-i8=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8=")) => {
+                        str_lit!("%fx26-i8=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8+")) => {
-                        str_lit("%fx26-u8+")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8+")) => {
+                        str_lit!("%fx26-u8+")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-")) => {
-                        str_lit("%fx26-u8-")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-")) => {
+                        str_lit!("%fx26-u8-")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8*")) => {
-                        str_lit("%fx26-u8*")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8*")) => {
+                        str_lit!("%fx26-u8*")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8<")) => {
-                        str_lit("%fx26-u8<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8<")) => {
+                        str_lit!("%fx26-u8<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8>")) => {
-                        str_lit("%fx26-u8>")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8>")) => {
+                        str_lit!("%fx26-u8>")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8=")) => {
-                        str_lit("%fx26-u8=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8=")) => {
+                        str_lit!("%fx26-u8=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("max")) => {
-                        str_lit("%fx26-max")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("max")) => {
+                        str_lit!("%fx26-max")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("min")) => {
-                        str_lit("%fx26-min")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("min")) => {
+                        str_lit!("%fx26-min")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("eq?")) => {
-                        str_lit("eq?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("eq?")) => {
+                        str_lit!("eq?")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(4)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("cons")) => {
-                        str_lit("cons")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("cons")) => {
+                        str_lit!("cons")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("rnew")) => {
-                        str_lit("%region-new")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("rnew")) => {
+                        str_lit!("%region-new")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int?")) => {
-                        str_lit("exact-integer?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int?")) => {
+                        str_lit!("exact-integer?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64?")) => {
-                        str_lit("%fx26-datum-f64?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64?")) => {
+                        str_lit!("%fx26-datum-f64?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32?")) => {
-                        str_lit("%fx26-f32?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32?")) => {
+                        str_lit!("%fx26-f32?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("ref?")) => {
-                        str_lit("%fx26-box?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("ref?")) => {
+                        str_lit!("%fx26-box?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("sum?")) => {
-                        str_lit("%fx26-sum?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("sum?")) => {
+                        str_lit!("%fx26-sum?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64+")) => {
-                        str_lit("%fx26-f64+")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64+")) => {
+                        str_lit!("%fx26-f64+")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-")) => {
-                        str_lit("%fx26-f64-")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-")) => {
+                        str_lit!("%fx26-f64-")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64*")) => {
-                        str_lit("%fx26-f64*")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64*")) => {
+                        str_lit!("%fx26-f64*")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64/")) => {
-                        str_lit("%fx26-f64/")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64/")) => {
+                        str_lit!("%fx26-f64/")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64<")) => {
-                        str_lit("%fx26-f64<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64<")) => {
+                        str_lit!("%fx26-f64<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64>")) => {
-                        str_lit("%fx26-f64>")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64>")) => {
+                        str_lit!("%fx26-f64>")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64=")) => {
-                        str_lit("%fx26-f64=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64=")) => {
+                        str_lit!("%fx26-f64=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32+")) => {
-                        str_lit("%fx26-f32+")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32+")) => {
+                        str_lit!("%fx26-f32+")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-")) => {
-                        str_lit("%fx26-f32-")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-")) => {
+                        str_lit!("%fx26-f32-")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32*")) => {
-                        str_lit("%fx26-f32*")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32*")) => {
+                        str_lit!("%fx26-f32*")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32/")) => {
-                        str_lit("%fx26-f32/")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32/")) => {
+                        str_lit!("%fx26-f32/")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32<")) => {
-                        str_lit("%fx26-f32<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32<")) => {
+                        str_lit!("%fx26-f32<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32>")) => {
-                        str_lit("%fx26-f32>")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32>")) => {
+                        str_lit!("%fx26-f32>")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32=")) => {
-                        str_lit("%fx26-f32=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32=")) => {
+                        str_lit!("%fx26-f32=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("exit")) => {
-                        str_lit("%fx26-exit")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("exit")) => {
+                        str_lit!("%fx26-exit")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("args")) => {
-                        str_lit("%fx26-args")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("args")) => {
+                        str_lit!("%fx26-args")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8<=")) => {
-                        str_lit("%fx26-i8<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8<=")) => {
+                        str_lit!("%fx26-i8<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8>=")) => {
-                        str_lit("%fx26-i8>=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8>=")) => {
+                        str_lit!("%fx26-i8>=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8<=")) => {
-                        str_lit("%fx26-u8<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8<=")) => {
+                        str_lit!("%fx26-u8<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8>=")) => {
-                        str_lit("%fx26-u8>=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8>=")) => {
+                        str_lit!("%fx26-u8>=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32+")) => {
-                        str_lit("%fx26-i32+")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32+")) => {
+                        str_lit!("%fx26-i32+")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-")) => {
-                        str_lit("%fx26-i32-")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-")) => {
+                        str_lit!("%fx26-i32-")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32*")) => {
-                        str_lit("%fx26-i32*")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32*")) => {
+                        str_lit!("%fx26-i32*")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32<")) => {
-                        str_lit("%fx26-i32<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32<")) => {
+                        str_lit!("%fx26-i32<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32>")) => {
-                        str_lit("%fx26-i32>")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32>")) => {
+                        str_lit!("%fx26-i32>")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32=")) => {
-                        str_lit("%fx26-i32=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32=")) => {
+                        str_lit!("%fx26-i32=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32+")) => {
-                        str_lit("%fx26-u32+")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32+")) => {
+                        str_lit!("%fx26-u32+")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-")) => {
-                        str_lit("%fx26-u32-")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-")) => {
+                        str_lit!("%fx26-u32-")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32*")) => {
-                        str_lit("%fx26-u32*")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32*")) => {
+                        str_lit!("%fx26-u32*")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32<")) => {
-                        str_lit("%fx26-u32<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32<")) => {
+                        str_lit!("%fx26-u32<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32>")) => {
-                        str_lit("%fx26-u32>")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32>")) => {
+                        str_lit!("%fx26-u32>")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32=")) => {
-                        str_lit("%fx26-u32=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32=")) => {
+                        str_lit!("%fx26-u32=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64+")) => {
-                        str_lit("%fx26-i64+")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64+")) => {
+                        str_lit!("%fx26-i64+")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-")) => {
-                        str_lit("%fx26-i64-")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-")) => {
+                        str_lit!("%fx26-i64-")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64*")) => {
-                        str_lit("%fx26-i64*")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64*")) => {
+                        str_lit!("%fx26-i64*")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64<")) => {
-                        str_lit("%fx26-i64<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64<")) => {
+                        str_lit!("%fx26-i64<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64>")) => {
-                        str_lit("%fx26-i64>")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64>")) => {
+                        str_lit!("%fx26-i64>")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64=")) => {
-                        str_lit("%fx26-i64=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64=")) => {
+                        str_lit!("%fx26-i64=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64+")) => {
-                        str_lit("%fx26-u64+")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64+")) => {
+                        str_lit!("%fx26-u64+")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-")) => {
-                        str_lit("%fx26-u64-")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-")) => {
+                        str_lit!("%fx26-u64-")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64*")) => {
-                        str_lit("%fx26-u64*")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64*")) => {
+                        str_lit!("%fx26-u64*")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64<")) => {
-                        str_lit("%fx26-u64<")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64<")) => {
+                        str_lit!("%fx26-u64<")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64>")) => {
-                        str_lit("%fx26-u64>")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64>")) => {
+                        str_lit!("%fx26-u64>")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64=")) => {
-                        str_lit("%fx26-u64=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64=")) => {
+                        str_lit!("%fx26-u64=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("list")) => {
-                        str_lit("list")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("list")) => {
+                        str_lit!("list")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("nat?")) => {
-                        str_lit("%fx26-nat?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("nat?")) => {
+                        str_lit!("%fx26-nat?")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(5)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("rcons")) => {
-                        str_lit("%region-cons")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("rcons")) => {
+                        str_lit!("%region-cons")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("null?")) => {
-                        str_lit("null?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("null?")) => {
+                        str_lit!("null?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("pair?")) => {
-                        str_lit("pair?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("pair?")) => {
+                        str_lit!("pair?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char?")) => {
-                        str_lit("char?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char?")) => {
+                        str_lit!("char?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bool?")) => {
-                        str_lit("boolean?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bool?")) => {
+                        str_lit!("boolean?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64<=")) => {
-                        str_lit("%fx26-f64<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64<=")) => {
+                        str_lit!("%fx26-f64<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64>=")) => {
-                        str_lit("%fx26-f64>=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64>=")) => {
+                        str_lit!("%fx26-f64>=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32<=")) => {
-                        str_lit("%fx26-f32<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32<=")) => {
+                        str_lit!("%fx26-f32<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32>=")) => {
-                        str_lit("%fx26-f32>=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32>=")) => {
+                        str_lit!("%fx26-f32>=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("clock")) => {
-                        str_lit("%fx26-clock")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("clock")) => {
+                        str_lit!("%fx26-clock")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-or")) => {
-                        str_lit("%fx26-i8-or")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-or")) => {
+                        str_lit!("%fx26-i8-or")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-or")) => {
-                        str_lit("%fx26-u8-or")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-or")) => {
+                        str_lit!("%fx26-u8-or")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32<=")) => {
-                        str_lit("%fx26-i32<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32<=")) => {
+                        str_lit!("%fx26-i32<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32>=")) => {
-                        str_lit("%fx26-i32>=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32>=")) => {
+                        str_lit!("%fx26-i32>=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32<=")) => {
-                        str_lit("%fx26-u32<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32<=")) => {
+                        str_lit!("%fx26-u32<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32>=")) => {
-                        str_lit("%fx26-u32>=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32>=")) => {
+                        str_lit!("%fx26-u32>=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64<=")) => {
-                        str_lit("%fx26-i64<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64<=")) => {
+                        str_lit!("%fx26-i64<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64>=")) => {
-                        str_lit("%fx26-i64>=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64>=")) => {
+                        str_lit!("%fx26-i64>=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64<=")) => {
-                        str_lit("%fx26-u64<=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64<=")) => {
+                        str_lit!("%fx26-u64<=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64>=")) => {
-                        str_lit("%fx26-u64>=")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64>=")) => {
+                        str_lit!("%fx26-u64>=")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("zero?")) => {
-                        str_lit("%fx26-zero?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("zero?")) => {
+                        str_lit!("%fx26-zero?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("error")) => {
-                        str_lit("%fx26-error")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("error")) => {
+                        str_lit!("%fx26-error")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(6)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("length")) => {
-                        str_lit("length")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("length")) => {
+                        str_lit!("length")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("array?")) => {
-                        str_lit("%fx26-array?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("array?")) => {
+                        str_lit!("%fx26-array?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("modulo")) => {
-                        str_lit("modulo")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("modulo")) => {
+                        str_lit!("modulo")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%stage")) => {
-                        str_lit("%fx26-stage")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%stage")) => {
+                        str_lit!("%fx26-stage")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-and")) => {
-                        str_lit("%fx26-i8-and")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-and")) => {
+                        str_lit!("%fx26-i8-and")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-xor")) => {
-                        str_lit("%fx26-i8-xor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-xor")) => {
+                        str_lit!("%fx26-i8-xor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-shl")) => {
-                        str_lit("%fx26-i8-shl")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-shl")) => {
+                        str_lit!("%fx26-i8-shl")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-shr")) => {
-                        str_lit("%fx26-i8-shr")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-shr")) => {
+                        str_lit!("%fx26-i8-shr")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-not")) => {
-                        str_lit("%fx26-i8-not")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-not")) => {
+                        str_lit!("%fx26-i8-not")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-and")) => {
-                        str_lit("%fx26-u8-and")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-and")) => {
+                        str_lit!("%fx26-u8-and")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-xor")) => {
-                        str_lit("%fx26-u8-xor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-xor")) => {
+                        str_lit!("%fx26-u8-xor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-shl")) => {
-                        str_lit("%fx26-u8-shl")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-shl")) => {
+                        str_lit!("%fx26-u8-shl")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-shr")) => {
-                        str_lit("%fx26-u8-shr")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-shr")) => {
+                        str_lit!("%fx26-u8-shr")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-not")) => {
-                        str_lit("%fx26-u8-not")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-not")) => {
+                        str_lit!("%fx26-u8-not")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-or")) => {
-                        str_lit("%fx26-i32-or")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-or")) => {
+                        str_lit!("%fx26-i32-or")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-or")) => {
-                        str_lit("%fx26-u32-or")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-or")) => {
+                        str_lit!("%fx26-u32-or")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-or")) => {
-                        str_lit("%fx26-i64-or")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-or")) => {
+                        str_lit!("%fx26-i64-or")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-or")) => {
-                        str_lit("%fx26-u64-or")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-or")) => {
+                        str_lit!("%fx26-u64-or")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bool=?")) => {
-                        str_lit("eq?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bool=?")) => {
+                        str_lit!("eq?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char<?")) => {
-                        str_lit("%fx26-char<?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char<?")) => {
+                        str_lit!("%fx26-char<?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char>?")) => {
-                        str_lit("%fx26-char>?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char>?")) => {
+                        str_lit!("%fx26-char>?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("assert")) => {
-                        str_lit("%fx26-assert")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("assert")) => {
+                        str_lit!("%fx26-assert")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("assume")) => {
-                        str_lit("%fx26-assume")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("assume")) => {
+                        str_lit!("%fx26-assume")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("append")) => {
-                        str_lit("append")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("append")) => {
+                        str_lit!("append")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("gensym")) => {
-                        str_lit("%fx26-gensym")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("gensym")) => {
+                        str_lit!("%fx26-gensym")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%sched")) => {
-                        str_lit("%fx26-sched")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%sched")) => {
+                        str_lit!("%fx26-sched")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(7)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string?")) => {
-                        str_lit("string?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string?")) => {
+                        str_lit!("string?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("vector?")) => {
-                        str_lit("vector?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("vector?")) => {
+                        str_lit!("vector?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("symbol?")) => {
-                        str_lit("symbol?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("symbol?")) => {
+                        str_lit!("symbol?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-min")) => {
-                        str_lit("%fx26-f64-min")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-min")) => {
+                        str_lit!("%fx26-f64-min")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-max")) => {
-                        str_lit("%fx26-f64-max")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-max")) => {
+                        str_lit!("%fx26-f64-max")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-abs")) => {
-                        str_lit("%fx26-f64-abs")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-abs")) => {
+                        str_lit!("%fx26-f64-abs")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-neg")) => {
-                        str_lit("%fx26-f64-neg")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-neg")) => {
+                        str_lit!("%fx26-f64-neg")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-exp")) => {
-                        str_lit("%fx26-f64-exp")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-exp")) => {
+                        str_lit!("%fx26-f64-exp")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-log")) => {
-                        str_lit("%fx26-f64-log")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-log")) => {
+                        str_lit!("%fx26-f64-log")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-sin")) => {
-                        str_lit("%fx26-f64-sin")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-sin")) => {
+                        str_lit!("%fx26-f64-sin")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-cos")) => {
-                        str_lit("%fx26-f64-cos")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-cos")) => {
+                        str_lit!("%fx26-f64-cos")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-tan")) => {
-                        str_lit("%fx26-f64-tan")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-tan")) => {
+                        str_lit!("%fx26-f64-tan")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-min")) => {
-                        str_lit("%fx26-f32-min")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-min")) => {
+                        str_lit!("%fx26-f32-min")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-max")) => {
-                        str_lit("%fx26-f32-max")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-max")) => {
+                        str_lit!("%fx26-f32-max")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-abs")) => {
-                        str_lit("%fx26-f32-abs")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-abs")) => {
+                        str_lit!("%fx26-f32-abs")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-neg")) => {
-                        str_lit("%fx26-f32-neg")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-neg")) => {
+                        str_lit!("%fx26-f32-neg")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("type-at")) => {
-                        str_lit("%fx26-type-at")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("type-at")) => {
+                        str_lit!("%fx26-type-at")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->i8")) => {
-                        str_lit("%fx26-int->i8")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->i8")) => {
+                        str_lit!("%fx26-int->i8")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8->int")) => {
-                        str_lit("%fx26-i8->int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8->int")) => {
+                        str_lit!("%fx26-i8->int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->u8")) => {
-                        str_lit("%fx26-int->u8")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->u8")) => {
+                        str_lit!("%fx26-int->u8")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8->int")) => {
-                        str_lit("%fx26-u8->int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8->int")) => {
+                        str_lit!("%fx26-u8->int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-and")) => {
-                        str_lit("%fx26-i32-and")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-and")) => {
+                        str_lit!("%fx26-i32-and")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-xor")) => {
-                        str_lit("%fx26-i32-xor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-xor")) => {
+                        str_lit!("%fx26-i32-xor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-shl")) => {
-                        str_lit("%fx26-i32-shl")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-shl")) => {
+                        str_lit!("%fx26-i32-shl")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-shr")) => {
-                        str_lit("%fx26-i32-shr")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-shr")) => {
+                        str_lit!("%fx26-i32-shr")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-not")) => {
-                        str_lit("%fx26-i32-not")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-not")) => {
+                        str_lit!("%fx26-i32-not")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-and")) => {
-                        str_lit("%fx26-u32-and")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-and")) => {
+                        str_lit!("%fx26-u32-and")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-xor")) => {
-                        str_lit("%fx26-u32-xor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-xor")) => {
+                        str_lit!("%fx26-u32-xor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-shl")) => {
-                        str_lit("%fx26-u32-shl")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-shl")) => {
+                        str_lit!("%fx26-u32-shl")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-shr")) => {
-                        str_lit("%fx26-u32-shr")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-shr")) => {
+                        str_lit!("%fx26-u32-shr")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-not")) => {
-                        str_lit("%fx26-u32-not")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-not")) => {
+                        str_lit!("%fx26-u32-not")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-and")) => {
-                        str_lit("%fx26-i64-and")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-and")) => {
+                        str_lit!("%fx26-i64-and")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-xor")) => {
-                        str_lit("%fx26-i64-xor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-xor")) => {
+                        str_lit!("%fx26-i64-xor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-shl")) => {
-                        str_lit("%fx26-i64-shl")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-shl")) => {
+                        str_lit!("%fx26-i64-shl")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-shr")) => {
-                        str_lit("%fx26-i64-shr")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-shr")) => {
+                        str_lit!("%fx26-i64-shr")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-not")) => {
-                        str_lit("%fx26-i64-not")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-not")) => {
+                        str_lit!("%fx26-i64-not")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-and")) => {
-                        str_lit("%fx26-u64-and")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-and")) => {
+                        str_lit!("%fx26-u64-and")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-xor")) => {
-                        str_lit("%fx26-u64-xor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-xor")) => {
+                        str_lit!("%fx26-u64-xor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-shl")) => {
-                        str_lit("%fx26-u64-shl")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-shl")) => {
+                        str_lit!("%fx26-u64-shl")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-shr")) => {
-                        str_lit("%fx26-u64-shr")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-shr")) => {
+                        str_lit!("%fx26-u64-shr")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-not")) => {
-                        str_lit("%fx26-u64-not")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-not")) => {
+                        str_lit!("%fx26-u64-not")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("reverse")) => {
-                        str_lit("reverse")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("reverse")) => {
+                        str_lit!("reverse")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char<=?")) => {
-                        str_lit("%fx26-char<=?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char<=?")) => {
+                        str_lit!("%fx26-char<=?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char>=?")) => {
-                        str_lit("%fx26-char>=?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char>=?")) => {
+                        str_lit!("%fx26-char>=?")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(8)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("product?")) => {
-                        str_lit("%fx26-product?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("product?")) => {
+                        str_lit!("%fx26-product?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("keyword?")) => {
-                        str_lit("%fx26-keyword?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("keyword?")) => {
+                        str_lit!("%fx26-keyword?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("quotient")) => {
-                        str_lit("%fx26-quotient")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("quotient")) => {
+                        str_lit!("%fx26-quotient")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char-in?")) => {
-                        str_lit("%fx26-char-in?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char-in?")) => {
+                        str_lit!("%fx26-char-in?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string=?")) => {
-                        str_lit("string=?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string=?")) => {
+                        str_lit!("string=?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-expt")) => {
-                        str_lit("%fx26-f64-expt")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-expt")) => {
+                        str_lit!("%fx26-f64-expt")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-sqrt")) => {
-                        str_lit("%fx26-f64-sqrt")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-sqrt")) => {
+                        str_lit!("%fx26-f64-sqrt")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-asin")) => {
-                        str_lit("%fx26-f64-asin")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-asin")) => {
+                        str_lit!("%fx26-f64-asin")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-acos")) => {
-                        str_lit("%fx26-f64-acos")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-acos")) => {
+                        str_lit!("%fx26-f64-acos")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-atan")) => {
-                        str_lit("%fx26-f64-atan")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-atan")) => {
+                        str_lit!("%fx26-f64-atan")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-nan?")) => {
-                        str_lit("%fx26-f64-nan?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-nan?")) => {
+                        str_lit!("%fx26-f64-nan?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->f64")) => {
-                        str_lit("%fx26-int->f64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->f64")) => {
+                        str_lit!("%fx26-int->f64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64->int")) => {
-                        str_lit("%fx26-f64->int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64->int")) => {
+                        str_lit!("%fx26-f64->int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-sqrt")) => {
-                        str_lit("%fx26-f32-sqrt")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-sqrt")) => {
+                        str_lit!("%fx26-f32-sqrt")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-nan?")) => {
-                        str_lit("%fx26-f32-nan?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-nan?")) => {
+                        str_lit!("%fx26-f32-nan?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->f32")) => {
-                        str_lit("%fx26-int->f32")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->f32")) => {
+                        str_lit!("%fx26-int->f32")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32->int")) => {
-                        str_lit("%fx26-f32->int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32->int")) => {
+                        str_lit!("%fx26-f32->int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32->f64")) => {
-                        str_lit("%fx26-f32->f64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32->f64")) => {
+                        str_lit!("%fx26-f32->f64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64->f32")) => {
-                        str_lit("%fx26-f64->f32")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64->f32")) => {
+                        str_lit!("%fx26-f64->f32")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-flat")) => {
-                        str_lit("%fx26-flat-i32")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-flat")) => {
+                        str_lit!("%fx26-flat-i32")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-flat")) => {
-                        str_lit("%fx26-flat-u32")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-flat")) => {
+                        str_lit!("%fx26-flat-u32")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-flat")) => {
-                        str_lit("%fx26-flat-i64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-flat")) => {
+                        str_lit!("%fx26-flat-i64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-flat")) => {
-                        str_lit("%fx26-flat-u64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-flat")) => {
+                        str_lit!("%fx26-flat-u64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-flat")) => {
-                        str_lit("%fx26-flat-f32")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-flat")) => {
+                        str_lit!("%fx26-flat-f32")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-flat")) => {
-                        str_lit("%fx26-flat-f64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-flat")) => {
+                        str_lit!("%fx26-flat-f64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("list-dir")) => {
-                        str_lit("%fx26-list-dir")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("list-dir")) => {
+                        str_lit!("%fx26-list-dir")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->i32")) => {
-                        str_lit("%fx26-int->i32")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->i32")) => {
+                        str_lit!("%fx26-int->i32")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32->int")) => {
-                        str_lit("%fx26-i32->int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32->int")) => {
+                        str_lit!("%fx26-i32->int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->u32")) => {
-                        str_lit("%fx26-int->u32")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->u32")) => {
+                        str_lit!("%fx26-int->u32")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32->int")) => {
-                        str_lit("%fx26-u32->int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32->int")) => {
+                        str_lit!("%fx26-u32->int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->i64")) => {
-                        str_lit("%fx26-int->i64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->i64")) => {
+                        str_lit!("%fx26-int->i64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64->int")) => {
-                        str_lit("%fx26-i64->int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64->int")) => {
+                        str_lit!("%fx26-i64->int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->u64")) => {
-                        str_lit("%fx26-int->u64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->u64")) => {
+                        str_lit!("%fx26-int->u64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64->int")) => {
-                        str_lit("%fx26-u64->int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64->int")) => {
+                        str_lit!("%fx26-u64->int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%vlambda")) => {
-                        str_lit("%fx26-vlambda")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%vlambda")) => {
+                        str_lit!("%fx26-vlambda")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string<?")) => {
-                        str_lit("%fx26-string<?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string<?")) => {
+                        str_lit!("%fx26-string<?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string>?")) => {
-                        str_lit("%fx26-string>?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string>?")) => {
+                        str_lit!("%fx26-string>?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("acyclic?")) => {
-                        str_lit("%fx26-acyclic?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("acyclic?")) => {
+                        str_lit!("%fx26-acyclic?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("symbol=?")) => {
-                        str_lit("eq?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("symbol=?")) => {
+                        str_lit!("eq?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("rep-cell")) => {
-                        str_lit("%fx26-rep-cell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("rep-cell")) => {
+                        str_lit!("%fx26-rep-cell")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(9)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("substring")) => {
-                        str_lit("substring")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("substring")) => {
+                        str_lit!("substring")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-atan2")) => {
-                        str_lit("%fx26-f64-atan2")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-atan2")) => {
+                        str_lit!("%fx26-f64-atan2")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-floor")) => {
-                        str_lit("%fx26-f64-floor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-floor")) => {
+                        str_lit!("%fx26-f64-floor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-round")) => {
-                        str_lit("%fx26-f64-round")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-round")) => {
+                        str_lit!("%fx26-f64-round")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-floor")) => {
-                        str_lit("%fx26-f32-floor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-floor")) => {
+                        str_lit!("%fx26-f32-floor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-round")) => {
-                        str_lit("%fx26-f32-round")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-round")) => {
+                        str_lit!("%fx26-f32-round")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64->bits")) => {
-                        str_lit("%fx26-f64->bits")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64->bits")) => {
+                        str_lit!("%fx26-f64->bits")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bits->f64")) => {
-                        str_lit("%fx26-bits->f64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bits->f64")) => {
+                        str_lit!("%fx26-bits->f64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32->bits")) => {
-                        str_lit("%fx26-f32->bits")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32->bits")) => {
+                        str_lit!("%fx26-f32->bits")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bits->f32")) => {
-                        str_lit("%fx26-bits->f32")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bits->f32")) => {
+                        str_lit!("%fx26-bits->f32")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("write-out")) => {
-                        str_lit("%fx26-write-out")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("write-out")) => {
+                        str_lit!("%fx26-write-out")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("write-err")) => {
-                        str_lit("%fx26-write-err")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("write-err")) => {
+                        str_lit!("%fx26-write-err")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("read-line")) => {
-                        str_lit("%fx26-read-line")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("read-line")) => {
+                        str_lit!("%fx26-read-line")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("read-byte")) => {
-                        str_lit("%fx26-read-byte")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("read-byte")) => {
+                        str_lit!("%fx26-read-byte")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("seal-code")) => {
-                        str_lit("%fx26-seal-code")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("seal-code")) => {
+                        str_lit!("%fx26-seal-code")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("read-file")) => {
-                        str_lit("%fx26-read-file")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("read-file")) => {
+                        str_lit!("%fx26-read-file")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("file-info")) => {
-                        str_lit("%fx26-file-info")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("file-info")) => {
+                        str_lit!("%fx26-file-info")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("remainder")) => {
-                        str_lit("%fx26-remainder")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("remainder")) => {
+                        str_lit!("%fx26-remainder")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string<=?")) => {
-                        str_lit("%fx26-string<=?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string<=?")) => {
+                        str_lit!("%fx26-string<=?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string>=?")) => {
-                        str_lit("%fx26-string>=?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string>=?")) => {
+                        str_lit!("%fx26-string>=?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("parse-nat")) => {
-                        str_lit("%fx26-parse-nat")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("parse-nat")) => {
+                        str_lit!("%fx26-parse-nat")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("icell-get")) => {
-                        str_lit("%fx26-icell-get")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("icell-get")) => {
+                        str_lit!("%fx26-icell-get")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-word")) => {
-                        str_lit("%make-word")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("make-word")) => {
+                        str_lit!("%make-word")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("tword-int")) => {
-                        str_lit("%tword-int")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("tword-int")) => {
+                        str_lit!("%tword-int")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-int")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-int")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-f64")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-f64")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-nil")) => {
-                        str_lit("%fx26-nil-cell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-nil")) => {
+                        str_lit!("%fx26-nil-cell")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-sum")) => {
-                        str_lit("%fx26-sum-cell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-sum")) => {
+                        str_lit!("%fx26-sum-cell")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wglobal=?")) => {
-                        str_lit("eq?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wglobal=?")) => {
+                        str_lit!("eq?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall0")) => {
-                        str_lit("%fx26-syscall")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall0")) => {
+                        str_lit!("%fx26-syscall")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall1")) => {
-                        str_lit("%fx26-syscall")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall1")) => {
+                        str_lit!("%fx26-syscall")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall2")) => {
-                        str_lit("%fx26-syscall")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall2")) => {
+                        str_lit!("%fx26-syscall")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall3")) => {
-                        str_lit("%fx26-syscall")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall3")) => {
+                        str_lit!("%fx26-syscall")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall4")) => {
-                        str_lit("%fx26-syscall")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall4")) => {
+                        str_lit!("%fx26-syscall")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall5")) => {
-                        str_lit("%fx26-syscall")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall5")) => {
+                        str_lit!("%fx26-syscall")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall6")) => {
-                        str_lit("%fx26-syscall")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall6")) => {
+                        str_lit!("%fx26-syscall")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("rep-nodes")) => {
-                        str_lit("%fx26-rep-nodes")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("rep-nodes")) => {
+                        str_lit!("%fx26-rep-nodes")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(10)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("procedure?")) => {
-                        str_lit("%fx26-procedure?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("procedure?")) => {
+                        str_lit!("%fx26-procedure?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-ref")) => {
-                        str_lit("string-ref")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-ref")) => {
+                        str_lit!("string-ref")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("read-bytes")) => {
-                        str_lit("%fx26-read-bytes")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("read-bytes")) => {
+                        str_lit!("%fx26-read-bytes")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("type-bound")) => {
-                        str_lit("%fx26-evidence-bound")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("type-bound")) => {
+                        str_lit!("%fx26-evidence-bound")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("write-file")) => {
-                        str_lit("%fx26-write-file")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("write-file")) => {
+                        str_lit!("%fx26-write-file")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-list")) => {
-                        str_lit("%fx26-list-copy")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-list")) => {
+                        str_lit!("%fx26-list-copy")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("length-is?")) => {
-                        str_lit("%fx26-length-is?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("length-is?")) => {
+                        str_lit!("%fx26-length-is?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-int?")) => {
-                        str_lit("%fx26-fixnum?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-int?")) => {
+                        str_lit!("%fx26-fixnum?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-icell")) => {
-                        str_lit("%fx26-make-icell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("make-icell")) => {
+                        str_lit!("%fx26-make-icell")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("icell-put!")) => {
-                        str_lit("%fx26-icell-put!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("icell-put!")) => {
+                        str_lit!("%fx26-icell-put!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("tword-int?")) => {
-                        str_lit("%tword-fixnum?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("tword-int?")) => {
+                        str_lit!("%tword-fixnum?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("tword-bits")) => {
-                        str_lit("%tword-bits")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("tword-bits")) => {
+                        str_lit!("%tword-bits")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-bool")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-bool")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-char")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-char")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-unit")) => {
-                        str_lit("%fx26-unit-cell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-unit")) => {
+                        str_lit!("%fx26-unit-cell")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-word")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-word")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-self")) => {
-                        str_lit("%default-object")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-self")) => {
+                        str_lit!("%default-object")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-pair")) => {
-                        str_lit("%fx26-pair-cell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-pair")) => {
+                        str_lit!("%fx26-pair-cell")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("dump-heap!")) => {
-                        str_lit("%fx26-dump-heap")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("dump-heap!")) => {
+                        str_lit!("%fx26-dump-heap")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-rep")) => {
-                        str_lit("%fx26-reify-rep")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%reify-rep")) => {
+                        str_lit!("%fx26-reify-rep")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(11)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("rmake-array")) => {
-                        str_lit("%region-make-array")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("rmake-array")) => {
+                        str_lit!("%region-make-array")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("rmake-icell")) => {
-                        str_lit("%region-make-icell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("rmake-icell")) => {
+                        str_lit!("%region-make-icell")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector?")) => {
-                        str_lit("bytevector?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector?")) => {
+                        str_lit!("bytevector?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-ceiling")) => {
-                        str_lit("%fx26-f64-ceiling")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-ceiling")) => {
+                        str_lit!("%fx26-f64-ceiling")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-finite?")) => {
-                        str_lit("%fx26-f64-finite?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-finite?")) => {
+                        str_lit!("%fx26-f64-finite?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64->string")) => {
-                        str_lit("%fx26-f64->string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64->string")) => {
+                        str_lit!("%fx26-f64->string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string->f64")) => {
-                        str_lit("%fx26-string->f64")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string->f64")) => {
+                        str_lit!("%fx26-string->f64")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-ceiling")) => {
-                        str_lit("%fx26-f32-ceiling")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-ceiling")) => {
+                        str_lit!("%fx26-f32-ceiling")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-finite?")) => {
-                        str_lit("%fx26-f32-finite?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-finite?")) => {
+                        str_lit!("%fx26-f32-finite?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32->string")) => {
-                        str_lit("%fx26-f32->string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32->string")) => {
+                        str_lit!("%fx26-f32->string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("sleep-until")) => {
-                        str_lit("%fx26-sleep-until")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("sleep-until")) => {
+                        str_lit!("%fx26-sleep-until")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-type")) => {
-                        str_lit("%fx26-reify-type")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%reify-type")) => {
+                        str_lit!("%fx26-reify-type")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-string")) => {
-                        str_lit("%fx26-make-string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("make-string")) => {
+                        str_lit!("%fx26-make-string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-set!")) => {
-                        str_lit("%fx26-string-set!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-set!")) => {
+                        str_lit!("%fx26-string-set!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-copy")) => {
-                        str_lit("%fx26-string-copy")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-copy")) => {
+                        str_lit!("%fx26-string-copy")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-quotient")) => {
-                        str_lit("%fx26-i8-quotient")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-quotient")) => {
+                        str_lit!("%fx26-i8-quotient")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-quotient")) => {
-                        str_lit("%fx26-u8-quotient")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-quotient")) => {
+                        str_lit!("%fx26-u8-quotient")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bitwise-and")) => {
-                        str_lit("%fx26-bitwise-and")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bitwise-and")) => {
+                        str_lit!("%fx26-bitwise-and")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bitwise-ior")) => {
-                        str_lit("%fx26-bitwise-ior")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bitwise-ior")) => {
+                        str_lit!("%fx26-bitwise-ior")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bitwise-xor")) => {
-                        str_lit("%fx26-bitwise-xor")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bitwise-xor")) => {
+                        str_lit!("%fx26-bitwise-xor")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bitwise-not")) => {
-                        str_lit("%fx26-bitwise-not")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bitwise-not")) => {
+                        str_lit!("%fx26-bitwise-not")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-ci=?")) => {
-                        str_lit("%fx26-string-ci=?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-ci=?")) => {
+                        str_lit!("%fx26-string-ci=?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char-upcase")) => {
-                        str_lit("char-upcase")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char-upcase")) => {
+                        str_lit!("char-upcase")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("list-length")) => {
-                        str_lit("length")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("list-length")) => {
+                        str_lit!("length")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("array->list")) => {
-                        str_lit("%fx26-array->list")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("array->list")) => {
+                        str_lit!("%fx26-array->list")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("list->array")) => {
-                        str_lit("%fx26-list->array")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("list->array")) => {
+                        str_lit!("%fx26-list->array")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-byte?")) => {
-                        str_lit("%fx26-byte?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-byte?")) => {
+                        str_lit!("%fx26-byte?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("certify-nat")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("certify-nat")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("int->string")) => {
-                        str_lit("number->string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("int->string")) => {
+                        str_lit!("number->string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("eqtable-ref")) => {
-                        str_lit("%fx26-eqtable-ref")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("eqtable-ref")) => {
+                        str_lit!("%fx26-eqtable-ref")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-hash")) => {
-                        str_lit("%string-hash")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-hash")) => {
+                        str_lit!("%string-hash")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("disassemble")) => {
-                        str_lit("%disassemble")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("disassemble")) => {
+                        str_lit!("%disassemble")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-datum")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-datum")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-global")) => {
-                        str_lit("%fx26-make-global")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("make-global")) => {
+                        str_lit!("%fx26-make-global")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(12)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("rmake-string")) => {
-                        str_lit("%region-make-string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("rmake-string")) => {
+                        str_lit!("%region-make-string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-truncate")) => {
-                        str_lit("%fx26-f64-truncate")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-truncate")) => {
+                        str_lit!("%fx26-f64-truncate")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-truncate")) => {
-                        str_lit("%fx26-f32-truncate")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-truncate")) => {
+                        str_lit!("%fx26-f32-truncate")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("stdin-ready?")) => {
-                        str_lit("%fx26-stdin-ready?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("stdin-ready?")) => {
+                        str_lit!("%fx26-stdin-ready?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("terminal-raw")) => {
-                        str_lit("%fx26-terminal-raw")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("terminal-raw")) => {
+                        str_lit!("%fx26-terminal-raw")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("native-code?")) => {
-                        str_lit("%fx26-native-code?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("native-code?")) => {
+                        str_lit!("%fx26-native-code?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%stage-check")) => {
-                        str_lit("%fx26-stage-check")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%stage-check")) => {
+                        str_lit!("%fx26-stage-check")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("effect-bound")) => {
-                        str_lit("%fx26-evidence-bound")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("effect-bound")) => {
+                        str_lit!("%fx26-evidence-bound")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-session")) => {
-                        str_lit("%fx26-make-session")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("make-session")) => {
+                        str_lit!("%fx26-make-session")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-exit")) => {
-                        str_lit("%fx26-process-exit")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("process-exit")) => {
+                        str_lit!("%fx26-process-exit")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-news")) => {
-                        str_lit("%fx26-process-news")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("process-news")) => {
+                        str_lit!("%fx26-process-news")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("read-symlink")) => {
-                        str_lit("%fx26-read-symlink")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("read-symlink")) => {
+                        str_lit!("%fx26-read-symlink")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector=?")) => {
-                        str_lit("%fx26-bytevector=?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector=?")) => {
+                        str_lit!("%fx26-bytevector=?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-fill!")) => {
-                        str_lit("%fx26-string-fill!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-fill!")) => {
+                        str_lit!("%fx26-string-fill!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-copy!")) => {
-                        str_lit("%fx26-string-copy!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-copy!")) => {
+                        str_lit!("%fx26-string-copy!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string->utf8")) => {
-                        str_lit("%fx26-string->utf8")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string->utf8")) => {
+                        str_lit!("%fx26-string->utf8")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("utf8->string")) => {
-                        str_lit("%fx26-utf8->string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("utf8->string")) => {
+                        str_lit!("%fx26-utf8->string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i8-remainder")) => {
-                        str_lit("%fx26-i8-remainder")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i8-remainder")) => {
+                        str_lit!("%fx26-i8-remainder")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u8-remainder")) => {
-                        str_lit("%fx26-u8-remainder")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u8-remainder")) => {
+                        str_lit!("%fx26-u8-remainder")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-quotient")) => {
-                        str_lit("%fx26-i32-quotient")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-quotient")) => {
+                        str_lit!("%fx26-i32-quotient")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-quotient")) => {
-                        str_lit("%fx26-u32-quotient")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-quotient")) => {
+                        str_lit!("%fx26-u32-quotient")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-quotient")) => {
-                        str_lit("%fx26-i64-quotient")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-quotient")) => {
+                        str_lit!("%fx26-i64-quotient")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-quotient")) => {
-                        str_lit("%fx26-u64-quotient")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-quotient")) => {
+                        str_lit!("%fx26-u64-quotient")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char->string")) => {
-                        str_lit("string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char->string")) => {
+                        str_lit!("string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("list->string")) => {
-                        str_lit("list->string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("list->string")) => {
+                        str_lit!("list->string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string->list")) => {
-                        str_lit("string->list")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string->list")) => {
+                        str_lit!("string->list")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%append-list")) => {
-                        str_lit("%fx26-append-list")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%append-list")) => {
+                        str_lit!("%fx26-append-list")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("parse-number")) => {
-                        str_lit("%fx26-parse-number")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("parse-number")) => {
+                        str_lit!("%fx26-parse-number")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-dotted")) => {
-                        str_lit("append")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-dotted")) => {
+                        str_lit!("append")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("ref-identity")) => {
-                        str_lit("%fx26-address-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("ref-identity")) => {
+                        str_lit!("%fx26-address-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-eqtable")) => {
-                        str_lit("%fx26-make-eqtable")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("make-eqtable")) => {
+                        str_lit!("%fx26-make-eqtable")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("eqtable-has?")) => {
-                        str_lit("%fx26-eqtable-has?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("eqtable-has?")) => {
+                        str_lit!("%fx26-eqtable-has?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("eqtable-set!")) => {
-                        str_lit("%fx26-eqtable-set!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("eqtable-set!")) => {
+                        str_lit!("%fx26-eqtable-set!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("tword-fields")) => {
-                        str_lit("%tword-fields")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("tword-fields")) => {
+                        str_lit!("%tword-fields")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-string")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-string")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-symbol")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-symbol")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-global")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-global")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wglobal-name")) => {
-                        str_lit("%fx26-global-name")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wglobal-name")) => {
+                        str_lit!("%fx26-global-name")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("rep-of-nodes")) => {
-                        str_lit("%fx26-rep-of-nodes")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("rep-of-nodes")) => {
+                        str_lit!("%fx26-rep-of-nodes")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(13)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("stay-cellular")) => {
-                        str_lit("%stay-cellular")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("stay-cellular")) => {
+                        str_lit!("%stay-cellular")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char-numeric?")) => {
-                        str_lit("char-numeric?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char-numeric?")) => {
+                        str_lit!("char-numeric?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char-downcase")) => {
-                        str_lit("char-downcase")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char-downcase")) => {
+                        str_lit!("char-downcase")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char->integer")) => {
-                        str_lit("char->integer")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char->integer")) => {
+                        str_lit!("char->integer")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("integer->char")) => {
-                        str_lit("integer->char")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("integer->char")) => {
+                        str_lit!("integer->char")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-append")) => {
-                        str_lit("string-append")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-append")) => {
+                        str_lit!("string-append")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-length")) => {
-                        str_lit("string-length")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-length")) => {
+                        str_lit!("string-length")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f64-infinite?")) => {
-                        str_lit("%fx26-f64-infinite?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f64-infinite?")) => {
+                        str_lit!("%fx26-f64-infinite?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("f32-infinite?")) => {
-                        str_lit("%fx26-f32-infinite?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("f32-infinite?")) => {
+                        str_lit!("%fx26-f32-infinite?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("flatarray-ref")) => {
-                        str_lit("%fx26-flatarray-ref")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("flatarray-ref")) => {
+                        str_lit!("%fx26-flatarray-ref")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("terminal-size")) => {
-                        str_lit("%fx26-terminal-size")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("terminal-size")) => {
+                        str_lit!("%fx26-terminal-size")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%macros:limit")) => {
-                        str_lit("%fx26-macro-limit")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%macros:limit")) => {
+                        str_lit!("%fx26-macro-limit")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-effect")) => {
-                        str_lit("%fx26-reify-effect")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%reify-effect")) => {
+                        str_lit!("%fx26-reify-effect")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%reify-region")) => {
-                        str_lit("%fx26-reify-region")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%reify-region")) => {
+                        str_lit!("%fx26-reify-region")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-start")) => {
-                        str_lit("%fx26-process-start")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("process-start")) => {
+                        str_lit!("%fx26-process-start")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-write")) => {
-                        str_lit("%fx26-process-write")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("process-write")) => {
+                        str_lit!("%fx26-process-write")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i32-remainder")) => {
-                        str_lit("%fx26-i32-remainder")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i32-remainder")) => {
+                        str_lit!("%fx26-i32-remainder")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u32-remainder")) => {
-                        str_lit("%fx26-u32-remainder")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u32-remainder")) => {
+                        str_lit!("%fx26-u32-remainder")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("i64-remainder")) => {
-                        str_lit("%fx26-i64-remainder")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("i64-remainder")) => {
+                        str_lit!("%fx26-i64-remainder")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("u64-remainder")) => {
-                        str_lit("%fx26-u64-remainder")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("u64-remainder")) => {
+                        str_lit!("%fx26-u64-remainder")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-search")) => {
-                        str_lit("%fx26-string-search")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-search")) => {
+                        str_lit!("%fx26-string-search")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("pair-identity")) => {
-                        str_lit("%fx26-address-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("pair-identity")) => {
+                        str_lit!("%fx26-address-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("eqtable-count")) => {
-                        str_lit("%fx26-eqtable-count")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("eqtable-count")) => {
+                        str_lit!("%fx26-eqtable-count")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("provenance-id")) => {
-                        str_lit("%provenance-id")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("provenance-id")) => {
+                        str_lit!("%provenance-id")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-routine")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-routine")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-closure")) => {
-                        str_lit("%fx26-closure-cell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-closure")) => {
+                        str_lit!("%fx26-closure-cell")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-product")) => {
-                        str_lit("%fx26-product-cell")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-product")) => {
+                        str_lit!("%fx26-product-cell")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(14)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-flatarray")) => {
-                        str_lit("%fx26-make-flatarray")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("make-flatarray")) => {
+                        str_lit!("%fx26-make-flatarray")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("flatarray-set!")) => {
-                        str_lit("%fx26-flatarray-set!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("flatarray-set!")) => {
+                        str_lit!("%fx26-flatarray-set!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-check")) => {
-                        str_lit("%fx26-session-check")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-check")) => {
+                        str_lit!("%fx26-session-check")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-ready")) => {
-                        str_lit("%fx26-session-ready")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-ready")) => {
+                        str_lit!("%fx26-session-ready")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-output")) => {
-                        str_lit("%fx26-process-output")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("process-output")) => {
+                        str_lit!("%fx26-process-output")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-status")) => {
-                        str_lit("%fx26-process-status")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("process-status")) => {
+                        str_lit!("%fx26-process-status")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-signal")) => {
-                        str_lit("%fx26-process-signal")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("process-signal")) => {
+                        str_lit!("%fx26-process-signal")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-compare")) => {
-                        str_lit("%fx26-string-compare")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-compare")) => {
+                        str_lit!("%fx26-string-compare")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("symbol-compare")) => {
-                        str_lit("%fx26-symbol-compare")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("symbol-compare")) => {
+                        str_lit!("%fx26-symbol-compare")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("certify-length")) => {
-                        str_lit("%fx26-first")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("certify-length")) => {
+                        str_lit!("%fx26-first")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string->symbol")) => {
-                        str_lit("string->symbol")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string->symbol")) => {
+                        str_lit!("string->symbol")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("symbol->string")) => {
-                        str_lit("symbol->string")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("symbol->string")) => {
+                        str_lit!("symbol->string")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("array-identity")) => {
-                        str_lit("%fx26-address-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("array-identity")) => {
+                        str_lit!("%fx26-address-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("icell-identity")) => {
-                        str_lit("%fx26-address-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("icell-identity")) => {
+                        str_lit!("%fx26-address-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-interned")) => {
-                        str_lit("%fx26-intern-datum")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wcell-interned")) => {
+                        str_lit!("%fx26-intern-datum")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("wglobal-writes")) => {
-                        str_lit("%fx26-global-writes")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("wglobal-writes")) => {
+                        str_lit!("%fx26-global-writes")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(15)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("make-bytevector")) => {
-                        str_lit("make-bytevector")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("make-bytevector")) => {
+                        str_lit!("make-bytevector")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector-copy")) => {
-                        str_lit("%fx26-bytevector-copy")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-copy")) => {
+                        str_lit!("%fx26-bytevector-copy")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("string-downcase")) => {
-                        str_lit("%fx26-string-downcase")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("string-downcase")) => {
+                        str_lit!("%fx26-string-downcase")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-rational?")) => {
-                        str_lit("rational?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-rational?")) => {
+                        str_lit!("rational?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-numerator")) => {
-                        str_lit("%numerator")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-numerator")) => {
+                        str_lit!("%numerator")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("certify-acyclic")) => {
-                        str_lit("%fx26-identity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("certify-acyclic")) => {
+                        str_lit!("%fx26-identity")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("symbol->keyword")) => {
-                        str_lit("%fx26-symbol->keyword")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("symbol->keyword")) => {
+                        str_lit!("%fx26-symbol->keyword")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("keyword->symbol")) => {
-                        str_lit("%fx26-keyword->symbol")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("keyword->symbol")) => {
+                        str_lit!("%fx26-keyword->symbol")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("eqtable-delete!")) => {
-                        str_lit("%fx26-eqtable-delete!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("eqtable-delete!")) => {
+                        str_lit!("%fx26-eqtable-delete!")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(16)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char-whitespace?")) => {
-                        str_lit("char-whitespace?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char-whitespace?")) => {
+                        str_lit!("char-whitespace?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("char-alphabetic?")) => {
-                        str_lit("char-alphabetic?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("char-alphabetic?")) => {
+                        str_lit!("char-alphabetic?")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("flatarray-length")) => {
-                        str_lit("%fx26-flatarray-length")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("flatarray-length")) => {
+                        str_lit!("%fx26-flatarray-length")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("terminal-restore")) => {
-                        str_lit("%fx26-terminal-restore")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("terminal-restore")) => {
+                        str_lit!("%fx26-terminal-restore")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("native-procedure")) => {
-                        str_lit("%fx26-native-procedure")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("native-procedure")) => {
+                        str_lit!("%fx26-native-procedure")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector-copy!")) => {
-                        str_lit("%fx26-bytevector-copy!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-copy!")) => {
+                        str_lit!("%fx26-bytevector-copy!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("arithmetic-shift")) => {
-                        str_lit("%fx26-arithmetic-shift")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("arithmetic-shift")) => {
+                        str_lit!("%fx26-arithmetic-shift")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("symbol-name-hash")) => {
-                        str_lit("%symbol-hash")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("symbol-name-hash")) => {
+                        str_lit!("%symbol-hash")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("close-over-word!")) => {
-                        str_lit("%fx26-close-over-word!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("close-over-word!")) => {
+                        str_lit!("%fx26-close-over-word!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall-require")) => {
-                        str_lit("%fx26-syscall-require")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall-require")) => {
+                        str_lit!("%fx26-syscall-require")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(17)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("native-convention")) => {
-                        str_lit("%fx26-native-convention")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("native-convention")) => {
+                        str_lit!("%fx26-native-convention")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("session-redefines")) => {
-                        str_lit("%fx26-session-redefines")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("session-redefines")) => {
+                        str_lit!("%fx26-session-redefines")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector-length")) => {
-                        str_lit("bytevector-length")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-length")) => {
+                        str_lit!("bytevector-length")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector-u8-ref")) => {
-                        str_lit("bytevector-u8-ref")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-u8-ref")) => {
+                        str_lit!("bytevector-u8-ref")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-denominator")) => {
-                        str_lit("%denominator")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-denominator")) => {
+                        str_lit!("%denominator")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("set-register-twin")) => {
-                        str_lit("%set-register-twin")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("set-register-twin")) => {
+                        str_lit!("%set-register-twin")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("runtime-primitive")) => {
-                        str_lit("%runtime-primitive")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("runtime-primitive")) => {
+                        str_lit!("%runtime-primitive")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(18)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-make")) => {
-                        str_lit("%fx26-make-session")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-make")) => {
+                        str_lit!("%fx26-make-session")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("bytevector-u8-set!")) => {
-                        str_lit("%fx26-bytevector-u8-set!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("bytevector-u8-set!")) => {
+                        str_lit!("%fx26-bytevector-u8-set!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-list->vector")) => {
-                        str_lit("list->vector")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-list->vector")) => {
+                        str_lit!("list->vector")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-vector->list")) => {
-                        str_lit("vector->list")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-vector->list")) => {
+                        str_lit!("vector->list")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-proper-list?")) => {
-                        str_lit("%fx26-list?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-proper-list?")) => {
+                        str_lit!("%fx26-list?")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(19)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-check")) => {
-                        str_lit("%fx26-session-eval-check")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-check")) => {
+                        str_lit!("%fx26-session-eval-check")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-ready")) => {
-                        str_lit("%fx26-session-eval-ready")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-ready")) => {
+                        str_lit!("%fx26-session-eval-ready")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-committed!")) => {
-                        str_lit("%fx26-session-committed!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-committed!")) => {
+                        str_lit!("%fx26-session-committed!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("process-close-input")) => {
-                        str_lit("%fx26-process-close-input")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("process-close-input")) => {
+                        str_lit!("%fx26-process-close-input")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%string-append-list")) => {
-                        str_lit("%fx26-string-append-list")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%string-append-list")) => {
+                        str_lit!("%fx26-string-append-list")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%syscall-available?")) => {
-                        str_lit("%fx26-syscall-available?")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%syscall-available?")) => {
+                        str_lit!("%fx26-syscall-available?")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(20)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("write-file-unflushed")) => {
-                        str_lit("%fx26-write-file-unflushed")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("write-file-unflushed")) => {
+                        str_lit!("%fx26-write-file-unflushed")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-bytevector-ref")) => {
-                        str_lit("bytevector-u8-ref")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-bytevector-ref")) => {
+                        str_lit!("bytevector-u8-ref")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("set-register-twin-at")) => {
-                        str_lit("%set-register-twin")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("set-register-twin-at")) => {
+                        str_lit!("%set-register-twin")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(22)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-list->bytevector")) => {
-                        str_lit("%fx26-bytevector")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-list->bytevector")) => {
+                        str_lit!("%fx26-bytevector")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(23)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%macros:call-procedural")) => {
-                        str_lit("%fx26-call-procedural")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%macros:call-procedural")) => {
+                        str_lit!("%fx26-call-procedural")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-redefines")) => {
-                        str_lit("%fx26-session-redefines")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-redefines")) => {
+                        str_lit!("%fx26-session-redefines")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("datum-bytevector-length")) => {
-                        str_lit("bytevector-length")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("datum-bytevector-length")) => {
+                        str_lit!("bytevector-length")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("runtime-primitive-arity")) => {
-                        str_lit("%runtime-primitive-arity")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("runtime-primitive-arity")) => {
+                        str_lit!("%runtime-primitive-arity")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(24)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%session-eval-committed!")) => {
-                        str_lit("%fx26-session-committed!")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%session-eval-committed!")) => {
+                        str_lit!("%fx26-session-committed!")
                     }
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("get-environment-variable")) => {
-                        str_lit("%fx26-get-environment-variable")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("get-environment-variable")) => {
+                        str_lit!("%fx26-get-environment-variable")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             case_ if kayak_rt::_eq(case_, int_lit(25)) => {
                 match n {
-                    case_ if kayak_rt::string_eq_p(case_, str_lit("%macros:expand-procedural")) => {
-                        str_lit("%fx26-expand-procedural")
+                    case_ if kayak_rt::string_eq_p(case_, str_lit!("%macros:expand-procedural")) => {
+                        str_lit!("%fx26-expand-procedural")
                     }
                     _ => {
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
             _ => {
-                str_lit("")
+                str_lit!("")
             }
         }
     }
@@ -2079,14 +2079,14 @@ pub fn c_names(mut ns: Strings, mut bound: Strings) -> Strings {
 // name)`, C221): what a quote builds with.
 #[inline]
 pub fn std_var(n: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
-    x_var(string_append(str_lit("#%fx:"), n), a)
+    x_var(string_append(str_lit!("#%fx:"), n), a)
 }
 
 // A keyword, `#:n` (C294): as Fixpt's parsers write it, `symbol->keyword` of
 // the symbol `n`, in quoted data too.
 #[inline]
 pub fn keyword_x(n: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
-    x_app(std_var(str_lit("symbol->keyword"), a), kayak_rt::heap_cons(x_sym(after_prefix(n, str_lit("#:")), a), kayak_rt::nil()), a)
+    x_app(std_var(str_lit!("symbol->keyword"), a), kayak_rt::heap_cons(x_sym(after_prefix(n, str_lit!("#:")), a), kayak_rt::nil()), a)
 }
 
 // Written so, `(with #%fx n)` is marked apart (`#%fx!:`), as Fixpt keeps
@@ -2094,17 +2094,17 @@ pub fn keyword_x(n: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
 // (C248).
 #[inline]
 pub fn std_written_var(n: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
-    x_var(string_append(str_lit("#%fx!:"), n), a)
+    x_var(string_append(str_lit!("#%fx!:"), n), a)
 }
 
 #[inline]
 pub fn std_written_p(n: Str) -> bool {
-    has_prefix_p(n, str_lit("#%fx!:"))
+    has_prefix_p(n, str_lit!("#%fx!:"))
 }
 
 #[inline]
 pub fn std_marked_p(n: Str) -> bool {
-    (has_prefix_p(n, str_lit("#%fx:")) || std_written_p(n))
+    (has_prefix_p(n, str_lit!("#%fx:")) || std_written_p(n))
 }
 
 // `(with #%toplevel n)` where something binds `n` (C397): the program's
@@ -2113,16 +2113,16 @@ pub fn std_marked_p(n: Str) -> bool {
 // checker noted it plain, and it is the plain name (`toplevel-x`).
 #[inline]
 pub fn top_marked_p(n: Str) -> bool {
-    has_prefix_p(n, str_lit("#%top:"))
+    has_prefix_p(n, str_lit!("#%top:"))
 }
 
 pub fn std_named(n: Str) -> Str {
     if std_written_p(n) {
-        after_prefix(n, str_lit("#%fx!:"))
+        after_prefix(n, str_lit!("#%fx!:"))
     } else if std_marked_p(n) {
-        after_prefix(n, str_lit("#%fx:"))
+        after_prefix(n, str_lit!("#%fx:"))
     } else if top_marked_p(n) {
-        after_prefix(n, str_lit("#%top:"))
+        after_prefix(n, str_lit!("#%top:"))
     } else {
         n
     }
@@ -2281,7 +2281,7 @@ pub fn cg_facts() -> Ref<Facts> {
 pub fn cg_source() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
-        kayak_rt::heap_new(str_lit(""))
+        kayak_rt::heap_new(str_lit!(""))
     })
 }
 
@@ -2295,7 +2295,7 @@ pub fn cg_source() -> Ref<Str> {
 pub fn cg_form_file() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
-        kayak_rt::heap_new(str_lit(""))
+        kayak_rt::heap_new(str_lit!(""))
     })
 }
 
@@ -2324,7 +2324,7 @@ pub fn file_number(mut fs: Strings, mut f: Str, mut k: i64) -> i64 {
 /// order met.
 pub fn form_file_number_x() -> i64 {
     let f = get(cg_form_file());
-    if (string_eq_p(f, str_lit("")) || string_eq_p(f, get(cg_source()))) {
+    if (string_eq_p(f, str_lit!("")) || string_eq_p(f, get(cg_source()))) {
         0i64
     } else {
         let k = file_number(get(cg_files()), f, 1i64);
@@ -2351,7 +2351,7 @@ pub fn filed_place_written(p: i64) -> Str {
     if i64_eq(k, 0i64) {
         i64_to_string(p)
     } else {
-        string_append(i64_to_string(k), string_append(str_lit(":"), i64_to_string(p)))
+        string_append(i64_to_string(k), string_append(str_lit!(":"), i64_to_string(p)))
     }
 }
 
@@ -2524,14 +2524,14 @@ pub fn made_module(mut ms: List<kayak_rt::Handle<'static, Cmade>>, mut n: Str) -
 /// included, an instance each time, as Fixpt makes one each time its
 /// maker is called (`modules/load-parameters.fx`).
 pub fn instance_load_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
-    (head_is_p(e, str_lit("module")) && i64_gt_eq(size(items(e)), 2i64) && head_is_p(second(items(e)), str_lit("%loaded")) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
-        sym_is_p(x, str_lit("%instance"))
+    (head_is_p(e, str_lit!("module")) && i64_gt_eq(size(items(e)), 2i64) && head_is_p(second(items(e)), str_lit!("%loaded")) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
+        sym_is_p(x, str_lit!("%instance"))
     })), items(second(items(e)))))
 }
 
 #[inline]
 pub fn made_here_name_p(n: Str) -> bool {
-    (has_prefix_p(n, str_lit("made--")) && not(has_prefix_p(n, str_lit("made--load--"))) && not(has_prefix_p(n, str_lit("made--input--"))))
+    (has_prefix_p(n, str_lit!("made--")) && not(has_prefix_p(n, str_lit!("made--load--"))) && not(has_prefix_p(n, str_lit!("made--input--"))))
 }
 
 #[inline]
@@ -2620,7 +2620,7 @@ pub fn indices_from(i: i64, n: i64) -> List<i64> {
 pub fn fact_text(mut fs: Facts, mut file: Str, mut pos: i64, mut prefix: Str) -> Str {
     loop {
         if null_p(fs) {
-            return str_lit("");
+            return str_lit!("");
         } else if {
             let tagcase_ = car(fs);
             match *tagcase_ {
@@ -2665,7 +2665,7 @@ pub fn fact_noted_p(mut fs: Facts, mut file: Str, mut pos: i64, mut what: Str) -
 
 #[inline]
 pub fn cg_fail(why: Str) -> Void {
-    error(string_append(str_lit("kayak-fx26: cells: "), why))
+    error(string_append(str_lit!("kayak-fx26: cells: "), why))
 }
 
 pub fn digits_i64(mut cs: Chars, mut n: i64) -> i64 {
@@ -2708,7 +2708,7 @@ pub fn big_build(mut acc: kayak_rt::Handle<'static, Cx>, mut limbs: List<Int>, m
         if null_p(limbs) {
             return acc;
         } else {
-            (acc, limbs) = (call2(str_lit("+"), call2(str_lit("*"), acc, x_int(int_lit(1000000000), a), a), x_int(car(limbs), a), a), cdr(limbs));
+            (acc, limbs) = (call2(str_lit!("+"), call2(str_lit!("*"), acc, x_int(int_lit(1000000000), a), a), x_int(car(limbs), a), a), cdr(limbs));
             continue;
         }
     }
@@ -2718,7 +2718,7 @@ pub fn big_literal(v: Int, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if cg_fixnum_p(v) {
         x_int(v, a)
     } else if _lt(v, int_lit(0)) {
-        call2(str_lit("-"), x_int(int_lit(0), a), big_peel(_minus(int_lit(0), v), nil::<Int>(), a), a)
+        call2(str_lit!("-"), x_int(int_lit(0), a), big_peel(_minus(int_lit(0), v), nil::<Int>(), a), a)
     } else {
         big_peel(v, nil::<Int>(), a)
     }
@@ -2732,7 +2732,7 @@ pub fn dt_vars(i: i64, n: i64) -> Strings {
     if i64_gt(i, n) {
         nil::<Str>()
     } else {
-        kayak_rt::heap_cons(string_append(str_lit("%x"), i64_to_string(i)), dt_vars(i64_plus(i, 1i64), n))
+        kayak_rt::heap_cons(string_append(str_lit!("%x"), i64_to_string(i)), dt_vars(i64_plus(i, 1i64), n))
     }
 }
 
@@ -2774,9 +2774,9 @@ pub fn case_kind(d: kayak_rt::Handle<'static, Sexp>) -> i64 {
             2i64
         }
         Sexp::Sym(n, f, p) => {
-            if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
+            if (string_eq_p(n, str_lit!("#t")) || string_eq_p(n, str_lit!("#f"))) {
                 4i64
-            } else if string_eq_p(n, str_lit("#u")) {
+            } else if string_eq_p(n, str_lit!("#u")) {
                 -1i64
             } else {
                 3i64
@@ -3035,7 +3035,7 @@ pub fn case_index(by: kayak_rt::Handle<'static, Cx>, es: List<kayak_rt::Handle<'
         if i64_eq(mid, 0i64) {
             case_leaf(es, m, bodies, whole, els, a)
         } else {
-            x_if(x_app(std_var(str_lit("<"), a), kayak_rt::heap_cons(by, kayak_rt::heap_cons(x_int(i64_to_int(case_key_nth(es, mid)), a), kayak_rt::nil())), a), case_index(by, case_take(es, mid), mid, m, bodies, whole, els, a), case_index(by, case_drop(es, mid), i64_minus(n, mid), m, bodies, whole, els, a), a)
+            x_if(x_app(std_var(str_lit!("<"), a), kayak_rt::heap_cons(by, kayak_rt::heap_cons(x_int(i64_to_int(case_key_nth(es, mid)), a), kayak_rt::nil())), a), case_index(by, case_take(es, mid), mid, m, bodies, whole, els, a), case_index(by, case_drop(es, mid), i64_minus(n, mid), m, bodies, whole, els, a), a)
         }
     }
 }
@@ -3046,7 +3046,7 @@ pub fn case_pick(i: kayak_rt::Handle<'static, Cx>, bodies: Cxs, lo: i64, hi: i64
         case_body_at(bodies, lo)
     } else {
         let mid = i64_quotient(i64_plus(i64_plus(lo, hi), 1i64), 2i64);
-        x_if(x_app(std_var(str_lit("<"), a), kayak_rt::heap_cons(i, kayak_rt::heap_cons(x_int(i64_to_int(mid), a), kayak_rt::nil())), a), case_pick(i, bodies, lo, i64_minus(mid, 1i64), a), case_pick(i, bodies, mid, hi, a), a)
+        x_if(x_app(std_var(str_lit!("<"), a), kayak_rt::heap_cons(i, kayak_rt::heap_cons(x_int(i64_to_int(mid), a), kayak_rt::nil())), a), case_pick(i, bodies, lo, i64_minus(mid, 1i64), a), case_pick(i, bodies, mid, hi, a), a)
     }
 }
 
@@ -3056,7 +3056,7 @@ pub fn case_direct_p(xs: Sexps) -> bool {
         let tagcase_ = car(xs);
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                not((string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f")) || string_eq_p(n, str_lit("#u"))))
+                not((string_eq_p(n, str_lit!("#t")) || string_eq_p(n, str_lit!("#f")) || string_eq_p(n, str_lit!("#u"))))
             }
             _ => {
                 let other = tagcase_;
@@ -3069,40 +3069,40 @@ pub fn case_direct_p(xs: Sexps) -> bool {
 // The standard predicate of each shape `typecase` tests (Fixpt's
 // `typecase-predicate`).
 pub fn typecase_predicate(s: Str) -> Str {
-    if string_eq_p(s, str_lit("int")) {
-        str_lit("int?")
-    } else if string_eq_p(s, str_lit("char")) {
-        str_lit("char?")
-    } else if string_eq_p(s, str_lit("bool")) {
-        str_lit("bool?")
-    } else if string_eq_p(s, str_lit("nil")) {
-        str_lit("null?")
-    } else if string_eq_p(s, str_lit("pair")) {
-        str_lit("pair?")
-    } else if string_eq_p(s, str_lit("string")) {
-        str_lit("string?")
-    } else if string_eq_p(s, str_lit("symbol")) {
-        str_lit("symbol?")
-    } else if string_eq_p(s, str_lit("keyword")) {
-        str_lit("keyword?")
-    } else if string_eq_p(s, str_lit("procedure")) {
-        str_lit("procedure?")
-    } else if string_eq_p(s, str_lit("bloblet")) {
-        str_lit("array?")
-    } else if string_eq_p(s, str_lit("f64")) {
-        str_lit("f64?")
-    } else if string_eq_p(s, str_lit("f32")) {
-        str_lit("f32?")
-    } else if string_eq_p(s, str_lit("box")) {
-        str_lit("ref?")
-    } else if string_eq_p(s, str_lit("sum")) {
-        str_lit("sum?")
-    } else if string_eq_p(s, str_lit("product")) {
-        str_lit("product?")
-    } else if string_eq_p(s, str_lit("vector")) {
-        str_lit("vector?")
+    if string_eq_p(s, str_lit!("int")) {
+        str_lit!("int?")
+    } else if string_eq_p(s, str_lit!("char")) {
+        str_lit!("char?")
+    } else if string_eq_p(s, str_lit!("bool")) {
+        str_lit!("bool?")
+    } else if string_eq_p(s, str_lit!("nil")) {
+        str_lit!("null?")
+    } else if string_eq_p(s, str_lit!("pair")) {
+        str_lit!("pair?")
+    } else if string_eq_p(s, str_lit!("string")) {
+        str_lit!("string?")
+    } else if string_eq_p(s, str_lit!("symbol")) {
+        str_lit!("symbol?")
+    } else if string_eq_p(s, str_lit!("keyword")) {
+        str_lit!("keyword?")
+    } else if string_eq_p(s, str_lit!("procedure")) {
+        str_lit!("procedure?")
+    } else if string_eq_p(s, str_lit!("bloblet")) {
+        str_lit!("array?")
+    } else if string_eq_p(s, str_lit!("f64")) {
+        str_lit!("f64?")
+    } else if string_eq_p(s, str_lit!("f32")) {
+        str_lit!("f32?")
+    } else if string_eq_p(s, str_lit!("box")) {
+        str_lit!("ref?")
+    } else if string_eq_p(s, str_lit!("sum")) {
+        str_lit!("sum?")
+    } else if string_eq_p(s, str_lit!("product")) {
+        str_lit!("product?")
+    } else if string_eq_p(s, str_lit!("vector")) {
+        str_lit!("vector?")
     } else {
-        str_lit("bytevector?")
+        str_lit!("bytevector?")
     }
 }
 
@@ -3112,7 +3112,7 @@ pub fn typecase_predicate(s: Str) -> Str {
 pub fn bloblet_form_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::heap_cons(str_lit("blobref-length"), kayak_rt::nil())))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("make-bloblet"), kayak_rt::heap_cons(str_lit!("rmake-bloblet"), kayak_rt::heap_cons(str_lit!("bloblet-ref"), kayak_rt::heap_cons(str_lit!("bloblet-set!"), kayak_rt::heap_cons(str_lit!("bloblet-freeze"), kayak_rt::heap_cons(str_lit!("bloblet-byte"), kayak_rt::heap_cons(str_lit!("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit!("bloblet-bytes"), kayak_rt::heap_cons(str_lit!("blobref-at"), kayak_rt::heap_cons(str_lit!("blobref+"), kayak_rt::heap_cons(str_lit!("blobref-owner"), kayak_rt::heap_cons(str_lit!("blobref-offset"), kayak_rt::heap_cons(str_lit!("blobref-get"), kayak_rt::heap_cons(str_lit!("blobref-set!"), kayak_rt::heap_cons(str_lit!("blobref-index"), kayak_rt::heap_cons(str_lit!("blobref-variant!"), kayak_rt::heap_cons(str_lit!("blobref-length"), kayak_rt::nil())))))))))))))))))
     })
 }
 
@@ -3123,17 +3123,17 @@ pub fn bloblet_form_p(h: Str) -> bool {
 
 // The scalar flat's layout code (`fixpt_heap::layout::FLAT_*`), or -1.
 pub fn flat_code(s: Str) -> i64 {
-    if string_eq_p(s, str_lit("i32")) {
+    if string_eq_p(s, str_lit!("i32")) {
         0i64
-    } else if string_eq_p(s, str_lit("u32")) {
+    } else if string_eq_p(s, str_lit!("u32")) {
         1i64
-    } else if string_eq_p(s, str_lit("i64")) {
+    } else if string_eq_p(s, str_lit!("i64")) {
         2i64
-    } else if string_eq_p(s, str_lit("u64")) {
+    } else if string_eq_p(s, str_lit!("u64")) {
         3i64
-    } else if string_eq_p(s, str_lit("f32")) {
+    } else if string_eq_p(s, str_lit!("f32")) {
         4i64
-    } else if string_eq_p(s, str_lit("f64")) {
+    } else if string_eq_p(s, str_lit!("f64")) {
         5i64
     } else {
         -1i64
@@ -3165,24 +3165,24 @@ pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
     let at = kayak_rt::closure1((f, a,), |(f, a,), prefix: Str| {
         fact_text(get(cg_facts()), f, a, prefix)
     });
-    if (string_eq_p(op, str_lit("blobref-at")) || string_eq_p(op, str_lit("blobref+"))) {
-        let n = at.call(str_lit("blob-size "));
-        if string_eq_p(n, str_lit("")) {
+    if (string_eq_p(op, str_lit!("blobref-at")) || string_eq_p(op, str_lit!("blobref+"))) {
+        let n = at.call(str_lit!("blob-size "));
+        if string_eq_p(n, str_lit!("")) {
             -1i64
         } else {
             digits_i64(string_chars(n), 0i64)
         }
-    } else if (string_eq_p(op, str_lit("blobref-get")) || string_eq_p(op, str_lit("blobref-set!"))) {
-        flat_code(at.call(str_lit("blob-scalar ")))
-    } else if (string_eq_p(op, str_lit("blobref-index")) || string_eq_p(op, str_lit("blobref-length"))) {
-        let ns = words_i64(at.call(str_lit("blob-element ")));
+    } else if (string_eq_p(op, str_lit!("blobref-get")) || string_eq_p(op, str_lit!("blobref-set!"))) {
+        flat_code(at.call(str_lit!("blob-scalar ")))
+    } else if (string_eq_p(op, str_lit!("blobref-index")) || string_eq_p(op, str_lit!("blobref-length"))) {
+        let ns = words_i64(at.call(str_lit!("blob-element ")));
         if null_p(ns) {
             -1i64
         } else {
             i64_plus(i64_star(second_i64(ns), 4294967296i64), car(ns))
         }
-    } else if string_eq_p(op, str_lit("blobref-variant!")) {
-        let ws = split_words(at.call(str_lit("blob-variant ")));
+    } else if string_eq_p(op, str_lit!("blobref-variant!")) {
+        let ws = split_words(at.call(str_lit!("blob-variant ")));
         if null_p(ws) {
             -1i64
         } else {
@@ -3222,11 +3222,11 @@ pub fn confirmed(e: kayak_rt::Handle<'static, Sexp>, base: Str, test: Str, cert:
     } else {
         third(xs)
     };
-    sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(car(xs), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("if")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(test), kayak_rt::heap_cons(sy(t), k))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(arm), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(cert), kayak_rt::heap_cons(sy(t), k))), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(second(arm), kayak_rt::nil())))), kayak_rt::heap_cons(els, kayak_rt::nil()))))), kayak_rt::nil()))))
+    sx(kayak_rt::heap_cons(sy(str_lit!("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(t), kayak_rt::heap_cons(car(xs), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit!("if")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(test), kayak_rt::heap_cons(sy(t), k))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit!("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sx(kayak_rt::heap_cons(car(arm), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(cert), kayak_rt::heap_cons(sy(t), k))), kayak_rt::nil()))), kayak_rt::nil())), kayak_rt::heap_cons(second(arm), kayak_rt::nil())))), kayak_rt::heap_cons(els, kayak_rt::nil()))))), kayak_rt::nil()))))
 }
 
 pub fn generative_conversions(e: kayak_rt::Handle<'static, Sexp>, a: i64) -> List<kayak_rt::Handle<'static, Ctop>> {
-    kayak_rt::heap_cons(t_define(generative_seal(e), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::heap_cons(t_define(generative_unseal(e), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::nil()))
+    kayak_rt::heap_cons(t_define(generative_seal(e), true, x_lambda(kayak_rt::heap_cons(str_lit!("x"), kayak_rt::nil()), x_var(str_lit!("x"), a), a)), kayak_rt::heap_cons(t_define(generative_unseal(e), true, x_lambda(kayak_rt::heap_cons(str_lit!("x"), kayak_rt::nil()), x_var(str_lit!("x"), a), a)), kayak_rt::nil()))
 }
 
 // The type of the module read last: its values' names, in order.
@@ -3367,7 +3367,7 @@ pub fn strings_after(ss: Strings, sep: Str) -> Strings {
 
 #[inline]
 pub fn put_sep_words(ss: Strings) -> Str {
-    string_list_append(strings_between(ss, str_lit(" ")))
+    string_list_append(strings_between(ss, str_lit!(" ")))
 }
 
 // An arm's label: a name, or a flat sum's number, as its digits (C221).
@@ -3408,7 +3408,7 @@ pub fn q_unquote_of(x: kayak_rt::Handle<'static, Sexp>, form: Str) -> Sexps {
 #[inline]
 pub fn q_unquoted(x: kayak_rt::Handle<'static, Sexp>, depth: i64) -> Sexps {
     if i64_eq(depth, 1i64) {
-        q_unquote_of(x, str_lit("unquote"))
+        q_unquote_of(x, str_lit!("unquote"))
     } else {
         nil::<kayak_rt::Handle<'static, Sexp>>()
     }
@@ -3433,7 +3433,7 @@ pub fn q_dotted_p(mut ys: Sexps) -> bool {
         if (null_p(ys) || null_p(cdr(ys))) {
             return false;
         } else if null_p(cdr(cdr(ys))) {
-            return sym_is_p(car(ys), str_lit("."));
+            return sym_is_p(car(ys), str_lit!("."));
         } else {
             ys = cdr(ys);
             continue;
@@ -3443,7 +3443,7 @@ pub fn q_dotted_p(mut ys: Sexps) -> bool {
 
 #[inline]
 pub fn q_before_dot(ys: Sexps) -> Sexps {
-    if sym_is_p(car(ys), str_lit(".")) {
+    if sym_is_p(car(ys), str_lit!(".")) {
         nil::<kayak_rt::Handle<'static, Sexp>>()
     } else {
         kayak_rt::heap_cons(car(ys), q_before_dot(cdr(ys)))
@@ -3452,7 +3452,7 @@ pub fn q_before_dot(ys: Sexps) -> Sexps {
 
 pub fn q_dot_tail(mut ys: Sexps) -> kayak_rt::Handle<'static, Sexp> {
     loop {
-        if sym_is_p(car(ys), str_lit(".")) {
+        if sym_is_p(car(ys), str_lit!(".")) {
             return second(ys);
         } else {
             ys = cdr(ys);
@@ -3463,15 +3463,15 @@ pub fn q_dot_tail(mut ys: Sexps) -> kayak_rt::Handle<'static, Sexp> {
 
 pub fn q_inner(items: Sexps, depth: i64) -> i64 {
     let (two, h) = (i64_eq(size(items), 2i64), if null_p(items) {
-        sy(str_lit(""))
+        sy(str_lit!(""))
     } else {
         car(items)
     });
     if i64_lt(depth, 0i64) {
         depth
-    } else if (two && sym_is_p(h, str_lit("quasiquote"))) {
+    } else if (two && sym_is_p(h, str_lit!("quasiquote"))) {
         i64_plus(depth, 1i64)
-    } else if (two && i64_gt(depth, 1i64) && (sym_is_p(h, str_lit("unquote")) || sym_is_p(h, str_lit("unquote-splicing")))) {
+    } else if (two && i64_gt(depth, 1i64) && (sym_is_p(h, str_lit!("unquote")) || sym_is_p(h, str_lit!("unquote-splicing")))) {
         i64_minus(depth, 1i64)
     } else {
         depth
@@ -3485,7 +3485,7 @@ pub fn q_free_p(mut x: kayak_rt::Handle<'static, Sexp>, mut depth: i64) -> bool 
             let tagcase_ = x;
             match *tagcase_ {
                 Sexp::Lst(ys, f, l, p) => {
-                    if head_is_p(x, str_lit("#vector")) {
+                    if head_is_p(x, str_lit!("#vector")) {
                         return q_items_free_p(cdr(ys), depth, depth);
                     } else if q_dotted_p(ys) {
                         if q_items_free_p(q_before_dot(ys), depth, q_inner(q_before_dot(ys), depth)) {
@@ -3515,7 +3515,7 @@ pub fn q_items_free_p(mut items: Sexps, mut depth: i64, mut inner: i64) -> bool 
             return true;
         } else {
             if null_p(if i64_eq(depth, 1i64) {
-                q_unquote_of(car(items), str_lit("unquote-splicing"))
+                q_unquote_of(car(items), str_lit!("unquote-splicing"))
             } else {
                 nil::<kayak_rt::Handle<'static, Sexp>>()
             }) {
@@ -3623,7 +3623,7 @@ pub fn parse_x(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, 
     if null_p(get(cg_convert_facts())) {
         x
     } else {
-        converted_x(fact_text(get(cg_convert_facts()), datum_file(e), datum_pos(e), str_lit("convert ")), x, datum_pos(e))
+        converted_x(fact_text(get(cg_convert_facts()), datum_file(e), datum_pos(e), str_lit!("convert ")), x, datum_pos(e))
     }
 }
 
@@ -3631,10 +3631,10 @@ pub fn parse_x(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, 
 /// (`exp_unnoted`): an adapter, if `x` is of the other convention. As
 /// it is, if `k` is empty.
 pub fn converted_x(k: Str, x: kayak_rt::Handle<'static, Cx>, a: i64) -> kayak_rt::Handle<'static, Cx> {
-    if string_eq_p(k, str_lit("")) {
+    if string_eq_p(k, str_lit!("")) {
         x
     } else {
-        x_app(x_var(str_lit("%fx26-convert"), a), kayak_rt::heap_cons(x, kayak_rt::heap_cons(x_int(i64_to_int(digits_i64(string_chars(k), 0i64)), a), kayak_rt::nil())), a)
+        x_app(x_var(str_lit!("%fx26-convert"), a), kayak_rt::heap_cons(x, kayak_rt::heap_cons(x_int(i64_to_int(digits_i64(string_chars(k), 0i64)), a), kayak_rt::nil())), a)
     }
 }
 
@@ -3657,15 +3657,15 @@ pub fn parse_x_as_is(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'st
             x_float(u64_to_int(f64_to_bits(real_value(x))), p)
         }
         Sexp::Sym(n, f, p) => {
-            if string_eq_p(n, str_lit("#t")) {
+            if string_eq_p(n, str_lit!("#t")) {
                 x_bool(true, p)
-            } else if string_eq_p(n, str_lit("#f")) {
+            } else if string_eq_p(n, str_lit!("#f")) {
                 x_bool(false, p)
-            } else if string_eq_p(n, str_lit("#u")) {
+            } else if string_eq_p(n, str_lit!("#u")) {
                 x_unit(p)
             } else if keyword_name_p(n) {
                 keyword_x(n, p)
-            } else if not(string_eq_p(toplevel_named(n), str_lit(""))) {
+            } else if not(string_eq_p(toplevel_named(n), str_lit!(""))) {
                 toplevel_x(toplevel_named(n), f, p)
             } else if not(null_p(made_module(get(cg_made()), n))) {
                 car(made_module(get(cg_made()), n))
@@ -3675,7 +3675,7 @@ pub fn parse_x_as_is(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'st
         }
         Sexp::Lst(xs, f, l, p) => {
             if null_p(xs) {
-                match cg_fail(str_lit("not an expression: ()")) {};
+                match cg_fail(str_lit!("not an expression: ()")) {};
                 x_unit(p)
             } else {
                 parse_form({
@@ -3686,7 +3686,7 @@ pub fn parse_x_as_is(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'st
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 }, xs, e, f, p)
@@ -3699,10 +3699,10 @@ pub fn parse_x_as_is(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'st
 /// so, else marked (`top-marked?`).
 #[inline]
 pub fn toplevel_x(n: Str, f: Str, p: i64) -> kayak_rt::Handle<'static, Cx> {
-    if fact_noted_p(get(cg_facts()), f, p, str_lit("toplevel-plain")) {
+    if fact_noted_p(get(cg_facts()), f, p, str_lit!("toplevel-plain")) {
         x_var(n, p)
     } else {
-        x_var(string_append(str_lit("#%top:"), n), p)
+        x_var(string_append(str_lit!("#%top:"), n), p)
     }
 }
 
@@ -3727,33 +3727,33 @@ pub fn parse_body(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
 
 pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Sexp>, mut f: Str, mut a: i64) -> kayak_rt::Handle<'static, Cx> {
     loop {
-        if string_eq_p(h, str_lit("lambda")) {
+        if string_eq_p(h, str_lit!("lambda")) {
             return x_lambda(map(kayak_rt::as_proc(binder_name), items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
-        } else if string_eq_p(h, str_lit("if")) {
+        } else if string_eq_p(h, str_lit!("if")) {
             return x_if(parse_x(second(xs)), parse_x(car(cdr(cdr(xs)))), parse_x(car(cdr(cdr(cdr(xs))))), a);
-        } else if string_eq_p(h, str_lit("let")) {
+        } else if string_eq_p(h, str_lit!("let")) {
             return x_let(parse_binds(items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
-        } else if string_eq_p(h, str_lit("let*")) {
+        } else if string_eq_p(h, str_lit!("let*")) {
             return parse_let_star(items(second(xs)), parse_body(cdr(cdr(xs)), a));
-        } else if string_eq_p(h, str_lit("letrec")) {
+        } else if string_eq_p(h, str_lit!("letrec")) {
             return x_letrec(parse_typed_binds(items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
-        } else if string_eq_p(h, str_lit("begin")) {
+        } else if string_eq_p(h, str_lit!("begin")) {
             return parse_body(cdr(xs), a);
-        } else if string_eq_p(h, str_lit("cond")) {
+        } else if string_eq_p(h, str_lit!("cond")) {
             return parse_cond(cdr(xs), a);
-        } else if string_eq_p(h, str_lit("and")) {
+        } else if string_eq_p(h, str_lit!("and")) {
             return parse_and(cdr(xs), a);
-        } else if string_eq_p(h, str_lit("or")) {
+        } else if string_eq_p(h, str_lit!("or")) {
             return parse_or(cdr(xs), a);
-        } else if string_eq_p(h, str_lit("convention")) {
+        } else if string_eq_p(h, str_lit!("convention")) {
             // A conversion written (C230): as Fixpt's, `%fx26-convert` where the
             // procedure is of another convention, an adapter.
-            return converted_x(fact_text(get(cg_convert_facts()), f, a, str_lit("convention ")), parse_x(car(cdr(cdr(xs)))), a);
-        } else if string_eq_p(h, str_lit("the")) {
+            return converted_x(fact_text(get(cg_convert_facts()), f, a, str_lit!("convention ")), parse_x(car(cdr(cdr(xs)))), a);
+        } else if string_eq_p(h, str_lit!("the")) {
             return x_proj(parse_arg(car(cdr(cdr(xs)))), a);
-        } else if string_eq_p(h, str_lit("plambda")) {
+        } else if string_eq_p(h, str_lit!("plambda")) {
             return parse_body(cdr(cdr(xs)), a);
-        } else if ((string_eq_p(h, str_lit("reify-effect")) || string_eq_p(h, str_lit("reify-type")) || string_eq_p(h, str_lit("reify-region"))) && i64_gt_eq(size(xs), 2i64)) {
+        } else if ((string_eq_p(h, str_lit!("reify-effect")) || string_eq_p(h, str_lit!("reify-type")) || string_eq_p(h, str_lit!("reify-region"))) && i64_gt_eq(size(xs), 2i64)) {
             // Evidence (C339): a call of tier 1's `%kayak-reify` with the evidence
             // given, a product of them in order, and what the checker noted, its
             // rep's text and the evidence's names, as the engine's lowering writes
@@ -3763,14 +3763,14 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
             } else {
                 nil::<kayak_rt::Handle<'static, Sexp>>()
             };
-            let prod = lst(kayak_rt::heap_cons(sym(str_lit("product"), f, a), map2(kayak_rt::as_proc(kayak_rt::closure2s((f, a,), |(f, a,), x: kayak_rt::Handle<'static, Sexp>, k: i64| {
+            let prod = lst(kayak_rt::heap_cons(sym(str_lit!("product"), f, a), map2(kayak_rt::as_proc(kayak_rt::closure2s((f, a,), |(f, a,), x: kayak_rt::Handle<'static, Sexp>, k: i64| {
                 lst(kayak_rt::heap_cons(num(k, i64_to_string(k), a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, 1i64, a)
             })), given, counting(1i64, i64_plus(size(given), 1i64)))), f, 1i64, a);
-            return x_app(x_var(str_lit("%kayak-reify"), a), kayak_rt::heap_cons(parse_x(prod), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-given ")), a), kayak_rt::nil()))), a);
-        } else if (string_eq_p(h, str_lit("%kayak-global-set")) && i64_eq(size(xs), 3i64)) {
+            return x_app(x_var(str_lit!("%kayak-reify"), a), kayak_rt::heap_cons(parse_x(prod), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit!("reify-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit!("reify-given ")), a), kayak_rt::nil()))), a);
+        } else if (string_eq_p(h, str_lit!("%kayak-global-set")) && i64_eq(size(xs), 3i64)) {
             // A session's commit (C340): global `NAME`, written in full, given the
             // value, unit after; a form kayak's own, not a program's.
-            return x_bloblet(string_append(str_lit("%global-set:"), {
+            return x_bloblet(string_append(str_lit!("%global-set:"), {
                 let tagcase_ = second(xs);
                 match *tagcase_ {
                     Sexp::Str(t, f2, p2) => {
@@ -3778,42 +3778,42 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
                     }
                     _ => {
                         let other = tagcase_;
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }), 0i64, kayak_rt::heap_cons(parse_x(third(xs)), kayak_rt::nil()), a);
-        } else if (string_eq_p(h, str_lit("%session-check")) && i64_eq(size(xs), 6i64)) {
+        } else if (string_eq_p(h, str_lit!("%session-check")) && i64_eq(size(xs), 6i64)) {
             // `session-check` (C340): as `%stage`, tier 1's `%kayak-session-run`.
             let rest = cdr(cdr(cdr(xs)));
-            return x_app(x_var(str_lit("%kayak-session-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-given ")), a), kayak_rt::nil()))))), a);
-        } else if (string_eq_p(h, str_lit("%stage")) && i64_eq(size(xs), 6i64)) {
+            return x_app(x_var(str_lit!("%kayak-session-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit!("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit!("stage-given ")), a), kayak_rt::nil()))))), a);
+        } else if (string_eq_p(h, str_lit!("%stage")) && i64_eq(size(xs), 6i64)) {
             // `stage` (C337): a call of tier 1's `%kayak-stage-run` with the module,
             // the code, the evidence given, and what the checker noted, its rep's
             // text and the evidence's names, as the engine's lowering writes it.
             let rest = cdr(cdr(cdr(xs)));
-            return x_app(x_var(str_lit("%kayak-stage-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("stage-given ")), a), kayak_rt::nil()))))), a);
+            return x_app(x_var(str_lit!("%kayak-stage-run"), a), kayak_rt::heap_cons(parse_x(car(rest)), kayak_rt::heap_cons(parse_x(second(rest)), kayak_rt::heap_cons(parse_x(third(rest)), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit!("stage-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit!("stage-given ")), a), kayak_rt::nil()))))), a);
         } else if member_of_p(h, process_heads()) {
             // A form of processes, a call of the scheduler's (C219), as Fixpt's
             // parser makes it.
             return parse_x(process_expanded(e));
-        } else if (string_eq_p(h, str_lit("acyclic")) && i64_eq(size(xs), 4i64)) {
-            return parse_x(confirmed(e, str_lit("%acyclic-value"), str_lit("acyclic?"), str_lit("certify-acyclic"), false));
-        } else if (string_eq_p(h, str_lit("confirm-nat")) && i64_eq(size(xs), 4i64)) {
-            return parse_x(confirmed(e, str_lit("%nat-value"), str_lit("nat?"), str_lit("certify-nat"), false));
-        } else if (string_eq_p(h, str_lit("confirm-length")) && i64_eq(size(xs), 5i64)) {
-            return parse_x(confirmed(e, str_lit("%confirm-value"), str_lit("length-is?"), str_lit("certify-length"), true));
-        } else if string_eq_p(h, str_lit("proj")) {
+        } else if (string_eq_p(h, str_lit!("acyclic")) && i64_eq(size(xs), 4i64)) {
+            return parse_x(confirmed(e, str_lit!("%acyclic-value"), str_lit!("acyclic?"), str_lit!("certify-acyclic"), false));
+        } else if (string_eq_p(h, str_lit!("confirm-nat")) && i64_eq(size(xs), 4i64)) {
+            return parse_x(confirmed(e, str_lit!("%nat-value"), str_lit!("nat?"), str_lit!("certify-nat"), false));
+        } else if (string_eq_p(h, str_lit!("confirm-length")) && i64_eq(size(xs), 5i64)) {
+            return parse_x(confirmed(e, str_lit!("%confirm-value"), str_lit!("length-is?"), str_lit!("certify-length"), true));
+        } else if string_eq_p(h, str_lit!("proj")) {
             return x_proj(parse_x(second(xs)), a);
-        } else if string_eq_p(h, str_lit("quote")) {
+        } else if string_eq_p(h, str_lit!("quote")) {
             return parse_quoted(second(xs), a);
-        } else if string_eq_p(h, str_lit("product")) {
+        } else if string_eq_p(h, str_lit!("product")) {
             return x_product(parse_fields(cdr(xs)), a);
-        } else if string_eq_p(h, str_lit("extract")) {
-            let (k, o) = (fact_text(get(cg_facts()), f, a, str_lit("extract-index ")), fact_text(get(cg_facts()), f, a, str_lit("blob-offset ")));
-            if not(string_eq_p(k, str_lit(""))) {
+        } else if string_eq_p(h, str_lit!("extract")) {
+            let (k, o) = (fact_text(get(cg_facts()), f, a, str_lit!("extract-index ")), fact_text(get(cg_facts()), f, a, str_lit!("blob-offset ")));
+            if not(string_eq_p(k, str_lit!(""))) {
                 return x_extract(parse_x(second(xs)), digits_i64(string_chars(k), 0i64), a);
-            } else if not(string_eq_p(o, str_lit(""))) {
-                return x_bloblet(str_lit("%blobref-field"), digits_i64(string_chars(o), 0i64), kayak_rt::heap_cons(parse_x(second(xs)), kayak_rt::nil()), a);
+            } else if not(string_eq_p(o, str_lit!(""))) {
+                return x_bloblet(str_lit!("%blobref-field"), digits_i64(string_chars(o), 0i64), kayak_rt::heap_cons(parse_x(second(xs)), kayak_rt::nil()), a);
             } else if {
                 let tagcase_ = third(xs);
                 match *tagcase_ {
@@ -3839,19 +3839,19 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
                     }
                 }, 1i64), a);
             } else {
-                match cg_fail(str_lit("an extract the checker did not see")) {};
+                match cg_fail(str_lit!("an extract the checker did not see")) {};
                 return x_unit(a);
             }
         } else if bloblet_form_p(h) {
             return parse_bloblet(h, cdr(xs), f, a);
-        } else if string_eq_p(h, str_lit("sum")) {
+        } else if string_eq_p(h, str_lit!("sum")) {
             return x_sum(label_of(second(xs)), parse_x(car(cdr(cdr(xs)))), a);
-        } else if string_eq_p(h, str_lit("tagcase")) {
+        } else if string_eq_p(h, str_lit!("tagcase")) {
             // Of a blobref to a flat sum (C33, C175), its layout's code from
             // the checker's fact: the key's width, whether it is numeric (it
             // is, but where the tag names an owner's field), the variant's
             // offset (C221).
-            let flat = spaced_words(fact_text(get(cg_facts()), f, a, str_lit("blob-tagcase ")));
+            let flat = spaced_words(fact_text(get(cg_facts()), f, a, str_lit!("blob-tagcase ")));
             return x_tagcase(parse_x(second(xs)), parse_arms(cdr(cdr(xs))), parse_else(cdr(cdr(xs))), if null_p(flat) {
                 -1i64
             } else {
@@ -3861,11 +3861,11 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
                     the::<i64>(8i64)
                 }, i64_star(256i64, digits_i64(string_chars(car(cdr(flat))), 0i64))))
             }, a);
-        } else if (string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value"))) {
+        } else if (string_eq_p(h, str_lit!("module")) || string_eq_p(h, str_lit!("%module-value"))) {
             return module_narrowed(parse_module(cdr(xs), a), f, a);
-        } else if string_eq_p(h, str_lit("extend")) {
+        } else if string_eq_p(h, str_lit!("extend")) {
             return module_narrowed(parse_extend(second(xs), third(xs), a), f, a);
-        } else if (string_eq_p(h, str_lit("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%fx")) && {
+        } else if (string_eq_p(h, str_lit!("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit!("#%fx")) && {
             let tagcase_ = third(xs);
             match *tagcase_ {
                 Sexp::Sym(n, f2, p2) => {
@@ -3878,7 +3878,7 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
             }
         }) {
             return std_written_var(sym_name(third(xs)), a);
-        } else if (string_eq_p(h, str_lit("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("#%toplevel")) && {
+        } else if (string_eq_p(h, str_lit!("with")) && i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit!("#%toplevel")) && {
             let tagcase_ = third(xs);
             match *tagcase_ {
                 Sexp::Sym(n, f2, p2) => {
@@ -3891,17 +3891,17 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
             }
         }) {
             return toplevel_x(sym_name(third(xs)), f, a);
-        } else if (string_eq_p(h, str_lit("with")) && i64_gt_eq(size(xs), 4i64) && (sym_is_p(third(xs), str_lit("#:relied")) || sym_is_p(third(xs), str_lit("#:uses")))) {
+        } else if (string_eq_p(h, str_lit!("with")) && i64_gt_eq(size(xs), 4i64) && (sym_is_p(third(xs), str_lit!("#:relied")) || sym_is_p(third(xs), str_lit!("#:uses")))) {
             xs = kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), cdr(cdr(cdr(cdr(xs))))));
             continue;
-        } else if string_eq_p(h, str_lit("with")) {
+        } else if string_eq_p(h, str_lit!("with")) {
             return parse_with(second(xs), parse_body(cdr(cdr(xs)), a), f, a);
-        } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("letfreeze"))) {
-            return x_region(if string_eq_p(h, str_lit("letregion")) {
+        } else if (string_eq_p(h, str_lit!("letregion")) || string_eq_p(h, str_lit!("letrena")) || string_eq_p(h, str_lit!("letreap")) || string_eq_p(h, str_lit!("letfreeze"))) {
+            return x_region(if string_eq_p(h, str_lit!("letregion")) {
                 0i64
-            } else if string_eq_p(h, str_lit("letrena")) {
+            } else if string_eq_p(h, str_lit!("letrena")) {
                 1i64
-            } else if string_eq_p(h, str_lit("letreap")) {
+            } else if string_eq_p(h, str_lit!("letreap")) {
                 2i64
             } else {
                 3i64
@@ -3917,33 +3917,33 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
                     }
                 }
             }, parse_body(cdr(cdr(xs)), a), a);
-        } else if string_eq_p(h, str_lit("rlambda")) {
+        } else if string_eq_p(h, str_lit!("rlambda")) {
             return x_rlambda(parse_x(second(xs)), x_lambda(map(kayak_rt::as_proc(binder_name), items(third(xs))), parse_body(cdr(cdr(cdr(xs))), a), a), a);
-        } else if string_eq_p(h, str_lit("prompt")) {
+        } else if string_eq_p(h, str_lit!("prompt")) {
             return x_prompt(parse_x(second(xs)), parse_x(third(xs)), parse_x(fourth(xs)), a);
-        } else if string_eq_p(h, str_lit("case")) {
+        } else if string_eq_p(h, str_lit!("case")) {
             return parse_case(cdr(xs), a);
-        } else if string_eq_p(h, str_lit("typecase")) {
+        } else if string_eq_p(h, str_lit!("typecase")) {
             return parse_typecase(cdr(xs), a);
-        } else if string_eq_p(h, str_lit("vlambda")) {
-            return x_app(x_var(str_lit("%vlambda"), a), kayak_rt::heap_cons(x_lambda(kayak_rt::heap_cons(binder_name(second(xs)), kayak_rt::nil()), parse_body(cdr(cdr(xs)), a), a), kayak_rt::nil()), a);
-        } else if string_eq_p(h, str_lit("quasiquote")) {
+        } else if string_eq_p(h, str_lit!("vlambda")) {
+            return x_app(x_var(str_lit!("%vlambda"), a), kayak_rt::heap_cons(x_lambda(kayak_rt::heap_cons(binder_name(second(xs)), kayak_rt::nil()), parse_body(cdr(cdr(xs)), a), a), kayak_rt::nil()), a);
+        } else if string_eq_p(h, str_lit!("quasiquote")) {
             return quasi_in(second(xs), 1i64);
-        } else if string_eq_p(h, str_lit("load-module")) {
-            match cg_fail(string_append(str_lit("not yet: "), h)) {};
+        } else if string_eq_p(h, str_lit!("load-module")) {
+            match cg_fail(string_append(str_lit!("not yet: "), h)) {};
             return x_unit(a);
         } else {
-            if fact_noted_p(get(cg_call_facts()), f, a, str_lit("call-fx")) {
+            if fact_noted_p(get(cg_call_facts()), f, a, str_lit!("call-fx")) {
                 set(cg_fx_calls(), kayak_rt::heap_cons(a, get(cg_fx_calls())))
             } else {
                 ()
             };
-            if fact_noted_p(get(cg_call_facts()), f, a, str_lit("call-native")) {
+            if fact_noted_p(get(cg_call_facts()), f, a, str_lit!("call-native")) {
                 set(cg_native_calls(), kayak_rt::heap_cons(a, get(cg_native_calls())))
             } else {
                 ()
             };
-            return x_app(if string_eq_p(toplevel_named(h), str_lit("")) {
+            return x_app(if string_eq_p(toplevel_named(h), str_lit!("")) {
                 parse_x(car(xs))
             } else {
                 toplevel_x(toplevel_named(h), f, a)
@@ -3956,7 +3956,7 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
 /// the checker found it takes (C152): a field's index, written; a new
 /// blobref's size; a scalar's layout, an array's, a flat sum's.
 pub fn parse_bloblet(op: Str, args: Sexps, f: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
-    if (string_eq_p(op, str_lit("bloblet-ref")) || string_eq_p(op, str_lit("bloblet-set!"))) {
+    if (string_eq_p(op, str_lit!("bloblet-ref")) || string_eq_p(op, str_lit!("bloblet-set!"))) {
         x_bloblet(op, {
             let tagcase_ = second(args);
             match *tagcase_ {
@@ -3968,7 +3968,7 @@ pub fn parse_bloblet(op: Str, args: Sexps, f: Str, a: i64) -> kayak_rt::Handle<'
                     the::<i64>(-1i64)
                 }
             }
-        }, kayak_rt::heap_cons(parse_x(car(args)), if string_eq_p(op, str_lit("bloblet-set!")) {
+        }, kayak_rt::heap_cons(parse_x(car(args)), if string_eq_p(op, str_lit!("bloblet-set!")) {
             kayak_rt::heap_cons(parse_x(third(args)), kayak_rt::nil())
         } else {
             nil::<kayak_rt::Handle<'static, Cx>>()
@@ -4003,12 +4003,12 @@ pub fn parse_case(xs: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
         if case_direct_p(xs) {
             case_tree(parse_x(car(xs)), xs, k, a)
         } else {
-            x_let(kayak_rt::heap_cons(cbind(str_lit("%case-key"), parse_x(car(xs))), kayak_rt::nil()), case_tree(x_var(str_lit("%case-key"), datum_pos(car(xs))), xs, k, a), a)
+            x_let(kayak_rt::heap_cons(cbind(str_lit!("%case-key"), parse_x(car(xs))), kayak_rt::nil()), case_tree(x_var(str_lit!("%case-key"), datum_pos(car(xs))), xs, k, a), a)
         }
     } else if case_direct_p(xs) {
         parse_case_arms(parse_x(car(xs)), clauses)
     } else {
-        x_let(kayak_rt::heap_cons(cbind(str_lit("%case-key"), parse_x(car(xs))), kayak_rt::nil()), parse_case_arms(x_var(str_lit("%case-key"), datum_pos(car(xs))), clauses), a)
+        x_let(kayak_rt::heap_cons(cbind(str_lit!("%case-key"), parse_x(car(xs))), kayak_rt::nil()), parse_case_arms(x_var(str_lit!("%case-key"), datum_pos(car(xs))), clauses), a)
     }
 }
 
@@ -4019,7 +4019,7 @@ pub fn case_tree(kv: kayak_rt::Handle<'static, Cx>, xs: Sexps, k: i64, a: i64) -
     let by = if i64_eq(k, 0i64) {
         kv
     } else {
-        x_var(str_lit("%case-hash"), a)
+        x_var(str_lit!("%case-hash"), a)
     };
     let n = size(sorted);
     let lastc = items(last(cdr(xs)));
@@ -4038,15 +4038,15 @@ pub fn case_tree(kv: kayak_rt::Handle<'static, Cx>, xs: Sexps, k: i64, a: i64) -
     let tree = if (atom_else && i64_eq(n, m)) {
         case_index(by, sorted, n, m, bodies, true, case_body_at(bodies, m), a)
     } else {
-        x_let(kayak_rt::heap_cons(cbind(str_lit("%case-index"), case_index(by, sorted, n, m, bodies, false, x_unit(a), a)), kayak_rt::nil()), case_pick(x_var(str_lit("%case-index"), a), bodies, 0i64, m, a), a)
+        x_let(kayak_rt::heap_cons(cbind(str_lit!("%case-index"), case_index(by, sorted, n, m, bodies, false, x_unit(a), a)), kayak_rt::nil()), case_pick(x_var(str_lit!("%case-index"), a), bodies, 0i64, m, a), a)
     };
     if i64_eq(k, 0i64) {
         tree
     } else {
-        x_let(kayak_rt::heap_cons(cbind(str_lit("%case-hash"), x_app(std_var(if i64_eq(k, 2i64) {
-            str_lit("string-hash")
+        x_let(kayak_rt::heap_cons(cbind(str_lit!("%case-hash"), x_app(std_var(if i64_eq(k, 2i64) {
+            str_lit!("string-hash")
         } else {
-            str_lit("symbol-name-hash")
+            str_lit!("symbol-name-hash")
         }, a), kayak_rt::heap_cons(kv, kayak_rt::nil()), a)), kayak_rt::nil()), tree, a)
     }
 }
@@ -4099,15 +4099,15 @@ pub fn parse_case_test(kv: kayak_rt::Handle<'static, Cx>, d: kayak_rt::Handle<'s
     let at = datum_pos(d);
     let k = case_kind(d);
     let eq = if i64_eq(k, 0i64) {
-        str_lit("=")
+        str_lit!("=")
     } else if i64_eq(k, 1i64) {
-        str_lit("char=?")
+        str_lit!("char=?")
     } else if i64_eq(k, 2i64) {
-        str_lit("string=?")
+        str_lit!("string=?")
     } else if i64_eq(k, 3i64) {
-        str_lit("symbol=?")
+        str_lit!("symbol=?")
     } else {
-        str_lit("bool=?")
+        str_lit!("bool=?")
     };
     let lit = if i64_eq(k, 3i64) {
         x_sym(sym_name(d), at)
@@ -4121,7 +4121,7 @@ pub fn parse_typecase(xs: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if case_direct_p(xs) {
         parse_typecase_arms(cdr(xs), sym_name(car(xs)), a)
     } else {
-        x_let(kayak_rt::heap_cons(cbind(str_lit("%typecase-value"), parse_x(car(xs))), kayak_rt::nil()), parse_typecase_arms(cdr(xs), str_lit("%typecase-value"), a), a)
+        x_let(kayak_rt::heap_cons(cbind(str_lit!("%typecase-value"), parse_x(car(xs))), kayak_rt::nil()), parse_typecase_arms(cdr(xs), str_lit!("%typecase-value"), a), a)
     }
 }
 
@@ -4154,17 +4154,17 @@ pub fn parse_arg(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            let (want, have) = (fact_text(get(cg_module_facts()), f, p, str_lit("module-arg ")), {
-                let (had, laid) = (fact_text(get(cg_module_facts()), f, p, str_lit("module-had ")), layout_in(get(cg_layouts()), n));
+            let (want, have) = (fact_text(get(cg_module_facts()), f, p, str_lit!("module-arg ")), {
+                let (had, laid) = (fact_text(get(cg_module_facts()), f, p, str_lit!("module-had ")), layout_in(get(cg_layouts()), n));
                 the::<List<Strings>>(if not(null_p(laid)) {
                     the::<List<Strings>>(laid)
-                } else if string_eq_p(had, str_lit("")) {
+                } else if string_eq_p(had, str_lit!("")) {
                     the::<List<Strings>>(nil::<List<Str>>())
                 } else {
                     the::<List<Strings>>(kayak_rt::heap_cons(split_words(had), kayak_rt::nil()))
                 })
             });
-            if (string_eq_p(want, str_lit("")) || null_p(have)) {
+            if (string_eq_p(want, str_lit!("")) || null_p(have)) {
                 parse_x(e)
             } else if string_eq_p(want, put_sep_words(car(have))) {
                 parse_x(e)
@@ -4176,15 +4176,15 @@ pub fn parse_arg(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static
         }
         _ => {
             let other = tagcase_;
-            let want = fact_text(get(cg_module_facts()), datum_file(e), datum_pos(e), str_lit("module-arg "));
+            let want = fact_text(get(cg_module_facts()), datum_file(e), datum_pos(e), str_lit!("module-arg "));
             let x = parse_x(e);
-            let had = fact_text(get(cg_module_facts()), datum_file(e), datum_pos(e), str_lit("module-had "));
-            let have = if string_eq_p(had, str_lit("")) {
+            let had = fact_text(get(cg_module_facts()), datum_file(e), datum_pos(e), str_lit!("module-had "));
+            let have = if string_eq_p(had, str_lit!("")) {
                 get(cg_module_type())
             } else {
                 split_words(had)
             };
-            if (string_eq_p(want, str_lit("")) || string_eq_p(want, put_sep_words(have)) || head_is_p(e, str_lit("module")) || head_is_p(e, str_lit("extend"))) {
+            if (string_eq_p(want, str_lit!("")) || string_eq_p(want, put_sep_words(have)) || head_is_p(e, str_lit!("module")) || head_is_p(e, str_lit!("extend"))) {
                 x
             } else {
                 x_reshape(x, map(kayak_rt::as_proc(kayak_rt::closure1s((have,), |(have,), w: Str| {
@@ -4210,7 +4210,7 @@ pub fn module_fact_p(a: i64, what: Str) -> bool {
 /// module parameter's are its type's, as the checker said; else `m` is
 /// a module whose items were read.
 pub fn parse_with(m: kayak_rt::Handle<'static, Sexp>, body: kayak_rt::Handle<'static, Cx>, f: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
-    let (spec, known) = (fact_text(get(cg_module_facts()), f, a, str_lit("with-spec ")), {
+    let (spec, known) = (fact_text(get(cg_module_facts()), f, a, str_lit!("with-spec ")), {
         let tagcase_ = m;
         match *tagcase_ {
             Sexp::Sym(n, f2, p2) => {
@@ -4222,12 +4222,12 @@ pub fn parse_with(m: kayak_rt::Handle<'static, Sexp>, body: kayak_rt::Handle<'st
             }
         }
     });
-    if not(string_eq_p(spec, str_lit(""))) {
+    if not(string_eq_p(spec, str_lit!(""))) {
         with_layout(m, split_words(spec), body, a)
     } else if not(null_p(known)) {
         with_layout(m, car(known), body, a)
     } else {
-        match cg_fail(str_lit("not yet: a with of a module not named")) {};
+        match cg_fail(str_lit!("not yet: a with of a module not named")) {};
         body
     }
 }
@@ -4259,7 +4259,7 @@ pub fn parse_module(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
         let tagcase_ = car(incs);
         match *tagcase_ {
             Cinc::Cinc(m, h, p) => {
-                has_prefix_p(m, str_lit("made--load--"))
+                has_prefix_p(m, str_lit!("made--load--"))
             }
         }
     }) {
@@ -4297,10 +4297,10 @@ pub fn parse_module(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
         let shown = included_values(incs, false);
         let inside = map(kayak_rt::as_proc(member_in_includes), own);
         let used = included_used(inside, inc_type, nil::<Str>());
-        let its = the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit("%include"), include_module(incs, at), 1i64, false, at), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((at, inc_type,), |(at, inc_type,), n: Str| {
-            cmem(n, x_extract(x_var(str_lit("%include"), at), index_in(n, inc_type, 0i64), at), 0i64, false, at)
+        let its = the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit!("%include"), include_module(incs, at), 1i64, false, at), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((at, inc_type,), |(at, inc_type,), n: Str| {
+            cmem(n, x_extract(x_var(str_lit!("%include"), at), index_in(n, inc_type, 0i64), at), 0i64, false, at)
         })), used), inside)));
-        let mine = the::<Strings>(kayak_rt::heap_cons(str_lit("%include"), own_names));
+        let mine = the::<Strings>(kayak_rt::heap_cons(str_lit!("%include"), own_names));
         set(cg_module_type(), onto(shown, given));
         x_reshape(x_module(its, a), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((inc_type,), |(inc_type,), n: Str| {
             the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, inc_type, 0i64), kayak_rt::nil())))
@@ -4315,14 +4315,14 @@ pub fn parse_module(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
 /// `k-reshape-at`): made, then reshaped, unless it is so already.
 pub fn module_narrowed(x: kayak_rt::Handle<'static, Cx>, f: Str, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let (want, have) = ({
-        let arg = fact_text(get(cg_module_facts()), f, a, str_lit("module-arg "));
-        if string_eq_p(arg, str_lit("")) {
-            fact_text(get(cg_module_facts()), f, a, str_lit("module-made "))
+        let arg = fact_text(get(cg_module_facts()), f, a, str_lit!("module-arg "));
+        if string_eq_p(arg, str_lit!("")) {
+            fact_text(get(cg_module_facts()), f, a, str_lit!("module-made "))
         } else {
             arg
         }
     }, get(cg_module_type()));
-    if (string_eq_p(want, str_lit("")) || string_eq_p(want, put_sep_words(have))) {
+    if (string_eq_p(want, str_lit!("")) || string_eq_p(want, put_sep_words(have))) {
         x
     } else {
         set(cg_module_type(), split_words(want));
@@ -4369,7 +4369,7 @@ pub fn parse_extend(e0: kayak_rt::Handle<'static, Sexp>, e1: kayak_rt::Handle<'s
             }
             _ => {
                 let other = tagcase_;
-                x_with(x_var(str_lit("%extend"), a), l0, indices_from(0i64, size(l0)), x1, a)
+                x_with(x_var(str_lit!("%extend"), a), l0, indices_from(0i64, size(l0)), x1, a)
             }
         }
     };
@@ -4377,7 +4377,7 @@ pub fn parse_extend(e0: kayak_rt::Handle<'static, Sexp>, e1: kayak_rt::Handle<'s
         not(string_member_p(n, l0))
     })), l1);
     set(cg_module_type(), onto(l0, more));
-    x_reshape(x_module(the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit("%extended"), seen, 1i64, false, a), kayak_rt::nil()))), a), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((l0, l1,), |(l0, l1,), n: Str| {
+    x_reshape(x_module(the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit!("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit!("%extended"), seen, 1i64, false, a), kayak_rt::nil()))), a), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((l0, l1,), |(l0, l1,), n: Str| {
         if string_member_p(n, l1) {
             the::<List<i64>>(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil())))
         } else {
@@ -4403,9 +4403,9 @@ pub fn include_members(incs: List<kayak_rt::Handle<'static, Cinc>>, k: i64) -> L
         match *tagcase_ {
             Cinc::Cinc(m, h, p) => {
                 kayak_rt::heap_cons(cmem(string_append(if h {
-                    str_lit("%hinclude-")
+                    str_lit!("%hinclude-")
                 } else {
-                    str_lit("%include-")
+                    str_lit!("%include-")
                 }, i64_to_string(k)), {
                     let made = made_module(get(cg_made()), m);
                     if null_p(made) {
@@ -4457,13 +4457,13 @@ pub fn included_values(incs: List<kayak_rt::Handle<'static, Cinc>>, hidden: bool
 }
 
 pub fn included_layout(m: Str) -> Strings {
-    let l = if has_prefix_p(m, str_lit("%incl ")) {
+    let l = if has_prefix_p(m, str_lit!("%incl ")) {
         layout_in(get(cg_included()), m)
     } else {
         layout_in(get(cg_layouts()), m)
     };
     if null_p(l) {
-        match cg_fail(string_append(str_lit("not yet: an include of a module not named: "), m)) {};
+        match cg_fail(string_append(str_lit!("not yet: an include of a module not named: "), m)) {};
         nil::<Str>()
     } else {
         car(l)
@@ -4477,7 +4477,7 @@ pub fn includes_of(mut forms: Sexps, mut hidden: bool) -> List<kayak_rt::Handle<
             return nil::<kayak_rt::Handle<'static, Cinc>>();
         } else {
             let f = car(forms);
-            if (head_is_p(f, str_lit("include")) && i64_eq(size(items(f)), 2i64) && not({
+            if (head_is_p(f, str_lit!("include")) && i64_eq(size(items(f)), 2i64) && not({
                 let tagcase_ = second(items(f));
                 match *tagcase_ {
                     Sexp::Sym(n, f2, p2) => {
@@ -4490,23 +4490,23 @@ pub fn includes_of(mut forms: Sexps, mut hidden: bool) -> List<kayak_rt::Handle<
                 }
             })) {
                 let x = second(items(f));
-                let n = string_append(str_lit("%incl "), i64_to_string(datum_pos(x)));
+                let n = string_append(str_lit!("%incl "), i64_to_string(datum_pos(x)));
                 if null_p(made_module(get(cg_made()), n)) {
                     let made = parse_x(x);
                     set(cg_made(), kayak_rt::heap_cons(cmade(n, made), get(cg_made())));
-                    set(cg_included(), kayak_rt::heap_cons(clayout(n, spaced_words(fact_text(get(cg_facts()), datum_file(x), datum_pos(x), str_lit("with-spec ")))), get(cg_included())))
+                    set(cg_included(), kayak_rt::heap_cons(clayout(n, spaced_words(fact_text(get(cg_facts()), datum_file(x), datum_pos(x), str_lit!("with-spec ")))), get(cg_included())))
                 } else {
                     ()
                 };
                 return kayak_rt::heap_cons(cinc(n, hidden, datum_pos(f)), includes_of(cdr(forms), hidden));
-            } else if head_is_p(f, str_lit("include")) {
+            } else if head_is_p(f, str_lit!("include")) {
                 if i64_eq(size(items(f)), 2i64) {
                     return kayak_rt::heap_cons(cinc(sym_name(second(items(f))), hidden, datum_pos(f)), includes_of(cdr(forms), hidden));
                 } else {
-                    match cg_fail(str_lit("not yet: an include with exceptions")) {};
+                    match cg_fail(str_lit!("not yet: an include with exceptions")) {};
                     return nil::<kayak_rt::Handle<'static, Cinc>>();
                 }
-            } else if head_is_p(f, str_lit("hide")) {
+            } else if head_is_p(f, str_lit!("hide")) {
                 return onto(includes_of(cdr(items(f)), true), includes_of(cdr(forms), hidden));
             } else {
                 forms = cdr(forms);
@@ -4533,7 +4533,7 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
                 if null_p(xs) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
@@ -4542,18 +4542,18 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
                         }
                         _ => {
                             let other2 = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 }
             }
             _ => {
                 let other = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     };
-    if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
+    if (string_eq_p(h, str_lit!("define")) || string_eq_p(h, str_lit!("define*"))) {
         let xs = items(e);
         let typed = i64_eq(size(xs), 4i64);
         let n = sym_name(second(xs));
@@ -4564,9 +4564,9 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
         });
         note_layout_x(n, x);
         kayak_rt::heap_cons(cmem(n, x, kind, (typed && not(null_p(lambda_of(x)))), datum_pos(e)), kayak_rt::nil())
-    } else if string_eq_p(h, str_lit("define-rec")) {
+    } else if string_eq_p(h, str_lit!("define-rec")) {
         parse_rec_members(cdr(items(e)), kind)
-    } else if string_eq_p(h, str_lit("define-generative")) {
+    } else if string_eq_p(h, str_lit!("define-generative")) {
         map(kayak_rt::as_proc(kayak_rt::closure1s((e,), |(e,), t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
@@ -4575,11 +4575,11 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
                 }
                 _ => {
                     let y = tagcase_;
-                    cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
+                    cmem(str_lit!(""), x_unit(0i64), 0i64, false, 0i64)
                 }
             }
         })), generative_conversions(e, datum_pos(e)))
-    } else if string_eq_p(h, str_lit("define-datatype")) {
+    } else if string_eq_p(h, str_lit!("define-datatype")) {
         map(kayak_rt::as_proc(kayak_rt::closure1s((e, kind,), |(e, kind,), t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
@@ -4588,11 +4588,11 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
                 }
                 _ => {
                     let y = tagcase_;
-                    cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
+                    cmem(str_lit!(""), x_unit(0i64), 0i64, false, 0i64)
                 }
             }
         })), dt_constructors(cdr(cdr(items(e))), datum_pos(e)))
-    } else if string_eq_p(h, str_lit("import")) {
+    } else if string_eq_p(h, str_lit!("import")) {
         map(kayak_rt::as_proc(kayak_rt::closure1s((e, kind,), |(e, kind,), t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
@@ -4601,13 +4601,13 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
                 }
                 _ => {
                     let y = tagcase_;
-                    cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
+                    cmem(str_lit!(""), x_unit(0i64), 0i64, false, 0i64)
                 }
             }
         })), imports(e))
-    } else if string_eq_p(h, str_lit("hide")) {
+    } else if string_eq_p(h, str_lit!("hide")) {
         parse_items(cdr(items(e)), 1i64)
-    } else if (string_eq_p(h, str_lit("define-type")) || string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-convention")) || string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%loaded"))) {
+    } else if (string_eq_p(h, str_lit!("define-type")) || string_eq_p(h, str_lit!("define-effect")) || string_eq_p(h, str_lit!("define-convention")) || string_eq_p(h, str_lit!("include")) || string_eq_p(h, str_lit!("%loaded"))) {
         nil::<kayak_rt::Handle<'static, Cmem>>()
     } else if {
         let tagcase_ = e;
@@ -4623,7 +4623,7 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
     } {
         nil::<kayak_rt::Handle<'static, Cmem>>()
     } else {
-        match cg_fail(string_append(str_lit("not yet: a module's "), h)) {};
+        match cg_fail(string_append(str_lit!("not yet: a module's "), h)) {};
         nil::<kayak_rt::Handle<'static, Cmem>>()
     }
 }
@@ -4756,9 +4756,9 @@ pub fn parse_quoted(d: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Han
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            if string_eq_p(n, str_lit("#t")) {
+            if string_eq_p(n, str_lit!("#t")) {
                 x_bool(true, a)
-            } else if string_eq_p(n, str_lit("#f")) {
+            } else if string_eq_p(n, str_lit!("#f")) {
                 x_bool(false, a)
             } else if keyword_name_p(n) {
                 keyword_x(n, a)
@@ -4768,9 +4768,9 @@ pub fn parse_quoted(d: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Han
         }
         Sexp::Lst(ys, f, l, p) => {
             if null_p(ys) {
-                std_var(str_lit("nil"), a)
+                std_var(str_lit!("nil"), a)
             } else {
-                x_app(std_var(str_lit("%quote"), a), kayak_rt::heap_cons(quoted_item(d, a), kayak_rt::nil()), a)
+                x_app(std_var(str_lit!("%quote"), a), kayak_rt::heap_cons(quoted_item(d, a), kayak_rt::nil()), a)
             }
         }
         _ => {
@@ -4782,12 +4782,12 @@ pub fn parse_quoted(d: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Han
 
 pub fn quoted_list(ys: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     if null_p(ys) {
-        std_var(str_lit("nil"), a)
+        std_var(str_lit!("nil"), a)
     } else if ({
         let tagcase_ = car(ys);
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                string_eq_p(n, str_lit("."))
+                string_eq_p(n, str_lit!("."))
             }
             _ => {
                 let other = tagcase_;
@@ -4797,7 +4797,7 @@ pub fn quoted_list(ys: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     } && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys)))) {
         quoted_item(second(ys), a)
     } else {
-        x_app(std_var(str_lit("cons"), a), kayak_rt::heap_cons(quoted_item(car(ys), a), kayak_rt::heap_cons(quoted_list(cdr(ys), a), kayak_rt::nil())), a)
+        x_app(std_var(str_lit!("cons"), a), kayak_rt::heap_cons(quoted_item(car(ys), a), kayak_rt::heap_cons(quoted_list(cdr(ys), a), kayak_rt::nil())), a)
     }
 }
 
@@ -4805,9 +4805,9 @@ pub fn quoted_item(d: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Hand
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            if string_eq_p(n, str_lit("#t")) {
+            if string_eq_p(n, str_lit!("#t")) {
                 x_bool(true, a)
-            } else if string_eq_p(n, str_lit("#f")) {
+            } else if string_eq_p(n, str_lit!("#f")) {
                 x_bool(false, a)
             } else if keyword_name_p(n) {
                 keyword_x(n, a)
@@ -4820,7 +4820,7 @@ pub fn quoted_item(d: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Hand
                 let tagcase_ = car(ys);
                 match *tagcase_ {
                     Sexp::Sym(n, f2, p2) => {
-                        string_eq_p(n, str_lit("#vector"))
+                        string_eq_p(n, str_lit!("#vector"))
                     }
                     _ => {
                         let other = tagcase_;
@@ -4828,7 +4828,7 @@ pub fn quoted_item(d: kayak_rt::Handle<'static, Sexp>, a: i64) -> kayak_rt::Hand
                     }
                 }
             }) {
-                x_app(std_var(str_lit("list->vector"), a), kayak_rt::heap_cons(quoted_list(cdr(ys), a), kayak_rt::nil()), a)
+                x_app(std_var(str_lit!("list->vector"), a), kayak_rt::heap_cons(quoted_list(cdr(ys), a), kayak_rt::nil()), a)
             } else {
                 quoted_list(ys, a)
             }
@@ -4856,9 +4856,9 @@ pub fn quasi_in(x: kayak_rt::Handle<'static, Sexp>, depth: i64) -> kayak_rt::Han
             let tagcase_ = x;
             match *tagcase_ {
                 Sexp::Sym(n, f, p) => {
-                    if string_eq_p(n, str_lit("#t")) {
+                    if string_eq_p(n, str_lit!("#t")) {
                         x_bool(true, a)
-                    } else if string_eq_p(n, str_lit("#f")) {
+                    } else if string_eq_p(n, str_lit!("#f")) {
                         x_bool(false, a)
                     } else if keyword_name_p(n) {
                         keyword_x(n, a)
@@ -4868,10 +4868,10 @@ pub fn quasi_in(x: kayak_rt::Handle<'static, Sexp>, depth: i64) -> kayak_rt::Han
                 }
                 Sexp::Lst(ys, f, l, p) => {
                     if null_p(ys) {
-                        std_var(str_lit("nil"), a)
-                    } else if head_is_p(x, str_lit("#vector")) {
-                        x_app(std_var(str_lit("datum-list->vector"), a), kayak_rt::heap_cons(if null_p(cdr(ys)) {
-                            std_var(str_lit("nil"), a)
+                        std_var(str_lit!("nil"), a)
+                    } else if head_is_p(x, str_lit!("#vector")) {
+                        x_app(std_var(str_lit!("datum-list->vector"), a), kayak_rt::heap_cons(if null_p(cdr(ys)) {
+                            std_var(str_lit!("nil"), a)
                         } else {
                             q_items(cdr(ys), false, car(cdr(ys)), dq, a)
                         }, kayak_rt::nil()), a)
@@ -4888,7 +4888,7 @@ pub fn quasi_in(x: kayak_rt::Handle<'static, Sexp>, depth: i64) -> kayak_rt::Han
             }
         };
         if mark {
-            x_app(std_var(str_lit("%quote"), a), kayak_rt::heap_cons(built, kayak_rt::nil()), a)
+            x_app(std_var(str_lit!("%quote"), a), kayak_rt::heap_cons(built, kayak_rt::nil()), a)
         } else {
             built
         }
@@ -4904,10 +4904,10 @@ pub fn q_plain(items: Sexps, dotted: bool, tail: kayak_rt::Handle<'static, Sexp>
         if dotted {
             quasi_in(tail, -1i64)
         } else {
-            std_var(str_lit("nil"), a)
+            std_var(str_lit!("nil"), a)
         }
     } else {
-        x_app(std_var(str_lit("cons"), a), kayak_rt::heap_cons(quasi_in(car(items), -1i64), kayak_rt::heap_cons(q_plain(cdr(items), dotted, tail, a), kayak_rt::nil())), a)
+        x_app(std_var(str_lit!("cons"), a), kayak_rt::heap_cons(quasi_in(car(items), -1i64), kayak_rt::heap_cons(q_plain(cdr(items), dotted, tail, a), kayak_rt::nil())), a)
     }
 }
 
@@ -4916,20 +4916,20 @@ pub fn q_onto(items: Sexps, dotted: bool, tail: kayak_rt::Handle<'static, Sexp>,
         if dotted {
             quasi_in(tail, ldepth)
         } else {
-            std_var(str_lit("nil"), a)
+            std_var(str_lit!("nil"), a)
         }
     } else if (free_tail && not(first) && q_items_free_p(items, inner, inner)) {
-        x_app(std_var(str_lit("%quote"), a), kayak_rt::heap_cons(q_plain(items, dotted, tail, a), kayak_rt::nil()), a)
+        x_app(std_var(str_lit!("%quote"), a), kayak_rt::heap_cons(q_plain(items, dotted, tail, a), kayak_rt::nil()), a)
     } else {
         let (rest, spliced) = (q_onto(cdr(items), dotted, tail, ldepth, free_tail, inner, inner, false, a), if i64_eq(depth, 1i64) {
-            q_unquote_of(car(items), str_lit("unquote-splicing"))
+            q_unquote_of(car(items), str_lit!("unquote-splicing"))
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         });
         if null_p(spliced) {
-            x_app(std_var(str_lit("cons"), a), kayak_rt::heap_cons(quasi_in(car(items), depth), kayak_rt::heap_cons(rest, kayak_rt::nil())), a)
+            x_app(std_var(str_lit!("cons"), a), kayak_rt::heap_cons(quasi_in(car(items), depth), kayak_rt::heap_cons(rest, kayak_rt::nil())), a)
         } else {
-            x_app(std_var(str_lit("append"), a), kayak_rt::heap_cons(parse_x(car(spliced)), kayak_rt::heap_cons(rest, kayak_rt::nil())), a)
+            x_app(std_var(str_lit!("append"), a), kayak_rt::heap_cons(parse_x(car(spliced)), kayak_rt::heap_cons(rest, kayak_rt::nil())), a)
         }
     }
 }
@@ -4937,7 +4937,7 @@ pub fn q_onto(items: Sexps, dotted: bool, tail: kayak_rt::Handle<'static, Sexp>,
 /// A `tagcase`'s arms before its `else`: `(tag name body …)` or
 /// `(tag (name …) body …)`.
 pub fn parse_arms(arms: Sexps) -> List<kayak_rt::Handle<'static, Carm>> {
-    if (null_p(arms) || head_is_p(car(arms), str_lit("else"))) {
+    if (null_p(arms) || head_is_p(car(arms), str_lit!("else"))) {
         nil::<kayak_rt::Handle<'static, Carm>>()
     } else {
         let parts = items(car(arms));
@@ -4961,7 +4961,7 @@ pub fn parse_else(mut arms: Sexps) -> Cbinds {
     loop {
         if null_p(arms) {
             return nil::<kayak_rt::Handle<'static, Cbind>>();
-        } else if head_is_p(car(arms), str_lit("else")) {
+        } else if head_is_p(car(arms), str_lit!("else")) {
             let parts = items(car(arms));
             return kayak_rt::heap_cons(cbind(sym_name(second(parts)), parse_body(cdr(cdr(parts)), datum_pos(car(arms)))), kayak_rt::nil());
         } else {
@@ -4986,7 +4986,7 @@ pub fn parse_top(e: kayak_rt::Handle<'static, Sexp>) -> List<kayak_rt::Handle<'s
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
                 if null_p(xs) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
@@ -4995,18 +4995,18 @@ pub fn parse_top(e: kayak_rt::Handle<'static, Sexp>) -> List<kayak_rt::Handle<'s
                         }
                         _ => {
                             let other2 = tagcase_;
-                            str_lit("")
+                            str_lit!("")
                         }
                     }
                 }
             }
             _ => {
                 let other = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     };
-    if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
+    if (string_eq_p(h, str_lit!("define")) || string_eq_p(h, str_lit!("define*"))) {
         let xs = items(e);
         let typed = not(i64_eq(size(xs), 3i64));
         let n = sym_name(second(xs));
@@ -5031,21 +5031,21 @@ pub fn parse_top(e: kayak_rt::Handle<'static, Sexp>) -> List<kayak_rt::Handle<'s
             };
             kayak_rt::heap_cons(t_define(n, typed, x), kayak_rt::nil())
         }
-    } else if string_eq_p(h, str_lit("define-rec")) {
+    } else if string_eq_p(h, str_lit!("define-rec")) {
         kayak_rt::heap_cons(t_define_rec(parse_typed_binds(cdr(items(e)))), kayak_rt::nil())
-    } else if (string_eq_p(h, str_lit("define-type")) || string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-convention"))) {
+    } else if (string_eq_p(h, str_lit!("define-type")) || string_eq_p(h, str_lit!("define-effect")) || string_eq_p(h, str_lit!("define-convention"))) {
         nil::<kayak_rt::Handle<'static, Ctop>>()
-    } else if string_eq_p(h, str_lit("define-datatype")) {
+    } else if string_eq_p(h, str_lit!("define-datatype")) {
         dt_constructors(cdr(cdr(items(e))), datum_pos(e))
-    } else if string_eq_p(h, str_lit("define-generative")) {
+    } else if string_eq_p(h, str_lit!("define-generative")) {
         generative_conversions(e, datum_pos(e))
-    } else if string_eq_p(h, str_lit("import")) {
+    } else if string_eq_p(h, str_lit!("import")) {
         imports(e)
-    } else if string_eq_p(h, str_lit("include")) {
-        match cg_fail(string_append(str_lit("not yet: "), h)) {};
+    } else if string_eq_p(h, str_lit!("include")) {
+        match cg_fail(string_append(str_lit!("not yet: "), h)) {};
         nil::<kayak_rt::Handle<'static, Ctop>>()
-    } else if (string_eq_p(h, str_lit("define-syscall")) || string_eq_p(h, str_lit("define-optional-syscall"))) {
-        parse_syscall_tops(syscall_definitions(e, spaced_words(fact_text(get(cg_facts()), datum_file(e), datum_pos(e), str_lit("syscall ")))))
+    } else if (string_eq_p(h, str_lit!("define-syscall")) || string_eq_p(h, str_lit!("define-optional-syscall"))) {
+        parse_syscall_tops(syscall_definitions(e, spaced_words(fact_text(get(cg_facts()), datum_file(e), datum_pos(e), str_lit!("syscall ")))))
     } else {
         kayak_rt::heap_cons(t_exp(parse_x(e)), kayak_rt::nil())
     }
@@ -5299,7 +5299,7 @@ pub fn c_op1(c: Code, r: Str, x: kayak_rt::Handle<'static, Opnd>) -> () {
 
 #[inline]
 pub fn c_lit(c: Code, x: kayak_rt::Handle<'static, Lit>) -> () {
-    c_op1(c, str_lit("lit"), o_lit(x))
+    c_op1(c, str_lit!("lit"), o_lit(x))
 }
 
 #[inline]
@@ -5310,20 +5310,20 @@ pub fn c_int(c: Code, n: i64) -> () {
 // Field `k` of a bloblet whose type says it has one.
 #[inline]
 pub fn c_field(c: Code, k: i64) -> () {
-    c_op1(c, str_lit("field"), o_int(k))
+    c_op1(c, str_lit!("field"), o_int(k))
 }
 
 // Field `k` of the bloblet on top set to the value under it.
 #[inline]
 pub fn c_field_set(c: Code, k: i64) -> () {
     c_int(c, k);
-    c_op(c, str_lit("field!"))
+    c_op(c, str_lit!("field!"))
 }
 
 // A runtime primitive with `n` arguments.
 #[inline]
 pub fn c_prim(c: Code, name: Str, n: i64) -> () {
-    c_emit(c, it_ins(str_lit("prim"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_int(n), kayak_rt::nil()))))
+    c_emit(c, it_ins(str_lit!("prim"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_int(n), kayak_rt::nil()))))
 }
 
 // That the blobref on top has room for a flat of `size` bytes.
@@ -5331,7 +5331,7 @@ pub fn c_prim(c: Code, name: Str, n: i64) -> () {
 pub fn c_fits(c: Code, size: i64) -> () {
     if i64_gt(size, 1i64) {
         c_int(c, size);
-        c_prim(c, str_lit("%fx26-suffix-fits"), 2i64)
+        c_prim(c, str_lit!("%fx26-suffix-fits"), 2i64)
     } else {
         ()
     }
@@ -5345,7 +5345,7 @@ pub fn second_cx(xs: Cxs) -> kayak_rt::Handle<'static, Cx> {
 // Drop what a mutator left, and leave FX-26's unit value instead.
 #[inline]
 pub fn c_unit_after(c: Code) -> () {
-    c_op(c, str_lit("drop"));
+    c_op(c, str_lit!("drop"));
     c_lit(c, l_unit())
 }
 
@@ -5353,7 +5353,7 @@ pub fn c_unit_after(c: Code) -> () {
 #[inline]
 pub fn c_done(c: Code, tail: bool) -> () {
     if tail {
-        c_op(c, str_lit("return"))
+        c_op(c, str_lit!("return"))
     } else {
         ()
     }
@@ -5364,7 +5364,7 @@ pub fn c_drops(mut c: Code, mut k: i64) -> () {
         if i64_lt_eq(k, 0i64) {
             return ();
         } else {
-            c_op(c, str_lit("drop"));
+            c_op(c, str_lit!("drop"));
             k = i64_minus(k, 1i64);
             continue;
         }
@@ -5378,7 +5378,7 @@ pub fn c_unbind(c: Code, slot: i64, n: i64, tail: bool) -> () {
     if (tail || i64_eq(n, 0i64)) {
         ()
     } else {
-        c_op1(c, str_lit("slot!"), o_int(slot));
+        c_op1(c, str_lit!("slot!"), o_int(slot));
         c_drops(c, i64_minus(n, 1i64))
     }
 }
@@ -5428,7 +5428,7 @@ pub fn lit_escaped(s: Str, quote: char) -> Str {
     list_to_string(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((quote,), |(quote,), ch: char| {
         let k = char_to_i64(ch);
         if (char_eq_p(ch, quote) || i64_eq(k, 92i64) || i64_lt(k, 32i64) || i64_gt(k, 126i64)) {
-            string_chars(string_append(str_lit("\\x"), string_append(hex(k), str_lit(";"))))
+            string_chars(string_append(str_lit!("\\x"), string_append(hex(k), str_lit!(";"))))
         } else {
             the::<Chars>(kayak_rt::heap_cons(ch, kayak_rt::nil()))
         }
@@ -5490,40 +5490,40 @@ pub fn lit_text(l: kayak_rt::Handle<'static, Lit>) -> Str {
         }
         Lit::LBool(v) => {
             if v {
-                str_lit("#t")
+                str_lit!("#t")
             } else {
-                str_lit("#f")
+                str_lit!("#f")
             }
         }
         Lit::LUnit() => {
-            str_lit("|#u|")
+            str_lit!("|#u|")
         }
         Lit::LNil() => {
-            str_lit("()")
+            str_lit!("()")
         }
         Lit::LStr(s) => {
-            string_append(str_lit("\""), string_append(lit_escaped(s, '"'), str_lit("\"")))
+            string_append(str_lit!("\""), string_append(lit_escaped(s, '"'), str_lit!("\"")))
         }
         Lit::LChar(ch) => {
-            string_append(str_lit("#\\x"), hex(char_to_i64(ch)))
+            string_append(str_lit!("#\\x"), hex(char_to_i64(ch)))
         }
         Lit::LF64(b) => {
-            string_append(str_lit("#f64x"), hex_bits(b, 16i64, nil::<char>()))
+            string_append(str_lit!("#f64x"), hex_bits(b, 16i64, nil::<char>()))
         }
         Lit::LSym(s) => {
-            string_append(str_lit("|"), string_append(lit_escaped(s, '|'), str_lit("|")))
+            string_append(str_lit!("|"), string_append(lit_escaped(s, '|'), str_lit!("|")))
         }
         Lit::LPair(a, d) => {
-            string_append(str_lit("("), string_append(lit_text(a), string_append(str_lit(" . "), string_append(lit_text(d), str_lit(")")))))
+            string_append(str_lit!("("), string_append(lit_text(a), string_append(str_lit!(" . "), string_append(lit_text(d), str_lit!(")")))))
         }
         Lit::LWord(w) => {
-            string_append(str_lit("word "), shown_name(w))
+            string_append(str_lit!("word "), shown_name(w))
         }
         Lit::LQuoted(n) => {
             string_append(q_open(), string_append(i64_to_string(n), q_close()))
         }
         Lit::LFrozen(kind, fs) => {
-            string_append(str_lit("#bloblet("), string_append(kind, string_append(str_lit(" (#trailer "), string_append(i64_to_string(i64_plus(1i64, size(fs))), string_append(lits_text(fs), str_lit(") #u8())"))))))
+            string_append(str_lit!("#bloblet("), string_append(kind, string_append(str_lit!(" (#trailer "), string_append(i64_to_string(i64_plus(1i64, size(fs))), string_append(lits_text(fs), str_lit!(") #u8())"))))))
         }
     }
 }
@@ -5531,9 +5531,9 @@ pub fn lit_text(l: kayak_rt::Handle<'static, Lit>) -> Str {
 #[inline]
 pub fn lits_text(ls: List<kayak_rt::Handle<'static, Lit>>) -> Str {
     if null_p(ls) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(str_lit(" "), string_append(lit_text(car(ls)), lits_text(cdr(ls))))
+        string_append(str_lit!(" "), string_append(lit_text(car(ls)), lits_text(cdr(ls))))
     }
 }
 
@@ -5650,12 +5650,12 @@ pub fn second_opnd(os: List<kayak_rt::Handle<'static, Opnd>>) -> kayak_rt::Handl
 
 #[inline]
 pub fn line(at: i64, text: Str) -> Str {
-    string_append(str_lit("  "), string_append(padded(at), string_append(str_lit(": "), text)))
+    string_append(str_lit!("  "), string_append(padded(at), string_append(str_lit!(": "), text)))
 }
 
 #[inline]
 pub fn put_sep_lines(ss: Strings) -> Str {
-    string_list_append(strings_after(ss, str_lit("\n")))
+    string_list_append(strings_after(ss, str_lit!("\n")))
 }
 
 pub fn opnd_text(o: kayak_rt::Handle<'static, Opnd>) -> Str {
@@ -5668,7 +5668,7 @@ pub fn opnd_text(o: kayak_rt::Handle<'static, Opnd>) -> Str {
             lit_text(l)
         }
         Opnd::OWord(w) => {
-            string_append(str_lit("word "), shown_name(w))
+            string_append(str_lit!("word "), shown_name(w))
         }
         Opnd::OGlobal(g) => {
             g
@@ -5711,13 +5711,13 @@ pub fn words_said(os: List<kayak_rt::Handle<'static, Opnd>>) -> Strings {
 }
 
 pub fn ins_text(r: Str, os: List<kayak_rt::Handle<'static, Opnd>>) -> Str {
-    if string_eq_p(r, str_lit("closure")) {
-        string_append(str_lit("closure "), string_append(opnd_text(car(os)), string_append(str_lit(" over "), opnd_text(second_opnd(os)))))
+    if string_eq_p(r, str_lit!("closure")) {
+        string_append(str_lit!("closure "), string_append(opnd_text(car(os)), string_append(str_lit!(" over "), opnd_text(second_opnd(os)))))
     } else {
         if null_p(os) {
             r
         } else {
-            string_append(r, string_append(str_lit(" "), put_sep_words(map(kayak_rt::as_proc(opnd_text), os))))
+            string_append(r, string_append(str_lit!(" "), put_sep_words(map(kayak_rt::as_proc(opnd_text), os))))
         }
     }
 }
@@ -5757,11 +5757,11 @@ pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<kayak_rt::Handle
                     continue;
                 }
                 Item::ItBranch(n) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(line(at, string_append(str_lit("branch → "), i64_to_string(place_at(ps, n)))), out));
+                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(line(at, string_append(str_lit!("branch → "), i64_to_string(place_at(ps, n)))), out));
                     continue;
                 }
                 Item::ItZbranch(n) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(line(at, string_append(str_lit("0branch → "), i64_to_string(place_at(ps, n)))), out));
+                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(line(at, string_append(str_lit!("0branch → "), i64_to_string(place_at(ps, n)))), out));
                     continue;
                 }
                 Item::ItIns(r, os) => {
@@ -5845,9 +5845,9 @@ pub fn c_assemble(c: Code, name: Str) -> Str {
     let own = if i64_eq(k, 0i64) {
         name
     } else if i64_eq(k, 1i64) {
-        string_append(name, string_append(str_lit("\t"), n))
+        string_append(name, string_append(str_lit!("\t"), n))
     } else {
-        string_append(name, string_append(str_lit("~"), n))
+        string_append(name, string_append(str_lit!("~"), n))
     };
     set(cg_words(), kayak_rt::heap_cons(word(own, xs), get(cg_words())));
     own
@@ -5982,7 +5982,7 @@ pub fn cg_aliases() -> Ref<List<Strings>> {
 pub fn alias_of(mut al: List<Strings>, mut n: Str) -> Str {
     loop {
         if null_p(al) {
-            return str_lit("");
+            return str_lit!("");
         } else if string_eq_p(car(car(al)), n) {
             return second_word(car(al));
         } else {
@@ -6001,14 +6001,14 @@ pub fn c_where(e: Cenv, n: Str) -> Found {
         c_find(e, n)
     };
     if top_marked_p(n) {
-        if global_p(after_prefix(n, str_lit("#%top:"))) {
-            kayak_rt::heap_cons(at_global(after_prefix(n, str_lit("#%top:"))), kayak_rt::nil())
+        if global_p(after_prefix(n, str_lit!("#%top:"))) {
+            kayak_rt::heap_cons(at_global(after_prefix(n, str_lit!("#%top:"))), kayak_rt::nil())
         } else {
             nil::<kayak_rt::Handle<'static, Loc>>()
         }
     } else if not(null_p(l)) {
         l
-    } else if not(string_eq_p(alias_of(get(cg_aliases()), n), str_lit(""))) {
+    } else if not(string_eq_p(alias_of(get(cg_aliases()), n), str_lit!(""))) {
         kayak_rt::heap_cons(at_global(alias_of(get(cg_aliases()), n)), kayak_rt::nil())
     } else if global_p(n) {
         kayak_rt::heap_cons(at_global(n), kayak_rt::nil())
@@ -6021,19 +6021,19 @@ pub fn c_load(c: Code, l: kayak_rt::Handle<'static, Loc>) -> () {
     let tagcase_ = l;
     match *tagcase_ {
         Loc::AtSlot(i) => {
-            c_op1(c, str_lit("slot"), o_int(i))
+            c_op1(c, str_lit!("slot"), o_int(i))
         }
         Loc::AtFree(i) => {
-            c_op1(c, str_lit("free"), o_int(i))
+            c_op1(c, str_lit!("free"), o_int(i))
         }
         Loc::AtGlobal(g) => {
-            c_op1(c, str_lit("global"), o_global(g))
+            c_op1(c, str_lit!("global"), o_global(g))
         }
         Loc::AtPending(i) => {
-            match cg_fail(str_lit("a letrec sibling not made yet is only captured")) {}
+            match cg_fail(str_lit!("a letrec sibling not made yet is only captured")) {}
         }
         Loc::AtLoop() => {
-            match cg_fail(str_lit("a loop is only ever called, in tail position")) {}
+            match cg_fail(str_lit!("a loop is only ever called, in tail position")) {}
         }
     }
 }
@@ -6303,7 +6303,7 @@ pub fn this(f0: Str, f1: kayak_rt::Handle<'static, Loc>, f2: i64) -> kayak_rt::H
 pub fn c_this_name() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
-        kayak_rt::heap_new(str_lit("none"))
+        kayak_rt::heap_new(str_lit!("none"))
     })
 }
 
@@ -6403,7 +6403,7 @@ pub fn c_loop_stores(mut c: Code, mut i: i64) -> () {
         if i64_lt(i, 0i64) {
             return ();
         } else {
-            c_op1(c, str_lit("slot!"), o_int(i));
+            c_op1(c, str_lit!("slot!"), o_int(i));
             i = i64_minus(i, 1i64);
             continue;
         }
@@ -6560,12 +6560,12 @@ pub fn c_word_base(named: Strings, own: Strings, bound: Strings) -> Str {
         } else if not(null_p(bound)) {
             car(bound)
         } else {
-            str_lit("lambda")
+            str_lit!("lambda")
         }, get(c_scope_name()));
         if null_p(scope) {
             inner
         } else {
-            string_append(car(scope), string_append(str_lit("/"), inner))
+            string_append(car(scope), string_append(str_lit!("/"), inner))
         }
     } else {
         car(named)
@@ -6575,7 +6575,7 @@ pub fn c_word_base(named: Strings, own: Strings, bound: Strings) -> Str {
 #[inline]
 pub fn c_word_symbol(base: Str, named: Strings, body: kayak_rt::Handle<'static, Cx>) -> Str {
     if null_p(named) {
-        string_append(base, string_append(str_lit("@"), filed_place_written(cx_start(body))))
+        string_append(base, string_append(str_lit!("@"), filed_place_written(cx_start(body))))
     } else {
         car(named)
     }
@@ -6584,12 +6584,12 @@ pub fn c_word_symbol(base: Str, named: Strings, body: kayak_rt::Handle<'static, 
 // Whether `name` is an equality of the same word, as `eq` does it.
 #[inline]
 pub fn std_eq_name_p(n: Str) -> bool {
-    (string_eq_p(n, str_lit("char=?")) || string_eq_p(n, str_lit("symbol=?")) || string_eq_p(n, str_lit("wglobal=?")) || string_eq_p(n, str_lit("eq?")) || string_eq_p(n, str_lit("bool=?")))
+    (string_eq_p(n, str_lit!("char=?")) || string_eq_p(n, str_lit!("symbol=?")) || string_eq_p(n, str_lit!("wglobal=?")) || string_eq_p(n, str_lit!("eq?")) || string_eq_p(n, str_lit!("bool=?")))
 }
 
 #[inline]
 pub fn std_nil_name_p(n: Str) -> bool {
-    (string_eq_p(n, str_lit("nil")) || string_eq_p(n, str_lit("no-pair")))
+    (string_eq_p(n, str_lit!("nil")) || string_eq_p(n, str_lit!("no-pair")))
 }
 
 #[inline]
@@ -6603,10 +6603,10 @@ pub fn std_primitive(n: Str) -> Str {
 // `stubs.fx`).
 pub fn subr_params(mut t: kayak_rt::Handle<'static, Sexp>) -> i64 {
     loop {
-        if head_is_p(t, str_lit("poly")) {
+        if head_is_p(t, str_lit!("poly")) {
             t = car(cdr(cdr(items(t))));
             continue;
-        } else if head_is_p(t, str_lit("subr")) {
+        } else if head_is_p(t, str_lit!("subr")) {
             return size(items(car(cdr(cdr(items(t))))));
         } else {
             return -1i64;
@@ -6640,7 +6640,7 @@ pub fn cg_primitive_forms() -> Ref<List<Sexps>> {
 
 pub fn primitive_forms() -> Sexps {
     if null_p(get(cg_primitive_forms())) {
-        let fs = read_all(primitives(), str_lit("kayak-rt's primitives"), 1i64);
+        let fs = read_all(primitives(), str_lit!("kayak-rt's primitives"), 1i64);
         set(cg_primitive_forms(), kayak_rt::heap_cons(fs, kayak_rt::nil()));
         fs
     } else {
@@ -6652,7 +6652,7 @@ pub fn primitive_forms() -> Sexps {
 pub fn c_arity_one_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("cwcc"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("f32?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("nat?"), kayak_rt::nil())))))))))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("car"), kayak_rt::heap_cons(str_lit!("cdr"), kayak_rt::heap_cons(str_lit!("null?"), kayak_rt::heap_cons(str_lit!("not"), kayak_rt::heap_cons(str_lit!("new"), kayak_rt::heap_cons(str_lit!("get"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::heap_cons(str_lit!("string-length"), kayak_rt::heap_cons(str_lit!("char->string"), kayak_rt::heap_cons(str_lit!("symbol->string"), kayak_rt::heap_cons(str_lit!("string->symbol"), kayak_rt::heap_cons(str_lit!("array-length"), kayak_rt::heap_cons(str_lit!("current-marks"), kayak_rt::heap_cons(str_lit!("cwcc"), kayak_rt::heap_cons(str_lit!("int?"), kayak_rt::heap_cons(str_lit!("string?"), kayak_rt::heap_cons(str_lit!("bool?"), kayak_rt::heap_cons(str_lit!("char?"), kayak_rt::heap_cons(str_lit!("symbol?"), kayak_rt::heap_cons(str_lit!("pair?"), kayak_rt::heap_cons(str_lit!("procedure?"), kayak_rt::heap_cons(str_lit!("f64?"), kayak_rt::heap_cons(str_lit!("f32?"), kayak_rt::heap_cons(str_lit!("ref?"), kayak_rt::heap_cons(str_lit!("sum?"), kayak_rt::heap_cons(str_lit!("product?"), kayak_rt::heap_cons(str_lit!("bytevector?"), kayak_rt::heap_cons(str_lit!("vector?"), kayak_rt::heap_cons(str_lit!("array?"), kayak_rt::heap_cons(str_lit!("nat?"), kayak_rt::nil())))))))))))))))))))))))))))))))
     })
 }
 
@@ -6662,7 +6662,7 @@ pub fn c_arity_one_names() -> Strings {
 pub fn c_arity_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("make-escape-tag"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::nil())))
+        kayak_rt::heap_cons(str_lit!("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit!("make-escape-tag"), kayak_rt::heap_cons(str_lit!("make-continuation-mark-key"), kayak_rt::nil())))
     })
 }
 
@@ -6672,7 +6672,7 @@ pub fn c_arity_names() -> Strings {
 pub fn c_arity_names_2() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("%sched"), kayak_rt::nil()))))
+        kayak_rt::heap_cons(str_lit!("with-mark"), kayak_rt::heap_cons(str_lit!("array-set!"), kayak_rt::heap_cons(str_lit!("substring"), kayak_rt::heap_cons(str_lit!("%sched"), kayak_rt::nil()))))
     })
 }
 
@@ -6681,7 +6681,7 @@ pub fn c_arity_names_2() -> Strings {
 pub fn c_arity_names_3() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::nil())))))))))))))))))))))))))
+        kayak_rt::heap_cons(str_lit!("+"), kayak_rt::heap_cons(str_lit!("-"), kayak_rt::heap_cons(str_lit!("*"), kayak_rt::heap_cons(str_lit!("<"), kayak_rt::heap_cons(str_lit!(">"), kayak_rt::heap_cons(str_lit!("<="), kayak_rt::heap_cons(str_lit!(">="), kayak_rt::heap_cons(str_lit!("="), kayak_rt::heap_cons(str_lit!("modulo"), kayak_rt::heap_cons(str_lit!("quotient"), kayak_rt::heap_cons(str_lit!("cons"), kayak_rt::heap_cons(str_lit!("set-car!"), kayak_rt::heap_cons(str_lit!("set-cdr!"), kayak_rt::heap_cons(str_lit!("char=?"), kayak_rt::heap_cons(str_lit!("string=?"), kayak_rt::heap_cons(str_lit!("array-ref"), kayak_rt::heap_cons(str_lit!("string-ref"), kayak_rt::heap_cons(str_lit!("make-array"), kayak_rt::heap_cons(str_lit!("abort-current-continuation"), kayak_rt::heap_cons(str_lit!("escape"), kayak_rt::heap_cons(str_lit!("set"), kayak_rt::heap_cons(str_lit!("marks-of"), kayak_rt::heap_cons(str_lit!("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit!("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit!("first-mark"), kayak_rt::nil())))))))))))))))))))))))))
     })
 }
 
@@ -6707,7 +6707,7 @@ pub fn c_arity(n: Str) -> i64 {
 #[inline]
 pub fn c_not(c: Code) -> () {
     c_lit(c, l_bool(false));
-    c_op(c, str_lit("eq"))
+    c_op(c, str_lit!("eq"))
 }
 
 // The index on top made the field it is in an array, whose elements are
@@ -6715,7 +6715,7 @@ pub fn c_not(c: Code) -> () {
 #[inline]
 pub fn c_array_index(c: Code) -> () {
     c_int(c, 2i64);
-    c_op(c, str_lit("int-add"))
+    c_op(c, str_lit!("int-add"))
 }
 
 // Names `c-standard-on` tests against, made once (C264): a list written in place is
@@ -6724,103 +6724,103 @@ pub fn c_array_index(c: Code) -> () {
 pub fn c_standard_on_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("list->vector"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil())))))))))))
+        kayak_rt::heap_cons(str_lit!("modulo"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::heap_cons(str_lit!("string-append"), kayak_rt::heap_cons(str_lit!("string-length"), kayak_rt::heap_cons(str_lit!("string-ref"), kayak_rt::heap_cons(str_lit!("list->vector"), kayak_rt::heap_cons(str_lit!("substring"), kayak_rt::heap_cons(str_lit!("string=?"), kayak_rt::heap_cons(str_lit!("string->symbol"), kayak_rt::heap_cons(str_lit!("symbol->string"), kayak_rt::nil())))))))))))
     })
 }
 
 pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
-    if string_eq_p(name, str_lit("+")) {
-        c_op(c, str_lit("int-add"))
-    } else if string_eq_p(name, str_lit("-")) {
-        c_op(c, str_lit("int-sub"))
-    } else if string_eq_p(name, str_lit("<")) {
-        c_op(c, str_lit("int-less"))
-    } else if string_eq_p(name, str_lit(">")) {
-        c_op(c, str_lit("swap"));
-        c_op(c, str_lit("int-less"))
-    } else if string_eq_p(name, str_lit("<=")) {
-        c_op(c, str_lit("swap"));
-        c_op(c, str_lit("int-less"));
+    if string_eq_p(name, str_lit!("+")) {
+        c_op(c, str_lit!("int-add"))
+    } else if string_eq_p(name, str_lit!("-")) {
+        c_op(c, str_lit!("int-sub"))
+    } else if string_eq_p(name, str_lit!("<")) {
+        c_op(c, str_lit!("int-less"))
+    } else if string_eq_p(name, str_lit!(">")) {
+        c_op(c, str_lit!("swap"));
+        c_op(c, str_lit!("int-less"))
+    } else if string_eq_p(name, str_lit!("<=")) {
+        c_op(c, str_lit!("swap"));
+        c_op(c, str_lit!("int-less"));
         c_not(c)
-    } else if string_eq_p(name, str_lit(">=")) {
-        c_op(c, str_lit("int-less"));
+    } else if string_eq_p(name, str_lit!(">=")) {
+        c_op(c, str_lit!("int-less"));
         c_not(c)
-    } else if string_eq_p(name, str_lit("=")) {
-        c_op(c, str_lit("int-eq"))
-    } else if string_eq_p(name, str_lit("cons")) {
-        c_op(c, str_lit("cons"))
-    } else if string_eq_p(name, str_lit("car")) {
-        c_op(c, str_lit("pair-car"))
-    } else if string_eq_p(name, str_lit("cdr")) {
-        c_op(c, str_lit("pair-cdr"))
-    } else if (string_eq_p(name, str_lit("set-car!")) || string_eq_p(name, str_lit("set-cdr!"))) {
+    } else if string_eq_p(name, str_lit!("=")) {
+        c_op(c, str_lit!("int-eq"))
+    } else if string_eq_p(name, str_lit!("cons")) {
+        c_op(c, str_lit!("cons"))
+    } else if string_eq_p(name, str_lit!("car")) {
+        c_op(c, str_lit!("pair-car"))
+    } else if string_eq_p(name, str_lit!("cdr")) {
+        c_op(c, str_lit!("pair-cdr"))
+    } else if (string_eq_p(name, str_lit!("set-car!")) || string_eq_p(name, str_lit!("set-cdr!"))) {
         c_prim(c, name, 2i64);
         c_unit_after(c)
-    } else if string_eq_p(name, str_lit("new")) {
-        c_prim(c, str_lit("%make-box"), 1i64)
-    } else if string_eq_p(name, str_lit("get")) {
+    } else if string_eq_p(name, str_lit!("new")) {
+        c_prim(c, str_lit!("%make-box"), 1i64)
+    } else if string_eq_p(name, str_lit!("get")) {
         c_field(c, 2i64)
-    } else if string_eq_p(name, str_lit("set")) {
-        c_op(c, str_lit("swap"));
+    } else if string_eq_p(name, str_lit!("set")) {
+        c_op(c, str_lit!("swap"));
         c_field_set(c, 2i64);
         c_lit(c, l_unit())
-    } else if string_eq_p(name, str_lit("null?")) {
+    } else if string_eq_p(name, str_lit!("null?")) {
         c_lit(c, l_nil());
-        c_op(c, str_lit("eq"))
-    } else if string_eq_p(name, str_lit("not")) {
+        c_op(c, str_lit!("eq"))
+    } else if string_eq_p(name, str_lit!("not")) {
         c_not(c)
-    } else if string_eq_p(name, str_lit("char->string")) {
-        c_prim(c, str_lit("string"), 1i64)
-    } else if (string_eq_p(name, str_lit("make-continuation-prompt-tag")) || string_eq_p(name, str_lit("make-escape-tag")) || string_eq_p(name, str_lit("make-continuation-mark-key"))) {
+    } else if string_eq_p(name, str_lit!("char->string")) {
+        c_prim(c, str_lit!("string"), 1i64)
+    } else if (string_eq_p(name, str_lit!("make-continuation-prompt-tag")) || string_eq_p(name, str_lit!("make-escape-tag")) || string_eq_p(name, str_lit!("make-continuation-mark-key"))) {
         c_lit(c, l_unit());
-        c_prim(c, str_lit("%make-box"), 1i64)
-    } else if (string_eq_p(name, str_lit("abort-current-continuation")) || string_eq_p(name, str_lit("escape"))) {
-        c_op(c, str_lit("abort"))
-    } else if string_eq_p(name, str_lit("call-with-composable-continuation")) {
-        c_op(c, str_lit("callcomp"))
-    } else if string_eq_p(name, str_lit("call-with-oneshot-continuation")) {
-        c_op(c, str_lit("callone"))
-    } else if string_eq_p(name, str_lit("cwcc")) {
-        c_op(c, str_lit("callcc"))
-    } else if string_eq_p(name, str_lit("with-mark")) {
-        c_op(c, str_lit("withmark"))
-    } else if string_eq_p(name, str_lit("first-mark")) {
-        c_op(c, str_lit("firstmark"))
-    } else if string_eq_p(name, str_lit("current-marks")) {
-        c_op(c, str_lit("currentmarks"))
-    } else if string_eq_p(name, str_lit("marks-of")) {
-        c_op(c, str_lit("marksof"))
-    } else if string_eq_p(name, str_lit("array-ref")) {
+        c_prim(c, str_lit!("%make-box"), 1i64)
+    } else if (string_eq_p(name, str_lit!("abort-current-continuation")) || string_eq_p(name, str_lit!("escape"))) {
+        c_op(c, str_lit!("abort"))
+    } else if string_eq_p(name, str_lit!("call-with-composable-continuation")) {
+        c_op(c, str_lit!("callcomp"))
+    } else if string_eq_p(name, str_lit!("call-with-oneshot-continuation")) {
+        c_op(c, str_lit!("callone"))
+    } else if string_eq_p(name, str_lit!("cwcc")) {
+        c_op(c, str_lit!("callcc"))
+    } else if string_eq_p(name, str_lit!("with-mark")) {
+        c_op(c, str_lit!("withmark"))
+    } else if string_eq_p(name, str_lit!("first-mark")) {
+        c_op(c, str_lit!("firstmark"))
+    } else if string_eq_p(name, str_lit!("current-marks")) {
+        c_op(c, str_lit!("currentmarks"))
+    } else if string_eq_p(name, str_lit!("marks-of")) {
+        c_op(c, str_lit!("marksof"))
+    } else if string_eq_p(name, str_lit!("array-ref")) {
         c_array_index(c);
-        c_op(c, str_lit("field@"))
-    } else if string_eq_p(name, str_lit("array-set!")) {
-        c_op(c, str_lit("swap"));
+        c_op(c, str_lit!("field@"))
+    } else if string_eq_p(name, str_lit!("array-set!")) {
+        c_op(c, str_lit!("swap"));
         c_array_index(c);
-        c_op(c, str_lit("swap"));
-        c_prim(c, str_lit("%bloblet-set!"), 3i64);
+        c_op(c, str_lit!("swap"));
+        c_prim(c, str_lit!("%bloblet-set!"), 3i64);
         c_unit_after(c)
-    } else if string_eq_p(name, str_lit("apply")) {
-        c_op(c, str_lit("swap"));
+    } else if string_eq_p(name, str_lit!("apply")) {
+        c_op(c, str_lit!("swap"));
         c_field(c, 3i64);
-        c_op1(c, str_lit("call"), o_int(1i64))
-    } else if string_eq_p(name, str_lit("array-length")) {
-        c_prim(c, str_lit("%bloblet-fields"), 1i64);
+        c_op1(c, str_lit!("call"), o_int(1i64))
+    } else if string_eq_p(name, str_lit!("array-length")) {
+        c_prim(c, str_lit!("%bloblet-fields"), 1i64);
         c_int(c, 1i64);
-        c_op(c, str_lit("int-sub"))
+        c_op(c, str_lit!("int-sub"))
     } else if string_member_p(name, c_standard_on_names()) {
         c_prim(c, name, n)
-    } else if string_eq_p(name, str_lit("%fx26-convert")) {
+    } else if string_eq_p(name, str_lit!("%fx26-convert")) {
         c_prim(c, name, n)
-    } else if (string_eq_p(name, str_lit("%kayak-stage-run")) || string_eq_p(name, str_lit("%kayak-reify")) || string_eq_p(name, str_lit("%kayak-session-run"))) {
+    } else if (string_eq_p(name, str_lit!("%kayak-stage-run")) || string_eq_p(name, str_lit!("%kayak-reify")) || string_eq_p(name, str_lit!("%kayak-session-run"))) {
         c_prim(c, name, n)
     } else if std_eq_name_p(name) {
-        c_op(c, str_lit("eq"))
+        c_op(c, str_lit!("eq"))
     } else {
         let p = std_primitive(name);
-        if string_eq_p(p, str_lit("%fx26-identity")) {
+        if string_eq_p(p, str_lit!("%fx26-identity")) {
             ()
-        } else if string_eq_p(p, str_lit("")) {
-            match cg_fail(string_append(str_lit("not yet compiled: "), name)) {}
+        } else if string_eq_p(p, str_lit!("")) {
+            match cg_fail(string_append(str_lit!("not yet compiled: "), name)) {}
         } else {
             c_prim(c, p, n)
         }
@@ -6831,20 +6831,20 @@ pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
 // the operation of one list that its value applies; "" for the rest.
 #[inline]
 pub fn c_vsubr_list_op(n: Str) -> Str {
-    if string_eq_p(n, str_lit("list")) {
-        str_lit("datum-list")
-    } else if string_eq_p(n, str_lit("append")) {
-        str_lit("%append-list")
-    } else if string_eq_p(n, str_lit("string-append")) {
-        str_lit("%string-append-list")
+    if string_eq_p(n, str_lit!("list")) {
+        str_lit!("datum-list")
+    } else if string_eq_p(n, str_lit!("append")) {
+        str_lit!("%append-list")
+    } else if string_eq_p(n, str_lit!("string-append")) {
+        str_lit!("%string-append-list")
     } else {
-        str_lit("")
+        str_lit!("")
     }
 }
 
 #[inline]
 pub fn c_vsubr_p(n: Str) -> bool {
-    not(string_eq_p(c_vsubr_list_op(n), str_lit("")))
+    not(string_eq_p(c_vsubr_list_op(n), str_lit!("")))
 }
 
 // The words made of standard operations as values, by name.
@@ -6861,7 +6861,7 @@ pub fn c_params_pushed(mut c: Code, mut i: i64, mut n: i64) -> () {
         if i64_eq(i, n) {
             return ();
         } else {
-            c_op1(c, str_lit("slot"), o_int(i));
+            c_op1(c, str_lit!("slot"), o_int(i));
             i = i64_plus(i, 1i64);
             continue;
         }
@@ -6877,19 +6877,19 @@ pub fn c_standard_word(name: Str) -> Str {
     } else {
         let (n, body) = (c_arity(name), the::<Code>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Item>>())));
         if c_vsubr_p(name) {
-            c_op1(body, str_lit("slot"), o_int(0i64));
+            c_op1(body, str_lit!("slot"), o_int(0i64));
             c_standard_on(c_vsubr_list_op(name), 1i64, body)
         } else if i64_lt(n, 0i64) {
-            match cg_fail(string_append(str_lit("not yet compiled as a value: "), name)) {}
-        } else if string_eq_p(name, str_lit("make-array")) {
+            match cg_fail(string_append(str_lit!("not yet compiled as a value: "), name)) {}
+        } else if string_eq_p(name, str_lit!("make-array")) {
             c_int(body, 0i64);
             c_params_pushed(body, 0i64, n);
-            c_prim(body, str_lit("%make-bloblet-filled"), 3i64)
+            c_prim(body, str_lit!("%make-bloblet-filled"), 3i64)
         } else {
             c_params_pushed(body, 0i64, n);
             c_standard_on(name, n, body)
         };
-        c_op(body, str_lit("return"));
+        c_op(body, str_lit!("return"));
         set(cg_standard_words(), kayak_rt::heap_cons(name, get(cg_standard_words())));
         let w = c_assemble(body, name);
         set(cg_standard_twins(), kayak_rt::heap_cons(if c_vsubr_p(name) {
@@ -6905,9 +6905,9 @@ pub fn c_standard_word(name: Str) -> Str {
 // `vsubr`'s given to `%fx26-vlambda`.
 pub fn c_standard_value(name: Str, c: Code) -> () {
     let w = c_standard_word(name);
-    c_emit(c, it_ins(str_lit("closure"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(0i64), kayak_rt::nil()))));
+    c_emit(c, it_ins(str_lit!("closure"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(0i64), kayak_rt::nil()))));
     if c_vsubr_p(name) {
-        c_prim(c, str_lit("%fx26-vlambda"), 1i64)
+        c_prim(c, str_lit!("%fx26-vlambda"), 1i64)
     } else {
         ()
     }
@@ -6924,12 +6924,12 @@ pub fn c_standard_name(f: kayak_rt::Handle<'static, Cx>, e: Cenv) -> Str {
             } else if null_p(c_where(e, n)) {
                 std_named(n)
             } else {
-                str_lit("")
+                str_lit!("")
             }
         }
         _ => {
             let y = tagcase_;
-            str_lit("")
+            str_lit!("")
         }
     }
 }
@@ -6952,7 +6952,7 @@ pub fn c_quoted_cell(x: kayak_rt::Handle<'static, Cx>) -> List<kayak_rt::Handle<
             kayak_rt::heap_cons(l_sym(s), kayak_rt::nil())
         }
         Cx::XVar(n, a) => {
-            if string_eq_p(std_named(n), str_lit("nil")) {
+            if string_eq_p(std_named(n), str_lit!("nil")) {
                 kayak_rt::heap_cons(l_nil(), kayak_rt::nil())
             } else {
                 nil::<kayak_rt::Handle<'static, Lit>>()
@@ -6963,7 +6963,7 @@ pub fn c_quoted_cell(x: kayak_rt::Handle<'static, Cx>) -> List<kayak_rt::Handle<
                 let tagcase_ = f;
                 match *tagcase_ {
                     Cx::XVar(n, b) => {
-                        string_eq_p(std_named(n), str_lit("cons"))
+                        string_eq_p(std_named(n), str_lit!("cons"))
                     }
                     _ => {
                         let y = tagcase_;
@@ -7253,11 +7253,11 @@ pub fn c_push_all(xs: Strings, e: Cenv, j: i64, c: Code) -> Patches {
             let tagcase_ = car(c_find(e, car(xs)));
             match *tagcase_ {
                 Loc::AtSlot(i) => {
-                    c_op1(c, str_lit("slot"), o_int(i));
+                    c_op1(c, str_lit!("slot"), o_int(i));
                     the::<i64>(-1i64)
                 }
                 Loc::AtFree(i) => {
-                    c_op1(c, str_lit("free"), o_int(i));
+                    c_op1(c, str_lit!("free"), o_int(i));
                     the::<i64>(-1i64)
                 }
                 Loc::AtPending(s) => {
@@ -7266,7 +7266,7 @@ pub fn c_push_all(xs: Strings, e: Cenv, j: i64, c: Code) -> Patches {
                 }
                 _ => {
                     let y = tagcase_;
-                    match cg_fail(str_lit("a global or a loop is not captured")) {};
+                    match cg_fail(str_lit!("a global or a loop is not captured")) {};
                     the::<i64>(-1i64)
                 }
             }
@@ -7286,7 +7286,7 @@ pub fn c_members(mut ns: Strings, mut e: Cenv, mut sum_slot: i64, mut slot: i64,
         if null_p(ns) {
             return e;
         } else {
-            c_op1(c, str_lit("slot"), o_int(i64_plus(sum_slot, 1i64)));
+            c_op1(c, str_lit!("slot"), o_int(i64_plus(sum_slot, 1i64)));
             c_field(c, i64_plus(j, 2i64));
             (ns, e, slot, j) = (cdr(ns), c_extend(car(ns), at_slot(slot), e), i64_plus(slot, 1i64), i64_plus(j, 1i64));
             continue;
@@ -7341,8 +7341,8 @@ pub fn c_patch_one(mut ps: Patches, mut depth: i64, mut i: i64, mut c: Code) -> 
             let tagcase_ = car(ps);
             match *tagcase_ {
                 Patch::Patch(j, s) => {
-                    c_op1(c, str_lit("slot"), o_int(s));
-                    c_op1(c, str_lit("slot"), o_int(i64_plus(depth, i)));
+                    c_op1(c, str_lit!("slot"), o_int(s));
+                    c_op1(c, str_lit!("slot"), o_int(i64_plus(depth, i)));
                     c_field_set(c, i64_plus(3i64, j));
                     ps = cdr(ps);
                     continue;
@@ -7440,8 +7440,8 @@ pub fn c_give_waiting(mut c: Code, mut ws: List<kayak_rt::Handle<'static, Wait>>
             match *tagcase_ {
                 Wait::Wait(at, j, s) => {
                     if i64_eq(s, d) {
-                        c_op1(c, str_lit("slot"), o_int(d));
-                        c_op1(c, str_lit("slot"), o_int(at));
+                        c_op1(c, str_lit!("slot"), o_int(d));
+                        c_op1(c, str_lit!("slot"), o_int(at));
                         c_field_set(c, i64_plus(3i64, j))
                     } else {
                         ()
@@ -7459,7 +7459,7 @@ pub fn c_slots_load(mut c: Code, mut ss: List<i64>) -> () {
         if null_p(ss) {
             return ();
         } else {
-            c_op1(c, str_lit("slot"), o_int(car(ss)));
+            c_op1(c, str_lit!("slot"), o_int(car(ss)));
             ss = cdr(ss);
             continue;
         }
@@ -7485,7 +7485,7 @@ pub fn c_reshape_fields(mut c: Code, mut d: i64, mut ps: Paths) -> () {
         if null_p(ps) {
             return ();
         } else {
-            c_op1(c, str_lit("slot"), o_int(d));
+            c_op1(c, str_lit!("slot"), o_int(d));
             c_fields_in(c, car(ps));
             ps = cdr(ps);
             continue;
@@ -7584,7 +7584,7 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
                 }
                 _ => {
                     let y = tagcase_;
-                    match cg_fail(str_lit("an rlambda's lambda")) {}
+                    match cg_fail(str_lit!("an rlambda's lambda")) {}
                 }
             }
         }
@@ -7596,7 +7596,7 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
             c_exp(t, e, depth, c, false);
             c_exp(h, e, i64_plus(depth, 1i64), c, false);
             c_lambda(nil::<Str>(), body, e, i64_plus(depth, 2i64), c, nil::<Str>(), nil::<kayak_rt::Handle<'static, Cx>>());
-            c_op(c, str_lit("prompt"));
+            c_op(c, str_lit!("prompt"));
             c_done(c, tail)
         }
         Cx::XRegion(k, r, body, a) => {
@@ -7604,12 +7604,12 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
                 c_exp(body, e, depth, c, tail)
             } else {
                 c_prim(c, if i64_eq(k, 1i64) {
-                    str_lit("%region-enter")
+                    str_lit!("%region-enter")
                 } else {
-                    str_lit("%reap-enter")
+                    str_lit!("%reap-enter")
                 }, 0i64);
                 c_exp(body, c_extend(r, at_slot(depth), e), i64_plus(depth, 1i64), c, false);
-                c_prim(c, str_lit("%region-exit"), 2i64);
+                c_prim(c, str_lit!("%region-exit"), 2i64);
                 c_done(c, tail)
             }
         }
@@ -7659,7 +7659,7 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
         }
         Cx::XProduct(fs, a) => {
             c_int(c, 37i64);
-            c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, c_exps(c_bound_exps(fs), e, i64_plus(depth, 1i64), c)));
+            c_prim(c, str_lit!("%make-frozen"), i64_plus(1i64, c_exps(c_bound_exps(fs), e, i64_plus(depth, 1i64), c)));
             c_done(c, tail)
         }
         Cx::XExtract(p, i, a) => {
@@ -7671,7 +7671,7 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
             c_int(c, 36i64);
             c_lit(c, l_sym(t));
             c_exp(v, e, i64_plus(depth, 2i64), c, false);
-            c_prim(c, str_lit("%make-frozen"), 3i64);
+            c_prim(c, str_lit!("%make-frozen"), 3i64);
             c_done(c, tail)
         }
         Cx::XTagcase(s, arms, els, k, a) => {
@@ -7680,9 +7680,9 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
             if i64_lt(k, 0i64) {
                 c_arms(arms, els, e, depth, c, tail, end)
             } else {
-                c_op1(c, str_lit("slot"), o_int(depth));
+                c_op1(c, str_lit!("slot"), o_int(depth));
                 c_int(c, k);
-                c_prim(c, str_lit("%fx26-flat-tag"), 2i64);
+                c_prim(c, str_lit!("%fx26-flat-tag"), 2i64);
                 c_flat_arms(arms, els, k, e, depth, c, tail, end)
             };
             c_emit(c, it_label(end))
@@ -7703,79 +7703,79 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
             c_exp(y, e, depth, c, false);
             c_int(c, 37i64);
             c_reshape_fields(c, depth, ps);
-            c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(ps)));
-            c_op1(c, str_lit("slot!"), o_int(depth));
+            c_prim(c, str_lit!("%make-frozen"), i64_plus(1i64, size(ps)));
+            c_op1(c, str_lit!("slot!"), o_int(depth));
             c_done(c, tail)
         }
     }
 }
 
 pub fn c_bloblet(op: Str, i: i64, xs: Cxs, e: Cenv, depth: i64, c: Code) -> () {
-    if string_eq_p(op, str_lit("make-bloblet")) {
-        c_prim(c, str_lit("%make-bloblet"), c_exps(xs, e, depth, c))
-    } else if string_eq_p(op, str_lit("rmake-bloblet")) {
-        c_prim(c, str_lit("%region-make-bloblet"), c_exps(xs, e, depth, c))
-    } else if string_eq_p(op, str_lit("bloblet-ref")) {
+    if string_eq_p(op, str_lit!("make-bloblet")) {
+        c_prim(c, str_lit!("%make-bloblet"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit!("rmake-bloblet")) {
+        c_prim(c, str_lit!("%region-make-bloblet"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit!("bloblet-ref")) {
         c_exps(xs, e, depth, c);
         c_field(c, i64_plus(i, 2i64))
-    } else if has_prefix_p(op, str_lit("%global-set:")) {
+    } else if has_prefix_p(op, str_lit!("%global-set:")) {
         c_exps(xs, e, depth, c);
-        c_op1(c, str_lit("global!"), o_global(after_prefix(op, str_lit("%global-set:"))));
+        c_op1(c, str_lit!("global!"), o_global(after_prefix(op, str_lit!("%global-set:"))));
         c_lit(c, l_unit())
-    } else if string_eq_p(op, str_lit("bloblet-set!")) {
+    } else if string_eq_p(op, str_lit!("bloblet-set!")) {
         c_exp(car(xs), e, depth, c, false);
         c_int(c, i64_plus(i, 2i64));
         c_exp(second_cx(xs), e, i64_plus(depth, 2i64), c, false);
-        c_prim(c, str_lit("%bloblet-set!"), 3i64);
+        c_prim(c, str_lit!("%bloblet-set!"), 3i64);
         c_unit_after(c)
-    } else if string_eq_p(op, str_lit("bloblet-freeze")) {
+    } else if string_eq_p(op, str_lit!("bloblet-freeze")) {
         c_exps(xs, e, depth, c);
-        c_op(c, str_lit("dup"));
+        c_op(c, str_lit!("dup"));
         c_lit(c, l_bool(true));
         c_lit(c, l_bool(false));
-        c_prim(c, str_lit("%bloblet-freeze!"), 3i64);
-        c_op(c, str_lit("drop"))
-    } else if string_eq_p(op, str_lit("bloblet-byte")) {
-        c_prim(c, str_lit("%bloblet-byte"), c_exps(xs, e, depth, c))
-    } else if string_eq_p(op, str_lit("bloblet-set-byte!")) {
-        c_prim(c, str_lit("%bloblet-set-byte!"), c_exps(xs, e, depth, c));
+        c_prim(c, str_lit!("%bloblet-freeze!"), 3i64);
+        c_op(c, str_lit!("drop"))
+    } else if string_eq_p(op, str_lit!("bloblet-byte")) {
+        c_prim(c, str_lit!("%bloblet-byte"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit!("bloblet-set-byte!")) {
+        c_prim(c, str_lit!("%bloblet-set-byte!"), c_exps(xs, e, depth, c));
         c_unit_after(c)
-    } else if string_eq_p(op, str_lit("bloblet-bytes")) {
-        c_prim(c, str_lit("%bloblet-bytes"), c_exps(xs, e, depth, c))
-    } else if string_eq_p(op, str_lit("blobref-at")) {
-        c_prim(c, str_lit("%suffix-ref"), c_exps(xs, e, depth, c));
+    } else if string_eq_p(op, str_lit!("bloblet-bytes")) {
+        c_prim(c, str_lit!("%bloblet-bytes"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit!("blobref-at")) {
+        c_prim(c, str_lit!("%suffix-ref"), c_exps(xs, e, depth, c));
         c_fits(c, i)
-    } else if string_eq_p(op, str_lit("blobref+")) {
-        c_prim(c, str_lit("%suffix-ref+"), c_exps(xs, e, depth, c));
+    } else if string_eq_p(op, str_lit!("blobref+")) {
+        c_prim(c, str_lit!("%suffix-ref+"), c_exps(xs, e, depth, c));
         c_fits(c, i)
-    } else if string_eq_p(op, str_lit("%blobref-field")) {
+    } else if string_eq_p(op, str_lit!("%blobref-field")) {
         c_exp(car(xs), e, depth, c, false);
         c_int(c, i);
-        c_prim(c, str_lit("%suffix-ref+"), 2i64)
-    } else if string_eq_p(op, str_lit("blobref-owner")) {
-        c_prim(c, str_lit("%suffix-ref-owner"), c_exps(xs, e, depth, c))
-    } else if string_eq_p(op, str_lit("blobref-offset")) {
-        c_prim(c, str_lit("%suffix-ref-offset"), c_exps(xs, e, depth, c))
-    } else if string_eq_p(op, str_lit("blobref-get")) {
+        c_prim(c, str_lit!("%suffix-ref+"), 2i64)
+    } else if string_eq_p(op, str_lit!("blobref-owner")) {
+        c_prim(c, str_lit!("%suffix-ref-owner"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit!("blobref-offset")) {
+        c_prim(c, str_lit!("%suffix-ref-offset"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit!("blobref-get")) {
         c_exp(car(xs), e, depth, c, false);
         c_int(c, i);
-        c_prim(c, str_lit("%fx26-suffix-ref-get"), 2i64)
-    } else if string_eq_p(op, str_lit("blobref-length")) {
+        c_prim(c, str_lit!("%fx26-suffix-ref-get"), 2i64)
+    } else if string_eq_p(op, str_lit!("blobref-length")) {
         c_exp(car(xs), e, depth, c, false);
         c_int(c, i);
-        c_prim(c, str_lit("%fx26-suffix-ref-length"), 2i64)
-    } else if string_eq_p(op, str_lit("blobref-index")) {
+        c_prim(c, str_lit!("%fx26-suffix-ref-length"), 2i64)
+    } else if string_eq_p(op, str_lit!("blobref-index")) {
         c_exps(xs, e, depth, c);
         c_int(c, i);
-        c_prim(c, str_lit("%fx26-suffix-ref-index"), 3i64)
+        c_prim(c, str_lit!("%fx26-suffix-ref-index"), 3i64)
     } else {
         c_exp(car(xs), e, depth, c, false);
         c_int(c, i);
         c_exp(second_cx(xs), e, i64_plus(depth, 2i64), c, false);
-        c_prim(c, if string_eq_p(op, str_lit("blobref-set!")) {
-            str_lit("%fx26-suffix-ref-set!")
+        c_prim(c, if string_eq_p(op, str_lit!("blobref-set!")) {
+            str_lit!("%fx26-suffix-ref-set!")
         } else {
-            str_lit("%fx26-flat-variant!")
+            str_lit!("%fx26-flat-variant!")
         }, 3i64)
     }
 }
@@ -7801,7 +7801,7 @@ pub fn c_module(its: List<kayak_rt::Handle<'static, Cmem>>, e: Cenv, depth: i64,
     let given = c_module_make(its, e, depth, later, nil::<kayak_rt::Handle<'static, Wait>>(), nil::<i64>(), c);
     c_int(c, 37i64);
     c_slots_load(c, reverse(given));
-    c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(given)));
+    c_prim(c, str_lit!("%make-frozen"), i64_plus(1i64, size(given)));
     c_done(c, tail);
     c_unbind(c, depth, size(its), tail)
 }
@@ -7858,7 +7858,7 @@ pub fn c_begin(mut es: Cxs, mut e: Cenv, mut depth: i64, mut c: Code, mut tail: 
             return c_exp(car(es), e, depth, c, tail);
         } else {
             c_exp(car(es), e, depth, c, false);
-            c_op(c, str_lit("drop"));
+            c_op(c, str_lit!("drop"));
             es = cdr(es);
             continue;
         }
@@ -7907,7 +7907,7 @@ pub fn c_letrec_make(all: Cbinds, bs: Cbinds, e: Cenv, depth: i64, i: i64, c: Co
         match *tagcase_ {
             Cbind::Cbind(name, x) => {
                 if null_p(lambda_of(x)) {
-                    match cg_fail(str_lit("a letrec binds only lambdas")) {};
+                    match cg_fail(str_lit!("a letrec binds only lambdas")) {};
                     nil::<List<kayak_rt::Handle<'static, Patch>>>()
                 } else {
                     let tagcase_ = car(lambda_of(x));
@@ -7938,10 +7938,10 @@ pub fn c_lambda(ps: Strings, body: kayak_rt::Handle<'static, Cx>, e: Cenv, depth
         Cclosing::Cclosing(w, fv) => {
             let ps2 = c_push_all(fv, e, 0i64, c);
             if null_p(region) {
-                c_emit(c, it_ins(str_lit("closure"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(size(fv)), kayak_rt::nil()))))
+                c_emit(c, it_ins(str_lit!("closure"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(size(fv)), kayak_rt::nil()))))
             } else {
                 c_lit(c, l_word(w));
-                c_prim(c, str_lit("%region-closure"), i64_plus(2i64, size(fv)))
+                c_prim(c, str_lit!("%region-closure"), i64_plus(2i64, size(fv)))
             };
             ps2
         }
@@ -7979,7 +7979,7 @@ pub fn c_lambda_word(ps: Strings, body: kayak_rt::Handle<'static, Cx>, e: Cenv, 
     c_this_enter_x(outer, outer_start);
     let w = c_assemble(body_code, c_word_symbol(base, named, body));
     set(cg_twins(), kayak_rt::heap_cons(twin(w, ps, body, inner, me, if null_p(defining) {
-        str_lit("")
+        str_lit!("")
     } else {
         car(defining)
     }, at), get(cg_twins())));
@@ -7996,34 +7996,34 @@ pub fn c_app(f: kayak_rt::Handle<'static, Cx>, args: Cxs, e: Cenv, depth: i64, c
         c_emit(c, it_branch(get(c_this_start())))
     } else {
         let standard = c_standard_name(f, e);
-        if string_eq_p(standard, str_lit("")) {
+        if string_eq_p(standard, str_lit!("")) {
             let n = c_exps(args, e, depth, c);
             c_exp(f, e, i64_plus(depth, n), c, false);
             c_op1(c, if cg_fx_call_p(a, get(cg_fx_calls())) {
                 if tail {
-                    str_lit("tailcall")
+                    str_lit!("tailcall")
                 } else {
-                    str_lit("call")
+                    str_lit!("call")
                 }
             } else if tail {
-                str_lit("ttailcall")
+                str_lit!("ttailcall")
             } else {
-                str_lit("tcall")
+                str_lit!("tcall")
             }, o_int(n))
-        } else if (string_eq_p(standard, str_lit("%quote")) && i64_eq(size(args), 1i64) && not(null_p(c_quoted_cell(car(args))))) {
+        } else if (string_eq_p(standard, str_lit!("%quote")) && i64_eq(size(args), 1i64) && not(null_p(c_quoted_cell(car(args))))) {
             c_lit(c, quoted_interned(car(c_quoted_cell(car(args)))));
             c_done(c, tail)
-        } else if string_eq_p(standard, str_lit("%quote")) {
+        } else if string_eq_p(standard, str_lit!("%quote")) {
             c_exp(car(args), e, depth, c, false);
-            c_prim(c, str_lit("%fx26-intern-datum"), 1i64);
+            c_prim(c, str_lit!("%fx26-intern-datum"), 1i64);
             c_done(c, tail)
-        } else if (tail && string_eq_p(standard, str_lit("with-mark"))) {
+        } else if (tail && string_eq_p(standard, str_lit!("with-mark"))) {
             c_exps(args, e, depth, c);
-            c_op(c, str_lit("withmark-tail"))
-        } else if string_eq_p(standard, str_lit("make-array")) {
+            c_op(c, str_lit!("withmark-tail"))
+        } else if string_eq_p(standard, str_lit!("make-array")) {
             c_int(c, 0i64);
             c_exps(args, e, i64_plus(depth, 1i64), c);
-            c_prim(c, str_lit("%make-bloblet-filled"), 3i64);
+            c_prim(c, str_lit!("%make-bloblet-filled"), 3i64);
             c_done(c, tail)
         } else {
             c_standard_on(standard, c_exps(args, e, depth, c), c);
@@ -8036,8 +8036,8 @@ pub fn c_flat_arms(mut arms: List<kayak_rt::Handle<'static, Carm>>, mut els: Cbi
     loop {
         if null_p(arms) {
             if null_p(els) {
-                c_op1(c, str_lit("slot"), o_int(i64_plus(depth, 1i64)));
-                c_prim(c, str_lit("%fx26-flat-no-arm"), 1i64);
+                c_op1(c, str_lit!("slot"), o_int(i64_plus(depth, 1i64)));
+                c_prim(c, str_lit!("%fx26-flat-no-arm"), 1i64);
                 c_done(c, tail)
             } else {
                 let tagcase_ = car(els);
@@ -8053,17 +8053,17 @@ pub fn c_flat_arms(mut arms: List<kayak_rt::Handle<'static, Carm>>, mut els: Cbi
             match *tagcase_ {
                 Carm::Carm(tag, whole, ns, body) => {
                     let next = c_fresh();
-                    c_op1(c, str_lit("slot"), o_int(i64_plus(depth, 1i64)));
+                    c_op1(c, str_lit!("slot"), o_int(i64_plus(depth, 1i64)));
                     c_lit(c, if i64_eq(i64_remainder(i64_quotient(k, 8i64), 2i64), 1i64) {
                         l_int(i64_to_int(digits_i64(string_chars(tag), 0i64)))
                     } else {
                         l_sym(tag)
                     });
-                    c_op(c, str_lit("eq"));
+                    c_op(c, str_lit!("eq"));
                     c_emit(c, it_zbranch(next));
-                    c_op1(c, str_lit("slot"), o_int(depth));
+                    c_op1(c, str_lit!("slot"), o_int(depth));
                     c_int(c, i64_quotient(k, 256i64));
-                    c_prim(c, str_lit("%suffix-ref+"), 2i64);
+                    c_prim(c, str_lit!("%suffix-ref+"), 2i64);
                     c_exp(body, c_extend(car(ns), at_slot(i64_plus(depth, 2i64)), e), i64_plus(depth, 3i64), c, tail);
                     c_unbind(c, depth, 3i64, tail);
                     if tail {
@@ -8086,7 +8086,7 @@ pub fn c_arms(mut arms: List<kayak_rt::Handle<'static, Carm>>, mut els: Cbinds, 
             if null_p(els) {
                 c_lit(c, l_bool(false));
                 c_int(c, 0i64);
-                c_op(c, str_lit("field@"));
+                c_op(c, str_lit!("field@"));
                 return c_done(c, tail);
             } else {
                 let tagcase_ = car(els);
@@ -8102,12 +8102,12 @@ pub fn c_arms(mut arms: List<kayak_rt::Handle<'static, Carm>>, mut els: Cbinds, 
             match *tagcase_ {
                 Carm::Carm(tag, whole, ns, body) => {
                     let next = c_fresh();
-                    c_op1(c, str_lit("slot"), o_int(depth));
+                    c_op1(c, str_lit!("slot"), o_int(depth));
                     c_field(c, 2i64);
                     c_lit(c, l_sym(tag));
-                    c_op(c, str_lit("eq"));
+                    c_op(c, str_lit!("eq"));
                     c_emit(c, it_zbranch(next));
-                    c_op1(c, str_lit("slot"), o_int(depth));
+                    c_op1(c, str_lit!("slot"), o_int(depth));
                     c_field(c, 3i64);
                     {
                         let (bound, k) = (if whole {
@@ -8282,7 +8282,7 @@ pub fn entries_shown(mut es: List<kayak_rt::Handle<'static, Tentry>>, mut out: S
                 let tagcase_ = car(es);
                 match *tagcase_ {
                     Tentry::Tentry(a, p) => {
-                        string_append(i64_to_string(a), string_append(str_lit(":"), i64_to_string(p)))
+                        string_append(i64_to_string(a), string_append(str_lit!(":"), i64_to_string(p)))
                     }
                 }
             }, out));
@@ -8298,10 +8298,10 @@ pub fn spaced(ss: Strings) -> Str {
 
 pub fn line_table(xs: Citems) -> Str {
     let es = entries_shown(table_entries(xs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()), nil::<Str>());
-    if (null_p(es) || string_eq_p(get(cg_source()), str_lit(""))) {
-        str_lit("")
+    if (null_p(es) || string_eq_p(get(cg_source()), str_lit!(""))) {
+        str_lit!("")
     } else {
-        string_append(str_lit("; at "), string_append(get(cg_source()), string_append(str_lit(" "), string_append(spaced(es), str_lit("\n")))))
+        string_append(str_lit!("; at "), string_append(get(cg_source()), string_append(str_lit!(" "), string_append(spaced(es), str_lit!("\n")))))
     }
 }
 

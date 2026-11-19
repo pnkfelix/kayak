@@ -492,7 +492,7 @@ pub fn arm_found(mut start: i64, mut n: i64, mut tag: i64) -> i64 {
 
 #[inline]
 pub fn unbound_global(i: i64) -> i64 {
-    failed_with_x(string_append(str_lit("the engine: used before it is defined, "), array_ref(get(global_name_table()), i64_to_int(i))));
+    failed_with_x(string_append(str_lit!("the engine: used before it is defined, "), array_ref(get(global_name_table()), i64_to_int(i))));
     0i64
 }
 
@@ -635,15 +635,15 @@ pub fn trace_lines(xs: List<kayak_rt::Handle<'static, Activation>>, shown: i64, 
     if null_p(xs) {
         nil::<Str>()
     } else if i64_gt_eq(shown, 16i64) {
-        kayak_rt::heap_cons(string_append(str_lit("... and "), string_append(i64_to_string(i64_minus(runs, 16i64)), str_lit(" more"))), kayak_rt::nil())
+        kayak_rt::heap_cons(string_append(str_lit!("... and "), string_append(i64_to_string(i64_minus(runs, 16i64)), str_lit!(" more"))), kayak_rt::nil())
     } else {
         let tagcase_ = car(xs);
         match *tagcase_ {
             Activation::Activation(o, e, n) => {
-                kayak_rt::heap_cons(string_append(str_lit("in "), string_append(array_ref(get(wheres()), i64_to_int(o)), if i64_gt(n, 1i64) {
-                    string_append(str_lit(", "), string_append(i64_to_string(n), str_lit(" calls")))
+                kayak_rt::heap_cons(string_append(str_lit!("in "), string_append(array_ref(get(wheres()), i64_to_int(o)), if i64_gt(n, 1i64) {
+                    string_append(str_lit!(", "), string_append(i64_to_string(n), str_lit!(" calls")))
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 })), trace_lines(cdr(xs), i64_plus(shown, 1i64), runs))
             }
         }
@@ -1029,7 +1029,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                             return go_r;
                         }
                     } else {
-                        failed_with_x(str_lit("the engine: a frame of no kind"));
+                        failed_with_x(str_lit!("the engine: a frame of no kind"));
                         let go_r = failed_at(-1i64, 0i64, k);
                         if get(go_on()) {
                             set(go_on(), false);
@@ -1121,7 +1121,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: a list frame of no list"));
+            failed_with_x(str_lit!("the engine: a list frame of no list"));
             failed_at(-1i64, 0i64, k)
         }
     }
@@ -1171,7 +1171,7 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: a tagcase frame of no tagcase"));
+            failed_with_x(str_lit!("the engine: a tagcase frame of no tagcase"));
             failed_at(-1i64, 0i64, k)
         }
     }
@@ -1200,7 +1200,7 @@ pub fn failed_at(node: i64, env: i64, k: i64) -> i64 {
 pub fn abort_to(tag: i64, k: i64, v: i64) -> i64 {
     let n = frames_to(k, tag, 0i64);
     if i64_lt(n, 0i64) {
-        failed_with_x(str_lit("the engine: no prompt for the tag"));
+        failed_with_x(str_lit!("the engine: no prompt for the tag"));
         stopped_x(-1i64, 0i64, k)
     } else {
         let p = frame_after(k, n);
@@ -1230,7 +1230,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             }
             _ => {
                 let other = tagcase_;
-                failed_with_x(str_lit("the engine: a procedure of no lambda"));
+                failed_with_x(str_lit!("the engine: a procedure of no lambda"));
                 failed_at(node, env, k)
             }
         }
@@ -1258,9 +1258,9 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, room)
         } else if (truthy_p(bloblet_value(f, 3i64)) && truthy_p(bloblet_value(f, 2i64))) {
             failed_with_x(if i64_eq(bloblet_value(f, 3i64), fixnum(2i64)) {
-                str_lit("a one-shot continuation resumed twice")
+                str_lit!("a one-shot continuation resumed twice")
             } else {
-                str_lit("a continuation resumed twice")
+                str_lit!("a continuation resumed twice")
             });
             failed_at(node, env, k)
         } else {
@@ -1309,7 +1309,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             let need = i64_star(3i64, i64_plus(n, 1i64));
             if i64_lt(n, 0i64) {
                 // A list made cyclic, or improper: Fixpt's failure (C220).
-                failed_with_x(str_lit("expected a list"));
+                failed_with_x(str_lit!("expected a list"));
                 failed_at(node, env, k)
             } else if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
@@ -1324,7 +1324,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             let tag = tag_number(pair_car(pair_cdr(args)));
             let n = frames_to(k, tag, 0i64);
             if i64_lt(n, 0i64) {
-                failed_with_x(str_lit("the engine: no prompt for the tag"));
+                failed_with_x(str_lit!("the engine: no prompt for the tag"));
                 failed_at(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
@@ -1351,7 +1351,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             let tag = tag_number(pair_car(args));
             let n = frames_to(k, tag, 0i64);
             if i64_lt(n, 0i64) {
-                failed_with_x(str_lit("the engine: no prompt for the tag"));
+                failed_with_x(str_lit!("the engine: no prompt for the tag"));
                 failed_at(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
@@ -1375,7 +1375,7 @@ pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
             }
         }
     } else {
-        failed_with_x(str_lit("the engine: a call of no procedure"));
+        failed_with_x(str_lit!("the engine: a call of no procedure"));
         failed_at(node, env, k)
     }
 }

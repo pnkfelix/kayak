@@ -145,7 +145,7 @@
             ((string=? h "gproc") (string-list-append (list "lambda" (i64->string (gproc-arity t)) "(" (rust-proc-name (item-name t)) ")")))
             ;; A string, kayak-rt's `str_lit` of a Rust literal; a symbol, its
             ;; `symbol_lit` of its name's (C421).
-            ((string=? h "string") (string-append "str_lit(" (string-append (rust-string (term-text t)) ")")))
+            ((string=? h "string") (string-append "str_lit!(" (string-append (rust-string (term-text t)) ")")))
             ((string=? h "symbol") (string-append "symbol_lit(str_lit(" (string-append (rust-string (term-text t)) "))")))
             ((string=? h "int") (string-append "int_lit(" (string-append (i64->string n) "i64)")))
                   ((string=? h "bool") (if (i64= n 1) "true" "false"))

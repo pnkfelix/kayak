@@ -69,26 +69,26 @@ pub fn phase1_forms_from(mut s: Str, mut i: i64, mut n: i64, mut out: Strings) -
 
 #[inline]
 pub fn phase1_type(style: Str) -> Str {
-    if string_eq_p(style, str_lit("0")) {
-        str_lit("(subr (maxeff (read @globals) spin) (datum (subr pure (symbol) symbol) (subr spin (symbol symbol) bool)) datum)")
+    if string_eq_p(style, str_lit!("0")) {
+        str_lit!("(subr (maxeff (read @globals) spin) (datum (subr pure (symbol) symbol) (subr spin (symbol symbol) bool)) datum)")
     } else {
-        str_lit("(subr (maxeff (read @globals) spin) (datum symbol) datum)")
+        str_lit!("(subr (maxeff (read @globals) spin) (datum symbol) datum)")
     }
 }
 
 #[inline]
 pub fn phase1_defined(style: Str, code: Str) -> Str {
-    string_list_append(kayak_rt::heap_cons(str_lit("(define %transformer "), kayak_rt::heap_cons(phase1_type(style), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(str_lit("(let ((make-syntactic-closure %make-syntactic-closure) (identifier? %identifier?) (identifier=? %identifier=?)) "), kayak_rt::heap_cons(code, kayak_rt::heap_cons(str_lit("))\n"), kayak_rt::nil())))))))
+    string_list_append(kayak_rt::heap_cons(str_lit!("(define %transformer "), kayak_rt::heap_cons(phase1_type(style), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(str_lit!("(let ((make-syntactic-closure %make-syntactic-closure) (identifier? %identifier?) (identifier=? %identifier=?)) "), kayak_rt::heap_cons(code, kayak_rt::heap_cons(str_lit!("))\n"), kayak_rt::nil())))))))
 }
 
 pub fn phase1_called(style: Str, tag: Str, form: Str) -> Str {
-    string_list_append(kayak_rt::heap_cons(str_lit("(%transformer (quote "), kayak_rt::heap_cons(form, kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(if string_eq_p(style, str_lit("0")) {
-        str_lit("%er-rename %er-compare")
-    } else if string_eq_p(style, str_lit("1")) {
-        str_lit("(quote %env:use)")
+    string_list_append(kayak_rt::heap_cons(str_lit!("(%transformer (quote "), kayak_rt::heap_cons(form, kayak_rt::heap_cons(str_lit!(") "), kayak_rt::heap_cons(if string_eq_p(style, str_lit!("0")) {
+        str_lit!("%er-rename %er-compare")
+    } else if string_eq_p(style, str_lit!("1")) {
+        str_lit!("(quote %env:use)")
     } else {
-        str_lit("(quote %env:macro)")
-    }, kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::nil()))))))
+        str_lit!("(quote %env:macro)")
+    }, kayak_rt::heap_cons(str_lit!(")\n"), kayak_rt::nil()))))))
 }
 
 // The phase-1 program of a request, in two parts: what it defines (the
@@ -99,31 +99,31 @@ pub fn phase1_parts(request: Str) -> Product_11_12<Str, Str> {
     let nl = phase1_line_end(request, 0i64);
     let head = phase1_words(string_chars(substring(request, int_lit(0), i64_to_int(nl))), nil::<char>(), nil::<Str>());
     let kind = if null_p(head) {
-        str_lit("")
+        str_lit!("")
     } else {
         car(head)
     };
-    let n = if (string_eq_p(kind, str_lit("%forms")) && i64_eq(size(head), 2i64)) {
+    let n = if (string_eq_p(kind, str_lit!("%forms")) && i64_eq(size(head), 2i64)) {
         string_to_i64(car(cdr(head)))
-    } else if (string_eq_p(kind, str_lit("%define")) && i64_eq(size(head), 3i64)) {
+    } else if (string_eq_p(kind, str_lit!("%define")) && i64_eq(size(head), 3i64)) {
         string_to_i64(car(cdr(cdr(head))))
-    } else if (string_eq_p(kind, str_lit("%apply")) && i64_eq(size(head), 5i64)) {
+    } else if (string_eq_p(kind, str_lit!("%apply")) && i64_eq(size(head), 5i64)) {
         string_to_i64(car(cdr(cdr(cdr(cdr(head))))))
     } else {
         the::<i64>(-1i64)
     };
     if i64_lt(n, 0i64) {
-        Product_11_12(str_lit(""), str_lit(""))
+        Product_11_12(str_lit!(""), str_lit!(""))
     } else {
         let fs = phase1_forms_from(request, i64_plus(nl, 1i64), n, nil::<Str>());
         let rest = substring(request, i64_to_int(fs.1), string_length(request));
-        let base = string_append(phase1_prelude(), string_append(str_lit("\n"), string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: Str| {
-            string_append(f, str_lit("\n"))
+        let base = string_append(phase1_prelude(), string_append(str_lit!("\n"), string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: Str| {
+            string_append(f, str_lit!("\n"))
         })), fs.0))));
-        if string_eq_p(kind, str_lit("%forms")) {
-            Product_11_12(base, str_lit(""))
-        } else if string_eq_p(kind, str_lit("%define")) {
-            Product_11_12(string_append(base, phase1_defined(car(cdr(head)), rest)), str_lit(""))
+        if string_eq_p(kind, str_lit!("%forms")) {
+            Product_11_12(base, str_lit!(""))
+        } else if string_eq_p(kind, str_lit!("%define")) {
+            Product_11_12(string_append(base, phase1_defined(car(cdr(head)), rest)), str_lit!(""))
         } else {
             let len = string_to_i64(car(cdr(cdr(cdr(head)))));
             let cut = if i64_gt(len, string_length_i64(rest)) {
@@ -143,13 +143,13 @@ pub fn phase1_use(request: Str) -> Product_11_12_13<Str, Str, Str> {
     let nl = phase1_line_end(request, 0i64);
     let head = phase1_words(string_chars(substring(request, int_lit(0), i64_to_int(nl))), nil::<char>(), nil::<Str>());
     let kind = if null_p(head) {
-        str_lit("")
+        str_lit!("")
     } else {
         car(head)
     };
-    if (string_eq_p(kind, str_lit("%define")) && i64_eq(size(head), 3i64)) {
-        Product_11_12_13(car(cdr(head)), str_lit(""), str_lit(""))
-    } else if (string_eq_p(kind, str_lit("%apply")) && i64_eq(size(head), 5i64)) {
+    if (string_eq_p(kind, str_lit!("%define")) && i64_eq(size(head), 3i64)) {
+        Product_11_12_13(car(cdr(head)), str_lit!(""), str_lit!(""))
+    } else if (string_eq_p(kind, str_lit!("%apply")) && i64_eq(size(head), 5i64)) {
         let n = string_to_i64(car(cdr(cdr(cdr(cdr(head))))));
         let fs = phase1_forms_from(request, i64_plus(nl, 1i64), n, nil::<Str>());
         let rest = substring(request, i64_to_int(fs.1), string_length(request));
@@ -161,7 +161,7 @@ pub fn phase1_use(request: Str) -> Product_11_12_13<Str, Str, Str> {
         };
         Product_11_12_13(car(cdr(head)), car(cdr(cdr(head))), substring(rest, i64_to_int(cut), string_length(rest)))
     } else {
-        Product_11_12_13(str_lit(""), str_lit(""), str_lit(""))
+        Product_11_12_13(str_lit!(""), str_lit!(""), str_lit!(""))
     }
 }
 
@@ -188,12 +188,12 @@ pub fn phase1_colon(mut s: Str, mut i: i64) -> i64 {
 // A refusal's message, its place in the phase-1 program (`%phase1...:LINE:
 // `, after kc's checker's `kfx: `), which no one wrote, taken off.
 pub fn phase1_unplaced(m0: Str) -> Str {
-    let m = if has_prefix_p(m0, str_lit("kfx: %phase1")) {
-        after_prefix(m0, str_lit("kfx: "))
+    let m = if has_prefix_p(m0, str_lit!("kfx: %phase1")) {
+        after_prefix(m0, str_lit!("kfx: "))
     } else {
         m0
     };
-    if has_prefix_p(m, str_lit("%phase1")) {
+    if has_prefix_p(m, str_lit!("%phase1")) {
         let at = phase1_colon(m, 7i64);
         if i64_lt(at, 0i64) {
             m

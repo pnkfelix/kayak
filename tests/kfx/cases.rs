@@ -41,10 +41,10 @@ pub fn char_class(c: char) -> Int {
 #[inline]
 pub fn string_class(s: Str) -> Int {
     match s {
-        case_ if kayak_rt::string_eq_p(case_, str_lit("x")) => {
+        case_ if kayak_rt::string_eq_p(case_, str_lit!("x")) => {
             int_lit(1)
         }
-        case_ if kayak_rt::string_eq_p(case_, str_lit("yy")) || kayak_rt::string_eq_p(case_, str_lit("z")) => {
+        case_ if kayak_rt::string_eq_p(case_, str_lit!("yy")) || kayak_rt::string_eq_p(case_, str_lit!("z")) => {
             int_lit(2)
         }
         _ => {
@@ -88,6 +88,6 @@ pub fn main() -> Str {
     let d = kayak_rt::closure2s((), |(), acc: Int, k: Int| {
         _plus(_star(acc, int_lit(10)), k)
     });
-    int_to_string(_plus(d.call(d.call(d.call(d.call(d.call(d.call(d.call(d.call(d.call(int_class(int_lit(0)), int_class(int_lit(3))), int_class(int_lit(-7))), int_class(_star(int_lit(10), int_text("10000000000000000000")))), char_class(' ')), string_class(str_lit("z"))), bool_class(false)), string_class(str_lit("w"))), count_vowels(str_lit("kayak bootstraps"), 0i64, int_lit(0))), char_class('e')), int_text("-123456789012345678901234567890")))
+    int_to_string(_plus(d.call(d.call(d.call(d.call(d.call(d.call(d.call(d.call(d.call(int_class(int_lit(0)), int_class(int_lit(3))), int_class(int_lit(-7))), int_class(_star(int_lit(10), int_text("10000000000000000000")))), char_class(' ')), string_class(str_lit!("z"))), bool_class(false)), string_class(str_lit!("w"))), count_vowels(str_lit!("kayak bootstraps"), 0i64, int_lit(0))), char_class('e')), int_text("-123456789012345678901234567890")))
 }
 

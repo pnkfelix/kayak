@@ -81,7 +81,7 @@ pub fn in_order(mut t: kayak_rt::Handle<'static, Tree>, mut rest: Str) -> Str {
                 return rest;
             }
             Tree::Node(l, v, r) => {
-                (t, rest) = (l, string_append(i64_to_string(v), string_append(str_lit(" "), in_order(r, rest))));
+                (t, rest) = (l, string_append(i64_to_string(v), string_append(str_lit!(" "), in_order(r, rest))));
                 continue;
             }
         }
@@ -106,6 +106,6 @@ pub fn area(s: kayak_rt::Handle<'static, Shape>) -> i64 {
 
 pub fn main() -> Str {
     let t = insert(5i64, insert(2i64, insert(8i64, insert(2i64, insert(9i64, insert(1i64, leaf()))))));
-    in_order(t, string_append(str_lit("| "), i64_to_string(i64_plus(area(circle(2i64)), i64_plus(area(rect(3i64, 4i64)), area(dot()))))))
+    in_order(t, string_append(str_lit!("| "), i64_to_string(i64_plus(area(circle(2i64)), i64_plus(area(rect(3i64, 4i64)), area(dot()))))))
 }
 

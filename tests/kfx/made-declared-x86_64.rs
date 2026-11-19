@@ -27,7 +27,7 @@ pub fn subtracter() -> kayak_rt::Proc2s<'static, Int, Int, Int> {
 // The clauses, as a program may read them: the first, `target`'s; and the
 // difference made code finds.
 pub fn main() -> Str {
-    string_append(car(the::<List<Str>>(native_convention())), string_append(str_lit(" "), int_to_string(if native_code_p() {
+    string_append(car(the::<List<Str>>(native_convention())), string_append(str_lit!(" "), int_to_string(if native_code_p() {
         (subtracter()).call(int_lit(50), int_lit(8))
     } else {
         int_lit(42)

@@ -26,6 +26,7 @@ mod heap;
 mod int;
 pub mod marks;
 mod native;
+mod obj;
 mod once;
 pub mod process;
 mod reps;
@@ -73,28 +74,17 @@ pub use value::{
 };
 pub use world::*;
 
-/// `string`: text, and whether it is ASCII, found when the string is made.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Str {
-    text: &'static str,
-    ascii: bool,
-}
-
-impl Str {
-    pub fn as_str(self) -> &'static str {
-        self.text
-    }
-}
+pub use obj::{Str, StrLit, string_words};
 
 impl std::fmt::Display for Str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.text)
+        f.write_str(self.as_str())
     }
 }
 
 impl std::fmt::Debug for Str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.text)
+        write!(f, "{:?}", self.as_str())
     }
 }
 
@@ -141,15 +131,6 @@ pub fn alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
     Handle::made(Box::leak(Box::new(v)))
 }
 
-/// The bytes the next strings are copied into: a string's text is never
-/// freed, so strings are made by bumping, as the heap's other data are
-/// (C364), and not a `malloc` each (and a `realloc`, to shrink it).
-const STRING_CHUNK: usize = 1 << 20;
-
-thread_local! {
-    static STRING_BYTES: Cell<Option<&'static mut [u8]>> = const { Cell::new(None) };
-}
-
 /// `parts`, one after another, as one string kept for the run.
 pub fn str_of_parts(parts: &[&str]) -> Str {
     let n: usize = parts.iter().map(|p| p.len()).sum();
@@ -162,27 +143,16 @@ pub fn str_of_parts(parts: &[&str]) -> Str {
     })
 }
 
-/// A string of `n` bytes, which `fill` writes, kept for the run.
+/// A string of `n` bytes, which `fill` writes, kept for the run: its
+/// object, header and bytes (C482, `obj.rs`).
 fn str_made(n: usize, fill: impl FnOnce(&mut [u8])) -> Str {
     stats::note::<Str>(n);
     if n == 0 {
-        return str_lit("");
+        return str_lit!("");
     }
-    let bytes: &'static mut [u8] = if n >= STRING_CHUNK / 16 {
-        // A long one its own, leaving the chunk to the short ones.
-        Box::leak(vec![0u8; n].into_boxed_slice())
-    } else {
-        let free = STRING_BYTES.take().filter(|b| b.len() >= n);
-        let free = free.unwrap_or_else(|| Box::leak(vec![0u8; STRING_CHUNK].into_boxed_slice()));
-        let (bytes, rest) = free.split_at_mut(n);
-        STRING_BYTES.set(Some(rest));
-        bytes
-    };
-    fill(bytes);
-    let ascii = bytes.is_ascii();
-    match std::str::from_utf8(bytes) {
-        Ok(text) => Str { text, ascii },
-        Err(_) => fail("a string's parts are not UTF-8"),
+    match obj::string_made(n, fill) {
+        Some(s) => s,
+        None => fail("a string's parts are not UTF-8"),
     }
 }
 
@@ -200,7 +170,7 @@ pub enum Void {}
 
 #[inline]
 pub fn error(message: Str) -> ! {
-    fail(message.text)
+    fail(message.as_str())
 }
 
 /// A run-time error of the runtime's own, as `error` is a program's: a
@@ -522,10 +492,10 @@ pub fn i64_gt_eq(a: i64, b: i64) -> bool {
 /// Characters, as FX-26 counts: bytes, if the string is ASCII.
 #[inline]
 pub fn string_length_i64(s: Str) -> i64 {
-    if s.ascii {
-        s.text.len() as i64
+    if s.is_ascii() {
+        s.as_str().len() as i64
     } else {
-        s.text.chars().count() as i64
+        s.as_str().chars().count() as i64
     }
 }
 
@@ -540,8 +510,8 @@ thread_local! {
 /// Where the `i`th character of `s` starts, in bytes; `s.len()` for the
 /// character after the last; `None` past that.
 pub fn char_byte(s: Str, i: usize) -> Option<usize> {
-    let t = s.text;
-    if s.ascii {
+    let t = s.as_str();
+    if s.is_ascii() {
         return (i <= t.len()).then_some(i);
     }
     let key = (t.as_ptr() as usize, t.len());
@@ -575,8 +545,8 @@ pub fn char_byte(s: Str, i: usize) -> Option<usize> {
 
 /// That the `i`th character of `s` starts at byte `b`, for `char_byte`.
 pub(crate) fn cursor_at(s: Str, i: usize, b: usize) {
-    if !s.ascii {
-        CURSOR.set((s.text.as_ptr() as usize, s.text.len(), i, b));
+    if !s.is_ascii() {
+        CURSOR.set((s.as_str().as_ptr() as usize, s.as_str().len(), i, b));
     }
 }
 
@@ -585,10 +555,10 @@ pub(crate) fn cursor_at(s: Str, i: usize, b: usize) {
 #[inline]
 pub fn string_ref_i64(s: Str, i: i64) -> char {
     let found = usize::try_from(i).ok().and_then(|i| {
-        if s.ascii {
-            s.text.as_bytes().get(i).map(|&b| b as char)
+        if s.is_ascii() {
+            s.as_str().as_bytes().get(i).map(|&b| b as char)
         } else {
-            char_byte(s, i).and_then(|b| s.text[b..].chars().next())
+            char_byte(s, i).and_then(|b| s.as_str()[b..].chars().next())
         }
     });
     found.unwrap_or_else(|| string_index_failed(s))
@@ -758,7 +728,7 @@ pub fn string_eq_p(a: Str, b: Str) -> bool {
 
 #[inline]
 pub fn string_append(a: Str, b: Str) -> Str {
-    str_of_parts(&[a.text, b.text])
+    str_of_parts(&[a.as_str(), b.as_str()])
 }
 
 /// kfx's `string-list-append` (C476; `kfx/base.kfx`): the strings of `xs`
@@ -768,7 +738,7 @@ pub fn strings_joined(xs: List<Str>) -> Str {
     let mut parts: Vec<&str> = Vec::new();
     let mut at = xs;
     while let Some(c) = at {
-        parts.push(c.car.text);
+        parts.push(c.car.as_str());
         at = c.cdr;
     }
     match parts.len() {
@@ -834,18 +804,19 @@ pub fn append<'b, T: Copy + 'b>(xs: ListAt<'_, T>, ys: ListAt<'b, T>) -> ListAt<
     items.into_iter().rev().fold(ys, |rest, x| cons(x, rest))
 }
 
-/// A string literal: `const`, so that a literal in a loop costs nothing.
+/// A string of a Rust text: its object made now. A literal is `str_lit!`'s,
+/// made at compile time (C482), so that one in a loop costs nothing.
 #[inline]
-pub const fn str_lit(text: &'static str) -> Str {
-    Str {
-        text,
-        ascii: text.is_ascii(),
-    }
+pub fn str_lit(text: &str) -> Str {
+    str_of_parts(&[text])
 }
 
 #[inline]
 pub fn string_to_list(s: Str) -> List<char> {
-    s.text.chars().rev().fold(nil(), |rest, c| cons(c, rest))
+    s.as_str()
+        .chars()
+        .rev()
+        .fold(nil(), |rest, c| cons(c, rest))
 }
 
 #[inline]

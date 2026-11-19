@@ -31,6 +31,6 @@ pub fn clamp_both(a: i64, b: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(clamp(99i64)), string_append(str_lit(" "), string_append(i64_to_string(clamp(-99i64)), string_append(str_lit(" "), i64_to_string(clamp_both(3i64, 50i64))))))
+    string_append(i64_to_string(clamp(99i64)), string_append(str_lit!(" "), string_append(i64_to_string(clamp(-99i64)), string_append(str_lit!(" "), i64_to_string(clamp_both(3i64, 50i64))))))
 }
 

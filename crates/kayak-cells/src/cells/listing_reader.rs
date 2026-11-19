@@ -13,7 +13,7 @@ use super::*;
 // fixpt-source: crates/fixpt-runtime/src/disasm.rs@196dd2a
 #[inline]
 pub fn listing_error(why: Str) -> Void {
-    error(string_append(str_lit("kayak-cells: the listing: "), why))
+    error(string_append(str_lit!("kayak-cells: the listing: "), why))
 }
 
 // Parentheses, as characters (KFX's reader takes no `#\(`).
@@ -167,14 +167,14 @@ pub fn digits_of(mut cs: Chars, mut acc: i64) -> i64 {
 pub fn number_of(cs: Chars) -> i64 {
     let cs = spaces_dropped(cs);
     if null_p(cs) {
-        match listing_error(str_lit("a number is missing")) {};
+        match listing_error(str_lit!("a number is missing")) {};
         0i64
     } else if char_eq_p(car(cs), '-') {
         i64_minus(0i64, digits_of(cdr(cs), 0i64))
     } else if char_numeric_p(car(cs)) {
         digits_of(cs, 0i64)
     } else {
-        match listing_error(string_append(str_lit("not a number: "), list_to_string(cs))) {};
+        match listing_error(string_append(str_lit!("not a number: "), list_to_string(cs))) {};
         0i64
     }
 }
@@ -219,12 +219,12 @@ pub fn header_block(cs: Chars) -> kayak_rt::Handle<'static, Block> {
     let name = list_to_string(chars_before_char(rest, ' '));
     let inside = after_char(rest, open_paren());
     let n = number_of(inside);
-    let entry = the::<i64>(if contains_p(inside, string_chars(str_lit("cellular)"))) {
+    let entry = the::<i64>(if contains_p(inside, string_chars(str_lit!("cellular)"))) {
         rt_docol()
-    } else if contains_p(inside, string_chars(str_lit("the routine "))) {
+    } else if contains_p(inside, string_chars(str_lit!("the routine "))) {
         position_in(routine_names(), list_to_string(chars_before_char(chars_dropped(after_char(after_char(inside, comma()), ' '), 12i64), close_paren())), 0i64)
     } else {
-        match listing_error(string_append(str_lit("a word of no kind tier 1 runs: "), list_to_string(cs))) {};
+        match listing_error(string_append(str_lit!("a word of no kind tier 1 runs: "), list_to_string(cs))) {};
         0i64
     });
     block(name, n, entry, nil::<kayak_rt::Handle<'static, Iline>>())
@@ -239,19 +239,19 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<kayak_rt::Handle<'static, Block
             return the::<List<kayak_rt::Handle<'static, Block>>>(reverse(out));
         } else {
             let l = car(ls);
-            if starts_p(l, string_chars(str_lit("word "))) {
+            if starts_p(l, string_chars(str_lit!("word "))) {
                 (ls, out, mode) = (cdr(ls), kayak_rt::heap_cons(header_block(l), out), 0i64);
                 continue;
-            } else if starts_p(l, string_chars(str_lit("; the compilers disagree"))) {
-                match listing_error(str_lit("the compilers disagree")) {};
+            } else if starts_p(l, string_chars(str_lit!("; the compilers disagree"))) {
+                match listing_error(str_lit!("the compilers disagree")) {};
                 return nil::<kayak_rt::Handle<'static, Block>>();
             } else if (null_p(l) || char_eq_p(car(l), ';')) {
                 (ls, mode) = (cdr(ls), 0i64);
                 continue;
-            } else if starts_p(l, string_chars(str_lit("  its register code "))) {
+            } else if starts_p(l, string_chars(str_lit!("  its register code "))) {
                 (ls, mode) = (cdr(ls), 1i64);
                 continue;
-            } else if starts_p(l, string_chars(str_lit("  its "))) {
+            } else if starts_p(l, string_chars(str_lit!("  its "))) {
                 (ls, mode) = (cdr(ls), 2i64);
                 continue;
             } else if (null_p(out) || i64_eq(mode, 2i64)) {
@@ -261,8 +261,8 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<kayak_rt::Handle<'static, Block
                 let t = spaces_dropped(l);
                 let at = digits_of(t, 0i64);
                 let text = spaces_dropped(after_char(t, colon()));
-                if contains_p(text, string_chars(str_lit("…"))) {
-                    match listing_error(str_lit("a literal cut short")) {};
+                if contains_p(text, string_chars(str_lit!("…"))) {
+                    match listing_error(str_lit!("a literal cut short")) {};
                     return nil::<kayak_rt::Handle<'static, Block>>();
                 } else {
                     (ls, out) = (cdr(ls), {
@@ -324,14 +324,14 @@ pub fn tables_read_x(mut ls: List<Chars>, mut name: Str) -> () {
     loop {
         if null_p(ls) {
             return ();
-        } else if starts_p(car(ls), string_chars(str_lit("word "))) {
+        } else if starts_p(car(ls), string_chars(str_lit!("word "))) {
             (ls, name) = (cdr(ls), list_to_string(chars_before_char(chars_dropped(car(ls), 5i64), ' ')));
             continue;
-        } else if starts_p(car(ls), string_chars(str_lit("; regs at "))) {
+        } else if starts_p(car(ls), string_chars(str_lit!("; regs at "))) {
             set(reg_line_tables(), kayak_rt::heap_cons(ltext(name, list_to_string(chars_dropped(car(ls), 10i64))), get(reg_line_tables())));
             ls = cdr(ls);
             continue;
-        } else if starts_p(car(ls), string_chars(str_lit("; at "))) {
+        } else if starts_p(car(ls), string_chars(str_lit!("; at "))) {
             set(line_tables(), kayak_rt::heap_cons(ltext(name, list_to_string(chars_dropped(car(ls), 5i64))), get(line_tables())));
             ls = cdr(ls);
             continue;
@@ -403,7 +403,7 @@ pub fn words() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
 pub fn listing_word(cs: Chars) -> i64 {
     let w = lookup(get(words()), list_to_string(chars_before_char(cs, ' ')));
     if i64_eq(w, 0i64) {
-        match listing_error(string_append(str_lit("no word is named "), list_to_string(cs))) {};
+        match listing_error(string_append(str_lit!("no word is named "), list_to_string(cs))) {};
         0i64
     } else {
         w
@@ -422,7 +422,7 @@ pub fn undefined_closure() -> Ref<i64> {
 
 pub fn the_undefined() -> i64 {
     if i64_eq(get(undefined_closure()), 0i64) {
-        let w = make_code_word_x(str_lit("undefined"), 1i64, rt_docol());
+        let w = make_code_word_x(str_lit!("undefined"), 1i64, rt_docol());
         let c = make_bloblet_x(k_closure(), 1i64, 0i64, true, false);
         slot_set_x(w, f_cell0(), fix(rt_undefined()));
         slot_set_x(c, f_word(), w);
@@ -631,8 +631,8 @@ pub fn signed_int(cs: Chars) -> kayak_rt::Handle<'static, Gint> {
 pub fn escaped_text(mut cs: Chars, mut q: char, mut acc: Chars) -> kayak_rt::Handle<'static, Gtext> {
     loop {
         if null_p(cs) {
-            match listing_error(str_lit("a literal's text runs to the end")) {};
-            return gtext(str_lit(""), nil::<char>());
+            match listing_error(str_lit!("a literal's text runs to the end")) {};
+            return gtext(str_lit!(""), nil::<char>());
         } else if char_eq_p(car(cs), q) {
             return gtext(list_to_string(the::<Chars>(reverse(acc))), cdr(cs));
         } else if char_eq_p(car(cs), backslash()) {
@@ -654,7 +654,7 @@ pub fn expect(cs: Chars, prefix: Str) -> Chars {
     if starts_p(cs, string_chars(prefix)) {
         chars_dropped(cs, string_length_i64(prefix))
     } else {
-        match listing_error(string_append(str_lit("a literal tier 1 does not read: "), list_to_string(cs))) {};
+        match listing_error(string_append(str_lit!("a literal tier 1 does not read: "), list_to_string(cs))) {};
         nil::<char>()
     }
 }
@@ -667,7 +667,7 @@ pub fn ends_word_p(cs: Chars) -> bool {
 pub fn kind_numbered(mut name: Str, mut k: i64) -> i64 {
     loop {
         if i64_gt(k, 255i64) {
-            match listing_error(string_append(str_lit("a bloblet of no kind tier 1 knows: "), name)) {};
+            match listing_error(string_append(str_lit!("a bloblet of no kind tier 1 knows: "), name)) {};
             return 0i64;
         } else if string_eq_p(kind_name(k), name) {
             return k;
@@ -735,7 +735,7 @@ pub fn bloblet_literal_x(kind: Str, fields: List<i64>, bytes: List<i64>) -> i64 
         f
     }, args_count(bytes, 0i64), trailer, false);
     if (trailer && not(i64_eq(i64_shr(car(fields), int_lit(3)), f))) {
-        match listing_error(str_lit("a bloblet's trailer that says not its fields")) {}
+        match listing_error(str_lit!("a bloblet's trailer that says not its fields")) {}
     } else {
         ()
     };
@@ -744,7 +744,7 @@ pub fn bloblet_literal_x(kind: Str, fields: List<i64>, bytes: List<i64>) -> i64 
     } else {
         fields
     }) {
-        match listing_error(str_lit("a trailer that is not a bloblet's field 1")) {}
+        match listing_error(str_lit!("a trailer that is not a bloblet's field 1")) {}
     } else {
         ()
     };
@@ -809,7 +809,7 @@ pub fn bytevector_literal_x(xs: List<i64>) -> i64 {
 /// One literal, from the start of `cs`.
 pub fn lit_datum(cs: Chars) -> kayak_rt::Handle<'static, Lgot> {
     if null_p(cs) {
-        match listing_error(str_lit("a literal is missing")) {};
+        match listing_error(str_lit!("a literal is missing")) {};
         lgot(0i64, nil::<char>())
     } else if (char_numeric_p(car(cs)) || char_eq_p(car(cs), '-')) {
         let tagcase_ = signed_int(cs);
@@ -841,88 +841,88 @@ pub fn lit_datum(cs: Chars) -> kayak_rt::Handle<'static, Lgot> {
                 lgot(symbol_x(t), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("()"))) {
+    } else if starts_p(cs, string_chars(str_lit!("()"))) {
         lgot(v_null(), chars_dropped(cs, 2i64))
     } else if char_eq_p(car(cs), open_paren()) {
         pair_rest(cdr(cs), cons_x(v_null(), v_null()))
-    } else if starts_p(cs, string_chars(str_lit("#f64x"))) {
+    } else if starts_p(cs, string_chars(str_lit!("#f64x"))) {
         let tagcase_ = hex_int(chars_dropped(cs, 5i64), int_lit(0));
         match *tagcase_ {
             Gint::Gint(n, rest) => {
                 lgot(flonum_bits_x(int_to_i64(n)), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#f32x"))) {
+    } else if starts_p(cs, string_chars(str_lit!("#f32x"))) {
         let tagcase_ = hex_int(chars_dropped(cs, 5i64), int_lit(0));
         match *tagcase_ {
             Gint::Gint(n, rest) => {
                 lgot(f32_bits(int_to_i64(n)), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#\\x"))) {
+    } else if starts_p(cs, string_chars(str_lit!("#\\x"))) {
         let tagcase_ = hex_int(chars_dropped(cs, 3i64), int_lit(0));
         match *tagcase_ {
             Gint::Gint(n, rest) => {
                 lgot(char_value(int_to_i64(n)), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#u8("))) {
+    } else if starts_p(cs, string_chars(str_lit!("#u8("))) {
         let tagcase_ = lit_items(chars_dropped(cs, 4i64), nil::<i64>());
         match *tagcase_ {
             Gall::Gall(xs, rest) => {
                 lgot(bytevector_literal_x(xs), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#("))) {
+    } else if starts_p(cs, string_chars(str_lit!("#("))) {
         let tagcase_ = lit_items(chars_dropped(cs, 2i64), nil::<i64>());
         match *tagcase_ {
             Gall::Gall(xs, rest) => {
                 lgot(vector_literal_x(xs), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#word "))) {
+    } else if starts_p(cs, string_chars(str_lit!("#word "))) {
         let tagcase_ = escaped_text(cdr(chars_dropped(cs, 6i64)), dquote(), nil::<char>());
         match *tagcase_ {
             Gtext::Gtext(t, rest) => {
                 lgot(listing_word(string_chars(t)), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#global "))) {
+    } else if starts_p(cs, string_chars(str_lit!("#global "))) {
         let tagcase_ = escaped_text(cdr(chars_dropped(cs, 8i64)), dquote(), nil::<char>());
         match *tagcase_ {
             Gtext::Gtext(t, rest) => {
                 lgot(global_named(t), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#trailer "))) {
+    } else if starts_p(cs, string_chars(str_lit!("#trailer "))) {
         let tagcase_ = decimal_int(chars_dropped(cs, 9i64), int_lit(0));
         match *tagcase_ {
             Gint::Gint(n, rest) => {
                 lgot(i64_or(i64_shl(int_to_i64(n), int_lit(3)), t_trailer()), rest)
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#bloblet("))) {
+    } else if starts_p(cs, string_chars(str_lit!("#bloblet("))) {
         let at = chars_dropped(cs, 9i64);
         let kind = list_to_string(chars_before_char(at, ' '));
-        let tagcase_ = lit_items(expect(chars_dropped(at, i64_plus(string_length_i64(kind), 1i64)), str_lit("(")), nil::<i64>());
+        let tagcase_ = lit_items(expect(chars_dropped(at, i64_plus(string_length_i64(kind), 1i64)), str_lit!("(")), nil::<i64>());
         match *tagcase_ {
             Gall::Gall(fields, rest) => {
-                let tagcase_ = lit_items(expect(spaces_dropped(rest), str_lit("#u8(")), nil::<i64>());
+                let tagcase_ = lit_items(expect(spaces_dropped(rest), str_lit!("#u8(")), nil::<i64>());
                 match *tagcase_ {
                     Gall::Gall(bytes, rest2) => {
-                        lgot(bloblet_literal_x(kind, fields, bytes), expect(rest2, str_lit(")")))
+                        lgot(bloblet_literal_x(kind, fields, bytes), expect(rest2, str_lit!(")")))
                     }
                 }
             }
         }
-    } else if starts_p(cs, string_chars(str_lit("#suffix-ref("))) {
+    } else if starts_p(cs, string_chars(str_lit!("#suffix-ref("))) {
         let tagcase_ = lit_datum(chars_dropped(cs, 12i64));
         match *tagcase_ {
             Lgot::Lgot(o, rest) => {
                 let tagcase_ = decimal_int(spaces_dropped(rest), int_lit(0));
                 match *tagcase_ {
                     Gint::Gint(n, rest2) => {
-                        lgot(make_sref(address(o), int_to_i64(n)), expect(rest2, str_lit(")")))
+                        lgot(make_sref(address(o), int_to_i64(n)), expect(rest2, str_lit!(")")))
                     }
                 }
             }
@@ -931,17 +931,17 @@ pub fn lit_datum(cs: Chars) -> kayak_rt::Handle<'static, Lgot> {
         let tagcase_ = decimal_int(cdr(cs), int_lit(0));
         match *tagcase_ {
             Gint::Gint(n, rest) => {
-                if starts_p(rest, string_chars(str_lit("#"))) {
+                if starts_p(rest, string_chars(str_lit!("#"))) {
                     let v = label_value(get(labels()), int_to_i64(n));
                     if i64_eq(v, 0i64) {
-                        match listing_error(str_lit("a label named before what it labels is made: a cycle through a vector or bloblet, not yet")) {};
+                        match listing_error(str_lit!("a label named before what it labels is made: a cycle through a vector or bloblet, not yet")) {};
                         lgot(0i64, nil::<char>())
                     } else {
                         lgot(v, cdr(rest))
                     }
-                } else if (starts_p(rest, string_chars(str_lit("=("))) && not(starts_p(rest, string_chars(str_lit("=()"))))) {
+                } else if (starts_p(rest, string_chars(str_lit!("=("))) && not(starts_p(rest, string_chars(str_lit!("=()"))))) {
                     pair_rest(chars_dropped(rest, 2i64), labelled_x(int_to_i64(n), cons_x(v_null(), v_null())))
-                } else if starts_p(rest, string_chars(str_lit("="))) {
+                } else if starts_p(rest, string_chars(str_lit!("="))) {
                     let tagcase_ = lit_datum(cdr(rest));
                     match *tagcase_ {
                         Lgot::Lgot(v, rest2) => {
@@ -949,7 +949,7 @@ pub fn lit_datum(cs: Chars) -> kayak_rt::Handle<'static, Lgot> {
                         }
                     }
                 } else {
-                    match listing_error(str_lit("a label neither made nor named")) {};
+                    match listing_error(str_lit!("a label neither made nor named")) {};
                     lgot(0i64, nil::<char>())
                 }
             }
@@ -957,26 +957,26 @@ pub fn lit_datum(cs: Chars) -> kayak_rt::Handle<'static, Lgot> {
     } else if char_eq_p(car(cs), '#') {
         let name = list_to_string(chars_before_char(until_delimiter(cs, nil::<char>()), ' '));
         let rest = chars_dropped(cs, string_length_i64(name));
-        if string_eq_p(name, str_lit("#t")) {
+        if string_eq_p(name, str_lit!("#t")) {
             lgot(v_true(), rest)
-        } else if string_eq_p(name, str_lit("#f")) {
+        } else if string_eq_p(name, str_lit!("#f")) {
             lgot(v_false(), rest)
-        } else if string_eq_p(name, str_lit("#u")) {
+        } else if string_eq_p(name, str_lit!("#u")) {
             lgot(v_unit_word(), rest)
-        } else if string_eq_p(name, str_lit("#eof")) {
+        } else if string_eq_p(name, str_lit!("#eof")) {
             lgot(v_eof(), rest)
-        } else if string_eq_p(name, str_lit("#unspecified")) {
+        } else if string_eq_p(name, str_lit!("#unspecified")) {
             lgot(v_unspecified(), rest)
-        } else if string_eq_p(name, str_lit("#default")) {
+        } else if string_eq_p(name, str_lit!("#default")) {
             lgot(v_default(), rest)
-        } else if string_eq_p(name, str_lit("#unbound")) {
+        } else if string_eq_p(name, str_lit!("#unbound")) {
             lgot(v_unbound(), rest)
         } else {
-            match listing_error(string_append(str_lit("a literal tier 1 does not have yet: "), name)) {};
+            match listing_error(string_append(str_lit!("a literal tier 1 does not have yet: "), name)) {};
             lgot(0i64, nil::<char>())
         }
     } else {
-        match listing_error(string_append(str_lit("a literal tier 1 does not read: "), list_to_string(cs))) {};
+        match listing_error(string_append(str_lit!("a literal tier 1 does not read: "), list_to_string(cs))) {};
         lgot(0i64, nil::<char>())
     }
 }
@@ -987,11 +987,11 @@ pub fn pair_rest(cs: Chars, p: i64) -> kayak_rt::Handle<'static, Lgot> {
     match *tagcase_ {
         Lgot::Lgot(a, rest) => {
             word_set_x(address(p), a);
-            let tagcase_ = lit_datum(expect(rest, str_lit(" . ")));
+            let tagcase_ = lit_datum(expect(rest, str_lit!(" . ")));
             match *tagcase_ {
                 Lgot::Lgot(d, rest2) => {
                     word_set_x(i64_plus(address(p), 1i64), d);
-                    lgot(p, expect(rest2, str_lit(")")))
+                    lgot(p, expect(rest2, str_lit!(")")))
                 }
             }
         }
@@ -1002,7 +1002,7 @@ pub fn pair_rest(cs: Chars, p: i64) -> kayak_rt::Handle<'static, Lgot> {
 pub fn lit_items(cs: Chars, acc: List<i64>) -> kayak_rt::Handle<'static, Gall> {
     let cs = spaces_dropped(cs);
     if null_p(cs) {
-        match listing_error(str_lit("a literal's items run to the end")) {};
+        match listing_error(str_lit!("a literal's items run to the end")) {};
         gall(nil::<i64>(), nil::<char>())
     } else if char_eq_p(car(cs), close_paren()) {
         gall(the::<List<i64>>(reverse(acc)), cdr(cs))
@@ -1070,7 +1070,7 @@ pub fn literals_checked_x(mut ls: List<kayak_rt::Handle<'static, NamedSlot>>) ->
             match *tagcase_ {
                 NamedSlot::NamedSlot(n, i) => {
                     if free_read_p(slot_of(named_value(car(ls)), f_word()), f_cell0()) {
-                        return match listing_error(string_append(str_lit("a closure as a literal, whose word reads a free value: "), n)) {};
+                        return match listing_error(string_append(str_lit!("a closure as a literal, whose word reads a free value: "), n)) {};
                     } else {
                         ls = cdr(ls);
                         continue;
@@ -1082,9 +1082,9 @@ pub fn literals_checked_x(mut ls: List<kayak_rt::Handle<'static, NamedSlot>>) ->
 }
 
 pub fn literal(cs: Chars) -> i64 {
-    if starts_p(cs, string_chars(str_lit("word "))) {
+    if starts_p(cs, string_chars(str_lit!("word "))) {
         listing_word(chars_dropped(cs, 5i64))
-    } else if starts_p(cs, string_chars(str_lit("closure of "))) {
+    } else if starts_p(cs, string_chars(str_lit!("closure of "))) {
         closure_literal(listing_word(chars_dropped(cs, 11i64)))
     } else {
         let tagcase_ = lit_datum(cs);
@@ -1093,7 +1093,7 @@ pub fn literal(cs: Chars) -> i64 {
                 if null_p(spaces_dropped(rest)) {
                     v
                 } else {
-                    match listing_error(string_append(str_lit("a literal: "), list_to_string(cs))) {};
+                    match listing_error(string_append(str_lit!("a literal: "), list_to_string(cs))) {};
                     0i64
                 }
             }
@@ -1144,7 +1144,7 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
     let routine = kayak_rt::closure1s((), |(), cs: Chars| {
         let r = position_in(routine_names(), list_to_string(chars_before_char(cs, ' ')), 0i64);
         if i64_lt(r, 0i64) {
-            match listing_error(string_append(str_lit("no routine is named "), list_to_string(cs))) {};
+            match listing_error(string_append(str_lit!("no routine is named "), list_to_string(cs))) {};
             the::<i64>(0i64)
         } else {
             fix(r)
@@ -1153,14 +1153,14 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
     let prim = kayak_rt::closure1s((), |(), cs: Chars| {
         let p = prim_number(list_to_string(chars_before_char(cs, ' ')));
         if i64_lt(p, 0i64) {
-            match listing_error(string_append(str_lit("a primitive tier 1 does not have yet: "), list_to_string(cs))) {};
+            match listing_error(string_append(str_lit!("a primitive tier 1 does not have yet: "), list_to_string(cs))) {};
             the::<i64>(0i64)
         } else {
             fix(p)
         }
     });
     if i64_lt(n, 0i64) {
-        match listing_error(string_append(str_lit("no register operation is named "), name)) {}
+        match listing_error(string_append(str_lit!("no register operation is named "), name)) {}
     } else {
         reg_put_x(rw, at, 0i64, fix(n));
         if (i64_eq(n, ro_vargs()) || i64_eq(n, ro_return())) {
@@ -1234,10 +1234,10 @@ pub fn instruction_x(w: i64, rw: i64, il: kayak_rt::Handle<'static, Iline>) -> (
                 let name = list_to_string(chars_before_char(text, ' '));
                 let ops = spaces_dropped(chars_dropped(text, string_length_i64(name)));
                 let n = position_in(routine_names(), name, 0i64);
-                if string_eq_p(name, str_lit("word")) {
+                if string_eq_p(name, str_lit!("word")) {
                     cell_set_x(w, at, listing_word(ops))
                 } else if i64_lt(n, 0i64) {
-                    match listing_error(string_append(str_lit("no routine is named "), name)) {}
+                    match listing_error(string_append(str_lit!("no routine is named "), name)) {}
                 } else {
                     cell_set_x(w, at, fix(n));
                     if i64_eq(n, rt_lit()) {
@@ -1250,7 +1250,7 @@ pub fn instruction_x(w: i64, rw: i64, il: kayak_rt::Handle<'static, Iline>) -> (
                         let pname = list_to_string(chars_before_char(ops, ' '));
                         let p = prim_number(pname);
                         if i64_lt(p, 0i64) {
-                            match listing_error(string_append(str_lit("a primitive tier 1 does not have yet: "), pname)) {}
+                            match listing_error(string_append(str_lit!("a primitive tier 1 does not have yet: "), pname)) {}
                         } else {
                             cell_set_x(w, i64_plus(at, 1i64), fix(p));
                             cell_set_x(w, i64_plus(at, 2i64), fix(number_of(after_char(ops, ' '))))
@@ -1264,7 +1264,7 @@ pub fn instruction_x(w: i64, rw: i64, il: kayak_rt::Handle<'static, Iline>) -> (
                     } else if i64_eq(operand_count(n), 0i64) {
                         ()
                     } else {
-                        match listing_error(string_append(str_lit("operands tier 1 does not read yet: "), name)) {}
+                        match listing_error(string_append(str_lit!("operands tier 1 does not read yet: "), name)) {}
                     }
                 }
             }
@@ -1392,7 +1392,7 @@ pub fn distinct_blocks(mut bs: List<kayak_rt::Handle<'static, Block>>, mut seen:
                         bs = cdr(bs);
                         continue;
                     } else {
-                        match listing_error(string_append(str_lit("two words are named "), n)) {};
+                        match listing_error(string_append(str_lit!("two words are named "), n)) {};
                         return nil::<kayak_rt::Handle<'static, Block>>();
                     }
                 }
@@ -1477,7 +1477,7 @@ pub fn words_made_x(mut bs: List<kayak_rt::Handle<'static, Block>>) -> () {
                 match *tagcase_ {
                     Block::Block(n, c, e, is) => {
                         if not(i64_eq(lookup(get(words()), n), 0i64)) {
-                            match listing_error(string_append(str_lit("two words are named "), n)) {}
+                            match listing_error(string_append(str_lit!("two words are named "), n)) {}
                         } else {
                             let (w, rc) = (make_code_word_x(n, c, e), register_cells(is, 0i64));
                             set(words(), kayak_rt::heap_cons(named_x(n, w), get(words())));
@@ -1521,7 +1521,7 @@ pub fn literals_read_x(mut is: List<kayak_rt::Handle<'static, Iline>>) -> () {
                     Iline::Iline(at, text) => {
                         if i64_lt(at, 0i64) {
                             reg_instruction_x(0i64, i64_minus(-2i64, at), text)
-                        } else if starts_p(text, string_chars(str_lit("lit "))) {
+                        } else if starts_p(text, string_chars(str_lit!("lit "))) {
                             literal(chars_dropped(text, 4i64));
                             ()
                         } else {
@@ -1564,7 +1564,7 @@ pub fn blocks_written_x(mut bs: List<kayak_rt::Handle<'static, Block>>, mut seen
 /// The words of a listing, made; the word named `program`.
 pub fn listing_words_x(text: Str) -> i64 {
     let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
-    let u = tables_read_x(ls, str_lit(""));
+    let u = tables_read_x(ls, str_lit!(""));
     let all = blocks(ls, nil::<kayak_rt::Handle<'static, Block>>(), 0i64);
     let bs = distinct_blocks(all, nil::<kayak_rt::Handle<'static, Block>>());
     words_made_x(bs);
@@ -1575,9 +1575,9 @@ pub fn listing_words_x(text: Str) -> i64 {
     } else {
         ()
     };
-    let p = lookup(get(words()), str_lit("program"));
+    let p = lookup(get(words()), str_lit!("program"));
     if i64_eq(p, 0i64) {
-        match listing_error(str_lit("no word is named program")) {};
+        match listing_error(str_lit!("no word is named program")) {};
         0i64
     } else {
         p
@@ -1633,7 +1633,7 @@ pub fn names_had(mut bs: List<kayak_rt::Handle<'static, Block>>, mut acc: String
 /// is, so that nothing running changes.
 pub fn listing_added_x(text: Str) -> () {
     let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
-    let u = tables_read_x(ls, str_lit(""));
+    let u = tables_read_x(ls, str_lit!(""));
     let all = blocks(ls, nil::<kayak_rt::Handle<'static, Block>>(), 0i64);
     let bs = distinct_blocks(all, nil::<kayak_rt::Handle<'static, Block>>());
     let had = names_had(bs, nil::<Str>());

@@ -24,10 +24,10 @@ pub fn fnv_string(mut s: Str, mut i: i64, mut h: u32) -> u32 {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(u32_to_int(fnv_string(str_lit("kayak"), 0i64, 2166136261u32))), string_append(str_lit(" "), string_append(int_to_string(u64_to_int(u64_plus(18446744073709551615u64, 2u64))), string_append(str_lit(" "), string_append(int_to_string(i32_to_int(i32_plus(2147483647i32, 1i32))), string_append(str_lit(" "), string_append(int_to_string(u64_to_int(u64_shl(1u64, int_lit(63)))), string_append(str_lit(" "), string_append(int_to_string(i32_to_int(i32_shr(-8i32, int_lit(1)))), string_append(str_lit(" "), if u32_lt(4294967295u32, 0u32) {
-        str_lit("lt")
+    string_append(int_to_string(u32_to_int(fnv_string(str_lit!("kayak"), 0i64, 2166136261u32))), string_append(str_lit!(" "), string_append(int_to_string(u64_to_int(u64_plus(18446744073709551615u64, 2u64))), string_append(str_lit!(" "), string_append(int_to_string(i32_to_int(i32_plus(2147483647i32, 1i32))), string_append(str_lit!(" "), string_append(int_to_string(u64_to_int(u64_shl(1u64, int_lit(63)))), string_append(str_lit!(" "), string_append(int_to_string(i32_to_int(i32_shr(-8i32, int_lit(1)))), string_append(str_lit!(" "), if u32_lt(4294967295u32, 0u32) {
+        str_lit!("lt")
     } else {
-        str_lit("ge")
+        str_lit!("ge")
     }))))))))))
 }
 

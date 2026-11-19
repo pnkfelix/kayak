@@ -162,79 +162,79 @@ pub mod incremental_check {
 
     #[inline]
     pub fn quoted_all(ss: Strings) -> Str {
-        string_append(str_lit("("), string_append(words_of(map(kayak_rt::as_proc(quoted), ss)), str_lit(")")))
+        string_append(str_lit!("("), string_append(words_of(map(kayak_rt::as_proc(quoted), ss)), str_lit!(")")))
     }
 
     pub fn ty_code(t: kayak_rt::Handle<'static, Ty>) -> Str {
         let tagcase_ = t;
         match *tagcase_ {
             Ty::TyI64() => {
-                str_lit("(i64)")
+                str_lit!("(i64)")
             }
             Ty::TyInt() => {
-                str_lit("(int)")
+                str_lit!("(int)")
             }
             Ty::TyNat() => {
-                str_lit("(nat)")
+                str_lit!("(nat)")
             }
             Ty::TyF64() => {
-                str_lit("(f64)")
+                str_lit!("(f64)")
             }
             Ty::TyBool() => {
-                str_lit("(bool)")
+                str_lit!("(bool)")
             }
             Ty::TyChar() => {
-                str_lit("(char)")
+                str_lit!("(char)")
             }
             Ty::TyUnit() => {
-                str_lit("(unit)")
+                str_lit!("(unit)")
             }
             Ty::TyString() => {
-                str_lit("(string)")
+                str_lit!("(string)")
             }
             Ty::TyVoid() => {
-                str_lit("(void)")
+                str_lit!("(void)")
             }
             Ty::TyList(e, r) => {
-                string_append(str_lit("(list "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
+                string_append(str_lit!("(list "), string_append(ty_code(e), string_append(str_lit!(" "), string_append(ty_code(r), str_lit!(")")))))
             }
             Ty::TyData(d, args) => {
-                string_append(str_lit("(data "), string_append(quoted(d), string_append(str_lit(" "), string_append(tys_code(args), str_lit(")")))))
+                string_append(str_lit!("(data "), string_append(quoted(d), string_append(str_lit!(" "), string_append(tys_code(args), str_lit!(")")))))
             }
             Ty::TyFlat(e, r) => {
-                string_append(str_lit("(flat "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
+                string_append(str_lit!("(flat "), string_append(ty_code(e), string_append(str_lit!(" "), string_append(ty_code(r), str_lit!(")")))))
             }
             Ty::TyRef(e, r) => {
-                string_append(str_lit("(ref "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
+                string_append(str_lit!("(ref "), string_append(ty_code(e), string_append(str_lit!(" "), string_append(ty_code(r), str_lit!(")")))))
             }
             Ty::TyRconst(n) => {
-                string_append(str_lit("(rconst "), string_append(quoted(n), str_lit(")")))
+                string_append(str_lit!("(rconst "), string_append(quoted(n), str_lit!(")")))
             }
             Ty::TyTag(a, h, d, r) => {
-                string_append(str_lit("(tag "), string_append(ty_code(a), string_append(str_lit(" "), string_append(ty_code(h), string_append(str_lit(" "), string_append(quoted_all(d), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))))))
+                string_append(str_lit!("(tag "), string_append(ty_code(a), string_append(str_lit!(" "), string_append(ty_code(h), string_append(str_lit!(" "), string_append(quoted_all(d), string_append(str_lit!(" "), string_append(ty_code(r), str_lit!(")")))))))))
             }
             Ty::TyProc(es, ps, r) => {
-                string_append(str_lit("(proc "), string_append(quoted_all(es), string_append(str_lit(" "), string_append(tys_code(ps), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))))
+                string_append(str_lit!("(proc "), string_append(quoted_all(es), string_append(str_lit!(" "), string_append(tys_code(ps), string_append(str_lit!(" "), string_append(ty_code(r), str_lit!(")")))))))
             }
             Ty::TyShape(p, ls, ts) => {
                 string_append(if p {
-                    str_lit("(shape 1 ")
+                    str_lit!("(shape 1 ")
                 } else {
-                    str_lit("(shape 0 ")
-                }, string_append(quoted_all(ls), string_append(str_lit(" "), string_append(tys_code(ts), str_lit(")")))))
+                    str_lit!("(shape 0 ")
+                }, string_append(quoted_all(ls), string_append(str_lit!(" "), string_append(tys_code(ts), str_lit!(")")))))
             }
             Ty::TyVar(n) => {
-                string_append(str_lit("(var "), string_append(quoted(n), str_lit(")")))
+                string_append(str_lit!("(var "), string_append(quoted(n), str_lit!(")")))
             }
             Ty::TyMeta(k) => {
-                string_append(str_lit("(meta "), string_append(i64_to_string(k), str_lit(")")))
+                string_append(str_lit!("(meta "), string_append(i64_to_string(k), str_lit!(")")))
             }
         }
     }
 
     #[inline]
     pub fn tys_code(ts: Tys) -> Str {
-        string_append(str_lit("("), string_append(words_of(map(kayak_rt::as_proc(ty_code), ts)), str_lit(")")))
+        string_append(str_lit!("("), string_append(words_of(map(kayak_rt::as_proc(ty_code), ts)), str_lit!(")")))
     }
 
     #[inline]
@@ -249,7 +249,7 @@ pub mod incremental_check {
             }
             _ => {
                 let other = tagcase_;
-                str_lit("")
+                str_lit!("")
             }
         }
     }
@@ -271,41 +271,41 @@ pub mod incremental_check {
     pub fn code_ty(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Ty> {
         let xs = items(e);
         let h = sym_name(car(xs));
-        if string_eq_p(h, str_lit("i64")) {
+        if string_eq_p(h, str_lit!("i64")) {
             ty_i64()
-        } else if string_eq_p(h, str_lit("int")) {
+        } else if string_eq_p(h, str_lit!("int")) {
             ty_int()
-        } else if string_eq_p(h, str_lit("nat")) {
+        } else if string_eq_p(h, str_lit!("nat")) {
             ty_nat()
-        } else if string_eq_p(h, str_lit("f64")) {
+        } else if string_eq_p(h, str_lit!("f64")) {
             ty_f64()
-        } else if string_eq_p(h, str_lit("bool")) {
+        } else if string_eq_p(h, str_lit!("bool")) {
             ty_bool()
-        } else if string_eq_p(h, str_lit("char")) {
+        } else if string_eq_p(h, str_lit!("char")) {
             ty_char()
-        } else if string_eq_p(h, str_lit("unit")) {
+        } else if string_eq_p(h, str_lit!("unit")) {
             ty_unit()
-        } else if string_eq_p(h, str_lit("string")) {
+        } else if string_eq_p(h, str_lit!("string")) {
             ty_string()
-        } else if string_eq_p(h, str_lit("void")) {
+        } else if string_eq_p(h, str_lit!("void")) {
             ty_void()
-        } else if string_eq_p(h, str_lit("list")) {
+        } else if string_eq_p(h, str_lit!("list")) {
             ty_list(code_ty(second(xs)), code_ty(third(xs)))
-        } else if string_eq_p(h, str_lit("data")) {
+        } else if string_eq_p(h, str_lit!("data")) {
             ty_data(code_text(second(xs)), code_tys(third(xs)))
-        } else if string_eq_p(h, str_lit("flat")) {
+        } else if string_eq_p(h, str_lit!("flat")) {
             ty_flat(code_ty(second(xs)), code_ty(third(xs)))
-        } else if string_eq_p(h, str_lit("ref")) {
+        } else if string_eq_p(h, str_lit!("ref")) {
             ty_ref(code_ty(second(xs)), code_ty(third(xs)))
-        } else if string_eq_p(h, str_lit("rconst")) {
+        } else if string_eq_p(h, str_lit!("rconst")) {
             ty_rconst(code_text(second(xs)))
-        } else if string_eq_p(h, str_lit("tag")) {
+        } else if string_eq_p(h, str_lit!("tag")) {
             ty_tag(code_ty(second(xs)), code_ty(third(xs)), code_strings(fourth(xs)), code_ty(car(cdr(cdr(cdr(cdr(xs)))))))
-        } else if string_eq_p(h, str_lit("proc")) {
+        } else if string_eq_p(h, str_lit!("proc")) {
             ty_proc(code_strings(second(xs)), code_tys(third(xs)), code_ty(fourth(xs)))
-        } else if string_eq_p(h, str_lit("shape")) {
+        } else if string_eq_p(h, str_lit!("shape")) {
             ty_shape(i64_eq(code_number(second(xs)), 1i64), code_strings(third(xs)), code_tys(fourth(xs)))
-        } else if string_eq_p(h, str_lit("var")) {
+        } else if string_eq_p(h, str_lit!("var")) {
             ty_var(code_text(second(xs)))
         } else {
             ty_meta(code_number(second(xs)))
@@ -329,7 +329,7 @@ pub mod incremental_check {
                 let tagcase_ = sc;
                 match *tagcase_ {
                     Scheme::Scheme(tvs, t) => {
-                        string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(quoted_all(tvs), string_append(str_lit(" "), string_append(ty_code(t), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))))
+                        string_append(str_lit!("("), string_append(quoted(n), string_append(str_lit!(" "), string_append(quoted_all(tvs), string_append(str_lit!(" "), string_append(ty_code(t), string_append(str_lit!(" "), string_append(quoted(w), str_lit!(")")))))))))
                     }
                 }
             }
@@ -345,7 +345,7 @@ pub mod incremental_check {
         let tagcase_ = d;
         match *tagcase_ {
             Effdef::Effdef(n, atoms) => {
-                string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(quoted_all(atoms), str_lit(")")))))
+                string_append(str_lit!("("), string_append(quoted(n), string_append(str_lit!(" "), string_append(quoted_all(atoms), str_lit!(")")))))
             }
         }
     }
@@ -363,7 +363,7 @@ pub mod incremental_check {
         match *tagcase_ {
             Fact::Fact(ff, p, w) => {
                 if string_eq_p(ff, file) {
-                    fact_record(1i64, i64_minus(p, start), 0i64, str_lit(""), w)
+                    fact_record(1i64, i64_minus(p, start), 0i64, str_lit!(""), w)
                 } else {
                     fact_record(0i64, p, 0i64, ff, w)
                 }
@@ -375,7 +375,7 @@ pub mod incremental_check {
     /// its strings' lengths, then the strings as they are, so that it is
     /// read by `substring`s, nothing escaped.
     pub fn fact_record(kind: i64, a: i64, b: i64, file: Str, what: Str) -> Str {
-        string_list_append(kayak_rt::heap_cons(i64_to_string(kind), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(a), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(b), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(string_length_i64(file)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(string_length_i64(what)), kayak_rt::heap_cons(str_lit("\n"), kayak_rt::heap_cons(file, kayak_rt::heap_cons(what, kayak_rt::nil())))))))))))))
+        string_list_append(kayak_rt::heap_cons(i64_to_string(kind), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(a), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(b), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(string_length_i64(file)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(string_length_i64(what)), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(file, kayak_rt::heap_cons(what, kayak_rt::nil())))))))))))))
     }
 
     /// The facts of `s` from `i`, of `n` characters, onto `acc`, newest
@@ -487,7 +487,7 @@ pub mod incremental_check {
                     the::<i64>(-1i64)
                 };
                 if i64_gt_eq(i, 0i64) {
-                    fact_record(2i64, i, i64_minus(p, i64_nth(ss, i)), str_lit(""), w)
+                    fact_record(2i64, i, i64_minus(p, i64_nth(ss, i)), str_lit!(""), w)
                 } else {
                     fact_record(0i64, p, 0i64, ff, w)
                 }
@@ -514,7 +514,7 @@ pub mod incremental_check {
         let tagcase_ = x;
         match *tagcase_ {
             Typed::Typed(n, t) => {
-                string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(show_sexp(t), str_lit(")")))))
+                string_append(str_lit!("("), string_append(quoted(n), string_append(str_lit!(" "), string_append(show_sexp(t), str_lit!(")")))))
             }
         }
     }
@@ -539,7 +539,7 @@ pub mod incremental_check {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(ff, p, w) => {
-                (has_prefix_p(w, str_lit("place-needs ")) || has_prefix_p(w, str_lit("region-within ")))
+                (has_prefix_p(w, str_lit!("place-needs ")) || has_prefix_p(w, str_lit!("region-within ")))
             }
         }
     }
@@ -564,13 +564,13 @@ pub mod incremental_check {
 
     #[inline]
     pub fn where_text(here: Str, group: Strings, tv: Strings) -> Str {
-        string_list_append(kayak_rt::heap_cons(quoted(here), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted_all(group), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted_all(tv), kayak_rt::nil()))))))
+        string_list_append(kayak_rt::heap_cons(quoted(here), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(quoted_all(group), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(quoted_all(tv), kayak_rt::nil()))))))
     }
 
     /// What of a change no name reaches, `ambient-of`'s, of its new effects
     /// and facts.
     pub fn ambient_text(new_effs: Effdefs, new_facts: Facts) -> Str {
-        string_list_append(kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), new_effs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
+        string_list_append(kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), new_effs)), kayak_rt::heap_cons(str_lit!("|"), kayak_rt::heap_cons(words_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Fact::Fact(ff, p, w) => {
@@ -591,7 +591,7 @@ pub mod incremental_check {
         let tagcase_ = after;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at, ix, mk) => {
-                string_list_append(kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), leading(es, i64_minus(size(es), size(cv_effdefs(before)))))), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
+                string_list_append(kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), leading(es, i64_minus(size(es), size(cv_effdefs(before)))))), kayak_rt::heap_cons(str_lit!("|"), kayak_rt::heap_cons(words_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Fact::Fact(ff, p, w) => {
@@ -667,7 +667,7 @@ pub mod incremental_check {
                     am
                 } else {
                     fmap_aliases(fm_none(), cv_aliases(after))
-                }, cv_aliases(after), if string_eq_p(ambient, str_lit("|")) {
+                }, cv_aliases(after), if string_eq_p(ambient, str_lit!("|")) {
                     chain
                 } else {
                     fnv_string(ambient, chain)
@@ -750,7 +750,7 @@ pub mod incremental_check {
                     match *tagcase_ {
                         Sexp::Sym(n, f, p) => {
                             let acc = name_read(n, ix, am, acc);
-                            if string_eq_p(toplevel_named(n), str_lit("")) {
+                            if string_eq_p(toplevel_named(n), str_lit!("")) {
                                 acc
                             } else {
                                 name_read(toplevel_named(n), ix, am, acc)
@@ -807,7 +807,7 @@ pub mod incremental_check {
                 match *tagcase_ {
                     Reads::Reads(fm, cm, am, als2, chain) => {
                         names_walk(kayak_rt::heap_cons(form, kayak_rt::nil()), ix, am, read_key(fnv_strings(map(kayak_rt::as_proc(bind_code), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((mk,), |(mk,), k: Str| {
-                            if string_eq_p(k, str_lit("%toplevel")) {
+                            if string_eq_p(k, str_lit!("%toplevel")) {
                                 nil::<kayak_rt::Handle<'static, Bind>>()
                             } else {
                                 find_bind(k, mk)
@@ -826,7 +826,7 @@ pub mod incremental_check {
                 let new_binds = leading(bs, i64_minus(size(bs), size(cv_binds(before))));
                 let new_effs = leading(es, i64_minus(size(es), size(cv_effdefs(before))));
                 let new_facts = leading(fs, i64_minus(size(fs), size(cv_facts(before))));
-                change(string_list_append(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(bind_code), new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(typed_code), found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::heap_cons(string_list_append(map(code, new_facts)), kayak_rt::nil()))))))))))))))))), ambient_text(new_effs, new_facts))
+                change(string_list_append(kayak_rt::heap_cons(str_lit!("(("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(bind_code), new_binds)), kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), new_effs)), kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(typed_code), found)), kayak_rt::heap_cons(str_lit!(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit!(")\n"), kayak_rt::heap_cons(string_list_append(map(code, new_facts)), kayak_rt::nil()))))))))))))))))), ambient_text(new_effs, new_facts))
             }
         }
     }
@@ -851,7 +851,7 @@ pub mod incremental_check {
     pub fn change_applied(v: kayak_rt::Handle<'static, Cv>, text: Str, uncode: kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, FactRec>, kayak_rt::Handle<'static, Fact>>) -> kayak_rt::Handle<'static, Redone> {
         let n = string_length_i64(text);
         let nl = char_from_memo(text, 0i64, n, '\n');
-        let parts = items(car(read_all(substring(text, int_lit(0), i64_to_int(nl)), str_lit(""), 1i64)));
+        let parts = items(car(read_all(substring(text, int_lit(0), i64_to_int(nl)), str_lit!(""), 1i64)));
         let new_binds = map(kayak_rt::as_proc(code_bind), items(car(parts)));
         let new_effs = map(kayak_rt::as_proc(code_effdef), items(second(parts)));
         let new_facts = map(uncode, reverse(fact_records(text, i64_plus(nl, 1i64), n, nil::<kayak_rt::Handle<'static, FactRec>>())));
@@ -876,7 +876,7 @@ pub mod incremental_check {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(kayak_rt::as_proc(bind_code), bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), d: kayak_rt::Handle<'static, Dt>| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("binds"), map(kayak_rt::as_proc(bind_code), bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("datatypes"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), d: kayak_rt::Handle<'static, Dt>| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Dt::Dt(n, ps, vs) => {
@@ -890,14 +890,14 @@ pub mod incremental_check {
                             })), vs))))
                         }
                     }
-                })), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Alias>| {
+                })), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("aliases"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Alias>| {
                     let tagcase_ = a;
                     match *tagcase_ {
                         Alias::Alias(n, ps, body) => {
                             string_append(quoted(n), string_append(quoted_all(ps), show_sexp(body)))
                         }
                     }
-                })), als)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(kayak_rt::as_proc(effdef_code), es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))))), fnv_offset())
+                })), als)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("effects"), map(kayak_rt::as_proc(effdef_code), es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))))), fnv_offset())
             }
         }
     }
@@ -912,7 +912,7 @@ pub mod incremental_check {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), d: kayak_rt::Handle<'static, Dt>| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("datatypes"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), d: kayak_rt::Handle<'static, Dt>| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Dt::Dt(n, ps, vs) => {
@@ -926,7 +926,7 @@ pub mod incremental_check {
                             })), vs))))
                         }
                     }
-                })), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(kayak_rt::as_proc(effdef_code), es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))), fnv_offset())
+                })), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit!("effects"), map(kayak_rt::as_proc(effdef_code), es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))), fnv_offset())
             }
         }
     }
@@ -974,7 +974,7 @@ pub mod incremental_check {
     }
 
     pub fn module_order_memo(v: kayak_rt::Handle<'static, Cv>, forms: Sexps, text: Str, old: Memos, made: Memos) -> kayak_rt::Handle<'static, OrderMemo> {
-        let key = fnv_string(text, fnv_string(str_lit("order"), fnv_offset()));
+        let key = fnv_string(text, fnv_string(str_lit!("order"), fnv_offset()));
         let hit = memo_find(old, key);
         if null_p(hit) {
             let tagcase_ = module_order_coded(v, forms);
@@ -1074,7 +1074,7 @@ pub mod incremental_check {
             });
             let placed = (i64_gt_eq(start, from) && i64_lt(start, end));
             let ss = if placed {
-                starts_of(start, if head_is_p(it, str_lit("define-rec")) {
+                starts_of(start, if head_is_p(it, str_lit!("define-rec")) {
                     map(kayak_rt::as_proc(datum_pos), cdr(items(it)))
                 } else {
                     nil::<i64>()
@@ -1090,7 +1090,7 @@ pub mod incremental_check {
             let es = map(kayak_rt::as_proc(kayak_rt::closure1s((positions, end,), |(positions, end,), q: i64| {
                 position_after(q, positions, end)
             })), ss);
-            let kd = reads_key(v, r, it, fnv_string(str_lit("item"), fnv_offset()));
+            let kd = reads_key(v, r, it, fnv_string(str_lit!("item"), fnv_offset()));
             let key = fnv_string(own, keyed_key(kd));
             let r = keyed_reads(kd);
             let hit = memo_find(old, key);
@@ -1147,7 +1147,7 @@ pub mod incremental_check {
                 let form = car(forms);
                 let file = datum_file(form);
                 let start = datum_pos(form);
-                let kd = reads_key(v, r, form, fnv_string(str_lit("check"), fnv_offset()));
+                let kd = reads_key(v, r, form, fnv_string(str_lit!("check"), fnv_offset()));
                 let key = fnv_string(car(texts), keyed_key(kd));
                 let hit = memo_find(old, key);
                 if module_def_p(form) {
@@ -1168,7 +1168,7 @@ pub mod incremental_check {
                                 } else {
                                     nil::<Str>()
                                 }
-                            })), unhidden(module_written(form))))), fnv_string(str_lit("module"), reads_chain(r)));
+                            })), unhidden(module_written(form))))), fnv_string(str_lit!("module"), reads_chain(r)));
                             let tagcase_ = check_items_memo(inner, prep_name(p), order_memo_forms(ordering), old, reads_anew(r, inner, i64_to_string(scope)), nil::<kayak_rt::Handle<'static, Typed>>(), order_memo_made(ordering), car(texts), start, sorted_positions(map(kayak_rt::as_proc(datum_pos), unhidden(module_written(form))), nil::<i64>()), if null_p(cdr(texts)) {
                                 end_of_file()
                             } else {
@@ -1179,7 +1179,7 @@ pub mod incremental_check {
                                     let tagcase_ = module_finish(p, elab(done, items_found));
                                     match *tagcase_ {
                                         Elab::Elab(v2, more) => {
-                                            (v0, forms, texts, r, found, made) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), cdr(texts), reads_anew(r, v2, ambient_of(v, v2)), onto(more, found), made2);
+                                            (v0, forms, texts, r, found, made) = (at(v2, str_lit!(""), nil::<Str>()), cdr(forms), cdr(texts), reads_anew(r, v2, ambient_of(v, v2)), onto(more, found), made2);
                                             continue;
                                         }
                                     }
@@ -1215,7 +1215,7 @@ pub mod incremental_check {
                                 let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), form);
                                 match *tagcase_ {
                                     Elab::Elab(v2, more) => {
-                                        elab(at(v2, str_lit(""), nil::<Str>()), more)
+                                        elab(at(v2, str_lit!(""), nil::<Str>()), more)
                                     }
                                 }
                             }
@@ -1263,13 +1263,13 @@ pub mod incremental_check {
     /// As `check-program-as` (check-defs.kfx), with memos; the passes before
     /// the forms' run always.
     pub fn check_program_memo(forms: Sexps, texts: Strings, old: Memos, runtime: bool) -> kayak_rt::Handle<'static, CheckedMemo> {
-        let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
+        let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the program"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
         let declared = declare_types(empty, forms, nil::<kayak_rt::Handle<'static, Alias>>());
         let start = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), if runtime {
-            kayak_rt::heap_cons(alias(str_lit("%syscalls"), nil::<Str>(), sym(str_lit("#t"), str_lit(""), 0i64)), declared)
+            kayak_rt::heap_cons(alias(str_lit!("%syscalls"), nil::<Str>(), sym(str_lit!("#t"), str_lit!(""), 0i64)), declared)
         } else {
             declared
-        }, nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
+        }, nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the program"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
         let types = type_names_free(start, forms);
         let named = {
             let tagcase_ = start;

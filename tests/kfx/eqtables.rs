@@ -9,15 +9,15 @@ use kayak_rt::*;
 
 pub fn by_refs() -> Str {
     let (t, a, b, c) = (the::<EqTable<Ref<Int>, Str>>(make_eqtable(ref_identity())), the::<Ref<Int>>(kayak_rt::heap_new(int_lit(1))), the::<Ref<Int>>(kayak_rt::heap_new(int_lit(1))), the::<Ref<Int>>(kayak_rt::heap_new(int_lit(2))));
-    eqtable_set_x(t, a, str_lit("a"));
-    eqtable_set_x(t, b, str_lit("b"));
-    eqtable_set_x(t, c, str_lit("c"));
-    eqtable_set_x(t, a, str_lit("A"));
+    eqtable_set_x(t, a, str_lit!("a"));
+    eqtable_set_x(t, b, str_lit!("b"));
+    eqtable_set_x(t, c, str_lit!("c"));
+    eqtable_set_x(t, a, str_lit!("A"));
     eqtable_delete_x(t, c);
-    string_append(eqtable_ref(t, a, str_lit("-")), string_append(eqtable_ref(t, b, str_lit("-")), string_append(eqtable_ref(t, c, str_lit("-")), string_append(str_lit(" "), string_append(int_to_string(eqtable_count(t)), if eqtable_has_p(t, c) {
-        str_lit(" has c")
+    string_append(eqtable_ref(t, a, str_lit!("-")), string_append(eqtable_ref(t, b, str_lit!("-")), string_append(eqtable_ref(t, c, str_lit!("-")), string_append(str_lit!(" "), string_append(int_to_string(eqtable_count(t)), if eqtable_has_p(t, c) {
+        str_lit!(" has c")
     } else {
-        str_lit(" no c")
+        str_lit!(" no c")
     })))))
 }
 
@@ -48,6 +48,6 @@ pub fn in_arena(n: Int) -> Int {
 
 #[inline]
 pub fn main() -> Str {
-    string_append(by_refs(), string_append(str_lit(" "), string_append(int_to_string(by_arrays()), string_append(str_lit(" "), int_to_string(in_arena(int_lit(7)))))))
+    string_append(by_refs(), string_append(str_lit!(" "), string_append(int_to_string(by_arrays()), string_append(str_lit!(" "), int_to_string(in_arena(int_lit(7)))))))
 }
 

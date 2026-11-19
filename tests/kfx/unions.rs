@@ -48,20 +48,20 @@ pub fn kind(x: Wide) -> Str {
     if int_p(x) {
         let n = kayak_rt::value::unbox::<Int>(x);
         if _lt(n, int_lit(0)) {
-            str_lit("negative")
+            str_lit!("negative")
         } else {
-            str_lit("int")
+            str_lit!("int")
         }
     } else if string_p(x) {
         let s = kayak_rt::value::unbox::<Str>(x);
-        string_append(str_lit("string "), s)
+        string_append(str_lit!("string "), s)
     } else if procedure_p(x) {
         let f = kayak_rt::value::unbox_other::<kayak_rt::Proc1s<'static, Int, Int>>(x);
         int_to_string(f.call(int_lit(1)))
     } else if kayak_rt::value::null_p(x) {
-        str_lit("nil")
+        str_lit!("nil")
     } else {
-        str_lit("other")
+        str_lit!("other")
     }
 }
 
@@ -92,7 +92,7 @@ pub fn pick<T: Copy + 'static + kayak_rt::Trace>(b: bool, x: T, y: T) -> T {
 
 // Each member given for its union: boxed, a scalar, a list, a procedure.
 pub fn all() -> List<Wide> {
-    kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(int_lit(7)), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(str_lit("seven")), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("seven"))), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(true), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value('a'), kayak_rt::heap_cons(kayak_rt::value::list(the::<List<Int>>(kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::heap_cons(int_lit(3), kayak_rt::nil()))))), kayak_rt::heap_cons(kayak_rt::value::list(the::<List<Int>>(nil::<Int>())), kayak_rt::heap_cons(kayak_rt::value::other(kayak_rt::closure1s((), |(), n: Int| {
+    kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(int_lit(7)), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(str_lit!("seven")), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("seven"))), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(true), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value('a'), kayak_rt::heap_cons(kayak_rt::value::list(the::<List<Int>>(kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::heap_cons(int_lit(3), kayak_rt::nil()))))), kayak_rt::heap_cons(kayak_rt::value::list(the::<List<Int>>(nil::<Int>())), kayak_rt::heap_cons(kayak_rt::value::other(kayak_rt::closure1s((), |(), n: Int| {
         _star(n, int_lit(2))
     }), kayak_rt::value::Shape::Procedure), kayak_rt::heap_cons(widen(the::<Small>(kayak_rt::value::ToValue::to_value(int_lit(41)))), kayak_rt::nil())))))))))
 }
@@ -109,9 +109,9 @@ pub fn sizes(xs: List<Wide>) -> Int {
 #[inline]
 pub fn kinds(xs: List<Wide>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(kind(car(xs)), string_append(str_lit(";"), kinds(cdr(xs))))
+        string_append(kind(car(xs)), string_append(str_lit!(";"), kinds(cdr(xs))))
     }
 }
 
@@ -164,6 +164,6 @@ pub fn seven() -> Int {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(sizes(all())), string_append(str_lit(" "), string_append(kinds(all()), string_append(str_lit(" "), string_append(int_to_string(_plus(next(none()), next(kayak_rt::value::ToValue::to_value(int_lit(41))))), string_append(str_lit(" "), string_append(kind(pick(false, the::<Wide>(kayak_rt::value::ToValue::to_value(int_lit(-3))), the::<Wide>(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("x")))))), string_append(str_lit(" "), string_append(int_to_string(smalls(kayak_rt::value::boxed_list(some_ints()))), string_append(str_lit(" "), int_to_string(_plus(apply_int(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a__0| small_size(kayak_rt::value::ToValue::to_value(a__0)))), int_lit(5)), small_size(call_small(kayak_rt::as_proc(kayak_rt::closure0s((), |()| kayak_rt::value::ToValue::to_value(seven())))))))))))))))))
+    string_append(int_to_string(sizes(all())), string_append(str_lit!(" "), string_append(kinds(all()), string_append(str_lit!(" "), string_append(int_to_string(_plus(next(none()), next(kayak_rt::value::ToValue::to_value(int_lit(41))))), string_append(str_lit!(" "), string_append(kind(pick(false, the::<Wide>(kayak_rt::value::ToValue::to_value(int_lit(-3))), the::<Wide>(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("x")))))), string_append(str_lit!(" "), string_append(int_to_string(smalls(kayak_rt::value::boxed_list(some_ints()))), string_append(str_lit!(" "), int_to_string(_plus(apply_int(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a__0| small_size(kayak_rt::value::ToValue::to_value(a__0)))), int_lit(5)), small_size(call_small(kayak_rt::as_proc(kayak_rt::closure0s((), |()| kayak_rt::value::ToValue::to_value(seven())))))))))))))))))
 }
 

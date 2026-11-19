@@ -40,17 +40,17 @@ pub fn main() -> Str {
     let first = car(pairs);
     let ys = the::<List<i64>>(mk::<i64>());
     string_append(if null_p::<Void>(x) {
-        str_lit("empty ")
+        str_lit!("empty ")
     } else {
-        str_lit("full ")
+        str_lit!("full ")
     }, string_append(if null_p::<Void>(first) {
-        str_lit("empty ")
+        str_lit!("empty ")
     } else {
-        str_lit("full ")
+        str_lit!("full ")
     }, string_append(if null_p(ys) {
-        str_lit("empty ")
+        str_lit!("empty ")
     } else {
-        str_lit("full ")
+        str_lit!("full ")
     }, i64_to_string(go(kayak_rt::as_proc(kayak_rt::closure1s((), |(), y: i64| {
         i64_plus(y, 1i64)
     })))))))

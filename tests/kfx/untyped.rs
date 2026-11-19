@@ -13,7 +13,7 @@ pub fn base() -> i64 {
 
 #[inline]
 pub fn greeting() -> Str {
-    str_lit("hello")
+    str_lit!("hello")
 }
 
 #[inline]
@@ -23,7 +23,7 @@ pub fn add(a: i64, b: i64) -> i64 {
 
 #[inline]
 pub fn shout(s: Str) -> Str {
-    string_append(s, str_lit("!"))
+    string_append(s, str_lit!("!"))
 }
 
 #[inline]
@@ -33,6 +33,6 @@ pub fn pair_up(x: i64) -> List<i64> {
 
 pub fn main() -> Str {
     let xs = pair_up(2i64);
-    string_append(shout(greeting()), string_append(str_lit(" "), string_append(i64_to_string(car(xs)), string_append(str_lit(" "), i64_to_string(car(cdr(xs)))))))
+    string_append(shout(greeting()), string_append(str_lit!(" "), string_append(i64_to_string(car(xs)), string_append(str_lit!(" "), i64_to_string(car(cdr(xs)))))))
 }
 

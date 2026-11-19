@@ -108,6 +108,6 @@ pub fn push<T: Copy + 'static + kayak_rt::Trace>(x: T, s: Stack<T>) -> Stack<T> 
 
 pub fn main() -> Str {
     let s = push(the::<i64>(2i64), stacked(the::<List<i64>>(nil::<i64>())));
-    string_append(i64_to_string(from_meters(to_meters(42i64))), string_append(str_lit(" "), string_append(i64_to_string(car(unstack(s))), string_append(str_lit(" "), i64_to_string(m::value(m::inc(m::zero())))))))
+    string_append(i64_to_string(from_meters(to_meters(42i64))), string_append(str_lit!(" "), string_append(i64_to_string(car(unstack(s))), string_append(str_lit!(" "), i64_to_string(m::value(m::inc(m::zero())))))))
 }
 

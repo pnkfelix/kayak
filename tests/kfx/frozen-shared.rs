@@ -78,6 +78,6 @@ pub fn both(xs: Ints) -> Int {
 
 pub fn main() -> Str {
     let (xs, ys) = (squares(int_lit(10)), evens(int_lit(5)));
-    string_append(int_to_string(both(xs)), string_append(str_lit(" "), int_to_string(both(ys))))
+    string_append(int_to_string(both(xs)), string_append(str_lit!(" "), int_to_string(both(ys))))
 }
 

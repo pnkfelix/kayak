@@ -18,16 +18,16 @@ pub fn describe(s: kayak_rt::Handle<'static, Shape>) -> Str {
     let tagcase_ = s;
     match *tagcase_ {
         Shape::Circle(r) => {
-            string_append(str_lit("circle "), i64_to_string(r))
+            string_append(str_lit!("circle "), i64_to_string(r))
         }
         Shape::Rect(w, h) => {
-            string_append(str_lit("rect "), string_append(i64_to_string(w), string_append(str_lit("x"), i64_to_string(h))))
+            string_append(str_lit!("rect "), string_append(i64_to_string(w), string_append(str_lit!("x"), i64_to_string(h))))
         }
     }
 }
 
 pub fn main() -> Str {
     let ss = the::<Shapes>(kayak_rt::heap_cons(circle(2i64), kayak_rt::heap_cons(rect(3i64, 4i64), kayak_rt::nil())));
-    string_append(describe(car(ss)), string_append(str_lit(", "), string_append(describe(car(cdr(ss))), string_append(str_lit(": "), i64_to_string(total(ss))))))
+    string_append(describe(car(ss)), string_append(str_lit!(", "), string_append(describe(car(cdr(ss))), string_append(str_lit!(": "), i64_to_string(total(ss))))))
 }
 

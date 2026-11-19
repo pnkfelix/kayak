@@ -47,6 +47,6 @@ pub fn main() -> Str {
     let c = next_x().call();
     let d = next_x().call();
     set(tally(), i64_plus(get(tally()), 1i64));
-    string_append(i64_to_string(a), string_append(str_lit(" "), string_append(i64_to_string(b), string_append(str_lit(" "), string_append(i64_to_string(c), string_append(str_lit(" "), string_append(i64_to_string(d), string_append(str_lit(" "), i64_to_string(get(tally()))))))))))
+    string_append(i64_to_string(a), string_append(str_lit!(" "), string_append(i64_to_string(b), string_append(str_lit!(" "), string_append(i64_to_string(c), string_append(str_lit!(" "), string_append(i64_to_string(d), string_append(str_lit!(" "), i64_to_string(get(tally()))))))))))
 }
 

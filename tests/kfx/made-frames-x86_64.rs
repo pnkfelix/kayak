@@ -64,7 +64,7 @@ pub fn main() -> Str {
         }))
     } else {
         int_lit(500000500000)
-    }), string_append(str_lit(" "), int_to_string(if native_code_p() {
+    }), string_append(str_lit!(" "), int_to_string(if native_code_p() {
         deep(build(), int_lit(3000))
     } else {
         int_lit(165055)

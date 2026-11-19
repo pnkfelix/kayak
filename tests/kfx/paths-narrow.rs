@@ -71,12 +71,12 @@ pub fn name_of(x: Cell) -> Str {
     if string_p(kayak_rt::value::car(x)) {
         kayak_rt::value::unbox::<Str>(kayak_rt::value::car(x))
     } else {
-        str_lit("-")
+        str_lit!("-")
     }
 }
 
 pub fn main() -> Str {
-    let (a, s, b) = (the::<Cell>(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(10)), int_lit(1))), the::<Cell>(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(str_lit("s")), int_lit(1))), the::<Ref<Int>>(kayak_rt::heap_new(int_lit(0))));
-    string_append(int_to_string(_plus(plus(a), _plus(otherwise(a), _plus(elsewhere(a, b), _plus(field(Product_1a(kayak_rt::value::ToValue::to_value(int_lit(20)))), plus(s)))))), string_append(str_lit(" "), name_of(s)))
+    let (a, s, b) = (the::<Cell>(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(10)), int_lit(1))), the::<Cell>(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(str_lit!("s")), int_lit(1))), the::<Ref<Int>>(kayak_rt::heap_new(int_lit(0))));
+    string_append(int_to_string(_plus(plus(a), _plus(otherwise(a), _plus(elsewhere(a, b), _plus(field(Product_1a(kayak_rt::value::ToValue::to_value(int_lit(20)))), plus(s)))))), string_append(str_lit!(" "), name_of(s)))
 }
 

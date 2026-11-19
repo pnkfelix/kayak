@@ -23,7 +23,7 @@ pub async fn echo_x(mut lp: Wl, mut n: i64) -> Result<i64, Unwind> {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("line") } {
             let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            kayak_rt::suspend::body(say_x(lp, string_append(str_lit("echo "), string_append(s, str_lit("\n"))))).await?;
+            kayak_rt::suspend::body(say_x(lp, string_append(str_lit!("echo "), string_append(s, str_lit!("\n"))))).await?;
             n = i64_plus(n, 1i64);
             continue;
         } else {
@@ -38,7 +38,7 @@ pub async fn count_x(mut lp: Wl, mut k: i64) -> Result<(), Unwind> {
         if i64_gt(k, 3i64) {
             return Ok(());
         } else {
-            kayak_rt::suspend::body(say_x(lp, string_append(str_lit("count "), string_append(i64_to_string(k), str_lit("\n"))))).await?;
+            kayak_rt::suspend::body(say_x(lp, string_append(str_lit!("count "), string_append(i64_to_string(k), str_lit!("\n"))))).await?;
             kayak_rt::suspend::body(yield_x(lp.0)).await?;
             k = i64_plus(k, 1i64);
             continue;
@@ -73,8 +73,8 @@ pub fn reverse_log(mut xs: Log<'static>, mut acc: Log<'static>) -> Log<'static> 
 pub async fn main() -> Result<Int, Unwind> {
     let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>()));
     let n = kayak_rt::suspend::body(run_both(recording(live(), log))).await?;
-    write_file(str_lit("run.log"), the::<Bytes>(string_to_utf8(log_text(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())))));
-    let tagcase_ = the::<kayak_rt::Sum>(read_file(str_lit("run.log")));
+    write_file(str_lit!("run.log"), the::<Bytes>(string_to_utf8(log_text(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())))));
+    let tagcase_ = the::<kayak_rt::Sum>(read_file(str_lit!("run.log")));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("data") } {
         let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
@@ -84,7 +84,7 @@ pub async fn main() -> Result<Int, Unwind> {
             let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
             let replayed = the::<Ref<Log<'static>>>(kayak_rt::heap_new(log_of_text(s)));
             let m = kayak_rt::suspend::body(run_both(replaying(replayed))).await?;
-            write_out(string_append(str_lit("replayed "), string_append(i64_to_string(m), string_append(str_lit(" of "), string_append(i64_to_string(n), str_lit(" lines\n"))))));
+            write_out(string_append(str_lit!("replayed "), string_append(i64_to_string(m), string_append(str_lit!(" of "), string_append(i64_to_string(n), str_lit!(" lines\n"))))));
             Ok(i64_to_int(m))
         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);

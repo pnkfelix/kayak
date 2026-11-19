@@ -16,7 +16,7 @@ use super::*;
 pub fn repl_cv() -> Ref<kayak_rt::Handle<'static, Cv>> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Handle<'static, Cv>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>()))
+        kayak_rt::heap_new(cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>()))
     })
 }
 
@@ -90,7 +90,7 @@ pub fn repl_complete_p(text: Str) -> bool {
 
 #[inline]
 pub fn repl_banner() -> Str {
-    str_lit("kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)")
+    str_lit!("kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)")
 }
 
 // Globals: their array grown as definitions come.
@@ -112,7 +112,7 @@ pub fn globals_room_x(gs: Strings) -> () {
     if i64_lt_eq(n, flatarray_length_i64(old)) {
         ()
     } else {
-        let (bigger, names) = (the::<FlatArray<i64>>(make_flatarray_i64(i64_star(i64_plus(n, 1i64), 2i64), w_unbound())), the::<Array<Str>>(make_array(i64_to_int(i64_star(i64_plus(n, 1i64), 2i64)), str_lit(""))));
+        let (bigger, names) = (the::<FlatArray<i64>>(make_flatarray_i64(i64_star(i64_plus(n, 1i64), 2i64), w_unbound())), the::<Array<Str>>(make_array(i64_to_int(i64_star(i64_plus(n, 1i64), 2i64)), str_lit!(""))));
         globals_grown_x(old, bigger, 0i64, flatarray_length_i64(old));
         set(globals(), bigger);
         names_array_x(names, gs, 0i64);
@@ -136,7 +136,7 @@ pub fn new_names(mut names: Strings, mut known: Strings) -> Strings {
 }
 
 pub fn repl_start_x() -> () {
-    let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
+    let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
     load_x(nil::<Str>());
     set(repl_cv(), with_binds(empty, prim_binds(empty)))
 }
@@ -203,7 +203,7 @@ pub fn checked_form(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'st
                         let tagcase_ = check_untyped(near(typed, src_file, src_line, src_pos), form);
                         match *tagcase_ {
                             Elab::Elab(v2, more) => {
-                                at(v2, str_lit(""), nil::<Str>())
+                                at(v2, str_lit!(""), nil::<Str>())
                             }
                         }
                     }
@@ -219,7 +219,7 @@ pub fn checked_form(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'st
                         let tagcase_ = check_module(near(typed, src_file, src_line, src_pos), form);
                         match *tagcase_ {
                             Elab::Elab(v2, more) => {
-                                at(v2, str_lit(""), nil::<Str>())
+                                at(v2, str_lit!(""), nil::<Str>())
                             }
                         }
                     }
@@ -238,7 +238,7 @@ pub fn checked_form(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'st
 /// What the REPL writes of a form: an expression's type and effect, a
 /// definition's name and type.
 pub fn form_type(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Str {
-    if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
+    if (head_is_p(form, str_lit!("define")) || head_is_p(form, str_lit!("define*"))) {
         let n = binder_name(second(items(form)));
         let found = scope_bind(n, v);
         if null_p(found) {
@@ -250,19 +250,19 @@ pub fn form_type(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'stati
                     let tagcase_ = sc;
                     match *tagcase_ {
                         Scheme::Scheme(tvars, t) => {
-                            string_append(n, string_append(str_lit(" : "), string_append(show_ty(new_state(), t), str_lit(" ! pure"))))
+                            string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), str_lit!(" ! pure"))))
                         }
                     }
                 }
             }
         }
-    } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-effect")) || head_is_p(form, str_lit("define-datatype")) || head_is_p(form, str_lit("define-generative")) || head_is_p(form, str_lit("define-rec"))) {
-        str_lit("")
+    } else if (head_is_p(form, str_lit!("define-type")) || head_is_p(form, str_lit!("define-effect")) || head_is_p(form, str_lit!("define-datatype")) || head_is_p(form, str_lit!("define-generative")) || head_is_p(form, str_lit!("define-rec"))) {
+        str_lit!("")
     } else {
-        let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+        let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                string_append(str_lit(" : "), string_append(show_ty(s, t), string_append(str_lit(" ! "), show_effs(es))))
+                string_append(str_lit!(" : "), string_append(show_ty(s, t), string_append(str_lit!(" ! "), show_effs(es))))
             }
         }
     }

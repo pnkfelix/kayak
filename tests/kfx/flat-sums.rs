@@ -110,9 +110,9 @@ pub fn total(mut a: Arr, mut i: i64, mut acc: f64) -> f64 {
 #[inline]
 pub fn ints(ns: List<Int>) -> Str {
     if null_p(ns) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(int_to_string(car(ns)), string_append(str_lit(" "), ints(cdr(ns))))
+        string_append(int_to_string(car(ns)), string_append(str_lit!(" "), ints(cdr(ns))))
     }
 }
 

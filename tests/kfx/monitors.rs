@@ -25,11 +25,11 @@ pub fn score(r: Report) -> Int {
         v
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-        if string_eq_p(m, str_lit("bad input")) {
+        if string_eq_p(m, str_lit!("bad input")) {
             int_lit(100)
-        } else if (string_eq_p(m, str_lit("left")) || string_eq_p(m, str_lit("right"))) {
+        } else if (string_eq_p(m, str_lit!("left")) || string_eq_p(m, str_lit!("right"))) {
             int_lit(200)
-        } else if string_eq_p(m, str_lit("")) {
+        } else if string_eq_p(m, str_lit!("")) {
             int_lit(0)
         } else {
             int_lit(50)
@@ -84,7 +84,7 @@ pub fn start_collector(count: Int, out: ICell<Int>) -> Addr<Report> {
 #[inline]
 pub fn work(k: Int) -> Int {
     if _eq(k, int_lit(0)) {
-        error(str_lit("bad input"))
+        error(str_lit!("bad input"))
     } else {
         k
     }
@@ -117,11 +117,11 @@ pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
                 let n = kayak_rt::process::receive(r#box);
                 {
                     let (a, b) = kayak_rt::process::par2(move || if _eq(n, int_lit(0)) {
-                        error(str_lit("left"))
+                        error(str_lit!("left"))
                     } else {
                         n
                     }, move || if (both && _eq(n, int_lit(0))) {
-                        error(str_lit("right"))
+                        error(str_lit!("right"))
                     } else {
                         _star(n, int_lit(2))
                     });
@@ -224,9 +224,9 @@ pub fn counted() -> Int {
 #[inline]
 pub fn show(xs: List<Int>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(int_to_string(car(xs)), string_append(str_lit(" "), show(cdr(xs))))
+        string_append(int_to_string(car(xs)), string_append(str_lit!(" "), show(cdr(xs))))
     }
 }
 

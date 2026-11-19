@@ -22,11 +22,11 @@ pub fn note_x(s: Str) -> () {
 
 pub fn words(xs: List<Str>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 
@@ -43,7 +43,7 @@ pub fn reverse_log(mut xs: List<Str>, mut acc: List<Str>) -> List<Str> {
 
 #[inline]
 pub fn stamp(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, s: Str) -> Str {
-    string_append(s, string_append(str_lit("@"), i64_to_string(now(lp))))
+    string_append(s, string_append(str_lit!("@"), i64_to_string(now(lp))))
 }
 
 pub async fn main() -> Result<Str, Unwind> {
@@ -51,20 +51,20 @@ pub async fn main() -> Result<Str, Unwind> {
     let iv = the::<Ref<kayak_rt::Sum>>(make_ivar::<i64>(lp));
     kayak_rt::suspend::body(spawn_x(lp, kayak_rt::closure0((lp, iv,), |(lp, iv,)| kayak_rt::suspend::body(async move {
         kayak_rt::suspend::body(sleep_x(lp, 30i64)).await?;
-        note_x(stamp(lp, str_lit("slow")));
+        note_x(stamp(lp, str_lit!("slow")));
         Ok(ivar_put_x::<i64>(lp, iv, 42i64))
     })))).await?;
     kayak_rt::suspend::body(spawn_x(lp, kayak_rt::closure0((lp,), |(lp,)| kayak_rt::suspend::body(async move {
         kayak_rt::suspend::body(sleep_x(lp, 10i64)).await?;
-        Ok(note_x(stamp(lp, str_lit("quick"))))
+        Ok(note_x(stamp(lp, str_lit!("quick"))))
     })))).await?;
     kayak_rt::suspend::body(spawn_x(lp, kayak_rt::closure0((lp, iv,), |(lp, iv,)| kayak_rt::suspend::body(async move {
-        note_x(stamp(lp, str_lit("waiting")));
+        note_x(stamp(lp, str_lit!("waiting")));
         Ok(note_x(stamp(lp, i64_to_string(kayak_rt::suspend::body(ivar_get_x::<i64>(lp, iv)).await?))))
     })))).await?;
     kayak_rt::suspend::body(spawn_x(lp, kayak_rt::closure0((lp,), |(lp,)| kayak_rt::suspend::body(async move {
         kayak_rt::suspend::body(yield_x(lp)).await?;
-        Ok(note_x(stamp(lp, str_lit("yielded"))))
+        Ok(note_x(stamp(lp, str_lit!("yielded"))))
     })))).await?;
     kayak_rt::suspend::body(run_x(lp)).await?;
     Ok(words(reverse_log(get(log()), nil::<Str>())))

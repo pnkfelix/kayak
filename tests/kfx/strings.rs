@@ -8,40 +8,40 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 
 #[inline]
 pub fn bracket(c: char) -> Str {
-    string_append(str_lit("["), string_append(char_to_string(c), str_lit("]")))
+    string_append(str_lit!("["), string_append(char_to_string(c), str_lit!("]")))
 }
 
 pub fn main() -> Str {
-    words(kayak_rt::heap_cons(str_lit("tab\there \"quoted\" back\\slash\n"), kayak_rt::heap_cons(bracket('"'), kayak_rt::heap_cons(bracket('\\'), kayak_rt::heap_cons(bracket('\''), kayak_rt::heap_cons(bracket(' '), kayak_rt::heap_cons(bracket('('), kayak_rt::heap_cons(bracket(';'), kayak_rt::heap_cons(bracket('\t'), kayak_rt::heap_cons(bracket(char_upcase('q')), kayak_rt::heap_cons(if string_eq_p(str_lit("abc"), str_lit("abc")) {
-        str_lit("same")
+    words(kayak_rt::heap_cons(str_lit!("tab\there \"quoted\" back\\slash\n"), kayak_rt::heap_cons(bracket('"'), kayak_rt::heap_cons(bracket('\\'), kayak_rt::heap_cons(bracket('\''), kayak_rt::heap_cons(bracket(' '), kayak_rt::heap_cons(bracket('('), kayak_rt::heap_cons(bracket(';'), kayak_rt::heap_cons(bracket('\t'), kayak_rt::heap_cons(bracket(char_upcase('q')), kayak_rt::heap_cons(if string_eq_p(str_lit!("abc"), str_lit!("abc")) {
+        str_lit!("same")
     } else {
-        str_lit("differ")
-    }, kayak_rt::heap_cons(if char_eq_p(string_ref_i64(str_lit("xyz"), 1i64), 'y') {
-        str_lit("y")
+        str_lit!("differ")
+    }, kayak_rt::heap_cons(if char_eq_p(string_ref_i64(str_lit!("xyz"), 1i64), 'y') {
+        str_lit!("y")
     } else {
-        str_lit("not-y")
-    }, kayak_rt::heap_cons(i64_to_string(string_length_i64(str_lit("hello"))), kayak_rt::heap_cons(i64_to_string(char_to_i64('A')), kayak_rt::heap_cons(if char_whitespace_p('\t') {
-        str_lit("ws")
+        str_lit!("not-y")
+    }, kayak_rt::heap_cons(i64_to_string(string_length_i64(str_lit!("hello"))), kayak_rt::heap_cons(i64_to_string(char_to_i64('A')), kayak_rt::heap_cons(if char_whitespace_p('\t') {
+        str_lit!("ws")
     } else {
-        str_lit("not-ws")
+        str_lit!("not-ws")
     }, kayak_rt::heap_cons(if char_numeric_p('7') {
-        str_lit("digit")
+        str_lit!("digit")
     } else {
-        str_lit("not-digit")
+        str_lit!("not-digit")
     }, kayak_rt::heap_cons(if char_alphabetic_p('7') {
-        str_lit("alpha")
+        str_lit!("alpha")
     } else {
-        str_lit("not-alpha")
+        str_lit!("not-alpha")
     }, kayak_rt::nil())))))))))))))))))
 }
 

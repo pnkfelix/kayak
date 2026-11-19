@@ -74,13 +74,13 @@ pub fn apply_to(f: kayak_rt::Proc1s<'static, Int, Int>, x: Int) -> Int {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(twice(int_lit(5))), string_append(str_lit(" "), string_append(int_to_string({
+    string_append(int_to_string(twice(int_lit(5))), string_append(str_lit!(" "), string_append(int_to_string({
         bump();
         bump()
-    }), string_append(str_lit(" "), string_append(if even_n_p(int_lit(10)) {
-        str_lit("even")
+    }), string_append(str_lit!(" "), string_append(if even_n_p(int_lit(10)) {
+        str_lit!("even")
     } else {
-        str_lit("odd")
-    }, string_append(str_lit(" "), string_append(int_to_string(count_down(int_lit(7))), string_append(str_lit(" "), string_append(int_to_string(first_of(kayak_rt::heap_cons(int_lit(4), kayak_rt::heap_cons(int_lit(5), kayak_rt::nil())), int_lit(0))), string_append(str_lit(" "), int_to_string(apply_to(kayak_rt::as_proc(double), int_lit(21)))))))))))))
+        str_lit!("odd")
+    }, string_append(str_lit!(" "), string_append(int_to_string(count_down(int_lit(7))), string_append(str_lit!(" "), string_append(int_to_string(first_of(kayak_rt::heap_cons(int_lit(4), kayak_rt::heap_cons(int_lit(5), kayak_rt::nil())), int_lit(0))), string_append(str_lit!(" "), int_to_string(apply_to(kayak_rt::as_proc(double), int_lit(21)))))))))))))
 }
 

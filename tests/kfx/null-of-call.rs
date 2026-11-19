@@ -9,7 +9,7 @@ pub fn find(mut xs: List<i64>, mut n: i64) -> kayak_rt::value::Value {
         if null_p(xs) {
             return kayak_rt::value::Value::Nil;
         } else if i64_eq(car(xs), n) {
-            return the::<kayak_rt::value::Value>(kayak_rt::value::cons(n, str_lit("found")));
+            return the::<kayak_rt::value::Value>(kayak_rt::value::cons(n, str_lit!("found")));
         } else {
             xs = cdr(xs);
             continue;
@@ -24,13 +24,13 @@ pub fn has_p(xs: List<i64>, n: i64) -> bool {
 
 pub fn main() -> Str {
     string_append(if has_p(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))), 2i64) {
-        str_lit("yes")
+        str_lit!("yes")
     } else {
-        str_lit("no")
-    }, string_append(str_lit(" "), if has_p(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))), 5i64) {
-        str_lit("yes")
+        str_lit!("no")
+    }, string_append(str_lit!(" "), if has_p(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))), 5i64) {
+        str_lit!("yes")
     } else {
-        str_lit("no")
+        str_lit!("no")
     }))
 }
 

@@ -28,7 +28,7 @@ pub fn engine_failed() -> Ref<bool> {
 pub fn engine_failure() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
-        kayak_rt::heap_new(str_lit(""))
+        kayak_rt::heap_new(str_lit!(""))
     })
 }
 
@@ -58,7 +58,7 @@ pub fn failed_with_x(message: Str) -> () {
 pub fn failure_taken_x() -> Str {
     let m = get(engine_failure());
     set(engine_failed(), false);
-    set(engine_failure(), str_lit(""));
+    set(engine_failure(), str_lit!(""));
     set(engine_trace(), nil::<Str>());
     m
 }
@@ -66,9 +66,9 @@ pub fn failure_taken_x() -> Str {
 #[inline]
 pub fn traced(ls: List<Str>, prefix: Str) -> Str {
     if null_p(ls) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(str_lit("\n"), string_append(prefix, string_append(car(ls), traced(cdr(ls), prefix))))
+        string_append(str_lit!("\n"), string_append(prefix, string_append(car(ls), traced(cdr(ls), prefix))))
     }
 }
 

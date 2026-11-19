@@ -35,7 +35,7 @@ pub type Drt = Tag<Int, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kaya
 
 #[inline]
 pub fn fail_with(message: Str, status: Int) -> Void {
-    write_err(string_append(str_lit("kfx: "), string_append(message, str_lit("\n"))));
+    write_err(string_append(str_lit!("kfx: "), string_append(message, str_lit!("\n"))));
     match exit(status) {}
 }
 
@@ -47,10 +47,10 @@ pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
         Ok(s)
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-        Ok(match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), m))), int_lit(1)) {})
+        Ok(match fail_with(string_append(str_lit!("cannot read "), string_append(path, string_append(str_lit!(": "), m))), int_lit(1)) {})
     } else {
         let other = tagcase_;
-        Ok(match fail_with(string_append(str_lit("cannot read "), path), int_lit(1)) {})
+        Ok(match fail_with(string_append(str_lit!("cannot read "), path), int_lit(1)) {})
     }
 }
 
@@ -62,10 +62,10 @@ pub async fn write_text(rt: Drt, path: Str, text: Str) -> Result<(), Unwind> {
         Ok(())
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-        Ok(match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), m))), int_lit(1)) {})
+        Ok(match fail_with(string_append(str_lit!("cannot write "), string_append(path, string_append(str_lit!(": "), m))), int_lit(1)) {})
     } else {
         let other = tagcase_;
-        Ok(match fail_with(string_append(str_lit("cannot write "), path), int_lit(1)) {})
+        Ok(match fail_with(string_append(str_lit!("cannot write "), path), int_lit(1)) {})
     }
 }
 
@@ -82,11 +82,11 @@ pub fn read_text_now(path: Str) -> Str {
             s
         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            match fail_with(string_append(str_lit("cannot read "), string_append(path, str_lit(": it is not UTF-8"))), int_lit(1)) {}
+            match fail_with(string_append(str_lit!("cannot read "), string_append(path, str_lit!(": it is not UTF-8"))), int_lit(1)) {}
         } else { unreachable!() }
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+        match fail_with(string_append(str_lit!("cannot read "), string_append(path, string_append(str_lit!(": "), e.1))), int_lit(1)) {}
     } else { unreachable!() }
 }
 
@@ -98,7 +98,7 @@ pub fn write_text_now(path: Str, text: Str) -> () {
         ()
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), e.1))), int_lit(1)) {}
+        match fail_with(string_append(str_lit!("cannot write "), string_append(path, string_append(str_lit!(": "), e.1))), int_lit(1)) {}
     } else { unreachable!() }
 }
 
@@ -154,7 +154,7 @@ pub async fn unit_loads_read(mut rt: Drt, mut dir: Str, mut todo: Strings, mut d
         })), done) {
             todo = cdr(todo);
             continue;
-        } else if has_prefix_p(car(todo), str_lit("fx26:")) {
+        } else if has_prefix_p(car(todo), str_lit!("fx26:")) {
             todo = cdr(todo);
             continue;
         } else {
@@ -173,7 +173,7 @@ pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result
             return Ok(nil::<kayak_rt::Handle<'static, Source>>());
         } else {
             let line = line_trimmed(car(lines));
-            if (string_eq_p(line, str_lit("")) || has_prefix_p(line, str_lit(";")) || string_eq_p(line, str_lit("--syscalls"))) {
+            if (string_eq_p(line, str_lit!("")) || has_prefix_p(line, str_lit!(";")) || string_eq_p(line, str_lit!("--syscalls"))) {
                 lines = cdr(lines);
                 continue;
             } else {
@@ -183,10 +183,10 @@ pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result
                     let tagcase_ = x;
                     match *tagcase_ {
                         Filed::Filed(n, t) => {
-                            source(string_append(str_lit("%load:"), n), t)
+                            source(string_append(str_lit!("%load:"), n), t)
                         }
                     }
-                })), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit("")), nil::<kayak_rt::Handle<'static, Filed>>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
+                })), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit!("")), nil::<kayak_rt::Handle<'static, Filed>>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
             }
         }
     }
@@ -247,7 +247,7 @@ pub async fn loaded_for(rt: Drt, file: Str, text: Str) -> Result<Fileds, Unwind>
 // declare syscalls (C225): a line `--syscalls`, as Fixpt's flag.
 #[inline]
 pub fn runtime_unit_p(text: Str) -> bool {
-    string_member_p(str_lit("--syscalls"), map(kayak_rt::as_proc(line_trimmed), lines_from(string_chars(text), nil::<char>())))
+    string_member_p(str_lit!("--syscalls"), map(kayak_rt::as_proc(line_trimmed), lines_from(string_chars(text), nil::<char>())))
 }
 
 pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
@@ -255,11 +255,11 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
         let text = kayak_rt::suspend::body(read_text(rt, car(r#as))).await?;
         kayak_rt::suspend::body(put_out(rt, compile_named(car(r#as), text, kayak_rt::suspend::body(loaded_for(rt, car(r#as), text)).await?, false))).await?;
         Ok(int_lit(0))
-    } else if (i64_eq(size(r#as), 2i64) && string_eq_p(car(r#as), str_lit("--async"))) {
+    } else if (i64_eq(size(r#as), 2i64) && string_eq_p(car(r#as), str_lit!("--async"))) {
         let text = kayak_rt::suspend::body(read_text(rt, car(cdr(r#as)))).await?;
         kayak_rt::suspend::body(put_out(rt, compile_named(car(cdr(r#as)), text, kayak_rt::suspend::body(loaded_for(rt, car(cdr(r#as)), text)).await?, true))).await?;
         Ok(int_lit(0))
-    } else if (i64_eq(size(r#as), 2i64) && string_eq_p(car(r#as), str_lit("--toplevel"))) {
+    } else if (i64_eq(size(r#as), 2i64) && string_eq_p(car(r#as), str_lit!("--toplevel"))) {
         let text = kayak_rt::suspend::body(read_text(rt, car(cdr(r#as)))).await?;
         kayak_rt::suspend::body(put_out(rt, compile_toplevel(car(cdr(r#as)), text, kayak_rt::suspend::body(loaded_for(rt, car(cdr(r#as)), text)).await?))).await?;
         Ok(int_lit(0))
@@ -268,14 +268,14 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(car(r#as)), lines_from(string_chars(text), nil::<char>()))).await?;
         kayak_rt::suspend::body(write_outputs(rt, car(cdr(r#as)), compile_units_as(program, runtime_unit_p(text), false))).await?;
         Ok(int_lit(0))
-    } else if (i64_eq(size(r#as), 3i64) && string_eq_p(car(r#as), str_lit("--async"))) {
+    } else if (i64_eq(size(r#as), 3i64) && string_eq_p(car(r#as), str_lit!("--async"))) {
         // Every procedure an `async fn` (C371); not with memos yet, whose keys
         // would not tell the modes apart.
         let text = kayak_rt::suspend::body(read_text(rt, car(cdr(r#as)))).await?;
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(car(cdr(r#as))), lines_from(string_chars(text), nil::<char>()))).await?;
         kayak_rt::suspend::body(write_outputs(rt, car(cdr(cdr(r#as))), compile_units_as(program, runtime_unit_p(text), true))).await?;
         Ok(int_lit(0))
-    } else if (i64_eq(size(r#as), 4i64) && string_eq_p(car(r#as), str_lit("--cache"))) {
+    } else if (i64_eq(size(r#as), 4i64) && string_eq_p(car(r#as), str_lit!("--cache"))) {
         let cache = car(cdr(r#as));
         let unit = car(cdr(cdr(r#as)));
         let text = kayak_rt::suspend::body(read_text(rt, unit)).await?;
@@ -300,7 +300,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
             }
         }
     } else {
-        match fail_with(str_lit("usage: kfx [--record LOG | --replay LOG] ([--async] FILE.kfx | [--cache FILE | --async] PROGRAM.unit DIR | --toplevel FILE.kfx)"), int_lit(2)) {};
+        match fail_with(str_lit!("usage: kfx [--record LOG | --replay LOG] ([--async] FILE.kfx | [--cache FILE | --async] PROGRAM.unit DIR | --toplevel FILE.kfx)"), int_lit(2)) {};
         Ok(int_lit(2))
     }
 }
@@ -318,14 +318,14 @@ pub fn reverse_log(mut xs: Log<'static>, mut acc: Log<'static>) -> Log<'static> 
 
 pub async fn main() -> Result<Int, Unwind> {
     let r#as = the::<Strings>(args());
-    if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--record")) && not(null_p(cdr(r#as)))) {
+    if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit!("--record")) && not(null_p(cdr(r#as)))) {
         let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>()));
         let status = kayak_rt::suspend::body(run_under::<Int>(recording(live(), log), kayak_rt::closure1((r#as,), |(r#as,), rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
         })))).await?;
         write_text_now(car(cdr(r#as)), log_text(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())));
         Ok(status)
-    } else if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--replay")) && not(null_p(cdr(r#as)))) {
+    } else if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit!("--replay")) && not(null_p(cdr(r#as)))) {
         let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(log_of_text(read_text_now(car(cdr(r#as))))));
         let status = kayak_rt::suspend::body(run_under::<Int>(replaying(log), kayak_rt::closure1((r#as,), |(r#as,), rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
@@ -333,7 +333,7 @@ pub async fn main() -> Result<Int, Unwind> {
         if null_p(get(log)) {
             Ok(status)
         } else {
-            match fail_with(str_lit("replay: the run ends before its log does"), int_lit(1)) {};
+            match fail_with(str_lit!("replay: the run ends before its log does"), int_lit(1)) {};
             Ok(int_lit(1))
         }
     } else {

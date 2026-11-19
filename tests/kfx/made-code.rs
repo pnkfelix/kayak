@@ -4,7 +4,7 @@ use kayak_rt::*;
 
 #[inline]
 pub fn here_p() -> bool {
-    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
+    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit!("(target arm64)")))
 }
 
 pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
@@ -26,9 +26,9 @@ pub fn adder() -> kayak_rt::Proc2s<'static, Int, Int, Int> {
 #[inline]
 pub fn main() -> Str {
     string_append(if here_p() {
-        str_lit("native ")
+        str_lit!("native ")
     } else {
-        str_lit("interpreted ")
+        str_lit!("interpreted ")
     }, int_to_string(if here_p() {
         (adder()).call(int_lit(20), int_lit(22))
     } else {

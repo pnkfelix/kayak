@@ -35,10 +35,10 @@ pub fn fold<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::T
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else {
         fold(kayak_rt::as_proc(kayak_rt::closure2s((), |(), acc: Str, w: Str| {
-            string_append(acc, string_append(str_lit(" "), w))
+            string_append(acc, string_append(str_lit!(" "), w))
         })), car(xs), cdr(xs))
     }
 }
@@ -81,7 +81,7 @@ pub fn apply_op(o: kayak_rt::Handle<'static, Op>, a: i64, b: i64) -> Str {
     let tagcase_ = o;
     match *tagcase_ {
         Op::Op(name, f) => {
-            string_append(name, string_append(str_lit("="), i64_to_string(f.call(a, b))))
+            string_append(name, string_append(str_lit!("="), i64_to_string(f.call(a, b))))
         }
     }
 }
@@ -98,11 +98,11 @@ pub fn main() -> Str {
     words(kayak_rt::heap_cons(words(shows), kayak_rt::heap_cons(words(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: i64| {
         i64_to_string(i64_star(x, 10i64))
     })), xs)), kayak_rt::heap_cons(words(map(kayak_rt::as_proc(i64_to_string), map(adder(k), xs))), kayak_rt::heap_cons(i64_to_string((adder(3i64)).call(4i64)), kayak_rt::heap_cons(i64_to_string(twice(kayak_rt::as_proc(add1), 0i64)), kayak_rt::heap_cons(twice(kayak_rt::as_proc(kayak_rt::closure1s((), |(), s: Str| {
-        string_append(s, str_lit("!"))
-    })), str_lit("hey")), kayak_rt::heap_cons(i64_to_string(fold(kayak_rt::as_proc(kayak_rt::closure2s((), |(), acc: i64, x: i64| {
+        string_append(s, str_lit!("!"))
+    })), str_lit!("hey")), kayak_rt::heap_cons(i64_to_string(fold(kayak_rt::as_proc(kayak_rt::closure2s((), |(), acc: i64, x: i64| {
         i64_plus(acc, x)
-    })), 0i64, xs)), kayak_rt::heap_cons(apply_op(op(str_lit("plus"), kayak_rt::as_proc(kayak_rt::closure2s((), |(), a: i64, b: i64| {
+    })), 0i64, xs)), kayak_rt::heap_cons(apply_op(op(str_lit!("plus"), kayak_rt::as_proc(kayak_rt::closure2s((), |(), a: i64, b: i64| {
         i64_plus(a, b)
-    }))), 2i64, 3i64), kayak_rt::heap_cons(apply_op(op(str_lit("times"), kayak_rt::as_proc(i64_star_wrapped)), 2i64, 3i64), kayak_rt::nil()))))))))))
+    }))), 2i64, 3i64), kayak_rt::heap_cons(apply_op(op(str_lit!("times"), kayak_rt::as_proc(i64_star_wrapped)), 2i64, 3i64), kayak_rt::nil()))))))))))
 }
 

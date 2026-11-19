@@ -13,7 +13,7 @@ use super::*;
 // no state: the expander keeps the places it meets in its own.
 #[inline]
 pub fn bridge_unsupported(e: kayak_rt::Handle<'static, Sexp>) -> Void {
-    error(string_append(str_lit("kfx: a number KFX's reader read that the expander takes not yet: "), show_sexp(e)))
+    error(string_append(str_lit!("kfx: a number KFX's reader read that the expander takes not yet: "), show_sexp(e)))
 }
 
 #[inline]
@@ -42,9 +42,9 @@ pub fn sexp_located(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::value::Valu
             bridge_node(int_lit(1), f, l, p, sexps_located(xs))
         }
         Sexp::Sym(n, f, p) => {
-            bridge_node(int_lit(0), f, 0i64, p, if string_eq_p(n, str_lit("#t")) {
+            bridge_node(int_lit(0), f, 0i64, p, if string_eq_p(n, str_lit!("#t")) {
                 the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(true))
-            } else if string_eq_p(n, str_lit("#f")) {
+            } else if string_eq_p(n, str_lit!("#f")) {
                 the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(false))
             } else {
                 the::<kayak_rt::value::Value>(kayak_rt::value::ToValue::to_value(string_to_symbol(n)))
@@ -116,7 +116,7 @@ pub fn bridge_string(d: kayak_rt::value::Value) -> Str {
     if string_p(d) {
         kayak_rt::value::unbox::<Str>(d)
     } else {
-        str_lit("")
+        str_lit!("")
     }
 }
 
@@ -134,14 +134,14 @@ pub fn datum_sexp(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> kayak_rt
         chr(kayak_rt::value::unbox::<char>(d), f, p)
     } else if bool_p(d) {
         sym(if kayak_rt::value::unbox::<bool>(d) {
-            str_lit("#t")
+            str_lit!("#t")
         } else {
-            str_lit("#f")
+            str_lit!("#f")
         }, f, p)
     } else if kayak_rt::value::pair_p(d) {
         lst(datum_sexps(d, f, l, p), f, l, p)
     } else {
-        sym(str_lit("#u"), f, p)
+        sym(str_lit!("#u"), f, p)
     }
 }
 
@@ -152,7 +152,7 @@ pub fn datum_sexps(d: kayak_rt::value::Value, f: Str, l: i64, p: i64) -> Sexps {
         let x = kayak_rt::value::car(d);
         kayak_rt::heap_cons(datum_sexp(x, f, l, p), datum_sexps(kayak_rt::value::cdr(d), f, l, p))
     } else {
-        kayak_rt::heap_cons(sym(str_lit("."), f, p), kayak_rt::heap_cons(datum_sexp(d, f, l, p), kayak_rt::nil()))
+        kayak_rt::heap_cons(sym(str_lit!("."), f, p), kayak_rt::heap_cons(datum_sexp(d, f, l, p), kayak_rt::nil()))
     }
 }
 
@@ -180,47 +180,47 @@ pub fn located_sexps(d: kayak_rt::value::Value) -> Sexps {
 // and its forms' each alone, to be compared.
 pub fn located_text(d: kayak_rt::value::Value) -> Str {
     if kayak_rt::value::null_p(d) {
-        str_lit("()")
+        str_lit!("()")
     } else if kayak_rt::value::pair_p(d) {
-        string_append(str_lit("("), string_append(located_texts(d), str_lit(")")))
+        string_append(str_lit!("("), string_append(located_texts(d), str_lit!(")")))
     } else if symbol_p(d) {
         symbol_to_string(kayak_rt::value::unbox::<Symbol>(d))
     } else if int_p(d) {
         int_to_string(kayak_rt::value::unbox::<Int>(d))
     } else if string_p(d) {
-        string_append(str_lit("\""), string_append(kayak_rt::value::unbox::<Str>(d), str_lit("\"")))
+        string_append(str_lit!("\""), string_append(kayak_rt::value::unbox::<Str>(d), str_lit!("\"")))
     } else if char_p(d) {
-        string_append(str_lit("#\\"), char_to_string(kayak_rt::value::unbox::<char>(d)))
+        string_append(str_lit!("#\\"), char_to_string(kayak_rt::value::unbox::<char>(d)))
     } else if bool_p(d) {
         if kayak_rt::value::unbox::<bool>(d) {
-            str_lit("#t")
+            str_lit!("#t")
         } else {
-            str_lit("#f")
+            str_lit!("#f")
         }
     } else {
-        str_lit("#u")
+        str_lit!("#u")
     }
 }
 
 pub fn located_texts(d: kayak_rt::value::Value) -> Str {
     if kayak_rt::value::null_p(d) {
-        str_lit("")
+        str_lit!("")
     } else if kayak_rt::value::pair_p(d) {
         let (x, rest) = (kayak_rt::value::car(d), kayak_rt::value::cdr(d));
         if kayak_rt::value::null_p(rest) {
             located_text(x)
         } else {
-            string_append(located_text(x), string_append(str_lit(" "), located_texts(rest)))
+            string_append(located_text(x), string_append(str_lit!(" "), located_texts(rest)))
         }
     } else {
-        string_append(str_lit(". "), located_text(d))
+        string_append(str_lit!(". "), located_text(d))
     }
 }
 
 pub fn located_lines(d: kayak_rt::value::Value) -> List<Str> {
     if kayak_rt::value::pair_p(d) {
         let x = kayak_rt::value::car(d);
-        kayak_rt::heap_cons(string_append(located_text(x), str_lit("\n")), located_lines(kayak_rt::value::cdr(d)))
+        kayak_rt::heap_cons(string_append(located_text(x), str_lit!("\n")), located_lines(kayak_rt::value::cdr(d)))
     } else {
         nil::<Str>()
     }

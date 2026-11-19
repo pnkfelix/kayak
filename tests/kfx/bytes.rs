@@ -60,18 +60,18 @@ pub fn text_length(bv: Bytes) -> Int {
 #[inline]
 pub fn show_ints(xs: List<Int>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(int_to_string(car(xs)), string_append(str_lit(" "), show_ints(cdr(xs))))
+        string_append(int_to_string(car(xs)), string_append(str_lit!(" "), show_ints(cdr(xs))))
     }
 }
 
 pub fn small() -> Str {
-    string_append(int_to_string(u8_to_int(u8_plus(200u8, 100u8))), string_append(str_lit(" "), string_append(int_to_string(i8_to_int(i8_plus(100i8, 100i8))), string_append(str_lit(" "), string_append(int_to_string(u8_to_int(u8_shr(255u8, int_lit(3)))), string_append(str_lit(" "), int_to_string(i8_to_int(i8_quotient(-128i8, -1i8)))))))))
+    string_append(int_to_string(u8_to_int(u8_plus(200u8, 100u8))), string_append(str_lit!(" "), string_append(int_to_string(i8_to_int(i8_plus(100i8, 100i8))), string_append(str_lit!(" "), string_append(int_to_string(u8_to_int(u8_shr(255u8, int_lit(3)))), string_append(str_lit!(" "), int_to_string(i8_to_int(i8_quotient(-128i8, -1i8)))))))))
 }
 
 pub fn main() -> Str {
-    let (bv, hi, none) = (the::<Bytes>(make_bytevector(int_lit(4), 7u8)), the::<Bytes>(string_to_utf8(str_lit("héllo, wörld"))), the::<Bytes>(make_bytevector(int_lit(0), 0u8)));
+    let (bv, hi, none) = (the::<Bytes>(make_bytevector(int_lit(4), 7u8)), the::<Bytes>(string_to_utf8(str_lit!("héllo, wörld"))), the::<Bytes>(make_bytevector(int_lit(0), 0u8)));
     bytevector_u8_set_x(bv, int_lit(1), 250u8);
     bytevector_copy_x(bv, int_lit(2), hi, int_lit(0), int_lit(2));
     let before = sum_bytes(bv, int_lit(0), int_lit(0));

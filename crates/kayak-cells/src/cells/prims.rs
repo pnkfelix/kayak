@@ -16,20 +16,20 @@ use super::*;
 pub fn fixed_types() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("i8"), kayak_rt::nil())))))
+        kayak_rt::heap_cons(str_lit!("i32"), kayak_rt::heap_cons(str_lit!("u32"), kayak_rt::heap_cons(str_lit!("u64"), kayak_rt::heap_cons(str_lit!("u8"), kayak_rt::heap_cons(str_lit!("i8"), kayak_rt::nil())))))
     })
 }
 
 pub fn fixed_in(mut n: Str, mut ts: Strings) -> Str {
     loop {
         if null_p(ts) {
-            return str_lit("");
+            return str_lit!("");
         } else if (has_prefix_p(n, car(ts)) && not(string_eq_p(n, car(ts))) && {
             let c = string_ref_i64(n, string_length_i64(car(ts)));
             (char_eq_p(c, '+') || char_eq_p(c, '-') || char_eq_p(c, '*') || char_eq_p(c, '=') || char_eq_p(c, '<') || char_eq_p(c, '>'))
         }) {
             return car(ts);
-        } else if string_eq_p(n, string_append(str_lit("int->"), car(ts))) {
+        } else if string_eq_p(n, string_append(str_lit!("int->"), car(ts))) {
             return car(ts);
         } else {
             ts = cdr(ts);
@@ -46,8 +46,8 @@ pub fn fixed_type(n: Str) -> Str {
 #[inline]
 pub fn fixed_op(n: Str) -> Str {
     let t = fixed_type(n);
-    if has_prefix_p(n, str_lit("int->")) {
-        str_lit("from-int")
+    if has_prefix_p(n, str_lit!("int->")) {
+        str_lit!("from-int")
     } else {
         after_prefix(n, t)
     }
@@ -55,7 +55,7 @@ pub fn fixed_op(n: Str) -> Str {
 
 #[inline]
 pub fn fixed_arity(op: Str) -> i64 {
-    if string_member_p(op, kayak_rt::heap_cons(str_lit("-not"), kayak_rt::heap_cons(str_lit("->int"), kayak_rt::heap_cons(str_lit("->string"), kayak_rt::heap_cons(str_lit("from-int"), kayak_rt::nil()))))) {
+    if string_member_p(op, kayak_rt::heap_cons(str_lit!("-not"), kayak_rt::heap_cons(str_lit!("->int"), kayak_rt::heap_cons(str_lit!("->string"), kayak_rt::heap_cons(str_lit!("from-int"), kayak_rt::nil()))))) {
         1i64
     } else {
         2i64
@@ -63,13 +63,13 @@ pub fn fixed_arity(op: Str) -> i64 {
 }
 
 pub fn wrapped(t: Str, n: Int) -> Int {
-    if string_eq_p(t, str_lit("i32")) {
+    if string_eq_p(t, str_lit!("i32")) {
         i32_to_int(int_to_i32(n))
-    } else if string_eq_p(t, str_lit("u32")) {
+    } else if string_eq_p(t, str_lit!("u32")) {
         u32_to_int(int_to_u32(n))
-    } else if string_eq_p(t, str_lit("u64")) {
+    } else if string_eq_p(t, str_lit!("u64")) {
         u64_to_int(int_to_u64(n))
-    } else if string_eq_p(t, str_lit("u8")) {
+    } else if string_eq_p(t, str_lit!("u8")) {
         u8_to_int(int_to_u8(n))
     } else {
         i8_to_int(int_to_i8(n))
@@ -77,9 +77,9 @@ pub fn wrapped(t: Str, n: Int) -> Int {
 }
 
 pub fn width_of(t: Str) -> Int {
-    if (string_eq_p(t, str_lit("u64"))) {
+    if (string_eq_p(t, str_lit!("u64"))) {
         int_lit(64)
-    } else if (string_eq_p(t, str_lit("i32")) || string_eq_p(t, str_lit("u32"))) {
+    } else if (string_eq_p(t, str_lit!("i32")) || string_eq_p(t, str_lit!("u32"))) {
         int_lit(32)
     } else {
         int_lit(8)
@@ -99,10 +99,10 @@ pub fn program_args() -> Ref<Strings> {
 /// escape an abort (C105, as Fixpt runs them); else `n`.
 #[inline]
 pub fn prim_alias(n: Str) -> Str {
-    if string_eq_p(n, str_lit("make-escape-tag")) {
-        str_lit("make-continuation-prompt-tag")
-    } else if string_eq_p(n, str_lit("escape")) {
-        str_lit("abort-current-continuation")
+    if string_eq_p(n, str_lit!("make-escape-tag")) {
+        str_lit!("make-continuation-prompt-tag")
+    } else if string_eq_p(n, str_lit!("escape")) {
+        str_lit!("abort-current-continuation")
     } else {
         n
     }
@@ -110,143 +110,143 @@ pub fn prim_alias(n: Str) -> Str {
 
 /// A primitive's arity, or -1 if `n` names none.
 pub fn prim_arity(n: Str) -> i64 {
-    if string_member_p(n, kayak_rt::heap_cons(str_lit("i64+"), kayak_rt::heap_cons(str_lit("i64-"), kayak_rt::heap_cons(str_lit("i64*"), kayak_rt::heap_cons(str_lit("i64-quotient"), kayak_rt::heap_cons(str_lit("i64-remainder"), kayak_rt::heap_cons(str_lit("i64-and"), kayak_rt::heap_cons(str_lit("i64-or"), kayak_rt::heap_cons(str_lit("i64-xor"), kayak_rt::heap_cons(str_lit("i64="), kayak_rt::heap_cons(str_lit("i64<"), kayak_rt::heap_cons(str_lit("i64>"), kayak_rt::heap_cons(str_lit("i64<="), kayak_rt::heap_cons(str_lit("i64>="), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("bitwise-and"), kayak_rt::heap_cons(str_lit("bitwise-ior"), kayak_rt::heap_cons(str_lit("bitwise-xor"), kayak_rt::heap_cons(str_lit("arithmetic-shift"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string>?"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("bool=?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string-ref-i64"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("abort-with-continuation"), kayak_rt::heap_cons(str_lit("string-compare"), kayak_rt::heap_cons(str_lit("char-in?"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))) {
+    if string_member_p(n, kayak_rt::heap_cons(str_lit!("i64+"), kayak_rt::heap_cons(str_lit!("i64-"), kayak_rt::heap_cons(str_lit!("i64*"), kayak_rt::heap_cons(str_lit!("i64-quotient"), kayak_rt::heap_cons(str_lit!("i64-remainder"), kayak_rt::heap_cons(str_lit!("i64-and"), kayak_rt::heap_cons(str_lit!("i64-or"), kayak_rt::heap_cons(str_lit!("i64-xor"), kayak_rt::heap_cons(str_lit!("i64="), kayak_rt::heap_cons(str_lit!("i64<"), kayak_rt::heap_cons(str_lit!("i64>"), kayak_rt::heap_cons(str_lit!("i64<="), kayak_rt::heap_cons(str_lit!("i64>="), kayak_rt::heap_cons(str_lit!("+"), kayak_rt::heap_cons(str_lit!("-"), kayak_rt::heap_cons(str_lit!("*"), kayak_rt::heap_cons(str_lit!("quotient"), kayak_rt::heap_cons(str_lit!("remainder"), kayak_rt::heap_cons(str_lit!("modulo"), kayak_rt::heap_cons(str_lit!("="), kayak_rt::heap_cons(str_lit!("<"), kayak_rt::heap_cons(str_lit!(">"), kayak_rt::heap_cons(str_lit!("<="), kayak_rt::heap_cons(str_lit!(">="), kayak_rt::heap_cons(str_lit!("max"), kayak_rt::heap_cons(str_lit!("min"), kayak_rt::heap_cons(str_lit!("bitwise-and"), kayak_rt::heap_cons(str_lit!("bitwise-ior"), kayak_rt::heap_cons(str_lit!("bitwise-xor"), kayak_rt::heap_cons(str_lit!("arithmetic-shift"), kayak_rt::heap_cons(str_lit!("string-append"), kayak_rt::heap_cons(str_lit!("string=?"), kayak_rt::heap_cons(str_lit!("string<?"), kayak_rt::heap_cons(str_lit!("string>?"), kayak_rt::heap_cons(str_lit!("char=?"), kayak_rt::heap_cons(str_lit!("char<?"), kayak_rt::heap_cons(str_lit!("char>?"), kayak_rt::heap_cons(str_lit!("bool=?"), kayak_rt::heap_cons(str_lit!("string-ref"), kayak_rt::heap_cons(str_lit!("string-ref-i64"), kayak_rt::heap_cons(str_lit!("cons"), kayak_rt::heap_cons(str_lit!("set"), kayak_rt::heap_cons(str_lit!("symbol=?"), kayak_rt::heap_cons(str_lit!("array-ref"), kayak_rt::heap_cons(str_lit!("make-array"), kayak_rt::heap_cons(str_lit!("abort-current-continuation"), kayak_rt::heap_cons(str_lit!("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit!("abort-with-continuation"), kayak_rt::heap_cons(str_lit!("string-compare"), kayak_rt::heap_cons(str_lit!("char-in?"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("i64-not"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("int->i64"), kayak_rt::heap_cons(str_lit("i64->int"), kayak_rt::heap_cons(str_lit("int->string"), kayak_rt::heap_cons(str_lit("i64->string"), kayak_rt::heap_cons(str_lit("bitwise-not"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-length-i64"), kayak_rt::heap_cons(str_lit("char->i64"), kayak_rt::heap_cons(str_lit("i64->char"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("string->list"), kayak_rt::heap_cons(str_lit("list->string"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("error"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("array->list"), kayak_rt::heap_cons(str_lit("list->array"), kayak_rt::heap_cons(str_lit("char-upcase"), kayak_rt::heap_cons(str_lit("char-downcase"), kayak_rt::heap_cons(str_lit("char-whitespace?"), kayak_rt::heap_cons(str_lit("char-numeric?"), kayak_rt::heap_cons(str_lit("char-alphabetic?"), kayak_rt::heap_cons(str_lit("string-downcase"), kayak_rt::heap_cons(str_lit("list-length"), kayak_rt::heap_cons(str_lit("length"), kayak_rt::heap_cons(str_lit("reverse"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("i64-not"), kayak_rt::heap_cons(str_lit!("not"), kayak_rt::heap_cons(str_lit!("zero?"), kayak_rt::heap_cons(str_lit!("int->i64"), kayak_rt::heap_cons(str_lit!("i64->int"), kayak_rt::heap_cons(str_lit!("int->string"), kayak_rt::heap_cons(str_lit!("i64->string"), kayak_rt::heap_cons(str_lit!("bitwise-not"), kayak_rt::heap_cons(str_lit!("string-length"), kayak_rt::heap_cons(str_lit!("string-length-i64"), kayak_rt::heap_cons(str_lit!("char->i64"), kayak_rt::heap_cons(str_lit!("i64->char"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::heap_cons(str_lit!("char->string"), kayak_rt::heap_cons(str_lit!("string->list"), kayak_rt::heap_cons(str_lit!("list->string"), kayak_rt::heap_cons(str_lit!("car"), kayak_rt::heap_cons(str_lit!("cdr"), kayak_rt::heap_cons(str_lit!("null?"), kayak_rt::heap_cons(str_lit!("pair?"), kayak_rt::heap_cons(str_lit!("new"), kayak_rt::heap_cons(str_lit!("get"), kayak_rt::heap_cons(str_lit!("error"), kayak_rt::heap_cons(str_lit!("string->symbol"), kayak_rt::heap_cons(str_lit!("symbol->string"), kayak_rt::heap_cons(str_lit!("array-length"), kayak_rt::heap_cons(str_lit!("array->list"), kayak_rt::heap_cons(str_lit!("list->array"), kayak_rt::heap_cons(str_lit!("char-upcase"), kayak_rt::heap_cons(str_lit!("char-downcase"), kayak_rt::heap_cons(str_lit!("char-whitespace?"), kayak_rt::heap_cons(str_lit!("char-numeric?"), kayak_rt::heap_cons(str_lit!("char-alphabetic?"), kayak_rt::heap_cons(str_lit!("string-downcase"), kayak_rt::heap_cons(str_lit!("list-length"), kayak_rt::heap_cons(str_lit!("length"), kayak_rt::heap_cons(str_lit!("reverse"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("string<=?"), kayak_rt::heap_cons(str_lit("string>=?"), kayak_rt::heap_cons(str_lit("string-ci=?"), kayak_rt::heap_cons(str_lit("symbol-compare"), kayak_rt::heap_cons(str_lit("%case="), kayak_rt::nil())))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("char<=?"), kayak_rt::heap_cons(str_lit!("char>=?"), kayak_rt::heap_cons(str_lit!("string<=?"), kayak_rt::heap_cons(str_lit!("string>=?"), kayak_rt::heap_cons(str_lit!("string-ci=?"), kayak_rt::heap_cons(str_lit!("symbol-compare"), kayak_rt::heap_cons(str_lit!("%case="), kayak_rt::nil())))))))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::nil()))))))))))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("int?"), kayak_rt::heap_cons(str_lit!("string?"), kayak_rt::heap_cons(str_lit!("bool?"), kayak_rt::heap_cons(str_lit!("char?"), kayak_rt::heap_cons(str_lit!("symbol?"), kayak_rt::heap_cons(str_lit!("array?"), kayak_rt::heap_cons(str_lit!("procedure?"), kayak_rt::heap_cons(str_lit!("f64?"), kayak_rt::heap_cons(str_lit!("ref?"), kayak_rt::heap_cons(str_lit!("sum?"), kayak_rt::heap_cons(str_lit!("product?"), kayak_rt::heap_cons(str_lit!("bytevector?"), kayak_rt::heap_cons(str_lit!("char->integer"), kayak_rt::heap_cons(str_lit!("integer->char"), kayak_rt::nil()))))))))))))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("datum-list->vector"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("stay-cellular"), kayak_rt::heap_cons(str_lit!("vector?"), kayak_rt::heap_cons(str_lit!("datum-list->vector"), kayak_rt::nil())))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("apply"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("eq?"), kayak_rt::heap_cons(str_lit!("set-car!"), kayak_rt::heap_cons(str_lit!("set-cdr!"), kayak_rt::heap_cons(str_lit!("apply"), kayak_rt::heap_cons(str_lit!("first-mark"), kayak_rt::heap_cons(str_lit!("marks-of"), kayak_rt::nil()))))))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::nil())) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("with-mark"), kayak_rt::nil())) {
         3i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::nil())) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("current-marks"), kayak_rt::nil())) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::nil())) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("make-continuation-mark-key"), kayak_rt::nil())) {
         0i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("utf8->string"), kayak_rt::heap_cons(str_lit("flatarray-length-i64"), kayak_rt::nil())))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%identity"), kayak_rt::heap_cons(str_lit!("bytevector-length"), kayak_rt::heap_cons(str_lit!("string->utf8"), kayak_rt::heap_cons(str_lit!("utf8->string"), kayak_rt::heap_cons(str_lit!("flatarray-length-i64"), kayak_rt::nil())))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("append"), kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit("bytevector=?"), kayak_rt::heap_cons(str_lit("make-flatarray-i64"), kayak_rt::heap_cons(str_lit("flatarray-ref-i64"), kayak_rt::nil()))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("append"), kayak_rt::heap_cons(str_lit!("make-bytevector"), kayak_rt::heap_cons(str_lit!("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit!("bytevector=?"), kayak_rt::heap_cons(str_lit!("make-flatarray-i64"), kayak_rt::heap_cons(str_lit!("flatarray-ref-i64"), kayak_rt::nil()))))))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("bytevector-u8-set!"), kayak_rt::heap_cons(str_lit("bytevector-copy"), kayak_rt::heap_cons(str_lit("flatarray-set-i64!"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("bytevector-u8-set!"), kayak_rt::heap_cons(str_lit!("bytevector-copy"), kayak_rt::heap_cons(str_lit!("flatarray-set-i64!"), kayak_rt::nil())))) {
         3i64
-    } else if string_eq_p(n, str_lit("bytevector-copy!")) {
+    } else if string_eq_p(n, str_lit!("bytevector-copy!")) {
         5i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-string"), kayak_rt::heap_cons(str_lit("string-fill!"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("make-string"), kayak_rt::heap_cons(str_lit!("string-fill!"), kayak_rt::nil()))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("string-set!"), kayak_rt::heap_cons(str_lit("string-copy"), kayak_rt::heap_cons(str_lit("rmake-string"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("string-set!"), kayak_rt::heap_cons(str_lit!("string-copy"), kayak_rt::heap_cons(str_lit!("rmake-string"), kayak_rt::nil())))) {
         3i64
-    } else if string_eq_p(n, str_lit("string-copy!")) {
+    } else if string_eq_p(n, str_lit!("string-copy!")) {
         5i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("keyword?"), kayak_rt::heap_cons(str_lit("symbol->keyword"), kayak_rt::heap_cons(str_lit("keyword->symbol"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("keyword?"), kayak_rt::heap_cons(str_lit!("symbol->keyword"), kayak_rt::heap_cons(str_lit!("keyword->symbol"), kayak_rt::nil())))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("file-info"), kayak_rt::heap_cons(str_lit("read-symlink"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("file-info"), kayak_rt::heap_cons(str_lit!("read-symlink"), kayak_rt::nil()))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("process-output"), kayak_rt::heap_cons(str_lit("process-status"), kayak_rt::heap_cons(str_lit("process-close-input"), kayak_rt::heap_cons(str_lit("process-exit"), kayak_rt::nil()))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("process-output"), kayak_rt::heap_cons(str_lit!("process-status"), kayak_rt::heap_cons(str_lit!("process-close-input"), kayak_rt::heap_cons(str_lit!("process-exit"), kayak_rt::nil()))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("process-start"), kayak_rt::heap_cons(str_lit("process-write"), kayak_rt::heap_cons(str_lit("process-signal"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("process-start"), kayak_rt::heap_cons(str_lit!("process-write"), kayak_rt::heap_cons(str_lit!("process-signal"), kayak_rt::nil())))) {
         2i64
-    } else if string_eq_p(n, str_lit("process-news")) {
+    } else if string_eq_p(n, str_lit!("process-news")) {
         0i64
-    } else if string_eq_p(n, str_lit("%stage-run")) {
+    } else if string_eq_p(n, str_lit!("%stage-run")) {
         5i64
-    } else if string_eq_p(n, str_lit("%reify")) {
+    } else if string_eq_p(n, str_lit!("%reify")) {
         3i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("effect-bound"), kayak_rt::heap_cons(str_lit("type-bound"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("effect-bound"), kayak_rt::heap_cons(str_lit!("type-bound"), kayak_rt::nil()))) {
         1i64
-    } else if string_eq_p(n, str_lit("make-session")) {
+    } else if string_eq_p(n, str_lit!("make-session")) {
         1i64
-    } else if string_eq_p(n, str_lit("%session-run")) {
+    } else if string_eq_p(n, str_lit!("%session-run")) {
         5i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("session-redefines"), kayak_rt::heap_cons(str_lit("%session-committed!"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("session-redefines"), kayak_rt::heap_cons(str_lit!("%session-committed!"), kayak_rt::nil()))) {
         2i64
-    } else if string_eq_p(n, str_lit("%session-ready")) {
+    } else if string_eq_p(n, str_lit!("%session-ready")) {
         3i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("string-search"), kayak_rt::heap_cons(str_lit("rcons"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::nil())))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("substring"), kayak_rt::heap_cons(str_lit!("array-set!"), kayak_rt::heap_cons(str_lit!("string-search"), kayak_rt::heap_cons(str_lit!("rcons"), kayak_rt::heap_cons(str_lit!("rmake-array"), kayak_rt::nil())))))) {
         3i64
-    } else if string_eq_p(n, str_lit("rnew")) {
+    } else if string_eq_p(n, str_lit!("rnew")) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%make-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::nil())))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%make-bloblet"), kayak_rt::heap_cons(str_lit!("bloblet-bytes"), kayak_rt::heap_cons(str_lit!("bloblet-freeze"), kayak_rt::heap_cons(str_lit!("blobref-owner"), kayak_rt::heap_cons(str_lit!("blobref-offset"), kayak_rt::nil())))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%blobref-get"), kayak_rt::heap_cons(str_lit("%blobref-field"), kayak_rt::heap_cons(str_lit("%blobref-tag"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%blobref-get"), kayak_rt::heap_cons(str_lit!("%blobref-field"), kayak_rt::heap_cons(str_lit!("%blobref-tag"), kayak_rt::nil())))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%blobref-at"), kayak_rt::heap_cons(str_lit("%blobref+"), kayak_rt::heap_cons(str_lit("%blobref-set!"), kayak_rt::heap_cons(str_lit("%blobref-length"), kayak_rt::nil()))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%blobref-at"), kayak_rt::heap_cons(str_lit!("%blobref+"), kayak_rt::heap_cons(str_lit!("%blobref-set!"), kayak_rt::heap_cons(str_lit!("%blobref-length"), kayak_rt::nil()))))) {
         3i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%blobref-index"), kayak_rt::heap_cons(str_lit("%blobref-variant!"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%blobref-index"), kayak_rt::heap_cons(str_lit!("%blobref-variant!"), kayak_rt::nil()))) {
         4i64
-    } else if string_eq_p(n, str_lit("%blobref-variant-named!")) {
+    } else if string_eq_p(n, str_lit!("%blobref-variant-named!")) {
         3i64
-    } else if string_eq_p(n, str_lit("%sched")) {
+    } else if string_eq_p(n, str_lit!("%sched")) {
         3i64
-    } else if string_eq_p(n, str_lit("make-icell")) {
+    } else if string_eq_p(n, str_lit!("make-icell")) {
         0i64
-    } else if string_eq_p(n, str_lit("rmake-icell")) {
+    } else if string_eq_p(n, str_lit!("rmake-icell")) {
         1i64
-    } else if string_eq_p(n, str_lit("call-with-oneshot-continuation")) {
+    } else if string_eq_p(n, str_lit!("call-with-oneshot-continuation")) {
         2i64
-    } else if string_eq_p(n, str_lit("cwcc")) {
+    } else if string_eq_p(n, str_lit!("cwcc")) {
         1i64
-    } else if string_eq_p(n, str_lit("native-convention")) {
+    } else if string_eq_p(n, str_lit!("native-convention")) {
         0i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("seal-code"), kayak_rt::heap_cons(str_lit("native-procedure"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("seal-code"), kayak_rt::heap_cons(str_lit!("native-procedure"), kayak_rt::nil()))) {
         1i64
-    } else if string_eq_p(n, str_lit("%syscall-require")) {
+    } else if string_eq_p(n, str_lit!("%syscall-require")) {
         3i64
-    } else if string_eq_p(n, str_lit("%syscall-available?")) {
+    } else if string_eq_p(n, str_lit!("%syscall-available?")) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%syscall0"), kayak_rt::heap_cons(str_lit("%syscall1"), kayak_rt::heap_cons(str_lit("%syscall2"), kayak_rt::heap_cons(str_lit("%syscall3"), kayak_rt::heap_cons(str_lit("%syscall4"), kayak_rt::heap_cons(str_lit("%syscall5"), kayak_rt::heap_cons(str_lit("%syscall6"), kayak_rt::nil())))))))) {
-        i64_plus(3i64, string_to_i64(after_prefix(n, str_lit("%syscall"))))
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-eqtable"), kayak_rt::heap_cons(str_lit("eqtable-count"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("%syscall0"), kayak_rt::heap_cons(str_lit!("%syscall1"), kayak_rt::heap_cons(str_lit!("%syscall2"), kayak_rt::heap_cons(str_lit!("%syscall3"), kayak_rt::heap_cons(str_lit!("%syscall4"), kayak_rt::heap_cons(str_lit!("%syscall5"), kayak_rt::heap_cons(str_lit!("%syscall6"), kayak_rt::nil())))))))) {
+        i64_plus(3i64, string_to_i64(after_prefix(n, str_lit!("%syscall"))))
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("make-eqtable"), kayak_rt::heap_cons(str_lit!("eqtable-count"), kayak_rt::nil()))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eqtable-has?"), kayak_rt::heap_cons(str_lit("eqtable-delete!"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("eqtable-has?"), kayak_rt::heap_cons(str_lit!("eqtable-delete!"), kayak_rt::nil()))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eqtable-ref"), kayak_rt::heap_cons(str_lit("eqtable-set!"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("eqtable-ref"), kayak_rt::heap_cons(str_lit!("eqtable-set!"), kayak_rt::nil()))) {
         3i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("pair-identity"), kayak_rt::heap_cons(str_lit("ref-identity"), kayak_rt::heap_cons(str_lit("array-identity"), kayak_rt::heap_cons(str_lit("icell-identity"), kayak_rt::nil()))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("pair-identity"), kayak_rt::heap_cons(str_lit!("ref-identity"), kayak_rt::heap_cons(str_lit!("array-identity"), kayak_rt::heap_cons(str_lit!("icell-identity"), kayak_rt::nil()))))) {
         0i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-flatarray"), kayak_rt::heap_cons(str_lit("flatarray-set!"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("make-flatarray"), kayak_rt::heap_cons(str_lit!("flatarray-set!"), kayak_rt::nil()))) {
         3i64
-    } else if string_eq_p(n, str_lit("flatarray-ref")) {
+    } else if string_eq_p(n, str_lit!("flatarray-ref")) {
         2i64
-    } else if string_eq_p(n, str_lit("flatarray-length")) {
+    } else if string_eq_p(n, str_lit!("flatarray-length")) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("i32-flat"), kayak_rt::heap_cons(str_lit("u32-flat"), kayak_rt::heap_cons(str_lit("i64-flat"), kayak_rt::heap_cons(str_lit("u64-flat"), kayak_rt::heap_cons(str_lit("f32-flat"), kayak_rt::heap_cons(str_lit("f64-flat"), kayak_rt::nil()))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("i32-flat"), kayak_rt::heap_cons(str_lit!("u32-flat"), kayak_rt::heap_cons(str_lit!("i64-flat"), kayak_rt::heap_cons(str_lit!("u64-flat"), kayak_rt::heap_cons(str_lit!("f32-flat"), kayak_rt::heap_cons(str_lit!("f64-flat"), kayak_rt::nil()))))))) {
         0i64
-    } else if string_eq_p(n, str_lit("%blobref-label")) {
+    } else if string_eq_p(n, str_lit!("%blobref-label")) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("bloblet-ref"), kayak_rt::heap_cons(str_lit!("bloblet-byte"), kayak_rt::nil()))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::nil()))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("bloblet-set!"), kayak_rt::heap_cons(str_lit!("bloblet-set-byte!"), kayak_rt::nil()))) {
         3i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("i64-shl"), kayak_rt::heap_cons(str_lit("i64-shr"), kayak_rt::heap_cons(str_lit("write-file"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("i64-shl"), kayak_rt::heap_cons(str_lit!("i64-shr"), kayak_rt::heap_cons(str_lit!("write-file"), kayak_rt::nil())))) {
         2i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("write-out"), kayak_rt::heap_cons(str_lit("write-err"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("read-file"), kayak_rt::heap_cons(str_lit("list-dir"), kayak_rt::heap_cons(str_lit("sleep-until"), kayak_rt::nil()))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("write-out"), kayak_rt::heap_cons(str_lit!("write-err"), kayak_rt::heap_cons(str_lit!("exit"), kayak_rt::heap_cons(str_lit!("read-file"), kayak_rt::heap_cons(str_lit!("list-dir"), kayak_rt::heap_cons(str_lit!("sleep-until"), kayak_rt::nil()))))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("read-line"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("read-line"), kayak_rt::heap_cons(str_lit!("clock"), kayak_rt::heap_cons(str_lit!("args"), kayak_rt::nil())))) {
         0i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("read-byte"), kayak_rt::heap_cons(str_lit("stdin-ready?"), kayak_rt::heap_cons(str_lit("terminal-raw"), kayak_rt::heap_cons(str_lit("terminal-restore"), kayak_rt::heap_cons(str_lit("terminal-size"), kayak_rt::nil())))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("read-byte"), kayak_rt::heap_cons(str_lit!("stdin-ready?"), kayak_rt::heap_cons(str_lit!("terminal-raw"), kayak_rt::heap_cons(str_lit!("terminal-restore"), kayak_rt::heap_cons(str_lit!("terminal-size"), kayak_rt::nil())))))) {
         0i64
-    } else if string_eq_p(n, str_lit("read-bytes")) {
+    } else if string_eq_p(n, str_lit!("read-bytes")) {
         3i64
-    } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
+    } else if not(string_eq_p(fixed_type(n), str_lit!(""))) {
         fixed_arity(fixed_op(n))
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("f32+"), kayak_rt::heap_cons(str_lit("f32-"), kayak_rt::heap_cons(str_lit("f32*"), kayak_rt::heap_cons(str_lit("f32/"), kayak_rt::heap_cons(str_lit("f32-min"), kayak_rt::heap_cons(str_lit("f32-max"), kayak_rt::heap_cons(str_lit("f32<"), kayak_rt::heap_cons(str_lit("f32<="), kayak_rt::heap_cons(str_lit("f32>"), kayak_rt::heap_cons(str_lit("f32>="), kayak_rt::heap_cons(str_lit("f32="), kayak_rt::nil())))))))))))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("f32+"), kayak_rt::heap_cons(str_lit!("f32-"), kayak_rt::heap_cons(str_lit!("f32*"), kayak_rt::heap_cons(str_lit!("f32/"), kayak_rt::heap_cons(str_lit!("f32-min"), kayak_rt::heap_cons(str_lit!("f32-max"), kayak_rt::heap_cons(str_lit!("f32<"), kayak_rt::heap_cons(str_lit!("f32<="), kayak_rt::heap_cons(str_lit!("f32>"), kayak_rt::heap_cons(str_lit!("f32>="), kayak_rt::heap_cons(str_lit!("f32="), kayak_rt::nil())))))))))))) {
         2i64
-    } else if (has_prefix_p(n, str_lit("f32")) || string_member_p(n, kayak_rt::heap_cons(str_lit("int->f32"), kayak_rt::heap_cons(str_lit("f64->f32"), kayak_rt::heap_cons(str_lit("bits->f32"), kayak_rt::nil()))))) {
+    } else if (has_prefix_p(n, str_lit!("f32")) || string_member_p(n, kayak_rt::heap_cons(str_lit!("int->f32"), kayak_rt::heap_cons(str_lit!("f64->f32"), kayak_rt::heap_cons(str_lit!("bits->f32"), kayak_rt::nil()))))) {
         1i64
-    } else if has_prefix_p(n, str_lit("f64")) {
-        if string_member_p(n, kayak_rt::heap_cons(str_lit("f64-abs"), kayak_rt::heap_cons(str_lit("f64-neg"), kayak_rt::heap_cons(str_lit("f64-sqrt"), kayak_rt::heap_cons(str_lit("f64-floor"), kayak_rt::heap_cons(str_lit("f64-ceiling"), kayak_rt::heap_cons(str_lit("f64-truncate"), kayak_rt::heap_cons(str_lit("f64-round"), kayak_rt::heap_cons(str_lit("f64-exp"), kayak_rt::heap_cons(str_lit("f64-log"), kayak_rt::heap_cons(str_lit("f64-sin"), kayak_rt::heap_cons(str_lit("f64-cos"), kayak_rt::heap_cons(str_lit("f64-tan"), kayak_rt::heap_cons(str_lit("f64-asin"), kayak_rt::heap_cons(str_lit("f64-acos"), kayak_rt::heap_cons(str_lit("f64-atan"), kayak_rt::heap_cons(str_lit("f64->string"), kayak_rt::heap_cons(str_lit("f64->int"), kayak_rt::heap_cons(str_lit("f64-nan?"), kayak_rt::heap_cons(str_lit("f64-infinite?"), kayak_rt::heap_cons(str_lit("f64-finite?"), kayak_rt::nil()))))))))))))))))))))) {
+    } else if has_prefix_p(n, str_lit!("f64")) {
+        if string_member_p(n, kayak_rt::heap_cons(str_lit!("f64-abs"), kayak_rt::heap_cons(str_lit!("f64-neg"), kayak_rt::heap_cons(str_lit!("f64-sqrt"), kayak_rt::heap_cons(str_lit!("f64-floor"), kayak_rt::heap_cons(str_lit!("f64-ceiling"), kayak_rt::heap_cons(str_lit!("f64-truncate"), kayak_rt::heap_cons(str_lit!("f64-round"), kayak_rt::heap_cons(str_lit!("f64-exp"), kayak_rt::heap_cons(str_lit!("f64-log"), kayak_rt::heap_cons(str_lit!("f64-sin"), kayak_rt::heap_cons(str_lit!("f64-cos"), kayak_rt::heap_cons(str_lit!("f64-tan"), kayak_rt::heap_cons(str_lit!("f64-asin"), kayak_rt::heap_cons(str_lit!("f64-acos"), kayak_rt::heap_cons(str_lit!("f64-atan"), kayak_rt::heap_cons(str_lit!("f64->string"), kayak_rt::heap_cons(str_lit!("f64->int"), kayak_rt::heap_cons(str_lit!("f64-nan?"), kayak_rt::heap_cons(str_lit!("f64-infinite?"), kayak_rt::heap_cons(str_lit!("f64-finite?"), kayak_rt::nil()))))))))))))))))))))) {
             1i64
         } else {
             2i64
         }
-    } else if string_eq_p(n, str_lit("int->f64")) {
+    } else if string_eq_p(n, str_lit!("int->f64")) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil())) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit!("make-continuation-prompt-tag"), kayak_rt::nil())) {
         0i64
     } else {
         -1i64
@@ -264,7 +264,7 @@ pub fn val_int(v: kayak_rt::Handle<'static, Val>) -> Int {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: an integer is expected"));
+            failed_with_x(str_lit!("the engine: an integer is expected"));
             int_lit(0)
         }
     }
@@ -279,8 +279,8 @@ pub fn string_of(v: kayak_rt::Handle<'static, Val>) -> Str {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: a string is expected"));
-            str_lit("")
+            failed_with_x(str_lit!("the engine: a string is expected"));
+            str_lit!("")
         }
     }
 }
@@ -294,7 +294,7 @@ pub fn char_of(v: kayak_rt::Handle<'static, Val>) -> char {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: a character is expected"));
+            failed_with_x(str_lit!("the engine: a character is expected"));
             ' '
         }
     }
@@ -309,7 +309,7 @@ pub fn bool_of(v: kayak_rt::Handle<'static, Val>) -> bool {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: a boolean is expected"));
+            failed_with_x(str_lit!("the engine: a boolean is expected"));
             false
         }
     }
@@ -324,8 +324,8 @@ pub fn symbol_of(v: kayak_rt::Handle<'static, Val>) -> Symbol {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: a symbol is expected"));
-            string_to_symbol(str_lit(""))
+            failed_with_x(str_lit!("the engine: a symbol is expected"));
+            string_to_symbol(str_lit!(""))
         }
     }
 }
@@ -433,7 +433,7 @@ pub fn bytes_of(v: kayak_rt::Handle<'static, Val>) -> Bytes {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: a bytevector is expected"));
+            failed_with_x(str_lit!("the engine: a bytevector is expected"));
             make_bytevector(int_lit(0), int_to_u8(int_lit(0)))
         }
     }
@@ -447,31 +447,31 @@ pub fn io_error_val(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> kayak_rt::H
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("not-found") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("not-found")
+            str_lit!("not-found")
         } else if tag_ == const { kayak_rt::tag_hash("permission-denied") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("permission-denied")
+            str_lit!("permission-denied")
         } else if tag_ == const { kayak_rt::tag_hash("already-exists") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("already-exists")
+            str_lit!("already-exists")
         } else if tag_ == const { kayak_rt::tag_hash("not-a-directory") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("not-a-directory")
+            str_lit!("not-a-directory")
         } else if tag_ == const { kayak_rt::tag_hash("is-a-directory") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("is-a-directory")
+            str_lit!("is-a-directory")
         } else if tag_ == const { kayak_rt::tag_hash("broken-pipe") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("broken-pipe")
+            str_lit!("broken-pipe")
         } else if tag_ == const { kayak_rt::tag_hash("invalid-data") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("invalid-data")
+            str_lit!("invalid-data")
         } else if tag_ == const { kayak_rt::tag_hash("other") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("other")
+            str_lit!("other")
         } else { unreachable!() }
     };
-    v_product(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_sum(kind, v_unit()), kayak_rt::heap_cons(v_string(e.1), kayak_rt::nil()))))
+    v_product(kayak_rt::heap_cons(str_lit!("kind"), kayak_rt::heap_cons(str_lit!("detail"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_sum(kind, v_unit()), kayak_rt::heap_cons(v_string(e.1), kayak_rt::nil()))))
 }
 
 pub fn terminal_val(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
@@ -479,13 +479,13 @@ pub fn terminal_val(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        v_sum(str_lit("done"), v_unit())
+        v_sum(str_lit!("done"), v_unit())
     } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        v_sum(str_lit("not-a-terminal"), v_unit())
+        v_sum(str_lit!("not-a-terminal"), v_unit())
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        v_sum(str_lit("failed"), io_error_val(e))
+        v_sum(str_lit!("failed"), io_error_val(e))
     } else { unreachable!() }
 }
 
@@ -495,10 +495,10 @@ pub fn write_outcome(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        v_sum(str_lit("done"), v_unit())
+        v_sum(str_lit!("done"), v_unit())
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        v_sum(str_lit("failed"), io_error_val(e))
+        v_sum(str_lit!("failed"), io_error_val(e))
     } else { unreachable!() }
 }
 
@@ -540,7 +540,7 @@ pub fn real_of(v: kayak_rt::Handle<'static, Val>) -> f64 {
         }
         _ => {
             let other = tagcase_;
-            failed_with_x(str_lit("the engine: an f64 is expected"));
+            failed_with_x(str_lit!("the engine: an f64 is expected"));
             0.0f64
         }
     }
@@ -619,48 +619,48 @@ pub fn same_atom_p(a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'stati
 
 pub fn fixed_prim(t: Str, op: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Val> {
     let x = val_int(a);
-    if string_eq_p(op, str_lit("from-int")) {
+    if string_eq_p(op, str_lit!("from-int")) {
         v_int(wrapped(t, x))
-    } else if string_eq_p(op, str_lit("->int")) {
+    } else if string_eq_p(op, str_lit!("->int")) {
         a
-    } else if string_eq_p(op, str_lit("->string")) {
+    } else if string_eq_p(op, str_lit!("->string")) {
         v_string(int_to_string(x))
-    } else if string_eq_p(op, str_lit("-not")) {
+    } else if string_eq_p(op, str_lit!("-not")) {
         v_int(wrapped(t, bitwise_not(x)))
     } else {
         let y = val_int(b);
-        if string_eq_p(op, str_lit("+")) {
+        if string_eq_p(op, str_lit!("+")) {
             v_int(wrapped(t, _plus(x, y)))
-        } else if string_eq_p(op, str_lit("-")) {
+        } else if string_eq_p(op, str_lit!("-")) {
             v_int(wrapped(t, _minus(x, y)))
-        } else if string_eq_p(op, str_lit("*")) {
+        } else if string_eq_p(op, str_lit!("*")) {
             v_int(wrapped(t, _star(x, y)))
-        } else if string_eq_p(op, str_lit("-quotient")) {
+        } else if string_eq_p(op, str_lit!("-quotient")) {
             v_int(wrapped(t, quotient(x, y)))
-        } else if string_eq_p(op, str_lit("-remainder")) {
+        } else if string_eq_p(op, str_lit!("-remainder")) {
             v_int(wrapped(t, remainder(x, y)))
-        } else if string_eq_p(op, str_lit("-and")) {
+        } else if string_eq_p(op, str_lit!("-and")) {
             v_int(wrapped(t, bitwise_and(x, y)))
-        } else if string_eq_p(op, str_lit("-or")) {
+        } else if string_eq_p(op, str_lit!("-or")) {
             v_int(wrapped(t, bitwise_ior(x, y)))
-        } else if string_eq_p(op, str_lit("-xor")) {
+        } else if string_eq_p(op, str_lit!("-xor")) {
             v_int(wrapped(t, bitwise_xor(x, y)))
-        } else if string_eq_p(op, str_lit("-shl")) {
+        } else if string_eq_p(op, str_lit!("-shl")) {
             v_int(wrapped(t, arithmetic_shift(x, modulo(y, width_of(t)))))
-        } else if string_eq_p(op, str_lit("-shr")) {
+        } else if string_eq_p(op, str_lit!("-shr")) {
             v_int(wrapped(t, arithmetic_shift(x, _minus(int_lit(0), modulo(y, width_of(t))))))
-        } else if string_eq_p(op, str_lit("=")) {
+        } else if string_eq_p(op, str_lit!("=")) {
             flag(_eq(x, y))
-        } else if string_eq_p(op, str_lit("<")) {
+        } else if string_eq_p(op, str_lit!("<")) {
             flag(_lt(x, y))
-        } else if string_eq_p(op, str_lit(">")) {
+        } else if string_eq_p(op, str_lit!(">")) {
             flag(_gt(x, y))
-        } else if string_eq_p(op, str_lit("<=")) {
+        } else if string_eq_p(op, str_lit!("<=")) {
             flag(_lt_eq(x, y))
-        } else if string_eq_p(op, str_lit(">=")) {
+        } else if string_eq_p(op, str_lit!(">=")) {
             flag(_gt_eq(x, y))
         } else {
-            failed_with_x(string_append(str_lit("the engine has no primitive "), string_append(t, op)));
+            failed_with_x(string_append(str_lit!("the engine has no primitive "), string_append(t, op)));
             v_unit()
         }
     }
@@ -668,76 +668,76 @@ pub fn fixed_prim(t: Str, op: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_r
 
 pub fn f64_prim(n: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Val> {
     let x = real_of(a);
-    if string_eq_p(n, str_lit("f64->string")) {
+    if string_eq_p(n, str_lit!("f64->string")) {
         v_string(f64_to_string(x))
-    } else if string_eq_p(n, str_lit("f64->int")) {
+    } else if string_eq_p(n, str_lit!("f64->int")) {
         v_int(f64_to_int(x))
-    } else if string_eq_p(n, str_lit("f64-abs")) {
+    } else if string_eq_p(n, str_lit!("f64-abs")) {
         v_real(f64_abs(x))
-    } else if string_eq_p(n, str_lit("f64-neg")) {
+    } else if string_eq_p(n, str_lit!("f64-neg")) {
         v_real(f64_neg(x))
-    } else if string_eq_p(n, str_lit("f64-sqrt")) {
+    } else if string_eq_p(n, str_lit!("f64-sqrt")) {
         v_real(f64_sqrt(x))
-    } else if string_eq_p(n, str_lit("f64-exp")) {
+    } else if string_eq_p(n, str_lit!("f64-exp")) {
         v_real(f64_exp(x))
-    } else if string_eq_p(n, str_lit("f64-log")) {
+    } else if string_eq_p(n, str_lit!("f64-log")) {
         v_real(f64_log(x))
-    } else if string_eq_p(n, str_lit("f64-sin")) {
+    } else if string_eq_p(n, str_lit!("f64-sin")) {
         v_real(f64_sin(x))
-    } else if string_eq_p(n, str_lit("f64-cos")) {
+    } else if string_eq_p(n, str_lit!("f64-cos")) {
         v_real(f64_cos(x))
-    } else if string_eq_p(n, str_lit("f64-tan")) {
+    } else if string_eq_p(n, str_lit!("f64-tan")) {
         v_real(f64_tan(x))
-    } else if string_eq_p(n, str_lit("f64-asin")) {
+    } else if string_eq_p(n, str_lit!("f64-asin")) {
         v_real(f64_asin(x))
-    } else if string_eq_p(n, str_lit("f64-acos")) {
+    } else if string_eq_p(n, str_lit!("f64-acos")) {
         v_real(f64_acos(x))
-    } else if string_eq_p(n, str_lit("f64-atan")) {
+    } else if string_eq_p(n, str_lit!("f64-atan")) {
         v_real(f64_atan(x))
-    } else if string_eq_p(n, str_lit("f64-floor")) {
+    } else if string_eq_p(n, str_lit!("f64-floor")) {
         v_real(f64_floor(x))
-    } else if string_eq_p(n, str_lit("f64-ceiling")) {
+    } else if string_eq_p(n, str_lit!("f64-ceiling")) {
         v_real(f64_ceiling(x))
-    } else if string_eq_p(n, str_lit("f64-truncate")) {
+    } else if string_eq_p(n, str_lit!("f64-truncate")) {
         v_real(f64_truncate(x))
-    } else if string_eq_p(n, str_lit("f64-round")) {
+    } else if string_eq_p(n, str_lit!("f64-round")) {
         v_real(f64_round(x))
-    } else if string_eq_p(n, str_lit("f64-nan?")) {
+    } else if string_eq_p(n, str_lit!("f64-nan?")) {
         flag(f64_nan_p(x))
-    } else if string_eq_p(n, str_lit("f64-infinite?")) {
+    } else if string_eq_p(n, str_lit!("f64-infinite?")) {
         flag(f64_infinite_p(x))
-    } else if string_eq_p(n, str_lit("f64-finite?")) {
+    } else if string_eq_p(n, str_lit!("f64-finite?")) {
         flag(f64_finite_p(x))
     } else {
         let y = real_of(b);
-        if string_eq_p(n, str_lit("f64+")) {
+        if string_eq_p(n, str_lit!("f64+")) {
             v_real(f64_plus(x, y))
-        } else if string_eq_p(n, str_lit("f64-")) {
+        } else if string_eq_p(n, str_lit!("f64-")) {
             v_real(f64_minus(x, y))
-        } else if string_eq_p(n, str_lit("f64*")) {
+        } else if string_eq_p(n, str_lit!("f64*")) {
             v_real(f64_star(x, y))
-        } else if string_eq_p(n, str_lit("f64/")) {
+        } else if string_eq_p(n, str_lit!("f64/")) {
             v_real(f64_slash(x, y))
-        } else if string_eq_p(n, str_lit("f64-min")) {
+        } else if string_eq_p(n, str_lit!("f64-min")) {
             v_real(f64_min(x, y))
-        } else if string_eq_p(n, str_lit("f64-max")) {
+        } else if string_eq_p(n, str_lit!("f64-max")) {
             v_real(f64_max(x, y))
-        } else if string_eq_p(n, str_lit("f64-atan2")) {
+        } else if string_eq_p(n, str_lit!("f64-atan2")) {
             v_real(f64_atan2(x, y))
-        } else if string_eq_p(n, str_lit("f64-expt")) {
+        } else if string_eq_p(n, str_lit!("f64-expt")) {
             v_real(f64_expt(x, y))
-        } else if string_eq_p(n, str_lit("f64<")) {
+        } else if string_eq_p(n, str_lit!("f64<")) {
             flag(f64_lt(x, y))
-        } else if string_eq_p(n, str_lit("f64<=")) {
+        } else if string_eq_p(n, str_lit!("f64<=")) {
             flag(f64_lt_eq(x, y))
-        } else if string_eq_p(n, str_lit("f64>")) {
+        } else if string_eq_p(n, str_lit!("f64>")) {
             flag(f64_gt(x, y))
-        } else if string_eq_p(n, str_lit("f64>=")) {
+        } else if string_eq_p(n, str_lit!("f64>=")) {
             flag(f64_gt_eq(x, y))
-        } else if string_eq_p(n, str_lit("f64=")) {
+        } else if string_eq_p(n, str_lit!("f64=")) {
             flag(f64_eq(x, y))
         } else {
-            failed_with_x(string_append(str_lit("the engine has no primitive "), n));
+            failed_with_x(string_append(str_lit!("the engine has no primitive "), n));
             v_unit()
         }
     }
@@ -754,141 +754,141 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
     } else {
         car(cdr(xs))
     });
-    if string_eq_p(n, str_lit("i64+")) {
+    if string_eq_p(n, str_lit!("i64+")) {
         v_i64(i64_plus(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64-")) {
+    } else if string_eq_p(n, str_lit!("i64-")) {
         v_i64(i64_minus(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64*")) {
+    } else if string_eq_p(n, str_lit!("i64*")) {
         v_i64(i64_star(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64-quotient")) {
+    } else if string_eq_p(n, str_lit!("i64-quotient")) {
         v_i64(i64_quotient(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64-remainder")) {
+    } else if string_eq_p(n, str_lit!("i64-remainder")) {
         v_i64(i64_remainder(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64-and")) {
+    } else if string_eq_p(n, str_lit!("i64-and")) {
         v_i64(i64_and(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64-or")) {
+    } else if string_eq_p(n, str_lit!("i64-or")) {
         v_i64(i64_or(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64-xor")) {
+    } else if string_eq_p(n, str_lit!("i64-xor")) {
         v_i64(i64_xor(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64-not")) {
+    } else if string_eq_p(n, str_lit!("i64-not")) {
         v_i64(i64_not(i64_of(a)))
-    } else if string_eq_p(n, str_lit("i64=")) {
+    } else if string_eq_p(n, str_lit!("i64=")) {
         flag(i64_eq(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64<")) {
+    } else if string_eq_p(n, str_lit!("i64<")) {
         flag(i64_lt(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64>")) {
+    } else if string_eq_p(n, str_lit!("i64>")) {
         flag(i64_gt(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64<=")) {
+    } else if string_eq_p(n, str_lit!("i64<=")) {
         flag(i64_lt_eq(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("i64>=")) {
+    } else if string_eq_p(n, str_lit!("i64>=")) {
         flag(i64_gt_eq(i64_of(a), i64_of(b)))
-    } else if string_eq_p(n, str_lit("+")) {
+    } else if string_eq_p(n, str_lit!("+")) {
         v_int(_plus(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("-")) {
+    } else if string_eq_p(n, str_lit!("-")) {
         v_int(_minus(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("*")) {
+    } else if string_eq_p(n, str_lit!("*")) {
         v_int(_star(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("quotient")) {
+    } else if string_eq_p(n, str_lit!("quotient")) {
         v_int(quotient(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("remainder")) {
+    } else if string_eq_p(n, str_lit!("remainder")) {
         v_int(remainder(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("modulo")) {
+    } else if string_eq_p(n, str_lit!("modulo")) {
         v_int(modulo(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("=")) {
+    } else if string_eq_p(n, str_lit!("=")) {
         flag(_eq(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("<")) {
+    } else if string_eq_p(n, str_lit!("<")) {
         flag(_lt(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit(">")) {
+    } else if string_eq_p(n, str_lit!(">")) {
         flag(_gt(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("<=")) {
+    } else if string_eq_p(n, str_lit!("<=")) {
         flag(_lt_eq(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit(">=")) {
+    } else if string_eq_p(n, str_lit!(">=")) {
         flag(_gt_eq(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("max")) {
+    } else if string_eq_p(n, str_lit!("max")) {
         v_int(max(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("min")) {
+    } else if string_eq_p(n, str_lit!("min")) {
         v_int(min(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("zero?")) {
+    } else if string_eq_p(n, str_lit!("zero?")) {
         flag(zero_p(val_int(a)))
-    } else if string_eq_p(n, str_lit("bitwise-and")) {
+    } else if string_eq_p(n, str_lit!("bitwise-and")) {
         v_int(bitwise_and(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("bitwise-ior")) {
+    } else if string_eq_p(n, str_lit!("bitwise-ior")) {
         v_int(bitwise_ior(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("bitwise-xor")) {
+    } else if string_eq_p(n, str_lit!("bitwise-xor")) {
         v_int(bitwise_xor(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("bitwise-not")) {
+    } else if string_eq_p(n, str_lit!("bitwise-not")) {
         v_int(bitwise_not(val_int(a)))
-    } else if string_eq_p(n, str_lit("arithmetic-shift")) {
+    } else if string_eq_p(n, str_lit!("arithmetic-shift")) {
         v_int(arithmetic_shift(val_int(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("int->i64")) {
+    } else if string_eq_p(n, str_lit!("int->i64")) {
         v_int(w64(val_int(a)))
-    } else if string_eq_p(n, str_lit("i64->int")) {
+    } else if string_eq_p(n, str_lit!("i64->int")) {
         a
-    } else if string_eq_p(n, str_lit("int->string")) {
+    } else if string_eq_p(n, str_lit!("int->string")) {
         v_string(int_to_string(val_int(a)))
-    } else if string_eq_p(n, str_lit("i64->string")) {
+    } else if string_eq_p(n, str_lit!("i64->string")) {
         v_string(int_to_string(val_int(a)))
-    } else if string_eq_p(n, str_lit("not")) {
+    } else if string_eq_p(n, str_lit!("not")) {
         flag(not(bool_of(a)))
-    } else if string_eq_p(n, str_lit("bool=?")) {
+    } else if string_eq_p(n, str_lit!("bool=?")) {
         flag(bool_eq_p(bool_of(a), bool_of(b)))
-    } else if string_eq_p(n, str_lit("string-append")) {
+    } else if string_eq_p(n, str_lit!("string-append")) {
         v_string(string_append(string_of(a), string_of(b)))
-    } else if string_eq_p(n, str_lit("string=?")) {
+    } else if string_eq_p(n, str_lit!("string=?")) {
         flag(string_eq_p(string_of(a), string_of(b)))
-    } else if string_eq_p(n, str_lit("string<?")) {
+    } else if string_eq_p(n, str_lit!("string<?")) {
         flag(string_lt_p(string_of(a), string_of(b)))
-    } else if string_eq_p(n, str_lit("string>?")) {
+    } else if string_eq_p(n, str_lit!("string>?")) {
         flag(string_gt_p(string_of(a), string_of(b)))
-    } else if string_eq_p(n, str_lit("string-compare")) {
+    } else if string_eq_p(n, str_lit!("string-compare")) {
         v_int(string_compare(string_of(a), string_of(b)))
-    } else if string_eq_p(n, str_lit("string-search")) {
+    } else if string_eq_p(n, str_lit!("string-search")) {
         v_int(string_search(string_of(a), string_of(b), val_int(car(cdr(cdr(xs))))))
-    } else if string_eq_p(n, str_lit("string-downcase")) {
+    } else if string_eq_p(n, str_lit!("string-downcase")) {
         v_string(string_downcase(string_of(a)))
-    } else if (string_eq_p(n, str_lit("string-length")) || string_eq_p(n, str_lit("string-length-i64"))) {
+    } else if (string_eq_p(n, str_lit!("string-length")) || string_eq_p(n, str_lit!("string-length-i64"))) {
         v_int(string_length(string_of(a)))
-    } else if (string_eq_p(n, str_lit("string-ref")) || string_eq_p(n, str_lit("string-ref-i64"))) {
+    } else if (string_eq_p(n, str_lit!("string-ref")) || string_eq_p(n, str_lit!("string-ref-i64"))) {
         v_char(string_ref(string_of(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("substring")) {
+    } else if string_eq_p(n, str_lit!("substring")) {
         v_string(substring(string_of(a), val_int(b), val_int(car(cdr(cdr(xs))))))
-    } else if (string_eq_p(n, str_lit("char->i64")) || string_eq_p(n, str_lit("char->integer"))) {
+    } else if (string_eq_p(n, str_lit!("char->i64")) || string_eq_p(n, str_lit!("char->integer"))) {
         v_int(i64_to_int(char_to_i64(char_of(a))))
-    } else if (string_eq_p(n, str_lit("i64->char")) || string_eq_p(n, str_lit("integer->char"))) {
+    } else if (string_eq_p(n, str_lit!("i64->char")) || string_eq_p(n, str_lit!("integer->char"))) {
         v_char(i64_to_char(int_to_i64(val_int(a))))
-    } else if string_eq_p(n, str_lit("char->string")) {
+    } else if string_eq_p(n, str_lit!("char->string")) {
         v_string(char_to_string(char_of(a)))
-    } else if string_eq_p(n, str_lit("char=?")) {
+    } else if string_eq_p(n, str_lit!("char=?")) {
         flag(char_eq_p(char_of(a), char_of(b)))
-    } else if string_eq_p(n, str_lit("char<?")) {
+    } else if string_eq_p(n, str_lit!("char<?")) {
         flag(char_lt_p(char_of(a), char_of(b)))
-    } else if string_eq_p(n, str_lit("char>?")) {
+    } else if string_eq_p(n, str_lit!("char>?")) {
         flag(char_gt_p(char_of(a), char_of(b)))
-    } else if string_eq_p(n, str_lit("char-upcase")) {
+    } else if string_eq_p(n, str_lit!("char-upcase")) {
         v_char(char_upcase(char_of(a)))
-    } else if string_eq_p(n, str_lit("char-downcase")) {
+    } else if string_eq_p(n, str_lit!("char-downcase")) {
         v_char(char_downcase(char_of(a)))
-    } else if string_eq_p(n, str_lit("char-whitespace?")) {
+    } else if string_eq_p(n, str_lit!("char-whitespace?")) {
         flag(char_whitespace_p(char_of(a)))
-    } else if string_eq_p(n, str_lit("char-in?")) {
+    } else if string_eq_p(n, str_lit!("char-in?")) {
         flag(has_char_in_p(string_of(b), char_of(a)))
-    } else if string_eq_p(n, str_lit("char-numeric?")) {
+    } else if string_eq_p(n, str_lit!("char-numeric?")) {
         flag(char_numeric_p(char_of(a)))
-    } else if string_eq_p(n, str_lit("char-alphabetic?")) {
+    } else if string_eq_p(n, str_lit!("char-alphabetic?")) {
         flag(char_alphabetic_p(char_of(a)))
-    } else if string_eq_p(n, str_lit("string->list")) {
+    } else if string_eq_p(n, str_lit!("string->list")) {
         chars_val(the::<List<char>>(string_to_list(string_of(a))))
-    } else if string_eq_p(n, str_lit("list->string")) {
+    } else if string_eq_p(n, str_lit!("list->string")) {
         v_string(list_to_string(chars_of(a)))
-    } else if string_eq_p(n, str_lit("string->symbol")) {
+    } else if string_eq_p(n, str_lit!("string->symbol")) {
         v_symbol(string_to_symbol(string_of(a)))
-    } else if string_eq_p(n, str_lit("symbol->string")) {
+    } else if string_eq_p(n, str_lit!("symbol->string")) {
         v_string(symbol_to_string(symbol_of(a)))
-    } else if string_eq_p(n, str_lit("symbol=?")) {
+    } else if string_eq_p(n, str_lit!("symbol=?")) {
         flag(symbol_eq_p(symbol_of(a), symbol_of(b)))
-    } else if string_eq_p(n, str_lit("cons")) {
+    } else if string_eq_p(n, str_lit!("cons")) {
         v_pair(kayak_rt::heap_new(a), kayak_rt::heap_new(b))
-    } else if string_eq_p(n, str_lit("car")) {
+    } else if string_eq_p(n, str_lit!("car")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VPair(h, t) => {
@@ -896,11 +896,11 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
             }
             _ => {
                 let other = tagcase_;
-                failed_with_x(str_lit("car of nil"));
+                failed_with_x(str_lit!("car of nil"));
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("cdr")) {
+    } else if string_eq_p(n, str_lit!("cdr")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VPair(h, t) => {
@@ -908,11 +908,11 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
             }
             _ => {
                 let other = tagcase_;
-                failed_with_x(str_lit("cdr of nil"));
+                failed_with_x(str_lit!("cdr of nil"));
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("null?")) {
+    } else if string_eq_p(n, str_lit!("null?")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VNil() => {
@@ -923,7 +923,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 flag(false)
             }
         }
-    } else if string_eq_p(n, str_lit("pair?")) {
+    } else if string_eq_p(n, str_lit!("pair?")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VPair(h, t) => {
@@ -934,13 +934,13 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 flag(false)
             }
         }
-    } else if (string_eq_p(n, str_lit("length")) || string_eq_p(n, str_lit("list-length"))) {
+    } else if (string_eq_p(n, str_lit!("length")) || string_eq_p(n, str_lit!("list-length"))) {
         v_int(i64_to_int(size(list_of(a))))
-    } else if string_eq_p(n, str_lit("reverse")) {
+    } else if string_eq_p(n, str_lit!("reverse")) {
         list_val(reverse_vals(list_of(a), nil::<kayak_rt::Handle<'static, Val>>()))
-    } else if string_eq_p(n, str_lit("new")) {
+    } else if string_eq_p(n, str_lit!("new")) {
         v_ref(kayak_rt::heap_new(a))
-    } else if string_eq_p(n, str_lit("get")) {
+    } else if string_eq_p(n, str_lit!("get")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VRef(r) => {
@@ -948,11 +948,11 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
             }
             _ => {
                 let other = tagcase_;
-                failed_with_x(str_lit("the engine: a reference is expected"));
+                failed_with_x(str_lit!("the engine: a reference is expected"));
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("set")) {
+    } else if string_eq_p(n, str_lit!("set")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VRef(r) => {
@@ -961,13 +961,13 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
             }
             _ => {
                 let other = tagcase_;
-                failed_with_x(str_lit("the engine: a reference is expected"));
+                failed_with_x(str_lit!("the engine: a reference is expected"));
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("make-array")) {
+    } else if string_eq_p(n, str_lit!("make-array")) {
         v_array(make_array(val_int(a), b))
-    } else if string_eq_p(n, str_lit("array-ref")) {
+    } else if string_eq_p(n, str_lit!("array-ref")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VArray(arr) => {
@@ -978,7 +978,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("array-set!")) {
+    } else if string_eq_p(n, str_lit!("array-set!")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VArray(arr) => {
@@ -990,7 +990,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("array-length")) {
+    } else if string_eq_p(n, str_lit!("array-length")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VArray(arr) => {
@@ -1001,7 +1001,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("array->list")) {
+    } else if string_eq_p(n, str_lit!("array->list")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VArray(arr) => {
@@ -1012,14 +1012,14 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("list->array")) {
+    } else if string_eq_p(n, str_lit!("list->array")) {
         v_array(vals_array(list_of(a)))
-    } else if string_eq_p(n, str_lit("error")) {
+    } else if string_eq_p(n, str_lit!("error")) {
         failed_with_x(string_of(a));
         v_unit()
-    } else if string_eq_p(n, str_lit("%identity")) {
+    } else if string_eq_p(n, str_lit!("%identity")) {
         a
-    } else if string_eq_p(n, str_lit("int?")) {
+    } else if string_eq_p(n, str_lit!("int?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1032,7 +1032,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("string?")) {
+    } else if string_eq_p(n, str_lit!("string?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1045,7 +1045,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("bool?")) {
+    } else if string_eq_p(n, str_lit!("bool?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1058,7 +1058,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("char?")) {
+    } else if string_eq_p(n, str_lit!("char?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1071,7 +1071,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("symbol?")) {
+    } else if string_eq_p(n, str_lit!("symbol?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1087,7 +1087,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("array?")) {
+    } else if string_eq_p(n, str_lit!("array?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1103,7 +1103,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("procedure?")) {
+    } else if string_eq_p(n, str_lit!("procedure?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1125,7 +1125,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("f64?")) {
+    } else if string_eq_p(n, str_lit!("f64?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1138,7 +1138,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("ref?")) {
+    } else if string_eq_p(n, str_lit!("ref?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1151,7 +1151,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("sum?")) {
+    } else if string_eq_p(n, str_lit!("sum?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1167,7 +1167,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("product?")) {
+    } else if string_eq_p(n, str_lit!("product?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1180,7 +1180,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("bytevector?")) {
+    } else if string_eq_p(n, str_lit!("bytevector?")) {
         flag({
             let tagcase_ = a;
             match *tagcase_ {
@@ -1193,138 +1193,138 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 }
             }
         })
-    } else if string_eq_p(n, str_lit("i64-shl")) {
+    } else if string_eq_p(n, str_lit!("i64-shl")) {
         v_i64(i64_shl(i64_of(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("i64-shr")) {
+    } else if string_eq_p(n, str_lit!("i64-shr")) {
         v_i64(i64_shr(i64_of(a), val_int(b)))
-    } else if string_eq_p(n, str_lit("write-out")) {
+    } else if string_eq_p(n, str_lit!("write-out")) {
         write_outcome(write_out(string_of(a)))
-    } else if string_eq_p(n, str_lit("write-err")) {
+    } else if string_eq_p(n, str_lit!("write-err")) {
         write_outcome(write_err(string_of(a)))
-    } else if string_eq_p(n, str_lit("exit")) {
+    } else if string_eq_p(n, str_lit!("exit")) {
         match exit(val_int(a)) {};
         v_unit()
-    } else if string_eq_p(n, str_lit("clock")) {
+    } else if string_eq_p(n, str_lit!("clock")) {
         v_i64(clock())
-    } else if string_eq_p(n, str_lit("sleep-until")) {
+    } else if string_eq_p(n, str_lit!("sleep-until")) {
         sleep_until(i64_of(a));
         v_unit()
-    } else if string_eq_p(n, str_lit("args")) {
+    } else if string_eq_p(n, str_lit!("args")) {
         list_val(strings_vals(get(program_args())))
-    } else if string_eq_p(n, str_lit("read-line")) {
+    } else if string_eq_p(n, str_lit!("read-line")) {
         let tagcase_ = read_line();
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("line") } {
             let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            v_sum(str_lit("line"), v_string(t))
+            v_sum(str_lit!("line"), v_string(t))
         } else if tag_ == const { kayak_rt::tag_hash("eof") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            v_sum(str_lit("eof"), v_unit())
+            v_sum(str_lit!("eof"), v_unit())
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            v_sum(str_lit("failed"), io_error_val(e))
+            v_sum(str_lit!("failed"), io_error_val(e))
         } else { unreachable!() }
-    } else if string_eq_p(n, str_lit("read-byte")) {
+    } else if string_eq_p(n, str_lit!("read-byte")) {
         let tagcase_ = read_byte();
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("byte") } {
             let k: u8 = kayak_rt::sum_payload::<u8>(tagcase_);
-            v_sum(str_lit("byte"), v_int(u8_to_int(k)))
+            v_sum(str_lit!("byte"), v_int(u8_to_int(k)))
         } else if tag_ == const { kayak_rt::tag_hash("eof") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            v_sum(str_lit("eof"), v_unit())
+            v_sum(str_lit!("eof"), v_unit())
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            v_sum(str_lit("failed"), io_error_val(e))
+            v_sum(str_lit!("failed"), io_error_val(e))
         } else { unreachable!() }
-    } else if string_eq_p(n, str_lit("read-bytes")) {
+    } else if string_eq_p(n, str_lit!("read-bytes")) {
         let tagcase_ = read_bytes(bytes_of(a), val_int(b), val_int(car(cdr(cdr(xs)))));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("count") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            v_sum(str_lit("count"), v_int(k))
+            v_sum(str_lit!("count"), v_int(k))
         } else if tag_ == const { kayak_rt::tag_hash("eof") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            v_sum(str_lit("eof"), v_unit())
+            v_sum(str_lit!("eof"), v_unit())
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            v_sum(str_lit("failed"), io_error_val(e))
+            v_sum(str_lit!("failed"), io_error_val(e))
         } else { unreachable!() }
-    } else if string_eq_p(n, str_lit("stdin-ready?")) {
+    } else if string_eq_p(n, str_lit!("stdin-ready?")) {
         v_bool(stdin_ready_p())
-    } else if string_eq_p(n, str_lit("terminal-raw")) {
+    } else if string_eq_p(n, str_lit!("terminal-raw")) {
         terminal_val(terminal_raw())
-    } else if string_eq_p(n, str_lit("terminal-restore")) {
+    } else if string_eq_p(n, str_lit!("terminal-restore")) {
         terminal_val(terminal_restore())
-    } else if string_eq_p(n, str_lit("terminal-size")) {
+    } else if string_eq_p(n, str_lit!("terminal-size")) {
         let tagcase_ = terminal_size();
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("size") } {
             let p: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
-            v_sum(str_lit("size"), v_product(kayak_rt::heap_cons(str_lit("rows"), kayak_rt::heap_cons(str_lit("columns"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_int(p.0), kayak_rt::heap_cons(v_int(p.1), kayak_rt::nil())))))
+            v_sum(str_lit!("size"), v_product(kayak_rt::heap_cons(str_lit!("rows"), kayak_rt::heap_cons(str_lit!("columns"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_int(p.0), kayak_rt::heap_cons(v_int(p.1), kayak_rt::nil())))))
         } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            v_sum(str_lit("not-a-terminal"), v_unit())
+            v_sum(str_lit!("not-a-terminal"), v_unit())
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            v_sum(str_lit("failed"), io_error_val(e))
+            v_sum(str_lit!("failed"), io_error_val(e))
         } else { unreachable!() }
-    } else if string_eq_p(n, str_lit("read-file")) {
+    } else if string_eq_p(n, str_lit!("read-file")) {
         let tagcase_ = the::<kayak_rt::Sum>(read_file(string_of(a)));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("data") } {
             let d: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-            v_sum(str_lit("data"), v_bytes(d))
+            v_sum(str_lit!("data"), v_bytes(d))
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            v_sum(str_lit("failed"), io_error_val(e))
+            v_sum(str_lit!("failed"), io_error_val(e))
         } else { unreachable!() }
-    } else if string_eq_p(n, str_lit("write-file")) {
+    } else if string_eq_p(n, str_lit!("write-file")) {
         write_outcome(write_file(string_of(a), bytes_of(b)))
-    } else if string_eq_p(n, str_lit("list-dir")) {
+    } else if string_eq_p(n, str_lit!("list-dir")) {
         let tagcase_ = the::<kayak_rt::Sum>(list_dir(string_of(a)));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("names") } {
             let ns: List<Str> = kayak_rt::sum_payload::<List<Str>>(tagcase_);
-            v_sum(str_lit("names"), list_val(strings_vals(ns)))
+            v_sum(str_lit!("names"), list_val(strings_vals(ns)))
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            v_sum(str_lit("failed"), io_error_val(e))
+            v_sum(str_lit!("failed"), io_error_val(e))
         } else { unreachable!() }
-    } else if string_eq_p(n, str_lit("append")) {
+    } else if string_eq_p(n, str_lit!("append")) {
         list_val(onto_vals(list_of(a), list_of(b)))
-    } else if string_eq_p(n, str_lit("make-bytevector")) {
+    } else if string_eq_p(n, str_lit!("make-bytevector")) {
         v_bytes(make_bytevector(val_int(a), int_to_u8(val_int(b))))
-    } else if string_eq_p(n, str_lit("bytevector-length")) {
+    } else if string_eq_p(n, str_lit!("bytevector-length")) {
         v_int(bytevector_length(bytes_of(a)))
-    } else if string_eq_p(n, str_lit("bytevector-u8-ref")) {
+    } else if string_eq_p(n, str_lit!("bytevector-u8-ref")) {
         v_int(u8_to_int(bytevector_u8_ref(bytes_of(a), val_int(b))))
-    } else if string_eq_p(n, str_lit("bytevector-u8-set!")) {
+    } else if string_eq_p(n, str_lit!("bytevector-u8-set!")) {
         bytevector_u8_set_x(bytes_of(a), val_int(b), int_to_u8(val_int(car(cdr(cdr(xs))))));
         v_unit()
-    } else if string_eq_p(n, str_lit("bytevector-copy")) {
+    } else if string_eq_p(n, str_lit!("bytevector-copy")) {
         v_bytes(bytevector_copy(bytes_of(a), val_int(b), val_int(car(cdr(cdr(xs))))))
-    } else if string_eq_p(n, str_lit("bytevector-copy!")) {
+    } else if string_eq_p(n, str_lit!("bytevector-copy!")) {
         let r = cdr(cdr(xs));
         bytevector_copy_x(bytes_of(a), val_int(b), bytes_of(car(r)), val_int(car(cdr(r))), val_int(car(cdr(cdr(r)))));
         v_unit()
-    } else if string_eq_p(n, str_lit("bytevector=?")) {
+    } else if string_eq_p(n, str_lit!("bytevector=?")) {
         flag(bytevector_eq_p(bytes_of(a), bytes_of(b)))
-    } else if string_eq_p(n, str_lit("string->utf8")) {
+    } else if string_eq_p(n, str_lit!("string->utf8")) {
         v_bytes(string_to_utf8(string_of(a)))
-    } else if string_eq_p(n, str_lit("utf8->string")) {
+    } else if string_eq_p(n, str_lit!("utf8->string")) {
         let tagcase_ = utf8_to_string(bytes_of(a));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("text") } {
             let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            v_sum(str_lit("text"), v_string(t))
+            v_sum(str_lit!("text"), v_string(t))
         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            v_sum(str_lit("bad"), v_int(k))
+            v_sum(str_lit!("bad"), v_int(k))
         } else { unreachable!() }
-    } else if string_eq_p(n, str_lit("make-flatarray-i64")) {
+    } else if string_eq_p(n, str_lit!("make-flatarray-i64")) {
         v_flat(make_array(val_int(a), b))
-    } else if string_eq_p(n, str_lit("flatarray-ref-i64")) {
+    } else if string_eq_p(n, str_lit!("flatarray-ref-i64")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VFlat(arr) => {
@@ -1335,7 +1335,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("flatarray-set-i64!")) {
+    } else if string_eq_p(n, str_lit!("flatarray-set-i64!")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VFlat(arr) => {
@@ -1347,7 +1347,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("flatarray-length-i64")) {
+    } else if string_eq_p(n, str_lit!("flatarray-length-i64")) {
         let tagcase_ = a;
         match *tagcase_ {
             Val::VFlat(arr) => {
@@ -1358,34 +1358,34 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
                 v_unit()
             }
         }
-    } else if string_eq_p(n, str_lit("%case=")) {
+    } else if string_eq_p(n, str_lit!("%case=")) {
         flag(same_atom_p(a, b))
-    } else if string_eq_p(n, str_lit("rcons")) {
+    } else if string_eq_p(n, str_lit!("rcons")) {
         v_pair(kayak_rt::heap_new(b), kayak_rt::heap_new(car(cdr(cdr(xs)))))
-    } else if string_eq_p(n, str_lit("rnew")) {
+    } else if string_eq_p(n, str_lit!("rnew")) {
         v_ref(kayak_rt::heap_new(b))
-    } else if string_eq_p(n, str_lit("rmake-array")) {
+    } else if string_eq_p(n, str_lit!("rmake-array")) {
         v_array(make_array(val_int(b), car(cdr(cdr(xs)))))
-    } else if string_eq_p(n, str_lit("char<=?")) {
+    } else if string_eq_p(n, str_lit!("char<=?")) {
         flag(char_lt_eq_p(char_of(a), char_of(b)))
-    } else if string_eq_p(n, str_lit("char>=?")) {
+    } else if string_eq_p(n, str_lit!("char>=?")) {
         flag(char_gt_eq_p(char_of(a), char_of(b)))
-    } else if string_eq_p(n, str_lit("string<=?")) {
+    } else if string_eq_p(n, str_lit!("string<=?")) {
         flag(string_lt_eq_p(string_of(a), string_of(b)))
-    } else if string_eq_p(n, str_lit("string>=?")) {
+    } else if string_eq_p(n, str_lit!("string>=?")) {
         flag(string_gt_eq_p(string_of(a), string_of(b)))
-    } else if string_eq_p(n, str_lit("string-ci=?")) {
+    } else if string_eq_p(n, str_lit!("string-ci=?")) {
         flag(string_ci_eq_p(string_of(a), string_of(b)))
-    } else if string_eq_p(n, str_lit("symbol-compare")) {
+    } else if string_eq_p(n, str_lit!("symbol-compare")) {
         v_int(symbol_compare(symbol_of(a), symbol_of(b)))
-    } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
+    } else if not(string_eq_p(fixed_type(n), str_lit!(""))) {
         fixed_prim(fixed_type(n), fixed_op(n), a, b)
-    } else if string_eq_p(n, str_lit("int->f64")) {
+    } else if string_eq_p(n, str_lit!("int->f64")) {
         v_real(int_to_f64(val_int(a)))
-    } else if has_prefix_p(n, str_lit("f64")) {
+    } else if has_prefix_p(n, str_lit!("f64")) {
         f64_prim(n, a, b)
     } else {
-        failed_with_x(string_append(str_lit("the engine has no primitive "), n));
+        failed_with_x(string_append(str_lit!("the engine has no primitive "), n));
         v_unit()
     }
 }

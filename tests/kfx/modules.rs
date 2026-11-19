@@ -10,11 +10,11 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit!(" "), words(cdr(xs))))
     }
 }
 
@@ -101,11 +101,11 @@ pub mod stack {
 
     pub fn shown(xs: Items) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else if null_p(cdr(xs)) {
             i64_to_string(car(xs))
         } else {
-            string_append(i64_to_string(car(xs)), string_append(str_lit(","), shown(cdr(xs))))
+            string_append(i64_to_string(car(xs)), string_append(str_lit!(","), shown(cdr(xs))))
         }
     }
 }
@@ -253,9 +253,9 @@ pub fn count_to(value: i64, n: i64) -> i64 {
 pub fn main() -> Str {
     let push = the::<i64>(10i64);
     words(kayak_rt::heap_cons(i64_to_string(counter::value(twice(counter::zero()))), kayak_rt::heap_cons(i64_to_string(count_to(5i64, 1i64)), kayak_rt::heap_cons(i64_to_string(count_to(5i64, 0i64)), kayak_rt::heap_cons(stack::shown(stack::push(3i64, stack::two())), kayak_rt::heap_cons(i64_to_string(stack::depth((stack::pusher()).call(4i64, stack::two()))), kayak_rt::heap_cons(i64_to_string(push), kayak_rt::heap_cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), kayak_rt::heap_cons(stack::shown(the::<stack::Items>(kayak_rt::heap_cons(7i64, kayak_rt::heap_cons(8i64, kayak_rt::nil())))), kayak_rt::heap_cons(i64_to_string(geometry::area(geometry::rect(3i64, 4i64))), kayak_rt::heap_cons(if big_p(geometry::circle(20i64)) {
-        str_lit("big")
+        str_lit!("big")
     } else {
-        str_lit("small")
+        str_lit!("small")
     }, kayak_rt::heap_cons({
         let c = the::<Ref<i64>>(kayak_rt::heap_new(40i64));
         bump_twice_x(c);

@@ -135,7 +135,7 @@ pub mod session {
     pub fn note() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -183,7 +183,7 @@ pub mod session {
     pub fn spec_type() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -223,7 +223,7 @@ pub mod session {
     pub fn spec_key() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -270,7 +270,7 @@ pub mod session {
     pub fn hole_op() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -286,7 +286,7 @@ pub mod session {
     pub fn around() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -330,11 +330,11 @@ pub mod session {
     }
 
     pub fn make_entry(k: i64, text: Str, typed: Str, defined: Str, quiet: bool, needs: List<i64>, state: i64, tops: List<i64>, shown: Str, timed: bool, now: i64) -> Entry {
-        Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after(k, text, typed, defined, quiet, needs, kayak_rt::heap_new(state), kayak_rt::heap_new(tops), kayak_rt::heap_new(shown), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(now), kayak_rt::heap_new(if i64_eq(state, st_done()) {
+        Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after(k, text, typed, defined, quiet, needs, kayak_rt::heap_new(state), kayak_rt::heap_new(tops), kayak_rt::heap_new(shown), kayak_rt::heap_new(str_lit!("")), kayak_rt::heap_new(now), kayak_rt::heap_new(if i64_eq(state, st_done()) {
             now
         } else {
             -1i64
-        }), kayak_rt::heap_new(-1i64), kayak_rt::heap_new(str_lit("")), timed, kayak_rt::heap_new(0i64), get(collections()), kayak_rt::heap_new(-1i64))
+        }), kayak_rt::heap_new(-1i64), kayak_rt::heap_new(str_lit!("")), timed, kayak_rt::heap_new(0i64), get(collections()), kayak_rt::heap_new(-1i64))
     }
 
     /// An entry ended, in `state`: when, and the collections so far.
@@ -344,7 +344,7 @@ pub mod session {
         set(e.17, get(collections()));
         if get(spec_waits()) {
             set(speculated(), false);
-            set(spec_key(), str_lit(""))
+            set(spec_key(), str_lit!(""))
         } else {
             ()
         }
@@ -424,7 +424,7 @@ pub mod session {
     pub fn spec_text() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -488,7 +488,7 @@ pub mod session {
     pub fn draft() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -592,7 +592,7 @@ pub mod session {
     pub fn stash() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -600,7 +600,7 @@ pub mod session {
     pub fn history_path() -> Ref<Str> {
         kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
-            kayak_rt::heap_new(str_lit(""))
+            kayak_rt::heap_new(str_lit!(""))
         })
     }
 
@@ -735,7 +735,7 @@ pub mod session {
     pub fn definition_form_p(f: kayak_rt::Handle<'static, Sexp>) -> bool {
         any_p(kayak_rt::as_proc(kayak_rt::closure1s((f,), |(f,), h: Str| {
             head_is_p(f, h)
-        })), kayak_rt::heap_cons(str_lit("define"), kayak_rt::heap_cons(str_lit("define*"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("define-type"), kayak_rt::heap_cons(str_lit("define-datatype"), kayak_rt::heap_cons(str_lit("define-generative"), kayak_rt::heap_cons(str_lit("define-effect"), kayak_rt::nil()))))))))
+        })), kayak_rt::heap_cons(str_lit!("define"), kayak_rt::heap_cons(str_lit!("define*"), kayak_rt::heap_cons(str_lit!("define-rec"), kayak_rt::heap_cons(str_lit!("define-type"), kayak_rt::heap_cons(str_lit!("define-datatype"), kayak_rt::heap_cons(str_lit!("define-generative"), kayak_rt::heap_cons(str_lit!("define-effect"), kayak_rt::nil()))))))))
     }
 
     // Entries, by number and state.
@@ -808,28 +808,28 @@ pub mod session {
     /// with it runs beside others.
     pub fn quiet_effect_p(es: Strings) -> bool {
         not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: Str| {
-            not((string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("@globals")) || has_prefix_p(a, str_lit("g:")) || has_prefix_p(a, str_lit("read:")) || has_prefix_p(a, str_lit("alloc:"))))
+            not((string_eq_p(a, str_lit!("spin")) || string_eq_p(a, str_lit!("@globals")) || has_prefix_p(a, str_lit!("g:")) || has_prefix_p(a, str_lit!("read:")) || has_prefix_p(a, str_lit!("alloc:"))))
         })), es))
     }
 
     // What an entry's line says.
     #[inline]
     pub fn seconds(ms: i64) -> Str {
-        string_append(i64_to_string(i64_quotient(ms, 1000i64)), string_append(str_lit("."), string_append(i64_to_string(i64_quotient(i64_remainder(ms, 1000i64), 100i64)), str_lit(" s"))))
+        string_append(i64_to_string(i64_quotient(ms, 1000i64)), string_append(str_lit!("."), string_append(i64_to_string(i64_quotient(i64_remainder(ms, 1000i64), 100i64)), str_lit!(" s"))))
     }
 
     #[inline]
     pub fn spinner(now: i64) -> Str {
-        let frames = str_lit("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏");
+        let frames = str_lit!("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏");
         char_to_string(string_ref_i64(frames, i64_remainder(i64_quotient(now, 80i64), 10i64)))
     }
 
     pub fn entry_line(e: Entry, now: i64) -> Str {
         let s = get(e.6);
         let head = if (get(live()) && i64_gt(e.0, 0i64)) {
-            string_append(str_lit("["), string_append(i64_to_string(e.0), str_lit("] ")))
+            string_append(str_lit!("["), string_append(i64_to_string(e.0), str_lit!("] ")))
         } else {
-            str_lit("")
+            str_lit!("")
         };
         let took = i64_minus(if i64_gt_eq(get(e.11), 0i64) {
             get(e.11)
@@ -837,26 +837,26 @@ pub mod session {
             now
         }, get(e.10));
         let time = if e.14 {
-            string_append(str_lit("  ("), string_append(seconds(took), string_append(str_lit(", "), string_append(i64_to_string(get(e.15)), string_append(str_lit(" steps, "), string_append(i64_to_string(i64_minus(if i64_lt(get(e.17), 0i64) {
+            string_append(str_lit!("  ("), string_append(seconds(took), string_append(str_lit!(", "), string_append(i64_to_string(get(e.15)), string_append(str_lit!(" steps, "), string_append(i64_to_string(i64_minus(if i64_lt(get(e.17), 0i64) {
                 get(collections())
             } else {
                 get(e.17)
-            }, e.16)), str_lit(" collections)")))))))
+            }, e.16)), str_lit!(" collections)")))))))
         } else if (get(live()) && i64_gt_eq(took, 100i64)) {
-            string_append(str_lit("  ("), string_append(seconds(took), str_lit(")")))
+            string_append(str_lit!("  ("), string_append(seconds(took), str_lit!(")")))
         } else {
-            str_lit("")
+            str_lit!("")
         };
         if i64_eq(s, st_checking()) {
-            string_append(head, str_lit("…"))
+            string_append(head, str_lit!("…"))
         } else if i64_eq(s, st_waiting()) {
-            string_append(head, string_append(spinner(now), str_lit(" waiting")))
+            string_append(head, string_append(spinner(now), str_lit!(" waiting")))
         } else if i64_eq(s, st_running()) {
-            string_append(head, string_append(spinner(now), string_append(str_lit(" running "), seconds(took))))
+            string_append(head, string_append(spinner(now), string_append(str_lit!(" running "), seconds(took))))
         } else if i64_eq(s, st_done()) {
             string_append(head, string_append(get(e.8), time))
         } else if i64_eq(s, st_interrupted()) {
-            string_append(head, string_append(str_lit("interrupted"), time))
+            string_append(head, string_append(str_lit!("interrupted"), time))
         } else {
             string_append(head, get(e.8))
         }
@@ -865,8 +865,8 @@ pub mod session {
     /// ^C: the draft dropped, if there is one; else the newest entry not
     /// ended, interrupted.
     pub fn interrupt_x(now: i64) -> () {
-        if not(string_eq_p(get(draft()), str_lit(""))) {
-            draft_set_x(str_lit(""), 0i64);
+        if not(string_eq_p(get(draft()), str_lit!(""))) {
+            draft_set_x(str_lit!(""), 0i64);
             set(history_at(), -1i64)
         } else {
             let running = entries_where(kayak_rt::as_proc(unfinished_p), get(entries()));
@@ -923,12 +923,12 @@ pub mod session {
                 ()
             };
             up_x(get(cursor_row()));
-            set(note(), str_lit(""));
+            set(note(), str_lit!(""));
             set(under_from(), 0i64);
             set(under_to(), 0i64);
             set(cursor(), string_length_i64(get(draft())));
             draw_draft_x(get(draft()));
-            say_x(str_lit("\u{d}\n"));
+            say_x(str_lit!("\u{d}\n"));
             set(rows(), i64_plus(get(rows()), get(draft_rows())));
             set(draft_rows(), 1i64);
             set(cursor_row(), 0i64);
@@ -1104,7 +1104,7 @@ pub mod session {
     pub fn nth_string(mut xs: Strings, mut i: i64) -> Str {
         loop {
             if null_p(xs) {
-                return str_lit("");
+                return str_lit!("");
             } else if i64_eq(i, 0i64) {
                 return car(xs);
             } else {
@@ -1149,11 +1149,11 @@ pub mod session {
             command_x(list_to_string(trimmed), now)
         } else if repl_complete_p(d) {
             given_x(d, now);
-            submit_x(d, str_lit(""), false, now)
+            submit_x(d, str_lit!(""), false, now)
         } else if null_p(trimmed) {
-            draft_set_x(str_lit(""), 0i64)
+            draft_set_x(str_lit!(""), 0i64)
         } else {
-            inserted_x(str_lit("\n"))
+            inserted_x(str_lit!("\n"))
         }
     }
 
@@ -1163,8 +1163,8 @@ pub mod session {
         set(history(), kayak_rt::heap_cons(trimmed_end(d), get(history())));
         history_written_x();
         set(history_at(), -1i64);
-        set(stash(), str_lit(""));
-        draft_set_x(str_lit(""), 0i64)
+        set(stash(), str_lit!(""));
+        draft_set_x(str_lit!(""), 0i64)
     }
 
     pub fn trimmed_start(mut cs: List<char>) -> List<char> {
@@ -1201,10 +1201,10 @@ pub mod session {
             if null_p(cs) {
                 return acc;
             } else if char_eq_p(car(cs), '\n') {
-                (cs, acc) = (cdr(cs), put(str_lit("\\n"), acc));
+                (cs, acc) = (cdr(cs), put(str_lit!("\\n"), acc));
                 continue;
             } else if char_eq_p(car(cs), '\\') {
-                (cs, acc) = (cdr(cs), put(str_lit("\\\\"), acc));
+                (cs, acc) = (cdr(cs), put(str_lit!("\\\\"), acc));
                 continue;
             } else {
                 (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
@@ -1236,12 +1236,12 @@ pub mod session {
         if (null_p(hs) || i64_lt_eq(n, 0i64)) {
             acc
         } else {
-            put(str_lit("\n"), escaped(string_chars(car(hs)), history_text(cdr(hs), i64_minus(n, 1i64), acc)))
+            put(str_lit!("\n"), escaped(string_chars(car(hs)), history_text(cdr(hs), i64_minus(n, 1i64), acc)))
         }
     }
 
     pub fn history_written_x() -> () {
-        if string_eq_p(get(history_path()), str_lit("")) {
+        if string_eq_p(get(history_path()), str_lit!("")) {
             ()
         } else {
             let tagcase_ = write_file(get(history_path()), the::<Bytes>(string_to_utf8(rev_to_string(history_text(get(history()), 500i64, nil::<char>())))));
@@ -1257,7 +1257,7 @@ pub mod session {
     }
 
     pub fn history_read_x() -> () {
-        if string_eq_p(get(history_path()), str_lit("")) {
+        if string_eq_p(get(history_path()), str_lit!("")) {
             ()
         } else {
             let tagcase_ = the::<kayak_rt::Sum>(read_file(get(history_path())));
@@ -1288,7 +1288,7 @@ pub mod session {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
-                    if (has_prefix_p(n, str_lit("%")) || has_char_in_p(n, ' ')) {
+                    if (has_prefix_p(n, str_lit!("%")) || has_char_in_p(n, ' ')) {
                         nil::<Str>()
                     } else {
                         the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
@@ -1327,7 +1327,7 @@ pub mod session {
                 nil::<Str>()
             }
         })), known_names())), nil::<Str>()));
-        if (string_eq_p(p, str_lit("")) || null_p(found)) {
+        if (string_eq_p(p, str_lit!("")) || null_p(found)) {
             ()
         } else {
             let common = common_prefix(car(found), cdr(found));
@@ -1356,20 +1356,20 @@ pub mod session {
 
     pub fn words_of_at_most(xs: Strings, n: i64) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else if i64_eq(n, 0i64) {
-            str_lit("…")
+            str_lit!("…")
         } else if null_p(cdr(xs)) {
             car(xs)
         } else {
-            string_append(car(xs), string_append(str_lit(" "), words_of_at_most(cdr(xs), i64_minus(n, 1i64))))
+            string_append(car(xs), string_append(str_lit!(" "), words_of_at_most(cdr(xs), i64_minus(n, 1i64))))
         }
     }
 
     // Commands, as Fixpt's REPL has them: a line beginning with a comma.
     #[inline]
     pub fn help_text() -> Str {
-        str_lit(",help              this; ,help NAME: what NAME is\n,type E            E's type and effect, checked and not run\n,time E            E run, then its time, steps and collections\n,load FILE         FILE's forms, an entry\n,pending           the entries not ended\n,cancel K          entry K interrupted (^C: the newest)\n,step-limit [N|none]  how many steps an entry may take\n,apropos TEXT      the names containing TEXT\n,quit              leave now (^D: when every entry has ended)\nAnything else is forms, checked and run as an entry; %K is entry K's value;\nan entry naming one that has not ended waits for it.")
+        str_lit!(",help              this; ,help NAME: what NAME is\n,type E            E's type and effect, checked and not run\n,time E            E run, then its time, steps and collections\n,load FILE         FILE's forms, an entry\n,pending           the entries not ended\n,cancel K          entry K interrupted (^C: the newest)\n,step-limit [N|none]  how many steps an entry may take\n,apropos TEXT      the names containing TEXT\n,quit              leave now (^D: when every entry has ended)\nAnything else is forms, checked and run as an entry; %K is entry K's value;\nan entry naming one that has not ended waits for it.")
     }
 
     /// Whether a command's line is whole: its forms, if any, closed.
@@ -1403,42 +1403,42 @@ pub mod session {
     pub fn command_x(line: Str, now: i64) -> () {
         let w = command_word(line);
         let rest = trimmed_end(command_rest(line));
-        if string_eq_p(w, str_lit(",help")) {
-            if string_eq_p(rest, str_lit("")) {
+        if string_eq_p(w, str_lit!(",help")) {
+            if string_eq_p(rest, str_lit!("")) {
                 said_x(help_text(), now)
             } else {
                 said_x(described(rest), now)
             }
-        } else if string_eq_p(w, str_lit(",type")) {
+        } else if string_eq_p(w, str_lit!(",type")) {
             typed_only_x(rest, now)
-        } else if string_eq_p(w, str_lit(",time")) {
-            submit_x(rest, str_lit(""), true, now)
-        } else if string_eq_p(w, str_lit(",load")) {
+        } else if string_eq_p(w, str_lit!(",time")) {
+            submit_x(rest, str_lit!(""), true, now)
+        } else if string_eq_p(w, str_lit!(",load")) {
             loaded_x(rest, now)
-        } else if string_eq_p(w, str_lit(",pending")) {
+        } else if string_eq_p(w, str_lit!(",pending")) {
             said_x(pending_text(now), now)
-        } else if string_eq_p(w, str_lit(",cancel")) {
+        } else if string_eq_p(w, str_lit!(",cancel")) {
             let found = entry_numbered(get(entries()), number_from(string_chars(rest), 0i64));
             if (not(null_p(found)) && unfinished_p(car(found))) {
                 asked_x(cancelled(car(found).0))
             } else {
-                said_x(string_append(str_lit("no entry "), string_append(rest, str_lit(" is running"))), now)
+                said_x(string_append(str_lit!("no entry "), string_append(rest, str_lit!(" is running"))), now)
             }
-        } else if string_eq_p(w, str_lit(",step-limit")) {
-            if string_eq_p(rest, str_lit("none")) {
+        } else if string_eq_p(w, str_lit!(",step-limit")) {
+            if string_eq_p(rest, str_lit!("none")) {
                 set(step_limit(), -1i64)
-            } else if string_eq_p(rest, str_lit("")) {
+            } else if string_eq_p(rest, str_lit!("")) {
                 ()
             } else {
                 set(step_limit(), number_from(string_chars(rest), 0i64))
             };
             asked_x(limited(get(step_limit())));
             said_x(if i64_lt(get(step_limit()), 0i64) {
-                str_lit("no step limit")
+                str_lit!("no step limit")
             } else {
-                string_append(str_lit("an entry may take "), string_append(i64_to_string(get(step_limit())), str_lit(" steps")))
+                string_append(str_lit!("an entry may take "), string_append(i64_to_string(get(step_limit())), str_lit!(" steps")))
             }, now)
-        } else if string_eq_p(w, str_lit(",apropos")) {
+        } else if string_eq_p(w, str_lit!(",apropos")) {
             said_x({
                 let found = sorted_strings(deduped_names(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((rest,), |(rest,), n: Str| {
                     if i64_gt_eq(int_to_i64(string_search(n, rest, int_lit(0))), 0i64) {
@@ -1448,15 +1448,15 @@ pub mod session {
                     }
                 })), known_names())), nil::<Str>()));
                 if null_p(found) {
-                    str_lit("nothing")
+                    str_lit!("nothing")
                 } else {
                     words_of_at_most(found, 40i64)
                 }
             }, now)
-        } else if string_eq_p(w, str_lit(",quit")) {
+        } else if string_eq_p(w, str_lit!(",quit")) {
             set(quitting(), true)
         } else {
-            said_x(string_append(str_lit("no command "), string_append(w, str_lit("; ,help for those there are"))), now)
+            said_x(string_append(str_lit!("no command "), string_append(w, str_lit!("; ,help for those there are"))), now)
         }
     }
 
@@ -1464,10 +1464,10 @@ pub mod session {
     /// finds the line, as an entry's (`refused!`).
     pub fn typed_only_x(text: Str, now: i64) -> () {
         set(commands(), i64_plus(get(commands()), 1i64));
-        set(entries(), kayak_rt::heap_cons(make_entry(i64_minus(0i64, get(commands())), text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), nil::<i64>(), str_lit(""), false, now), get(entries())));
-        let forms = program_read(text, str_lit("<,type>"), 1i64);
+        set(entries(), kayak_rt::heap_cons(make_entry(i64_minus(0i64, get(commands())), text, str_lit!(""), str_lit!(""), true, nil::<i64>(), st_checking(), nil::<i64>(), str_lit!(""), false, now), get(entries())));
+        let forms = program_read(text, str_lit!("<,type>"), 1i64);
         if null_p(forms) {
-            refused_x(str_lit("nothing to type"), now)
+            refused_x(str_lit!("nothing to type"), now)
         } else {
             let shown = form_type(get(repl_cv()), car(forms));
             set(car(get(entries())).8, string_append(text, shown));
@@ -1480,7 +1480,7 @@ pub mod session {
     pub fn described(n: Str) -> Str {
         let found = find_bind(n, cv_binds(get(repl_cv())));
         if null_p(found) {
-            string_append(n, str_lit(" is not defined"))
+            string_append(n, str_lit!(" is not defined"))
         } else {
             let tagcase_ = car(found);
             match *tagcase_ {
@@ -1488,10 +1488,10 @@ pub mod session {
                     let tagcase_ = sc;
                     match *tagcase_ {
                         Scheme::Scheme(tvars, t) => {
-                            string_append(n, string_append(str_lit(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit("prim")) {
-                                str_lit(", a primitive")
+                            string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit!("prim")) {
+                                str_lit!(", a primitive")
                             } else {
-                                str_lit("")
+                                str_lit!("")
                             })))
                         }
                     }
@@ -1513,32 +1513,32 @@ pub mod session {
                 submit_x(t, path, false, now)
             } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                 let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                said_x(string_append(path, str_lit(": not UTF-8")), now)
+                said_x(string_append(path, str_lit!(": not UTF-8")), now)
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            said_x(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), now)
+            said_x(string_append(str_lit!("cannot read "), string_append(path, string_append(str_lit!(": "), e.1))), now)
         } else { unreachable!() }
     }
 
     pub fn pending_text(now: i64) -> Str {
         let open = entries_where(kayak_rt::as_proc(unfinished_p), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()));
         if null_p(open) {
-            str_lit("no entry is running")
+            str_lit!("no entry is running")
         } else {
             words_lines(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), e: Entry| {
-                string_append(str_lit("["), string_append(i64_to_string(e.0), string_append(str_lit("] "), first_line(e.1))))
+                string_append(str_lit!("["), string_append(i64_to_string(e.0), string_append(str_lit!("] "), first_line(e.1))))
             })), open))
         }
     }
 
     pub fn words_lines(xs: Strings) -> Str {
         if null_p(xs) {
-            str_lit("")
+            str_lit!("")
         } else if null_p(cdr(xs)) {
             car(xs)
         } else {
-            string_append(car(xs), string_append(str_lit("\n"), words_lines(cdr(xs))))
+            string_append(car(xs), string_append(str_lit!("\n"), words_lines(cdr(xs))))
         }
     }
 
@@ -1546,7 +1546,7 @@ pub mod session {
     pub fn first_line(s: Str) -> Str {
         let ls = lines_of(string_chars(s), nil::<char>(), nil::<Str>());
         if null_p(ls) {
-            str_lit("")
+            str_lit!("")
         } else {
             car(ls)
         }
@@ -1557,7 +1557,7 @@ pub mod session {
     /// file `,load` reads).
     pub fn submit_x(text: Str, label: Str, timed: bool, now: i64) -> () {
         let k = i64_plus(get(repl_count()), 1i64);
-        let e = make_entry(k, text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), nil::<i64>(), str_lit(""), timed, now);
+        let e = make_entry(k, text, str_lit!(""), str_lit!(""), true, nil::<i64>(), st_checking(), nil::<i64>(), str_lit!(""), timed, now);
         set(repl_count(), k);
         speculation_dropped_x();
         set(entries(), kayak_rt::heap_cons(e, get(entries())));
@@ -1566,16 +1566,16 @@ pub mod session {
         } else {
             asked_x(entry_given(k, text, label, timed))
         };
-        let forms = program_read(text, if string_eq_p(label, str_lit("")) {
-            string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
+        let forms = program_read(text, if string_eq_p(label, str_lit!("")) {
+            string_append(str_lit!("<fx26:"), string_append(i64_to_string(k), str_lit!(">")))
         } else {
             label
         }, 1i64);
-        let made = entry_forms(k, forms, str_lit(""), str_lit(""), true, nil::<i64>());
+        let made = entry_forms(k, forms, str_lit!(""), str_lit!(""), true, nil::<i64>());
         let tagcase_ = made;
         match *tagcase_ {
             MadeEntry::MadeEntry(typed, defined, quiet, tops) => {
-                set(entries(), kayak_rt::heap_cons(make_entry(k, text, typed, defined, quiet, concat(map(kayak_rt::as_proc(named_results), forms)), st_waiting(), tops, str_lit(""), timed, now), cdr(get(entries()))))
+                set(entries(), kayak_rt::heap_cons(make_entry(k, text, typed, defined, quiet, concat(map(kayak_rt::as_proc(named_results), forms)), st_waiting(), tops, str_lit!(""), timed, now), cdr(get(entries()))))
             }
         }
     }
@@ -1583,7 +1583,7 @@ pub mod session {
     /// A command's line, as an entry's that is done.
     pub fn said_x(line: Str, now: i64) -> () {
         set(commands(), i64_plus(get(commands()), 1i64));
-        set(entries(), kayak_rt::heap_cons(make_entry(i64_minus(0i64, get(commands())), str_lit(""), str_lit(""), str_lit(""), true, nil::<i64>(), st_done(), nil::<i64>(), line, false, now), get(entries())))
+        set(entries(), kayak_rt::heap_cons(make_entry(i64_minus(0i64, get(commands())), str_lit!(""), str_lit!(""), str_lit!(""), true, nil::<i64>(), st_done(), nil::<i64>(), line, false, now), get(entries())))
     }
 
     pub enum MadeEntry {
@@ -1616,14 +1616,14 @@ pub mod session {
                 let shown_type = if expression {
                     form_type(get(repl_cv()), form)
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 };
                 let effects = if expression {
                     expression_effects(get(repl_cv()), form)
                 } else {
                     nil::<Str>()
                 };
-                let name = string_append(str_lit("%"), i64_to_string(k));
+                let name = string_append(str_lit!("%"), i64_to_string(k));
                 let checked = checked_form(get(repl_cv()), form);
                 let v = if expression {
                     result_bound(checked, form, name)
@@ -1652,12 +1652,12 @@ pub mod session {
                     line
                 } else {
                     typed
-                }, if (expression || string_eq_p(line, str_lit(""))) {
+                }, if (expression || string_eq_p(line, str_lit!(""))) {
                     defined
-                } else if string_eq_p(defined, str_lit("")) {
+                } else if string_eq_p(defined, str_lit!("")) {
                     line
                 } else {
-                    string_append(defined, string_append(str_lit("\n"), line))
+                    string_append(defined, string_append(str_lit!("\n"), line))
                 }, (quiet && expression && quiet_effect_p(effects)), onto(tops, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: i64| {
                     if i64_eq(n, -1i64) {
                         nil::<i64>()
@@ -1672,7 +1672,7 @@ pub mod session {
 
     /// The checker's environment with `name` a global of `form`'s type.
     pub fn result_bound(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, name: Str) -> kayak_rt::Handle<'static, Cv> {
-        let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+        let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil()))
@@ -1682,7 +1682,7 @@ pub mod session {
 
     #[inline]
     pub fn expression_effects(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Strings {
-        let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+        let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 es
@@ -1712,7 +1712,7 @@ pub mod session {
         } else {
             cdr(ts)
         };
-        let i = global_index(string_append(str_lit("%"), i64_to_string(e.0)), get(machine_globals()), 0i64);
+        let i = global_index(string_append(str_lit!("%"), i64_to_string(e.0)), get(machine_globals()), 0i64);
         if (i64_gt_eq(i, 0i64) && not(null_p(ts)) && i64_gt_eq(car(ts), 0i64)) {
             flatarray_set_i64_x(get(globals()), i, w)
         } else {
@@ -1723,16 +1723,16 @@ pub mod session {
             ended_x(e, st_done(), now);
             set(e.8, {
                 let value = if i64_lt(i, 0i64) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     string_append(show_word(flatarray_ref_i64(get(globals()), i)), e.2)
                 };
-                if string_eq_p(value, str_lit("")) {
+                if string_eq_p(value, str_lit!("")) {
                     e.3
-                } else if string_eq_p(e.3, str_lit("")) {
+                } else if string_eq_p(e.3, str_lit!("")) {
                     value
                 } else {
-                    string_append(e.3, string_append(str_lit("\n"), value))
+                    string_append(e.3, string_append(str_lit!("\n"), value))
                 }
             });
             parked_cleared_x(e.0)
@@ -1762,7 +1762,7 @@ pub mod session {
     /// What the front is told of an entry, apart from its output and steps,
     /// as a text, to know when it changed (C103).
     pub fn entry_key(e: Entry) -> Str {
-        string_append(i64_to_string(get(e.6)), string_append(str_lit("|"), string_append(i64_to_string(get(e.11)), string_append(str_lit("|"), get(e.8)))))
+        string_append(i64_to_string(get(e.6)), string_append(str_lit!("|"), string_append(i64_to_string(get(e.11)), string_append(str_lit!("|"), get(e.8)))))
     }
 
     /// Each entry as it is now, its output since taken, for the front.
@@ -1772,7 +1772,7 @@ pub mod session {
         } else {
             let e = car(es);
             let out = get(e.9);
-            set(e.9, str_lit(""));
+            set(e.9, str_lit!(""));
             set(e.13, entry_key(e));
             kayak_rt::heap_cons(entry_news(e.0, get(e.6), get(e.8), out, get(e.10), get(e.11), get(e.15), i64_minus(if i64_lt(get(e.17), 0i64) {
                 get(collections())
@@ -1808,9 +1808,9 @@ pub mod session {
             let marked = if i64_gt_eq(from, to) {
                 acc
             } else if i64_eq(i, from) {
-                put(str_lit("\u{1b}[4m"), acc)
+                put(str_lit!("\u{1b}[4m"), acc)
             } else if i64_eq(i, to) {
-                put(str_lit("\u{1b}[24m"), acc)
+                put(str_lit!("\u{1b}[24m"), acc)
             } else {
                 acc
             };
@@ -1818,9 +1818,9 @@ pub mod session {
                 return marked;
             } else if char_eq_p(car(cs), '\n') {
                 (cs, i, acc) = (cdr(cs), i64_plus(i, 1i64), if (i64_gt_eq(i, from) && i64_lt(i, to)) {
-                    put(str_lit("\u{1b}[4m"), put(str_lit("\u{d}\n     | "), put(str_lit("\u{1b}[24m"), marked)))
+                    put(str_lit!("\u{1b}[4m"), put(str_lit!("\u{d}\n     | "), put(str_lit!("\u{1b}[24m"), marked)))
                 } else {
-                    put(str_lit("\u{d}\n     | "), marked)
+                    put(str_lit!("\u{d}\n     | "), marked)
                 });
                 continue;
             } else {
@@ -1834,22 +1834,22 @@ pub mod session {
     /// its note, if any, on the row after it.
     pub fn draw_draft_x(d: Str) -> () {
         let (cs, shown) = (string_chars(d), note_shown());
-        say_x(str_lit("\u{d}\u{1b}[J"));
-        say_x(str_lit("fx26> "));
+        say_x(str_lit!("\u{d}\u{1b}[J"));
+        say_x(str_lit!("fx26> "));
         set(written(), prompted(cs, 0i64, get(under_from()), get(under_to()), get(written())));
-        if string_eq_p(shown, str_lit("")) {
+        if string_eq_p(shown, str_lit!("")) {
             ()
         } else {
-            say_x(str_lit("\u{d}\n"));
+            say_x(str_lit!("\u{d}\n"));
             say_x(if get(note_error()) {
-                str_lit("\u{1b}[31m")
+                str_lit!("\u{1b}[31m")
             } else {
-                str_lit("\u{1b}[2m")
+                str_lit!("\u{1b}[2m")
             });
             say_x(shown);
-            say_x(str_lit("\u{1b}[0m"))
+            say_x(str_lit!("\u{1b}[0m"))
         };
-        set(draft_rows(), i64_plus(wrapped_rows(cs, 6i64, get(screen_cols()), 1i64), if string_eq_p(shown, str_lit("")) {
+        set(draft_rows(), i64_plus(wrapped_rows(cs, 6i64, get(screen_cols()), 1i64), if string_eq_p(shown, str_lit!("")) {
             0i64
         } else {
             1i64
@@ -1858,13 +1858,13 @@ pub mod session {
         let before = string_chars(substring(d, int_lit(0), i64_to_int(get(cursor()))));
         let row = i64_minus(wrapped_rows(before, 6i64, get(screen_cols()), 1i64), 1i64);
         let col = column_after(before, 6i64, get(screen_cols()));
-        if (i64_eq(get(cursor()), string_length_i64(d)) && string_eq_p(shown, str_lit(""))) {
+        if (i64_eq(get(cursor()), string_length_i64(d)) && string_eq_p(shown, str_lit!(""))) {
             ()
         } else {
             up_x(i64_minus(i64_minus(get(draft_rows()), 1i64), row));
-            say_x(str_lit("\u{d}"));
+            say_x(str_lit!("\u{d}"));
             if i64_gt(col, 0i64) {
-                say_x(string_append(str_lit("\u{1b}["), string_append(i64_to_string(col), str_lit("C"))))
+                say_x(string_append(str_lit!("\u{1b}["), string_append(i64_to_string(col), str_lit!("C"))))
             } else {
                 ()
             }
@@ -1893,7 +1893,7 @@ pub mod session {
     #[inline]
     pub fn up_x(n: i64) -> () {
         if i64_gt(n, 0i64) {
-            say_x(string_append(str_lit("\u{1b}["), string_append(i64_to_string(n), str_lit("A"))))
+            say_x(string_append(str_lit!("\u{1b}["), string_append(i64_to_string(n), str_lit!("A"))))
         } else {
             ()
         }
@@ -1902,7 +1902,7 @@ pub mod session {
     #[inline]
     pub fn down_x(n: i64) -> () {
         if i64_gt(n, 0i64) {
-            say_x(string_append(str_lit("\u{1b}["), string_append(i64_to_string(n), str_lit("B"))))
+            say_x(string_append(str_lit!("\u{1b}["), string_append(i64_to_string(n), str_lit!("B"))))
         } else {
             ()
         }
@@ -1942,15 +1942,15 @@ pub mod session {
     pub fn printed_x(text: Str) -> () {
         each_line_x(kayak_rt::closure1((), |(), line: Str| {
             say_x(if get(live()) {
-                str_lit("\u{1b}[2K")
+                str_lit!("\u{1b}[2K")
             } else {
-                str_lit("")
+                str_lit!("")
             });
             say_x(line);
             say_x(if get(live()) {
-                str_lit("\u{d}\n")
+                str_lit!("\u{d}\n")
             } else {
-                str_lit("\n")
+                str_lit!("\n")
             });
             set(rows(), i64_plus(get(rows()), wrapped_rows(string_chars(line), 0i64, get(screen_cols()), 1i64)))
         }), lines_of(string_chars(text), nil::<char>(), nil::<Str>()))
@@ -1958,19 +1958,19 @@ pub mod session {
 
     pub fn plain_screen_x(now: i64) -> () {
         each_entry_x(kayak_rt::closure1((now,), |(now,), e: Entry| {
-            if string_eq_p(get(e.9), str_lit("")) {
+            if string_eq_p(get(e.9), str_lit!("")) {
                 ()
             } else {
                 say_x(get(e.9));
-                set(e.9, str_lit(""))
+                set(e.9, str_lit!(""))
             };
             if (not(unfinished_p(e)) && i64_lt(get(e.12), 0i64)) {
                 let line = entry_line(e, now);
                 set(e.12, 0i64);
-                if string_eq_p(line, str_lit("")) {
+                if string_eq_p(line, str_lit!("")) {
                     ()
                 } else {
-                    say_x(string_append(line, str_lit("\n")))
+                    say_x(string_append(line, str_lit!("\n")))
                 }
             } else {
                 ()
@@ -1982,7 +1982,7 @@ pub mod session {
         let (es, before) = (oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()), rev_to_string(get(written())));
         set(written(), nil::<char>());
         up_x(get(cursor_row()));
-        say_x(str_lit("\u{d}"));
+        say_x(str_lit!("\u{d}"));
         let moved = rev_to_string(get(written()));
         set(written(), nil::<char>());
         each_entry_x(kayak_rt::closure1((now,), |(now,), e: Entry| {
@@ -1990,7 +1990,7 @@ pub mod session {
         }), es);
         let changes = rev_to_string(get(written()));
         set(written(), put(before, nil::<char>()));
-        if (string_eq_p(changes, str_lit("")) && not(get(draft_dirty()))) {
+        if (string_eq_p(changes, str_lit!("")) && not(get(draft_dirty()))) {
             ()
         } else {
             say_x(moved);
@@ -2005,12 +2005,12 @@ pub mod session {
     /// draft's first row.
     pub fn entry_drawn_x(e: Entry, now: i64) -> () {
         let out = get(e.9);
-        if string_eq_p(out, str_lit("")) {
+        if string_eq_p(out, str_lit!("")) {
             ()
         } else {
-            set(e.9, str_lit(""));
+            set(e.9, str_lit!(""));
             each_line_x(kayak_rt::closure1((e,), |(e,), l: Str| {
-                printed_x(string_append(str_lit("["), string_append(i64_to_string(e.0), string_append(str_lit("]│ "), l))))
+                printed_x(string_append(str_lit!("["), string_append(i64_to_string(e.0), string_append(str_lit!("]│ "), l))))
             }), lines_of(string_chars(out), nil::<char>(), nil::<Str>()))
         };
         let line = entry_line(e, now);
@@ -2025,10 +2025,10 @@ pub mod session {
         } else if (i64_lt(up, i64_minus(get(screen_rows()), get(draft_rows()))) && not(has_char_in_p(line, '\n'))) {
             set(e.13, line);
             up_x(up);
-            say_x(str_lit("\u{d}\u{1b}[2K"));
+            say_x(str_lit!("\u{d}\u{1b}[2K"));
             say_x(line);
             down_x(up);
-            say_x(str_lit("\u{d}"))
+            say_x(str_lit!("\u{d}"))
         } else if unfinished_p(e) {
             ()
         } else {
@@ -2222,9 +2222,9 @@ pub mod session {
     #[inline]
     pub fn closers(n: i64) -> Str {
         if i64_lt_eq(n, 0i64) {
-            str_lit("")
+            str_lit!("")
         } else {
-            string_append(str_lit(")"), closers(i64_minus(n, 1i64)))
+            string_append(str_lit!(")"), closers(i64_minus(n, 1i64)))
         }
     }
 
@@ -2242,9 +2242,9 @@ pub mod session {
             }
             Scan::Scanned(open, comment) => {
                 closed_off(string_append(typed, string_append(if (comment && not(null_p(open))) {
-                    str_lit("\n")
+                    str_lit!("\n")
                 } else {
-                    str_lit("")
+                    str_lit!("")
                 }, closers(size(open)))), kept, open, (null_p(open) && i64_eq(kept, string_length_i64(text))))
             }
         }
@@ -2354,12 +2354,12 @@ pub mod session {
     /// before each if `filled` is -1, else before list `filled`'s alone.
     pub fn closers_filled(i: i64, n: i64, filled: i64) -> Str {
         if i64_gt_eq(i, n) {
-            str_lit("")
+            str_lit!("")
         } else {
             string_append(if (i64_eq(filled, -1i64) || i64_eq(filled, i)) {
-                str_lit(" %fill)")
+                str_lit!(" %fill)")
             } else {
-                str_lit(")")
+                str_lit!(")")
             }, closers_filled(i64_plus(i, 1i64), n, filled))
         }
     }
@@ -2386,30 +2386,30 @@ pub mod session {
             set(hole_at(), -1i64)
         } else {
             let typed = trimmed_end(cut(text, 0i64, kept));
-            let inner = program_read(string_append(cut(text, car(open), kept), str_lit(")")), str_lit("<hint>"), 1i64);
+            let inner = program_read(string_append(cut(text, car(open), kept), str_lit!(")")), str_lit!("<hint>"), 1i64);
             let xs = if null_p(inner) {
                 nil::<kayak_rt::Handle<'static, Sexp>>()
             } else {
                 items(car(inner))
             };
-            set(hole_texts(), kayak_rt::heap_cons(string_append(typed, string_append(str_lit(" %hole"), closers(size(open)))), kayak_rt::heap_cons(string_append(typed, string_append(str_lit(" %hole"), closers_filled(0i64, size(open), -1i64))), each_filled(string_append(typed, str_lit(" %hole")), 1i64, size(open)))));
+            set(hole_texts(), kayak_rt::heap_cons(string_append(typed, string_append(str_lit!(" %hole"), closers(size(open)))), kayak_rt::heap_cons(string_append(typed, string_append(str_lit!(" %hole"), closers_filled(0i64, size(open), -1i64))), each_filled(string_append(typed, str_lit!(" %hole")), 1i64, size(open)))));
             set(hole_at(), i64_plus(string_length_i64(typed), 1i64));
             set(hole_place(), size(xs));
             set(hole_op(), if null_p(xs) {
-                str_lit("")
+                str_lit!("")
             } else {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Sexp::Sym(op, f, p) => {
                         if form_keyword_p(op) {
-                            str_lit("")
+                            str_lit!("")
                         } else {
                             op
                         }
                     }
                     _ => {
                         let other = tagcase_;
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             })
@@ -2420,10 +2420,10 @@ pub mod session {
     /// what goes there (`speculation-refused!`), or at a list around it.
     #[inline]
     pub fn hole_tried_x(text: Str) -> () {
-        if string_eq_p(text, str_lit("")) {
+        if string_eq_p(text, str_lit!("")) {
             ()
         } else {
-            checked_all(get(repl_cv()), program_read(text, str_lit("<draft>"), 1i64));
+            checked_all(get(repl_cv()), program_read(text, str_lit!("<draft>"), 1i64));
             ()
         }
     }
@@ -2432,25 +2432,25 @@ pub mod session {
     /// 2`, if the checker said it is one), with its operator if a name; else
     /// what goes next.
     pub fn hint_words(what: Str, argument: Str) -> Str {
-        let want = str_lit("an expression of type ");
-        if (has_prefix_p(what, want) && not(string_eq_p(argument, str_lit("")))) {
-            string_append(argument, string_append(if string_eq_p(get(hole_op()), str_lit("")) {
-                str_lit("")
+        let want = str_lit!("an expression of type ");
+        if (has_prefix_p(what, want) && not(string_eq_p(argument, str_lit!("")))) {
+            string_append(argument, string_append(if string_eq_p(get(hole_op()), str_lit!("")) {
+                str_lit!("")
             } else {
-                string_append(str_lit(" of "), get(hole_op()))
-            }, string_append(str_lit(" wants "), cut(what, string_length_i64(want), string_length_i64(what)))))
-        } else if (string_eq_p(what, str_lit("an expression")) && not(string_eq_p(argument, str_lit("")))) {
-            string_append(argument, if string_eq_p(get(hole_op()), str_lit("")) {
-                str_lit(": anything")
+                string_append(str_lit!(" of "), get(hole_op()))
+            }, string_append(str_lit!(" wants "), cut(what, string_length_i64(want), string_length_i64(what)))))
+        } else if (string_eq_p(what, str_lit!("an expression")) && not(string_eq_p(argument, str_lit!("")))) {
+            string_append(argument, if string_eq_p(get(hole_op()), str_lit!("")) {
+                str_lit!(": anything")
             } else {
-                string_append(str_lit(" of "), string_append(get(hole_op()), str_lit(": anything")))
+                string_append(str_lit!(" of "), string_append(get(hole_op()), str_lit!(": anything")))
             })
-        } else if (has_prefix_p(what, str_lit("nothing, the call has its ")) && not(string_eq_p(get(hole_op()), str_lit("")))) {
-            string_append(get(hole_op()), string_append(str_lit(" takes "), cut(what, 26i64, string_length_i64(what))))
-        } else if (string_eq_p(what, str_lit("an expression")) && i64_eq(get(hole_place()), 0i64)) {
-            str_lit("")
+        } else if (has_prefix_p(what, str_lit!("nothing, the call has its ")) && not(string_eq_p(get(hole_op()), str_lit!("")))) {
+            string_append(get(hole_op()), string_append(str_lit!(" takes "), cut(what, 26i64, string_length_i64(what))))
+        } else if (string_eq_p(what, str_lit!("an expression")) && i64_eq(get(hole_place()), 0i64)) {
+            str_lit!("")
         } else {
-            string_append(str_lit("next: "), what)
+            string_append(str_lit!("next: "), what)
         }
     }
 
@@ -2459,10 +2459,10 @@ pub mod session {
     #[inline]
     pub fn hints_said_x() -> () {
         set(spec_phase(), 4i64);
-        if string_eq_p(get(around()), str_lit("")) {
+        if string_eq_p(get(around()), str_lit!("")) {
             ()
         } else {
-            noted_x(string_append(str_lit("next: "), get(around())), false)
+            noted_x(string_append(str_lit!("next: "), get(around())), false)
         }
     }
 
@@ -2470,7 +2470,7 @@ pub mod session {
     /// outcome, sent to the front.
     pub fn noted_x(text: Str, error: bool) -> () {
         if get(machine_side()) {
-            if string_eq_p(text, str_lit("")) {
+            if string_eq_p(text, str_lit!("")) {
                 ()
             } else {
                 set(news_out(), kayak_rt::heap_cons(draft_news(get(spec_serial()), text, error), get(news_out())))
@@ -2488,7 +2488,7 @@ pub mod session {
         let width = i64_minus(get(screen_cols()), 1i64);
         let cut_short = (i64_gt(string_length_i64(line), width) || has_char_in_p(get(note()), '\n'));
         if cut_short {
-            string_append(cut(line, 0i64, i64_minus(width, 1i64)), str_lit("…"))
+            string_append(cut(line, 0i64, i64_minus(width, 1i64)), str_lit!("…"))
         } else {
             line
         }
@@ -2523,17 +2523,17 @@ pub mod session {
             set(spec_state(), 0i64)
         };
         set(speculated(), false);
-        set(spec_key(), str_lit(""));
+        set(spec_key(), str_lit!(""));
         set(spec_waits(), false);
         set(spec_phase(), 4i64);
-        set(around(), str_lit(""));
+        set(around(), str_lit!(""));
         set(around_at(), -1i64);
         set(under_from(), 0i64);
         set(under_to(), 0i64);
-        if string_eq_p(get(note()), str_lit("")) {
+        if string_eq_p(get(note()), str_lit!("")) {
             ()
         } else {
-            noted_x(str_lit(""), false)
+            noted_x(str_lit!(""), false)
         }
     }
 
@@ -2555,7 +2555,7 @@ pub mod session {
                 return nil::<Str>();
             } else if definition_form_p(car(forms)) {
                 let l = form_type(v, car(forms));
-                if string_eq_p(l, str_lit("")) {
+                if string_eq_p(l, str_lit!("")) {
                     forms = cdr(forms);
                     continue;
                 } else {
@@ -2605,14 +2605,14 @@ pub mod session {
         set(spec_type(), r#type);
         if not(null_p(waiting)) {
             set(spec_waits(), true);
-            noted_x(string_append(str_lit("…"), string_append(r#type, string_append(str_lit("  (run when ["), string_append(i64_to_string(car(waiting)), str_lit("] has ended)"))))), false)
+            noted_x(string_append(str_lit!("…"), string_append(r#type, string_append(str_lit!("  (run when ["), string_append(i64_to_string(car(waiting)), str_lit!("] has ended)"))))), false)
         } else if not(quiet_effect_p(effects)) {
-            noted_x(string_append(str_lit("…"), string_append(r#type, string_append(str_lit("  (not run early, for its "), string_append(show_effs(loud_atoms(effects)), str_lit(")"))))), false)
+            noted_x(string_append(str_lit!("…"), string_append(r#type, string_append(str_lit!("  (not run early, for its "), string_append(show_effs(loud_atoms(effects)), str_lit!(")"))))), false)
         } else {
             set(spec_serial(), i64_plus(get(spec_serial()), 1i64));
             asked_x(draft_given(get(spec_serial()), get(spec_text()), r#type));
             set(spec_state(), 1i64);
-            noted_x(string_append(str_lit("…"), r#type), false)
+            noted_x(string_append(str_lit!("…"), r#type), false)
         }
     }
 
@@ -2624,9 +2624,9 @@ pub mod session {
         set(spec_type(), r#type);
         set(spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
         set(spec_state(), 2i64);
-        let forms = program_read(text, str_lit("<draft>"), 1i64);
+        let forms = program_read(text, str_lit!("<draft>"), 1i64);
         if (null_p(forms) || any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
-            string_member_p(n, kayak_rt::heap_cons(str_lit("%stage"), kayak_rt::heap_cons(str_lit("%session-check"), kayak_rt::heap_cons(str_lit("reify-effect"), kayak_rt::heap_cons(str_lit("reify-type"), kayak_rt::heap_cons(str_lit("reify-region"), kayak_rt::nil()))))))
+            string_member_p(n, kayak_rt::heap_cons(str_lit!("%stage"), kayak_rt::heap_cons(str_lit!("%session-check"), kayak_rt::heap_cons(str_lit!("reify-effect"), kayak_rt::heap_cons(str_lit!("reify-type"), kayak_rt::heap_cons(str_lit!("reify-region"), kayak_rt::nil()))))))
         })), names_in(car(forms)))) {
             ()
         } else {
@@ -2670,14 +2670,14 @@ pub mod session {
         if i64_eq(k, 0i64) {
             set(spec_state(), 2i64);
             parked_cleared_x(0i64);
-            noted_x(string_append(str_lit("running it fails: "), message), true)
+            noted_x(string_append(str_lit!("running it fails: "), message), true)
         } else if null_p(found) {
             ()
         } else {
             let e = car(found);
             taken_output_x(e);
             ended_x(e, st_failed(), now);
-            set(e.8, string_append(str_lit("! evaluation failed: "), message));
+            set(e.8, string_append(str_lit!("! evaluation failed: "), message));
             parked_cleared_x(k)
         }
     }
@@ -2697,11 +2697,11 @@ pub mod session {
         } else if not(i64_eq(w, w_paused())) {
             set(spec_state(), 2i64);
             parked_cleared_x(0i64);
-            noted_x(string_append(str_lit("= "), string_append(show_word(w), get(spec_type()))), false)
+            noted_x(string_append(str_lit!("= "), string_append(show_word(w), get(spec_type()))), false)
         } else if i64_gt(get(spec_steps()), spec_limit()) {
             set(spec_state(), 2i64);
             parked_cleared_x(0i64);
-            noted_x(string_append(str_lit("…"), string_append(get(spec_type()), string_append(str_lit("  (not run to its end early: "), string_append(i64_to_string(spec_limit()), str_lit(" steps; Enter runs it)"))))), false)
+            noted_x(string_append(str_lit!("…"), string_append(get(spec_type()), string_append(str_lit!("  (not run to its end early: "), string_append(i64_to_string(spec_limit()), str_lit!(" steps; Enter runs it)"))))), false)
         } else {
             ()
         }
@@ -2709,7 +2709,7 @@ pub mod session {
 
     /// Where in the draft a refusal is, as `refuse` says it for one, or -1.
     pub fn refused_offset(m: Str) -> i64 {
-        let p = str_lit("kfx: <draft>@");
+        let p = str_lit!("kfx: <draft>@");
         if has_prefix_p(m, p) {
             number_from(digits_of(string_chars(cut(m, string_length_i64(p), string_length_i64(m)))), 0i64)
         } else {
@@ -2736,15 +2736,15 @@ pub mod session {
 
     /// A refusal of the draft without where: what it is.
     pub fn refusal_words(m: Str) -> Str {
-        if has_prefix_p(m, str_lit("kfx: <draft>@")) {
-            let at = int_to_i64(string_search(m, str_lit(": "), int_lit(13)));
+        if has_prefix_p(m, str_lit!("kfx: <draft>@")) {
+            let at = int_to_i64(string_search(m, str_lit!(": "), int_lit(13)));
             if i64_lt(at, 0i64) {
                 m
             } else {
-                without_prefix(cut(m, i64_plus(at, 2i64), string_length_i64(m)), str_lit("in a top-level expression: "))
+                without_prefix(cut(m, i64_plus(at, 2i64), string_length_i64(m)), str_lit!("in a top-level expression: "))
             }
-        } else if has_prefix_p(m, str_lit("kfx: ")) {
-            without_prefix(cut(m, 5i64, string_length_i64(m)), str_lit("in a top-level expression: "))
+        } else if has_prefix_p(m, str_lit!("kfx: ")) {
+            without_prefix(cut(m, 5i64, string_length_i64(m)), str_lit!("in a top-level expression: "))
         } else {
             m
         }
@@ -2758,9 +2758,9 @@ pub mod session {
         set(screen_rows(), height);
         set(screen_cols(), width);
         if is_live {
-            string_append(repl_banner(), str_lit("\u{d}\n(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)\u{d}\n"))
+            string_append(repl_banner(), str_lit!("\u{d}\n(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)\u{d}\n"))
         } else {
-            str_lit("")
+            str_lit!("")
         }
     }
 
@@ -2787,7 +2787,7 @@ pub mod session {
         } else if i64_eq(c, 3i64) {
             interrupt_x(now)
         } else if i64_eq(c, 4i64) {
-            if string_eq_p(get(draft()), str_lit("")) {
+            if string_eq_p(get(draft()), str_lit!("")) {
                 set(leaving(), true)
             } else {
                 deleted_x(get(cursor()), i64_plus(get(cursor()), 1i64))
@@ -2822,7 +2822,7 @@ pub mod session {
         } else if i64_eq(c, 9i64) {
             completed_x(now)
         } else if i64_eq(c, 12i64) {
-            say_x(str_lit("\u{1b}[H\u{1b}[2J"));
+            say_x(str_lit!("\u{1b}[H\u{1b}[2J"));
             set(rows(), i64_plus(get(rows()), get(screen_rows())));
             set(cursor_row(), 0i64);
             set(draft_dirty(), true)
@@ -2886,18 +2886,18 @@ pub mod session {
             let tagcase_ = closing;
             match *tagcase_ {
                 Closing::NotClosable() => {
-                    str_lit("")
+                    str_lit!("")
                 }
                 Closing::ClosedOff(closed, kept, open, finished) => {
                     string_append(if finished {
-                        str_lit("f|")
+                        str_lit!("f|")
                     } else {
-                        str_lit("u|")
+                        str_lit!("u|")
                     }, trimmed_end(closed))
                 }
             }
         };
-        if (not(string_eq_p(key, str_lit(""))) && string_eq_p(key, get(spec_key()))) {
+        if (not(string_eq_p(key, str_lit!(""))) && string_eq_p(key, get(spec_key()))) {
             set(speculated(), true)
         } else {
             speculation_dropped_x();
@@ -2919,7 +2919,7 @@ pub mod session {
                     } else {
                         1i64
                     });
-                    speculated_forms_x(program_read(closed, str_lit("<draft>"), 1i64), finished)
+                    speculated_forms_x(program_read(closed, str_lit!("<draft>"), 1i64), finished)
                 }
             }
         }
@@ -2950,14 +2950,14 @@ pub mod session {
             set(under_from(), at);
             set(under_to(), datum_end(get(draft()), at));
             noted_x(words, true)
-        } else if has_prefix_p(words, str_lit("the hole: ")) {
+        } else if has_prefix_p(words, str_lit!("the hole: ")) {
             set(spec_phase(), 4i64);
-            noted_x(hint_words(cut(words, 10i64, string_length_i64(words)), str_lit("")), false)
-        } else if (has_prefix_p(words, str_lit("in argument ")) && i64_gt_eq(int_to_i64(string_search(words, str_lit(": the hole: "), int_lit(0))), 0i64)) {
-            let at = int_to_i64(string_search(words, str_lit(": the hole: "), int_lit(0)));
+            noted_x(hint_words(cut(words, 10i64, string_length_i64(words)), str_lit!("")), false)
+        } else if (has_prefix_p(words, str_lit!("in argument ")) && i64_gt_eq(int_to_i64(string_search(words, str_lit!(": the hole: "), int_lit(0))), 0i64)) {
+            let at = int_to_i64(string_search(words, str_lit!(": the hole: "), int_lit(0)));
             set(spec_phase(), 4i64);
             noted_x(hint_words(cut(words, i64_plus(at, 12i64), string_length_i64(words)), cut(words, 3i64, at)), false)
-        } else if (i64_member_p(at, get(spec_open())) && i64_gt(at, get(around_at())) && i64_lt(int_to_i64(string_search(words, str_lit("%hole"), int_lit(0))), 0i64) && i64_lt(int_to_i64(string_search(words, str_lit("%fill"), int_lit(0))), 0i64)) {
+        } else if (i64_member_p(at, get(spec_open())) && i64_gt(at, get(around_at())) && i64_lt(int_to_i64(string_search(words, str_lit!("%hole"), int_lit(0))), 0i64) && i64_lt(int_to_i64(string_search(words, str_lit!("%fill"), int_lit(0))), 0i64)) {
             set(around(), words);
             set(around_at(), at)
         } else {
@@ -3016,12 +3016,12 @@ pub mod session {
             set(capturing(), false);
             taken_output_x(e);
             if get(engine_failed()) {
-                run_failed_x(k, failure_traced_x(str_lit("!   ")), now)
+                run_failed_x(k, failure_traced_x(str_lit!("!   ")), now)
             } else if not(i64_eq(w, w_paused())) {
                 top_ended_x(e, w, now)
             } else if (i64_gt_eq(get(step_limit()), 0i64) && i64_gt(get(e.15), get(step_limit()))) {
                 ended_x(e, st_failed(), now);
-                set(e.8, string_append(str_lit("! the step limit, "), string_append(i64_to_string(get(step_limit())), str_lit(", reached (,step-limit)"))));
+                set(e.8, string_append(str_lit!("! the step limit, "), string_append(i64_to_string(get(step_limit())), str_lit!(", reached (,step-limit)"))));
                 parked_cleared_x(k)
             } else {
                 ()
@@ -3131,7 +3131,7 @@ pub mod session {
             refused_x(message, now)
         } else {
             set(spec_state(), 2i64);
-            noted_x(string_append(str_lit("running it fails: "), message), true)
+            noted_x(string_append(str_lit!("running it fails: "), message), true)
         }
     }
 
@@ -3141,7 +3141,7 @@ pub mod session {
     /// which this side draws nothing to.
     pub fn news_taken_x(now: i64) -> List<kayak_rt::Handle<'static, News>> {
         let (es, drafts) = (entries_where(kayak_rt::closure1((), |(), e: Entry| {
-            (i64_gt(e.0, 0i64) && (not(string_eq_p(get(e.9), str_lit(""))) || not(string_eq_p(entry_key(e), get(e.13)))))
+            (i64_gt(e.0, 0i64) && (not(string_eq_p(get(e.9), str_lit!(""))) || not(string_eq_p(entry_key(e), get(e.13)))))
         }), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())), get(news_out()));
         set(news_out(), nil::<kayak_rt::Handle<'static, News>>());
         onto(entries_news(es), reversed_onto(drafts, nil::<kayak_rt::Handle<'static, News>>()))

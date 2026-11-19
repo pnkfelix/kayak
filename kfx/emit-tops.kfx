@@ -281,7 +281,7 @@
                   (else (put-rust-chars (cdr cs) (put (char->string (car cs)) acc)))))))
 
       (define put-str-lit (subr kfx (string chars) chars)
-        (lambda (s acc) (put "\")" (put-rust-chars (string-chars s) (put "str_lit(\"" acc)))))
+        (lambda (s acc) (put "\")" (put-rust-chars (string-chars s) (put "str_lit!(\"" acc)))))
 
       (define-rec
         (put-syscall-params (subr kfx (ctx sexps i64 chars) chars)
@@ -816,7 +816,7 @@
                      (acc (put (camel d) acc))
                      (acc (put "::" acc))
                      (acc (put (variant-name tag) acc))
-                     (acc (put "(..) => out.push_str(str_lit(\"#<sum " acc))
+                     (acc (put "(..) => out.push_str(str_lit!(\"#<sum " acc))
                      (acc (put tag acc)))
                 (put-show-arms d (cdr variants) (put ">\").as_str()),\n" acc))))))
 

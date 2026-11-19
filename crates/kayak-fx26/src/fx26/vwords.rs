@@ -37,7 +37,7 @@ pub fn checked_car(p: i64) -> i64 {
     if is_obj_p(p, ob_pair()) {
         pair_car(p)
     } else {
-        failed_with_x(str_lit("car of nil"));
+        failed_with_x(str_lit!("car of nil"));
         0i64
     }
 }
@@ -47,7 +47,7 @@ pub fn checked_cdr(p: i64) -> i64 {
     if is_obj_p(p, ob_pair()) {
         pair_cdr(p)
     } else {
-        failed_with_x(str_lit("cdr of nil"));
+        failed_with_x(str_lit!("cdr of nil"));
         0i64
     }
 }
@@ -78,7 +78,7 @@ pub fn fill_unbound_x(p: i64, from: i64, n: i64) -> () {
 
 pub fn filled_x(kind: i64, n: i64, w: i64) -> i64 {
     if i64_lt(n, 0i64) {
-        failed_with_x(str_lit("a negative length"));
+        failed_with_x(str_lit!("a negative length"));
         0i64
     } else {
         let p = alloc_x(kind, n);
@@ -95,7 +95,7 @@ pub fn filled_raw_x(kind: i64, n: i64, raw: i64) -> i64 {
 #[inline]
 pub fn element(p: i64, i: i64) -> i64 {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
-        failed_with_x(str_lit("an index out of range"));
+        failed_with_x(str_lit!("an index out of range"));
         0i64
     } else {
         obj_ref(p, i)
@@ -104,7 +104,7 @@ pub fn element(p: i64, i: i64) -> i64 {
 
 pub fn element_set_x(p: i64, i: i64, w: i64) -> () {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
-        failed_with_x(str_lit("an index out of range"));
+        failed_with_x(str_lit!("an index out of range"));
         ()
     } else {
         obj_set_x(p, i, w)
@@ -138,7 +138,7 @@ pub fn slots_filled_x(mut p: i64, mut i: i64, mut n: i64, mut w: i64) -> () {
 
 pub fn array_filled_x(n: i64, w: i64) -> i64 {
     if i64_lt(n, 0i64) {
-        failed_with_x(str_lit("a negative length"));
+        failed_with_x(str_lit!("a negative length"));
         0i64
     } else {
         let p = bloblet_alloc_x(n, 0i64);
@@ -150,7 +150,7 @@ pub fn array_filled_x(n: i64, w: i64) -> i64 {
 #[inline]
 pub fn array_element(p: i64, i: i64) -> i64 {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
-        failed_with_x(str_lit("an index out of range"));
+        failed_with_x(str_lit!("an index out of range"));
         0i64
     } else {
         bloblet_value(p, i)
@@ -159,7 +159,7 @@ pub fn array_element(p: i64, i: i64) -> i64 {
 
 pub fn array_element_set_x(p: i64, i: i64, w: i64) -> () {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
-        failed_with_x(str_lit("an index out of range"));
+        failed_with_x(str_lit!("an index out of range"));
         ()
     } else {
         bloblet_value_set_x(p, i, w)
@@ -200,7 +200,7 @@ pub fn list_bloblet_x(bytes: i64, xs: i64) -> i64 {
 #[inline]
 pub fn in_range_p(v: i64, i: i64) -> bool {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, raw_length(v))) {
-        failed_with_x(str_lit("an index out of range"));
+        failed_with_x(str_lit!("an index out of range"));
         false
     } else {
         true
@@ -278,7 +278,7 @@ pub fn copied_range_x(mut to: i64, mut from: i64, mut start: i64, mut i: i64, mu
 
 pub fn substring_w_x(s: i64, start: i64, end: i64) -> i64 {
     if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, string_length_w(s))) {
-        failed_with_x(str_lit("substring range out of bounds"));
+        failed_with_x(str_lit!("substring range out of bounds"));
         0i64
     } else {
         let p = string_alloc_x(i64_minus(end, start));
@@ -524,7 +524,7 @@ pub fn bytes_filled_x(mut b: i64, mut i: i64, mut n: i64, mut x: i64) -> () {
 
 pub fn bytes_made_x(n: i64, x: i64) -> i64 {
     if i64_lt(n, 0i64) {
-        failed_with_x(str_lit("a negative length"));
+        failed_with_x(str_lit!("a negative length"));
         0i64
     } else {
         let p = bytes_alloc_x(n);
@@ -535,7 +535,7 @@ pub fn bytes_made_x(n: i64, x: i64) -> i64 {
 
 pub fn bytes_copy_x(b: i64, start: i64, end: i64) -> i64 {
     if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, raw_length(b))) {
-        failed_with_x(str_lit("bytevector-copy: a span that does not fit"));
+        failed_with_x(str_lit!("bytevector-copy: a span that does not fit"));
         0i64
     } else {
         let p = bytes_alloc_x(i64_minus(end, start));
@@ -581,7 +581,7 @@ pub fn bytes_moved_back_x(mut to: i64, mut at: i64, mut from: i64, mut start: i6
 pub fn bytes_copy_into_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> () {
     let (s, e, t) = (fixnum_value(start), fixnum_value(end), fixnum_value(at));
     if (i64_lt(s, 0i64) || i64_lt(e, s) || i64_gt(e, raw_length(from)) || i64_lt(t, 0i64) || i64_gt(i64_plus(t, i64_minus(e, s)), raw_length(to))) {
-        failed_with_x(str_lit("bytevector-copy!: a span that does not fit"))
+        failed_with_x(str_lit!("bytevector-copy!: a span that does not fit"))
     } else if i64_gt(t, s) {
         bytes_moved_back_x(to, t, from, s, i64_minus(e, 1i64))
     } else {
@@ -605,7 +605,7 @@ pub fn string_filled_x(mut s: i64, mut i: i64, mut n: i64, mut code: i64) -> () 
 
 pub fn string_made_x(n: i64, c: i64) -> i64 {
     if i64_lt(n, 0i64) {
-        failed_with_x(str_lit("string length must be non-negative"));
+        failed_with_x(str_lit!("string length must be non-negative"));
         0i64
     } else {
         let p = string_alloc_x(n);
@@ -616,7 +616,7 @@ pub fn string_made_x(n: i64, c: i64) -> i64 {
 
 pub fn string_copy_w_x(s: i64, start: i64, end: i64) -> i64 {
     if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, raw_length(s))) {
-        failed_with_x(str_lit("string-copy: a span that does not fit"));
+        failed_with_x(str_lit!("string-copy: a span that does not fit"));
         0i64
     } else {
         let p = string_alloc_x(i64_minus(end, start));
@@ -628,9 +628,9 @@ pub fn string_copy_w_x(s: i64, start: i64, end: i64) -> i64 {
 pub fn string_copy_into_w_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> () {
     let (s, e, t) = (fixnum_value(start), fixnum_value(end), fixnum_value(at));
     if (i64_lt(s, 0i64) || i64_lt(e, s) || i64_gt(e, raw_length(from)) || i64_lt(t, 0i64)) {
-        failed_with_x(str_lit("string-copy!: a span that does not fit"))
+        failed_with_x(str_lit!("string-copy!: a span that does not fit"))
     } else if i64_gt(i64_plus(t, i64_minus(e, s)), raw_length(to)) {
-        failed_with_x(str_lit("string-copy!: the characters do not fit"))
+        failed_with_x(str_lit!("string-copy!: the characters do not fit"))
     } else if i64_gt(t, s) {
         bytes_moved_back_x(to, t, from, s, i64_minus(e, 1i64))
     } else {
@@ -667,10 +667,10 @@ pub fn utf8_word_x(p: i64) -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("text") } {
         let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-        sum_word_x(str_lit("text"), string_word_x(s))
+        sum_word_x(str_lit!("text"), string_word_x(s))
     } else if tag_ == const { kayak_rt::tag_hash("bad") } {
         let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        sum_word_x(str_lit("bad"), int_value_x(k))
+        sum_word_x(str_lit!("bad"), int_value_x(k))
     } else { unreachable!() }
 }
 
@@ -691,28 +691,28 @@ pub fn io_error_word_x(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> i64 {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("not-found") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("not-found")
+            str_lit!("not-found")
         } else if tag_ == const { kayak_rt::tag_hash("permission-denied") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("permission-denied")
+            str_lit!("permission-denied")
         } else if tag_ == const { kayak_rt::tag_hash("already-exists") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("already-exists")
+            str_lit!("already-exists")
         } else if tag_ == const { kayak_rt::tag_hash("not-a-directory") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("not-a-directory")
+            str_lit!("not-a-directory")
         } else if tag_ == const { kayak_rt::tag_hash("is-a-directory") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("is-a-directory")
+            str_lit!("is-a-directory")
         } else if tag_ == const { kayak_rt::tag_hash("broken-pipe") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("broken-pipe")
+            str_lit!("broken-pipe")
         } else if tag_ == const { kayak_rt::tag_hash("invalid-data") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("invalid-data")
+            str_lit!("invalid-data")
         } else if tag_ == const { kayak_rt::tag_hash("other") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("other")
+            str_lit!("other")
         } else { unreachable!() }
     };
     let k = sum_word_x(kind, w_unit());
@@ -755,10 +755,10 @@ pub fn written_word_x(r: kayak_rt::Sum) -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        sum_word_x(str_lit("done"), w_unit())
+        sum_word_x(str_lit!("done"), w_unit())
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -819,53 +819,53 @@ pub fn pending_names() -> Ref<kayak_rt::Sum> {
 // alone).
 
 pub fn _pctsyscall_available_colonwrite_points() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall write-points (\"io:write-points/1\")"), str_lit("io:write-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))"));
+    kayak_rt::syscall_require(str_lit!("syscall write-points (\"io:write-points/1\")"), str_lit!("io:write-points/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))"));
     true
 }
 
 pub fn write_points(x1: FlatArray<i64>, x2: Int, x3: Int, x4: Int, x5: Int) -> Int {
     _pctsyscall_available_colonwrite_points();
-    kayak_rt::syscall5(str_lit("syscall write-points (\"io:write-points/1\")"), str_lit("io:write-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))"), x1, x2, x3, x4, x5)
+    kayak_rt::syscall5(str_lit!("syscall write-points (\"io:write-points/1\")"), str_lit!("io:write-points/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) ((flatarrayof i64 r1) int int int int) int))"), x1, x2, x3, x4, x5)
 }
 
 pub fn _pctsyscall_available_colonread_line_points() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall read-line-points (\"io:read-line-points/1\")"), str_lit("io:read-line-points/1"), str_lit("(subr (io sys) () int)"));
+    kayak_rt::syscall_require(str_lit!("syscall read-line-points (\"io:read-line-points/1\")"), str_lit!("io:read-line-points/1"), str_lit!("(subr (io sys) () int)"));
     true
 }
 
 pub fn read_line_points() -> Int {
     _pctsyscall_available_colonread_line_points();
-    kayak_rt::syscall0(str_lit("syscall read-line-points (\"io:read-line-points/1\")"), str_lit("io:read-line-points/1"), str_lit("(subr (io sys) () int)"))
+    kayak_rt::syscall0(str_lit!("syscall read-line-points (\"io:read-line-points/1\")"), str_lit!("io:read-line-points/1"), str_lit!("(subr (io sys) () int)"))
 }
 
 pub fn _pctsyscall_available_colontake_points() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall take-points (\"io:take-points/1\")"), str_lit("io:take-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))"));
+    kayak_rt::syscall_require(str_lit!("syscall take-points (\"io:take-points/1\")"), str_lit!("io:take-points/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))"));
     true
 }
 
 pub fn take_points(x1: FlatArray<i64>, x2: Int, x3: Int) -> () {
     _pctsyscall_available_colontake_points();
-    kayak_rt::syscall3(str_lit("syscall take-points (\"io:take-points/1\")"), str_lit("io:take-points/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))"), x1, x2, x3)
+    kayak_rt::syscall3(str_lit!("syscall take-points (\"io:take-points/1\")"), str_lit!("io:take-points/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (write r1)) ((flatarrayof i64 r1) int int) unit))"), x1, x2, x3)
 }
 
 pub fn _pctsyscall_available_colonfailure_kind() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall failure-kind (\"io:failure-kind/1\")"), str_lit("io:failure-kind/1"), str_lit("(subr (io sys) () int)"));
+    kayak_rt::syscall_require(str_lit!("syscall failure-kind (\"io:failure-kind/1\")"), str_lit!("io:failure-kind/1"), str_lit!("(subr (io sys) () int)"));
     true
 }
 
 pub fn failure_kind() -> Int {
     _pctsyscall_available_colonfailure_kind();
-    kayak_rt::syscall0(str_lit("syscall failure-kind (\"io:failure-kind/1\")"), str_lit("io:failure-kind/1"), str_lit("(subr (io sys) () int)"))
+    kayak_rt::syscall0(str_lit!("syscall failure-kind (\"io:failure-kind/1\")"), str_lit!("io:failure-kind/1"), str_lit!("(subr (io sys) () int)"))
 }
 
 pub fn _pctsyscall_available_colonfailure_detail() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall failure-detail (\"io:failure-detail/1\")"), str_lit("io:failure-detail/1"), str_lit("(subr (io sys) () string)"));
+    kayak_rt::syscall_require(str_lit!("syscall failure-detail (\"io:failure-detail/1\")"), str_lit!("io:failure-detail/1"), str_lit!("(subr (io sys) () string)"));
     true
 }
 
 pub fn failure_detail() -> Str {
     _pctsyscall_available_colonfailure_detail();
-    kayak_rt::syscall0(str_lit("syscall failure-detail (\"io:failure-detail/1\")"), str_lit("io:failure-detail/1"), str_lit("(subr (io sys) () string)"))
+    kayak_rt::syscall0(str_lit!("syscall failure-detail (\"io:failure-detail/1\")"), str_lit!("io:failure-detail/1"), str_lit!("(subr (io sys) () string)"))
 }
 
 // The line read where its room is found: its length (-1 the end, -2 a
@@ -890,7 +890,7 @@ pub fn pending_kind() -> Ref<i64> {
 pub fn pending_detail() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
-        kayak_rt::heap_new(str_lit(""))
+        kayak_rt::heap_new(str_lit!(""))
     })
 }
 
@@ -905,25 +905,25 @@ pub fn failure_pended_x() -> i64 {
 pub fn failure_word_x() -> i64 {
     let k = get(pending_kind());
     let kind = if i64_eq(k, 0i64) {
-        str_lit("not-found")
+        str_lit!("not-found")
     } else if i64_eq(k, 1i64) {
-        str_lit("permission-denied")
+        str_lit!("permission-denied")
     } else if i64_eq(k, 2i64) {
-        str_lit("already-exists")
+        str_lit!("already-exists")
     } else if i64_eq(k, 3i64) {
-        str_lit("not-a-directory")
+        str_lit!("not-a-directory")
     } else if i64_eq(k, 4i64) {
-        str_lit("is-a-directory")
+        str_lit!("is-a-directory")
     } else if i64_eq(k, 5i64) {
-        str_lit("broken-pipe")
+        str_lit!("broken-pipe")
     } else if i64_eq(k, 6i64) {
-        str_lit("invalid-data")
+        str_lit!("invalid-data")
     } else {
-        str_lit("other")
+        str_lit!("other")
     };
     let s = sum_word_x(kind, w_unit());
     let d = string_word_x(get(pending_detail()));
-    sum_word_x(str_lit("failed"), product_of_x(kayak_rt::heap_cons(s, kayak_rt::heap_cons(d, kayak_rt::nil()))))
+    sum_word_x(str_lit!("failed"), product_of_x(kayak_rt::heap_cons(s, kayak_rt::heap_cons(d, kayak_rt::nil()))))
 }
 
 pub fn line_room_x() -> i64 {
@@ -942,9 +942,9 @@ pub fn read_line_word_x() -> i64 {
     if i64_gt_eq(n, 0i64) {
         let p = string_alloc_x(n);
         take_points(get(mem()), i64_to_int(i64_plus(address(p), 1i64)), int_lit(2));
-        sum_word_x(str_lit("line"), p)
+        sum_word_x(str_lit!("line"), p)
     } else if i64_eq(n, -1i64) {
-        sum_word_x(str_lit("eof"), w_unit())
+        sum_word_x(str_lit!("eof"), w_unit())
     } else {
         failure_word_x()
     }
@@ -955,7 +955,7 @@ pub fn read_line_word_x() -> i64 {
 // is not: a failure's is made after, a rare path).
 pub fn text_written_word_x(p: i64, stream: i64) -> i64 {
     if i64_eq(int_to_i64(write_points(get(mem()), i64_to_int(i64_plus(address(p), 1i64)), i64_to_int(raw_length(p)), int_lit(2), i64_to_int(stream))), 0i64) {
-        sum_word_x(str_lit("done"), w_unit())
+        sum_word_x(str_lit!("done"), w_unit())
     } else {
         failure_pended_x();
         failure_word_x()
@@ -1039,13 +1039,13 @@ pub fn read_byte_word_x() -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("byte") } {
         let k: u8 = kayak_rt::sum_payload::<u8>(tagcase_);
-        sum_word_x(str_lit("byte"), int_value_x(u8_to_int(k)))
+        sum_word_x(str_lit!("byte"), int_value_x(u8_to_int(k)))
     } else if tag_ == const { kayak_rt::tag_hash("eof") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        sum_word_x(str_lit("eof"), w_unit())
+        sum_word_x(str_lit!("eof"), w_unit())
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -1091,7 +1091,7 @@ pub fn read_copied_x(mut bv: i64, mut at: i64, mut i: i64, mut n: i64) -> () {
 
 pub fn read_bytes_word_x(bv: i64, at: i64, n: i64) -> i64 {
     if (i64_lt(at, 0i64) || i64_lt(n, 0i64) || i64_gt(i64_plus(at, n), raw_length(bv))) {
-        failed_with_x(str_lit("read-bytes: a range past the bytevector's end"));
+        failed_with_x(str_lit!("read-bytes: a range past the bytevector's end"));
         0i64
     } else {
         let tagcase_ = get(pending_count());
@@ -1099,13 +1099,13 @@ pub fn read_bytes_word_x(bv: i64, at: i64, n: i64) -> i64 {
         if tag_ == const { kayak_rt::tag_hash("count") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
             read_copied_x(bv, at, 0i64, int_to_i64(k));
-            sum_word_x(str_lit("count"), int_value_x(k))
+            sum_word_x(str_lit!("count"), int_value_x(k))
         } else if tag_ == const { kayak_rt::tag_hash("eof") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            sum_word_x(str_lit("eof"), w_unit())
+            sum_word_x(str_lit!("eof"), w_unit())
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-            sum_word_x(str_lit("failed"), io_error_word_x(e))
+            sum_word_x(str_lit!("failed"), io_error_word_x(e))
         } else { unreachable!() }
     }
 }
@@ -1152,13 +1152,13 @@ pub fn term_word_x() -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        sum_word_x(str_lit("done"), w_unit())
+        sum_word_x(str_lit!("done"), w_unit())
     } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        sum_word_x(str_lit("not-a-terminal"), w_unit())
+        sum_word_x(str_lit!("not-a-terminal"), w_unit())
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -1167,13 +1167,13 @@ pub fn size_word_x() -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("size") } {
         let p: Product_4rows_7columns<Int, Int> = kayak_rt::sum_payload::<Product_4rows_7columns<Int, Int>>(tagcase_);
-        sum_word_x(str_lit("size"), product_of_x(kayak_rt::heap_cons(int_value_x(p.0), kayak_rt::heap_cons(int_value_x(p.1), kayak_rt::nil()))))
+        sum_word_x(str_lit!("size"), product_of_x(kayak_rt::heap_cons(int_value_x(p.0), kayak_rt::heap_cons(int_value_x(p.1), kayak_rt::nil()))))
     } else if tag_ == const { kayak_rt::tag_hash("not-a-terminal") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        sum_word_x(str_lit("not-a-terminal"), w_unit())
+        sum_word_x(str_lit!("not-a-terminal"), w_unit())
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -1191,7 +1191,7 @@ pub fn pending_info() -> Ref<kayak_rt::Sum> {
 pub fn pending_target() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("target") }, "target", str_lit("")))
+        kayak_rt::heap_new(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("target") }, "target", str_lit!("")))
     })
 }
 
@@ -1227,23 +1227,23 @@ pub fn file_info_word_x() -> i64 {
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("file") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                str_lit("file")
+                str_lit!("file")
             } else if tag_ == const { kayak_rt::tag_hash("directory") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                str_lit("directory")
+                str_lit!("directory")
             } else if tag_ == const { kayak_rt::tag_hash("symlink") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                str_lit("symlink")
+                str_lit!("symlink")
             } else if tag_ == const { kayak_rt::tag_hash("other") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                str_lit("other")
+                str_lit!("other")
             } else { unreachable!() }
         }, w_unit());
         let x = product_of_x(kayak_rt::heap_cons(k, kayak_rt::heap_cons(int_value_x(i.1), kayak_rt::heap_cons(int_value_x(i.2), kayak_rt::heap_cons(int_value_x(i.3), kayak_rt::nil())))));
-        sum_word_x(str_lit("info"), x)
+        sum_word_x(str_lit!("info"), x)
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -1266,10 +1266,10 @@ pub fn read_symlink_word_x() -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("target") } {
         let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-        sum_word_x(str_lit("target"), string_word_x(t))
+        sum_word_x(str_lit!("target"), string_word_x(t))
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -1288,7 +1288,7 @@ pub fn pending_started() -> Ref<kayak_rt::Sum> {
 pub fn pending_output() -> Ref<Str> {
     kayak_rt::kept_constant!(ONCE: Ref<Str>);
     once(&ONCE, || {
-        kayak_rt::heap_new(str_lit(""))
+        kayak_rt::heap_new(str_lit!(""))
     })
 }
 
@@ -1320,10 +1320,10 @@ pub fn started_word_x() -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("started") } {
         let p: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        sum_word_x(str_lit("started"), int_value_x(p))
+        sum_word_x(str_lit!("started"), int_value_x(p))
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -1338,16 +1338,16 @@ pub fn status_word_x(s: kayak_rt::Sum) -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("running") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        sum_word_x(str_lit("running"), w_unit())
+        sum_word_x(str_lit!("running"), w_unit())
     } else if tag_ == const { kayak_rt::tag_hash("exited") } {
         let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        sum_word_x(str_lit("exited"), int_value_x(c))
+        sum_word_x(str_lit!("exited"), int_value_x(c))
     } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
         let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        sum_word_x(str_lit("signalled"), int_value_x(c))
+        sum_word_x(str_lit!("signalled"), int_value_x(c))
     } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        sum_word_x(str_lit("unknown"), w_unit())
+        sum_word_x(str_lit!("unknown"), w_unit())
     } else { unreachable!() }
 }
 
@@ -1356,13 +1356,13 @@ pub fn exit_word_x(s: kayak_rt::Sum) -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("exited") } {
         let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        sum_word_x(str_lit("exited"), int_value_x(c))
+        sum_word_x(str_lit!("exited"), int_value_x(c))
     } else if tag_ == const { kayak_rt::tag_hash("signalled") } {
         let c: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        sum_word_x(str_lit("signalled"), int_value_x(c))
+        sum_word_x(str_lit!("signalled"), int_value_x(c))
     } else if tag_ == const { kayak_rt::tag_hash("unknown") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        sum_word_x(str_lit("unknown"), w_unit())
+        sum_word_x(str_lit!("unknown"), w_unit())
     } else { unreachable!() }
 }
 
@@ -1385,10 +1385,10 @@ pub fn read_file_word_x(path: i64) -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("data") } {
         let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);
-        sum_word_x(str_lit("data"), kfx_bytes_word_x(b))
+        sum_word_x(str_lit!("data"), kfx_bytes_word_x(b))
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -1411,10 +1411,10 @@ pub fn list_dir_word_x(path: i64) -> i64 {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("names") } {
         let ns: List<Str> = kayak_rt::sum_payload::<List<Str>>(tagcase_);
-        sum_word_x(str_lit("names"), strings_word_x(ns))
+        sum_word_x(str_lit!("names"), strings_word_x(ns))
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        sum_word_x(str_lit("failed"), io_error_word_x(e))
+        sum_word_x(str_lit!("failed"), io_error_word_x(e))
     } else { unreachable!() }
 }
 
@@ -1424,52 +1424,52 @@ pub fn fixed_op_word(name: Str, a: i64, b: i64) -> i64 {
     let t = fixed_type(name);
     let op = fixed_op(name);
     let x = int_of(a);
-    if string_eq_p(op, str_lit("from-int")) {
+    if string_eq_p(op, str_lit!("from-int")) {
         int_value_x(wrapped(t, x))
-    } else if string_eq_p(op, str_lit("->int")) {
+    } else if string_eq_p(op, str_lit!("->int")) {
         a
-    } else if string_eq_p(op, str_lit("->string")) {
+    } else if string_eq_p(op, str_lit!("->string")) {
         int_text_x(a)
-    } else if string_eq_p(op, str_lit("-not")) {
+    } else if string_eq_p(op, str_lit!("-not")) {
         int_value_x(wrapped(t, bitwise_not(x)))
     } else {
         let y = int_of(b);
-        if string_eq_p(op, str_lit("+")) {
+        if string_eq_p(op, str_lit!("+")) {
             int_value_x(wrapped(t, _plus(x, y)))
-        } else if string_eq_p(op, str_lit("-")) {
+        } else if string_eq_p(op, str_lit!("-")) {
             int_value_x(wrapped(t, _minus(x, y)))
-        } else if string_eq_p(op, str_lit("*")) {
+        } else if string_eq_p(op, str_lit!("*")) {
             int_value_x(wrapped(t, _star(x, y)))
-        } else if ((string_eq_p(op, str_lit("-quotient")) || string_eq_p(op, str_lit("-remainder"))) && zero_p(y)) {
+        } else if ((string_eq_p(op, str_lit!("-quotient")) || string_eq_p(op, str_lit!("-remainder"))) && zero_p(y)) {
             // kayak-rt's failure, the engine's first (C110).
-            failed_with_x(string_append(name, str_lit(": division by zero")));
+            failed_with_x(string_append(name, str_lit!(": division by zero")));
             0i64
-        } else if string_eq_p(op, str_lit("-quotient")) {
+        } else if string_eq_p(op, str_lit!("-quotient")) {
             int_value_x(wrapped(t, quotient(x, y)))
-        } else if string_eq_p(op, str_lit("-remainder")) {
+        } else if string_eq_p(op, str_lit!("-remainder")) {
             int_value_x(wrapped(t, remainder(x, y)))
-        } else if string_eq_p(op, str_lit("-and")) {
+        } else if string_eq_p(op, str_lit!("-and")) {
             int_value_x(wrapped(t, bitwise_and(x, y)))
-        } else if string_eq_p(op, str_lit("-or")) {
+        } else if string_eq_p(op, str_lit!("-or")) {
             int_value_x(wrapped(t, bitwise_ior(x, y)))
-        } else if string_eq_p(op, str_lit("-xor")) {
+        } else if string_eq_p(op, str_lit!("-xor")) {
             int_value_x(wrapped(t, bitwise_xor(x, y)))
-        } else if string_eq_p(op, str_lit("-shl")) {
+        } else if string_eq_p(op, str_lit!("-shl")) {
             int_value_x(wrapped(t, arithmetic_shift(x, modulo(y, width_of(t)))))
-        } else if string_eq_p(op, str_lit("-shr")) {
+        } else if string_eq_p(op, str_lit!("-shr")) {
             int_value_x(wrapped(t, arithmetic_shift(x, _minus(int_lit(0), modulo(y, width_of(t))))))
-        } else if string_eq_p(op, str_lit("=")) {
+        } else if string_eq_p(op, str_lit!("=")) {
             bool_word(_eq(x, y))
-        } else if string_eq_p(op, str_lit("<")) {
+        } else if string_eq_p(op, str_lit!("<")) {
             bool_word(_lt(x, y))
-        } else if string_eq_p(op, str_lit(">")) {
+        } else if string_eq_p(op, str_lit!(">")) {
             bool_word(_gt(x, y))
-        } else if string_eq_p(op, str_lit("<=")) {
+        } else if string_eq_p(op, str_lit!("<=")) {
             bool_word(_lt_eq(x, y))
-        } else if string_eq_p(op, str_lit(">=")) {
+        } else if string_eq_p(op, str_lit!(">=")) {
             bool_word(_gt_eq(x, y))
         } else {
-            failed_with_x(string_append(str_lit("the engine has no primitive "), name));
+            failed_with_x(string_append(str_lit!("the engine has no primitive "), name));
             0i64
         }
     }

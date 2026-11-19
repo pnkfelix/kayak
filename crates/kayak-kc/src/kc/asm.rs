@@ -144,7 +144,7 @@ pub mod kc_asm {
 
     #[inline]
     pub fn not_yet(what: Str) -> i64 {
-        error(string_append(str_lit("kc: the assembler: not yet: "), what));
+        error(string_append(str_lit!("kc: the assembler: not yet: "), what));
         0i64
     }
 
@@ -252,7 +252,7 @@ pub mod kc_asm {
     pub fn regs64() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("rax"), kayak_rt::heap_cons(str_lit("rcx"), kayak_rt::heap_cons(str_lit("rdx"), kayak_rt::heap_cons(str_lit("rbx"), kayak_rt::heap_cons(str_lit("rsp"), kayak_rt::heap_cons(str_lit("rbp"), kayak_rt::heap_cons(str_lit("rsi"), kayak_rt::heap_cons(str_lit("rdi"), kayak_rt::heap_cons(str_lit("r8"), kayak_rt::heap_cons(str_lit("r9"), kayak_rt::heap_cons(str_lit("r10"), kayak_rt::heap_cons(str_lit("r11"), kayak_rt::heap_cons(str_lit("r12"), kayak_rt::heap_cons(str_lit("r13"), kayak_rt::heap_cons(str_lit("r14"), kayak_rt::heap_cons(str_lit("r15"), kayak_rt::nil()))))))))))))))))
+            kayak_rt::heap_cons(str_lit!("rax"), kayak_rt::heap_cons(str_lit!("rcx"), kayak_rt::heap_cons(str_lit!("rdx"), kayak_rt::heap_cons(str_lit!("rbx"), kayak_rt::heap_cons(str_lit!("rsp"), kayak_rt::heap_cons(str_lit!("rbp"), kayak_rt::heap_cons(str_lit!("rsi"), kayak_rt::heap_cons(str_lit!("rdi"), kayak_rt::heap_cons(str_lit!("r8"), kayak_rt::heap_cons(str_lit!("r9"), kayak_rt::heap_cons(str_lit!("r10"), kayak_rt::heap_cons(str_lit!("r11"), kayak_rt::heap_cons(str_lit!("r12"), kayak_rt::heap_cons(str_lit!("r13"), kayak_rt::heap_cons(str_lit!("r14"), kayak_rt::heap_cons(str_lit!("r15"), kayak_rt::nil()))))))))))))))))
         })
     }
 
@@ -260,7 +260,7 @@ pub mod kc_asm {
     pub fn regs32() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("eax"), kayak_rt::heap_cons(str_lit("ecx"), kayak_rt::heap_cons(str_lit("edx"), kayak_rt::heap_cons(str_lit("ebx"), kayak_rt::heap_cons(str_lit("esp"), kayak_rt::heap_cons(str_lit("ebp"), kayak_rt::heap_cons(str_lit("esi"), kayak_rt::heap_cons(str_lit("edi"), kayak_rt::heap_cons(str_lit("r8d"), kayak_rt::heap_cons(str_lit("r9d"), kayak_rt::heap_cons(str_lit("r10d"), kayak_rt::heap_cons(str_lit("r11d"), kayak_rt::heap_cons(str_lit("r12d"), kayak_rt::heap_cons(str_lit("r13d"), kayak_rt::heap_cons(str_lit("r14d"), kayak_rt::heap_cons(str_lit("r15d"), kayak_rt::nil()))))))))))))))))
+            kayak_rt::heap_cons(str_lit!("eax"), kayak_rt::heap_cons(str_lit!("ecx"), kayak_rt::heap_cons(str_lit!("edx"), kayak_rt::heap_cons(str_lit!("ebx"), kayak_rt::heap_cons(str_lit!("esp"), kayak_rt::heap_cons(str_lit!("ebp"), kayak_rt::heap_cons(str_lit!("esi"), kayak_rt::heap_cons(str_lit!("edi"), kayak_rt::heap_cons(str_lit!("r8d"), kayak_rt::heap_cons(str_lit!("r9d"), kayak_rt::heap_cons(str_lit!("r10d"), kayak_rt::heap_cons(str_lit!("r11d"), kayak_rt::heap_cons(str_lit!("r12d"), kayak_rt::heap_cons(str_lit!("r13d"), kayak_rt::heap_cons(str_lit!("r14d"), kayak_rt::heap_cons(str_lit!("r15d"), kayak_rt::nil()))))))))))))))))
         })
     }
 
@@ -268,7 +268,7 @@ pub mod kc_asm {
     pub fn regs8() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("al"), kayak_rt::heap_cons(str_lit("cl"), kayak_rt::heap_cons(str_lit("dl"), kayak_rt::heap_cons(str_lit("bl"), kayak_rt::nil()))))
+            kayak_rt::heap_cons(str_lit!("al"), kayak_rt::heap_cons(str_lit!("cl"), kayak_rt::heap_cons(str_lit!("dl"), kayak_rt::heap_cons(str_lit!("bl"), kayak_rt::nil()))))
         })
     }
 
@@ -287,17 +287,17 @@ pub mod kc_asm {
 
     /// `%name`'s register.
     pub fn reg_of(s: Str) -> kayak_rt::Handle<'static, Opd> {
-        let n = after_prefix(s, str_lit("%"));
+        let n = after_prefix(s, str_lit!("%"));
         if i64_gt_eq(index_in(n, regs64(), 0i64), 0i64) {
             o_reg(index_in(n, regs64(), 0i64), 64i64)
         } else if i64_gt_eq(index_in(n, regs32(), 0i64), 0i64) {
             o_reg(index_in(n, regs32(), 0i64), 32i64)
         } else if i64_gt_eq(index_in(n, regs8(), 0i64), 0i64) {
             o_reg(index_in(n, regs8(), 0i64), 8i64)
-        } else if string_eq_p(n, str_lit("rip")) {
+        } else if string_eq_p(n, str_lit!("rip")) {
             o_reg(16i64, 64i64)
         } else {
-            o_reg(not_yet(string_append(str_lit("a register "), s)), 64i64)
+            o_reg(not_yet(string_append(str_lit!("a register "), s)), 64i64)
         }
     }
 
@@ -310,7 +310,7 @@ pub mod kc_asm {
             }
             _ => {
                 let other = tagcase_;
-                not_yet(str_lit("a register where one is wanted"))
+                not_yet(str_lit!("a register where one is wanted"))
             }
         }
     }
@@ -345,10 +345,10 @@ pub mod kc_asm {
 
     /// A displacement: a number, a symbol, or `sym+n`, `sym-n`.
     pub fn disp_of(s: Str) -> Product_11_12<i64, Str> {
-        if string_eq_p(s, str_lit("")) {
-            Product_11_12(the::<i64>(0i64), str_lit(""))
+        if string_eq_p(s, str_lit!("")) {
+            Product_11_12(the::<i64>(0i64), str_lit!(""))
         } else if number_text_p(s) {
-            Product_11_12(number_of(s), str_lit(""))
+            Product_11_12(number_of(s), str_lit!(""))
         } else {
             let k = sign_at(string_chars(s), 0i64);
             if i64_lt(k, 0i64) {
@@ -370,7 +370,7 @@ pub mod kc_asm {
         let d = disp_of(a.0);
         let inside = cut_at(a.1, ')', nil::<char>()).0;
         let parts = split_commas(string_chars(inside), 0i64, nil::<char>(), nil::<Str>());
-        let base = if string_eq_p(car(parts), str_lit("")) {
+        let base = if string_eq_p(car(parts), str_lit!("")) {
             the::<i64>(-1i64)
         } else {
             reg_number(reg_of(car(parts)))
@@ -392,14 +392,14 @@ pub mod kc_asm {
         if char_eq_p(c, '%') {
             reg_of(s)
         } else if char_eq_p(c, '$') {
-            let v = after_prefix(s, str_lit("$"));
+            let v = after_prefix(s, str_lit!("$"));
             if number_text_p(v) {
                 o_imm(number_of(v))
             } else {
                 o_isym(v)
             }
         } else if char_eq_p(c, '*') {
-            let v = after_prefix(s, str_lit("*"));
+            let v = after_prefix(s, str_lit!("*"));
             if char_eq_p(string_ref(v, int_lit(0)), '%') {
                 o_ireg(reg_number(reg_of(v)))
             } else {
@@ -410,7 +410,7 @@ pub mod kc_asm {
                     }
                     _ => {
                         let other = tagcase_;
-                        o_imem(0i64, str_lit(""), 0i64)
+                        o_imem(0i64, str_lit!(""), 0i64)
                     }
                 }
             }
@@ -497,15 +497,15 @@ pub mod kc_asm {
             }
             Opd::OMem(d, sym, b, i, sc) => {
                 if i64_eq(b, 16i64) {
-                    kayak_rt::heap_cons(p_bytes(onto(rex(w, rf, -1i64, -1i64), onto(op, kayak_rt::heap_cons(modrm(0i64, rf, 5i64), kayak_rt::nil())))), kayak_rt::heap_cons(if string_eq_p(sym, str_lit("")) {
+                    kayak_rt::heap_cons(p_bytes(onto(rex(w, rf, -1i64, -1i64), onto(op, kayak_rt::heap_cons(modrm(0i64, rf, 5i64), kayak_rt::nil())))), kayak_rt::heap_cons(if string_eq_p(sym, str_lit!("")) {
                         p_bytes(le_bytes(d, 4i64))
                     } else {
                         p_fix(4i64, sym, i64_minus(d, i64_plus(4i64, after)), 2i64)
                     }, kayak_rt::nil()))
                 } else {
                     let sib_p = (i64_gt_eq(i, 0i64) || i64_eq(i64_and(b, 7i64), 4i64));
-                    let md = if not(string_eq_p(sym, str_lit(""))) {
-                        not_yet(str_lit("a symbol in memory not of %rip"))
+                    let md = if not(string_eq_p(sym, str_lit!(""))) {
+                        not_yet(str_lit!("a symbol in memory not of %rip"))
                     } else if (i64_eq(d, 0i64) && not(i64_eq(i64_and(b, 7i64), 5i64))) {
                         the::<i64>(0i64)
                     } else if fits8_p(d) {
@@ -549,21 +549,21 @@ pub mod kc_asm {
             }
             _ => {
                 let other = tagcase_;
-                kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit("an operand of this kind here")), kayak_rt::nil())), kayak_rt::nil())
+                kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit!("an operand of this kind here")), kayak_rt::nil())), kayak_rt::nil())
             }
         }
     }
 
     pub fn arith_ext(m: Str) -> i64 {
-        if string_eq_p(m, str_lit("addq")) {
+        if string_eq_p(m, str_lit!("addq")) {
             0i64
-        } else if string_eq_p(m, str_lit("orq")) {
+        } else if string_eq_p(m, str_lit!("orq")) {
             1i64
-        } else if string_eq_p(m, str_lit("andq")) {
+        } else if string_eq_p(m, str_lit!("andq")) {
             4i64
-        } else if string_eq_p(m, str_lit("subq")) {
+        } else if string_eq_p(m, str_lit!("subq")) {
             5i64
-        } else if string_eq_p(m, str_lit("xorq")) {
+        } else if string_eq_p(m, str_lit!("xorq")) {
             6i64
         } else {
             7i64
@@ -572,9 +572,9 @@ pub mod kc_asm {
 
     #[inline]
     pub fn shift_ext(m: Str) -> i64 {
-        if string_eq_p(m, str_lit("shlq")) {
+        if string_eq_p(m, str_lit!("shlq")) {
             4i64
-        } else if string_eq_p(m, str_lit("shrq")) {
+        } else if string_eq_p(m, str_lit!("shrq")) {
             5i64
         } else {
             7i64
@@ -585,31 +585,31 @@ pub mod kc_asm {
     pub fn conditions() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit("o"), kayak_rt::heap_cons(str_lit("no"), kayak_rt::heap_cons(str_lit("b"), kayak_rt::heap_cons(str_lit("ae"), kayak_rt::heap_cons(str_lit("e"), kayak_rt::heap_cons(str_lit("ne"), kayak_rt::heap_cons(str_lit("be"), kayak_rt::heap_cons(str_lit("a"), kayak_rt::heap_cons(str_lit("s"), kayak_rt::heap_cons(str_lit("ns"), kayak_rt::heap_cons(str_lit("p"), kayak_rt::heap_cons(str_lit("np"), kayak_rt::heap_cons(str_lit("l"), kayak_rt::heap_cons(str_lit("ge"), kayak_rt::heap_cons(str_lit("le"), kayak_rt::heap_cons(str_lit("g"), kayak_rt::nil()))))))))))))))))
+            kayak_rt::heap_cons(str_lit!("o"), kayak_rt::heap_cons(str_lit!("no"), kayak_rt::heap_cons(str_lit!("b"), kayak_rt::heap_cons(str_lit!("ae"), kayak_rt::heap_cons(str_lit!("e"), kayak_rt::heap_cons(str_lit!("ne"), kayak_rt::heap_cons(str_lit!("be"), kayak_rt::heap_cons(str_lit!("a"), kayak_rt::heap_cons(str_lit!("s"), kayak_rt::heap_cons(str_lit!("ns"), kayak_rt::heap_cons(str_lit!("p"), kayak_rt::heap_cons(str_lit!("np"), kayak_rt::heap_cons(str_lit!("l"), kayak_rt::heap_cons(str_lit!("ge"), kayak_rt::heap_cons(str_lit!("le"), kayak_rt::heap_cons(str_lit!("g"), kayak_rt::nil()))))))))))))))))
         })
     }
 
     pub fn condition_of(c: Str) -> i64 {
-        if string_eq_p(c, str_lit("z")) {
+        if string_eq_p(c, str_lit!("z")) {
             4i64
-        } else if string_eq_p(c, str_lit("nz")) {
+        } else if string_eq_p(c, str_lit!("nz")) {
             5i64
-        } else if string_eq_p(c, str_lit("c")) {
+        } else if string_eq_p(c, str_lit!("c")) {
             2i64
-        } else if string_eq_p(c, str_lit("nc")) {
+        } else if string_eq_p(c, str_lit!("nc")) {
             3i64
-        } else if string_eq_p(c, str_lit("nb")) {
+        } else if string_eq_p(c, str_lit!("nb")) {
             3i64
-        } else if string_eq_p(c, str_lit("nae")) {
+        } else if string_eq_p(c, str_lit!("nae")) {
             2i64
-        } else if string_eq_p(c, str_lit("nbe")) {
+        } else if string_eq_p(c, str_lit!("nbe")) {
             7i64
-        } else if string_eq_p(c, str_lit("na")) {
+        } else if string_eq_p(c, str_lit!("na")) {
             6i64
         } else {
             let k = index_in(c, conditions(), 0i64);
             if i64_lt(k, 0i64) {
-                not_yet(string_append(str_lit("a condition "), c))
+                not_yet(string_append(str_lit!("a condition "), c))
             } else {
                 k
             }
@@ -678,7 +678,7 @@ pub mod kc_asm {
                 }
                 _ => {
                     let other = tagcase_;
-                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit("an immediate")), kayak_rt::nil())), kayak_rt::nil())
+                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit!("an immediate")), kayak_rt::nil())), kayak_rt::nil())
                 }
             }
         }
@@ -694,11 +694,11 @@ pub mod kc_asm {
         } else {
             car(cdr(os))
         });
-        if string_eq_p(m, str_lit("ret")) {
+        if string_eq_p(m, str_lit!("ret")) {
             kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(195i64, kayak_rt::nil())), kayak_rt::nil())
-        } else if string_eq_p(m, str_lit("cqto")) {
+        } else if string_eq_p(m, str_lit!("cqto")) {
             kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(72i64, kayak_rt::heap_cons(153i64, kayak_rt::nil()))), kayak_rt::nil())
-        } else if string_eq_p(m, str_lit("movq")) {
+        } else if string_eq_p(m, str_lit!("movq")) {
             if is_reg_p(a) {
                 enc(true, kayak_rt::heap_cons(137i64, kayak_rt::nil()), reg_number(a), b, 0i64)
             } else if {
@@ -717,13 +717,13 @@ pub mod kc_asm {
             } else {
                 onto(enc(true, kayak_rt::heap_cons(199i64, kayak_rt::nil()), 0i64, b, 4i64), imm32(a, sets))
             }
-        } else if string_eq_p(m, str_lit("movl")) {
+        } else if string_eq_p(m, str_lit!("movl")) {
             if is_reg_p(a) {
                 enc(false, kayak_rt::heap_cons(137i64, kayak_rt::nil()), reg_number(a), b, 0i64)
             } else {
                 kayak_rt::heap_cons(p_bytes(onto(rex(false, -1i64, -1i64, reg_number(b)), kayak_rt::heap_cons(i64_plus(184i64, i64_and(reg_number(b), 7i64)), kayak_rt::nil()))), imm32(a, sets))
             }
-        } else if string_eq_p(m, str_lit("movabsq")) {
+        } else if string_eq_p(m, str_lit!("movabsq")) {
             let tagcase_ = a;
             match *tagcase_ {
                 Opd::OImm(v) => {
@@ -731,12 +731,12 @@ pub mod kc_asm {
                 }
                 _ => {
                     let other = tagcase_;
-                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit("a movabsq of a symbol")), kayak_rt::nil())), kayak_rt::nil())
+                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit!("a movabsq of a symbol")), kayak_rt::nil())), kayak_rt::nil())
                 }
             }
-        } else if string_eq_p(m, str_lit("leaq")) {
+        } else if string_eq_p(m, str_lit!("leaq")) {
             enc(true, kayak_rt::heap_cons(141i64, kayak_rt::nil()), reg_number(b), a, 0i64)
-        } else if string_member_p(m, kayak_rt::heap_cons(str_lit("addq"), kayak_rt::heap_cons(str_lit("orq"), kayak_rt::heap_cons(str_lit("andq"), kayak_rt::heap_cons(str_lit("subq"), kayak_rt::heap_cons(str_lit("xorq"), kayak_rt::heap_cons(str_lit("cmpq"), kayak_rt::nil()))))))) {
+        } else if string_member_p(m, kayak_rt::heap_cons(str_lit!("addq"), kayak_rt::heap_cons(str_lit!("orq"), kayak_rt::heap_cons(str_lit!("andq"), kayak_rt::heap_cons(str_lit!("subq"), kayak_rt::heap_cons(str_lit!("xorq"), kayak_rt::heap_cons(str_lit!("cmpq"), kayak_rt::nil()))))))) {
             let ext = arith_ext(m);
             if is_reg_p(a) {
                 enc(true, kayak_rt::heap_cons(i64_plus(i64_star(ext, 8i64), 1i64), kayak_rt::nil()), reg_number(a), b, 0i64)
@@ -763,7 +763,7 @@ pub mod kc_asm {
                     onto(enc(true, kayak_rt::heap_cons(129i64, kayak_rt::nil()), ext, b, 4i64), imm32(a, sets))
                 }
             }
-        } else if string_eq_p(m, str_lit("testq")) {
+        } else if string_eq_p(m, str_lit!("testq")) {
             if is_reg_p(a) {
                 enc(true, kayak_rt::heap_cons(133i64, kayak_rt::nil()), reg_number(a), b, 0i64)
             } else if is_rax_p(b) {
@@ -771,22 +771,22 @@ pub mod kc_asm {
             } else {
                 onto(enc(true, kayak_rt::heap_cons(247i64, kayak_rt::nil()), 0i64, b, 4i64), imm32(a, sets))
             }
-        } else if string_eq_p(m, str_lit("cmpb")) {
+        } else if string_eq_p(m, str_lit!("cmpb")) {
             let tagcase_ = a;
             match *tagcase_ {
                 Opd::OImm(v) => {
                     if (i64_eq(reg_number(b), 0i64)) {
                         kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(60i64, kayak_rt::heap_cons(i64_and(v, 255i64), kayak_rt::nil()))), kayak_rt::nil())
                     } else {
-                        kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit("a cmpb but of %al")), kayak_rt::nil())), kayak_rt::nil())
+                        kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit!("a cmpb but of %al")), kayak_rt::nil())), kayak_rt::nil())
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit("a cmpb of this")), kayak_rt::nil())), kayak_rt::nil())
+                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit!("a cmpb of this")), kayak_rt::nil())), kayak_rt::nil())
                 }
             }
-        } else if string_member_p(m, kayak_rt::heap_cons(str_lit("shlq"), kayak_rt::heap_cons(str_lit("shrq"), kayak_rt::heap_cons(str_lit("sarq"), kayak_rt::nil())))) {
+        } else if string_member_p(m, kayak_rt::heap_cons(str_lit!("shlq"), kayak_rt::heap_cons(str_lit!("shrq"), kayak_rt::heap_cons(str_lit!("sarq"), kayak_rt::nil())))) {
             let tagcase_ = a;
             match *tagcase_ {
                 Opd::OImm(v) => {
@@ -798,27 +798,27 @@ pub mod kc_asm {
                 }
                 _ => {
                     let other = tagcase_;
-                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit("a shift of a register count")), kayak_rt::nil())), kayak_rt::nil())
+                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit!("a shift of a register count")), kayak_rt::nil())), kayak_rt::nil())
                 }
             }
-        } else if string_eq_p(m, str_lit("imulq")) {
+        } else if string_eq_p(m, str_lit!("imulq")) {
             enc(true, kayak_rt::heap_cons(15i64, kayak_rt::heap_cons(175i64, kayak_rt::nil())), reg_number(b), a, 0i64)
-        } else if string_eq_p(m, str_lit("idivq")) {
+        } else if string_eq_p(m, str_lit!("idivq")) {
             enc(true, kayak_rt::heap_cons(247i64, kayak_rt::nil()), 7i64, a, 0i64)
-        } else if string_eq_p(m, str_lit("negq")) {
+        } else if string_eq_p(m, str_lit!("negq")) {
             enc(true, kayak_rt::heap_cons(247i64, kayak_rt::nil()), 3i64, a, 0i64)
-        } else if string_eq_p(m, str_lit("incq")) {
+        } else if string_eq_p(m, str_lit!("incq")) {
             enc(true, kayak_rt::heap_cons(255i64, kayak_rt::nil()), 0i64, a, 0i64)
-        } else if string_eq_p(m, str_lit("decq")) {
+        } else if string_eq_p(m, str_lit!("decq")) {
             enc(true, kayak_rt::heap_cons(255i64, kayak_rt::nil()), 1i64, a, 0i64)
-        } else if string_eq_p(m, str_lit("pushq")) {
+        } else if string_eq_p(m, str_lit!("pushq")) {
             kayak_rt::heap_cons(p_bytes(onto(rex(false, -1i64, -1i64, reg_number(a)), kayak_rt::heap_cons(i64_plus(80i64, i64_and(reg_number(a), 7i64)), kayak_rt::nil()))), kayak_rt::nil())
-        } else if string_eq_p(m, str_lit("popq")) {
+        } else if string_eq_p(m, str_lit!("popq")) {
             kayak_rt::heap_cons(p_bytes(onto(rex(false, -1i64, -1i64, reg_number(a)), kayak_rt::heap_cons(i64_plus(88i64, i64_and(reg_number(a), 7i64)), kayak_rt::nil()))), kayak_rt::nil())
-        } else if (has_prefix_p(m, str_lit("cmov")) && i64_gt(string_length_i64(m), 4i64)) {
-            enc(true, kayak_rt::heap_cons(15i64, kayak_rt::heap_cons(i64_plus(64i64, condition_of(after_prefix(m, str_lit("cmov")))), kayak_rt::nil())), reg_number(b), a, 0i64)
-        } else if (string_eq_p(m, str_lit("call")) || string_eq_p(m, str_lit("jmp"))) {
-            let ext = if string_eq_p(m, str_lit("call")) {
+        } else if (has_prefix_p(m, str_lit!("cmov")) && i64_gt(string_length_i64(m), 4i64)) {
+            enc(true, kayak_rt::heap_cons(15i64, kayak_rt::heap_cons(i64_plus(64i64, condition_of(after_prefix(m, str_lit!("cmov")))), kayak_rt::nil())), reg_number(b), a, 0i64)
+        } else if (string_eq_p(m, str_lit!("call")) || string_eq_p(m, str_lit!("jmp"))) {
+            let ext = if string_eq_p(m, str_lit!("call")) {
                 the::<i64>(2i64)
             } else {
                 the::<i64>(4i64)
@@ -826,7 +826,7 @@ pub mod kc_asm {
             let tagcase_ = a;
             match *tagcase_ {
                 Opd::OSym(s) => {
-                    kayak_rt::heap_cons(if string_eq_p(m, str_lit("call")) {
+                    kayak_rt::heap_cons(if string_eq_p(m, str_lit!("call")) {
                         p_call(s)
                     } else {
                         p_branch(-1i64, s)
@@ -840,22 +840,22 @@ pub mod kc_asm {
                 }
                 _ => {
                     let other = tagcase_;
-                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit("a call or jump of this")), kayak_rt::nil())), kayak_rt::nil())
+                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit!("a call or jump of this")), kayak_rt::nil())), kayak_rt::nil())
                 }
             }
-        } else if (has_prefix_p(m, str_lit("j")) && i64_gt(string_length_i64(m), 1i64)) {
+        } else if (has_prefix_p(m, str_lit!("j")) && i64_gt(string_length_i64(m), 1i64)) {
             let tagcase_ = a;
             match *tagcase_ {
                 Opd::OSym(s) => {
-                    kayak_rt::heap_cons(p_branch(condition_of(after_prefix(m, str_lit("j"))), s), kayak_rt::nil())
+                    kayak_rt::heap_cons(p_branch(condition_of(after_prefix(m, str_lit!("j"))), s), kayak_rt::nil())
                 }
                 _ => {
                     let other = tagcase_;
-                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit("a conditional jump of this")), kayak_rt::nil())), kayak_rt::nil())
+                    kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(str_lit!("a conditional jump of this")), kayak_rt::nil())), kayak_rt::nil())
                 }
             }
         } else {
-            kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(string_append(str_lit("an instruction "), m)), kayak_rt::nil())), kayak_rt::nil())
+            kayak_rt::heap_cons(p_bytes(kayak_rt::heap_cons(not_yet(string_append(str_lit!("an instruction "), m)), kayak_rt::nil())), kayak_rt::nil())
         }
     }
 
@@ -865,7 +865,7 @@ pub mod kc_asm {
     pub fn section_names() -> Strings {
         static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
         once(&ONCE, || {
-            kayak_rt::heap_cons(str_lit(".text"), kayak_rt::heap_cons(str_lit(".data"), kayak_rt::heap_cons(str_lit(".bss"), kayak_rt::heap_cons(str_lit(".rodata"), kayak_rt::heap_cons(str_lit(".note.GNU-stack"), kayak_rt::nil())))))
+            kayak_rt::heap_cons(str_lit!(".text"), kayak_rt::heap_cons(str_lit!(".data"), kayak_rt::heap_cons(str_lit!(".bss"), kayak_rt::heap_cons(str_lit!(".rodata"), kayak_rt::heap_cons(str_lit!(".note.GNU-stack"), kayak_rt::nil())))))
         })
     }
 
@@ -923,49 +923,49 @@ pub mod kc_asm {
         let tagcase_ = r;
         match *tagcase_ {
             Reading::Reading(ss, cur, gs, cs, sets, labels) => {
-                if (string_eq_p(line, str_lit("")) || has_prefix_p(line, str_lit("#"))) {
+                if (string_eq_p(line, str_lit!("")) || has_prefix_p(line, str_lit!("#"))) {
                     r
-                } else if has_suffix_p(line, str_lit(":")) {
+                } else if has_suffix_p(line, str_lit!(":")) {
                     let name = substring(line, int_lit(0), _minus(string_length(line), int_lit(1)));
                     reading(nth_set(ss, cur, kayak_rt::heap_cons(p_label(name), kayak_rt::nil())), cur, gs, cs, sets, kayak_rt::heap_cons(Product_11_12(name, cur), labels))
-                } else if has_prefix_p(line, str_lit(".")) {
+                } else if has_prefix_p(line, str_lit!(".")) {
                     let w = word_end(string_chars(line), nil::<char>());
                     let d = w.0;
                     let args = split_commas(w.1, 0i64, nil::<char>(), nil::<Str>());
-                    if string_eq_p(d, str_lit(".text")) {
+                    if string_eq_p(d, str_lit!(".text")) {
                         reading(ss, 0i64, gs, cs, sets, labels)
-                    } else if string_eq_p(d, str_lit(".data")) {
+                    } else if string_eq_p(d, str_lit!(".data")) {
                         reading(ss, 1i64, gs, cs, sets, labels)
-                    } else if string_eq_p(d, str_lit(".bss")) {
+                    } else if string_eq_p(d, str_lit!(".bss")) {
                         reading(ss, 2i64, gs, cs, sets, labels)
-                    } else if string_eq_p(d, str_lit(".section")) {
-                        reading(ss, if string_eq_p(car(args), str_lit(".rodata")) {
+                    } else if string_eq_p(d, str_lit!(".section")) {
+                        reading(ss, if string_eq_p(car(args), str_lit!(".rodata")) {
                             3i64
-                        } else if string_eq_p(car(args), str_lit(".text")) {
+                        } else if string_eq_p(car(args), str_lit!(".text")) {
                             0i64
-                        } else if string_eq_p(car(args), str_lit(".data")) {
+                        } else if string_eq_p(car(args), str_lit!(".data")) {
                             1i64
-                        } else if string_eq_p(car(args), str_lit(".bss")) {
+                        } else if string_eq_p(car(args), str_lit!(".bss")) {
                             2i64
                         } else {
                             4i64
                         }, gs, cs, sets, labels)
-                    } else if string_eq_p(d, str_lit(".globl")) {
+                    } else if string_eq_p(d, str_lit!(".globl")) {
                         reading(ss, cur, kayak_rt::heap_cons(car(args), gs), cs, sets, labels)
-                    } else if string_eq_p(d, str_lit(".p2align")) {
+                    } else if string_eq_p(d, str_lit!(".p2align")) {
                         added(r, kayak_rt::heap_cons(p_align(number_of(car(args))), kayak_rt::nil()))
-                    } else if string_eq_p(d, str_lit(".quad")) {
+                    } else if string_eq_p(d, str_lit!(".quad")) {
                         if number_text_p(car(args)) {
                             added(r, kayak_rt::heap_cons(p_bytes(le_bytes(number_of(car(args)), 8i64)), kayak_rt::nil()))
                         } else {
                             added(r, kayak_rt::heap_cons(p_fix(8i64, car(args), 0i64, 1i64), kayak_rt::nil()))
                         }
-                    } else if string_eq_p(d, str_lit(".comm")) {
+                    } else if string_eq_p(d, str_lit!(".comm")) {
                         reading(ss, cur, gs, kayak_rt::heap_cons(Product_11_12_13(car(args), number_of(second_of(args)), number_of(car(cdr(cdr(args))))), cs), sets, labels)
-                    } else if string_eq_p(d, str_lit(".set")) {
+                    } else if string_eq_p(d, str_lit!(".set")) {
                         reading(ss, cur, gs, cs, kayak_rt::heap_cons(Product_11_12(car(args), number_of(second_of(args))), sets), labels)
                     } else {
-                        not_yet(string_append(str_lit("a directive "), d));
+                        not_yet(string_append(str_lit!("a directive "), d));
                         r
                     }
                 } else {
@@ -1359,7 +1359,7 @@ pub mod kc_asm {
                                 string_eq_p(x.0, s)
                             })), sets));
                             (ps, off, out) = (cdr(ps), i64_plus(off, n), rev_onto_bytes(le_bytes(if null_p(v) {
-                                not_yet(string_append(str_lit("a symbol never set, "), s))
+                                not_yet(string_append(str_lit!("a symbol never set, "), s))
                             } else {
                                 car(v)
                             }, n), out));
@@ -1646,10 +1646,10 @@ pub mod kc_asm {
                     Reloc::Reloc(off, r#type, s, a) => {
                         let at = image_at(s, syms, commons, bases);
                         if i64_eq(r#type, 1i64) {
-                            not_yet(string_append(str_lit("an absolute address in process, of "), s));
+                            not_yet(string_append(str_lit!("an absolute address in process, of "), s));
                             return acc;
                         } else if null_p(at) {
-                            not_yet(string_append(str_lit("a symbol the image has not, "), s));
+                            not_yet(string_append(str_lit!("a symbol the image has not, "), s));
                             return acc;
                         } else {
                             (rs, acc) = (cdr(rs), kayak_rt::heap_cons(Product_11_12(off, i64_minus(i64_plus(car(at), a), i64_plus(base, off))), acc));
@@ -1867,7 +1867,7 @@ pub mod kc_asm {
                     }
                 };
                 let locals = filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12_13_14<Str, i64, i64, bool>| {
-                    (not(x.3) && not(has_prefix_p(x.0, str_lit(".L"))))
+                    (not(x.3) && not(has_prefix_p(x.0, str_lit!(".L"))))
                 })), syms);
                 let defined = filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12_13_14<Str, i64, i64, bool>| {
                     x.3
@@ -1891,7 +1891,7 @@ pub mod kc_asm {
                 })), defined), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
                     c.0
                 })), commons), undefined));
-                let symbol_order = onto(kayak_rt::heap_cons(str_lit(""), kayak_rt::heap_cons(str_lit(".text"), kayak_rt::heap_cons(str_lit(".data"), kayak_rt::heap_cons(str_lit(".bss"), kayak_rt::heap_cons(str_lit(".rodata"), kayak_rt::nil()))))), onto(local_names, global_names));
+                let symbol_order = onto(kayak_rt::heap_cons(str_lit!(""), kayak_rt::heap_cons(str_lit!(".text"), kayak_rt::heap_cons(str_lit!(".data"), kayak_rt::heap_cons(str_lit!(".bss"), kayak_rt::heap_cons(str_lit!(".rodata"), kayak_rt::nil()))))), onto(local_names, global_names));
                 let st = strtab(onto(local_names, global_names), the::<Bytes>(kayak_rt::heap_cons(0i64, kayak_rt::nil())), 1i64, nil::<Product_11_12<Str, i64>>());
                 let shndx = kayak_rt::closure1s((), |(), k: i64| {
                     if i64_eq(k, 0i64) {
@@ -1916,7 +1916,7 @@ pub mod kc_asm {
                 let first_global = i64_plus(5i64, size(locals));
                 let rela_text = rela_bytes(text_rs, symbol_order);
                 let rela_data = rela_bytes(data_rs, symbol_order);
-                let shs = strtab(kayak_rt::heap_cons(str_lit(".text"), kayak_rt::heap_cons(str_lit(".rela.text"), kayak_rt::heap_cons(str_lit(".data"), kayak_rt::heap_cons(str_lit(".rela.data"), kayak_rt::heap_cons(str_lit(".bss"), kayak_rt::heap_cons(str_lit(".rodata"), kayak_rt::heap_cons(str_lit(".note.GNU-stack"), kayak_rt::heap_cons(str_lit(".symtab"), kayak_rt::heap_cons(str_lit(".strtab"), kayak_rt::heap_cons(str_lit(".shstrtab"), kayak_rt::nil())))))))))), the::<Bytes>(kayak_rt::heap_cons(0i64, kayak_rt::nil())), 1i64, nil::<Product_11_12<Str, i64>>());
+                let shs = strtab(kayak_rt::heap_cons(str_lit!(".text"), kayak_rt::heap_cons(str_lit!(".rela.text"), kayak_rt::heap_cons(str_lit!(".data"), kayak_rt::heap_cons(str_lit!(".rela.data"), kayak_rt::heap_cons(str_lit!(".bss"), kayak_rt::heap_cons(str_lit!(".rodata"), kayak_rt::heap_cons(str_lit!(".note.GNU-stack"), kayak_rt::heap_cons(str_lit!(".symtab"), kayak_rt::heap_cons(str_lit!(".strtab"), kayak_rt::heap_cons(str_lit!(".shstrtab"), kayak_rt::nil())))))))))), the::<Bytes>(kayak_rt::heap_cons(0i64, kayak_rt::nil())), 1i64, nil::<Product_11_12<Str, i64>>());
                 let sh = kayak_rt::closure1s((shs,), |(shs,), n: Str| {
                     name_at(n, shs.1)
                 });
@@ -1930,7 +1930,7 @@ pub mod kc_asm {
                 let o_shs = i64_plus(o_str, size(st.0));
                 let o_sh = aligned(i64_plus(o_shs, size(shs.0)), 8i64);
                 let header = concat(kayak_rt::heap_cons(the::<Bytes>(kayak_rt::heap_cons(127i64, kayak_rt::heap_cons(69i64, kayak_rt::heap_cons(76i64, kayak_rt::heap_cons(70i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::nil()))))))))))))))))), kayak_rt::heap_cons(u16(1i64), kayak_rt::heap_cons(u16(62i64), kayak_rt::heap_cons(u32(1i64), kayak_rt::heap_cons(u64(0i64), kayak_rt::heap_cons(u64(0i64), kayak_rt::heap_cons(u64(o_sh), kayak_rt::heap_cons(u32(0i64), kayak_rt::heap_cons(u16(64i64), kayak_rt::heap_cons(u16(0i64), kayak_rt::heap_cons(u16(0i64), kayak_rt::heap_cons(u16(64i64), kayak_rt::heap_cons(u16(11i64), kayak_rt::heap_cons(u16(10i64), kayak_rt::nil())))))))))))))));
-                let headers = concat(kayak_rt::heap_cons(section_header(0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".text")), 1i64, 6i64, o_text, size(code), 0i64, 0i64, 16i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".rela.text")), 4i64, 64i64, o_rt, size(rela_text), 8i64, 1i64, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".data")), 1i64, 3i64, o_data, size(data), 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".rela.data")), 4i64, 64i64, o_rd, size(rela_data), 8i64, 3i64, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".bss")), 8i64, 3i64, o_ro, bss_size, 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".rodata")), 1i64, 2i64, o_ro, size(ro), 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".note.GNU-stack")), 1i64, 0i64, o_sh, 0i64, 0i64, 0i64, 1i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".symtab")), 2i64, 0i64, o_sym, size(symtab), 9i64, first_global, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".strtab")), 3i64, 0i64, o_str, size(st.0), 0i64, 0i64, 1i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".shstrtab")), 3i64, 0i64, o_shs, size(shs.0), 0i64, 0i64, 1i64, 0i64), kayak_rt::nil()))))))))))));
+                let headers = concat(kayak_rt::heap_cons(section_header(0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".text")), 1i64, 6i64, o_text, size(code), 0i64, 0i64, 16i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".rela.text")), 4i64, 64i64, o_rt, size(rela_text), 8i64, 1i64, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".data")), 1i64, 3i64, o_data, size(data), 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".rela.data")), 4i64, 64i64, o_rd, size(rela_data), 8i64, 3i64, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".bss")), 8i64, 3i64, o_ro, bss_size, 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".rodata")), 1i64, 2i64, o_ro, size(ro), 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".note.GNU-stack")), 1i64, 0i64, o_sh, 0i64, 0i64, 0i64, 1i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".symtab")), 2i64, 0i64, o_sym, size(symtab), 9i64, first_global, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".strtab")), 3i64, 0i64, o_str, size(st.0), 0i64, 0i64, 1i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit!(".shstrtab")), 3i64, 0i64, o_shs, size(shs.0), 0i64, 0i64, 1i64, 0i64), kayak_rt::nil()))))))))))));
                 let f0 = placed(nil::<i64>(), 0i64, 0i64, header);
                 let f1 = placed(f0.0, f0.1, o_text, code);
                 let f2 = placed(f1.0, f1.1, o_data, data);

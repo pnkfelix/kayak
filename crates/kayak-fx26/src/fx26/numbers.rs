@@ -237,7 +237,7 @@ pub fn number_text(v: i64) -> Str {
     } else if is_big_p(v) {
         int_to_string(int_of(v))
     } else if is_kind_p(v, k_ratnum()) {
-        string_append(int_to_string(int_of(slot_of(v, 3i64))), string_append(str_lit("/"), int_to_string(int_of(slot_of(v, 2i64)))))
+        string_append(int_to_string(int_of(slot_of(v, 3i64))), string_append(str_lit!("/"), int_to_string(int_of(slot_of(v, 2i64)))))
     } else if is_f32_p(v) {
         f32_to_string(f32_of(v))
     } else {

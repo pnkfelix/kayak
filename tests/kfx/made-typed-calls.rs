@@ -7,7 +7,7 @@ use kayak_rt::*;
 // position and not, given and called.
 #[inline]
 pub fn here_p() -> bool {
-    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
+    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit!("(target arm64)")))
 }
 
 pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
@@ -45,11 +45,11 @@ pub fn main() -> Str {
         via()
     } else {
         int_lit(42)
-    }), string_append(str_lit(" "), string_append(int_to_string(if here_p() {
+    }), string_append(str_lit!(" "), string_append(int_to_string(if here_p() {
         via2(adder())
     } else {
         int_lit(42)
-    }), string_append(str_lit(" "), int_to_string(if here_p() {
+    }), string_append(str_lit!(" "), int_to_string(if here_p() {
         via3(adder())
     } else {
         int_lit(42)

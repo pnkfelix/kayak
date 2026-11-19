@@ -39,7 +39,7 @@ pub fn k_words(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> Lis
 pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
     let ws = k_words(string_chars(s), nil::<char>(), nil::<Str>());
     if null_p(cdr(ws)) {
-        lst(kayak_rt::heap_cons(sym(car(ws), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
+        lst(kayak_rt::heap_cons(sym(car(ws), str_lit!(""), 0i64), kayak_rt::nil()), str_lit!(""), 0i64, 0i64)
     } else {
         key1(car(ws), car(cdr(ws)))
     }
@@ -47,10 +47,10 @@ pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
 
 #[inline]
 pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
-    if string_eq_p(key_arg(k, 0i64), str_lit("")) {
+    if string_eq_p(key_arg(k, 0i64), str_lit!("")) {
         key_query(k)
     } else {
-        string_append(key_query(k), string_append(str_lit(" "), key_arg(k, 0i64)))
+        string_append(key_query(k), string_append(str_lit!(" "), key_arg(k, 0i64)))
     }
 }
 
@@ -80,7 +80,7 @@ pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, m
 }
 
 pub fn reread(d: Db, whose: Str) -> Db {
-    let fs = db_saved(d, str_lit("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
+    let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
         true
     })));
     let before = db_reader(d);
@@ -114,7 +114,7 @@ pub fn words_from(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> 
 pub fn after_space(k: Str) -> Str {
     let ws = words_from(string_chars(k), nil::<char>(), nil::<Str>());
     if null_p(cdr(ws)) {
-        str_lit("")
+        str_lit!("")
     } else {
         car(cdr(ws))
     }
@@ -139,13 +139,13 @@ pub fn string_to_i64_of(s: Str) -> i64 {
 pub fn run(d: Db, key: kayak_rt::Handle<'static, Sexp>) -> Str {
     let k = k_text(key);
     let q = car(words_from(string_chars(k), nil::<char>(), nil::<Str>()));
-    if string_eq_p(q, str_lit("len")) {
-        i64_to_string(string_length_i64(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit("file "), after_space(k))))))
-    } else if string_eq_p(q, str_lit("total")) {
-        i64_to_string(sum_lens(d, words_from(string_chars(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("files")))), nil::<char>(), nil::<Str>()), 0i64))
+    if string_eq_p(q, str_lit!("len")) {
+        i64_to_string(string_length_i64(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit!("file "), after_space(k))))))
+    } else if string_eq_p(q, str_lit!("total")) {
+        i64_to_string(sum_lens(d, words_from(string_chars(db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("files")))), nil::<char>(), nil::<Str>()), 0i64))
     } else {
-        error(string_append(str_lit("no query "), k));
-        str_lit("")
+        error(string_append(str_lit!("no query "), k));
+        str_lit!("")
     }
 }
 
@@ -154,7 +154,7 @@ pub fn sum_lens(mut d: Db, mut ns: List<Str>, mut acc: i64) -> i64 {
         if null_p(ns) {
             return acc;
         } else {
-            (ns, acc) = (cdr(ns), i64_plus(acc, string_to_i64_of(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit("len "), car(ns)))))));
+            (ns, acc) = (cdr(ns), i64_plus(acc, string_to_i64_of(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit!("len "), car(ns)))))));
             continue;
         }
     }
@@ -165,7 +165,7 @@ pub fn long_text(mut n: i64, mut acc: Str) -> Str {
         if i64_lt_eq(n, 0i64) {
             return acc;
         } else {
-            (n, acc) = (i64_minus(n, 10i64), string_append(acc, str_lit("0123456789")));
+            (n, acc) = (i64_minus(n, 10i64), string_append(acc, str_lit!("0123456789")));
             continue;
         }
     }
@@ -174,38 +174,38 @@ pub fn long_text(mut n: i64, mut acc: Str) -> Str {
 // An ask of `total`: its value and the bodies it ran.
 pub fn asked(d: Db, what: Str) -> Str {
     let before = db_runs(d);
-    let v = db_get(d, kayak_rt::as_proc(run), k_of(str_lit("total")));
-    string_append(what, string_append(str_lit("="), string_append(v, string_append(str_lit("/"), i64_to_string(i64_minus(db_runs(d), before))))))
+    let v = db_get(d, kayak_rt::as_proc(run), k_of(str_lit!("total")));
+    string_append(what, string_append(str_lit!("="), string_append(v, string_append(str_lit!("/"), i64_to_string(i64_minus(db_runs(d), before))))))
 }
 
 pub fn main() -> Str {
     let d = db_make();
-    db_set_x(d, k_of(str_lit("files")), str_lit("a b"), 2i64);
-    db_set_x(d, k_of(str_lit("file a")), str_lit("xyz"), 0i64);
-    db_set_x(d, k_of(str_lit("file b")), str_lit("hello"), 0i64);
-    let first = asked(d, str_lit("first"));
-    let again = asked(d, str_lit("again"));
+    db_set_x(d, k_of(str_lit!("files")), str_lit!("a b"), 2i64);
+    db_set_x(d, k_of(str_lit!("file a")), str_lit!("xyz"), 0i64);
+    db_set_x(d, k_of(str_lit!("file b")), str_lit!("hello"), 0i64);
+    let first = asked(d, str_lit!("first"));
+    let again = asked(d, str_lit!("again"));
     let same = {
-        db_set_x(d, k_of(str_lit("file a")), str_lit("abc"), 0i64);
-        asked(d, str_lit("same-length"))
+        db_set_x(d, k_of(str_lit!("file a")), str_lit!("abc"), 0i64);
+        asked(d, str_lit!("same-length"))
     };
     let longer = {
-        db_set_x(d, k_of(str_lit("file b")), str_lit("hello!"), 0i64);
-        asked(d, str_lit("longer"))
+        db_set_x(d, k_of(str_lit!("file b")), str_lit!("hello!"), 0i64);
+        asked(d, str_lit!("longer"))
     };
     let sides = {
-        db_side_put_x(d, str_lit("short"), str_lit("kept λ"));
-        db_side_put_x(d, str_lit("long"), long_text(5000i64, str_lit("")));
+        db_side_put_x(d, str_lit!("short"), str_lit!("kept λ"));
+        db_side_put_x(d, str_lit!("long"), long_text(5000i64, str_lit!("")));
         ()
     };
-    let d2 = reread(d, str_lit("test"));
-    let side = string_append(str_lit("side="), string_append(db_side(d2, str_lit("short")), string_append(str_lit(","), i64_to_string(string_length_i64(db_side(d2, str_lit("long")))))));
-    let read_back = asked(d2, str_lit("read-back"));
+    let d2 = reread(d, str_lit!("test"));
+    let side = string_append(str_lit!("side="), string_append(db_side(d2, str_lit!("short")), string_append(str_lit!(","), i64_to_string(string_length_i64(db_side(d2, str_lit!("long")))))));
+    let read_back = asked(d2, str_lit!("read-back"));
     let edited = {
-        db_set_x(d2, k_of(str_lit("file a")), str_lit("abcd"), 0i64);
-        asked(d2, str_lit("edited"))
+        db_set_x(d2, k_of(str_lit!("file a")), str_lit!("abcd"), 0i64);
+        asked(d2, str_lit!("edited"))
     };
-    let other = string_append(str_lit("another's-keys="), i64_to_string(size(db_keys(reread(d, str_lit("another"))))));
-    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(other, kayak_rt::nil()))))))))))))))))
+    let other = string_append(str_lit!("another's-keys="), i64_to_string(size(db_keys(reread(d, str_lit!("another"))))));
+    string_list_append(kayak_rt::heap_cons(first, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(same, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(longer, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(side, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(read_back, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(edited, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(other, kayak_rt::nil()))))))))))))))))
 }
 

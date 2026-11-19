@@ -1068,7 +1068,7 @@ pub fn y_far_p(l: Int) -> bool {
 pub fn export_slot(l: Int) -> Int {
     let i = export_at(get(y_exports()), l, int_lit(0));
     if _lt(i, int_lit(0)) {
-        error(string_append(str_lit("kayak-cells: a word's code goes to the machine's label "), string_append(int_to_string(l), str_lit(", which it does not export"))));
+        error(string_append(str_lit!("kayak-cells: a word's code goes to the machine's label "), string_append(int_to_string(l), str_lit!(", which it does not export"))));
         int_lit(0)
     } else {
         _plus(st_exports(), i)
@@ -3589,7 +3589,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     yreg_instructions_x(rw, 0i64, n, base, starts, resumes);
     ybind_x(_plus(base, n_cells));
     yb_x(_plus(get(h_gbase()), _star(int_lit(2), n_cells)));
-    span_labelled_x(register_name(rw, str_lit(" (tier 5)")), base, _plus(base, n_cells), rw, true, base);
+    span_labelled_x(register_name(rw, str_lit!(" (tier 5)")), base, _plus(base, n_cells), rw, true, base);
     yresumes_emitted_x(0i64, n, base, rbase, rgive, resumes);
     flatarray_set_i64_x(get(h_5_pushed()), n, if y_pushed_p() {
         1i64
@@ -3610,7 +3610,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
         let end = label_x();
         y6_compiled_x(rw, n, base, starts);
         ybind_x(end);
-        span_labelled_x(register_name(rw, str_lit(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end, rw, true, get(h_6_base()))
+        span_labelled_x(register_name(rw, str_lit!(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end, rw, true, get(h_6_base()))
     } else {
         ()
     };
@@ -3832,7 +3832,7 @@ pub fn hand_code_x64_x() -> kayak_rt::Sum {
         let b = the::<&'static Bloblet<()>>(make_bloblet(count, ()));
         let v = y_all_put_x(b, its, int_lit(0), ls);
         let p = kayak_rt::as_proc(kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b)));
-        code_named_x(ls, int_lit(1), count, str_lit("kayak tier 2: the machine"));
+        code_named_x(ls, int_lit(1), count, str_lit!("kayak tier 2: the machine"));
         set(hand_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
         set(y_machine_labels(), get(hand_labels()));
         set(y_far_from(), get(hand_labels()));
@@ -3888,14 +3888,14 @@ pub fn words_read_compiled_x(had_words: i64, had_regs: i64) -> () {
 /// x86_64's; elsewhere none.
 pub fn hand_code_x() -> kayak_rt::Sum {
     let target = car(the::<List<Str>>(native_convention()));
-    if (get(hand_fixpt_calls()) && string_eq_p(target, str_lit("(target arm64)"))) {
-        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit("--fixpt-calls: x86_64's alone (C140)"))
-    } else if string_eq_p(target, str_lit("(target arm64)")) {
+    if (get(hand_fixpt_calls()) && string_eq_p(target, str_lit!("(target arm64)"))) {
+        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit!("--fixpt-calls: x86_64's alone (C140)"))
+    } else if string_eq_p(target, str_lit!("(target arm64)")) {
         hand_code_arm64_x()
-    } else if string_eq_p(target, str_lit("(target x86_64)")) {
+    } else if string_eq_p(target, str_lit!("(target x86_64)")) {
         hand_code_x64_x()
     } else {
-        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit("tier 2: no machine for "), target))
+        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit!("tier 2: no machine for "), target))
     }
 }
 
@@ -3917,14 +3917,14 @@ pub fn address_code_x() -> kayak_rt::Sum {
     let target = car(the::<List<Str>>(native_convention()));
     if not(null_p(get(address_made()))) {
         kayak_rt::sum_new::<kayak_rt::Proc1<'static, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made-address") }, "made-address", car(get(address_made())))
-    } else if string_eq_p(target, str_lit("(target x86_64)")) {
+    } else if string_eq_p(target, str_lit!("(target x86_64)")) {
         let bs = the::<List<Int>>(append(x86::x86_lea(int_lit(0), y_rdi(), int_lit(-4)), append(x86::x86_shift_imm(s_shl(), int_lit(0), int_lit(3)), x86::x86_ret())));
         let b = the::<&'static Bloblet<()>>(make_bloblet(y_length(bs, int_lit(0)), ()));
         let u = y_bytes_x(b, bs, int_lit(0));
         let p = kayak_rt::as_proc(kayak_rt::native_procedure1::<FlatArray<i64>, Int>(seal_code(b)));
         set(address_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
         kayak_rt::sum_new::<kayak_rt::Proc1<'static, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made-address") }, "made-address", p)
-    } else if string_eq_p(target, str_lit("(target arm64)")) {
+    } else if string_eq_p(target, str_lit!("(target arm64)")) {
         let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(12), ()));
         let u = {
             put4(b, int_lit(0), a64::arm_sub_imm(int_lit(0), int_lit(1), int_lit(4)));
@@ -3935,7 +3935,7 @@ pub fn address_code_x() -> kayak_rt::Sum {
         set(address_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
         kayak_rt::sum_new::<kayak_rt::Proc1<'static, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made-address") }, "made-address", p)
     } else {
-        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("no-address") }, "no-address", string_append(str_lit("no native code for "), target))
+        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("no-address") }, "no-address", string_append(str_lit!("no native code for "), target))
     }
 }
 
@@ -3976,7 +3976,7 @@ pub fn code_area_made_x(p: AddressCode, first: FlatArray<i64>, above: i64) -> ()
                 set(code_top(), mid);
                 set(code_hi(), i64_plus(lo, n))
             };
-            set(code_stub_word(), if string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target x86_64)")) {
+            set(code_stub_word(), if string_eq_p(car(the::<List<Str>>(native_convention())), str_lit!("(target x86_64)")) {
                 -3746994885129404607i64
             } else {
                 -3017691022109928688i64

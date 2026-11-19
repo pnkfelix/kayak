@@ -10,7 +10,7 @@ pub fn show_args(mut r#as: List<Str>) -> () {
         if null_p(r#as) {
             return ();
         } else {
-            write_out(string_append(str_lit("arg "), string_append(car(r#as), str_lit("\n"))));
+            write_out(string_append(str_lit!("arg "), string_append(car(r#as), str_lit!("\n"))));
             r#as = cdr(r#as);
             continue;
         }
@@ -22,11 +22,11 @@ pub fn main() -> Int {
     show_args(the::<List<Str>>(args()));
     sleep_until(i64_plus(t0, 1000000i64));
     write_out(if i64_gt_eq(clock(), i64_plus(t0, 1000000i64)) {
-        str_lit("the clock moved on\n")
+        str_lit!("the clock moved on\n")
     } else {
-        str_lit("the clock ran back\n")
+        str_lit!("the clock ran back\n")
     });
-    write_err(str_lit("to the standard error\n"));
+    write_err(str_lit!("to the standard error\n"));
     match exit(int_lit(3)) {};
     int_lit(7)
 }

@@ -33,7 +33,7 @@ pub mod made__load__0__conditions {
 
     pub async fn raise<C: Copy + 'static + kayak_rt::Trace, V: Copy + 'static + kayak_rt::Trace>(key: MarkKey<kayak_rt::Proc1<'static, C, kayak_rt::suspend::Body<V>>>, condition: C) -> Result<V, Unwind> {
         Ok(kayak_rt::suspend::body((first_mark(key, kayak_rt::closure1((), |(), x: C| kayak_rt::suspend::body(async move {
-            Ok(error(str_lit("a condition raised with no handler")))
+            Ok(error(str_lit!("a condition raised with no handler")))
         })))).call(condition)).await?)
     }
 }
@@ -86,7 +86,7 @@ pub fn lax(s: Str) -> Int {
 pub fn strict(s: Str) -> Int {
     kayak_rt::suspend::block(kayak_rt::suspend::body(handle::<Int, Str>(kayak_rt::closure1((s,), |(s,), t: Tag<Int, Str>| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(with_handler::<char, Int, Int>(kayak_rt::closure1((t,), |(t,), ch: char| kayak_rt::suspend::body(async move {
-            (return Err(unwind(t, string_append(str_lit("no digit: "), char_to_string(ch)))))
+            (return Err(unwind(t, string_append(str_lit!("no digit: "), char_to_string(ch)))))
         })), kayak_rt::closure1((s,), |(s,), key: MarkKey<kayak_rt::Proc1<'static, char, kayak_rt::suspend::Body<Int>>>| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(number_from(kayak_rt::closure1((key,), |(key,), ch: char| kayak_rt::suspend::body(async move {
                 Ok(kayak_rt::suspend::body(digit(key, ch)).await?)
@@ -138,13 +138,13 @@ pub fn found(xs: List<Int>) -> Int {
 #[inline]
 pub fn show(xs: List<Int>) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else {
-        string_append(int_to_string(car(xs)), string_append(str_lit(" "), show(cdr(xs))))
+        string_append(int_to_string(car(xs)), string_append(str_lit!(" "), show(cdr(xs))))
     }
 }
 
 pub fn main() -> Str {
-    show(kayak_rt::heap_cons(lax(str_lit("12")), kayak_rt::heap_cons(lax(str_lit("1f")), kayak_rt::heap_cons(strict(str_lit("123")), kayak_rt::heap_cons(strict(str_lit("1x3")), kayak_rt::heap_cons(found(kayak_rt::heap_cons(int_lit(4), kayak_rt::heap_cons(int_lit(5), kayak_rt::heap_cons(int_lit(-6), kayak_rt::heap_cons(int_lit(7), kayak_rt::nil()))))), kayak_rt::heap_cons(found(kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::nil()))), kayak_rt::nil())))))))
+    show(kayak_rt::heap_cons(lax(str_lit!("12")), kayak_rt::heap_cons(lax(str_lit!("1f")), kayak_rt::heap_cons(strict(str_lit!("123")), kayak_rt::heap_cons(strict(str_lit!("1x3")), kayak_rt::heap_cons(found(kayak_rt::heap_cons(int_lit(4), kayak_rt::heap_cons(int_lit(5), kayak_rt::heap_cons(int_lit(-6), kayak_rt::heap_cons(int_lit(7), kayak_rt::nil()))))), kayak_rt::heap_cons(found(kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::nil()))), kayak_rt::nil())))))))
 }
 

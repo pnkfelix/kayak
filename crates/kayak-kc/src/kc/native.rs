@@ -30,63 +30,63 @@ use super::*;
 // 16 on   the heap
 
 pub fn _pctsyscall_available_colonkc_routine() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall kc-routine (\"kayak:kc-routine/1\")"), str_lit("kayak:kc-routine/1"), str_lit("(subr (io sys) (string) int)"));
+    kayak_rt::syscall_require(str_lit!("syscall kc-routine (\"kayak:kc-routine/1\")"), str_lit!("kayak:kc-routine/1"), str_lit!("(subr (io sys) (string) int)"));
     true
 }
 
 pub fn kc_routine(x1: Str) -> Int {
     _pctsyscall_available_colonkc_routine();
-    kayak_rt::syscall1(str_lit("syscall kc-routine (\"kayak:kc-routine/1\")"), str_lit("kayak:kc-routine/1"), str_lit("(subr (io sys) (string) int)"), x1)
+    kayak_rt::syscall1(str_lit!("syscall kc-routine (\"kayak:kc-routine/1\")"), str_lit!("kayak:kc-routine/1"), str_lit!("(subr (io sys) (string) int)"), x1)
 }
 
 pub fn _pctsyscall_available_colonkc_failure() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall kc-failure (\"kayak:kc-failure/1\")"), str_lit("kayak:kc-failure/1"), str_lit("(subr (io sys) () string)"));
+    kayak_rt::syscall_require(str_lit!("syscall kc-failure (\"kayak:kc-failure/1\")"), str_lit!("kayak:kc-failure/1"), str_lit!("(subr (io sys) () string)"));
     true
 }
 
 pub fn kc_failure() -> Str {
     _pctsyscall_available_colonkc_failure();
-    kayak_rt::syscall0(str_lit("syscall kc-failure (\"kayak:kc-failure/1\")"), str_lit("kayak:kc-failure/1"), str_lit("(subr (io sys) () string)"))
+    kayak_rt::syscall0(str_lit!("syscall kc-failure (\"kayak:kc-failure/1\")"), str_lit!("kayak:kc-failure/1"), str_lit!("(subr (io sys) () string)"))
 }
 
 pub fn _pctsyscall_available_colonkc_give() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall kc-give (\"kayak:kc-give/1\")"), str_lit("kayak:kc-give/1"), str_lit("(subr (io sys) (string) unit)"));
+    kayak_rt::syscall_require(str_lit!("syscall kc-give (\"kayak:kc-give/1\")"), str_lit!("kayak:kc-give/1"), str_lit!("(subr (io sys) (string) unit)"));
     true
 }
 
 pub fn kc_give(x1: Str) -> () {
     _pctsyscall_available_colonkc_give();
-    kayak_rt::syscall1(str_lit("syscall kc-give (\"kayak:kc-give/1\")"), str_lit("kayak:kc-give/1"), str_lit("(subr (io sys) (string) unit)"), x1)
+    kayak_rt::syscall1(str_lit!("syscall kc-give (\"kayak:kc-give/1\")"), str_lit!("kayak:kc-give/1"), str_lit!("(subr (io sys) (string) unit)"), x1)
 }
 
 pub fn _pctsyscall_available_colonkc_output() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall kc-output (\"kayak:kc-output/1\")"), str_lit("kayak:kc-output/1"), str_lit("(subr (io sys) () string)"));
+    kayak_rt::syscall_require(str_lit!("syscall kc-output (\"kayak:kc-output/1\")"), str_lit!("kayak:kc-output/1"), str_lit!("(subr (io sys) () string)"));
     true
 }
 
 pub fn kc_output() -> Str {
     _pctsyscall_available_colonkc_output();
-    kayak_rt::syscall0(str_lit("syscall kc-output (\"kayak:kc-output/1\")"), str_lit("kayak:kc-output/1"), str_lit("(subr (io sys) () string)"))
+    kayak_rt::syscall0(str_lit!("syscall kc-output (\"kayak:kc-output/1\")"), str_lit!("kayak:kc-output/1"), str_lit!("(subr (io sys) () string)"))
 }
 
 pub fn _pctsyscall_available_colonlast_sealed() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"));
+    kayak_rt::syscall_require(str_lit!("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit!("kayak:last-sealed/1"), str_lit!("(subr (io sys) () int)"));
     true
 }
 
 pub fn last_sealed() -> Int {
     _pctsyscall_available_colonlast_sealed();
-    kayak_rt::syscall0(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"))
+    kayak_rt::syscall0(str_lit!("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit!("kayak:last-sealed/1"), str_lit!("(subr (io sys) () int)"))
 }
 
 pub fn _pctsyscall_available_colonunseal() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall unseal (\"kayak:unseal/1\")"), str_lit("kayak:unseal/1"), str_lit("(subr (io sys) (int) unit)"));
+    kayak_rt::syscall_require(str_lit!("syscall unseal (\"kayak:unseal/1\")"), str_lit!("kayak:unseal/1"), str_lit!("(subr (io sys) (int) unit)"));
     true
 }
 
 pub fn unseal(x1: Int) -> () {
     _pctsyscall_available_colonunseal();
-    kayak_rt::syscall1(str_lit("syscall unseal (\"kayak:unseal/1\")"), str_lit("kayak:unseal/1"), str_lit("(subr (io sys) (int) unit)"), x1)
+    kayak_rt::syscall1(str_lit!("syscall unseal (\"kayak:unseal/1\")"), str_lit!("kayak:unseal/1"), str_lit!("(subr (io sys) (int) unit)"), x1)
 }
 
 pub mod kc_native {
@@ -116,7 +116,7 @@ pub mod kc_native {
         } else {
             let a = int_to_i64(kc_routine(car(names)));
             if i64_eq(a, 0i64) {
-                error(string_append(str_lit("kc run: kayak-rt has no routine "), car(names)));
+                error(string_append(str_lit!("kc run: kayak-rt has no routine "), car(names)));
                 nil::<i64>()
             } else {
                 kayak_rt::heap_cons(a, native_routines(cdr(names)))
@@ -252,7 +252,7 @@ pub mod kc_native {
                     ()
                 };
                 if i64_eq(f.call(h), 0i64) {
-                    str_lit("")
+                    str_lit!("")
                 } else {
                     kc_failure()
                 }
@@ -272,7 +272,7 @@ pub mod kc_native {
     #[inline]
     pub fn native_run(image: List<i64>, words: i64) -> Str {
         let s = native_sealed(image, words);
-        let m = native_call(s, false, str_lit(""));
+        let m = native_call(s, false, str_lit!(""));
         native_freed(s);
         m
     }

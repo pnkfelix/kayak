@@ -272,12 +272,12 @@ pub fn shard_of_number(i: i64) -> i64 {
 // A key of a query of one argument, or two: `(NAME "A")`, `(NAME "A" "B")`.
 #[inline]
 pub fn key1(q: Str, a: Str) -> kayak_rt::Handle<'static, Sexp> {
-    lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), kayak_rt::heap_cons(str(a, str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+    lst(kayak_rt::heap_cons(sym(q, str_lit!(""), 0i64), kayak_rt::heap_cons(str(a, str_lit!(""), 0i64), kayak_rt::nil())), str_lit!(""), 0i64, 0i64)
 }
 
 #[inline]
 pub fn key2(q: Str, a: Str, b: Str) -> kayak_rt::Handle<'static, Sexp> {
-    lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), kayak_rt::heap_cons(str(a, str_lit(""), 0i64), kayak_rt::heap_cons(str(b, str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+    lst(kayak_rt::heap_cons(sym(q, str_lit!(""), 0i64), kayak_rt::heap_cons(str(a, str_lit!(""), 0i64), kayak_rt::heap_cons(str(b, str_lit!(""), 0i64), kayak_rt::nil()))), str_lit!(""), 0i64, 0i64)
 }
 
 // A key's query's name, and its argument `i` (from 0) as text.
@@ -286,7 +286,7 @@ pub fn key_query(k: kayak_rt::Handle<'static, Sexp>) -> Str {
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
             if null_p(xs) {
-                str_lit("")
+                str_lit!("")
             } else {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
@@ -295,7 +295,7 @@ pub fn key_query(k: kayak_rt::Handle<'static, Sexp>) -> Str {
                     }
                     _ => {
                         let other = tagcase_;
-                        str_lit("")
+                        str_lit!("")
                     }
                 }
             }
@@ -305,7 +305,7 @@ pub fn key_query(k: kayak_rt::Handle<'static, Sexp>) -> Str {
         }
         _ => {
             let other = tagcase_;
-            str_lit("")
+            str_lit!("")
         }
     }
 }
@@ -319,7 +319,7 @@ pub fn key_arg(k: kayak_rt::Handle<'static, Sexp>, i: i64) -> Str {
         }
         _ => {
             let other = tagcase_;
-            str_lit("")
+            str_lit!("")
         }
     }
 }
@@ -327,7 +327,7 @@ pub fn key_arg(k: kayak_rt::Handle<'static, Sexp>, i: i64) -> Str {
 pub fn key_arg_of(mut xs: Sexps, mut i: i64) -> Str {
     loop {
         if null_p(xs) {
-            return str_lit("");
+            return str_lit!("");
         } else if i64_eq(i, 0i64) {
             let tagcase_ = car(xs);
             match *tagcase_ {
@@ -342,7 +342,7 @@ pub fn key_arg_of(mut xs: Sexps, mut i: i64) -> Str {
                 }
                 _ => {
                     let other = tagcase_;
-                    return str_lit("");
+                    return str_lit!("");
                 }
             }
         } else {
@@ -374,15 +374,15 @@ pub fn key_escaped(mut cs: List<char>, mut acc: List<Str>) -> List<Str> {
             return acc;
         } else {
             (cs, acc) = (cdr(cs), kayak_rt::heap_cons(if char_eq_p(car(cs), '"') {
-                str_lit("\\\"")
+                str_lit!("\\\"")
             } else if char_eq_p(car(cs), '\\') {
-                str_lit("\\\\")
+                str_lit!("\\\\")
             } else if char_eq_p(car(cs), '\n') {
-                str_lit("\\n")
+                str_lit!("\\n")
             } else if char_eq_p(car(cs), '\t') {
-                str_lit("\\t")
+                str_lit!("\\t")
             } else if i64_gt(char_to_i64(car(cs)), 127i64) {
-                string_append(str_lit("\\u{"), string_append(hex_of(char_to_i64(car(cs)), str_lit("")), str_lit("}")))
+                string_append(str_lit!("\\u{"), string_append(hex_of(char_to_i64(car(cs)), str_lit!("")), str_lit!("}")))
             } else {
                 list_to_string(kayak_rt::heap_cons(car(cs), kayak_rt::nil()))
             }, acc));
@@ -423,9 +423,9 @@ pub fn plain_from_p(mut s: Str, mut i: i64, mut n: i64) -> bool {
 
 pub fn str_text(s: Str) -> Str {
     if plain_from_p(s, 0i64, string_length_i64(s)) {
-        string_append(str_lit("\""), string_append(s, str_lit("\"")))
+        string_append(str_lit!("\""), string_append(s, str_lit!("\"")))
     } else {
-        string_append(str_lit("\""), string_append(string_list_append(reverse(key_escaped(string_chars(s), nil::<Str>()))), str_lit("\"")))
+        string_append(str_lit!("\""), string_append(string_list_append(reverse(key_escaped(string_chars(s), nil::<Str>()))), str_lit!("\"")))
     }
 }
 
@@ -442,22 +442,22 @@ pub fn key_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
             i64_to_string(n)
         }
         Sexp::Lst(xs, f, l, p) => {
-            string_append(str_lit("("), string_append(keys_text(xs), str_lit(")")))
+            string_append(str_lit!("("), string_append(keys_text(xs), str_lit!(")")))
         }
         _ => {
             let other = tagcase_;
-            str_lit("?")
+            str_lit!("?")
         }
     }
 }
 
 pub fn keys_text(xs: Sexps) -> Str {
     if null_p(xs) {
-        str_lit("")
+        str_lit!("")
     } else if null_p(cdr(xs)) {
         key_text(car(xs))
     } else {
-        string_append(key_text(car(xs)), string_append(str_lit(" "), keys_text(cdr(xs))))
+        string_append(key_text(car(xs)), string_append(str_lit!(" "), keys_text(cdr(xs))))
     }
 }
 
@@ -1282,7 +1282,7 @@ pub fn sc_str(s: Str, i: i64, n: i64, atoms: kayak_rt::Handle<'static, Amap>) ->
                 str_unescaped(string_chars(inner), nil::<char>())
             } else {
                 inner
-            }, str_lit(""), 0i64), substring(s, i64_to_int(i), i64_to_int(i64_plus(e, 1i64))), atoms, i64_plus(e, 1i64))
+            }, str_lit!(""), 0i64), substring(s, i64_to_int(i), i64_to_int(i64_plus(e, 1i64))), atoms, i64_plus(e, 1i64))
         }
     }
 }
@@ -1318,8 +1318,8 @@ pub fn sc_part(s: Str, i: i64, n: i64, atoms: kayak_rt::Handle<'static, Amap>) -
                 } else {
                     let found = am_get(atoms, k);
                     if null_p(found) {
-                        error(str_lit("kayak-db: a label no part made"));
-                        part(sym(str_lit(""), str_lit(""), 0i64), str_lit(""), atoms, i64_plus(e, 1i64))
+                        error(str_lit!("kayak-db: a label no part made"));
+                        part(sym(str_lit!(""), str_lit!(""), 0i64), str_lit!(""), atoms, i64_plus(e, 1i64))
                     } else {
                         let tagcase_ = car(found);
                         match *tagcase_ {
@@ -1337,13 +1337,13 @@ pub fn sc_part(s: Str, i: i64, n: i64, atoms: kayak_rt::Handle<'static, Amap>) -
         let tagcase_ = sc_int(s, i, n);
         match *tagcase_ {
             Scanned::Scanned(v, e) => {
-                part(num(v, str_lit(""), 0i64), substring(s, i64_to_int(i), i64_to_int(e)), atoms, e)
+                part(num(v, str_lit!(""), 0i64), substring(s, i64_to_int(i), i64_to_int(e)), atoms, e)
             }
         }
     } else {
         let e = sc_name_end(s, i, n);
         let t = substring(s, i64_to_int(i), i64_to_int(e));
-        part(sym(t, str_lit(""), 0i64), t, atoms, e)
+        part(sym(t, str_lit!(""), 0i64), t, atoms, e)
     }
 }
 
@@ -1370,7 +1370,7 @@ pub fn texts_spaced(mut ts: List<Str>, mut acc: List<Str>) -> List<Str> {
             (ts, acc) = (cdr(ts), kayak_rt::heap_cons(car(ts), if null_p(acc) {
                 acc
             } else {
-                kayak_rt::heap_cons(str_lit(" "), acc)
+                kayak_rt::heap_cons(str_lit!(" "), acc)
             }));
             continue;
         }
@@ -1395,7 +1395,7 @@ pub fn keys_scanned_x(d: Db, s: Str, i: i64, n: i64, atoms: kayak_rt::Handle<'st
                         let tagcase_ = sc_parts(s, i64_plus(e, 2i64), n, atoms, nil::<kayak_rt::Handle<'static, Sexp>>(), nil::<Str>());
                         match *tagcase_ {
                             Parts::Parts(xs, ts, atoms2, e2) => {
-                                let (key, text) = (lst(reverse(xs), str_lit(""), 0i64, 0i64), string_append(str_lit("("), string_append(string_list_append(texts_spaced(ts, nil::<Str>())), str_lit(")"))));
+                                let (key, text) = (lst(reverse(xs), str_lit!(""), 0i64, 0i64), string_append(str_lit!("("), string_append(string_list_append(texts_spaced(ts, nil::<Str>())), str_lit!(")"))));
                                 set(d.2, km_put(get(d.2), text, k));
                                 set(d.1, im_put(get(d.1), k, node(key, false, -1i64, -1i64, 0i64, nil::<i64>(), 0i64, v_none())));
                                 keys_scanned_x(d, s, after, n, atoms2, if i64_gt(k, top) {
@@ -1461,7 +1461,7 @@ pub fn shard_values_start(t: Str) -> i64 {
 #[inline]
 pub fn key_group(k: kayak_rt::Handle<'static, Sexp>) -> Str {
     let a = key_arg(k, 0i64);
-    if string_eq_p(a, str_lit("")) {
+    if string_eq_p(a, str_lit!("")) {
         key_query(k)
     } else {
         a
@@ -1607,8 +1607,8 @@ pub fn sm_set_x(d: Db, n: i64, x: kayak_rt::Handle<'static, Shard>) -> () {
 pub fn db_shard(d: Db, n: i64) -> kayak_rt::Handle<'static, Shard> {
     let x = sm_get(get(d.3), n);
     if null_p(x) {
-        error(str_lit("kayak-db: no such shard"));
-        shard(str_lit(""), -1i64, str_lit(""), 0i64, true, false)
+        error(str_lit!("kayak-db: no such shard"));
+        shard(str_lit!(""), -1i64, str_lit!(""), 0i64, true, false)
     } else {
         car(x)
     }
@@ -1616,12 +1616,12 @@ pub fn db_shard(d: Db, n: i64) -> kayak_rt::Handle<'static, Shard> {
 
 #[inline]
 pub fn shard_file(n: i64, slot: i64) -> Str {
-    string_append(str_lit("g"), string_append(i64_to_string(n), string_append(str_lit("."), i64_to_string(slot))))
+    string_append(str_lit!("g"), string_append(i64_to_string(n), string_append(str_lit!("."), i64_to_string(slot))))
 }
 
 #[inline]
 pub fn value_file(i: i64) -> Str {
-    string_append(str_lit("v"), i64_to_string(i))
+    string_append(str_lit!("v"), i64_to_string(i))
 }
 
 // Shard `n` read, if the database has it and it is not yet (C472): its
@@ -1641,17 +1641,17 @@ pub fn db_shard_read_x(d: Db, n: i64) -> () {
                     ()
                 } else {
                     let text = if i64_lt(slot, 0i64) {
-                        str_lit("")
+                        str_lit!("")
                     } else {
                         (get(d.6)).call(shard_file(n, slot))
                     };
                     let m = string_length_i64(text);
-                    let hd = str_lit("(kayak-shard 3 ");
+                    let hd = str_lit!("(kayak-shard 3 ");
                     let ok = (i64_gt(m, string_length_i64(hd)) && string_eq_p(substring(text, int_lit(0), string_length(hd)), hd));
                     sm_set_x(d, n, shard(h, slot, if ok {
                         text
                     } else {
-                        str_lit("")
+                        str_lit!("")
                     }, next, true, dirty));
                     if ok {
                         let k0 = sc_ws(text, i64_plus(shard_values_start(text), db_nth(sc_ints(text, string_length_i64(hd), m, 2i64, nil::<i64>()), 1i64)), m);
@@ -1681,7 +1681,7 @@ pub fn db_shard_of_group_x(d: Db, g: Str) -> i64 {
         let m = get(d.5);
         set(d.5, i64_plus(m, 1i64));
         set(d.4, km_put(get(d.4), h, m));
-        sm_set_x(d, m, shard(h, -1i64, str_lit(""), 0i64, true, false));
+        sm_set_x(d, m, shard(h, -1i64, str_lit!(""), 0i64, true, false));
         m
     }
 }
@@ -1719,7 +1719,7 @@ pub fn db_node_read_x(d: Db, i: i64) -> () {
 
 pub fn db_make() -> Db {
     Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<kayak_rt::Handle<'static, Imap>>>(kayak_rt::heap_new(im_none())), the::<Ref<kayak_rt::Handle<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<kayak_rt::Handle<'static, Smap>>>(kayak_rt::heap_new(sm_none())), the::<Ref<kayak_rt::Handle<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Reader>>(kayak_rt::heap_new(kayak_rt::closure1((), |(), name: Str| {
-        str_lit("")
+        str_lit!("")
     }))), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<kayak_rt::Handle<'static, Frame>>>>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Frame>>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Sexp>>())))
 }
 
@@ -1828,9 +1828,9 @@ pub fn ascii_escaped(mut cs: List<char>, mut acc: List<Str>) -> List<Str> {
         } else {
             let k = char_to_i64(car(cs));
             (cs, acc) = (cdr(cs), kayak_rt::heap_cons(if char_eq_p(car(cs), '\\') {
-                str_lit("\\\\")
+                str_lit!("\\\\")
             } else if i64_gt(k, 127i64) {
-                string_append(str_lit("\\u{"), string_append(hex_of(k, str_lit("")), str_lit("}")))
+                string_append(str_lit!("\\u{"), string_append(hex_of(k, str_lit!("")), str_lit!("}")))
             } else {
                 list_to_string(kayak_rt::heap_cons(car(cs), kayak_rt::nil()))
             }, acc));
@@ -1909,7 +1909,7 @@ pub fn node_value_in(d: Db, n: kayak_rt::Handle<'static, Node>) -> Str {
         Value::VFile(i) => {
             let x = value_checked((get(d.6)).call(value_file(i)), node_fp(n));
             if null_p(x) {
-                str_lit("")
+                str_lit!("")
             } else {
                 car(x)
             }
@@ -1925,7 +1925,7 @@ pub fn node_value_in(d: Db, n: kayak_rt::Handle<'static, Node>) -> Str {
             }
         }
         Value::VNone() => {
-            str_lit("")
+            str_lit!("")
         }
     }
 }
@@ -1943,16 +1943,16 @@ pub fn node_value(d: Db, n: kayak_rt::Handle<'static, Node>) -> Str {
 // written and read with them.
 #[inline]
 pub fn db_side(d: Db, k: Str) -> Str {
-    let n = db_node(d, key1(str_lit("%side"), k));
+    let n = db_node(d, key1(str_lit!("%side"), k));
     if null_p(n) {
-        str_lit("")
+        str_lit!("")
     } else {
         node_value_in(d, car(n))
     }
 }
 
 pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
-    let key = key1(str_lit("%side"), k);
+    let key = key1(str_lit!("%side"), k);
     db_put_x(d, db_id(d, key), node(key, true, 0i64, 0i64, queries::fnv_string(text, queries::fnv_offset()), nil::<i64>(), 0i64, v_text(text)))
 }
 
@@ -2006,8 +2006,8 @@ pub fn note_read_x(d: Db, i: i64, du: i64) -> () {
 pub fn db_get(d: Db, run: Runner, k: kayak_rt::Handle<'static, Sexp>) -> Str {
     let i = db_id(d, k);
     if id_in_p(i, get(d.8)) {
-        error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
-        str_lit("")
+        error(string_append(str_lit!("a cycle of queries, through "), key_text(k)));
+        str_lit!("")
     } else {
         let x = db_current(d, run, i, k);
         note_read_x(d, i, {
@@ -2123,7 +2123,7 @@ pub fn db_execute(d: Db, run: Runner, i: i64, k: kayak_rt::Handle<'static, Sexp>
 pub fn db_get_fingerprint(d: Db, run: Runner, k: kayak_rt::Handle<'static, Sexp>) -> i64 {
     let i = db_id(d, k);
     if id_in_p(i, get(d.8)) {
-        error(string_append(str_lit("a cycle of queries, through "), key_text(k)));
+        error(string_append(str_lit!("a cycle of queries, through "), key_text(k)));
         0i64
     } else {
         db_made_current(d, run, i, k);
@@ -2174,7 +2174,7 @@ pub fn db_fingerprint(d: Db, run: Runner, k: kayak_rt::Handle<'static, Sexp>) ->
 // made again only when its value is read.
 #[inline]
 pub fn db_format() -> Str {
-    str_lit("kayak-db 3")
+    str_lit!("kayak-db 3")
 }
 
 // A file to write: its name, and its text.
@@ -2218,16 +2218,16 @@ pub fn key_written(k: kayak_rt::Handle<'static, Sexp>, seen: kayak_rt::Handle<'s
         Sexp::Str(s, f, p) => {
             let j = km_get(seen, s);
             if i64_gt_eq(j, 0i64) {
-                keyed_out(kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(j), str_lit("#"))), acc), seen, n)
+                keyed_out(kayak_rt::heap_cons(string_append(str_lit!("#"), string_append(i64_to_string(j), str_lit!("#"))), acc), seen, n)
             } else {
-                keyed_out(kayak_rt::heap_cons(str_text(s), kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(n), str_lit("="))), acc)), km_put(seen, s, n), i64_plus(n, 1i64))
+                keyed_out(kayak_rt::heap_cons(str_text(s), kayak_rt::heap_cons(string_append(str_lit!("#"), string_append(i64_to_string(n), str_lit!("="))), acc)), km_put(seen, s, n), i64_plus(n, 1i64))
             }
         }
         Sexp::Lst(xs, f, l, p) => {
-            let tagcase_ = keys_written(xs, seen, n, kayak_rt::heap_cons(str_lit("("), acc));
+            let tagcase_ = keys_written(xs, seen, n, kayak_rt::heap_cons(str_lit!("("), acc));
             match *tagcase_ {
                 KeyedOut::KeyedOut(acc2, seen2, n2) => {
-                    keyed_out(kayak_rt::heap_cons(str_lit(")"), acc2), seen2, n2)
+                    keyed_out(kayak_rt::heap_cons(str_lit!(")"), acc2), seen2, n2)
                 }
             }
         }
@@ -2249,7 +2249,7 @@ pub fn keys_written(mut xs: Sexps, mut seen: kayak_rt::Handle<'static, Kmap>, mu
                     (xs, seen, n, acc) = (cdr(xs), seen2, n2, if null_p(cdr(xs)) {
                         acc2
                     } else {
-                        kayak_rt::heap_cons(str_lit(" "), acc2)
+                        kayak_rt::heap_cons(str_lit!(" "), acc2)
                     });
                     continue;
                 }
@@ -2263,10 +2263,10 @@ pub fn labels_text(mut is: List<i64>, mut acc: List<Str>) -> List<Str> {
         if null_p(is) {
             return acc;
         } else {
-            (is, acc) = (cdr(is), kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("#"))), if null_p(acc) {
+            (is, acc) = (cdr(is), kayak_rt::heap_cons(string_append(str_lit!("#"), string_append(i64_to_string(car(is)), str_lit!("#"))), if null_p(acc) {
                 acc
             } else {
-                kayak_rt::heap_cons(str_lit(" "), acc)
+                kayak_rt::heap_cons(str_lit!(" "), acc)
             }));
             continue;
         }
@@ -2278,7 +2278,7 @@ pub fn labels_text(mut is: List<i64>, mut acc: List<Str>) -> List<Str> {
 // unread: `body` is that, its `)` included.
 #[inline]
 pub fn length_first(body: Str) -> Str {
-    string_append(str_lit("\n ("), string_append(i64_to_string(string_length_i64(body)), string_append(str_lit(" "), body)))
+    string_append(str_lit!("\n ("), string_append(i64_to_string(string_length_i64(body)), string_append(str_lit!(" "), body)))
 }
 
 // A shard's records made: its keys', its nodes', the values' files to
@@ -2391,7 +2391,7 @@ pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: kayak_rt
                         continue;
                     } else {
                         let n = car(db_node_at(d, car(is)));
-                        let tagcase_ = key_written(node_key(n), seen, labels, kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("="))), kayak_rt::nil()));
+                        let tagcase_ = key_written(node_key(n), seen, labels, kayak_rt::heap_cons(string_append(str_lit!("#"), string_append(i64_to_string(car(is)), str_lit!("="))), kayak_rt::nil()));
                         match *tagcase_ {
                             KeyedOut::KeyedOut(key_parts, seen2, labels2) => {
                                 let p = value_placed(d, n, (node_input_p(n) || keep.call(node_key(n))));
@@ -2418,16 +2418,16 @@ pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: kayak_rt
                                     match *tagcase_ {
                                         Placed::InShard(raw, e) => {
                                             string_list_append(kayak_rt::heap_cons(if e {
-                                                str_lit("(atx ")
+                                                str_lit!("(atx ")
                                             } else {
-                                                str_lit("(at ")
-                                            }, kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(string_length_i64(raw)), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil()))))))
+                                                str_lit!("(at ")
+                                            }, kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(string_length_i64(raw)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))
                                         }
                                         Placed::InFile(ts) => {
-                                            str_lit("file")
+                                            str_lit!("file")
                                         }
                                         Placed::Nowhere() => {
-                                            str_lit("none")
+                                            str_lit!("none")
                                         }
                                     }
                                 };
@@ -2441,11 +2441,11 @@ pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: kayak_rt
                                         }
                                     }
                                 };
-                                (is, m) = (cdr(is), made_files(kayak_rt::heap_cons(length_first(string_append(string_list_append(reverse(key_parts)), str_lit(")"))), keys), kayak_rt::heap_cons(length_first(string_list_append(kayak_rt::heap_cons(str_lit("#"), kayak_rt::heap_cons(i64_to_string(car(is)), kayak_rt::heap_cons(str_lit("# "), kayak_rt::heap_cons(if node_input_p(n) {
-                                    str_lit("1 ")
+                                (is, m) = (cdr(is), made_files(kayak_rt::heap_cons(length_first(string_append(string_list_append(reverse(key_parts)), str_lit!(")"))), keys), kayak_rt::heap_cons(length_first(string_list_append(kayak_rt::heap_cons(str_lit!("#"), kayak_rt::heap_cons(i64_to_string(car(is)), kayak_rt::heap_cons(str_lit!("# "), kayak_rt::heap_cons(if node_input_p(n) {
+                                    str_lit!("1 ")
                                 } else {
-                                    str_lit("0 ")
-                                }, kayak_rt::heap_cons(i64_to_string(node_verified(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_changed(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_fp(n)), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(node_durability(n)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(string_list_append(reverse(labels_text(node_deps(n), nil::<Str>()))), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(said, kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), nodes), {
+                                    str_lit!("0 ")
+                                }, kayak_rt::heap_cons(i64_to_string(node_verified(n)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(node_changed(n)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(node_fp(n)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(node_durability(n)), kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::heap_cons(string_list_append(reverse(labels_text(node_deps(n), nil::<Str>()))), kayak_rt::heap_cons(str_lit!(") "), kayak_rt::heap_cons(said, kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))))))))))))), nodes), {
                                     let tagcase_ = p;
                                     match *tagcase_ {
                                         Placed::InFile(ts) => {
@@ -2498,7 +2498,7 @@ pub fn numbers_text(xs: List<i64>) -> List<Str> {
     if null_p(xs) {
         nil::<Str>()
     } else {
-        kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(car(xs)), numbers_text(cdr(xs))))
+        kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(car(xs)), numbers_text(cdr(xs))))
     }
 }
 
@@ -2539,7 +2539,7 @@ pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: kayak_rt::Proc1s<'st
             match *tagcase_ {
                 Shard::Shard(h, slot, text, next, loaded, dirty) => {
                     if not(dirty) {
-                        (ns, heads) = (cdr(ns), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(slot), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), heads));
+                        (ns, heads) = (cdr(ns), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(slot), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))), heads));
                         continue;
                     } else {
                         let tagcase_ = nodes_files(d, car(ns), numbers_from(i64_star(car(ns), shard_span()), 0i64, next, nil::<i64>()), keep, made_files(nil::<Str>(), nil::<Str>(), nil::<kayak_rt::Handle<'static, DbFile>>(), nil::<Str>(), km_none(), 0i64, 0i64));
@@ -2550,9 +2550,9 @@ pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: kayak_rt::Proc1s<'st
                                 } else {
                                     the::<i64>(0i64)
                                 };
-                                let t = string_list_append(append(kayak_rt::heap_cons(str_lit("(kayak-shard 3 "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::heap_cons(string_list_append(reverse(payload)), kayak_rt::heap_cons(str_lit("\n(keys"), kayak_rt::nil()))))))), append(reverse(keys), append(kayak_rt::heap_cons(str_lit(")\n(nodes"), kayak_rt::nil()), append(reverse(nodes), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::nil()))))));
+                                let t = string_list_append(append(kayak_rt::heap_cons(str_lit!("(kayak-shard 3 "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit!(")\n"), kayak_rt::heap_cons(string_list_append(reverse(payload)), kayak_rt::heap_cons(str_lit!("\n(keys"), kayak_rt::nil()))))))), append(reverse(keys), append(kayak_rt::heap_cons(str_lit!(")\n(nodes"), kayak_rt::nil()), append(reverse(nodes), kayak_rt::heap_cons(str_lit!(")\n"), kayak_rt::nil()))))));
                                 sm_set_x(d, car(ns), shard(h, to, t, next, true, false));
-                                (ns, values, graphs, heads) = (cdr(ns), onto(reverse(files), values), kayak_rt::heap_cons(db_file(shard_file(car(ns), to), t), graphs), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(to), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))), heads));
+                                (ns, values, graphs, heads) = (cdr(ns), onto(reverse(files), values), kayak_rt::heap_cons(db_file(shard_file(car(ns), to), t), graphs), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::heap_cons(h, kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(to), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(next), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))), heads));
                                 continue;
                             }
                         }
@@ -2570,7 +2570,7 @@ pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: kayak_rt::Proc1s<'st
 pub fn db_saved(d: Db, whose: Str, keep: kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, bool>) -> List<kayak_rt::Handle<'static, DbFile>> {
     let r = shards_saved(d, sm_numbers(get(d.3), nil::<i64>()), keep, nil::<kayak_rt::Handle<'static, DbFile>>(), nil::<kayak_rt::Handle<'static, DbFile>>(), nil::<Str>());
     set(d.7, false);
-    onto(r.0, onto(r.1, kayak_rt::heap_cons(db_file(str_lit(""), string_list_append(append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::nil()))))))), append(cdr(numbers_text(get(d.9))), append(kayak_rt::heap_cons(str_lit(") ("), kayak_rt::nil()), append(r.2, kayak_rt::heap_cons(str_lit("))\n"), kayak_rt::nil()))))))), kayak_rt::nil())))
+    onto(r.0, onto(r.1, kayak_rt::heap_cons(db_file(str_lit!(""), string_list_append(append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit!(" ("), kayak_rt::nil()))))))), append(cdr(numbers_text(get(d.9))), append(kayak_rt::heap_cons(str_lit!(") ("), kayak_rt::nil()), append(r.2, kayak_rt::heap_cons(str_lit!("))\n"), kayak_rt::nil()))))))), kayak_rt::nil())))
 }
 
 /// The head's shards, `(HASH SLOT NEXT)` each, numbered from `k`, none
@@ -2583,7 +2583,7 @@ pub fn shards_scanned_x(d: Db, s: Str, i: i64, n: i64, k: i64) -> () {
         let xs = sc_ints(s, i64_plus(i, 1i64), n, 3i64, nil::<i64>());
         let h = i64_to_string(db_nth(xs, 0i64));
         set(d.4, km_put(get(d.4), h, k));
-        sm_set_x(d, k, shard(h, db_nth(xs, 1i64), str_lit(""), db_nth(xs, 2i64), false, false));
+        sm_set_x(d, k, shard(h, db_nth(xs, 1i64), str_lit!(""), db_nth(xs, 2i64), false, false));
         shards_scanned_x(d, s, i64_plus(sc_close(s, db_nth(xs, 3i64), n), 1i64), n, i64_plus(k, 1i64))
     }
 }
@@ -2595,9 +2595,9 @@ pub fn db_opened(rd: Reader, whose: Str) -> Db {
     let d = db_make();
     let graph = {
         set(d.6, rd);
-        rd.call(str_lit(""))
+        rd.call(str_lit!(""))
     };
-    let h = string_append(str_lit("("), string_append(db_format(), str_lit(" ")));
+    let h = string_append(str_lit!("("), string_append(db_format(), str_lit!(" ")));
     let n = string_length_i64(graph);
     let hn = string_length_i64(h);
     if not((i64_gt_eq(n, hn) && string_eq_p(substring(graph, int_lit(0), i64_to_int(hn)), h) && i64_eq(sc_char(graph, hn, n), 34i64))) {

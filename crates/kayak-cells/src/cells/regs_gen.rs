@@ -406,12 +406,12 @@ pub fn r_opnn(g: kayak_rt::Handle<'static, Rgen>, name: Str, n: i64, m: i64) -> 
 
 #[inline]
 pub fn r_const(g: kayak_rt::Handle<'static, Rgen>, l: kayak_rt::Handle<'static, Lit>) -> () {
-    r_ins(g, str_lit("const"), kayak_rt::heap_cons(o_lit(l), kayak_rt::nil()))
+    r_ins(g, str_lit!("const"), kayak_rt::heap_cons(o_lit(l), kayak_rt::nil()))
 }
 
 #[inline]
 pub fn r_op2imm(g: kayak_rt::Handle<'static, Rgen>, r: Str, l: kayak_rt::Handle<'static, Lit>) -> () {
-    r_ins(g, str_lit("op2imm"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_lit(l), kayak_rt::nil())))
+    r_ins(g, str_lit!("op2imm"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_lit(l), kayak_rt::nil())))
 }
 
 #[inline]
@@ -421,15 +421,15 @@ pub fn r_unit(g: kayak_rt::Handle<'static, Rgen>) -> () {
 
 #[inline]
 pub fn r_negate(g: kayak_rt::Handle<'static, Rgen>) -> () {
-    r_op2imm(g, str_lit("eq"), l_bool(false))
+    r_op2imm(g, str_lit!("eq"), l_bool(false))
 }
 
 // `k` added to RESULT, as an immediate; nothing, if 0.
 pub fn r_add_imm(g: kayak_rt::Handle<'static, Rgen>, k: Int) -> () {
     if _gt(k, int_lit(0)) {
-        r_op2imm(g, str_lit("int-add"), l_int(k))
+        r_op2imm(g, str_lit!("int-add"), l_int(k))
     } else if _lt(k, int_lit(0)) {
-        r_op2imm(g, str_lit("int-sub"), l_int(_minus(int_lit(0), k)))
+        r_op2imm(g, str_lit!("int-sub"), l_int(_minus(int_lit(0), k)))
     } else {
         ()
     }
@@ -477,7 +477,7 @@ pub fn r_leave(g: kayak_rt::Handle<'static, Rgen>) -> () {
     if g_leaf(g) {
         ()
     } else {
-        r_emit(g, ri_frame(str_lit("pop")))
+        r_emit(g, ri_frame(str_lit!("pop")))
     }
 }
 
@@ -485,7 +485,7 @@ pub fn r_leave(g: kayak_rt::Handle<'static, Rgen>) -> () {
 pub fn r_done(g: kayak_rt::Handle<'static, Rgen>, tail: bool) -> () {
     if tail {
         r_leave(g);
-        r_op0(g, str_lit("return"))
+        r_op0(g, str_lit!("return"))
     } else {
         ()
     }
@@ -500,14 +500,14 @@ pub fn r_const_value(g: kayak_rt::Handle<'static, Rgen>, l: kayak_rt::Handle<'st
 #[inline]
 pub fn r_keep_in_reg(g: kayak_rt::Handle<'static, Rgen>) -> i64 {
     let r = r_reg(g);
-    r_opn(g, str_lit("setreg"), r);
+    r_opn(g, str_lit!("setreg"), r);
     r
 }
 
 #[inline]
 pub fn r_keep_in_slot(g: kayak_rt::Handle<'static, Rgen>) -> i64 {
     let s = r_slot(g);
-    r_opn(g, str_lit("setstk"), s);
+    r_opn(g, str_lit!("setstk"), s);
     s
 }
 
@@ -529,10 +529,10 @@ pub fn r_get(g: kayak_rt::Handle<'static, Rgen>, l: kayak_rt::Handle<'static, Rl
     let tagcase_ = l;
     match *tagcase_ {
         Rloc::RlReg(r) => {
-            r_opn(g, str_lit("reg"), r)
+            r_opn(g, str_lit!("reg"), r)
         }
         Rloc::RlSlot(s) => {
-            r_opn(g, str_lit("stack"), s)
+            r_opn(g, str_lit!("stack"), s)
         }
         _ => {
             let y = tagcase_;
@@ -543,20 +543,20 @@ pub fn r_get(g: kayak_rt::Handle<'static, Rgen>, l: kayak_rt::Handle<'static, Rl
 
 #[inline]
 pub fn r_slot_move(g: kayak_rt::Handle<'static, Rgen>, from: i64, to: i64) -> () {
-    r_opn(g, str_lit("stack"), from);
-    r_opn(g, str_lit("setstk"), to)
+    r_opn(g, str_lit!("stack"), from);
+    r_opn(g, str_lit!("setstk"), to)
 }
 
 #[inline]
 pub fn r_const_into(g: kayak_rt::Handle<'static, Rgen>, l: kayak_rt::Handle<'static, Lit>, k: i64) -> () {
     r_const(g, l);
-    r_opn(g, str_lit("setreg"), k)
+    r_opn(g, str_lit!("setreg"), k)
 }
 
 #[inline]
 pub fn r_lexical_into(g: kayak_rt::Handle<'static, Rgen>, i: i64, k: i64) -> () {
-    r_opn(g, str_lit("lexical"), i);
-    r_opn(g, str_lit("setreg"), k)
+    r_opn(g, str_lit!("lexical"), i);
+    r_opn(g, str_lit!("setreg"), k)
 }
 
 pub fn r_emit_all(mut g: kayak_rt::Handle<'static, Rgen>, mut xs: Ritems) -> () {
@@ -590,9 +590,9 @@ pub fn r_conv_at(a: i64) -> i64 {
 pub fn r_invoke(g: kayak_rt::Handle<'static, Rgen>, n: i64, tail: bool, conv: i64) -> () {
     if tail {
         r_leave(g);
-        r_opnn(g, str_lit("tailinvoke"), n, conv)
+        r_opnn(g, str_lit!("tailinvoke"), n, conv)
     } else {
-        r_opnn(g, str_lit("invoke"), n, conv)
+        r_opnn(g, str_lit!("invoke"), n, conv)
     }
 }
 
@@ -810,7 +810,7 @@ pub fn r_split_app(env: Renv, name: Str, args: Cxs) -> List<kayak_rt::Handle<'st
                 let tagcase_ = r_split(env, car(cdr(args)));
                 match *tagcase_ {
                     Rsplit::Rsplit(pb, kb) => {
-                        let plus = string_eq_p(name, str_lit("+"));
+                        let plus = string_eq_p(name, str_lit!("+"));
                         let k = if plus {
                             _plus(ka, kb)
                         } else {
@@ -870,7 +870,7 @@ pub fn r_free_operand_p(env: Renv, x: kayak_rt::Handle<'static, Cx>) -> bool {
 pub fn r_identity_arg_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::nil())))
+        kayak_rt::heap_cons(str_lit!("+"), kayak_rt::heap_cons(str_lit!("-"), kayak_rt::heap_cons(str_lit!("*"), kayak_rt::nil())))
     })
 }
 
@@ -898,15 +898,15 @@ pub fn r_identity_arg(env: Renv, name: Str, args: Cxs) -> Cxs {
                 }
             })
         });
-        if (string_eq_p(name, str_lit("+")) && is.call(b, int_lit(0))) {
+        if (string_eq_p(name, str_lit!("+")) && is.call(b, int_lit(0))) {
             kayak_rt::heap_cons(x, kayak_rt::nil())
-        } else if (string_eq_p(name, str_lit("+")) && is.call(a, int_lit(0))) {
+        } else if (string_eq_p(name, str_lit!("+")) && is.call(a, int_lit(0))) {
             kayak_rt::heap_cons(y, kayak_rt::nil())
-        } else if (string_eq_p(name, str_lit("-")) && is.call(b, int_lit(0))) {
+        } else if (string_eq_p(name, str_lit!("-")) && is.call(b, int_lit(0))) {
             kayak_rt::heap_cons(x, kayak_rt::nil())
-        } else if (string_eq_p(name, str_lit("*")) && is.call(b, int_lit(1))) {
+        } else if (string_eq_p(name, str_lit!("*")) && is.call(b, int_lit(1))) {
             kayak_rt::heap_cons(x, kayak_rt::nil())
-        } else if (string_eq_p(name, str_lit("*")) && is.call(a, int_lit(1))) {
+        } else if (string_eq_p(name, str_lit!("*")) && is.call(a, int_lit(1))) {
             kayak_rt::heap_cons(y, kayak_rt::nil())
         } else {
             nil::<kayak_rt::Handle<'static, Cx>>()
@@ -954,7 +954,7 @@ pub fn r_self_known_p(g: kayak_rt::Handle<'static, Rgen>, f: kayak_rt::Handle<'s
 // with its arity.
 pub fn r_own_self(g: kayak_rt::Handle<'static, Rgen>, env: Renv, f: kayak_rt::Handle<'static, Cx>, args: Cxs) -> Strings {
     let x = g_ctx(g);
-    if (string_eq_p(x_own(x), str_lit("")) || i64_lt(x_own_start(x), 0i64) || not(i64_eq(size(args), x_own_arity(x)))) {
+    if (string_eq_p(x_own(x), str_lit!("")) || i64_lt(x_own_start(x), 0i64) || not(i64_eq(size(args), x_own_arity(x)))) {
         nil::<Str>()
     } else {
         let tagcase_ = f;
@@ -1124,7 +1124,7 @@ pub fn r_carried(mut env: Renv, mut acc: Renv) -> Renv {
                 let tagcase_ = car(env);
                 match *tagcase_ {
                     Rbind::Rbind(n, l) => {
-                        if (has_prefix_p(n, str_lit("%const:")) || has_prefix_p(n, str_lit("%inlining:"))) {
+                        if (has_prefix_p(n, str_lit!("%const:")) || has_prefix_p(n, str_lit!("%inlining:"))) {
                             kayak_rt::heap_cons(car(env), acc)
                         } else {
                             acc
@@ -1859,7 +1859,7 @@ pub fn r_self_moves(mut g: kayak_rt::Handle<'static, Rgen>, mut made: Rlocs, mut
                         if i64_eq(r, i64_plus(i, 1i64)) {
                             ()
                         } else {
-                            r_opnn(g, str_lit("movereg"), r, i64_plus(i, 1i64))
+                            r_opnn(g, str_lit!("movereg"), r, i64_plus(i, 1i64))
                         }
                     }
                     Rloc::RlSlot(s) => {
@@ -1970,7 +1970,7 @@ pub fn r_module_own(mut n: Str, mut sc: kayak_rt::Handle<'static, Rscope>, mut l
 pub fn r_standard_app_names() -> Strings {
     static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(str_lit("int-add"), kayak_rt::heap_cons(str_lit("eq"), kayak_rt::heap_cons(str_lit("int-eq"), kayak_rt::nil())))
+        kayak_rt::heap_cons(str_lit!("int-add"), kayak_rt::heap_cons(str_lit!("eq"), kayak_rt::heap_cons(str_lit!("int-eq"), kayak_rt::nil())))
     })
 }
 
@@ -2052,7 +2052,7 @@ pub fn r_exp_at(g: kayak_rt::Handle<'static, Rgen>, x: kayak_rt::Handle<'static,
                     if tail {
                         ()
                     } else {
-                        r_emit(g, ri_branch(str_lit("branch"), end))
+                        r_emit(g, ri_branch(str_lit!("branch"), end))
                     };
                     r_emit(g, ri_label(no));
                     r_exp(g, el, r_knowing(env, t, false), te, tail);
@@ -2071,7 +2071,7 @@ pub fn r_exp_at(g: kayak_rt::Handle<'static, Rgen>, x: kayak_rt::Handle<'static,
             }
             Cx::XExtract(p, i, a) => {
                 r_exp(g, p, env, te, false);
-                r_opn(g, str_lit("field"), i64_plus(i, 2i64));
+                r_opn(g, str_lit!("field"), i64_plus(i, 2i64));
                 r_done(g, tail)
             }
             Cx::XApp(f, args, a) => {
@@ -2137,15 +2137,15 @@ pub fn r_exp_at(g: kayak_rt::Handle<'static, Rgen>, x: kayak_rt::Handle<'static,
                 r_reshape(g, y, ps, env, te, tail)
             }
             Cx::XSum(t, v, a) => {
-                r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(36))), kayak_rt::heap_cons(a_v(l_sym(t)), kayak_rt::heap_cons(a_e(v), kayak_rt::nil()))), env, te);
+                r_prim(g, str_lit!("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(36))), kayak_rt::heap_cons(a_v(l_sym(t)), kayak_rt::heap_cons(a_e(v), kayak_rt::nil()))), env, te);
                 r_done(g, tail)
             }
             Cx::XProduct(fs, a) => {
-                r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), r_exp_args(c_bound_exps(fs))), env, te);
+                r_prim(g, str_lit!("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), r_exp_args(c_bound_exps(fs))), env, te);
                 r_done(g, tail)
             }
             Cx::XPrompt(t, body, h, a) => {
-                r_call_out(g, str_lit("cellular"), str_lit("prompt"), kayak_rt::heap_cons(a_e(t), kayak_rt::heap_cons(a_e(h), kayak_rt::heap_cons(a_thunk(body), kayak_rt::nil()))), env, te);
+                r_call_out(g, str_lit!("cellular"), str_lit!("prompt"), kayak_rt::heap_cons(a_e(t), kayak_rt::heap_cons(a_e(h), kayak_rt::heap_cons(a_thunk(body), kayak_rt::nil()))), env, te);
                 r_done(g, tail)
             }
             _ => {
@@ -2165,15 +2165,15 @@ pub fn r_letregion(g: kayak_rt::Handle<'static, Rgen>, k: i64, r: Str, body: kay
     } else {
         let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
         r_prim(g, if i64_eq(k, 1i64) {
-            str_lit("%region-enter")
+            str_lit!("%region-enter")
         } else {
-            str_lit("%reap-enter")
+            str_lit!("%reap-enter")
         }, nil::<kayak_rt::Handle<'static, Rarg>>(), env, te);
         {
             let h = r_keep_in_slot(g);
             r_exp(g, body, r_bind(r, rl_slot(h), env), r_local(te, r), false);
             let v = r_keep_in_slot(g);
-            r_prim(g, str_lit("%region-exit"), kayak_rt::heap_cons(a_slot(h), kayak_rt::heap_cons(a_slot(v), kayak_rt::nil())), env, te);
+            r_prim(g, str_lit!("%region-exit"), kayak_rt::heap_cons(a_slot(h), kayak_rt::heap_cons(a_slot(v), kayak_rt::nil())), env, te);
             r_done(g, tail)
         };
         r_restore(g, regs, slots)
@@ -2184,62 +2184,62 @@ pub fn r_letregion(g: kayak_rt::Handle<'static, Rgen>, k: i64, r: Str, body: kay
 /// checker found: a scalar's layout, an array's, a flat sum's.
 pub fn r_bloblet(g: kayak_rt::Handle<'static, Rgen>, op: Str, i: i64, args: Cxs, env: Renv, te: Cenv) -> () {
     let all = r_exp_args(args);
-    if string_eq_p(op, str_lit("bloblet-ref")) {
+    if string_eq_p(op, str_lit!("bloblet-ref")) {
         r_exp(g, car(args), env, te, false);
-        r_opn(g, str_lit("field"), i64_plus(i, 2i64))
-    } else if string_eq_p(op, str_lit("make-bloblet")) {
-        r_prim(g, str_lit("%make-bloblet"), all, env, te)
-    } else if string_eq_p(op, str_lit("rmake-bloblet")) {
-        r_prim(g, str_lit("%region-make-bloblet"), all, env, te)
-    } else if string_eq_p(op, str_lit("bloblet-set!")) {
-        r_prim(g, str_lit("%bloblet-set!"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i64_plus(i, 2i64)))), kayak_rt::heap_cons(a_e(second_cx(args)), kayak_rt::nil()))), env, te);
+        r_opn(g, str_lit!("field"), i64_plus(i, 2i64))
+    } else if string_eq_p(op, str_lit!("make-bloblet")) {
+        r_prim(g, str_lit!("%make-bloblet"), all, env, te)
+    } else if string_eq_p(op, str_lit!("rmake-bloblet")) {
+        r_prim(g, str_lit!("%region-make-bloblet"), all, env, te)
+    } else if string_eq_p(op, str_lit!("bloblet-set!")) {
+        r_prim(g, str_lit!("%bloblet-set!"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i64_plus(i, 2i64)))), kayak_rt::heap_cons(a_e(second_cx(args)), kayak_rt::nil()))), env, te);
         r_unit(g)
-    } else if string_eq_p(op, str_lit("bloblet-byte")) {
-        r_prim(g, str_lit("%bloblet-byte"), all, env, te)
-    } else if string_eq_p(op, str_lit("bloblet-set-byte!")) {
-        r_prim(g, str_lit("%bloblet-set-byte!"), all, env, te);
+    } else if string_eq_p(op, str_lit!("bloblet-byte")) {
+        r_prim(g, str_lit!("%bloblet-byte"), all, env, te)
+    } else if string_eq_p(op, str_lit!("bloblet-set-byte!")) {
+        r_prim(g, str_lit!("%bloblet-set-byte!"), all, env, te);
         r_unit(g)
-    } else if string_eq_p(op, str_lit("bloblet-bytes")) {
-        r_prim(g, str_lit("%bloblet-bytes"), all, env, te)
-    } else if string_eq_p(op, str_lit("blobref-at")) {
+    } else if string_eq_p(op, str_lit!("bloblet-bytes")) {
+        r_prim(g, str_lit!("%bloblet-bytes"), all, env, te)
+    } else if string_eq_p(op, str_lit!("blobref-at")) {
         {
             let tagcase_ = second_cx(args);
             match *tagcase_ {
                 Cx::XInt(k, a) => {
                     if (_gt_eq(k, int_lit(0)) && _lt(k, int_lit(67108864))) {
-                        r_prim(g, str_lit("%suffix-ref"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(k)), kayak_rt::nil())), env, te)
+                        r_prim(g, str_lit!("%suffix-ref"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(k)), kayak_rt::nil())), env, te)
                     } else {
-                        r_prim(g, str_lit("%suffix-ref"), all, env, te)
+                        r_prim(g, str_lit!("%suffix-ref"), all, env, te)
                     }
                 }
                 _ => {
                     let y = tagcase_;
-                    r_prim(g, str_lit("%suffix-ref"), all, env, te)
+                    r_prim(g, str_lit!("%suffix-ref"), all, env, te)
                 }
             }
         };
         r_fits(g, i)
-    } else if string_eq_p(op, str_lit("blobref+")) {
-        r_prim(g, str_lit("%suffix-ref+"), all, env, te);
+    } else if string_eq_p(op, str_lit!("blobref+")) {
+        r_prim(g, str_lit!("%suffix-ref+"), all, env, te);
         r_fits(g, i)
-    } else if string_eq_p(op, str_lit("%blobref-field")) {
-        r_prim(g, str_lit("%suffix-ref+"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
-    } else if string_eq_p(op, str_lit("blobref-owner")) {
-        r_prim(g, str_lit("%suffix-ref-owner"), all, env, te)
-    } else if string_eq_p(op, str_lit("blobref-offset")) {
-        r_prim(g, str_lit("%suffix-ref-offset"), all, env, te)
+    } else if string_eq_p(op, str_lit!("%blobref-field")) {
+        r_prim(g, str_lit!("%suffix-ref+"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
+    } else if string_eq_p(op, str_lit!("blobref-owner")) {
+        r_prim(g, str_lit!("%suffix-ref-owner"), all, env, te)
+    } else if string_eq_p(op, str_lit!("blobref-offset")) {
+        r_prim(g, str_lit!("%suffix-ref-offset"), all, env, te)
     } else if i64_lt(i, 0i64) {
         r_decline(g)
-    } else if string_eq_p(op, str_lit("blobref-get")) {
-        r_prim(g, str_lit("%fx26-suffix-ref-get"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
-    } else if string_eq_p(op, str_lit("blobref-length")) {
-        r_prim(g, str_lit("%fx26-suffix-ref-length"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
-    } else if string_eq_p(op, str_lit("blobref-index")) {
-        r_prim3(g, str_lit("%fx26-blobref-index"), car(args), i, second_cx(args), env, te)
-    } else if string_eq_p(op, str_lit("blobref-set!")) {
-        r_prim3(g, str_lit("%fx26-suffix-ref-set!"), car(args), i, second_cx(args), env, te)
-    } else if string_eq_p(op, str_lit("blobref-variant!")) {
-        r_prim3(g, str_lit("%fx26-flat-variant!"), car(args), i, second_cx(args), env, te)
+    } else if string_eq_p(op, str_lit!("blobref-get")) {
+        r_prim(g, str_lit!("%fx26-suffix-ref-get"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
+    } else if string_eq_p(op, str_lit!("blobref-length")) {
+        r_prim(g, str_lit!("%fx26-suffix-ref-length"), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_v(l_int(i64_to_int(i))), kayak_rt::nil())), env, te)
+    } else if string_eq_p(op, str_lit!("blobref-index")) {
+        r_prim3(g, str_lit!("%fx26-blobref-index"), car(args), i, second_cx(args), env, te)
+    } else if string_eq_p(op, str_lit!("blobref-set!")) {
+        r_prim3(g, str_lit!("%fx26-suffix-ref-set!"), car(args), i, second_cx(args), env, te)
+    } else if string_eq_p(op, str_lit!("blobref-variant!")) {
+        r_prim3(g, str_lit!("%fx26-flat-variant!"), car(args), i, second_cx(args), env, te)
     } else {
         r_decline(g)
     }
@@ -2257,16 +2257,16 @@ pub fn r_prim3(g: kayak_rt::Handle<'static, Rgen>, name: Str, a: kayak_rt::Handl
             r_exp(g, b, env, te, false);
             r_reg(g)
         };
-        r_opn(g, str_lit("setreg"), k);
+        r_opn(g, str_lit!("setreg"), k);
         r_get(g, at);
-        r_ins(g, str_lit("prim3imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_lit(l_int(i64_to_int(x))), kayak_rt::heap_cons(o_int(k), kayak_rt::nil()))))
+        r_ins(g, str_lit!("prim3imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_lit(l_int(i64_to_int(x))), kayak_rt::heap_cons(o_int(k), kayak_rt::nil()))))
     };
     r_restore(g, regs, slots)
 }
 
 #[inline]
 pub fn r_imm_prim(g: kayak_rt::Handle<'static, Rgen>, name: Str, v: kayak_rt::Handle<'static, Lit>) -> () {
-    r_ins(g, str_lit("prim2imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_lit(v), kayak_rt::nil())))
+    r_ins(g, str_lit!("prim2imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_lit(v), kayak_rt::nil())))
 }
 
 /// A new blobref's flat's `size` bytes checked in the suffix, in line;
@@ -2275,7 +2275,7 @@ pub fn r_fits(g: kayak_rt::Handle<'static, Rgen>, size: i64) -> () {
     if i64_lt(size, 0i64) {
         r_decline(g)
     } else if i64_gt(size, 1i64) {
-        r_imm_prim(g, str_lit("%fx26-suffix-fits"), l_int(i64_to_int(size)))
+        r_imm_prim(g, str_lit!("%fx26-suffix-fits"), l_int(i64_to_int(size)))
     } else {
         ()
     }
@@ -2289,14 +2289,14 @@ pub fn r_flat_tagcase(g: kayak_rt::Handle<'static, Rgen>, k: i64, s: kayak_rt::H
     {
         let sc = r_scrutinee_place(g, s, env, te);
         let tag = {
-            r_imm_prim(g, str_lit("%fx26-flat-tag"), l_int(i64_to_int(k)));
+            r_imm_prim(g, str_lit!("%fx26-flat-tag"), l_int(i64_to_int(k)));
             r_place_value(g)
         };
         let end = r_new_label(g);
         r_flat_arms(g, k, arms, sc, tag, end, regs, slots, env, te, tail);
         if null_p(els) {
             r_get(g, tag);
-            r_ins(g, str_lit("prim1"), kayak_rt::heap_cons(o_prim(str_lit("%fx26-flat-no-arm")), kayak_rt::nil()));
+            r_ins(g, str_lit!("prim1"), kayak_rt::heap_cons(o_prim(str_lit!("%fx26-flat-no-arm")), kayak_rt::nil()));
             r_done(g, tail)
         } else {
             let tagcase_ = car(els);
@@ -2321,16 +2321,16 @@ pub fn r_flat_arms(mut g: kayak_rt::Handle<'static, Rgen>, mut k: i64, mut arms:
                 Carm::Carm(name, whole, ns, body) => {
                     let next = r_new_label(g);
                     r_get(g, tag);
-                    r_op2imm(g, str_lit("eq"), if i64_eq(i64_remainder(i64_quotient(k, 8i64), 2i64), 1i64) {
+                    r_op2imm(g, str_lit!("eq"), if i64_eq(i64_remainder(i64_quotient(k, 8i64), 2i64), 1i64) {
                         l_int(i64_to_int(digits_i64(string_chars(name), 0i64)))
                     } else {
                         l_sym(name)
                     });
-                    r_emit(g, ri_branch(str_lit("branchf"), next));
+                    r_emit(g, ri_branch(str_lit!("branchf"), next));
                     {
                         let (regs, slots) = (get(g_nreg(g)), get(g_nslot(g)));
                         r_get(g, sc);
-                        r_imm_prim(g, str_lit("%suffix-ref+"), l_int(i64_to_int(i64_quotient(k, 256i64))));
+                        r_imm_prim(g, str_lit!("%suffix-ref+"), l_int(i64_to_int(i64_quotient(k, 256i64))));
                         r_restore(g, regs0, slots0);
                         {
                             let at = r_place_value(g);
@@ -2341,7 +2341,7 @@ pub fn r_flat_arms(mut g: kayak_rt::Handle<'static, Rgen>, mut k: i64, mut arms:
                     if tail {
                         ()
                     } else {
-                        r_emit(g, ri_branch(str_lit("branch"), end))
+                        r_emit(g, ri_branch(str_lit!("branch"), end))
                     };
                     r_emit(g, ri_label(next));
                     arms = cdr(arms);
@@ -2388,7 +2388,7 @@ pub fn r_module(g: kayak_rt::Handle<'static, Rgen>, its: List<kayak_rt::Handle<'
         let slots = get(g_nslot(g));
         let later = r_module_slots(g, its);
         let vals = r_module_make(g, its, env, te, later, nil::<kayak_rt::Handle<'static, Wait>>(), nil::<i64>());
-        r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), r_slot_args(reverse(vals))), env, te);
+        r_prim(g, str_lit!("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), r_slot_args(reverse(vals))), env, te);
         set(g_nslot(g), slots);
         r_done(g, tail)
     }
@@ -2430,7 +2430,7 @@ pub fn r_module_make(mut g: kayak_rt::Handle<'static, Rgen>, mut its: List<kayak
                         the::<Rpatches>(nil::<kayak_rt::Handle<'static, Rpatch>>())
                     };
                     let waits = {
-                        r_opn(g, str_lit("setstk"), s);
+                        r_opn(g, str_lit!("setstk"), s);
                         onto(ws, map(kayak_rt::as_proc(kayak_rt::closure1s((s,), |(s,), p: kayak_rt::Handle<'static, Rpatch>| {
                             let tagcase_ = p;
                             match *tagcase_ {
@@ -2486,9 +2486,9 @@ pub fn r_give_waiting(mut g: kayak_rt::Handle<'static, Rgen>, mut ws: List<kayak
                 match *tagcase_ {
                     Wait::Wait(at, j, t) => {
                         if i64_eq(t, s) {
-                            r_opnn(g, str_lit("load"), 1i64, s);
-                            r_opn(g, str_lit("stack"), at);
-                            r_opnn(g, str_lit("setfield"), i64_plus(3i64, j), 1i64)
+                            r_opnn(g, str_lit!("load"), 1i64, s);
+                            r_opn(g, str_lit!("stack"), at);
+                            r_opnn(g, str_lit!("setfield"), i64_plus(3i64, j), 1i64)
                         } else {
                             ()
                         }
@@ -2524,7 +2524,7 @@ pub fn r_with_fields(mut g: kayak_rt::Handle<'static, Rgen>, mut m: kayak_rt::Ha
             if string_member_p(car(ns), fv) {
                 let l = {
                     r_module_value(g, m, env);
-                    r_opn(g, str_lit("field"), i64_plus(car(ks), 2i64));
+                    r_opn(g, str_lit!("field"), i64_plus(car(ks), 2i64));
                     r_keep(g, g_leaf(g))
                 };
                 let tagcase_ = sc;
@@ -2555,16 +2555,16 @@ pub fn r_module_value(g: kayak_rt::Handle<'static, Rgen>, m: kayak_rt::Handle<'s
                 let tagcase_ = car(l);
                 match *tagcase_ {
                     Rloc::RlReg(k) => {
-                        r_opn(g, str_lit("reg"), k)
+                        r_opn(g, str_lit!("reg"), k)
                     }
                     Rloc::RlSlot(s) => {
-                        r_opn(g, str_lit("stack"), s)
+                        r_opn(g, str_lit!("stack"), s)
                     }
                     Rloc::RlFree(i) => {
-                        r_opn(g, str_lit("lexical"), i)
+                        r_opn(g, str_lit!("lexical"), i)
                     }
                     Rloc::RlGlobal(c) => {
-                        r_ins(g, str_lit("global"), kayak_rt::heap_cons(o_global(c), kayak_rt::nil()))
+                        r_ins(g, str_lit!("global"), kayak_rt::heap_cons(o_global(c), kayak_rt::nil()))
                     }
                     _ => {
                         let y = tagcase_;
@@ -2593,7 +2593,7 @@ pub fn r_reshape(g: kayak_rt::Handle<'static, Rgen>, y: kayak_rt::Handle<'static
             r_keep_in_slot(g)
         };
         let args = r_reshape_fields(g, m, ps);
-        r_prim(g, str_lit("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), args), env, te);
+        r_prim(g, str_lit!("%make-frozen"), kayak_rt::heap_cons(a_v(l_int(int_lit(37))), args), env, te);
         set(g_nslot(g), slots);
         r_done(g, tail)
     }
@@ -2604,7 +2604,7 @@ pub fn r_reshape_fields(g: kayak_rt::Handle<'static, Rgen>, m: i64, ps: Paths) -
         nil::<kayak_rt::Handle<'static, Rarg>>()
     } else {
         let s = {
-            r_opn(g, str_lit("stack"), m);
+            r_opn(g, str_lit!("stack"), m);
             r_fields_in(g, car(ps));
             r_keep_in_slot(g)
         };
@@ -2617,7 +2617,7 @@ pub fn r_fields_in(mut g: kayak_rt::Handle<'static, Rgen>, mut ks: List<i64>) ->
         if null_p(ks) {
             return ();
         } else {
-            r_opn(g, str_lit("field"), i64_plus(car(ks), 2i64));
+            r_opn(g, str_lit!("field"), i64_plus(car(ks), 2i64));
             ks = cdr(ks);
             continue;
         }
@@ -2637,16 +2637,16 @@ pub fn r_var_value(g: kayak_rt::Handle<'static, Rgen>, l: Rlocs, n: Str, tail: b
         let tagcase_ = car(l);
         match *tagcase_ {
             Rloc::RlReg(k) => {
-                r_opn(g, str_lit("reg"), k)
+                r_opn(g, str_lit!("reg"), k)
             }
             Rloc::RlSlot(s) => {
-                r_opn(g, str_lit("stack"), s)
+                r_opn(g, str_lit!("stack"), s)
             }
             Rloc::RlFree(i) => {
-                r_opn(g, str_lit("lexical"), i)
+                r_opn(g, str_lit!("lexical"), i)
             }
             Rloc::RlGlobal(c) => {
-                r_ins(g, str_lit("global"), kayak_rt::heap_cons(o_global(c), kayak_rt::nil()))
+                r_ins(g, str_lit!("global"), kayak_rt::heap_cons(o_global(c), kayak_rt::nil()))
             }
             _ => {
                 let y = tagcase_;
@@ -2663,10 +2663,10 @@ pub fn r_standard_value(g: kayak_rt::Handle<'static, Rgen>, name: Str, tail: boo
     if (not(string_member_p(name, get(cg_standard_words()))) || (g_leaf(g) && (not(tail) || c_vsubr_p(name)))) {
         r_decline(g)
     } else {
-        r_ins(g, str_lit("lambda"), kayak_rt::heap_cons(o_word(name), kayak_rt::heap_cons(o_int(0i64), kayak_rt::nil())));
+        r_ins(g, str_lit!("lambda"), kayak_rt::heap_cons(o_word(name), kayak_rt::heap_cons(o_int(0i64), kayak_rt::nil())));
         if c_vsubr_p(name) {
-            r_opn(g, str_lit("setreg"), 1i64);
-            r_ins(g, str_lit("prim"), kayak_rt::heap_cons(o_prim(str_lit("%fx26-vlambda")), kayak_rt::heap_cons(o_int(1i64), kayak_rt::nil())))
+            r_opn(g, str_lit!("setreg"), 1i64);
+            r_ins(g, str_lit!("prim"), kayak_rt::heap_cons(o_prim(str_lit!("%fx26-vlambda")), kayak_rt::heap_cons(o_int(1i64), kayak_rt::nil())))
         } else {
             ()
         }
@@ -2684,7 +2684,7 @@ pub fn r_branch_on(mut g: kayak_rt::Handle<'static, Rgen>, mut x: kayak_rt::Hand
                 continue;
             }
             Cx::XApp(f, args, a) => {
-                if (string_eq_p(r_standard_name(env, f), str_lit("not")) && i64_eq(size(args), 1i64)) {
+                if (string_eq_p(r_standard_name(env, f), str_lit!("not")) && i64_eq(size(args), 1i64)) {
                     (x, when) = (car(args), not(when));
                     continue;
                 } else {
@@ -2709,7 +2709,7 @@ pub fn r_branch_on(mut g: kayak_rt::Handle<'static, Rgen>, mut x: kayak_rt::Hand
                     let (no, end) = (r_new_label(g), r_new_label(g));
                     r_branch_on(g, t, false, no, env, te);
                     r_branch_on(g, th, when, label, env, te);
-                    r_emit(g, ri_branch(str_lit("branch"), end));
+                    r_emit(g, ri_branch(str_lit!("branch"), end));
                     r_emit(g, ri_label(no));
                     r_branch_on(g, el, when, label, env, te);
                     return r_emit(g, ri_label(end));
@@ -2734,16 +2734,16 @@ pub fn r_branch_plain(g: kayak_rt::Handle<'static, Rgen>, x: kayak_rt::Handle<'s
     let k = r_known(env, x);
     if not(null_p(k)) {
         if r_holds_p(k, when) {
-            r_emit(g, ri_branch(str_lit("branch"), label))
+            r_emit(g, ri_branch(str_lit!("branch"), label))
         } else {
             ()
         }
     } else {
         r_exp(g, x, env, te, false);
         r_emit(g, ri_branch(if when {
-            str_lit("brancht")
+            str_lit!("brancht")
         } else {
-            str_lit("branchf")
+            str_lit!("branchf")
         }, label))
     }
 }
@@ -2819,22 +2819,22 @@ pub fn r_app(g: kayak_rt::Handle<'static, Rgen>, f: kayak_rt::Handle<'static, Cx
         r_self_guarded(g, car(own), x_own_start(g_ctx(g)), f, args, a, env, te, tail)
     } else {
         let name = r_standard_name(env, f);
-        if string_eq_p(name, str_lit("")) {
+        if string_eq_p(name, str_lit!("")) {
             r_call(g, f, args, a, env, te, tail)
-        } else if (string_eq_p(name, str_lit("%quote")) && i64_eq(n, 1i64)) {
+        } else if (string_eq_p(name, str_lit!("%quote")) && i64_eq(n, 1i64)) {
             let cell = c_quoted_cell(car(args));
             if null_p(cell) {
-                r_prim(g, str_lit("%fx26-intern-datum"), r_exp_args(args), env, te);
+                r_prim(g, str_lit!("%fx26-intern-datum"), r_exp_args(args), env, te);
                 r_done(g, tail)
             } else {
                 r_const_value(g, quoted_interned(car(cell)), tail)
             }
-        } else if (tail && string_eq_p(name, str_lit("with-mark")) && i64_eq(n, 3i64)) {
+        } else if (tail && string_eq_p(name, str_lit!("with-mark")) && i64_eq(n, 3i64)) {
             r_args(g, r_exp_args(args), env, te, nil::<kayak_rt::Handle<'static, Cx>>());
             r_leave(g);
-            r_ins(g, str_lit("cellular"), kayak_rt::heap_cons(o_prim(str_lit("withmark-tail")), kayak_rt::heap_cons(o_int(3i64), kayak_rt::nil())));
-            r_op0(g, str_lit("return"))
-        } else if (string_eq_p(name, str_lit("apply")) && i64_eq(n, 2i64)) {
+            r_ins(g, str_lit!("cellular"), kayak_rt::heap_cons(o_prim(str_lit!("withmark-tail")), kayak_rt::heap_cons(o_int(3i64), kayak_rt::nil())));
+            r_op0(g, str_lit!("return"))
+        } else if (string_eq_p(name, str_lit!("apply")) && i64_eq(n, 2i64)) {
             r_apply(g, args, env, te, tail)
         } else if not(null_p(r_identity_arg(env, name, args))) {
             r_exp(g, car(r_identity_arg(env, name, args)), env, te, tail)
@@ -2895,7 +2895,7 @@ pub fn r_standard_app(g: kayak_rt::Handle<'static, Rgen>, name: Str, args: Cxs, 
         }
         Rstd::SOp1(r) => {
             r_exp(g, car(args), env, te, false);
-            r_ins(g, str_lit("op1"), kayak_rt::heap_cons(o_prim(r), kayak_rt::nil()))
+            r_ins(g, str_lit!("op1"), kayak_rt::heap_cons(o_prim(r), kayak_rt::nil()))
         }
         Rstd::SOp2imm(r, v) => {
             r_exp(g, car(args), env, te, false);
@@ -2903,21 +2903,21 @@ pub fn r_standard_app(g: kayak_rt::Handle<'static, Rgen>, name: Str, args: Cxs, 
         }
         Rstd::SField(k) => {
             r_exp(g, car(args), env, te, false);
-            r_opn(g, str_lit("field"), k)
+            r_opn(g, str_lit!("field"), k)
         }
         Rstd::SPrim(p) => {
-            r_call_out(g, str_lit("prim"), p, r_exp_args(args), env, te)
+            r_call_out(g, str_lit!("prim"), p, r_exp_args(args), env, te)
         }
         Rstd::SPure(p) => {
             if null_p(cdr(args)) {
                 r_exp(g, car(args), env, te, false);
-                r_ins(g, str_lit("prim1"), kayak_rt::heap_cons(o_prim(p), kayak_rt::nil()))
+                r_ins(g, str_lit!("prim1"), kayak_rt::heap_cons(o_prim(p), kayak_rt::nil()))
             } else {
                 r_pure2(g, p, car(args), car(cdr(args)), env, te)
             }
         }
         Rstd::SCellular(r) => {
-            r_call_out(g, str_lit("cellular"), r, r_exp_args(args), env, te)
+            r_call_out(g, str_lit!("cellular"), r, r_exp_args(args), env, te)
         }
         Rstd::SIdentity() => {
             r_exp(g, car(args), env, te, false)
@@ -2926,7 +2926,7 @@ pub fn r_standard_app(g: kayak_rt::Handle<'static, Rgen>, name: Str, args: Cxs, 
             let tagcase_ = r_operands(g, car(args), car(cdr(args)), env, te, false);
             match *tagcase_ {
                 Roperands::RopReg(k) => {
-                    r_opnn(g, str_lit("setfield"), 2i64, k);
+                    r_opnn(g, str_lit!("setfield"), 2i64, k);
                     r_unit(g)
                 }
                 _ => {
@@ -2978,7 +2978,7 @@ pub fn r_call(g: kayak_rt::Handle<'static, Rgen>, f: kayak_rt::Handle<'static, C
         r_specialize(g, car(sp), args, env, te, tail)
     } else if (not(tail) && r_self_known_p(g, f, n, te)) {
         r_args(g, r_exp_args(args), env, te, nil::<kayak_rt::Handle<'static, Cx>>());
-        r_opn(g, str_lit("invokeself"), n)
+        r_opn(g, str_lit!("invokeself"), n)
     } else {
         r_args(g, r_exp_args(args), env, te, kayak_rt::heap_cons(f, kayak_rt::nil()));
         r_invoke(g, n, tail, r_conv_at(a))
@@ -3029,25 +3029,25 @@ pub fn r_specialized_call(g: kayak_rt::Handle<'static, Rgen>, cell: Str, copy: S
     let slots = get(g_nslot(g));
     let s = r_slot(g);
     let n = size(args);
-    r_ins(g, str_lit("lambda"), kayak_rt::heap_cons(o_word(copy), kayak_rt::heap_cons(o_int(0i64), kayak_rt::nil())));
-    r_opn(g, str_lit("setstk"), s);
+    r_ins(g, str_lit!("lambda"), kayak_rt::heap_cons(o_word(copy), kayak_rt::heap_cons(o_int(0i64), kayak_rt::nil())));
+    r_opn(g, str_lit!("setstk"), s);
     r_args(g, r_exp_args(args), env, te, nil::<kayak_rt::Handle<'static, Cx>>());
     {
         let (call, end) = (r_new_label(g), r_new_label(g));
         if r_assume(g, cell) {
-            r_opn(g, str_lit("stack"), s);
+            r_opn(g, str_lit!("stack"), s);
             r_invoke(g, n, tail, 0i64)
         } else {
             r_guard(g, cell, call);
-            r_opn(g, str_lit("stack"), s);
+            r_opn(g, str_lit!("stack"), s);
             r_invoke(g, n, tail, 0i64);
             if tail {
                 ()
             } else {
-                r_emit(g, ri_branch(str_lit("branch"), end))
+                r_emit(g, ri_branch(str_lit!("branch"), end))
             };
             r_emit(g, ri_label(call));
-            r_ins(g, str_lit("global"), kayak_rt::heap_cons(o_global(cell), kayak_rt::nil()));
+            r_ins(g, str_lit!("global"), kayak_rt::heap_cons(o_global(cell), kayak_rt::nil()));
             r_invoke(g, n, tail, 0i64);
             r_emit(g, ri_label(end))
         }
@@ -3111,10 +3111,10 @@ pub fn r_spec_free(mut g: kayak_rt::Handle<'static, Rgen>, mut at: kayak_rt::Han
                 let tagcase_ = at;
                 match *tagcase_ {
                     Rloc::RlReg(k) => {
-                        r_opn(g, str_lit("reg"), k)
+                        r_opn(g, str_lit!("reg"), k)
                     }
                     Rloc::RlSlot(s) => {
-                        r_opn(g, str_lit("stack"), s)
+                        r_opn(g, str_lit!("stack"), s)
                     }
                     _ => {
                         let y = tagcase_;
@@ -3122,7 +3122,7 @@ pub fn r_spec_free(mut g: kayak_rt::Handle<'static, Rgen>, mut at: kayak_rt::Han
                     }
                 }
             };
-            r_opn(g, str_lit("field"), j);
+            r_opn(g, str_lit!("field"), j);
             let l = r_keep(g, car(flags));
             let tagcase_ = sc;
             match *tagcase_ {
@@ -3168,7 +3168,7 @@ pub fn r_inline(g: kayak_rt::Handle<'static, Rgen>, i: kayak_rt::Handle<'static,
                             if tail {
                                 ()
                             } else {
-                                r_emit(g, ri_branch(str_lit("branch"), end))
+                                r_emit(g, ri_branch(str_lit!("branch"), end))
                             };
                             r_emit(g, ri_label(call));
                             r_args(g, bargs, env, te, kayak_rt::heap_cons(f, kayak_rt::nil()));
@@ -3279,7 +3279,7 @@ pub fn r_lambda(g: kayak_rt::Handle<'static, Rgen>, ps: Strings, body: kayak_rt:
                         let tagcase_ = r_free_args(g, fv, env, 0i64);
                         match *tagcase_ {
                             Rfree::Rfree(r#as, ps2) => {
-                                r_prim(g, str_lit("%region-closure"), kayak_rt::heap_cons(a_e(car(region)), onto(r#as, kayak_rt::heap_cons(a_v(l_word(w)), kayak_rt::nil()))), env, te);
+                                r_prim(g, str_lit!("%region-closure"), kayak_rt::heap_cons(a_e(car(region)), onto(r#as, kayak_rt::heap_cons(a_v(l_word(w)), kayak_rt::nil()))), env, te);
                                 ps2
                             }
                         }
@@ -3288,13 +3288,13 @@ pub fn r_lambda(g: kayak_rt::Handle<'static, Rgen>, ps: Strings, body: kayak_rt:
                         match *tagcase_ {
                             Rfree::Rfree(r#as, ps2) => {
                                 r_args(g, r#as, env, te, nil::<kayak_rt::Handle<'static, Cx>>());
-                                r_ins(g, str_lit("lambda"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
+                                r_ins(g, str_lit!("lambda"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
                                 ps2
                             }
                         }
                     } else {
                         let patches = r_free_into_regs(g, fv, env);
-                        r_ins(g, str_lit("lambda"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
+                        r_ins(g, str_lit!("lambda"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(n), kayak_rt::nil())));
                         patches
                     }
                 }
@@ -3374,7 +3374,7 @@ pub fn r_free_regs(mut g: kayak_rt::Handle<'static, Rgen>, mut fv: Strings, mut 
                         continue;
                     }
                     Rloc::RlSlot(s) => {
-                        r_opnn(g, str_lit("load"), k, s);
+                        r_opnn(g, str_lit!("load"), k, s);
                         (fv, j) = (cdr(fv), k);
                         continue;
                     }
@@ -3462,7 +3462,7 @@ pub fn r_letrec_make(g: kayak_rt::Handle<'static, Rgen>, all: Cbinds, bs: Cbinds
                         }
                     }
                 };
-                r_opn(g, str_lit("setstk"), r_nth_int(at, i));
+                r_opn(g, str_lit!("setstk"), r_nth_int(at, i));
                 kayak_rt::heap_cons(p, r_letrec_make(g, all, cdr(bs), at, i64_plus(i, 1i64), env, te, cdr(joins)))
             }
         }
@@ -3517,9 +3517,9 @@ pub fn r_patch_one(mut g: kayak_rt::Handle<'static, Rgen>, mut ps: Rpatches, mut
             let tagcase_ = car(ps);
             match *tagcase_ {
                 Rpatch::Rpatch(j, s) => {
-                    r_opnn(g, str_lit("load"), 1i64, s);
-                    r_opn(g, str_lit("stack"), slot);
-                    r_opnn(g, str_lit("setfield"), i64_plus(3i64, j), 1i64);
+                    r_opnn(g, str_lit!("load"), 1i64, s);
+                    r_opn(g, str_lit!("stack"), slot);
+                    r_opnn(g, str_lit!("setfield"), i64_plus(3i64, j), 1i64);
                     ps = cdr(ps);
                     continue;
                 }
@@ -3618,7 +3618,7 @@ pub fn r_jump(g: kayak_rt::Handle<'static, Rgen>, j: kayak_rt::Handle<'static, R
                 let slots = get(g_nslot(g));
                 let made = r_jump_args(g, args, env, te, r_in_regs(g, args, 0i64, te, false));
                 r_jump_moves(g, made, params);
-                r_emit(g, ri_branch(str_lit("branch"), label));
+                r_emit(g, ri_branch(str_lit!("branch"), label));
                 r_restore(g, regs, slots)
             }
         }
@@ -3653,11 +3653,11 @@ pub fn r_jump_moves(mut g: kayak_rt::Handle<'static, Rgen>, mut made: Rlocs, mut
                         let tagcase_ = car(params);
                         match *tagcase_ {
                             Rloc::RlReg(b) => {
-                                r_opnn(g, str_lit("movereg"), a, b)
+                                r_opnn(g, str_lit!("movereg"), a, b)
                             }
                             Rloc::RlSlot(b) => {
-                                r_opn(g, str_lit("reg"), a);
-                                r_opn(g, str_lit("setstk"), b)
+                                r_opn(g, str_lit!("reg"), a);
+                                r_opn(g, str_lit!("setstk"), b)
                             }
                             _ => {
                                 let y = tagcase_;
@@ -3669,7 +3669,7 @@ pub fn r_jump_moves(mut g: kayak_rt::Handle<'static, Rgen>, mut made: Rlocs, mut
                         let tagcase_ = car(params);
                         match *tagcase_ {
                             Rloc::RlReg(b) => {
-                                r_opnn(g, str_lit("load"), b, a)
+                                r_opnn(g, str_lit!("load"), b, a)
                             }
                             Rloc::RlSlot(b) => {
                                 r_slot_move(g, a, b)
@@ -3733,16 +3733,16 @@ pub fn r_arms(mut g: kayak_rt::Handle<'static, Rgen>, mut arms: List<kayak_rt::H
                         ()
                     } else {
                         r_get(g, sc);
-                        r_opn(g, str_lit("field"), 2i64);
-                        r_op2imm(g, str_lit("eq"), l_sym(tag));
-                        r_emit(g, ri_branch(str_lit("branchf"), next))
+                        r_opn(g, str_lit!("field"), 2i64);
+                        r_op2imm(g, str_lit!("eq"), l_sym(tag));
+                        r_emit(g, ri_branch(str_lit!("branchf"), next))
                     };
                     {
                         let bound = if whole {
                             r_members(g, sc, ns, 0i64, body, nil::<kayak_rt::Handle<'static, Rbind>>())
                         } else {
                             r_get(g, sc);
-                            r_opn(g, str_lit("field"), 3i64);
+                            r_opn(g, str_lit!("field"), 3i64);
                             r_bind(car(ns), r_place_value(g), nil::<kayak_rt::Handle<'static, Rbind>>())
                         };
                         let in_order = the::<Renv>(reverse(bound));
@@ -3752,7 +3752,7 @@ pub fn r_arms(mut g: kayak_rt::Handle<'static, Rgen>, mut arms: List<kayak_rt::H
                     if tail {
                         ()
                     } else {
-                        r_emit(g, ri_branch(str_lit("branch"), end))
+                        r_emit(g, ri_branch(str_lit!("branch"), end))
                     };
                     r_emit(g, ri_label(next));
                     arms = cdr(arms);
@@ -3773,8 +3773,8 @@ pub fn r_members(mut g: kayak_rt::Handle<'static, Rgen>, mut sc: kayak_rt::Handl
             continue;
         } else {
             r_get(g, sc);
-            r_opn(g, str_lit("field"), 3i64);
-            r_opn(g, str_lit("field"), i64_plus(j, 2i64));
+            r_opn(g, str_lit!("field"), 3i64);
+            r_opn(g, str_lit!("field"), i64_plus(j, 2i64));
             let l = r_place_value(g);
             (xs, j, acc) = (cdr(xs), i64_plus(j, 1i64), r_bind(car(xs), l, acc));
             continue;
@@ -3793,12 +3793,12 @@ pub fn r_apply(g: kayak_rt::Handle<'static, Rgen>, args: Cxs, env: Renv, te: Cen
         r_args(g, r_exp_args(args), env, te, nil::<kayak_rt::Handle<'static, Cx>>());
         {
             let s = r_slot(g);
-            r_opn(g, str_lit("reg"), 1i64);
-            r_opn(g, str_lit("field"), 3i64);
-            r_opn(g, str_lit("setstk"), s);
-            r_opn(g, str_lit("reg"), 2i64);
-            r_opn(g, str_lit("setreg"), 1i64);
-            r_opn(g, str_lit("stack"), s);
+            r_opn(g, str_lit!("reg"), 1i64);
+            r_opn(g, str_lit!("field"), 3i64);
+            r_opn(g, str_lit!("setstk"), s);
+            r_opn(g, str_lit!("reg"), 2i64);
+            r_opn(g, str_lit!("setreg"), 1i64);
+            r_opn(g, str_lit!("stack"), s);
             r_invoke(g, 1i64, tail, 0i64)
         };
         r_restore(g, regs, slots)
@@ -3848,14 +3848,14 @@ pub fn r_args(g: kayak_rt::Handle<'static, Rgen>, args: Rargs, env: Renv, te: Ce
             r_const(g, l_nil());
             r_args_list(g, args, kept, i64_minus(n, 1i64), i64_minus(register_regs(), 1i64), env, te);
             let s = r_slot(g);
-            r_opn(g, str_lit("setstk"), s);
+            r_opn(g, str_lit!("setstk"), s);
             r_args_into(g, args, kept, 0i64, i64_minus(register_regs(), 1i64), env, te);
-            r_opnn(g, str_lit("load"), register_regs(), s)
+            r_opnn(g, str_lit!("load"), register_regs(), s)
         } else {
             r_args_into(g, args, kept, 0i64, n, env, te)
         };
         if i64_gt_eq(fun, 0i64) {
-            r_opn(g, str_lit("stack"), fun)
+            r_opn(g, str_lit!("stack"), fun)
         } else if not(null_p(f)) {
             r_exp(g, car(f), env, te, false)
         } else {
@@ -3890,7 +3890,7 @@ pub fn r_args_hard(g: kayak_rt::Handle<'static, Rgen>, args: Rargs, i: i64, dire
                 }
             };
             let k = if i64_eq(i, direct) {
-                r_opn(g, str_lit("setreg"), i64_plus(i, 1i64));
+                r_opn(g, str_lit!("setreg"), i64_plus(i, 1i64));
                 the::<i64>(-2i64)
             } else {
                 r_keep_in_slot(g)
@@ -3916,7 +3916,7 @@ pub fn r_arg_into(g: kayak_rt::Handle<'static, Rgen>, a: kayak_rt::Handle<'stati
     if i64_eq(kept, -2i64) {
         ()
     } else if i64_gt_eq(kept, 0i64) {
-        r_opnn(g, str_lit("load"), k, kept)
+        r_opnn(g, str_lit!("load"), k, kept)
     } else {
         let tagcase_ = a;
         match *tagcase_ {
@@ -3927,7 +3927,7 @@ pub fn r_arg_into(g: kayak_rt::Handle<'static, Rgen>, a: kayak_rt::Handle<'stati
                 r_const_into(g, v, k)
             }
             Rarg::ASlot(s) => {
-                r_opnn(g, str_lit("load"), k, s)
+                r_opnn(g, str_lit!("load"), k, s)
             }
             Rarg::ALexical(j) => {
                 r_lexical_into(g, j, k)
@@ -3946,9 +3946,9 @@ pub fn r_args_list(mut g: kayak_rt::Handle<'static, Rgen>, mut args: Rargs, mut 
         if i64_lt(i, from) {
             return ();
         } else {
-            r_opn(g, str_lit("setreg"), 2i64);
+            r_opn(g, str_lit!("setreg"), 2i64);
             r_arg_into(g, r_nth_arg(args, i), r_nth_int(kept, i), 1i64, env, te);
-            r_ins(g, str_lit("cellular"), kayak_rt::heap_cons(o_prim(str_lit("cons")), kayak_rt::heap_cons(o_int(2i64), kayak_rt::nil())));
+            r_ins(g, str_lit!("cellular"), kayak_rt::heap_cons(o_prim(str_lit!("cons")), kayak_rt::heap_cons(o_int(2i64), kayak_rt::nil())));
             i = i64_minus(i, 1i64);
             continue;
         }
@@ -3967,7 +3967,7 @@ pub fn r_call_out(g: kayak_rt::Handle<'static, Rgen>, how: Str, what: Str, args:
 pub fn r_prim(g: kayak_rt::Handle<'static, Rgen>, name: Str, args: Rargs, env: Renv, te: Cenv) -> () {
     let n = size(args);
     if (r_never_collects_p(name) && i64_eq(n, 1i64) && r_arg_loaded(g, car(args), env, te)) {
-        r_ins(g, str_lit("prim1"), kayak_rt::heap_cons(o_prim(name), kayak_rt::nil()))
+        r_ins(g, str_lit!("prim1"), kayak_rt::heap_cons(o_prim(name), kayak_rt::nil()))
     } else if (r_never_collects_p(name) && i64_eq(n, 2i64) && {
         let tagcase_ = car(cdr(args));
         match *tagcase_ {
@@ -3980,7 +3980,7 @@ pub fn r_prim(g: kayak_rt::Handle<'static, Rgen>, name: Str, args: Rargs, env: R
             }
         }
     } && r_arg_loaded(g, car(args), env, te)) {
-        r_ins(g, str_lit("prim2imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons({
+        r_ins(g, str_lit!("prim2imm"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons({
             let tagcase_ = car(cdr(args));
             match *tagcase_ {
                 Rarg::AV(v) => {
@@ -3993,7 +3993,7 @@ pub fn r_prim(g: kayak_rt::Handle<'static, Rgen>, name: Str, args: Rargs, env: R
             }
         }, kayak_rt::nil())))
     } else {
-        r_call_out(g, str_lit("prim"), name, args, env, te)
+        r_call_out(g, str_lit!("prim"), name, args, env, te)
     }
 }
 
@@ -4005,7 +4005,7 @@ pub fn r_arg_loaded(g: kayak_rt::Handle<'static, Rgen>, a: kayak_rt::Handle<'sta
             true
         }
         Rarg::ASlot(s) => {
-            r_opn(g, str_lit("stack"), s);
+            r_opn(g, str_lit!("stack"), s);
             true
         }
         _ => {
@@ -4017,23 +4017,23 @@ pub fn r_arg_loaded(g: kayak_rt::Handle<'static, Rgen>, a: kayak_rt::Handle<'sta
 
 /// Arrays, and the tag and key makers: as the stack compiler does them.
 pub fn r_special(g: kayak_rt::Handle<'static, Rgen>, what: Str, args: Cxs, env: Renv, te: Cenv) -> () {
-    if string_eq_p(what, str_lit("array-ref")) {
+    if string_eq_p(what, str_lit!("array-ref")) {
         r_args(g, r_exp_args(args), env, te, nil::<kayak_rt::Handle<'static, Cx>>());
         r_index_field(g);
-        r_ins(g, str_lit("cellular"), kayak_rt::heap_cons(o_prim(str_lit("field@")), kayak_rt::heap_cons(o_int(2i64), kayak_rt::nil())))
-    } else if string_eq_p(what, str_lit("array-set!")) {
+        r_ins(g, str_lit!("cellular"), kayak_rt::heap_cons(o_prim(str_lit!("field@")), kayak_rt::heap_cons(o_int(2i64), kayak_rt::nil())))
+    } else if string_eq_p(what, str_lit!("array-set!")) {
         r_args(g, r_exp_args(args), env, te, nil::<kayak_rt::Handle<'static, Cx>>());
         r_index_field(g);
-        r_ins(g, str_lit("prim"), kayak_rt::heap_cons(o_prim(str_lit("%bloblet-set!")), kayak_rt::heap_cons(o_int(3i64), kayak_rt::nil())));
+        r_ins(g, str_lit!("prim"), kayak_rt::heap_cons(o_prim(str_lit!("%bloblet-set!")), kayak_rt::heap_cons(o_int(3i64), kayak_rt::nil())));
         r_unit(g)
-    } else if string_eq_p(what, str_lit("array-length")) {
-        r_prim(g, str_lit("%bloblet-fields"), r_exp_args(args), env, te);
+    } else if string_eq_p(what, str_lit!("array-length")) {
+        r_prim(g, str_lit!("%bloblet-fields"), r_exp_args(args), env, te);
         r_add_imm(g, int_lit(-1))
-    } else if string_eq_p(what, str_lit("make-array")) {
-        r_prim(g, str_lit("%make-bloblet-filled"), kayak_rt::heap_cons(a_v(l_int(int_lit(0))), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_e(car(cdr(args))), kayak_rt::nil()))), env, te)
-    } else if string_eq_p(what, str_lit("make-box")) {
-        r_prim(g, str_lit("%make-box"), kayak_rt::heap_cons(a_v(l_unit()), kayak_rt::nil()), env, te)
-    } else if (string_eq_p(what, str_lit("set-car!")) || string_eq_p(what, str_lit("set-cdr!"))) {
+    } else if string_eq_p(what, str_lit!("make-array")) {
+        r_prim(g, str_lit!("%make-bloblet-filled"), kayak_rt::heap_cons(a_v(l_int(int_lit(0))), kayak_rt::heap_cons(a_e(car(args)), kayak_rt::heap_cons(a_e(car(cdr(args))), kayak_rt::nil()))), env, te)
+    } else if string_eq_p(what, str_lit!("make-box")) {
+        r_prim(g, str_lit!("%make-box"), kayak_rt::heap_cons(a_v(l_unit()), kayak_rt::nil()), env, te)
+    } else if (string_eq_p(what, str_lit!("set-car!")) || string_eq_p(what, str_lit!("set-cdr!"))) {
         r_prim(g, what, r_exp_args(args), env, te);
         r_unit(g)
     } else {
@@ -4043,9 +4043,9 @@ pub fn r_special(g: kayak_rt::Handle<'static, Rgen>, what: Str, args: Cxs, env: 
 
 #[inline]
 pub fn r_index_field(g: kayak_rt::Handle<'static, Rgen>) -> () {
-    r_opn(g, str_lit("reg"), 2i64);
+    r_opn(g, str_lit!("reg"), 2i64);
     r_add_imm(g, int_lit(2));
-    r_opn(g, str_lit("setreg"), 2i64)
+    r_opn(g, str_lit!("setreg"), 2i64)
 }
 
 /// RESULT := r(a, b), `a` evaluated first; a constant `b` an immediate.
@@ -4056,7 +4056,7 @@ pub fn r_binary(g: kayak_rt::Handle<'static, Rgen>, r: Str, a: kayak_rt::Handle<
             r_op2imm(g, r, v)
         }
         Roperands::RopReg(k) => {
-            r_ins(g, str_lit("op2"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(k), kayak_rt::nil())))
+            r_ins(g, str_lit!("op2"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(k), kayak_rt::nil())))
         }
         Roperands::RopNone() => {
             r_decline(g)
@@ -4068,10 +4068,10 @@ pub fn r_pure2(g: kayak_rt::Handle<'static, Rgen>, p: Str, a: kayak_rt::Handle<'
     let tagcase_ = r_operands(g, a, b, env, te, true);
     match *tagcase_ {
         Roperands::RopImm(v) => {
-            r_ins(g, str_lit("prim2imm"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_lit(v), kayak_rt::nil())))
+            r_ins(g, str_lit!("prim2imm"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_lit(v), kayak_rt::nil())))
         }
         Roperands::RopReg(k) => {
-            r_ins(g, str_lit("prim2"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_int(k), kayak_rt::nil())))
+            r_ins(g, str_lit!("prim2"), kayak_rt::heap_cons(o_prim(p), kayak_rt::heap_cons(o_int(k), kayak_rt::nil())))
         }
         Roperands::RopNone() => {
             r_decline(g)
@@ -4089,14 +4089,14 @@ pub fn r_binary_swapped(g: kayak_rt::Handle<'static, Rgen>, r: Str, x: kayak_rt:
         let k = r_reg(g);
         if collects {
             let s = r_slot(g);
-            r_opn(g, str_lit("setstk"), s);
+            r_opn(g, str_lit!("setstk"), s);
             r_exp(g, y, env, te, false);
-            r_opnn(g, str_lit("load"), k, s)
+            r_opnn(g, str_lit!("load"), k, s)
         } else {
-            r_opn(g, str_lit("setreg"), k);
+            r_opn(g, str_lit!("setreg"), k);
             r_exp(g, y, env, te, false)
         };
-        r_ins(g, str_lit("op2"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(k), kayak_rt::nil())))
+        r_ins(g, str_lit!("op2"), kayak_rt::heap_cons(o_prim(r), kayak_rt::heap_cons(o_int(k), kayak_rt::nil())))
     };
     r_restore(g, regs, slots)
 }
@@ -4148,24 +4148,24 @@ pub fn r_into(g: kayak_rt::Handle<'static, Rgen>, x: kayak_rt::Handle<'static, C
     let l = r_plain_var_loc(env, x);
     if null_p(l) {
         r_exp(g, x, env, te, false);
-        r_opn(g, str_lit("setreg"), k)
+        r_opn(g, str_lit!("setreg"), k)
     } else {
         let tagcase_ = car(l);
         match *tagcase_ {
             Rloc::RlSlot(s) => {
-                r_opnn(g, str_lit("load"), k, s)
+                r_opnn(g, str_lit!("load"), k, s)
             }
             Rloc::RlReg(r) => {
                 if i64_eq(r, k) {
                     ()
                 } else {
-                    r_opnn(g, str_lit("movereg"), r, k)
+                    r_opnn(g, str_lit!("movereg"), r, k)
                 }
             }
             _ => {
                 let y = tagcase_;
                 r_exp(g, x, env, te, false);
-                r_opn(g, str_lit("setreg"), k)
+                r_opn(g, str_lit!("setreg"), k)
             }
         }
     }
@@ -4178,7 +4178,7 @@ pub fn r_loop(g: kayak_rt::Handle<'static, Rgen>, args: Cxs, env: Renv, te: Cenv
     let slots = get(g_nslot(g));
     let made = r_loop_make(g, args, env, te);
     r_loop_move(g, made, 0i64);
-    r_emit(g, ri_branch(str_lit("branch"), g_start(g)));
+    r_emit(g, ri_branch(str_lit!("branch"), g_start(g)));
     r_restore(g, regs, slots)
 }
 
@@ -4202,7 +4202,7 @@ pub fn r_loop_move(mut g: kayak_rt::Handle<'static, Rgen>, mut made: List<i64>, 
             return ();
         } else {
             if g_leaf(g) {
-                r_opnn(g, str_lit("movereg"), car(made), i64_plus(i, 1i64))
+                r_opnn(g, str_lit!("movereg"), car(made), i64_plus(i, 1i64))
             } else {
                 r_slot_move(g, car(made), i)
             };
@@ -4231,7 +4231,7 @@ pub fn r_self_guarded(g: kayak_rt::Handle<'static, Rgen>, cell: Str, start: i64,
                 r_guard(g, cell, call)
             };
             r_self_moves(g, made, 0i64);
-            r_emit(g, ri_branch(str_lit("branch"), start));
+            r_emit(g, ri_branch(str_lit!("branch"), start));
             if assumed {
                 set(x_looped(g_ctx(g)), true)
             } else {
@@ -4242,14 +4242,14 @@ pub fn r_self_guarded(g: kayak_rt::Handle<'static, Rgen>, cell: Str, start: i64,
         } else {
             r_args(g, r_exp_args(args), env, te, nil::<kayak_rt::Handle<'static, Cx>>());
             if r_assume(g, cell) {
-                r_opn(g, str_lit("invokeself"), n)
+                r_opn(g, str_lit!("invokeself"), n)
             } else {
                 r_guard(g, cell, call);
-                r_opn(g, str_lit("invokeself"), n);
-                r_emit(g, ri_branch(str_lit("branch"), end));
+                r_opn(g, str_lit!("invokeself"), n);
+                r_emit(g, ri_branch(str_lit!("branch"), end));
                 r_emit(g, ri_label(call));
-                r_ins(g, str_lit("global"), kayak_rt::heap_cons(o_global(cell), kayak_rt::nil()));
-                r_opnn(g, str_lit("invoke"), n, conv);
+                r_ins(g, str_lit!("global"), kayak_rt::heap_cons(o_global(cell), kayak_rt::nil()));
+                r_opnn(g, str_lit!("invoke"), n, conv);
                 r_emit(g, ri_label(end))
             }
         };
@@ -4313,7 +4313,7 @@ pub fn r_leaf_tail_call(g: kayak_rt::Handle<'static, Rgen>, f: kayak_rt::Handle<
             let at = if (i64_gt(fr, 0i64) && not(written)) {
                 fr
             } else if (written && quiet) {
-                r_opn(g, str_lit("reg"), fr);
+                r_opn(g, str_lit!("reg"), fr);
                 the::<i64>(-1i64)
             } else if written {
                 r_reg(g)
@@ -4335,13 +4335,13 @@ pub fn r_leaf_tail_call(g: kayak_rt::Handle<'static, Rgen>, f: kayak_rt::Handle<
             r_emit_all(g, par_move_items(moves, nil::<kayak_rt::Handle<'static, Ritem>>()));
             r_late_into(g, late, env, te);
             if i64_gt(at, 0i64) {
-                r_opn(g, str_lit("reg"), at)
+                r_opn(g, str_lit!("reg"), at)
             } else if i64_eq(at, 0i64) {
                 r_exp(g, f, env, te, false)
             } else {
                 ()
             };
-            r_opnn(g, str_lit("tailinvoke"), size(args), r_conv_at(a));
+            r_opnn(g, str_lit!("tailinvoke"), size(args), r_conv_at(a));
             set(g_nreg(g), regs)
         }
     }

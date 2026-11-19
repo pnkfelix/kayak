@@ -13,6 +13,6 @@ pub fn h<A: Copy + 'static + kayak_rt::Trace>(fs: List<A>) -> i64 {
 
 #[inline]
 pub fn main() -> Str {
-    i64_to_string(h(kayak_rt::heap_cons(str_lit("x"), nil::<Str>())))
+    i64_to_string(h(kayak_rt::heap_cons(str_lit!("x"), nil::<Str>())))
 }
 

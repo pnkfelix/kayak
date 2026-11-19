@@ -25,16 +25,16 @@ pub fn kind_name(k: kayak_rt::Sum) -> Str {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("file") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        str_lit("file")
+        str_lit!("file")
     } else if tag_ == const { kayak_rt::tag_hash("directory") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        str_lit("directory")
+        str_lit!("directory")
     } else if tag_ == const { kayak_rt::tag_hash("symlink") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        str_lit("symlink")
+        str_lit!("symlink")
     } else if tag_ == const { kayak_rt::tag_hash("other") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-        str_lit("other")
+        str_lit!("other")
     } else { unreachable!() }
 }
 
@@ -43,14 +43,14 @@ pub fn said(path: Str) -> Str {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("info") } {
         let i: Product_4kind_4size_8modified_4mode<kayak_rt::Sum, Int, Int, Int> = kayak_rt::sum_payload::<Product_4kind_4size_8modified_4mode<kayak_rt::Sum, Int, Int, Int>>(tagcase_);
-        string_append(kind_name(i.0), string_append(str_lit(" "), string_append(int_to_string(i.1), string_append(if _gt(i.2, int_lit(0)) {
-            str_lit(" modified")
+        string_append(kind_name(i.0), string_append(str_lit!(" "), string_append(int_to_string(i.1), string_append(if _gt(i.2, int_lit(0)) {
+            str_lit!(" modified")
         } else {
-            str_lit(" never")
+            str_lit!(" never")
         }, if _gt(i.3, int_lit(0)) {
-            str_lit(" with a mode")
+            str_lit!(" with a mode")
         } else {
-            str_lit(" no mode")
+            str_lit!(" no mode")
         }))))
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
@@ -58,10 +58,10 @@ pub fn said(path: Str) -> Str {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("not-found") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            str_lit("not found")
+            str_lit!("not found")
         } else {
             let other = tagcase_;
-            str_lit("failed")
+            str_lit!("failed")
         }
     } else { unreachable!() }
 }
@@ -72,19 +72,19 @@ pub fn link(path: Str) -> Str {
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("target") } {
         let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-        string_append(str_lit("a link to "), t)
+        string_append(str_lit!("a link to "), t)
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-        str_lit("no link")
+        str_lit!("no link")
     } else { unreachable!() }
 }
 
 pub fn main() -> Int {
-    put(str_lit("a.txt"), str_lit("four"));
-    write_out(string_append(said(str_lit("a.txt")), str_lit("\n")));
-    write_out(string_append(said(str_lit(".")), str_lit("\n")));
-    write_out(string_append(said(str_lit("nothing-here")), str_lit("\n")));
-    write_out(string_append(link(str_lit("a.txt")), str_lit("\n")));
+    put(str_lit!("a.txt"), str_lit!("four"));
+    write_out(string_append(said(str_lit!("a.txt")), str_lit!("\n")));
+    write_out(string_append(said(str_lit!(".")), str_lit!("\n")));
+    write_out(string_append(said(str_lit!("nothing-here")), str_lit!("\n")));
+    write_out(string_append(link(str_lit!("a.txt")), str_lit!("\n")));
     int_lit(0)
 }
 

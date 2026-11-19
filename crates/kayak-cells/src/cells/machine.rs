@@ -105,31 +105,31 @@ pub fn reserve() -> Ref<i64> {
 
 #[inline]
 pub fn quoted(n: i64) -> Str {
-    string_append(str_lit("`"), string_append(routine_name(n), str_lit("`")))
+    string_append(str_lit!("`"), string_append(routine_name(n), str_lit!("`")))
 }
 
 #[inline]
 pub fn type_trap_x(n: i64) -> () {
     trap_x(if (i64_eq(n, rt_pair_car()) || i64_eq(n, rt_pair_cdr())) {
-        str_lit("car or cdr of a non-pair")
+        str_lit!("car or cdr of a non-pair")
     } else {
-        string_append(quoted(n), str_lit(" was given a value of the wrong kind"))
+        string_append(quoted(n), str_lit!(" was given a value of the wrong kind"))
     })
 }
 
 #[inline]
 pub fn overflow_trap_x(n: i64) -> () {
-    trap_x(string_append(quoted(n), str_lit("'s result does not fit")))
+    trap_x(string_append(quoted(n), str_lit!("'s result does not fit")))
 }
 
 #[inline]
 pub fn underflow_trap_x(n: i64) -> () {
-    trap_x(string_append(quoted(n), str_lit(" found too few values on the data stack")))
+    trap_x(string_append(quoted(n), str_lit!(" found too few values on the data stack")))
 }
 
 #[inline]
 pub fn field_trap_x(n: i64) -> () {
-    trap_x(string_append(quoted(n), str_lit(" named a field that is not there")))
+    trap_x(string_append(quoted(n), str_lit!(" named a field that is not there")))
 }
 
 // The data stack.
@@ -145,7 +145,7 @@ pub fn ds_set_x(i: i64, v: i64) -> () {
 
 pub fn push_x(v: i64) -> () {
     if i64_gt_eq(get(dsp()), flatarray_length_i64(get(ds()))) {
-        trap_x(str_lit("stack overflow"))
+        trap_x(str_lit!("stack overflow"))
     } else {
         ds_set_x(get(dsp()), v);
         set(dsp(), i64_plus(get(dsp()), 1i64))
@@ -188,7 +188,7 @@ pub fn rs_at(i: i64) -> i64 {
 
 pub fn push_return_x() -> () {
     if i64_gt_eq(i64_plus(get(rsp()), 4i64), flatarray_length_i64(get(rs()))) {
-        trap_x(str_lit("stack overflow"))
+        trap_x(str_lit!("stack overflow"))
     } else {
         rs_push_x(get(cur()));
         rs_push_x(fix(get(kk())));
@@ -310,7 +310,7 @@ pub fn pop_return_x() -> () {
 #[inline]
 pub fn check_limits_x() -> () {
     if (i64_gt(get(dsp()), ds_limit()) || i64_gt_eq(i64_quotient(get(rsp()), 4i64), rs_limit())) {
-        trap_x(str_lit("stack overflow"))
+        trap_x(str_lit!("stack overflow"))
     } else {
         ()
     }
@@ -632,7 +632,7 @@ pub fn capture_x(rs_from: i64, ds_from: i64, whole: bool) -> i64 {
 /// `k` as a closure, so that everything callable is one.
 pub fn continuation_closure_x(k: i64) -> i64 {
     let (w, c) = (if i64_eq(get(continuation_word()), 0i64) {
-        let w = make_code_word_x(str_lit("continuation"), 5i64, rt_docol());
+        let w = make_code_word_x(str_lit!("continuation"), 5i64, rt_docol());
         slot_set_x(w, f_cell0(), fix(rt_slot()));
         slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
         slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(rt_free()));
@@ -652,7 +652,7 @@ pub fn continuation_closure_x(k: i64) -> i64 {
 pub fn continuation_of(v: i64) -> i64 {
     if is_kind_p(v, k_continuation()) {
         v
-    } else if (is_kind_p(v, k_closure()) && i64_eq(fields_of(v), f_free0()) && is_kind_p(slot_of(v, f_free0()), k_continuation()) && string_eq_p(symbol_text(slot_of(slot_of(v, f_word()), f_name())), str_lit("continuation"))) {
+    } else if (is_kind_p(v, k_closure()) && i64_eq(fields_of(v), f_free0()) && is_kind_p(slot_of(v, f_free0()), k_continuation()) && string_eq_p(symbol_text(slot_of(slot_of(v, f_word()), f_name())), str_lit!("continuation"))) {
         slot_of(v, f_free0())
     } else {
         0i64
@@ -794,7 +794,7 @@ pub fn continued_x(k: i64, v: i64, tail: bool) -> i64 {
 pub fn spend_x(k: i64) -> bool {
     let s = fix_val(slot_of(k, cont_shots()));
     if i64_eq(s, shots_spent()) {
-        trap_x(str_lit("a one-shot continuation resumed twice"));
+        trap_x(str_lit!("a one-shot continuation resumed twice"));
         false
     } else if i64_eq(s, shots_once()) {
         slot_set_x(k, cont_shots(), fix(shots_spent()));
@@ -875,7 +875,7 @@ pub fn tier1_word_p(w: i64) -> bool {
 
 pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
     if i64_gt(count, 8i64) {
-        trap_x(str_lit("native code: more than eight arguments, which kayak does not pass yet"));
+        trap_x(str_lit!("native code: more than eight arguments, which kayak does not pass yet"));
         next()
     } else {
         let (b, r#box) = (slot_of(c, f_word()), get(native_box()));
@@ -895,7 +895,7 @@ pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
         if (i64_eq(status, 0i64) && not(tier1_word_p(flatarray_ref_i64(r#box, 0i64)))) {
             // An object made elsewhere, by kayak-jit's routines in their own
             // space: none of tier 1's heap, so not yet tier 1's to keep.
-            trap_x(str_lit("native code: gave an object it made by a routine tier 1 does not give yet (C122)"));
+            trap_x(str_lit!("native code: gave an object it made by a routine tier 1 does not give yet (C122)"));
             next()
         } else if i64_eq(status, 0i64) {
             let v = flatarray_ref_i64(r#box, 0i64);
@@ -921,21 +921,21 @@ pub fn native_called_x(n: i64, c: i64, count: i64, tail: bool) -> i64 {
             }
         } else {
             trap_x(if i64_eq(status, 1i64) {
-                str_lit("evaluation step limit exceeded")
+                str_lit!("evaluation step limit exceeded")
             } else if i64_eq(status, 2i64) {
-                str_lit("stack overflow")
+                str_lit!("stack overflow")
             } else if i64_eq(status, 3i64) {
-                str_lit("a primitive failed")
+                str_lit!("a primitive failed")
             } else if i64_eq(status, 4i64) {
-                str_lit("car or cdr of a non-pair")
+                str_lit!("car or cdr of a non-pair")
             } else if i64_eq(status, 5i64) {
-                str_lit("division by zero")
+                str_lit!("division by zero")
             } else if i64_eq(status, 6i64) {
-                str_lit("native code: a routine of the convention's, which tier 1 does not give yet (C122)")
+                str_lit!("native code: a routine of the convention's, which tier 1 does not give yet (C122)")
             } else if is_kind_p(flatarray_ref_i64(r#box, 0i64), k_string()) {
                 string_text(flatarray_ref_i64(r#box, 0i64))
             } else {
-                str_lit("native code failed")
+                str_lit!("native code failed")
             });
             next()
         }
@@ -953,7 +953,7 @@ pub fn call_x(mut n: i64, mut count: i64, mut tail: bool) -> i64 {
             let c = pop_x(n);
             if is_kind_p(c, k_continuation()) {
                 if not(i64_eq(count, 1i64)) {
-                    trap_x(string_append(str_lit("a continuation takes one value, and was given "), i64_to_string(count)));
+                    trap_x(string_append(str_lit!("a continuation takes one value, and was given "), i64_to_string(count)));
                     return next();
                 } else {
                     let v = pop_x(n);
@@ -1080,7 +1080,7 @@ pub fn enter_above_x(n: i64, thunk: i64, m0: i64, m1: i64, m2: i64, m3: i64) -> 
 pub fn abort_to_x(n: i64, tag: i64, v: i64) -> i64 {
     let at = find_marked(get(rsp()), prompt_mark(), tag);
     if i64_lt(at, 0i64) {
-        trap_x(str_lit("abort: no prompt for this tag"));
+        trap_x(str_lit!("abort: no prompt for this tag"));
         next()
     } else {
         let (handler, height) = (rs_at(i64_plus(at, 2i64)), prompt_height(rs_at(i64_plus(at, 3i64))));
@@ -1145,7 +1145,7 @@ pub fn prim_run_x(n: i64, p: i64, count: i64) -> i64 {
         underflow_trap_x(n);
         next()
     } else if (i64_lt(count, prim_min(p)) || (i64_gt_eq(prim_max(p), 0i64) && i64_gt(count, prim_max(p)))) {
-        trap_x(string_append(str_lit("`"), string_append(prim_name(p), string_append(str_lit("` given "), string_append(i64_to_string(count), str_lit(" argument(s)"))))));
+        trap_x(string_append(str_lit!("`"), string_append(prim_name(p), string_append(str_lit!("` given "), string_append(i64_to_string(count), str_lit!(" argument(s)"))))));
         next()
     } else {
         let u = safepoint_x();
@@ -1359,7 +1359,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 enter_x(w);
                 return next();
             } else {
-                trap_x(str_lit("`execute` was given what is no word"));
+                trap_x(str_lit!("`execute` was given what is no word"));
                 return next();
             }
         } else if i64_eq(n, rt_dup()) {
@@ -1441,7 +1441,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 find_marked(get(rsp()), prompt_mark(), tag)
             };
             if (i64_lt(at, 0i64) && not(i64_eq(n, rt_callcc()))) {
-                trap_x(str_lit("call-with-composable-continuation: no prompt for this tag"));
+                trap_x(str_lit!("call-with-composable-continuation: no prompt for this tag"));
                 return next();
             } else {
                 push_x(proc);
@@ -1502,13 +1502,13 @@ pub fn routine_x(mut n: i64) -> i64 {
         } else if i64_eq(n, rt_halt()) {
             return halt_flow();
         } else if i64_eq(n, rt_undefined()) {
-            trap_x(str_lit("a procedure was called before it was defined"));
+            trap_x(str_lit!("a procedure was called before it was defined"));
             return next();
         } else if (i64_lt(n, 1i64) || i64_gt_eq(n, rt_count())) {
-            trap_x(string_append(str_lit("no routine is numbered "), i64_to_string(n)));
+            trap_x(string_append(str_lit!("no routine is numbered "), i64_to_string(n)));
             return next();
         } else {
-            trap_x(string_append(str_lit("tier 1 has no routine "), string_append(routine_name(n), str_lit(" yet (C122)"))));
+            trap_x(string_append(str_lit!("tier 1 has no routine "), string_append(routine_name(n), str_lit!(" yet (C122)"))));
             return next();
         }
     }
@@ -1535,7 +1535,7 @@ pub fn enter_x(w: i64) -> bool {
         true
     } else {
         if not(i64_eq(routine_x(entry), next())) {
-            trap_x(string_append(str_lit("no routine is numbered "), i64_to_string(entry)))
+            trap_x(string_append(str_lit!("no routine is numbered "), i64_to_string(entry)))
         } else {
             ()
         };
@@ -1617,14 +1617,14 @@ pub fn poll_x() -> bool {
 /// the scheduler's prompt, the trap forgotten, and on (Fixpt's
 /// `task_failed`). Whether it was.
 pub fn failed_in_task_x() -> bool {
-    if string_eq_p(get(trap_message()), str_lit("evaluation step limit exceeded")) {
+    if string_eq_p(get(trap_message()), str_lit!("evaluation step limit exceeded")) {
         false
     } else {
         let tag = task_failed_x(get(trap_message()), reach_p());
         if i64_eq(tag, v_false()) {
             false
         } else {
-            set(trap_message(), str_lit(""));
+            set(trap_message(), str_lit!(""));
             abort_to_x(rt_abort(), tag, v_unit_word());
             not(trapped_p())
         }
@@ -1945,7 +1945,7 @@ pub fn reg_op_x() -> i64 {
         });
         next()
     } else {
-        trap_x(string_append(str_lit("tier 1 runs no register operation "), nth_name(rop_names(), op)));
+        trap_x(string_append(str_lit!("tier 1 runs no register operation "), nth_name(rop_names(), op)));
         next()
     }
 }
@@ -1955,7 +1955,7 @@ pub fn reg_op_x() -> i64 {
 pub fn reg_step_x(base: i64) -> bool {
     reg_resumed_x();
     if (i64_eq(get(fuel()), 0i64) && i64_eq(get(reserve()), 0i64)) {
-        trap_x(str_lit("evaluation step limit exceeded"));
+        trap_x(str_lit!("evaluation step limit exceeded"));
         false
     } else if (i64_eq(get(fuel()), 0i64) && {
         let f = poll_due_x();
@@ -2082,7 +2082,7 @@ pub fn cell_step_x(base: i64) -> bool {
     };
     set(kk(), i64_plus(get(kk()), 1i64));
     if (i64_eq(get(fuel()), 0i64) && i64_eq(get(reserve()), 0i64)) {
-        trap_x(str_lit("evaluation step limit exceeded"));
+        trap_x(str_lit!("evaluation step limit exceeded"));
         false
     } else if (i64_eq(get(fuel()), 0i64) && poll_x()) {
         true
@@ -2212,17 +2212,17 @@ pub fn given_shown(mut i: i64, mut acc: Str) -> Str {
             (i, acc) = (i64_plus(i, 1i64), if i64_eq(n, 0i64) {
                 acc
             } else {
-                string_append(acc, string_append(str_lit("  "), string_append(if i64_lt(i, 62i64) {
+                string_append(acc, string_append(str_lit!("  "), string_append(if i64_lt(i, 62i64) {
                     routine_name(i)
                 } else if i64_eq(i, 62i64) {
-                    str_lit("register code, resumed")
+                    str_lit!("register code, resumed")
                 } else if i64_eq(i, 63i64) {
-                    str_lit("a word")
+                    str_lit!("a word")
                 } else if i64_gt_eq(i, 1600i64) {
-                    string_append(str_lit("register "), nth_name(rop_names(), i64_minus(i, 1600i64)))
+                    string_append(str_lit!("register "), nth_name(rop_names(), i64_minus(i, 1600i64)))
                 } else {
                     pdef_of(prims(), i64_minus(i, 64i64))
-                }, string_append(str_lit(" "), string_append(i64_to_string(n), str_lit("\n"))))))
+                }, string_append(str_lit!(" "), string_append(i64_to_string(n), str_lit!("\n"))))))
             });
             continue;
         }
@@ -2283,10 +2283,10 @@ pub fn hand_x(m: HandCode) -> bool {
         given_x();
         true
     } else if i64_eq(why, misaligned()) {
-        trap_x(str_lit("tier 2: its code is not 16-byte aligned (C131)"));
+        trap_x(str_lit!("tier 2: its code is not 16-byte aligned (C131)"));
         false
     } else {
-        trap_x(str_lit("tier 2: the return stack ran out under its marks (C126)"));
+        trap_x(str_lit!("tier 2: the return stack ran out under its marks (C126)"));
         false
     }
 }
@@ -2340,7 +2340,7 @@ pub fn run_word_x(w: i64, steps: i64) -> kayak_rt::Handle<'static, Ran> {
         set(fuel(), steps);
         set(reserve(), 0i64)
     };
-    set(trap_message(), str_lit(""));
+    set(trap_message(), str_lit!(""));
     if enter_x(w) {
         if get(hand_on()) {
             let tagcase_ = hand_code_x();
@@ -2361,7 +2361,7 @@ pub fn run_word_x(w: i64, steps: i64) -> kayak_rt::Handle<'static, Ran> {
     if trapped_p() {
         ran_failed(get(trap_message()))
     } else if i64_eq(get(dsp()), 0i64) {
-        ran_failed(str_lit("the word left nothing"))
+        ran_failed(str_lit!("the word left nothing"))
     } else {
         ran_answer(ds_at(i64_minus(get(dsp()), 1i64)))
     }
@@ -2426,9 +2426,9 @@ pub fn native_callback(r#box: FlatArray<i64>, held: FlatArray<i64>) -> i64 {
     held_pushed_x(held, 0i64, nheld);
     set(callback_depth(), i64_plus(get(callback_depth()), 1i64));
     if not(closure_p(c)) {
-        trap_x(str_lit("native code: called no procedure tier 1 runs (C122)"))
+        trap_x(str_lit!("native code: called no procedure tier 1 runs (C122)"))
     } else {
-        let back = make_word_x(str_lit("%callback-return"), 1i64, 0i64);
+        let back = make_word_x(str_lit!("%callback-return"), 1i64, 0i64);
         slot_set_x(back, f_cell0(), fix(rt_halt()));
         set(cur(), back);
         set(kk(), f_cell0());

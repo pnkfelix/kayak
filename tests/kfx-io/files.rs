@@ -10,7 +10,7 @@ pub fn show_names(mut ns: List<Str>) -> () {
         if null_p(ns) {
             return ();
         } else {
-            write_out(string_append(car(ns), str_lit("\n")));
+            write_out(string_append(car(ns), str_lit!("\n")));
             ns = cdr(ns);
             continue;
         }
@@ -42,7 +42,7 @@ pub fn text_of(r: kayak_rt::Sum) -> Str {
             s
         } else if tag_ == const { kayak_rt::tag_hash("bad") } {
             let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-            str_lit("not UTF-8")
+            str_lit!("not UTF-8")
         } else { unreachable!() }
     } else if tag_ == const { kayak_rt::tag_hash("failed") } {
         let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
@@ -51,11 +51,11 @@ pub fn text_of(r: kayak_rt::Sum) -> Str {
 }
 
 pub fn main() -> Int {
-    put(str_lit("b.txt"), str_lit("bee"));
-    put(str_lit("a.txt"), str_lit("ay"));
-    put(str_lit("b.txt"), str_lit("bee, again"));
+    put(str_lit!("b.txt"), str_lit!("bee"));
+    put(str_lit!("a.txt"), str_lit!("ay"));
+    put(str_lit!("b.txt"), str_lit!("bee, again"));
     {
-        let tagcase_ = the::<kayak_rt::Sum>(list_dir(str_lit(".")));
+        let tagcase_ = the::<kayak_rt::Sum>(list_dir(str_lit!(".")));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("names") } {
             let ns: List<Str> = kayak_rt::sum_payload::<List<Str>>(tagcase_);
@@ -65,8 +65,8 @@ pub fn main() -> Int {
             ()
         } else { unreachable!() }
     };
-    write_out(string_append(text_of(the::<kayak_rt::Sum>(read_file(str_lit("b.txt")))), str_lit("\n")));
-    let tagcase_ = the::<kayak_rt::Sum>(read_file(str_lit("none.txt")));
+    write_out(string_append(text_of(the::<kayak_rt::Sum>(read_file(str_lit!("b.txt")))), str_lit!("\n")));
+    let tagcase_ = the::<kayak_rt::Sum>(read_file(str_lit!("none.txt")));
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("data") } {
         let b: Bytes = kayak_rt::sum_payload::<Bytes>(tagcase_);

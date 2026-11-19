@@ -2719,33 +2719,33 @@ pub fn word_spans() -> Ref<List<kayak_rt::Handle<'static, Span>>> {
 }
 
 pub fn _pctsyscall_available_colonnote_code() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall note-code (\"kayak:note-code/1\")"), str_lit("kayak:note-code/1"), str_lit("(subr (io sys) (int int string) unit)"));
+    kayak_rt::syscall_require(str_lit!("syscall note-code (\"kayak:note-code/1\")"), str_lit!("kayak:note-code/1"), str_lit!("(subr (io sys) (int int string) unit)"));
     true
 }
 
 pub fn note_code(x1: Int, x2: Int, x3: Str) -> () {
     _pctsyscall_available_colonnote_code();
-    kayak_rt::syscall3(str_lit("syscall note-code (\"kayak:note-code/1\")"), str_lit("kayak:note-code/1"), str_lit("(subr (io sys) (int int string) unit)"), x1, x2, x3)
+    kayak_rt::syscall3(str_lit!("syscall note-code (\"kayak:note-code/1\")"), str_lit!("kayak:note-code/1"), str_lit!("(subr (io sys) (int int string) unit)"), x1, x2, x3)
 }
 
 pub fn _pctsyscall_available_colonlast_sealed() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"));
+    kayak_rt::syscall_require(str_lit!("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit!("kayak:last-sealed/1"), str_lit!("(subr (io sys) () int)"));
     true
 }
 
 pub fn last_sealed() -> Int {
     _pctsyscall_available_colonlast_sealed();
-    kayak_rt::syscall0(str_lit("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit("kayak:last-sealed/1"), str_lit("(subr (io sys) () int)"))
+    kayak_rt::syscall0(str_lit!("syscall last-sealed (\"kayak:last-sealed/1\")"), str_lit!("kayak:last-sealed/1"), str_lit!("(subr (io sys) () int)"))
 }
 
 pub fn _pctsyscall_available_colonnote_code_lines() -> bool {
-    kayak_rt::syscall_require(str_lit("syscall note-code-lines (\"kayak:note-code-lines/1\")"), str_lit("kayak:note-code-lines/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) (int int string string (flatarrayof i64 r1) int) unit))"));
+    kayak_rt::syscall_require(str_lit!("syscall note-code-lines (\"kayak:note-code-lines/1\")"), str_lit!("kayak:note-code-lines/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) (int int string string (flatarrayof i64 r1) int) unit))"));
     true
 }
 
 pub fn note_code_lines(x1: Int, x2: Int, x3: Str, x4: Str, x5: FlatArray<i64>, x6: Int) -> () {
     _pctsyscall_available_colonnote_code_lines();
-    kayak_rt::syscall6(str_lit("syscall note-code-lines (\"kayak:note-code-lines/1\")"), str_lit("kayak:note-code-lines/1"), str_lit("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) (int int string string (flatarrayof i64 r1) int) unit))"), x1, x2, x3, x4, x5, x6)
+    kayak_rt::syscall6(str_lit!("syscall note-code-lines (\"kayak:note-code-lines/1\")"), str_lit!("kayak:note-code-lines/1"), str_lit!("(poly ((r1 region)) (subr (maxeff (io sys) (read r1)) (int int string string (flatarrayof i64 r1) int) unit))"), x1, x2, x3, x4, x5, x6)
 }
 
 /// Code from label `lo` to `hi`, named `name`; `w` the word whose cells'
@@ -2786,20 +2786,20 @@ pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss
                     let from = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo))));
                     let to = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(hi))));
                     let table = if i64_eq(w, 0i64) {
-                        str_lit("")
+                        str_lit!("")
                     } else if regs {
-                        table_named(get(reg_line_tables()), twin_name(w), str_lit(""))
+                        table_named(get(reg_line_tables()), twin_name(w), str_lit!(""))
                     } else {
-                        table_named(get(line_tables()), name, str_lit(""))
+                        table_named(get(line_tables()), name, str_lit!(""))
                     };
-                    if string_eq_p(table, str_lit("")) {
-                        note_code(_plus(at, from), _minus(to, from), string_append(str_lit("fx26 "), name))
+                    if string_eq_p(table, str_lit!("")) {
+                        note_code(_plus(at, from), _minus(to, from), string_append(str_lit!("fx26 "), name))
                     } else {
                         let cs = string_chars(table);
                         let es = cposes(after_char(cs, ' '), nil::<kayak_rt::Handle<'static, Cpos>>());
                         let pairs = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, i64_plus(1i64, size(es))), 0i64));
                         let n = lines_paired_x(es, pairs, at, ls, scale, base, from, to, 0i64);
-                        note_code_lines(_plus(at, from), _minus(to, from), string_append(str_lit("fx26 "), name), list_to_string(chars_before_char(cs, ' ')), pairs, i64_to_int(n))
+                        note_code_lines(_plus(at, from), _minus(to, from), string_append(str_lit!("fx26 "), name), list_to_string(chars_before_char(cs, ' ')), pairs, i64_to_int(n))
                     };
                     ss = cdr(ss);
                     continue;
@@ -4291,7 +4291,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     reg_instructions_x(rw, 0i64, n, base, starts, resumes);
     bind_x(_plus(base, n_cells));
     b_x(give);
-    span_labelled_x(register_name(rw, str_lit(" (tier 5)")), base, _plus(base, n_cells), rw, true, base);
+    span_labelled_x(register_name(rw, str_lit!(" (tier 5)")), base, _plus(base, n_cells), rw, true, base);
     resumes_emitted_x(0i64, n, base, rbase, rgive, resumes);
     bind_x(give);
     addi_x(x_fuel(), x_fuel(), int_lit(1));
@@ -4303,7 +4303,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
         let end = label_x();
         t6_compiled_x(rw, n, base, starts);
         bind_x(end);
-        span_labelled_x(register_name(rw, str_lit(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end, rw, true, get(h_6_base()))
+        span_labelled_x(register_name(rw, str_lit!(" (tier 6)")), _plus(get(h_6_base()), int_lit(2)), end, rw, true, get(h_6_base()))
     } else {
         ()
     };
@@ -4478,10 +4478,10 @@ pub fn hand_code_arm64_x() -> kayak_rt::Sum {
         let b = the::<&'static Bloblet<()>>(make_bloblet(_star(int_lit(4), count), ()));
         let bad = all_put_x(b, its, int_lit(0), ls);
         if _gt_eq(bad, int_lit(0)) {
-            kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit("tier 2: instruction "), string_append(int_to_string(bad), str_lit(" does not encode"))))
+            kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit!("tier 2: instruction "), string_append(int_to_string(bad), str_lit!(" does not encode"))))
         } else {
             let p = kayak_rt::as_proc(kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b)));
-            code_named_x(ls, int_lit(4), _star(int_lit(4), count), str_lit("kayak tier 2: the machine"));
+            code_named_x(ls, int_lit(4), _star(int_lit(4), count), str_lit!("kayak tier 2: the machine"));
             set(hand_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
             kayak_rt::sum_new::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made") }, "made", p)
         }
