@@ -1448,7 +1448,8 @@ pub mod writing {
 
     /// Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
     /// Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
-    /// product's `Flat`, for a typed suffix (C32): its fields' zero bytes.
+    /// product's `Flat`, for a typed suffix (C32): all zero bytes valid, as
+    /// each of its fields' are (C487).
     pub fn put_shape_decls(keys: Strings, shows: bool, flats: bool, acc: Chars) -> Chars {
         if null_p(keys) {
             acc
@@ -1480,11 +1481,9 @@ pub mod writing {
                 })
             };
             put_shape_decls(cdr(keys), shows, flats, if (flats && product) {
-                put(str_lit!("    }\n}\n\n"), put(str_lit!(")\n"), put_sep(kayak_rt::as_proc(kayak_rt::closure2s((), |(), i: i64, acc: Chars| {
-                    put(str_lit!("::zeroed()"), put(i64_to_string(i), put(str_lit!("A"), acc)))
-                })), str_lit!(", "), counting(0i64, n), put(str_lit!("("), put(name, put(str_lit!(" {\n    fn zeroed() -> Self {\n        "), put_generic_params(n, put(name, put(str_lit!(" Flat for "), put(str_lit!(">"), put_sep(kayak_rt::as_proc(kayak_rt::closure2s((), |(), i: i64, acc: Chars| {
+                put(str_lit!(" {}\n\n"), put_generic_params(n, put(name, put(str_lit!(" Flat for "), put(str_lit!(">"), put_sep(kayak_rt::as_proc(kayak_rt::closure2s((), |(), i: i64, acc: Chars| {
                     put(str_lit!(": Flat"), put(i64_to_string(i), put(str_lit!("A"), acc)))
-                })), str_lit!(", "), counting(0i64, n), put(str_lit!("impl<"), acc))))))))))))
+                })), str_lit!(", "), counting(0i64, n), put(str_lit!("// SAFETY: a product of flats, each all zero bytes valid and needing\n// no drop, is so too (C487).\n#[allow(unsafe_code)]\nunsafe impl<"), acc)))))))
             } else {
                 acc
             })

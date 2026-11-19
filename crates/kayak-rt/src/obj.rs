@@ -494,6 +494,210 @@ mod bloblet_tests {
     }
 }
 
+/// A flat as a typed suffix holds it (C32), all zero bytes to begin with,
+/// as FX-26's suffix is: a scalar's cell, an array of flats, a product of
+/// them (the emitter's shapes, C487).
+///
+/// # Safety
+/// A value of all zero bytes is a valid one, and it needs no drop: a typed
+/// suffix is made zeroed in its block, never built on a stack, never
+/// dropped.
+pub unsafe trait Flat {}
+
+macro_rules! flat_scalar {
+    ($($t:ty),*) => {
+        // SAFETY: a cell of a number, zero a valid one, nothing to drop.
+        $(unsafe impl Flat for Cell<$t> {})*
+    };
+}
+
+flat_scalar!(i64, u64, f64, i32, u32, f32);
+
+/// `(arrayof F n)` in a typed suffix: `n` `F`s, in place (C487).
+#[repr(transparent)]
+pub struct FlatArr<T, const N: usize>([T; N]);
+
+// SAFETY: an array of flats, each zero valid and needing no drop.
+unsafe impl<T: Flat, const N: usize> Flat for FlatArr<T, N> {}
+
+impl<T, const N: usize> FlatArr<T, N> {
+    /// `(blobref-index r i)`.
+    #[inline]
+    pub fn at(&self, i: crate::Int) -> &T {
+        match i {
+            crate::Int::Small(i) if (0..N as i64).contains(&i) => &self.0[i as usize],
+            _ => crate::fail("blobref-index: out of range"),
+        }
+    }
+}
+
+/// A typed-suffix bloblet's object (C485, C487): its header (kind 32, its
+/// suffix's bytes), its fields, its trailer, its suffix, one block.
+#[repr(C)]
+pub struct TBlobHead<Fs, S> {
+    header: u64,
+    pub fields: Fs,
+    trailer: u64,
+    suffix: S,
+}
+
+/// A bloblet of a typed suffix, `S`, as a value: one word, to its object.
+pub struct TBlobletAt<'r, Fs, S>(
+    NonNull<TBlobHead<Fs, S>>,
+    std::marker::PhantomData<&'r TBlobHead<Fs, S>>,
+);
+
+impl<Fs, S> Clone for TBlobletAt<'_, Fs, S> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<Fs, S> Copy for TBlobletAt<'_, Fs, S> {}
+
+impl<'r, Fs, S> TBlobletAt<'r, Fs, S> {
+    #[inline]
+    fn head(self) -> &'r TBlobHead<Fs, S> {
+        // SAFETY: made only by `TBloblet::at`, of its block, alive for `'r`.
+        unsafe { self.0.as_ref() }
+    }
+
+    /// Its fields, each a cell.
+    #[inline]
+    pub fn fields(self) -> &'r Fs {
+        &self.head().fields
+    }
+
+    /// Its suffix, the flat (a blobref at 0).
+    #[inline]
+    pub fn suffix(self) -> &'r S {
+        &self.head().suffix
+    }
+
+    /// Its suffix's length, in bytes, as its header says.
+    #[inline]
+    pub fn byte_size(self) -> usize {
+        (self.head().header >> 32) as usize
+    }
+
+    /// Where its object is.
+    #[inline]
+    pub fn addr(self) -> usize {
+        self.0.as_ptr() as usize
+    }
+}
+
+/// A typed-suffix bloblet's object, owned: a region's arena holds one made
+/// in it; one of the heap's is kept.
+pub struct TBloblet<Fs, S> {
+    at: NonNull<TBlobHead<Fs, S>>,
+}
+
+impl<Fs, S: Flat> TBloblet<Fs, S> {
+    /// One of `fields` and a zeroed suffix, its header saying `bytes`.
+    pub(crate) fn new(bytes: usize, fields: Fs) -> Self {
+        let lay = std::alloc::Layout::new::<TBlobHead<Fs, S>>();
+        let to_trailer = std::mem::offset_of!(TBlobHead<Fs, S>, trailer) / 8;
+        // SAFETY: a layout of nonzero size (two words at least), zeroed, so
+        // its suffix a valid `S` (`Flat`); its header, fields and trailer
+        // written before it is read.
+        unsafe {
+            let p = std::alloc::alloc_zeroed(lay).cast::<TBlobHead<Fs, S>>();
+            let Some(at) = NonNull::new(p) else {
+                std::alloc::handle_alloc_error(lay)
+            };
+            std::ptr::addr_of_mut!((*p).header).write(layout::header(
+                layout::KIND_BLOBLET,
+                to_trailer - 1,
+                bytes,
+                false,
+                false,
+            ));
+            std::ptr::addr_of_mut!((*p).fields).write(fields);
+            std::ptr::addr_of_mut!((*p).trailer).write(layout::trailer(to_trailer));
+            TBloblet { at }
+        }
+    }
+}
+
+impl<Fs, S> TBloblet<Fs, S> {
+    /// It, as a value, alive as long as it is.
+    #[inline]
+    pub fn at(&self) -> TBlobletAt<'_, Fs, S> {
+        TBlobletAt(self.at, std::marker::PhantomData)
+    }
+
+    /// It, kept for the run (the heap's: never freed).
+    pub(crate) fn kept<'a>(self) -> TBlobletAt<'a, Fs, S>
+    where
+        Fs: crate::Visit + 'static,
+        S: 'static,
+    {
+        let at = self.at;
+        let size = std::mem::size_of::<TBlobHead<Fs, S>>();
+        #[cfg(feature = "heap-stats")]
+        crate::census::object(at.as_ptr() as usize, size, trace_tbloblet::<Fs, S>);
+        crate::stats::note::<TBloblet<Fs, S>>(size);
+        std::mem::forget(self);
+        TBlobletAt(at, std::marker::PhantomData)
+    }
+}
+
+impl<Fs, S> Drop for TBloblet<Fs, S> {
+    fn drop(&mut self) {
+        // SAFETY: its block, made by `new` with this layout; its fields
+        // dropped once, here; its suffix needs no drop (`Flat`).
+        unsafe {
+            std::ptr::drop_in_place(std::ptr::addr_of_mut!((*self.at.as_ptr()).fields));
+            std::alloc::dealloc(
+                self.at.as_ptr().cast(),
+                std::alloc::Layout::new::<TBlobHead<Fs, S>>(),
+            );
+        }
+    }
+}
+
+/// A typed-suffix bloblet's head: its fields visited, its suffix plain
+/// bytes (C487).
+impl<Fs: crate::Visit, S> crate::Visit for TBlobHead<Fs, S> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        self.fields.visit(t);
+    }
+    fn visit_name(&self) -> &'static str {
+        std::any::type_name::<TBloblet<Fs, S>>()
+    }
+}
+
+/// A typed-suffix bloblet: its object reached (C487).
+impl<Fs: crate::Visit, S> crate::Trace for TBlobletAt<'_, Fs, S> {
+    crate::trace_whole!();
+    #[inline]
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.reach(self.head());
+    }
+}
+
+/// A typed-suffix bloblet's object at `addr`, traced (a census's).
+///
+/// # Safety
+/// `addr` is such an object of fields `Fs` and suffix `S`, kept for the run.
+#[cfg(feature = "heap-stats")]
+unsafe fn trace_tbloblet<Fs: crate::Visit + 'static, S: 'static>(
+    addr: usize,
+    t: &mut crate::Tracer<'static>,
+) {
+    // SAFETY: the caller's.
+    let b = TBlobletAt::<'static, Fs, S>(
+        unsafe { NonNull::new_unchecked(addr as *mut TBlobHead<Fs, S>) },
+        std::marker::PhantomData,
+    );
+    crate::Trace::trace(b, t);
+}
+
 /// `(arrayof T R)` (C485): one word, to an object of Fixpt's layout: its
 /// header (kind 3, vector; its elements the fields, as many as it has),
 /// and, past what the header's 18 bits count, Fixpt's second header word

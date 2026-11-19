@@ -1903,14 +1903,14 @@ over its 1664 definitions, 335 of them refused:
   bloblets and arrays~~ (done, C485: `TBloblet` with Fixpt's header and
   trailer; `Array` one word to a vector's object, its elements the
   fields, a large one's count in Fixpt's second header word). Left of
-  them: an array in a typed suffix (`FlatArr`) boxed apart, since made in
-  place it needs its flat all zero bytes valid, an `unsafe` trait the
-  emitter's products would implement, and generated Rust has no `unsafe`;
-  flat arrays (`FlatArray`, Fixpt's header already in its first cells, a
+  them: ~~an array in a typed suffix (`FlatArr`) boxed apart~~ (done,
+  C487: the user allowed `unsafe` for it; `Flat` an `unsafe` marker,
+  all zero bytes valid, the emitter's flat products implementing it; a
+  typed-suffix bloblet one block made zeroed, one word, traced); flat
+  arrays (`FlatArray`, Fixpt's header already in its first cells, a
   plain reference to them); ~~bloblets and arrays opaque to a trace~~
   (done, C486: each object reached once, its fields visited; a census
-  traces them precisely) and flat arrays and typed-suffix bloblets
-  still (plain references; their elements the fields, counted at run
+  traces them precisely) and flat arrays still (plain references; their elements the fields, counted at run
   time); a dynamic value (`Value`, an enum), a product held by
   value in its holder (a heap object of its own in FX-26), an integer
   (`Int`, a bignum's limbs a `Vec`), bloblets and flat arrays (plain

@@ -3824,7 +3824,7 @@ pub mod emitter {
                         let life = lifetime(r);
                         return put(string_append(str_lit!("&"), string_append(life, string_append(str_lit!(" Region_"), string_append(camel(r), string_append(str_lit!("<"), string_append(words_of_sep(onto(kayak_rt::heap_cons(life, lifetimes_before(lives, life)), type_params_in(ctx_locals(c))), str_lit!(", ")), str_lit!(">"))))))), acc);
                     } else if (sym_is_p(car(xs), str_lit!("bloblet")) && not(null_p(typed_flat(c, t)))) {
-                        return put(str_lit!(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit!(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit!("TBloblet<"), put(str_lit!(" "), put(owner_lifetime(c, third(xs)), put(str_lit!("&"), acc))))))));
+                        return put(str_lit!(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit!(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit!(", "), put(owner_lifetime(c, third(xs)), put(str_lit!("kayak_rt::TBlobletAt<"), acc)))))));
                     } else if sym_is_p(car(xs), str_lit!("bloblet")) {
                         // A bloblet: one word to its object, Fixpt's layout (C484).
                         return put(str_lit!(">"), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit!(", "), put(owner_lifetime(c, third(xs)), put(str_lit!("kayak_rt::BlobletAt<"), acc)))));
@@ -6163,7 +6163,7 @@ pub mod emitter {
                 return put(str_lit!(")"), put_exp(c, second(xs), n, value(), put(str_lit!(").at("), put_exp(c, car(xs), n, value(), put(str_lit!("("), acc)))));
             } else if (string_eq_p(h, str_lit!("blobref-at")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!("")) && not(null_p(blob_typed(c, e, str_lit!("blob-at "))))) {
                 // A typed suffix's blobref at 0 (C32): a reference to it.
-                return put(str_lit!(").suffix)"), put_exp(c, car(xs), n, value(), put(str_lit!("(&("), acc)));
+                return put(str_lit!(").suffix()"), put_exp(c, car(xs), n, value(), put(str_lit!("("), acc)));
             } else if ((string_eq_p(h, str_lit!("blobref-at")) || string_eq_p(h, str_lit!("blobref+"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {
                 // A new blobref, its flat's size checked against the suffix's, as
                 // FX-26 checks it where one is made (TODO §77).

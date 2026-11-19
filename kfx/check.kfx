@@ -1467,7 +1467,7 @@
      no type variable is named so, camel-cased, which would hide it."
     (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show" "OnceCell" "Fn"
           "Result" "Ok" "Err" "String" "Copy" "Clone" "Self" "Module" "Void" "Bloblet" "BlobRef" "Arena"
-          "Holds" "ListAt" "RefAt" "TBloblet" "FlatArr" "Flat" "Owner" "Default" "Procedure"
+          "Holds" "ListAt" "RefAt" "TBloblet" "TBlobletAt" "FlatArr" "Flat" "Owner" "Default" "Procedure"
           "Native" "NativeFields" "Sealed" "Written")))
 
 "The Rust names kayak-rt or the emitter writes, which no KFX name may

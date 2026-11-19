@@ -14949,3 +14949,37 @@ block left (were closures' and bloblets'); 2.2 to 5.9 MB of values and
 s, as before. nextest 5610; the async check and Fixpt's programs as
 before.
 - **The full check**: all passed in 437.4 s, its first run.
+
+## C487. Typed-suffix bloblets in one block, `unsafe` in generated Rust (2026-11-19)
+
+The user, on C485's and C486's gap: "Yeah let's allow unsafe for
+TBloblet". The workspace denies `unsafe_code`; generated Rust now has
+one `unsafe` item, allowed where it stands.
+
+What changed:
+- **`Flat` an `unsafe` marker trait** (`obj.rs`): a flat whose all-zero
+  bytes are a valid value and which needs no drop. Implemented by kayak-rt
+  for a number's cell and for `FlatArr`, and by the emitter for each flat
+  product (`emit-tops.kfx`): `#[allow(unsafe_code)] unsafe impl<A0: Flat,
+  …> Flat for Product_…<A0, …> {}`, with its `SAFETY` comment; sound as
+  each part is bounded `Flat`. Its `zeroed()` is gone.
+- **`FlatArr<T, N>`** an array in place, `[T; N]`, `repr(transparent)`;
+  no box apart.
+- **`TBloblet`** made as `Bloblet` (C484): one block, `TBlobHead` (header,
+  fields, trailer, suffix), allocated zeroed (`alloc_zeroed`), its
+  header, fields and trailer written in it; the suffix never built on a
+  stack, so a large one is made (a test: 16 MB). The value is one word,
+  `TBlobletAt<'r, Fs, S>`; `TBloblet` is the owned object a region's
+  arena holds, freeing its block (`Drop`). The emitter writes the value's
+  type `kayak_rt::TBlobletAt<'r, Fs, S>`, not `&'r TBloblet<Fs, S>`, and a
+  blobref at 0 `(b).suffix()`; `TBlobletAt` joins the names no KFX type
+  may take (`check.kfx`).
+- **Traced** (C486's way): its head visited, its fields; a census traces
+  it from its address. So no bloblet is opaque now.
+- **Lang items**: the emitter calls `suffix` (`lang/items.sexp`'s
+  `emitter-call`), the first full check's stop.
+
+Measured: nextest 5611; the corpus re-blessed (each flat product's
+`Flat` impl alone changed); the async check and Fixpt's programs as
+before.
+- **The full check**: all passed in 307.0 s, its second run (the first stopped at lang-items, ~35 s in).

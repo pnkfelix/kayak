@@ -8,11 +8,10 @@ pub struct Product_1a_1c<A0, A1>(pub A0, pub A1);
 
 kayak_rt::trace_product!(Product_1a_1c, A0 0, A1 1);
 
-impl<A0: Flat, A1: Flat> Flat for Product_1a_1c<A0, A1> {
-    fn zeroed() -> Self {
-        Product_1a_1c(A0::zeroed(), A1::zeroed())
-    }
-}
+// SAFETY: a product of flats, each all zero bytes valid and needing
+// no drop, is so too (C487).
+#[allow(unsafe_code)]
+unsafe impl<A0: Flat, A1: Flat> Flat for Product_1a_1c<A0, A1> {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
@@ -20,11 +19,10 @@ pub struct Product_1w_1h<A0, A1>(pub A0, pub A1);
 
 kayak_rt::trace_product!(Product_1w_1h, A0 0, A1 1);
 
-impl<A0: Flat, A1: Flat> Flat for Product_1w_1h<A0, A1> {
-    fn zeroed() -> Self {
-        Product_1w_1h(A0::zeroed(), A1::zeroed())
-    }
-}
+// SAFETY: a product of flats, each all zero bytes valid and needing
+// no drop, is so too (C487).
+#[allow(unsafe_code)]
+unsafe impl<A0: Flat, A1: Flat> Flat for Product_1w_1h<A0, A1> {}
 
 // Keyed flat sums (C33): a tag of the key's width holding the label as it
 // is, then the variant at the widest one's alignment. blobref-variant!

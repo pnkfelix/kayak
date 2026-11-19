@@ -8,11 +8,10 @@ pub struct Product_1x_1n_1y<A0, A1, A2>(pub A0, pub A1, pub A2);
 
 kayak_rt::trace_product!(Product_1x_1n_1y, A0 0, A1 1, A2 2);
 
-impl<A0: Flat, A1: Flat, A2: Flat> Flat for Product_1x_1n_1y<A0, A1, A2> {
-    fn zeroed() -> Self {
-        Product_1x_1n_1y(A0::zeroed(), A1::zeroed(), A2::zeroed())
-    }
-}
+// SAFETY: a product of flats, each all zero bytes valid and needing
+// no drop, is so too (C487).
+#[allow(unsafe_code)]
+unsafe impl<A0: Flat, A1: Flat, A2: Flat> Flat for Product_1x_1n_1y<A0, A1, A2> {}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
@@ -20,11 +19,10 @@ pub struct Product_1a_1b_1c_1d<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
 
 kayak_rt::trace_product!(Product_1a_1b_1c_1d, A0 0, A1 1, A2 2, A3 3);
 
-impl<A0: Flat, A1: Flat, A2: Flat, A3: Flat> Flat for Product_1a_1b_1c_1d<A0, A1, A2, A3> {
-    fn zeroed() -> Self {
-        Product_1a_1b_1c_1d(A0::zeroed(), A1::zeroed(), A2::zeroed(), A3::zeroed())
-    }
-}
+// SAFETY: a product of flats, each all zero bytes valid and needing
+// no drop, is so too (C487).
+#[allow(unsafe_code)]
+unsafe impl<A0: Flat, A1: Flat, A2: Flat, A3: Flat> Flat for Product_1a_1b_1c_1d<A0, A1, A2, A3> {}
 
 // Bloblets and blobrefs (C31): fields, each a cell, and a suffix of raw
 // bytes, words in Rust; a blobref its owner and a byte offset, read and
@@ -90,8 +88,8 @@ pub fn total(n: i64) -> f64 {
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> for Region_R<'r> { fn arena(&self) -> &Arena<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> { &self.a0 } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> f64 {
-            let b = the::<&'r TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>(rmake_tbloblet::<_, FlatArr<std::cell::Cell<f64>, 100>, _>(r, int_lit(800), (std::cell::Cell::new(n),)));
-            let xs = the::<&'r FlatArr<std::cell::Cell<f64>, 100>>((&(b).suffix));
+            let b = the::<kayak_rt::TBlobletAt<'r, (std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>(rmake_tbloblet::<_, FlatArr<std::cell::Cell<f64>, 100>, _>(r, int_lit(800), (std::cell::Cell::new(n),)));
+            let xs = the::<&'r FlatArr<std::cell::Cell<f64>, 100>>((b).suffix());
             let fill__knot = knot::<kayak_rt::Proc1<'r, i64, ()>>();
             let add__knot = knot::<kayak_rt::Proc2<'r, i64, f64, f64>>();
             let fill = kayak_rt::closure1((b, xs,), |(b, xs,), mut i: i64| {

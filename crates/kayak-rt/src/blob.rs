@@ -9,13 +9,12 @@
 //! byte by byte. In safe Rust, little-endian as Fixpt's hosts are.
 
 use crate::{Holds, Int, fail, i64_to_int, int_to_i64};
-use std::cell::Cell;
 
 /// `(bloblet (fields T …) R)`: one word to an object of Fixpt's layout
 /// (C484, `obj.rs`), `fields` a tuple of cells, one a field, and its
 /// suffix words of cells. `Bloblet` is the object, owned: a region's arena
 /// holds one so; `BlobletAt` the value.
-pub use crate::obj::{Bloblet, BlobletAt};
+pub use crate::obj::{Bloblet, BlobletAt, Flat, FlatArr, TBloblet, TBlobletAt};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -169,7 +168,7 @@ impl<Fs> Written for BlobletAt<'_, Fs> {
     }
 }
 
-impl<Fs, S> Written for &TBloblet<Fs, S> {
+impl<Fs, S> Written for TBlobletAt<'_, Fs, S> {
     #[inline]
     fn written(self, _: usize) {}
 }
@@ -402,107 +401,33 @@ pub fn blobref_plus<B: Owner>(r: BlobRef<B>, d: Int, size: usize) -> BlobRef<B> 
 // and arrays of them, and a blobref a reference into it. No word is
 // shifted, no offset checked but an array's index.
 
-/// A flat as a suffix holds it, all zero bytes to begin with, as FX-26's
-/// suffix is.
-pub trait Flat {
-    fn zeroed() -> Self;
-}
-
-macro_rules! flat_scalar {
-    ($($t:ty),*) => {
-        $(impl Flat for Cell<$t> {
-            fn zeroed() -> Self {
-                Cell::new(0 as $t)
-            }
-        })*
-    };
-}
-
-flat_scalar!(i64, u64, f64, i32, u32, f32);
-
-/// `(arrayof F n)` in a typed suffix: `n` `F`s, on the heap with the
-/// bloblet (a large one does not fit a stack).
-pub struct FlatArr<T, const N: usize>(Box<[T]>);
-
-impl<T: Flat, const N: usize> Flat for FlatArr<T, N> {
-    fn zeroed() -> Self {
-        FlatArr((0..N).map(|_| T::zeroed()).collect())
-    }
-}
-
-impl<T, const N: usize> FlatArr<T, N> {
-    /// `(blobref-index r i)`.
-    #[inline]
-    pub fn at(&self, i: Int) -> &T {
-        match i {
-            Int::Small(i) if (0..N as i64).contains(&i) => &self.0[i as usize],
-            _ => fail("blobref-index: out of range"),
-        }
-    }
-}
-
-/// A bloblet of a typed suffix, `S` (C32), laid out as Fixpt's object
-/// (C485): its header (kind 32, its suffix's bytes), its fields, its
-/// trailer, its suffix, one block. An array in the suffix (`FlatArr`) is
-/// boxed apart still: made in place, it would need `S` all zero bytes
-/// valid, an `unsafe` trait the emitter's products would implement, and
-/// the Rust kfx writes has no `unsafe` (TODO §54).
-#[repr(C)]
-pub struct TBloblet<Fs, S> {
-    header: u64,
-    pub fields: Fs,
-    trailer: u64,
-    pub suffix: S,
-}
-
-impl<Fs, S: Flat> TBloblet<Fs, S> {
-    fn new(bytes: Int, fields: Fs) -> Self {
-        let bytes = index_of(bytes, "make-bloblet: a negative size");
-        let to_trailer = std::mem::offset_of!(TBloblet<Fs, S>, trailer) / 8;
-        TBloblet {
-            header: kayak_jit::layout::header(
-                kayak_jit::layout::KIND_BLOBLET,
-                to_trailer - 1,
-                bytes,
-                false,
-                false,
-            ),
-            fields,
-            trailer: kayak_jit::layout::trailer(to_trailer),
-            suffix: S::zeroed(),
-        }
-    }
-}
-
 /// `(make-bloblet bytes e …)` of a typed suffix.
-pub fn make_tbloblet<'a, Fs: 'a, S: Flat + 'a>(bytes: Int, fields: Fs) -> &'a TBloblet<Fs, S> {
-    crate::leak(TBloblet::new(bytes, fields))
+pub fn make_tbloblet<'a, Fs: crate::Visit + 'static, S: Flat + 'static>(
+    bytes: Int,
+    fields: Fs,
+) -> TBlobletAt<'a, Fs, S> {
+    TBloblet::new(index_of(bytes, "make-bloblet: a negative size"), fields).kept()
 }
 
-/// `(rmake-bloblet r bytes e …)` of a typed suffix.
+/// `(rmake-bloblet r bytes e …)` of a typed suffix: its object the region's
+/// arena's.
 pub fn rmake_tbloblet<Fs, S: Flat, R: Holds<TBloblet<Fs, S>>>(
     r: &R,
     bytes: Int,
     fields: Fs,
-) -> &TBloblet<Fs, S> {
-    r.arena().alloc(TBloblet::new(bytes, fields)).to_ref()
+) -> TBlobletAt<'_, Fs, S> {
+    r.arena()
+        .alloc(TBloblet::new(
+            index_of(bytes, "make-bloblet: a negative size"),
+            fields,
+        ))
+        .to_ref()
+        .at()
 }
 
-impl<Fs, S> crate::Show for TBloblet<Fs, S> {
+impl<Fs, S> crate::Show for TBlobletAt<'_, Fs, S> {
     fn show(&self, out: &mut String) {
         out.push_str("#<bloblet>");
-    }
-}
-
-impl<Fs, S> TBloblet<Fs, S> {
-    pub fn byte_size(&self) -> usize {
-        (self.header >> 32) as usize
-    }
-
-    /// Its fields, as a bloblet's are read (C484).
-    #[inline]
-    pub fn fields(&self) -> &Fs {
-        &self.fields
     }
 }
 
@@ -522,6 +447,23 @@ impl<B> crate::Show for BlobRef<B> {
 mod tests {
     use super::*;
     use crate::int_lit;
+    use std::cell::Cell;
+
+    #[test]
+    fn a_typed_suffix_in_place_and_traced() {
+        // A suffix of 16 MB, too large for a stack: made zeroed in place.
+        type S = FlatArr<Cell<i64>, { 1 << 21 }>;
+        let b = make_tbloblet::<_, S>(int_lit(8 << 21), (Cell::new(crate::str_lit("f")),));
+        assert_eq!(b.suffix().at(int_lit(12345)).get(), 0);
+        b.suffix().at(int_lit((1 << 21) - 1)).set(7);
+        assert_eq!(b.suffix().at(int_lit((1 << 21) - 1)).get(), 7);
+        assert_eq!(b.byte_size(), 8 << 21);
+        assert_eq!(b.fields().0.get().as_str(), "f");
+        assert_eq!(std::mem::size_of::<TBlobletAt<'_, (Cell<i64>,), S>>(), 8);
+        let (rows, strings) = crate::traced((b, b)).census();
+        assert_eq!(rows.iter().map(|r| r.1).sum::<u64>(), 1);
+        assert_eq!(strings.0, 1);
+    }
 
     #[test]
     fn scalars_at_their_offsets_and_not() {

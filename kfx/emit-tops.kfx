@@ -767,7 +767,8 @@
         (lambda (keys shows flats acc)
           "Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
            Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
-           product's `Flat`, for a typed suffix (C32): its fields' zero bytes."
+           product's `Flat`, for a typed suffix (C32): all zero bytes valid, as
+           each of its fields' are (C487)."
           (if (null? keys)
               acc
               (let* ((key (car keys))
@@ -793,12 +794,10 @@
                                                        "" labels (put "        match self {\n" acc)))))))))
                 (put-shape-decls (cdr keys) shows flats
                                  (if (and flats product)
-                                     (put "    }\n}\n\n"
-                                          (put ")\n"
-                                               (put-sep (lambda ((i i64) (acc chars)) (put "::zeroed()" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
-                                                        (put "(" (put name (put " {\n    fn zeroed() -> Self {\n        " (put-generic-params n (put name (put " Flat for "
-                                                          (put ">" (put-sep (lambda ((i i64) (acc chars)) (put ": Flat" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
-                                                                            (put "impl<" acc))))))))))))
+                                     (put " {}\n\n"
+                                          (put-generic-params n (put name (put " Flat for "
+                                            (put ">" (put-sep (lambda ((i i64) (acc chars)) (put ": Flat" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
+                                                              (put "// SAFETY: a product of flats, each all zero bytes valid and needing\n// no drop, is so too (C487).\n#[allow(unsafe_code)]\nunsafe impl<" acc)))))))
                                      acc))))))
 
       "A program's top-level expressions, for running Fixpt's programs as Rust

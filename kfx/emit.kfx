@@ -2035,7 +2035,7 @@
                     ((and (sym-is? (car xs) "bloblet") (not (null? (typed-flat c t))))
                      (put ">" (put-flat c (car (typed-flat c t))
                                         (put ", " (put-fields-tuple c (cdr (items (second xs)))
-                                                                    (put "TBloblet<" (put " " (put (owner-lifetime c (third xs)) (put "&" acc)))))))))
+                                                                    (put ", " (put (owner-lifetime c (third xs)) (put "kayak_rt::TBlobletAt<" acc))))))))
                     ((sym-is? (car xs) "bloblet")
                      "A bloblet: one word to its object, Fixpt's layout (C484)."
                      (put ">" (put-fields-tuple c (cdr (items (second xs)))
@@ -3403,7 +3403,7 @@
                  (put ")" (put-exp c (second xs) n (value) (put ").at(" (put-exp c (car xs) n (value) (put "(" acc))))))
                 ((and (string=? h "blobref-at") (string=? (local-kind h (ctx-locals c)) "") (not (null? (blob-typed c e "blob-at "))))
                  "A typed suffix's blobref at 0 (C32): a reference to it."
-                 (put ").suffix)" (put-exp c (car xs) n (value) (put "(&(" acc))))
+                 (put ").suffix()" (put-exp c (car xs) n (value) (put "(" acc))))
                 ((and (or (string=? h "blobref-at") (string=? h "blobref+")) (string=? (local-kind h (ctx-locals c)) ""))
                  "A new blobref, its flat's size checked against the suffix's, as
                   FX-26 checks it where one is made (TODO §77)."
