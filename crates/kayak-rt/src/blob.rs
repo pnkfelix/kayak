@@ -449,19 +449,35 @@ impl<T, const N: usize> FlatArr<T, N> {
     }
 }
 
-/// A bloblet of a typed suffix, `S`.
+/// A bloblet of a typed suffix, `S` (C32), laid out as Fixpt's object
+/// (C485): its header (kind 32, its suffix's bytes), its fields, its
+/// trailer, its suffix, one block. An array in the suffix (`FlatArr`) is
+/// boxed apart still: made in place, it would need `S` all zero bytes
+/// valid, an `unsafe` trait the emitter's products would implement, and
+/// the Rust kfx writes has no `unsafe` (TODO §54).
+#[repr(C)]
 pub struct TBloblet<Fs, S> {
+    header: u64,
     pub fields: Fs,
+    trailer: u64,
     pub suffix: S,
-    bytes: usize,
 }
 
 impl<Fs, S: Flat> TBloblet<Fs, S> {
     fn new(bytes: Int, fields: Fs) -> Self {
+        let bytes = index_of(bytes, "make-bloblet: a negative size");
+        let to_trailer = std::mem::offset_of!(TBloblet<Fs, S>, trailer) / 8;
         TBloblet {
+            header: kayak_jit::layout::header(
+                kayak_jit::layout::KIND_BLOBLET,
+                to_trailer - 1,
+                bytes,
+                false,
+                false,
+            ),
             fields,
+            trailer: kayak_jit::layout::trailer(to_trailer),
             suffix: S::zeroed(),
-            bytes: index_of(bytes, "make-bloblet: a negative size"),
         }
     }
 }
@@ -488,7 +504,7 @@ impl<Fs, S> crate::Show for TBloblet<Fs, S> {
 
 impl<Fs, S> TBloblet<Fs, S> {
     pub fn byte_size(&self) -> usize {
-        self.bytes
+        (self.header >> 32) as usize
     }
 
     /// Its fields, as a bloblet's are read (C484).

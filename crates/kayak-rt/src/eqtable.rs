@@ -38,7 +38,7 @@ impl<T> Identity for crate::Handle<'_, Cell<T>> {
 
 impl<T: Copy> Identity for Array<T> {
     fn address(self) -> usize {
-        self.0.as_ptr() as usize
+        self.addr()
     }
 }
 

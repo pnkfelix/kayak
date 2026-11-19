@@ -326,7 +326,7 @@ impl<T: Trace> Trace for Array<T> {
     where
         Self: 'a,
     {
-        for c in self.0 {
+        for c in self.cells() {
             c.get().trace(t);
         }
     }

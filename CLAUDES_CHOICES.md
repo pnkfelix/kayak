@@ -14882,3 +14882,27 @@ trace (their fields cells of any type).
 Measured: nextest 5607 (a bloblet's fields and suffix); the async check
 and Fixpt's programs as before.
 - **The full check**: all passed in 456.1 s, its first run.
+
+## C485. Typed-suffix bloblets and arrays as Fixpt's objects (2026-11-18)
+
+The user, after C484: "Okay. Go for it" (the rest: typed-suffix
+bloblets, arrays).
+
+What changed:
+- **`TBloblet`** (C32's typed suffix): `#[repr(C)]`, its header (kind 32,
+  its suffix's bytes), its fields, its trailer, its suffix, one block; the
+  byte count its header's, no field of its own. An array in its suffix
+  (`FlatArr`) is boxed apart still: made in place, the object would need
+  its flat valid as all zero bytes, an `unsafe` trait that the emitter's
+  flat products would implement in generated Rust, which the workspace
+  denies (`unsafe_code`); so left, in TODO §54.
+- **`Array<T>`** (`(arrayof T R)`): one word to an object (`obj.rs`): its
+  header (kind 3, vector; its elements the fields, counted), its
+  elements each a cell, its trailer; past 2^18 - 1 elements, Fixpt's
+  `large` header and its second word (kind 255, the count above bit 11).
+  Its field was public; every use was kayak-rt's (`array.rs`, `trace.rs`,
+  `eqtable.rs`). No change to the Rust kfx writes.
+- **Tests**: an array of three, of 300,000 (large), of units.
+
+Measured: nextest 5608; the async check and Fixpt's programs as before.
+- **The full check**: all passed in 436.0 s, its first run.

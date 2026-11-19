@@ -447,3 +447,134 @@ mod bloblet_tests {
         assert_eq!(std::mem::size_of::<BlobletAt<'_, (Cell<i64>,)>>(), 8);
     }
 }
+
+/// `(arrayof T R)` (C485): one word, to an object of Fixpt's layout: its
+/// header (kind 3, vector; its elements the fields, as many as it has),
+/// and, past what the header's 18 bits count, Fixpt's second header word
+/// (`large`, kind 255, the count above it); its elements, each a cell;
+/// its trailer. In the heap, kept.
+pub struct Array<T: 'static>(NonNull<u64>, std::marker::PhantomData<&'static [Cell<T>]>);
+
+impl<T> Clone for Array<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for Array<T> {}
+
+/// The header's field count, 18 bits; and its `large` bit.
+const FIELDS_MAX: usize = (1 << 18) - 1;
+const LARGE: u64 = 1 << 11;
+
+/// Where an array's elements begin, in words: after one header word, or
+/// two for a large one.
+const fn elements_at(n: usize) -> usize {
+    if n > FIELDS_MAX { 2 } else { 1 }
+}
+
+impl<T> Array<T> {
+    /// Its elements, how many.
+    #[inline]
+    pub fn len(self) -> usize {
+        // SAFETY: an `Array` is made only by `array_made`, of a block whose
+        // first word is its header and, if large, its second the count.
+        unsafe {
+            let h = *self.0.as_ptr();
+            if h & LARGE != 0 {
+                (*self.0.as_ptr().add(1) >> 11) as usize
+            } else {
+                ((h >> 14) & FIELDS_MAX as u64) as usize
+            }
+        }
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// Its elements, each a cell.
+    #[inline]
+    pub fn cells(self) -> &'static [Cell<T>] {
+        let n = self.len();
+        // SAFETY: its elements follow its header words, `n` of them, in the
+        // block it was made in (whose pointer it keeps), kept for the run.
+        unsafe {
+            std::slice::from_raw_parts(self.0.as_ptr().add(elements_at(n)).cast::<Cell<T>>(), n)
+        }
+    }
+
+    /// Where its object is: its identity.
+    #[inline]
+    pub fn addr(self) -> usize {
+        self.0.as_ptr() as usize
+    }
+}
+
+/// An array of `items`, kept for the run.
+pub(crate) fn array_made<T>(items: impl ExactSizeIterator<Item = T>) -> Array<T> {
+    const {
+        assert!(
+            std::mem::align_of::<T>() <= 8,
+            "an array's element aligned past a word"
+        )
+    };
+    let n = items.len();
+    let at = elements_at(n) * 8;
+    let trailer_at = (at + n * std::mem::size_of::<T>()).next_multiple_of(8);
+    let layout = std::alloc::Layout::from_size_align(trailer_at + 8, 8).expect("an array's size");
+    crate::stats::note::<Array<T>>(layout.size());
+    // SAFETY: a layout of nonzero size, aligned to a word; each word of
+    // the header, each element and the trailer written before it is read.
+    unsafe {
+        let p = std::alloc::alloc(layout).cast::<u64>();
+        let Some(base) = NonNull::new(p) else {
+            std::alloc::handle_alloc_error(layout)
+        };
+        if n > FIELDS_MAX {
+            p.write(layout::header(3, 0, 0, false, false) | LARGE);
+            p.add(1)
+                .write(layout::TAG_HEADER | 255 << 3 | (n as u64) << 11);
+        } else {
+            p.write(layout::header(3, n, 0, false, false));
+        }
+        let cells = p.cast::<u8>().add(at).cast::<Cell<T>>();
+        let mut k = 0;
+        for x in items.take(n) {
+            cells.add(k).write(Cell::new(x));
+            k += 1;
+        }
+        assert!(k == n, "an array's items fewer than it said");
+        p.cast::<u8>()
+            .add(trailer_at)
+            .cast::<u64>()
+            .write(layout::trailer(trailer_at / 8));
+        #[cfg(feature = "heap-stats")]
+        crate::census::opaque(p as usize, layout.size());
+        Array(base, std::marker::PhantomData)
+    }
+}
+
+#[cfg(test)]
+mod array_tests {
+    use super::*;
+
+    #[test]
+    fn an_array_small_and_large() {
+        let a = array_made([1i64, 2, 3].into_iter());
+        assert_eq!(a.len(), 3);
+        a.cells()[1].set(20);
+        assert_eq!(
+            a.cells().iter().map(Cell::get).collect::<Vec<_>>(),
+            vec![1, 20, 3]
+        );
+        let big = array_made((0..300_000).map(|k| k as u8));
+        assert_eq!(big.len(), 300_000);
+        assert_eq!(big.cells()[299_999].get(), (299_999 % 256) as u8);
+        let units = array_made(std::iter::repeat_n((), 5));
+        assert_eq!(units.len(), 5);
+        assert_eq!(std::mem::size_of::<Array<i64>>(), 8);
+    }
+}

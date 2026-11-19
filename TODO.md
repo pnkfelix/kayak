@@ -1899,9 +1899,15 @@ over its 1664 definitions, 335 of them refused:
   same way (the user: "why not just handle all bloblets this way?"):
   ~~bytevectors~~ (done, C483), ~~bloblets~~ (done, C484: `BlobletAt`,
   its fields typed in its object; a sealed copy's code in a table of the
-  thread's, its suffix frozen by its header's bit), typed-suffix
-  bloblets (`TBloblet`: its suffix a Rust value, an array of it boxed
-  apart, `FlatArr`), arrays and flat arrays
+  thread's, its suffix frozen by its header's bit), ~~typed-suffix
+  bloblets and arrays~~ (done, C485: `TBloblet` with Fixpt's header and
+  trailer; `Array` one word to a vector's object, its elements the
+  fields, a large one's count in Fixpt's second header word). Left of
+  them: an array in a typed suffix (`FlatArr`) boxed apart, since made in
+  place it needs its flat all zero bytes valid, an `unsafe` trait the
+  emitter's products would implement, and generated Rust has no `unsafe`;
+  flat arrays (`FlatArray`, Fixpt's header already in its first cells, a
+  plain reference to them); bloblets and arrays opaque to a trace and flat arrays
   (their elements the fields, counted at run time); a dynamic value (`Value`, an enum), a product held by
   value in its holder (a heap object of its own in FX-26), an integer
   (`Int`, a bignum's limbs a `Vec`), bloblets and flat arrays (plain
