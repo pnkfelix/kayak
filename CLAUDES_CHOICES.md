@@ -15019,3 +15019,29 @@ What changed:
 Measured: an edit's build 0.28 s (0.26 to 0.27 at C486), a cold one
 0.64 s (0.63); nothing kfx writes changed.
 - **The full check**: all passed in 458.4 s, its first run (a clippy lint, `manual_range_contains`, fixed before it).
+
+## C489. A flat array one word (2026-11-19)
+
+The user: "Keep going". A flat array (`(flatarrayof i64 R)`) already had
+Fixpt's header, element code and trailer in the three words before its
+first element (C126), but was reached by a plain reference, a slice: two
+words, opaque to a trace.
+
+What changed:
+- **`FlatArray<T>` one word** (`obj.rs`): the address of its first
+  element, as native code is given it and as Fixpt's bloblet tag points
+  at a suffix; its length its header's suffix bytes; its block's
+  provenance kept (`of_cells`, of the whole block, header and all). A big
+  one of zeros still reserved, committed as touched (C139).
+- **Traced**: its object reached once, nothing in it traced (its
+  elements numbers); a census notes it as an object. So nothing is
+  reached by a plain reference now but a continuation's and a knot's
+  values and a dynamic `Value`'s.
+- **kayak-cells' driver** (`main.rs`, hand-written) reads the flat
+  arrays it makes for a native callback by `cells()`. Nothing kfx writes
+  changed.
+- **A test**: one of five and one of 2^17 reserved, each one word, read
+  and written, reached once each.
+
+Measured: an edit's build 0.27 s.
+- **The full check**: all passed in 457.6 s, its first run.

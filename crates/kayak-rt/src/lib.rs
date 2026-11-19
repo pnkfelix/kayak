@@ -94,11 +94,7 @@ impl std::fmt::Debug for Str {
 pub type RefAt<'r, T> = Handle<'r, Cell<T>>;
 pub type Ref<T> = RefAt<'static, T>;
 
-/// `(flatarrayof T R)`: a flat array, raw elements in a row, each a cell.
-/// An `i64` one has Fixpt's flat array's header, element code and trailer
-/// in the three cells before its first, so that native code is given it
-/// as itself, shared (C126; `native.rs`).
-pub type FlatArray<T> = &'static [Cell<T>];
+pub use obj::FlatArray;
 
 pub struct Cons<'r, T> {
     pub car: T,
@@ -645,7 +641,7 @@ pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
             if v == 0 && n >= BIG_FLATARRAY {
                 let prefix = prefix.map(|w| w as i64);
                 if let Some(all) = kayak_jit::zeroed_cells(&prefix, n) {
-                    return &all[prefix.len()..];
+                    return FlatArray::of_cells(all);
                 }
             }
             let all: &'static [Cell<i64>] = Box::leak(
@@ -656,14 +652,14 @@ pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
                     .collect::<Vec<_>>()
                     .into_boxed_slice(),
             );
-            &all[prefix.len()..]
+            FlatArray::of_cells(all)
         }
         Err(_) => fail("make-flatarray: a negative length"),
     }
 }
 
-fn element<T>(a: &'static [Cell<T>], i: i64) -> &'static Cell<T> {
-    match usize::try_from(i).ok().and_then(|i| a.get(i)) {
+fn element<T>(a: FlatArray<T>, i: i64) -> &'static Cell<T> {
+    match usize::try_from(i).ok().and_then(|i| a.cells().get(i)) {
         Some(c) => c,
         None => fail("flatarray: index out of range"),
     }

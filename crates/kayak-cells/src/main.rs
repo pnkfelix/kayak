@@ -25,7 +25,8 @@ fn host_foreign(
     held: &mut [u64],
     next: usize,
 ) -> (Result<u64, ()>, usize, usize) {
-    let b = kayak_rt::make_flatarray_i64(14, 0);
+    let fb = kayak_rt::make_flatarray_i64(14, 0);
+    let b = fb.cells();
     b[0].set(closure as i64);
     b[1].set(args.len() as i64);
     for (i, &a) in args.iter().enumerate() {
@@ -33,11 +34,12 @@ fn host_foreign(
     }
     b[10].set(next as i64);
     b[12].set(held.len() as i64);
-    let h = kayak_rt::make_flatarray_i64(held.len().max(1) as i64, 0);
+    let fh = kayak_rt::make_flatarray_i64(held.len().max(1) as i64, 0);
+    let h = fh.cells();
     for (i, &w) in held.iter().enumerate() {
         h[i].set(w as i64);
     }
-    let status = cells::native_callback(b, h);
+    let status = cells::native_callback(fb, fh);
     for (i, w) in held.iter_mut().enumerate() {
         *w = h[i].get() as u64;
     }

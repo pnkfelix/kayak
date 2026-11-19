@@ -157,7 +157,7 @@ impl<T: Native + Clone + 'static + crate::Trace> Native for crate::List<T> {
 /// KFX reads, and the other way. Native code gives none back.
 impl Native for crate::FlatArray<i64> {
     fn word(self) -> u64 {
-        self.as_ptr() as u64 | kayak_jit::layout::TAG_BLOBLET
+        self.addr() as u64 | kayak_jit::layout::TAG_BLOBLET
     }
     fn of_word(_: u64) -> Self {
         fail("native code: gave a flat array, which kayak cannot yet take back")

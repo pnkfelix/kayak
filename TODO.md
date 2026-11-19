@@ -1906,16 +1906,14 @@ over its 1664 definitions, 335 of them refused:
   them: ~~an array in a typed suffix (`FlatArr`) boxed apart~~ (done,
   C487: the user allowed `unsafe` for it; `Flat` an `unsafe` marker,
   all zero bytes valid, the emitter's flat products implementing it; a
-  typed-suffix bloblet one block made zeroed, one word, traced); flat
+  typed-suffix bloblet one block made zeroed, one word, traced); ~~flat
   arrays (`FlatArray`, Fixpt's header already in its first cells, a
-  plain reference to them); ~~bloblets and arrays opaque to a trace~~
+  plain reference to them)~~ (done, C489: one word, traced); ~~bloblets and arrays opaque to a trace~~
   (done, C486: each object reached once, its fields visited; a census
-  traces them precisely) and flat arrays still (plain references; their elements the fields, counted at run
-  time); a dynamic value (`Value`, an enum), a product held by
+  traces them precisely); a dynamic value (`Value`, an enum), a product held by
   value in its holder (a heap object of its own in FX-26), ~~an integer
   (`Int`, a bignum's limbs a `Vec`)~~ (done, C488: one word, Fixpt's
-  61-bit fixnum or a bignum object, kind 6, its limbs in its suffix), bloblets and flat arrays (plain
-  references); then a
+  61-bit fixnum or a bignum object, kind 6, its limbs in its suffix); then a
   collector, the Rust stack conservative and the heap
   precise (Bartlett's mostly-copying), its stress mode at every
   allocation: its roots (the stacks, the constants kfx's Rust keeps,

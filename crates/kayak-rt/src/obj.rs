@@ -835,6 +835,85 @@ unsafe fn trace_tbloblet<Fs: crate::Visit + 'static, S: 'static>(
     crate::Trace::trace(b, t);
 }
 
+/// `(flatarrayof T R)` (C489): one word, to its first element, as Fixpt's
+/// bloblet tag points at a suffix: Fixpt's flat array's header (kind 42,
+/// its elements' bytes the suffix's), its element code and its trailer in
+/// the three words before it (C126), its elements each a cell. Native code
+/// is given it as itself, shared (`native.rs`).
+pub struct FlatArray<T: 'static>(
+    NonNull<Cell<T>>,
+    std::marker::PhantomData<&'static [Cell<T>]>,
+);
+
+impl<T> Clone for FlatArray<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for FlatArray<T> {}
+
+/// A flat array's words before its first element: header, element code,
+/// trailer.
+pub(crate) const FLAT_PREFIX: usize = 3;
+
+impl FlatArray<i64> {
+    /// One of the cells `all`, its first `FLAT_PREFIX` the header, element
+    /// code and trailer, the rest its elements; kept for the run.
+    pub(crate) fn of_cells(all: &'static [Cell<i64>]) -> Self {
+        assert!(all.len() >= FLAT_PREFIX, "a flat array's prefix");
+        // The elements' start, its provenance the whole block's.
+        let p = all.as_ptr().wrapping_add(FLAT_PREFIX);
+        #[cfg(feature = "heap-stats")]
+        crate::census::object(all.as_ptr() as usize, 8 * all.len(), trace_nothing);
+        FlatArray(
+            NonNull::new(p.cast_mut()).expect("a flat array"),
+            std::marker::PhantomData,
+        )
+    }
+}
+
+impl<T> FlatArray<T> {
+    /// Its header, as Fixpt's.
+    #[inline]
+    fn header(self) -> u64 {
+        // SAFETY: made only by `of_cells`, its header `FLAT_PREFIX` words
+        // before its first element, in the block it points into, kept.
+        unsafe { *self.0.as_ptr().cast::<u64>().sub(FLAT_PREFIX) }
+    }
+
+    /// Its elements, how many: its suffix's bytes, as its header says.
+    #[inline]
+    pub fn len(self) -> usize {
+        (self.header() >> 32) as usize / std::mem::size_of::<T>()
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// Its elements, each a cell.
+    #[inline]
+    pub fn cells(self) -> &'static [Cell<T>] {
+        // SAFETY: its `len` elements from its first, in its block, kept;
+        // cells, written only through `Cell`.
+        unsafe { std::slice::from_raw_parts(self.0.as_ptr(), self.len()) }
+    }
+
+    /// Its first element's address: its word to native code, untagged.
+    #[inline]
+    pub fn addr(self) -> usize {
+        self.0.as_ptr() as usize
+    }
+
+    /// Its object's bytes.
+    pub fn object_bytes(self) -> usize {
+        8 * FLAT_PREFIX + (self.header() >> 32) as usize
+    }
+}
+
 /// `(arrayof T R)` (C485): one word, to an object of Fixpt's layout: its
 /// header (kind 3, vector; its elements the fields, as many as it has),
 /// and, past what the header's 18 bits count, Fixpt's second header word
@@ -969,6 +1048,24 @@ pub(crate) fn array_made<T: crate::Trace + 'static>(
 #[cfg(test)]
 mod array_tests {
     use super::*;
+
+    #[test]
+    fn a_flat_array_one_word_its_header_before_it() {
+        let a = crate::make_flatarray_i64(5, 7);
+        assert_eq!(std::mem::size_of::<FlatArray<i64>>(), 8);
+        assert_eq!(crate::flatarray_length_i64(a), 5);
+        crate::flatarray_set_i64_x(a, 4, 9);
+        assert_eq!(crate::flatarray_ref_i64(a, 4), 9);
+        assert_eq!(crate::flatarray_ref_i64(a, 0), 7);
+        assert_eq!(a.header() & layout::TAG_MASK, layout::TAG_HEADER);
+        assert_eq!(a.object_bytes(), 8 * (3 + 5));
+        // A big one of zeros, reserved (C139): the same.
+        let big = crate::make_flatarray_i64(1 << 17, 0);
+        assert_eq!(big.len(), 1 << 17);
+        assert_eq!(crate::flatarray_ref_i64(big, (1 << 17) - 1), 0);
+        let (rows, _) = crate::traced((a, a, big)).census();
+        assert_eq!(rows.iter().map(|r| r.1).sum::<u64>(), 2);
+    }
 
     #[test]
     fn an_array_small_and_large() {

@@ -343,6 +343,26 @@ impl Trace for Int {
     }
 }
 
+/// A flat array (C489): its object reached once; its elements numbers,
+/// nothing traced.
+impl<T: 'static> Trace for crate::FlatArray<T> {
+    trace_whole!();
+    #[inline]
+    fn trace<'a>(self, t: &mut Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.reach_value(self.addr(), self);
+    }
+}
+
+impl<T> Visit for crate::FlatArray<T> {
+    fn visit<'a>(&'a self, _: &mut Tracer<'a>) {}
+    fn visit_size(&self) -> usize {
+        self.object_bytes()
+    }
+}
+
 impl Visit for BigAt {
     fn visit<'a>(&'a self, _: &mut Tracer<'a>) {}
     fn visit_size(&self) -> usize {
