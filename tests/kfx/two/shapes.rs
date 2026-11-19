@@ -11,11 +11,11 @@ pub enum Shape {
     Rect(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Shape {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Shape {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Circle(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Circle(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }

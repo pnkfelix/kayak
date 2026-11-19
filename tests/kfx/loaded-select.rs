@@ -12,11 +12,11 @@ pub mod made__load__0__areas {
         Box(Int, Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Shape {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Shape {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Dot(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::Box(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Dot(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::Box(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }

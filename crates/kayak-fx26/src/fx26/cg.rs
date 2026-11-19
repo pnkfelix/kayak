@@ -1550,35 +1550,35 @@ pub enum Cx {
     XReshape(kayak_rt::Handle<'static, Cx>, Paths, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Cx {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Cx {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::XVar(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XInt(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XBool(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XStr(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XChar(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XFloat(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XSym(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XUnit(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::XLambda(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::XApp(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::XIf(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-            Self::XLet(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::XLetrec(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::XBegin(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XProj(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XProduct(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XExtract(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::XSum(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::XTagcase(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-            Self::XPrompt(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-            Self::XBloblet(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-            Self::XRegion(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-            Self::XRlambda(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::XModule(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::XWith(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-            Self::XReshape(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::XVar(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XInt(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XBool(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XStr(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XChar(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XFloat(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XSym(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XUnit(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::XLambda(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::XApp(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::XIf(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+            Self::XLet(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::XLetrec(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::XBegin(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XProj(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XProduct(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XExtract(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::XSum(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::XTagcase(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+            Self::XPrompt(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+            Self::XBloblet(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+            Self::XRegion(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+            Self::XRlambda(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::XModule(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::XWith(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+            Self::XReshape(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -1696,10 +1696,10 @@ pub enum Cmem {
     Cmem(Str, kayak_rt::Handle<'static, Cx>, i64, bool, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Cmem {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Cmem {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Cmem(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::Cmem(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -1748,10 +1748,10 @@ pub enum Cbind {
     Cbind(Str, kayak_rt::Handle<'static, Cx>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Cbind {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Cbind {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Cbind(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Cbind(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -1766,10 +1766,10 @@ pub enum Carm {
     Carm(Str, bool, Strings, kayak_rt::Handle<'static, Cx>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Carm {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Carm {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Carm(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Carm(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -1791,12 +1791,12 @@ pub enum Ctop {
     TNone(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Ctop {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Ctop {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::TDefine(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::TDefineRec(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::TExp(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::TDefine(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::TDefineRec(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::TExp(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::TNone() => { }
         }
     }
@@ -1908,10 +1908,10 @@ pub enum Lparts {
     Lparts(Strings, kayak_rt::Handle<'static, Cx>, List<kayak_rt::Handle<'static, Cx>>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Lparts {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Lparts {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Lparts(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Lparts(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -1977,10 +1977,10 @@ pub enum Dpos {
     Dpos(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Dpos {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Dpos {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Dpos(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Dpos(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -2051,14 +2051,14 @@ pub fn c_bound_names(mut bs: Cbinds, mut bound: Strings) -> Strings {
 
 #[inline]
 pub fn c_bound_exps(bs: Cbinds) -> Cxs {
-    map(lambda1s(move |b: kayak_rt::Handle<'static, Cbind>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Cbind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Cbind::Cbind(n, x) => {
                 x
             }
         }
-    }), bs)
+    })), bs)
 }
 
 pub fn c_names(mut ns: Strings, mut bound: Strings) -> Strings {
@@ -2208,8 +2208,8 @@ pub fn c_free(mut x: kayak_rt::Handle<'static, Cx>, mut bound: Strings, mut acc:
                 continue;
             }
             Cx::XModule(its, a) => {
-                let inner = c_names(map(&cmem_name, its), bound);
-                return c_free_all(map(&cmem_value, its), inner, acc);
+                let inner = c_names(map(kayak_rt::as_proc(cmem_name), its), bound);
+                return c_free_all(map(kayak_rt::as_proc(cmem_value), its), inner, acc);
             }
             Cx::XWith(m, ns, ks, body, a) => {
                 (x, bound, acc) = (body, c_names(ns, bound), c_free(m, bound, acc));
@@ -2436,10 +2436,10 @@ pub enum Clayout {
     Clayout(Str, Strings),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Clayout {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Clayout {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Clayout(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Clayout(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -2453,10 +2453,10 @@ pub enum Cinc {
     Cinc(Str, bool, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Cinc {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Cinc {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Cinc(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Cinc(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -2472,10 +2472,10 @@ pub enum Cmade {
     Cmade(Str, kayak_rt::Handle<'static, Cx>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Cmade {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Cmade {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Cmade(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Cmade(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -2524,9 +2524,9 @@ pub fn made_module(mut ms: List<kayak_rt::Handle<'static, Cmade>>, mut n: Str) -
 /// included, an instance each time, as Fixpt makes one each time its
 /// maker is called (`modules/load-parameters.fx`).
 pub fn instance_load_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
-    (head_is_p(e, str_lit("module")) && i64_gt_eq(size(items(e)), 2i64) && head_is_p(second(items(e)), str_lit("%loaded")) && any_p(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+    (head_is_p(e, str_lit("module")) && i64_gt_eq(size(items(e)), 2i64) && head_is_p(second(items(e)), str_lit("%loaded")) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
         sym_is_p(x, str_lit("%instance"))
-    }), items(second(items(e)))))
+    })), items(second(items(e)))))
 }
 
 #[inline]
@@ -2826,10 +2826,10 @@ pub enum Ckey {
     Ckey(kayak_rt::Handle<'static, Cx>, i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Ckey {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Ckey {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Ckey(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Ckey(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -2888,7 +2888,7 @@ pub fn case_all_keyed_p(mut k: i64, mut clauses: Sexps) -> bool {
             if null_p(cdr(clauses)) {
                 return true;
             } else {
-                if not(any_p(lambda1s(move |d: kayak_rt::Handle<'static, Sexp>| {
+                if not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), d: kayak_rt::Handle<'static, Sexp>| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Sexp::Num(n, f, p) => {
@@ -2899,7 +2899,7 @@ pub fn case_all_keyed_p(mut k: i64, mut clauses: Sexps) -> bool {
                             true
                         }
                     }
-                }), items(car(items(car(clauses)))))) {
+                })), items(car(items(car(clauses)))))) {
                     clauses = cdr(clauses);
                     continue;
                 } else {
@@ -3142,9 +3142,9 @@ pub fn flat_code(s: Str) -> i64 {
 
 #[inline]
 pub fn words_i64(w: Str) -> List<i64> {
-    map(lambda1s(move |x: Str| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
         digits_i64(string_chars(x), 0i64)
-    }), split_words(w))
+    })), split_words(w))
 }
 
 #[inline]
@@ -3162,27 +3162,27 @@ pub fn second_i64(xs: List<i64>) -> i64 {
 // keyed flat sum's code (its key's width, 8, its variants' offset times
 // 256); -1 for none.
 pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
-    let at = lambda1(move |prefix: Str| {
+    let at = kayak_rt::closure1((f, a,), |(f, a,), prefix: Str| {
         fact_text(get(cg_facts()), f, a, prefix)
     });
     if (string_eq_p(op, str_lit("blobref-at")) || string_eq_p(op, str_lit("blobref+"))) {
-        let n = at(str_lit("blob-size "));
+        let n = at.call(str_lit("blob-size "));
         if string_eq_p(n, str_lit("")) {
             -1i64
         } else {
             digits_i64(string_chars(n), 0i64)
         }
     } else if (string_eq_p(op, str_lit("blobref-get")) || string_eq_p(op, str_lit("blobref-set!"))) {
-        flat_code(at(str_lit("blob-scalar ")))
+        flat_code(at.call(str_lit("blob-scalar ")))
     } else if (string_eq_p(op, str_lit("blobref-index")) || string_eq_p(op, str_lit("blobref-length"))) {
-        let ns = words_i64(at(str_lit("blob-element ")));
+        let ns = words_i64(at.call(str_lit("blob-element ")));
         if null_p(ns) {
             -1i64
         } else {
             i64_plus(i64_star(second_i64(ns), 4294967296i64), car(ns))
         }
     } else if string_eq_p(op, str_lit("blobref-variant!")) {
-        let ws = split_words(at(str_lit("blob-variant ")));
+        let ws = split_words(at.call(str_lit("blob-variant ")));
         if null_p(ws) {
             -1i64
         } else {
@@ -3335,9 +3335,9 @@ pub fn included_used(mut its: List<kayak_rt::Handle<'static, Cmem>>, mut xs: Str
             return reverse(acc);
         } else {
             let fv = c_free_names(cmem_value(car(its)));
-            (its, acc) = (cdr(its), onto(reverse(filter(lambda1s(move |n: Str| {
+            (its, acc) = (cdr(its), onto(reverse(filter(kayak_rt::as_proc(kayak_rt::closure1s((acc, fv,), |(acc, fv,), n: Str| {
                 (string_member_p(n, fv) && not(string_member_p(n, acc)))
-            }), xs)), acc));
+            })), xs)), acc));
             continue;
         }
     }
@@ -3541,10 +3541,10 @@ pub enum Gfirst {
     Gfirst(Str, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Gfirst {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Gfirst {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Gfirst(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Gfirst(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -3728,7 +3728,7 @@ pub fn parse_body(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
 pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Sexp>, mut f: Str, mut a: i64) -> kayak_rt::Handle<'static, Cx> {
     loop {
         if string_eq_p(h, str_lit("lambda")) {
-            return x_lambda(map(&binder_name, items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
+            return x_lambda(map(kayak_rt::as_proc(binder_name), items(second(xs))), parse_body(cdr(cdr(xs)), a), a);
         } else if string_eq_p(h, str_lit("if")) {
             return x_if(parse_x(second(xs)), parse_x(car(cdr(cdr(xs)))), parse_x(car(cdr(cdr(cdr(xs))))), a);
         } else if string_eq_p(h, str_lit("let")) {
@@ -3763,9 +3763,9 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
             } else {
                 nil::<kayak_rt::Handle<'static, Sexp>>()
             };
-            let prod = lst(kayak_rt::heap_cons(sym(str_lit("product"), f, a), map2(lambda2s(move |x: kayak_rt::Handle<'static, Sexp>, k: i64| {
+            let prod = lst(kayak_rt::heap_cons(sym(str_lit("product"), f, a), map2(kayak_rt::as_proc(kayak_rt::closure2s((f, a,), |(f, a,), x: kayak_rt::Handle<'static, Sexp>, k: i64| {
                 lst(kayak_rt::heap_cons(num(k, i64_to_string(k), a), kayak_rt::heap_cons(x, kayak_rt::nil())), f, 1i64, a)
-            }), given, counting(1i64, i64_plus(size(given), 1i64)))), f, 1i64, a);
+            })), given, counting(1i64, i64_plus(size(given), 1i64)))), f, 1i64, a);
             return x_app(x_var(str_lit("%kayak-reify"), a), kayak_rt::heap_cons(parse_x(prod), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-rep ")), a), kayak_rt::heap_cons(x_str(fact_text(get(cg_facts()), f, a, str_lit("reify-given ")), a), kayak_rt::nil()))), a);
         } else if (string_eq_p(h, str_lit("%kayak-global-set")) && i64_eq(size(xs), 3i64)) {
             // A session's commit (C340): global `NAME`, written in full, given the
@@ -3918,7 +3918,7 @@ pub fn parse_form(mut h: Str, mut xs: Sexps, mut e: kayak_rt::Handle<'static, Se
                 }
             }, parse_body(cdr(cdr(xs)), a), a);
         } else if string_eq_p(h, str_lit("rlambda")) {
-            return x_rlambda(parse_x(second(xs)), x_lambda(map(&binder_name, items(third(xs))), parse_body(cdr(cdr(cdr(xs))), a), a), a);
+            return x_rlambda(parse_x(second(xs)), x_lambda(map(kayak_rt::as_proc(binder_name), items(third(xs))), parse_body(cdr(cdr(cdr(xs))), a), a), a);
         } else if string_eq_p(h, str_lit("prompt")) {
             return x_prompt(parse_x(second(xs)), parse_x(third(xs)), parse_x(fourth(xs)), a);
         } else if string_eq_p(h, str_lit("case")) {
@@ -4169,9 +4169,9 @@ pub fn parse_arg(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static
             } else if string_eq_p(want, put_sep_words(car(have))) {
                 parse_x(e)
             } else {
-                x_reshape(parse_x(e), map(lambda1s(move |w: Str| {
+                x_reshape(parse_x(e), map(kayak_rt::as_proc(kayak_rt::closure1s((have,), |(have,), w: Str| {
                     the::<List<i64>>(kayak_rt::heap_cons(index_in(w, car(have), 0i64), kayak_rt::nil()))
-                }), split_words(want)), p)
+                })), split_words(want)), p)
             }
         }
         _ => {
@@ -4187,23 +4187,23 @@ pub fn parse_arg(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static
             if (string_eq_p(want, str_lit("")) || string_eq_p(want, put_sep_words(have)) || head_is_p(e, str_lit("module")) || head_is_p(e, str_lit("extend"))) {
                 x
             } else {
-                x_reshape(x, map(lambda1s(move |w: Str| {
+                x_reshape(x, map(kayak_rt::as_proc(kayak_rt::closure1s((have,), |(have,), w: Str| {
                     the::<List<i64>>(kayak_rt::heap_cons(index_in(w, have, 0i64), kayak_rt::nil()))
-                }), split_words(want)), datum_pos(e))
+                })), split_words(want)), datum_pos(e))
             }
         }
     }
 }
 
 pub fn module_fact_p(a: i64, what: Str) -> bool {
-    any_p(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+    any_p(kayak_rt::as_proc(kayak_rt::closure1s((a, what,), |(a, what,), x: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, w) => {
                 (i64_eq(p, a) && string_eq_p(w, what))
             }
         }
-    }), get(cg_module_facts()))
+    })), get(cg_module_facts()))
 }
 
 /// `(with m body …)`: `m`'s values bound in the body, those it names. A
@@ -4248,12 +4248,12 @@ pub fn parse_module(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
     let outer = get(cg_layouts());
     let incs = includes_of(forms, false);
     let own = parse_items(forms, 2i64);
-    let own_names = map(&cmem_name, filter(lambda1s(move |i: kayak_rt::Handle<'static, Cmem>| {
+    let own_names = map(kayak_rt::as_proc(cmem_name), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), i: kayak_rt::Handle<'static, Cmem>| {
         i64_gt(cmem_kind(i), 0i64)
-    }), own));
-    let given = map(&cmem_name, filter(lambda1s(move |i: kayak_rt::Handle<'static, Cmem>| {
+    })), own));
+    let given = map(kayak_rt::as_proc(cmem_name), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), i: kayak_rt::Handle<'static, Cmem>| {
         i64_eq(cmem_kind(i), 2i64)
-    }), own));
+    })), own));
     set(cg_layouts(), outer);
     if (null_p(own) && i64_eq(size(incs), 1i64) && i64_eq(size(forms), 1i64) && {
         let tagcase_ = car(incs);
@@ -4280,9 +4280,9 @@ pub fn parse_module(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
         if string_eq_p(put_sep_words(own_names), put_sep_words(given)) {
             x_module(own, a)
         } else {
-            x_reshape(x_module(own, a), map(lambda1s(move |n: Str| {
+            x_reshape(x_module(own, a), map(kayak_rt::as_proc(kayak_rt::closure1s((own_names,), |(own_names,), n: Str| {
                 the::<List<i64>>(kayak_rt::heap_cons(index_in(n, own_names, 0i64), kayak_rt::nil()))
-            }), given), a)
+            })), given), a)
         }
     } else {
         let at = {
@@ -4295,18 +4295,18 @@ pub fn parse_module(forms: Sexps, a: i64) -> kayak_rt::Handle<'static, Cx> {
         };
         let inc_type = included_values(incs, true);
         let shown = included_values(incs, false);
-        let inside = map(&member_in_includes, own);
+        let inside = map(kayak_rt::as_proc(member_in_includes), own);
         let used = included_used(inside, inc_type, nil::<Str>());
-        let its = the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit("%include"), include_module(incs, at), 1i64, false, at), onto(map(lambda1s(move |n: Str| {
+        let its = the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit("%include"), include_module(incs, at), 1i64, false, at), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((at, inc_type,), |(at, inc_type,), n: Str| {
             cmem(n, x_extract(x_var(str_lit("%include"), at), index_in(n, inc_type, 0i64), at), 0i64, false, at)
-        }), used), inside)));
+        })), used), inside)));
         let mine = the::<Strings>(kayak_rt::heap_cons(str_lit("%include"), own_names));
         set(cg_module_type(), onto(shown, given));
-        x_reshape(x_module(its, a), onto(map(lambda1s(move |n: Str| {
+        x_reshape(x_module(its, a), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((inc_type,), |(inc_type,), n: Str| {
             the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, inc_type, 0i64), kayak_rt::nil())))
-        }), shown), map(lambda1s(move |n: Str| {
+        })), shown), map(kayak_rt::as_proc(kayak_rt::closure1s((mine,), |(mine,), n: Str| {
             the::<List<i64>>(kayak_rt::heap_cons(index_in(n, mine, 0i64), kayak_rt::nil()))
-        }), given)), a)
+        })), given)), a)
     }
 }
 
@@ -4326,9 +4326,9 @@ pub fn module_narrowed(x: kayak_rt::Handle<'static, Cx>, f: Str, a: i64) -> kaya
         x
     } else {
         set(cg_module_type(), split_words(want));
-        x_reshape(x, map(lambda1s(move |w: Str| {
+        x_reshape(x, map(kayak_rt::as_proc(kayak_rt::closure1s((have,), |(have,), w: Str| {
             the::<List<i64>>(kayak_rt::heap_cons(index_in(w, have, 0i64), kayak_rt::nil()))
-        }), split_words(want)), a)
+        })), split_words(want)), a)
     }
 }
 
@@ -4373,19 +4373,19 @@ pub fn parse_extend(e0: kayak_rt::Handle<'static, Sexp>, e1: kayak_rt::Handle<'s
             }
         }
     };
-    let more = filter(lambda1s(move |n: Str| {
+    let more = filter(kayak_rt::as_proc(kayak_rt::closure1s((l0,), |(l0,), n: Str| {
         not(string_member_p(n, l0))
-    }), l1);
+    })), l1);
     set(cg_module_type(), onto(l0, more));
-    x_reshape(x_module(the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit("%extended"), seen, 1i64, false, a), kayak_rt::nil()))), a), onto(map(lambda1s(move |n: Str| {
+    x_reshape(x_module(the::<List<kayak_rt::Handle<'static, Cmem>>>(kayak_rt::heap_cons(cmem(str_lit("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit("%extended"), seen, 1i64, false, a), kayak_rt::nil()))), a), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((l0, l1,), |(l0, l1,), n: Str| {
         if string_member_p(n, l1) {
             the::<List<i64>>(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil())))
         } else {
             the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, l0, 0i64), kayak_rt::nil())))
         }
-    }), l0), map(lambda1s(move |n: Str| {
+    })), l0), map(kayak_rt::as_proc(kayak_rt::closure1s((l1,), |(l1,), n: Str| {
         the::<List<i64>>(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil())))
-    }), more)), a)
+    })), more)), a)
 }
 
 /// `%include`: the modules included, each a member of it; then, of its
@@ -4428,9 +4428,9 @@ pub fn include_paths(incs: List<kayak_rt::Handle<'static, Cinc>>, k: i64) -> Pat
             Cinc::Cinc(m, h, p) => {
                 onto({
                     let n = size(included_layout(m));
-                    map(lambda1s(move |i: i64| {
+                    map(kayak_rt::as_proc(kayak_rt::closure1s((k,), |(k,), i: i64| {
                         the::<List<i64>>(kayak_rt::heap_cons(k, kayak_rt::heap_cons(i, kayak_rt::nil())))
-                    }), indices_from(0i64, n))
+                    })), indices_from(0i64, n))
                 }, include_paths(cdr(incs), i64_plus(k, 1i64)))
             }
         }
@@ -4567,7 +4567,7 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
     } else if string_eq_p(h, str_lit("define-rec")) {
         parse_rec_members(cdr(items(e)), kind)
     } else if string_eq_p(h, str_lit("define-generative")) {
-        map(lambda1s(move |t: kayak_rt::Handle<'static, Ctop>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((e,), |(e,), t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Ctop::TDefine(n, typed, x) => {
@@ -4578,9 +4578,9 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
                     cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
                 }
             }
-        }), generative_conversions(e, datum_pos(e)))
+        })), generative_conversions(e, datum_pos(e)))
     } else if string_eq_p(h, str_lit("define-datatype")) {
-        map(lambda1s(move |t: kayak_rt::Handle<'static, Ctop>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((e, kind,), |(e, kind,), t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Ctop::TDefine(n, typed, x) => {
@@ -4591,9 +4591,9 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
                     cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
                 }
             }
-        }), dt_constructors(cdr(cdr(items(e))), datum_pos(e)))
+        })), dt_constructors(cdr(cdr(items(e))), datum_pos(e)))
     } else if string_eq_p(h, str_lit("import")) {
-        map(lambda1s(move |t: kayak_rt::Handle<'static, Ctop>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((e, kind,), |(e, kind,), t: kayak_rt::Handle<'static, Ctop>| {
             let tagcase_ = t;
             match *tagcase_ {
                 Ctop::TDefine(n, typed, x) => {
@@ -4604,7 +4604,7 @@ pub fn parse_item(e: kayak_rt::Handle<'static, Sexp>, kind: i64) -> List<kayak_r
                     cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
                 }
             }
-        }), imports(e))
+        })), imports(e))
     } else if string_eq_p(h, str_lit("hide")) {
         parse_items(cdr(items(e)), 1i64)
     } else if (string_eq_p(h, str_lit("define-type")) || string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-convention")) || string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%loaded"))) {
@@ -4946,7 +4946,7 @@ pub fn parse_arms(arms: Sexps) -> List<kayak_rt::Handle<'static, Carm>> {
             let tagcase_ = b;
             match *tagcase_ {
                 Sexp::Lst(ns, f, l, p) => {
-                    carm(arm_label(car(parts)), true, map(&sym_name, ns), parse_body(cdr(cdr(parts)), datum_pos(car(arms))))
+                    carm(arm_label(car(parts)), true, map(kayak_rt::as_proc(sym_name), ns), parse_body(cdr(cdr(parts)), datum_pos(car(arms))))
                 }
                 _ => {
                     let other = tagcase_;
@@ -5067,21 +5067,21 @@ pub enum Lit {
     LFrozen(Str, List<kayak_rt::Handle<'static, Lit>>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Lit {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Lit {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::LInt(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::LBool(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::LInt(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::LBool(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::LUnit() => { }
             Self::LNil() => { }
-            Self::LStr(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::LChar(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::LF64(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::LSym(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::LPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::LWord(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::LQuoted(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::LFrozen(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::LStr(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::LChar(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::LF64(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::LSym(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::LPair(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::LWord(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::LQuoted(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::LFrozen(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -5144,14 +5144,14 @@ pub enum Opnd {
     OPrim(Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Opnd {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Opnd {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::OInt(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::OLit(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::OWord(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::OGlobal(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::OPrim(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::OInt(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::OLit(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::OWord(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::OGlobal(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::OPrim(f0) => { kayak_rt::Trace::trace(*f0, t); }
         }
     }
 }
@@ -5186,14 +5186,14 @@ pub enum Item {
     ItPos(i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Item {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Item {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::ItIns(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::ItLabel(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::ItBranch(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::ItZbranch(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::ItPos(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::ItIns(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::ItLabel(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::ItBranch(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::ItZbranch(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::ItPos(f0) => { kayak_rt::Trace::trace(*f0, t); }
         }
     }
 }
@@ -5227,10 +5227,10 @@ pub enum Word {
     Word(Str, Citems),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Word {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Word {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Word(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Word(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -5425,14 +5425,14 @@ pub fn hex_bits(mut b: Int, mut k: i64, mut acc: Chars) -> Str {
 // A string's characters, each not printable ASCII (and `quote` and `\`) by
 // its code, `\xHH;`.
 pub fn lit_escaped(s: Str, quote: char) -> Str {
-    list_to_string(concat(map(lambda1s(move |ch: char| {
+    list_to_string(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((quote,), |(quote,), ch: char| {
         let k = char_to_i64(ch);
         if (char_eq_p(ch, quote) || i64_eq(k, 92i64) || i64_lt(k, 32i64) || i64_gt(k, 126i64)) {
             string_chars(string_append(str_lit("\\x"), string_append(hex(k), str_lit(";"))))
         } else {
             the::<Chars>(kayak_rt::heap_cons(ch, kayak_rt::nil()))
         }
-    }), string_chars(s))))
+    })), string_chars(s))))
 }
 
 // A quoted datum made now and interned (C231; Fixpt's `c-quote-now`,
@@ -5462,10 +5462,10 @@ pub enum Qnode {
     Qnode(i64, kayak_rt::Handle<'static, Lit>, kayak_rt::Handle<'static, Lit>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Qnode {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Qnode {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Qnode(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Qnode(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -5563,10 +5563,10 @@ pub enum LabelAt {
     LabelAt(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for LabelAt {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for LabelAt {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::LabelAt(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::LabelAt(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -5638,9 +5638,9 @@ pub fn range_to(n: i64) -> List<i64> {
 
 pub fn padded(n: i64) -> Str {
     let s = i64_to_string(n);
-    string_append(list_to_string(map(lambda1s(move |k: i64| {
+    string_append(list_to_string(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: i64| {
         ' '
-    }), range_to(i64_minus(4i64, string_length_i64(s))))), s)
+    })), range_to(i64_minus(4i64, string_length_i64(s))))), s)
 }
 
 #[inline]
@@ -5717,7 +5717,7 @@ pub fn ins_text(r: Str, os: List<kayak_rt::Handle<'static, Opnd>>) -> Str {
         if null_p(os) {
             r
         } else {
-            string_append(r, string_append(str_lit(" "), put_sep_words(map(&opnd_text, os))))
+            string_append(r, string_append(str_lit(" "), put_sep_words(map(kayak_rt::as_proc(opnd_text), os))))
         }
     }
 }
@@ -5727,10 +5727,10 @@ pub enum Wsaid {
     Wsaid(Str, Strings),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Wsaid {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Wsaid {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Wsaid(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Wsaid(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -5865,13 +5865,13 @@ pub enum Loc {
     AtLoop(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Loc {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Loc {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::AtSlot(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::AtFree(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::AtGlobal(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::AtPending(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::AtSlot(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::AtFree(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::AtGlobal(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::AtPending(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::AtLoop() => { }
         }
     }
@@ -5901,10 +5901,10 @@ pub enum Centry {
     Centry(Str, kayak_rt::Handle<'static, Loc>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Centry {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Centry {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Centry(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Centry(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -6067,7 +6067,7 @@ pub fn c_global_p(l: kayak_rt::Handle<'static, Loc>) -> bool {
 }
 
 #[inline]
-pub fn c_count<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<A>) -> i64 {
+pub fn c_count<A: Copy + 'static + kayak_rt::Trace>(xs: List<A>) -> i64 {
     size(xs)
 }
 
@@ -6287,10 +6287,10 @@ pub enum This {
     This(Str, kayak_rt::Handle<'static, Loc>, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for This {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for This {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::This(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::This(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -6457,10 +6457,10 @@ pub enum Twin {
     Twin(Str, Strings, kayak_rt::Handle<'static, Cx>, Cenv, List<kayak_rt::Handle<'static, This>>, Str, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Twin {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Twin {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Twin(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+            Self::Twin(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); }
         }
     }
 }
@@ -6485,10 +6485,10 @@ pub enum Lword {
     Lword(i64, Strings, Strings, Str, Strings),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Lword {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Lword {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Lword(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::Lword(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -6513,10 +6513,10 @@ pub enum Stwin {
     Stwin(Str, Str, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Stwin {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Stwin {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Stwin(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Stwin(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -7138,10 +7138,10 @@ pub enum Patch {
     Patch(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Patch {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Patch {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Patch(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Patch(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -7157,10 +7157,10 @@ pub enum Cclosing {
     Cclosing(Str, Strings),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Cclosing {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Cclosing {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Cclosing(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Cclosing(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -7370,10 +7370,10 @@ pub enum Wait {
     Wait(i64, i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Wait {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Wait {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Wait(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Wait(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -7393,9 +7393,9 @@ pub fn c_module_slots(its: List<kayak_rt::Handle<'static, Cmem>>, d: i64) -> Cen
 // Whether `x` names any of `later`'s.
 #[inline]
 pub fn c_names_any_p(x: kayak_rt::Handle<'static, Cx>, later: Cenv) -> bool {
-    any_p(lambda1s(move |n: Str| {
+    any_p(kayak_rt::as_proc(kayak_rt::closure1s((later,), |(later,), n: Str| {
         not(null_p(c_find(later, n)))
-    }), c_free(x, nil::<Str>(), nil::<Str>()))
+    })), c_free(x, nil::<Str>(), nil::<Str>()))
 }
 
 // Item `n`'s lambda's scope while it is made: each of `later` pending, and
@@ -7618,9 +7618,9 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
             match *tagcase_ {
                 Cx::XLambda(ps, body, b) => {
                     if i64_eq(size(ps), size(args)) {
-                        c_let(map2(lambda2s(move |p: Str, y: kayak_rt::Handle<'static, Cx>| {
+                        c_let(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), p: Str, y: kayak_rt::Handle<'static, Cx>| {
                             cbind(p, y)
-                        }), ps, args), body, e, depth, c, tail)
+                        })), ps, args), body, e, depth, c, tail)
                     } else {
                         c_app(f, args, e, depth, c, tail, a)
                     }
@@ -7693,9 +7693,9 @@ pub fn c_exp_at(x: kayak_rt::Handle<'static, Cx>, e: Cenv, depth: i64, c: Code, 
         Cx::XWith(m, ns, ks, body, a) => {
             let fv = c_free(body, nil::<Str>(), nil::<Str>());
             let inner = c_with_fields(m, ns, ks, fv, e, e, depth, c);
-            let n = size(filter(lambda1s(move |k: Str| {
+            let n = size(filter(kayak_rt::as_proc(kayak_rt::closure1s((fv,), |(fv,), k: Str| {
                 string_member_p(k, fv)
-            }), ns));
+            })), ns));
             c_exp(body, inner, i64_plus(depth, n), c, tail);
             c_unbind(c, depth, n, tail)
         }
@@ -7828,14 +7828,14 @@ pub fn c_module_make(mut its: List<kayak_rt::Handle<'static, Cmem>>, mut e: Cenv
                         set(c_bind_name(), nil::<Str>());
                         the::<Patches>(nil::<kayak_rt::Handle<'static, Patch>>())
                     };
-                    let waits = onto(ws, map(lambda1s(move |p: kayak_rt::Handle<'static, Patch>| {
+                    let waits = onto(ws, map(kayak_rt::as_proc(kayak_rt::closure1s((d,), |(d,), p: kayak_rt::Handle<'static, Patch>| {
                         let tagcase_ = p;
                         match *tagcase_ {
                             Patch::Patch(j, s) => {
                                 wait(d, j, s)
                             }
                         }
-                    }), ps));
+                    })), ps));
                     c_give_waiting(c, waits, d);
                     (its, e, d, later, ws, given) = (cdr(its), c_extend(n, at_slot(d), e), i64_plus(d, 1i64), cdr(later), waits, if i64_gt(k, 0i64) {
                         kayak_rt::heap_cons(d, given)
@@ -8186,10 +8186,10 @@ pub enum Ftops {
     Ftops(Str, List<kayak_rt::Handle<'static, Ctop>>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Ftops {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Ftops {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Ftops(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Ftops(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -8216,10 +8216,10 @@ pub enum Tentry {
     Tentry(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Tentry {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Tentry {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Tentry(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Tentry(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }

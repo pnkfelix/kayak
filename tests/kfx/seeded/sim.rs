@@ -26,13 +26,13 @@ pub fn next_random_x<'l>(s: Seed<'l>) -> u64 {
 // A number from 0 below `n`, `n` above 0.
 #[inline]
 pub fn below_x<'l>(s: Seed<'l>, n: i64) -> i64 {
-    int_to_i64(u64_to_int(u64_remainder(u64_shr((&next_random_x)(s), int_lit(33)), int_to_u64(i64_to_int(n)))))
+    int_to_i64(u64_to_int(u64_remainder(u64_shr(next_random_x(s), int_lit(33)), int_to_u64(i64_to_int(n)))))
 }
 
 // An answerer that fails, `rate` times in a hundred, each operation on a
 // file, by the seed; the rest answered by `inner`.
-pub fn faulty(s: Seed<'static>, rate: i64, inner: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>) -> &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer> {
-    lambda2(move |n: i64, o: Op| kayak_rt::suspend::body(async move {
+pub fn faulty(s: Seed<'static>, rate: i64, inner: kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>>) -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>> {
+    kayak_rt::closure2((s, rate, inner,), |(s, rate, inner,), n: i64, o: Op| kayak_rt::suspend::body(async move {
         let on_file = {
             let tagcase_ = o;
             let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -47,10 +47,10 @@ pub fn faulty(s: Seed<'static>, rate: i64, inner: &'static dyn Fn(i64, Op) -> ka
                 false
             }
         };
-        if (on_file && i64_lt((&below_x)(s, 100i64), rate)) {
+        if (on_file && i64_lt(below_x(s, 100i64), rate)) {
             Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit("a fault, injected")))
         } else {
-            Ok(kayak_rt::suspend::body(inner(n, o)).await?)
+            Ok(kayak_rt::suspend::body(inner.call(n, o)).await?)
         }
     }))
 }
@@ -61,7 +61,7 @@ pub fn nth_filed(fs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>, k: i64) -
     if i64_eq(k, 0i64) {
         car(fs)
     } else {
-        (&nth_filed)(cdr(fs), i64_minus(k, 1i64))
+        nth_filed(cdr(fs), i64_minus(k, 1i64))
     }
 }
 
@@ -69,7 +69,7 @@ pub fn without_nth(fs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>, k: i64)
     if i64_eq(k, 0i64) {
         cdr(fs)
     } else {
-        kayak_rt::heap_cons(car(fs), (&without_nth)(cdr(fs), i64_minus(k, 1i64)))
+        kayak_rt::heap_cons(car(fs), without_nth(cdr(fs), i64_minus(k, 1i64)))
     }
 }
 
@@ -78,25 +78,25 @@ pub fn filed_count(fs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>, n: i64)
     if null_p(fs) {
         n
     } else {
-        (&filed_count)(cdr(fs), i64_plus(n, 1i64))
+        filed_count(cdr(fs), i64_plus(n, 1i64))
     }
 }
 
 // Run the tasks until none is left, as `run-world!` does, but answering one
 // operation filed at a time, the one the seed picks, then running what it
 // made ready.
-pub async fn run_seeded_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, s: Seed<'static>) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_ready_x(a__0))))(wl.0)).await?;
+pub async fn run_seeded_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, answer: kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>>, s: Seed<'static>) -> Result<(), Unwind> {
+    kayak_rt::suspend::body(run_ready_x(wl.0)).await?;
     let fs = get(wl.1);
     if not(null_p(fs)) {
-        let k = (&below_x)(s, (&filed_count)(fs, 0i64));
-        let f = (&nth_filed)(fs, k);
-        set(wl.1, (&without_nth)(fs, k));
-        kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(answer_all_x(a__0, a__1, a__2))))(wl, answer, kayak_rt::heap_cons(f, nil::<Product_2op_5reply<kayak_rt::Sum, Ref<kayak_rt::Sum>>>()))).await?;
-        Ok(kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(run_seeded_x(a__0, a__1, a__2))))(wl, answer, s)).await?)
-    } else if (&sleeping_p)(wl.0) {
-        (&wake_first_x)(wl.0);
-        Ok(kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(run_seeded_x(a__0, a__1, a__2))))(wl, answer, s)).await?)
+        let k = below_x(s, filed_count(fs, 0i64));
+        let f = nth_filed(fs, k);
+        set(wl.1, without_nth(fs, k));
+        kayak_rt::suspend::body(answer_all_x(wl, answer, kayak_rt::heap_cons(f, nil::<Product_2op_5reply<kayak_rt::Sum, Ref<kayak_rt::Sum>>>()))).await?;
+        Ok(kayak_rt::suspend::body(run_seeded_x(wl, answer, s)).await?)
+    } else if sleeping_p(wl.0) {
+        wake_first_x(wl.0);
+        Ok(kayak_rt::suspend::body(run_seeded_x(wl, answer, s)).await?)
     } else {
         Ok(())
     }

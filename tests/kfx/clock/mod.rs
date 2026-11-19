@@ -8,25 +8,13 @@ pub use app::*;
 #[derive(Clone, Copy)]
 pub struct Product_2at_1k<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_2at_1k<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_2at_1k, A0 0, A1 1);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_3tag_5ready_8sleeping_5clock<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_3tag_5ready_8sleeping_5clock<A0, A1, A2, A3> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-    }
-}
+kayak_rt::trace_product!(Product_3tag_5ready_8sleeping_5clock, A0 0, A1 1, A2 2, A3 3);
 
 const _: () = kayak_rt::tags_apart_from_runtime(&["full", "empty"]);
 

@@ -5,18 +5,18 @@ use kayak_rt::*;
 // A bloblet generic in its fields' types, one of them a procedure (C119),
 // as Fixpt's hash tables keep their key's equality: a one-entry table.
 
-pub type KeySame<K> = &'static (dyn Fn(K, K) -> bool + Send + Sync);
+pub type KeySame<K> = kayak_rt::Proc2s<'static, K, K, bool>;
 
 pub type One<'r, K, V> = &'r Bloblet<(std::cell::Cell<KeySame<K>>, std::cell::Cell<K>, std::cell::Cell<V>,)>;
 
 #[inline]
-pub fn make_one<'r, K: Copy + 'static + for<'t> kayak_rt::Trace<'t>, V: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(same: KeySame<K>, key: K, val: V) -> One<'r, K, V> {
+pub fn make_one<'r, K: Copy + 'static + kayak_rt::Trace, V: Copy + 'static + kayak_rt::Trace>(same: KeySame<K>, key: K, val: V) -> One<'r, K, V> {
     the::<One<'r, K, V>>(make_bloblet(int_lit(0), (std::cell::Cell::new(same), std::cell::Cell::new(key), std::cell::Cell::new(val),)))
 }
 
 #[inline]
-pub fn lookup<'r, K: Copy + 'static + for<'t> kayak_rt::Trace<'t>, V: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(t: One<'r, K, V>, key: K, d: V) -> V {
-    if ((t).fields.0.get())((t).fields.1.get(), key) {
+pub fn lookup<'r, K: Copy + 'static + kayak_rt::Trace, V: Copy + 'static + kayak_rt::Trace>(t: One<'r, K, V>, key: K, d: V) -> V {
+    if ((t).fields.0.get()).call((t).fields.1.get(), key) {
         (t).fields.2.get()
     } else {
         d
@@ -29,7 +29,7 @@ pub fn same_i64(a: i64, b: i64) -> bool {
 }
 
 pub fn main() -> Str {
-    let t = the::<One<'static, i64, Str>>(make_one(&same_i64, 7i64, str_lit("seven")));
+    let t = the::<One<'static, i64, Str>>(make_one(kayak_rt::as_proc(same_i64), 7i64, str_lit("seven")));
     { let blob__ = t; blob__.fields.2.set(str_lit("sept")); kayak_rt::bloblet_written(blob__, 2) };
     string_append(lookup(t, 7i64, str_lit("none")), string_append(str_lit(" "), lookup(t, 8i64, str_lit("none"))))
 }

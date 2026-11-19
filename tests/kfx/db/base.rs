@@ -26,12 +26,12 @@ pub type Strings = List<Str>;
 // As `(cons (f x) (map f xs))` alone, `map` was as deep as its list, and on
 // tier 1, whose return stack is 65,536 entries, a list of the program's
 // facts overflowed it.
-pub fn map_onto<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut f: &'static (dyn Fn(A) -> B + Send + Sync), mut xs: List<A>, mut acc: List<B>) -> List<B> {
+pub fn map_onto<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(mut f: kayak_rt::Proc1s<'static, A, B>, mut xs: List<A>, mut acc: List<B>) -> List<B> {
     loop {
         if null_p(xs) {
             return acc;
         } else {
-            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(f(car(xs)), acc));
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(f.call(car(xs)), acc));
             continue;
         }
     }
@@ -45,25 +45,25 @@ pub fn map_deepest() -> i64 {
     4096i64
 }
 
-pub fn map_at<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>, d: i64) -> List<B> {
+pub fn map_at<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A, B>, xs: List<A>, d: i64) -> List<B> {
     if null_p(xs) {
         nil::<B>()
     } else if i64_gt(d, map_deepest()) {
         the::<List<B>>(reverse(map_onto(f, xs, nil::<B>())))
     } else {
-        kayak_rt::heap_cons(f(car(xs)), map_at(f, cdr(xs), i64_plus(d, 1i64)))
+        kayak_rt::heap_cons(f.call(car(xs)), map_at(f, cdr(xs), i64_plus(d, 1i64)))
     }
 }
 
 #[inline]
-pub fn map<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+pub fn map<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A, B>, xs: List<A>) -> List<B> {
     map_at(f, xs, 0i64)
 }
 
-pub fn any_p<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> bool {
+pub fn any_p<A: Copy + 'static + kayak_rt::Trace>(mut p: kayak_rt::Proc1s<'static, A, bool>, mut xs: List<A>) -> bool {
     loop {
         if not(null_p(xs)) {
-            if p(car(xs)) {
+            if p.call(car(xs)) {
                 return true;
             } else {
                 xs = cdr(xs);
@@ -75,12 +75,12 @@ pub fn any_p<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut p: &'static (d
     }
 }
 
-pub fn all_p<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> bool {
+pub fn all_p<A: Copy + 'static + kayak_rt::Trace>(mut p: kayak_rt::Proc1s<'static, A, bool>, mut xs: List<A>) -> bool {
     loop {
         if null_p(xs) {
             return true;
         } else {
-            if p(car(xs)) {
+            if p.call(car(xs)) {
                 xs = cdr(xs);
                 continue;
             } else {
@@ -90,11 +90,11 @@ pub fn all_p<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut p: &'static (d
     }
 }
 
-pub fn filter<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> List<A> {
+pub fn filter<A: Copy + 'static + kayak_rt::Trace>(mut p: kayak_rt::Proc1s<'static, A, bool>, mut xs: List<A>) -> List<A> {
     loop {
         if null_p(xs) {
             return nil::<A>();
-        } else if p(car(xs)) {
+        } else if p.call(car(xs)) {
             return kayak_rt::heap_cons(car(xs), filter(p, cdr(xs)));
         } else {
             xs = cdr(xs);
@@ -103,15 +103,15 @@ pub fn filter<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut p: &'static (
     }
 }
 
-pub fn map2<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>, C: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A, B) -> C + Send + Sync), xs: List<A>, ys: List<B>) -> List<C> {
+pub fn map2<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace, C: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc2s<'static, A, B, C>, xs: List<A>, ys: List<B>) -> List<C> {
     if (null_p(xs) || null_p(ys)) {
         nil::<C>()
     } else {
-        kayak_rt::heap_cons(f(car(xs), car(ys)), map2(f, cdr(xs), cdr(ys)))
+        kayak_rt::heap_cons(f.call(car(xs), car(ys)), map2(f, cdr(xs), cdr(ys)))
     }
 }
 
-pub fn size_from<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut xs: List<A>, mut n: i64) -> i64 {
+pub fn size_from<A: Copy + 'static + kayak_rt::Trace>(mut xs: List<A>, mut n: i64) -> i64 {
     loop {
         if null_p(xs) {
             return n;
@@ -123,11 +123,11 @@ pub fn size_from<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut xs: List<A
 }
 
 #[inline]
-pub fn size<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<A>) -> i64 {
+pub fn size<A: Copy + 'static + kayak_rt::Trace>(xs: List<A>) -> i64 {
     size_from(xs, 0i64)
 }
 
-pub fn last<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut xs: List<A>) -> A {
+pub fn last<A: Copy + 'static + kayak_rt::Trace>(mut xs: List<A>) -> A {
     loop {
         if null_p(cdr(xs)) {
             return car(xs);
@@ -139,7 +139,7 @@ pub fn last<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut xs: List<A>) ->
 }
 
 #[inline]
-pub fn onto<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<A>, ys: List<A>) -> List<A> {
+pub fn onto<A: Copy + 'static + kayak_rt::Trace>(xs: List<A>, ys: List<A>) -> List<A> {
     if null_p(xs) {
         ys
     } else {
@@ -148,7 +148,7 @@ pub fn onto<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<A>, ys: Li
 }
 
 #[inline]
-pub fn concat<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xss: List<List<A>>) -> List<A> {
+pub fn concat<A: Copy + 'static + kayak_rt::Trace>(xss: List<List<A>>) -> List<A> {
     if null_p(xss) {
         nil::<A>()
     } else {
@@ -218,14 +218,14 @@ pub fn put(s: Str, acc: Chars) -> Chars {
 }
 
 /// Each of `xs` added to `acc` by `each`, separated by `sep`.
-pub fn put_sep<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut each: &'static (dyn Fn(A, Chars) -> Chars + Send + Sync), mut sep: Str, mut xs: List<A>, mut acc: Chars) -> Chars {
+pub fn put_sep<A: Copy + 'static + kayak_rt::Trace>(mut each: kayak_rt::Proc2s<'static, A, Chars, Chars>, mut sep: Str, mut xs: List<A>, mut acc: Chars) -> Chars {
     loop {
         if null_p(xs) {
             return acc;
         } else if null_p(cdr(xs)) {
-            return each(car(xs), acc);
+            return each.call(car(xs), acc);
         } else {
-            (xs, acc) = (cdr(xs), put(sep, each(car(xs), acc)));
+            (xs, acc) = (cdr(xs), put(sep, each.call(car(xs), acc)));
             continue;
         }
     }
@@ -264,11 +264,11 @@ pub enum Nset {
     Nnode(kayak_rt::Handle<'static, Nset>, Str, kayak_rt::Handle<'static, Nset>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Nset {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Nset {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
             Self::Nempty() => { }
-            Self::Nnode(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Nnode(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }

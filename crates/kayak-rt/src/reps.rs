@@ -23,41 +23,10 @@ pub struct Product_11_12_13<A0, A1, A2>(pub A0, pub A1, pub A2);
 #[derive(Clone, Copy)]
 pub struct Product_11_12_13_14_15<A0, A1, A2, A3, A4>(pub A0, pub A1, pub A2, pub A3, pub A4);
 
-/// The products' `Trace` (C479), each field's.
-impl<'a, A0: crate::Trace<'a>, A1: crate::Trace<'a>> crate::Trace<'a> for Product_11_12<A0, A1> {
-    fn trace(&self, t: &mut crate::Tracer<'a>) {
-        self.0.trace(t);
-        self.1.trace(t);
-    }
-}
-
-impl<'a, A0: crate::Trace<'a>, A1: crate::Trace<'a>, A2: crate::Trace<'a>> crate::Trace<'a>
-    for Product_11_12_13<A0, A1, A2>
-{
-    fn trace(&self, t: &mut crate::Tracer<'a>) {
-        self.0.trace(t);
-        self.1.trace(t);
-        self.2.trace(t);
-    }
-}
-
-impl<
-    'a,
-    A0: crate::Trace<'a>,
-    A1: crate::Trace<'a>,
-    A2: crate::Trace<'a>,
-    A3: crate::Trace<'a>,
-    A4: crate::Trace<'a>,
-> crate::Trace<'a> for Product_11_12_13_14_15<A0, A1, A2, A3, A4>
-{
-    fn trace(&self, t: &mut crate::Tracer<'a>) {
-        self.0.trace(t);
-        self.1.trace(t);
-        self.2.trace(t);
-        self.3.trace(t);
-        self.4.trace(t);
-    }
-}
+// The products' `Trace` (C479, C481), each field's.
+crate::trace_product!(Product_11_12, A0 0, A1 1);
+crate::trace_product!(Product_11_12_13, A0 0, A1 1, A2 2);
+crate::trace_product!(Product_11_12_13_14_15, A0 0, A1 1, A2 2, A3 3, A4 4);
 
 impl<A0, A1> Show for Product_11_12<A0, A1> {
     fn show(&self, out: &mut String) {
@@ -95,7 +64,7 @@ fn items<T: Copy>(mut l: crate::ListAt<'_, T>) -> Vec<T> {
     out
 }
 
-fn listed<T: 'static + for<'t> crate::Trace<'t>>(xs: Vec<T>) -> List<T> {
+fn listed<T: 'static + crate::Trace>(xs: Vec<T>) -> List<T> {
     xs.into_iter().rev().fold(nil(), |acc, x| heap_cons(x, acc))
 }
 

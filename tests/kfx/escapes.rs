@@ -42,21 +42,21 @@ pub fn search(xs: Ints, n: i64) -> i64 {
             Ok(0i64)
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 i64_star(v, 100i64)
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }
 }
 
 // A procedure that may leave, as a value, and an abort through a closure.
-pub fn each<'r>(mut f: &'r dyn Fn(i64) -> Result<(), Unwind>, mut xs: Ints) -> Result<(), Unwind> {
+pub fn each<'r>(mut f: kayak_rt::Proc1<'r, i64, Result<(), Unwind>>, mut xs: Ints) -> Result<(), Unwind> {
     loop {
         if null_p(xs) {
             return Ok(());
         } else {
-            f(car(xs))?;
+            f.call(car(xs))?;
             xs = cdr(xs);
             continue;
         }
@@ -80,7 +80,7 @@ pub fn size_of(xs: Ints) -> i64 {
 }
 
 #[inline]
-pub fn each_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<(), Unwind>, xs: Ints) -> Result<(), Unwind> {
+pub fn each_to<'r>(t: Tag<i64, i64>, f: kayak_rt::Proc1<'r, i64, Result<(), Unwind>>, xs: Ints) -> Result<(), Unwind> {
     Ok(each(f, xs)?)
 }
 
@@ -89,13 +89,13 @@ pub fn skips(xs: Ints) -> i64 {
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            each_to(t, lambda1(move |a__0| Ok((&skip)(a__0))), xs)?;
+            each_to(t, kayak_rt::closure1((), |(), a__0| Ok(skip(a__0))), xs)?;
             Ok(size_of(xs))
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 v
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }
@@ -106,7 +106,7 @@ pub fn first_over(xs: Ints, m: i64) -> i64 {
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            each(lambda1(move |x: i64| {
+            each(kayak_rt::closure1((m, t,), |(m, t,), x: i64| {
                 if i64_gt(x, m) {
                     (return Err(unwind(t, x)))
                 } else {
@@ -116,9 +116,9 @@ pub fn first_over(xs: Ints, m: i64) -> i64 {
             Ok(-1i64)
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 v
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }
@@ -137,17 +137,17 @@ pub fn nested(xs: Ints, n: i64) -> i64 {
                     Ok(find(t1, xs, n)?)
                 })() {
                     Ok(v_) => v_,
-                    Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+                    Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                         i64_minus(0i64, v)
-                    }))(prompt_tag__.payload(u_)),
+                    })).call(prompt_tag__.payload(u_)),
                     Err(u_) => return Err(u_),
                 }
             }))
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 i64_star(v, 1000i64)
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }
@@ -160,18 +160,18 @@ pub fn on_the_spot(n: i64) -> i64 {
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            Ok(i64_plus(1i64, (lambda1(move |x: i64| {
+            Ok(i64_plus(1i64, (kayak_rt::closure1((t,), |(t,), x: i64| {
                 if i64_gt(x, 3i64) {
                     (return Err(unwind(t, x)))
                 } else {
                     Ok(x)
                 }
-            }))(n)?))
+            })).call(n)?))
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 i64_star(v, 2i64)
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }

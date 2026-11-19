@@ -132,10 +132,10 @@ pub mod kc_native {
         Sized(i64, HeapArray),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Sized {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Sized {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Sized(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Sized(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -194,18 +194,18 @@ pub mod kc_native {
     // until it is freed (C456, `native-freed`); and where its code runs
     // (`kayak:last-sealed/1` after its `seal-code`), which names it to free.
     pub enum RunImage {
-        RunImage(&'static dyn Fn(HeapArray) -> i64, HeapArray, Int),
+        RunImage(kayak_rt::Proc1<'static, HeapArray, i64>, HeapArray, Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for RunImage {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for RunImage {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::RunImage(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::RunImage(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
             }
         }
     }
 
-    pub fn run_image(f0: &'static dyn Fn(HeapArray) -> i64, f1: HeapArray, f2: Int) -> kayak_rt::Handle<'static, RunImage> {
+    pub fn run_image(f0: kayak_rt::Proc1<'static, HeapArray, i64>, f1: HeapArray, f2: Int) -> kayak_rt::Handle<'static, RunImage> {
         kayak_rt::heap_alloc(RunImage::RunImage(f0, f1, f2))
     }
 
@@ -215,7 +215,7 @@ pub mod kc_native {
         bytes_put_x(b, int_lit(0), image);
         let sealed = seal_code(b);
         let at = last_sealed();
-        run_image(kayak_rt::native_procedure1::<FlatArray<i64>, i64>(sealed), h, at)
+        run_image(kayak_rt::as_proc(kayak_rt::native_procedure1::<FlatArray<i64>, i64>(sealed)), h, at)
     }
 
     // An image's code freed (C456): its block of the code area given back
@@ -251,7 +251,7 @@ pub mod kc_native {
                 } else {
                     ()
                 };
-                if i64_eq(f(h), 0i64) {
+                if i64_eq(f.call(h), 0i64) {
                     str_lit("")
                 } else {
                     kc_failure()

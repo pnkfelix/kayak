@@ -18,7 +18,7 @@ fn a_tree_reached_each_node_once() {
     // A node of two leaves, the same leaf twice: two values, not three.
     let shared = node(l, 1, l);
     let root = node(shared, 2, node(shared, 3, leaf()));
-    let t = kayak_rt::traced(&root);
+    let t = kayak_rt::traced(root);
     // root, its right child, `shared`: three nodes; `l` and one more leaf.
     assert_eq!(reached(&t, "data::Tree"), 5);
 }
@@ -29,7 +29,7 @@ fn a_deep_tree_in_a_loop() {
     for k in 0..200_000 {
         t = node(t, k, leaf());
     }
-    let tr = kayak_rt::traced(&t);
+    let tr = kayak_rt::traced(t);
     // The root handle's value is reached too: 200,000 nodes, 200,001 leaves.
     assert_eq!(reached(&tr, "data::Tree"), 400_001);
     let _: &Tree = &t;

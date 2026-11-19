@@ -6038,7 +6038,11 @@
                        (refuse v (string-append "a type " (string-append h " is called at that nothing here says, as FX-26 finds it: say it, (the T ...)"))))
                       (open "`null?`'s, written at the type FX-26 leaves open: `void`."
                             (res t es (note-turbofish s (cv-file v) (cv-pos v) (map (lambda ((k i64)) (ty-meta k)) ks))))
-                      ((or (string=? wher "prim") (null? ks) (not fish)) r)
+                      ;; Or where one is a procedure's type (C481): rustc chooses
+                      ;; no closure's type (`Send + Sync` or not) for a binder.
+                      ((or (string=? wher "prim") (null? ks)
+                           (not (or fish (any? (lambda ((k i64)) (proc-type? s (ty-meta k))) ks))))
+                       r)
                       (else (res t es (note-turbofish s (cv-file v) (cv-pos v) (map (lambda ((k i64)) (ty-meta k)) ks)))))))))))
 
       (nat-args? (subr kfx (cv st sexps) bool)

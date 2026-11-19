@@ -14,11 +14,11 @@ pub fn here_p() -> bool {
 pub mod made__load__0__fx26_arm64 {
     use super::*;
 
-    pub type ArmOp2 = &'static (dyn Fn(Int, Int) -> Int + Send + Sync);
+    pub type ArmOp2 = kayak_rt::Proc2s<'static, Int, Int, Int>;
 
-    pub type ArmOp3 = &'static (dyn Fn(Int, Int, Int) -> Int + Send + Sync);
+    pub type ArmOp3 = kayak_rt::Proc3s<'static, Int, Int, Int, Int>;
 
-    pub type ArmOp4 = &'static (dyn Fn(Int, Int, Int, Int) -> Int + Send + Sync);
+    pub type ArmOp4 = kayak_rt::Proc4s<'static, Int, Int, Int, Int, Int>;
 
     pub type ArmCode = List<Int>;
 
@@ -473,8 +473,8 @@ pub mod a64 {
     }
 
     pub fn arm_mov_imm64(d: Int, v: Int) -> ArmCode {
-        let ks__knot = knot::<&'static (dyn Fn(Int, Int) -> ArmCode + Send + Sync)>();
-        let ks = lambda2s(move |mut hw: Int, mut rest: Int| {
+        let ks__knot = knot::<kayak_rt::Proc2s<'static, Int, Int, ArmCode>>();
+        let ks = kayak_rt::as_proc(kayak_rt::closure2s((d, ks__knot,), |(d, ks__knot,), mut hw: Int, mut rest: Int| {
             loop {
                 if _eq(hw, int_lit(4)) {
                     return nil::<Int>();
@@ -484,13 +484,13 @@ pub mod a64 {
                         (hw, rest) = (_plus(hw, int_lit(1)), quotient(rest, int_lit(65536)));
                         continue;
                     } else {
-                        return kayak_rt::heap_cons(arm_movk(d, part, hw), (ks__knot.get())(_plus(hw, int_lit(1)), quotient(rest, int_lit(65536))));
+                        return kayak_rt::heap_cons(arm_movk(d, part, hw), (ks__knot.get()).call(_plus(hw, int_lit(1)), quotient(rest, int_lit(65536))));
                     }
                 }
             }
-        });
+        }));
         ks__knot.set(ks);
-        the::<ArmCode>(kayak_rt::heap_cons(arm_movz(d, modulo(v, int_lit(65536)), int_lit(0)), ks(int_lit(1), v)))
+        the::<ArmCode>(kayak_rt::heap_cons(arm_movz(d, modulo(v, int_lit(65536)), int_lit(0)), ks.call(int_lit(1), v)))
     }
 
     #[inline]
@@ -814,22 +814,22 @@ pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, _plus(at, int_lit(3)), quotient(w, int_lit(16777216)))
 }
 
-pub type Summer = &'static dyn Fn(FlatArray<i64>) -> Int;
+pub type Summer = kayak_rt::Proc1<'static, FlatArray<i64>, Int>;
 
 // `x1` is the array's suffix, tag 4: element `i` at `8 i - 4` from it.
 // `ldur x2, [x1, #-4]; ldur x3, [x1, #4]; add x2, x2, x3; stur x2, [x1,
 // #12]; add x0, x2, x2; add x0, x0, x0; add x0, x0, x0; ret`.
 pub fn summing() -> Summer {
     let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(32), ()));
-    put4(b, int_lit(0), (&a64::arm_ldur)(int_lit(2), int_lit(1), int_lit(-4)));
-    put4(b, int_lit(4), (&a64::arm_ldur)(int_lit(3), int_lit(1), int_lit(4)));
-    put4(b, int_lit(8), (&a64::arm_add)(int_lit(2), int_lit(2), int_lit(3)));
-    put4(b, int_lit(12), (&a64::arm_stur)(int_lit(2), int_lit(1), int_lit(12)));
-    put4(b, int_lit(16), (&a64::arm_add)(int_lit(0), int_lit(2), int_lit(2)));
-    put4(b, int_lit(20), (&a64::arm_add)(int_lit(0), int_lit(0), int_lit(0)));
-    put4(b, int_lit(24), (&a64::arm_add)(int_lit(0), int_lit(0), int_lit(0)));
+    put4(b, int_lit(0), a64::arm_ldur(int_lit(2), int_lit(1), int_lit(-4)));
+    put4(b, int_lit(4), a64::arm_ldur(int_lit(3), int_lit(1), int_lit(4)));
+    put4(b, int_lit(8), a64::arm_add(int_lit(2), int_lit(2), int_lit(3)));
+    put4(b, int_lit(12), a64::arm_stur(int_lit(2), int_lit(1), int_lit(12)));
+    put4(b, int_lit(16), a64::arm_add(int_lit(0), int_lit(2), int_lit(2)));
+    put4(b, int_lit(20), a64::arm_add(int_lit(0), int_lit(0), int_lit(0)));
+    put4(b, int_lit(24), a64::arm_add(int_lit(0), int_lit(0), int_lit(0)));
     put4(b, int_lit(28), a64::arm_ret());
-    kayak_rt::native_procedure1::<FlatArray<i64>, Int>(seal_code(b))
+    kayak_rt::as_proc(kayak_rt::native_procedure1::<FlatArray<i64>, Int>(seal_code(b)))
 }
 
 pub fn main() -> Str {
@@ -837,7 +837,7 @@ pub fn main() -> Str {
     flatarray_set_i64_x(a, 0i64, 20i64);
     flatarray_set_i64_x(a, 1i64, 22i64);
     let r = if here_p() {
-        (summing())(a)
+        (summing()).call(a)
     } else {
         flatarray_set_i64_x(a, 2i64, 42i64);
         int_lit(42)

@@ -9,17 +9,17 @@ use super::*;
 // traces, and whether the two runs of seed 7 agree: the determinism check
 // (C53), which Fixpt makes too.
 
-pub type Wl = Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>;
+pub type Wl = Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>;
 
 pub async fn say_x(lp: Wl, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_in_x(a__0, a__1))))(lp, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
+    kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
     Ok(())
 }
 
 pub async fn worker(lp: Wl, name: Str) -> Result<(), Unwind> {
     kayak_rt::suspend::body(say_x(lp, string_append(name, str_lit("1")))).await?;
     {
-        let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_in_x(a__0, a__1))))(lp, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", name))).await?;
+        let tagcase_ = kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", name))).await?;
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("failed") } {
             let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -48,17 +48,17 @@ pub fn words(xs: List<Str>) -> Str {
 
 // A run with seed `n`: the writes, in order.
 pub async fn run_with(n: u64) -> Result<Str, Unwind> {
-    let (lp, s, input, out) = (the::<Wl>((&make_world_loop)()), the::<Seed<'static>>(kayak_rt::heap_new(n)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())));
-    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp.0, lambda0(move || kayak_rt::suspend::body(async move {
+    let (lp, s, input, out) = (the::<Wl>(make_world_loop()), the::<Seed<'static>>(kayak_rt::heap_new(n)), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())), the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>())));
+    kayak_rt::suspend::body(spawn_x(lp.0, kayak_rt::closure0((lp,), |(lp,)| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(worker(lp, str_lit("a"))).await?)
     })))).await?;
-    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp.0, lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body(spawn_x(lp.0, kayak_rt::closure0((lp,), |(lp,)| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(worker(lp, str_lit("b"))).await?)
     })))).await?;
-    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp.0, lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body(spawn_x(lp.0, kayak_rt::closure0((lp,), |(lp,)| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(worker(lp, str_lit("c"))).await?)
     })))).await?;
-    kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(run_seeded_x(a__0, a__1, a__2))))(lp, (&faulty)(s, 40i64, (&sim)(input, out)), s)).await?;
+    kayak_rt::suspend::body(run_seeded_x(lp, faulty(s, 40i64, sim(input, out)), s)).await?;
     Ok(words(get(out)))
 }
 

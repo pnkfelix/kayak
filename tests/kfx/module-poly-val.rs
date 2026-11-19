@@ -13,7 +13,7 @@ pub mod picks {
     pub struct Module;
 
     #[inline]
-    pub fn first_or<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<T>, d: T) -> T {
+    pub fn first_or<T: Copy + 'static + kayak_rt::Trace>(xs: List<T>, d: T) -> T {
         if null_p(xs) {
             d
         } else {
@@ -22,7 +22,7 @@ pub mod picks {
     }
 
     #[inline]
-    pub fn pick<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, U: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(b: bool, x: T, y: T, z: U) -> T {
+    pub fn pick<T: Copy + 'static + kayak_rt::Trace, U: Copy + 'static + kayak_rt::Trace>(b: bool, x: T, y: T, z: U) -> T {
         if b {
             x
         } else {
@@ -37,7 +37,7 @@ pub mod lasts {
     /// This module, given for a module type (C24).
     pub struct Module;
 
-    pub fn first_or<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut xs: List<T>, mut d: T) -> T {
+    pub fn first_or<T: Copy + 'static + kayak_rt::Trace>(mut xs: List<T>, mut d: T) -> T {
         loop {
             if null_p(xs) {
                 return d;
@@ -49,7 +49,7 @@ pub mod lasts {
     }
 
     #[inline]
-    pub fn pick<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, U: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(b: bool, x: T, y: T, z: U) -> T {
+    pub fn pick<T: Copy + 'static + kayak_rt::Trace, U: Copy + 'static + kayak_rt::Trace>(b: bool, x: T, y: T, z: U) -> T {
         if b {
             y
         } else {
@@ -59,8 +59,8 @@ pub mod lasts {
 }
 
 pub trait Firsts {
-    fn first_or<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(a__0: List<T>, a__1: T) -> T;
-    fn pick<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(a__0: bool, a__1: A, a__2: A, a__3: B) -> A;
+    fn first_or<T: Copy + 'static + kayak_rt::Trace>(a__0: List<T>, a__1: T) -> T;
+    fn pick<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(a__0: bool, a__1: A, a__2: A, a__3: B) -> A;
 }
 
 // Each value at two types, in one procedure.
@@ -74,19 +74,19 @@ pub fn main() -> Str {
 }
 
 impl Firsts for picks::Module {
-    fn first_or<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(a__0: List<T>, a__1: T) -> T {
+    fn first_or<T: Copy + 'static + kayak_rt::Trace>(a__0: List<T>, a__1: T) -> T {
         picks::first_or(a__0, a__1)
     }
-    fn pick<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(a__0: bool, a__1: A, a__2: A, a__3: B) -> A {
+    fn pick<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(a__0: bool, a__1: A, a__2: A, a__3: B) -> A {
         picks::pick(a__0, a__1, a__2, a__3)
     }
 }
 
 impl Firsts for lasts::Module {
-    fn first_or<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(a__0: List<T>, a__1: T) -> T {
+    fn first_or<T: Copy + 'static + kayak_rt::Trace>(a__0: List<T>, a__1: T) -> T {
         lasts::first_or(a__0, a__1)
     }
-    fn pick<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(a__0: bool, a__1: A, a__2: A, a__3: B) -> A {
+    fn pick<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(a__0: bool, a__1: A, a__2: A, a__3: B) -> A {
         lasts::pick(a__0, a__1, a__2, a__3)
     }
 }

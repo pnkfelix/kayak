@@ -339,7 +339,7 @@ pub fn word_name_of(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut w: i
 }
 
 /// The `n` greatest counts of tally `t`, each with `what` its key's first part is.
-pub fn most_shown(mut t: FlatArray<i64>, mut total: i64, mut n: i64, mut what: &'static dyn Fn(i64) -> Str, mut out: Str) -> Str {
+pub fn most_shown(mut t: FlatArray<i64>, mut total: i64, mut n: i64, mut what: kayak_rt::Proc1<'static, i64, Str>, mut out: Str) -> Str {
     loop {
         let at = if i64_eq(n, 0i64) {
             the::<i64>(0i64)
@@ -351,7 +351,7 @@ pub fn most_shown(mut t: FlatArray<i64>, mut total: i64, mut n: i64, mut what: &
         } else {
             let c = flatarray_ref_i64(t, i64_plus(at, 2i64));
             flatarray_set_i64_x(t, i64_plus(at, 2i64), i64_minus(0i64, c));
-            (n, out) = (i64_minus(n, 1i64), string_append(out, string_append(str_lit("  "), string_append(padded_to(i64_to_string(c), 12i64), string_append(padded_to(percent(c, total), 8i64), string_append(str_lit("  "), string_append(what(flatarray_ref_i64(t, at)), str_lit("\n"))))))));
+            (n, out) = (i64_minus(n, 1i64), string_append(out, string_append(str_lit("  "), string_append(padded_to(i64_to_string(c), 12i64), string_append(padded_to(percent(c, total), 8i64), string_append(str_lit("  "), string_append(what.call(flatarray_ref_i64(t, at)), str_lit("\n"))))))));
             continue;
         }
     }
@@ -372,7 +372,7 @@ pub fn rs_tallied_x(mut into: FlatArray<i64>, mut i: i64, mut n: i64) -> FlatArr
 
 pub fn overflow_shown() -> Str {
     let n = i64_quotient(get(rsp()), 4i64);
-    most_shown(rs_tallied_x(tally_made(256i64), 0i64, n), n, 8i64, lambda1(move |w: i64| {
+    most_shown(rs_tallied_x(tally_made(256i64), 0i64, n), n, 8i64, kayak_rt::closure1((), |(), w: i64| {
         word_name_of(get(words()), w)
     }), str_lit("the return stack's words, most first:\n"))
 }
@@ -381,7 +381,7 @@ pub fn profile_shown_x() -> () {
     let total = tally_total(get(profile()), 0i64, 0i64);
     let ws = words_tallied_x(get(profile()), tally_made(256i64), 0i64);
     let head = string_append(str_lit("profile: "), string_append(i64_to_string(total), str_lit(" cells run by tier 1\n")));
-    let by_word = most_shown(ws, total, 15i64, lambda1(move |w: i64| {
+    let by_word = most_shown(ws, total, 15i64, kayak_rt::closure1((), |(), w: i64| {
         word_name_of(get(words()), w)
     }), str_lit("the words that ran the most:\n"));
     let ts = get(line_tables());
@@ -411,9 +411,9 @@ pub fn profile_shown_x() -> () {
                 let lines = lines_of(cs, nil::<char>(), nil::<List<char>>());
                 let ls = lines_tallied_x(ts, file, starts, false, tally_made(256i64));
                 let ps = lines_tallied_x(ts, file, starts, true, tally_made(256i64));
-                string_append(most_shown(ls, total, 15i64, lambda1(move |l: i64| {
+                string_append(most_shown(ls, total, 15i64, kayak_rt::closure1((file, lines,), |(file, lines,), l: i64| {
                     string_append(file, string_append(str_lit(":"), string_append(i64_to_string(l), string_append(str_lit("  "), cut(spaces_dropped(nth_line(lines, i64_minus(l, 1i64))), 60i64, nil::<char>())))))
-                }), str_lit("the source lines that ran the most:\n")), most_shown(ps, total, 15i64, lambda1(move |q: i64| {
+                }), str_lit("the source lines that ran the most:\n")), most_shown(ps, total, 15i64, kayak_rt::closure1((cs, starts,), |(cs, starts,), q: i64| {
                     let p = i64_minus(q, 1i64);
                     let l = line_of(starts, p, 0i64, i64_minus(flatarray_length_i64(starts), 1i64));
                     string_append(i64_to_string(i64_plus(l, 1i64)), string_append(str_lit(":"), string_append(i64_to_string(i64_minus(p, flatarray_ref_i64(starts, l))), string_append(str_lit("  "), cut(chars_dropped(cs, p), 50i64, nil::<char>())))))

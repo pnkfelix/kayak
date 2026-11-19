@@ -23,15 +23,15 @@ pub fn put_all(mut b: &'static Bloblet<()>, mut at: Int, mut bs: List<Int>) -> (
     }
 }
 
-pub type Summer = &'static dyn Fn(List<Int>) -> Int;
+pub type Summer = kayak_rt::Proc1<'static, List<Int>, Int>;
 
-pub type Builder = &'static dyn Fn(Int, Summer) -> Int;
+pub type Builder = kayak_rt::Proc2<'static, Int, Summer, Int>;
 
 pub fn build() -> Builder {
     let bs = build_code();
     let b = the::<&'static Bloblet<()>>(make_bloblet(list_length(bs), ()));
     put_all(b, int_lit(0), bs);
-    kayak_rt::native_procedure2::<Int, _, Int>(seal_code(b))
+    kayak_rt::as_proc(kayak_rt::native_procedure2::<Int, _, Int>(seal_code(b)))
 }
 
 pub fn total(mut xs: List<Int>, mut acc: Int) -> Int {
@@ -46,7 +46,7 @@ pub fn total(mut xs: List<Int>, mut acc: Int) -> Int {
 }
 
 pub fn deep(b: Builder, k: Int) -> Int {
-    _plus(b(int_lit(10), lambda1(move |xs: List<Int>| {
+    _plus(b.call(int_lit(10), kayak_rt::closure1((), |(), xs: List<Int>| {
         total(xs, int_lit(0))
     })), if _eq(k, int_lit(0)) {
         int_lit(0)
@@ -59,7 +59,7 @@ pub fn deep(b: Builder, k: Int) -> Int {
 // of a recursion 3000 deep.
 pub fn main() -> Str {
     string_append(int_to_string(if native_code_p() {
-        (build())(int_lit(1000000), lambda1(move |xs: List<Int>| {
+        (build()).call(int_lit(1000000), kayak_rt::closure1((), |(), xs: List<Int>| {
             total(xs, int_lit(0))
         }))
     } else {

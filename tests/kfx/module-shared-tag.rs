@@ -12,10 +12,10 @@ pub enum Point {
     Origin(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Point {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Point {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Pt(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Pt(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             Self::Origin() => { }
         }
     }
@@ -37,10 +37,10 @@ pub mod m {
         Nowhere(),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Place {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Place {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Pt(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::Pt(f0) => { kayak_rt::Trace::trace(*f0, t); }
                 Self::Nowhere() => { }
             }
         }
@@ -87,6 +87,6 @@ pub fn across(p: kayak_rt::Handle<'static, Point>) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(across(pt(3i64, 4i64))), string_append(str_lit(" "), string_append(i64_to_string((&m::r#where)((&m::here)(9i64))), string_append(str_lit(" "), i64_to_string(across(origin()))))))
+    string_append(i64_to_string(across(pt(3i64, 4i64))), string_append(str_lit(" "), string_append(i64_to_string(m::r#where(m::here(9i64))), string_append(str_lit(" "), i64_to_string(across(origin()))))))
 }
 

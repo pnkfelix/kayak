@@ -68,10 +68,10 @@ pub enum Step {
     Done(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Step {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Step {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::More(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::More(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::Done() => { }
         }
     }
@@ -123,10 +123,10 @@ pub fn rebound(n: i64, acc: i64) -> i64 {
     if i64_eq(n, 0i64) {
         acc
     } else {
-        let rebound = the::<&'static (dyn Fn(i64, i64) -> i64 + Send + Sync)>(lambda2s(move |a: i64, b: i64| {
+        let rebound = the::<kayak_rt::Proc2s<'static, i64, i64, i64>>(kayak_rt::as_proc(kayak_rt::closure2s((), |(), a: i64, b: i64| {
             i64_star(100i64, b)
-        }));
-        rebound(i64_minus(n, 1i64), i64_plus(acc, 1i64))
+        })));
+        rebound.call(i64_minus(n, 1i64), i64_plus(acc, 1i64))
     }
 }
 

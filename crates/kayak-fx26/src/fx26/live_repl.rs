@@ -54,14 +54,14 @@ pub enum Request {
     Limited(i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Request {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Request {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::EntryGiven(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-            Self::DraftGiven(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::EntryGiven(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+            Self::DraftGiven(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
             Self::DraftDropped() => { }
-            Self::Cancelled(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::Limited(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Cancelled(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::Limited(f0) => { kayak_rt::Trace::trace(*f0, t); }
         }
     }
 }
@@ -91,11 +91,11 @@ pub enum News {
     DraftNews(i64, Str, bool),
 }
 
-impl<'a> kayak_rt::Trace<'a> for News {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for News {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::EntryNews(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
-            Self::DraftNews(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::EntryNews(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); }
+            Self::DraftNews(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -433,7 +433,7 @@ pub mod session {
         set(requests(), kayak_rt::heap_cons(r, get(requests())))
     }
 
-    pub fn reversed_onto<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut xs: List<A>, mut acc: List<A>) -> List<A> {
+    pub fn reversed_onto<A: Copy + 'static + kayak_rt::Trace>(mut xs: List<A>, mut acc: List<A>) -> List<A> {
         loop {
             if null_p(xs) {
                 return acc;
@@ -657,23 +657,23 @@ pub mod session {
         set(written(), put(s, get(written())))
     }
 
-    pub fn each_entry_x(mut f: &'static dyn Fn(Entry) -> (), mut es: List<Entry>) -> () {
+    pub fn each_entry_x(mut f: kayak_rt::Proc1<'static, Entry, ()>, mut es: List<Entry>) -> () {
         loop {
             if null_p(es) {
                 return ();
             } else {
-                f(car(es));
+                f.call(car(es));
                 es = cdr(es);
                 continue;
             }
         }
     }
 
-    pub fn some_entry_p(mut f: &'static dyn Fn(Entry) -> bool, mut es: List<Entry>) -> bool {
+    pub fn some_entry_p(mut f: kayak_rt::Proc1<'static, Entry, bool>, mut es: List<Entry>) -> bool {
         loop {
             if null_p(es) {
                 return false;
-            } else if f(car(es)) {
+            } else if f.call(car(es)) {
                 return true;
             } else {
                 es = cdr(es);
@@ -682,11 +682,11 @@ pub mod session {
         }
     }
 
-    pub fn entries_where(mut f: &'static dyn Fn(Entry) -> bool, mut es: List<Entry>) -> List<Entry> {
+    pub fn entries_where(mut f: kayak_rt::Proc1<'static, Entry, bool>, mut es: List<Entry>) -> List<Entry> {
         loop {
             if null_p(es) {
                 return nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>();
-            } else if f(car(es)) {
+            } else if f.call(car(es)) {
                 return kayak_rt::heap_cons(car(es), entries_where(f, cdr(es)));
             } else {
                 es = cdr(es);
@@ -695,11 +695,11 @@ pub mod session {
         }
     }
 
-    pub fn some_number_p(mut f: &'static dyn Fn(i64) -> bool, mut ns: List<i64>) -> bool {
+    pub fn some_number_p(mut f: kayak_rt::Proc1<'static, i64, bool>, mut ns: List<i64>) -> bool {
         loop {
             if null_p(ns) {
                 return false;
-            } else if f(car(ns)) {
+            } else if f.call(car(ns)) {
                 return true;
             } else {
                 ns = cdr(ns);
@@ -708,12 +708,12 @@ pub mod session {
         }
     }
 
-    pub fn each_line_x(mut f: &'static dyn Fn(Str) -> (), mut ls: Strings) -> () {
+    pub fn each_line_x(mut f: kayak_rt::Proc1<'static, Str, ()>, mut ls: Strings) -> () {
         loop {
             if null_p(ls) {
                 return ();
             } else {
-                f(car(ls));
+                f.call(car(ls));
                 ls = cdr(ls);
                 continue;
             }
@@ -733,9 +733,9 @@ pub mod session {
 
     #[inline]
     pub fn definition_form_p(f: kayak_rt::Handle<'static, Sexp>) -> bool {
-        any_p(lambda1s(move |h: Str| {
+        any_p(kayak_rt::as_proc(kayak_rt::closure1s((f,), |(f,), h: Str| {
             head_is_p(f, h)
-        }), kayak_rt::heap_cons(str_lit("define"), kayak_rt::heap_cons(str_lit("define*"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("define-type"), kayak_rt::heap_cons(str_lit("define-datatype"), kayak_rt::heap_cons(str_lit("define-generative"), kayak_rt::heap_cons(str_lit("define-effect"), kayak_rt::nil()))))))))
+        })), kayak_rt::heap_cons(str_lit("define"), kayak_rt::heap_cons(str_lit("define*"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("define-type"), kayak_rt::heap_cons(str_lit("define-datatype"), kayak_rt::heap_cons(str_lit("define-generative"), kayak_rt::heap_cons(str_lit("define-effect"), kayak_rt::nil()))))))))
     }
 
     // Entries, by number and state.
@@ -772,10 +772,10 @@ pub mod session {
     /// made, and no entry before it that it must wait for: in plain mode
     /// any; else, one that is not quiet, or any if `e` is not.
     pub fn may_run_p(e: Entry) -> bool {
-        ((i64_eq(get(e.6), st_waiting()) || i64_eq(get(e.6), st_running())) && not(some_number_p(lambda1(move |k: i64| {
+        ((i64_eq(get(e.6), st_waiting()) || i64_eq(get(e.6), st_running())) && not(some_number_p(kayak_rt::closure1((), |(), k: i64| {
             let found = entry_numbered(get(entries()), k);
             (not(null_p(found)) && unfinished_p(car(found)))
-        }), e.5)) && not(some_entry_p(lambda1(move |d: Entry| {
+        }), e.5)) && not(some_entry_p(kayak_rt::closure1((e,), |(e,), d: Entry| {
             (i64_lt(d.0, e.0) && unfinished_p(d) && (not(get(live())) || not(e.4) || not(d.4)))
         }), get(entries()))))
     }
@@ -786,16 +786,16 @@ pub mod session {
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
                 let cs = string_chars(n);
-                if (not(null_p(cs)) && char_eq_p(car(cs), '%') && not(null_p(cdr(cs))) && not(any_p(lambda1s(move |c: char| {
+                if (not(null_p(cs)) && char_eq_p(car(cs), '%') && not(null_p(cdr(cs))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
                     not(char_numeric_p(c))
-                }), cdr(cs)))) {
+                })), cdr(cs)))) {
                     kayak_rt::heap_cons(number_from(cdr(cs), 0i64), kayak_rt::nil())
                 } else {
                     nil::<i64>()
                 }
             }
             Sexp::Lst(xs, f, l, p) => {
-                concat(map(&named_results, xs))
+                concat(map(kayak_rt::as_proc(named_results), xs))
             }
             _ => {
                 let other = tagcase_;
@@ -807,9 +807,9 @@ pub mod session {
     /// Whether an effect only reads globals, allocates, and spins: an entry
     /// with it runs beside others.
     pub fn quiet_effect_p(es: Strings) -> bool {
-        not(any_p(lambda1s(move |a: Str| {
+        not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: Str| {
             not((string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("@globals")) || has_prefix_p(a, str_lit("g:")) || has_prefix_p(a, str_lit("read:")) || has_prefix_p(a, str_lit("alloc:"))))
-        }), es))
+        })), es))
     }
 
     // What an entry's line says.
@@ -869,7 +869,7 @@ pub mod session {
             draft_set_x(str_lit(""), 0i64);
             set(history_at(), -1i64)
         } else {
-            let running = entries_where(&unfinished_p, get(entries()));
+            let running = entries_where(kayak_rt::as_proc(unfinished_p), get(entries()));
             if null_p(running) {
                 set(leaving(), false)
             } else {
@@ -915,7 +915,7 @@ pub mod session {
     /// (pasted) comes after that one's line.
     pub fn finish_draft_x(now: i64) -> () {
         if get(live()) {
-            if some_entry_p(lambda1(move |e: Entry| {
+            if some_entry_p(kayak_rt::closure1((), |(), e: Entry| {
                 i64_lt(get(e.12), 0i64)
             }), get(entries())) {
                 live_screen_x(now)
@@ -1268,9 +1268,9 @@ pub mod session {
                 let tag_ = kayak_rt::sum_tag(tagcase_);
                 if tag_ == const { kayak_rt::tag_hash("text") } {
                     let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                    set(history(), oldest_first_strings(map(lambda1s(move |l: Str| {
+                    set(history(), oldest_first_strings(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), l: Str| {
                         rev_to_string(unescaped(string_chars(l), nil::<char>()))
-                    }), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
+                    })), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
                 } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                     let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
                     ()
@@ -1284,7 +1284,7 @@ pub mod session {
 
     // Completion: the name before the cursor, among the checker's.
     pub fn known_names() -> Strings {
-        concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Bind>| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
@@ -1295,7 +1295,7 @@ pub mod session {
                     }
                 }
             }
-        }), cv_binds(get(repl_cv()))))
+        })), cv_binds(get(repl_cv()))))
     }
 
     pub fn common_prefix(mut p: Str, mut xs: Strings) -> Str {
@@ -1320,13 +1320,13 @@ pub mod session {
         let at = get(cursor());
         let from = name_start(d, at);
         let p = cut(d, from, at);
-        let found = sorted_strings(deduped_names(concat(map(lambda1s(move |n: Str| {
+        let found = sorted_strings(deduped_names(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((p,), |(p,), n: Str| {
             if has_prefix_p(n, p) {
                 the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
             } else {
                 nil::<Str>()
             }
-        }), known_names())), nil::<Str>()));
+        })), known_names())), nil::<Str>()));
         if (string_eq_p(p, str_lit("")) || null_p(found)) {
             ()
         } else {
@@ -1440,13 +1440,13 @@ pub mod session {
             }, now)
         } else if string_eq_p(w, str_lit(",apropos")) {
             said_x({
-                let found = sorted_strings(deduped_names(concat(map(lambda1s(move |n: Str| {
+                let found = sorted_strings(deduped_names(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((rest,), |(rest,), n: Str| {
                     if i64_gt_eq(int_to_i64(string_search(n, rest, int_lit(0))), 0i64) {
                         the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                     } else {
                         nil::<Str>()
                     }
-                }), known_names())), nil::<Str>()));
+                })), known_names())), nil::<Str>()));
                 if null_p(found) {
                     str_lit("nothing")
                 } else {
@@ -1522,13 +1522,13 @@ pub mod session {
     }
 
     pub fn pending_text(now: i64) -> Str {
-        let open = entries_where(&unfinished_p, oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()));
+        let open = entries_where(kayak_rt::as_proc(unfinished_p), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()));
         if null_p(open) {
             str_lit("no entry is running")
         } else {
-            words_lines(map(lambda1s(move |e: Entry| {
+            words_lines(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), e: Entry| {
                 string_append(str_lit("["), string_append(i64_to_string(e.0), string_append(str_lit("] "), first_line(e.1))))
-            }), open))
+            })), open))
         }
     }
 
@@ -1575,7 +1575,7 @@ pub mod session {
         let tagcase_ = made;
         match *tagcase_ {
             MadeEntry::MadeEntry(typed, defined, quiet, tops) => {
-                set(entries(), kayak_rt::heap_cons(make_entry(k, text, typed, defined, quiet, concat(map(&named_results, forms)), st_waiting(), tops, str_lit(""), timed, now), cdr(get(entries()))))
+                set(entries(), kayak_rt::heap_cons(make_entry(k, text, typed, defined, quiet, concat(map(kayak_rt::as_proc(named_results), forms)), st_waiting(), tops, str_lit(""), timed, now), cdr(get(entries()))))
             }
         }
     }
@@ -1590,10 +1590,10 @@ pub mod session {
         MadeEntry(Str, Str, bool, List<i64>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for MadeEntry {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for MadeEntry {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::MadeEntry(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::MadeEntry(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
             }
         }
     }
@@ -1658,13 +1658,13 @@ pub mod session {
                     line
                 } else {
                     string_append(defined, string_append(str_lit("\n"), line))
-                }, (quiet && expression && quiet_effect_p(effects)), onto(tops, concat(map(lambda1s(move |n: i64| {
+                }, (quiet && expression && quiet_effect_p(effects)), onto(tops, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: i64| {
                     if i64_eq(n, -1i64) {
                         nil::<i64>()
                     } else {
                         the::<List<i64>>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                     }
-                }), ns))));
+                })), ns))));
                 continue;
             }
         }
@@ -1940,7 +1940,7 @@ pub mod session {
 
     /// Rows added to the transcript, above the draft: each line of `text`.
     pub fn printed_x(text: Str) -> () {
-        each_line_x(lambda1(move |line: Str| {
+        each_line_x(kayak_rt::closure1((), |(), line: Str| {
             say_x(if get(live()) {
                 str_lit("\u{1b}[2K")
             } else {
@@ -1957,7 +1957,7 @@ pub mod session {
     }
 
     pub fn plain_screen_x(now: i64) -> () {
-        each_entry_x(lambda1(move |e: Entry| {
+        each_entry_x(kayak_rt::closure1((now,), |(now,), e: Entry| {
             if string_eq_p(get(e.9), str_lit("")) {
                 ()
             } else {
@@ -1985,7 +1985,7 @@ pub mod session {
         say_x(str_lit("\u{d}"));
         let moved = rev_to_string(get(written()));
         set(written(), nil::<char>());
-        each_entry_x(lambda1(move |e: Entry| {
+        each_entry_x(kayak_rt::closure1((now,), |(now,), e: Entry| {
             entry_drawn_x(e, now)
         }), es);
         let changes = rev_to_string(get(written()));
@@ -2009,7 +2009,7 @@ pub mod session {
             ()
         } else {
             set(e.9, str_lit(""));
-            each_line_x(lambda1(move |l: Str| {
+            each_line_x(kayak_rt::closure1((e,), |(e,), l: Str| {
                 printed_x(string_append(str_lit("["), string_append(i64_to_string(e.0), string_append(str_lit("]│ "), l))))
             }), lines_of(string_chars(out), nil::<char>(), nil::<Str>()))
         };
@@ -2055,11 +2055,11 @@ pub mod session {
         ClosedOff(Str, i64, List<i64>, bool),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Closing {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Closing {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
                 Self::NotClosable() => { }
-                Self::ClosedOff(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::ClosedOff(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
             }
         }
     }
@@ -2077,11 +2077,11 @@ pub mod session {
         Scanned(List<i64>, bool),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Scan {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Scan {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
                 Self::Unbalanced() => { }
-                Self::Scanned(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Scanned(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -2587,7 +2587,7 @@ pub mod session {
         loop {
             if null_p(ks) {
                 return nil::<i64>();
-            } else if some_entry_p(lambda1(move |e: Entry| {
+            } else if some_entry_p(kayak_rt::closure1((ks,), |(ks,), e: Entry| {
                 (i64_eq(e.0, car(ks)) && unfinished_p(e))
             }), get(entries())) {
                 return kayak_rt::heap_cons(car(ks), unfinished_of(cdr(ks)));
@@ -2625,9 +2625,9 @@ pub mod session {
         set(spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
         set(spec_state(), 2i64);
         let forms = program_read(text, str_lit("<draft>"), 1i64);
-        if (null_p(forms) || any_p(lambda1s(move |n: Str| {
+        if (null_p(forms) || any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
             string_member_p(n, kayak_rt::heap_cons(str_lit("%stage"), kayak_rt::heap_cons(str_lit("%session-check"), kayak_rt::heap_cons(str_lit("reify-effect"), kayak_rt::heap_cons(str_lit("reify-type"), kayak_rt::heap_cons(str_lit("reify-region"), kayak_rt::nil()))))))
-        }), names_in(car(forms)))) {
+        })), names_in(car(forms)))) {
             ()
         } else {
             let ns = numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), onto(get(machine_globals()), get(machine_modules()))));
@@ -2643,19 +2643,19 @@ pub mod session {
 
     /// The atoms of an effect that keep an entry from running beside others.
     pub fn loud_atoms(es: Strings) -> Strings {
-        concat(map(lambda1s(move |a: Str| {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: Str| {
             if quiet_effect_p(kayak_rt::heap_cons(a, kayak_rt::nil())) {
                 nil::<Str>()
             } else {
                 the::<Strings>(kayak_rt::heap_cons(a, kayak_rt::nil()))
             }
-        }), es))
+        })), es))
     }
 
     /// Whether the draft's run may take a slice: begun, not ended, and no
     /// entry unfinished that does more than read and allocate.
     pub fn draft_runnable_p() -> bool {
-        (i64_eq(get(spec_state()), 1i64) && not(some_entry_p(lambda1(move |d: Entry| {
+        (i64_eq(get(spec_state()), 1i64) && not(some_entry_p(kayak_rt::closure1((), |(), d: Entry| {
             (unfinished_p(d) && not(d.4))
         }), get(entries()))))
     }
@@ -2968,9 +2968,9 @@ pub mod session {
     // Running.
     /// The entry to run a slice of, by turns, or -1; 0, the draft's run.
     pub fn next_task() -> i64 {
-        let ready = entries_where(&may_run_p, oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()));
+        let ready = entries_where(kayak_rt::as_proc(may_run_p), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()));
         let last = get(last_run());
-        let after = entries_where(lambda1(move |e: Entry| {
+        let after = entries_where(kayak_rt::closure1((last,), |(last,), e: Entry| {
             i64_gt(e.0, last)
         }), ready);
         if not(null_p(after)) {
@@ -3069,7 +3069,7 @@ pub mod session {
             } else {
                 -1i64
             }
-        } else if (get(live()) && some_entry_p(&unfinished_p, get(entries()))) {
+        } else if (get(live()) && some_entry_p(kayak_rt::as_proc(unfinished_p), get(entries()))) {
             80i64
         } else {
             -1i64
@@ -3140,7 +3140,7 @@ pub mod session {
     /// run's outcome. What was sent of an entry is kept as its `drawn`,
     /// which this side draws nothing to.
     pub fn news_taken_x(now: i64) -> List<kayak_rt::Handle<'static, News>> {
-        let (es, drafts) = (entries_where(lambda1(move |e: Entry| {
+        let (es, drafts) = (entries_where(kayak_rt::closure1((), |(), e: Entry| {
             (i64_gt(e.0, 0i64) && (not(string_eq_p(get(e.9), str_lit(""))) || not(string_eq_p(entry_key(e), get(e.13)))))
         }), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())), get(news_out()));
         set(news_out(), nil::<kayak_rt::Handle<'static, News>>());
@@ -3185,7 +3185,7 @@ pub mod session {
     /// Whether to leave: ^D (or the input's end) asked, and no entry unfinished.
     #[inline]
     pub fn over_p() -> bool {
-        (get(quitting()) || (get(leaving()) && not(some_entry_p(&unfinished_p, get(entries())))))
+        (get(quitting()) || (get(leaving()) && not(some_entry_p(kayak_rt::as_proc(unfinished_p), get(entries())))))
     }
 
     #[inline]

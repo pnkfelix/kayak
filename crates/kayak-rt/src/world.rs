@@ -53,21 +53,12 @@ impl<A0, A1> Show for Product_4rows_7columns<A0, A1> {
 /// `io-error`'s kind.
 pub type IoKind = Sum;
 
-/// `io-error`: its kind, for a `tagcase`, and the system's words.
-/// The products' `Trace` (C480), each field's.
-macro_rules! traced_product {
-    ($name:ident, $($a:ident $i:tt),*) => {
-        impl<'a, $($a: crate::Trace<'a>),*> crate::Trace<'a> for $name<$($a),*> {
-            fn trace(&self, t: &mut crate::Tracer<'a>) {
-                $(self.$i.trace(t);)*
-            }
-        }
-    };
-}
-traced_product!(Product_4rows_7columns, A0 0, A1 1);
-traced_product!(Product_4kind_4size_8modified_4mode, A0 0, A1 1, A2 2, A3 3);
-traced_product!(Product_4kind_6detail, A0 0, A1 1);
+// The products' `Trace` (C480, C481), each field's.
+crate::trace_product!(Product_4rows_7columns, A0 0, A1 1);
+crate::trace_product!(Product_4kind_4size_8modified_4mode, A0 0, A1 1, A2 2, A3 3);
+crate::trace_product!(Product_4kind_6detail, A0 0, A1 1);
 
+/// `io-error`: its kind, for a `tagcase`, and the system's words.
 pub type IoError = Product_4kind_6detail<IoKind, Str>;
 
 pub(crate) fn io_error(e: &std::io::Error) -> IoError {

@@ -8,7 +8,7 @@ use kayak_rt::*;
 // family an alias over lifetimes. Fixpt's run/caller-place.fx, at i64,
 // through proj.
 
-pub type Builder<'r, 'p, Place_P> = &'r dyn Fn(&'p Place_P, i64) -> ListAt<'r, i64>;
+pub type Builder<'r, 'p, Place_P> = kayak_rt::Proc2<'r, &'p Place_P, i64, ListAt<'r, i64>>;
 
 #[inline]
 pub fn build<'p, Place_P: Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64) -> ListAt<'p, i64> {
@@ -21,7 +21,7 @@ pub fn total(n: i64) -> i64 {
         impl<'a> Default for Region_A<'a> { fn default() -> Self { Region_A { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'a> Holds<Cons<'a, i64>> for Region_A<'a> { fn arena(&self) -> &Arena<Cons<'a, i64>> { &self.a0 } }
         fn letrena__a<'a>(a: &'a Region_A<'a>, n: i64) -> i64 {
-            let xs = (&build)(a, n);
+            let xs = build(a, n);
             i64_plus(car(xs), car(cdr(xs)))
         }
         let a__arena = Region_A::default();

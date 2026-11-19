@@ -19,15 +19,15 @@ pub enum Ritem {
     RiPos(i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Ritem {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Ritem {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::RiOp(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::RiFrame(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RiLabel(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RiBranch(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::RiGuard(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::RiPos(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RiOp(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::RiFrame(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RiLabel(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RiBranch(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::RiGuard(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::RiPos(f0) => { kayak_rt::Trace::trace(*f0, t); }
         }
     }
 }
@@ -175,7 +175,7 @@ pub fn rop_text(name: Str, os: List<kayak_rt::Handle<'static, Opnd>>) -> Str {
         if null_p(os) {
             name
         } else {
-            string_append(name, string_append(str_lit(" "), put_sep_words(map(&ropnd_text, os))))
+            string_append(name, string_append(str_lit(" "), put_sep_words(map(kayak_rt::as_proc(ropnd_text), os))))
         }
     }
 }
@@ -225,10 +225,10 @@ pub enum Rcode {
     Rcode(Ritems, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rcode {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rcode {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rcode(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Rcode(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }

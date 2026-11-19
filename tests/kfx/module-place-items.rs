@@ -17,6 +17,14 @@ impl<'p, Place_P> Clone for Parser<'p, Place_P> {
 
 impl<'p, Place_P> Copy for Parser<'p, Place_P> {}
 
+impl<'p, Place_P> kayak_rt::Trace for Parser<'p, Place_P> {
+    kayak_rt::trace_whole!();
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
+        kayak_rt::Trace::trace(self.1, t);
+    }
+}
+
 pub mod parser_in {
     use super::*;
 
@@ -34,8 +42,8 @@ pub mod parser_in {
     }
 
     #[inline]
-    pub fn twice<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
-        f(f(x))
+    pub fn twice<A: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A, A>, x: A) -> A {
+        f.call(f.call(x))
     }
 
     #[inline]
@@ -50,8 +58,8 @@ pub mod parser_in {
     }
 
     #[inline]
-    pub fn applied<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, f: &'p dyn Fn(i64) -> i64, x: i64) -> i64 {
-        f(x)
+    pub fn applied<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, f: kayak_rt::Proc1<'p, i64, i64>, x: i64) -> i64 {
+        f.call(x)
     }
 
     pub fn checked<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, n: i64) -> Result<i64, Unwind> {
@@ -59,7 +67,7 @@ pub mod parser_in {
         if i64_lt(n, 0i64) {
             Ok(refuse(p, maker_st, str_lit("negative"))?)
         } else {
-            Ok(applied(p, maker_st, kayak_rt::lambda1(move |a0| bumped(p, maker_st, a0)), twice(&inc, n)))
+            Ok(applied(p, maker_st, kayak_rt::closure1((p, maker_st,), |(p, maker_st,), a0| bumped(p, maker_st, a0)), twice(kayak_rt::as_proc(inc), n)))
         }
     }
 
@@ -70,9 +78,9 @@ pub mod parser_in {
                 Ok(string_append(i64_to_string(checked(p, maker_st, n)?), string_append(str_lit(" after "), i64_to_string(get(maker_st.tries.get().unwrap())))))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |why: Str| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), why: Str| {
                     string_append(str_lit("refused: "), why)
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         })

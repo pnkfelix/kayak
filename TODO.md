@@ -1880,7 +1880,23 @@ over its 1664 definitions, 335 of them refused:
   shape, kayak-rt's own types; a reference opaque, a closure's captures
   too); ~~a census of what the stack reaches~~ (done, C480: at an edit's
   build, 2.5 to 8 MB of values and 2 to 4.4 MB of strings reachable
-  while 155 MB is allocated; closures reach next to nothing); then a
+  while 155 MB is allocated; closures reach next to nothing); ~~closures
+  as FX-26's heap grammar has them~~ (done, C481: a closure is its
+  captures' traced fields, their plain bytes, its code; a procedure value
+  a handle to `dyn CallN`, called by `.call`; `Trace` split from `Visit`).
+  Left of closures: kc's own Rust back end (`kc/rust.kfx`) still writes
+  `lambdaN` and `&'static dyn Fn`, which kayak-rt keeps for it; a
+  continuation's closure (`Resume`) and a `letrec`'s knot reach their
+  values through plain references (opaque); a closure of no captures is
+  made at each evaluation (9000 of them at an edit's build), where one
+  made once would do; and the corpus's programs of another machine
+  (`made-*.rs` but x86_64's) are to be blessed again on it. Then the rest
+  of the heap to the same grammar (the user: "everything conversion if
+  you can swing it"): a string (`Str`, two words: to a handle of a
+  string's bloblet), a dynamic value (`Value`, an enum), a product held by
+  value in its holder (a heap object of its own in FX-26), an integer
+  (`Int`, a bignum's limbs a `Vec`), bloblets and flat arrays (plain
+  references); then a
   collector, the Rust stack conservative and the heap
   precise (Bartlett's mostly-copying), its stress mode at every
   allocation: its roots (the stacks, the constants kfx's Rust keeps,

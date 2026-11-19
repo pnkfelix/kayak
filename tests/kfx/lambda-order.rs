@@ -7,19 +7,19 @@ use kayak_rt::*;
 // order, is given the closure's parameter's type the checker found.
 
 #[inline]
-pub fn map<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+pub fn map<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A, B>, xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
     } else {
-        kayak_rt::heap_cons(f(car(xs)), map(f, cdr(xs)))
+        kayak_rt::heap_cons(f.call(car(xs)), map(f, cdr(xs)))
     }
 }
 
 #[inline]
 pub fn g(xs: List<i64>) -> List<i64> {
-    map(lambda1s(move |x: i64| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: i64| {
         i64_plus(x, 1i64)
-    }), xs)
+    })), xs)
 }
 
 pub fn total(mut xs: List<i64>, mut n: i64) -> i64 {

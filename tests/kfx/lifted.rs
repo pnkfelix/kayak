@@ -6,11 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1k<A0>(pub A0);
 
-impl<'a, A0: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1k<A0> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-    }
-}
+kayak_rt::trace_product!(Product_1k, A0 0);
 
 // A procedure that cannot abort where one that may is expected, wherever it
 // stands: a list's element, a product's field, a branch, an argument. Its
@@ -28,13 +24,13 @@ pub fn dbl(y: i64) -> i64 {
 }
 
 #[inline]
-pub fn apply_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<i64, Unwind>, x: i64) -> Result<i64, Unwind> {
-    Ok(f(x)?)
+pub fn apply_to<'r>(t: Tag<i64, i64>, f: kayak_rt::Proc1<'r, i64, Result<i64, Unwind>>, x: i64) -> Result<i64, Unwind> {
+    Ok(f.call(x)?)
 }
 
 pub fn in_a_list(c: bool) -> i64 {
     let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
-    let fs = the::<List<&'static dyn Fn(i64) -> Result<i64, Unwind>>>(kayak_rt::heap_cons(lambda1(move |a__0| Ok((&inc)(a__0))), kayak_rt::heap_cons(lambda1(move |x: i64| {
+    let fs = the::<List<kayak_rt::Proc1<'static, i64, Result<i64, Unwind>>>>(kayak_rt::heap_cons(kayak_rt::closure1((), |(), a__0| Ok(inc(a__0))), kayak_rt::heap_cons(kayak_rt::closure1((c, t,), |(c, t,), x: i64| {
         if c {
             (return Err(unwind(t, x)))
         } else {
@@ -44,12 +40,12 @@ pub fn in_a_list(c: bool) -> i64 {
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            Ok(i64_plus((car(fs))(1i64)?, (car(cdr(fs)))(7i64)?))
+            Ok(i64_plus((car(fs)).call(1i64)?, (car(cdr(fs))).call(7i64)?))
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 i64_star(v, 10i64)
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }
@@ -57,16 +53,16 @@ pub fn in_a_list(c: bool) -> i64 {
 
 pub fn in_a_product() -> i64 {
     let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
-    let p = the::<Product_1k<&'static dyn Fn(i64) -> Result<i64, Unwind>>>(Product_1k(lambda1(move |a__0| Ok((&inc)(a__0)))));
+    let p = the::<Product_1k<kayak_rt::Proc1<'static, i64, Result<i64, Unwind>>>>(Product_1k(kayak_rt::closure1((), |(), a__0| Ok(inc(a__0)))));
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            Ok((p.0)(9i64)?)
+            Ok((p.0).call(9i64)?)
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 v
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }
@@ -78,15 +74,15 @@ pub fn in_a_branch(a: i64) -> i64 {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
             Ok(apply_to(t, if i64_gt(a, 50i64) {
-                lambda1(move |a__0| Ok((&inc)(a__0)))
+                kayak_rt::closure1((), |(), a__0| Ok(inc(a__0)))
             } else {
-                lambda1(move |a__0| Ok((&dbl)(a__0)))
+                kayak_rt::closure1((), |(), a__0| Ok(dbl(a__0)))
             }, 100i64)?)
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 v
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }

@@ -28,8 +28,20 @@ pub struct MarkKey<T> {
 }
 
 /// A key: its number alone, holding nothing of the heap (C480).
-impl<'a, T> crate::Trace<'a> for MarkKey<T> {
-    fn trace(&self, _: &mut crate::Tracer<'a>) {}
+impl<T> crate::Trace for MarkKey<T> {
+    type Field = ();
+    type Byte = Self;
+    fn split(self) -> ((), Self) {
+        ((), self)
+    }
+    fn join(_: (), b: Self) -> Self {
+        b
+    }
+    fn trace<'a>(self, _: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+    }
 }
 
 impl<T> Clone for MarkKey<T> {
@@ -75,10 +87,34 @@ impl Drop for Pushed {
     }
 }
 
+/// A body to run: a Rust closure, or a procedure value of no parameters
+/// (a closure's handle, C481), as KFX gives `with-mark` one.
+pub trait Thunk<A> {
+    fn run(self) -> A;
+}
+
+impl<A, F: FnOnce() -> A> Thunk<A> for F {
+    fn run(self) -> A {
+        self()
+    }
+}
+
+impl<A> Thunk<A> for crate::Proc0<'_, A> {
+    fn run(self) -> A {
+        self.call()
+    }
+}
+
+impl<A> Thunk<A> for crate::Proc0s<'_, A> {
+    fn run(self) -> A {
+        self.call()
+    }
+}
+
 /// `(with-mark key v body)`: `body` run with `v` the newest mark of `key`.
-pub fn with_mark<T: 'static, A>(key: MarkKey<T>, v: T, body: impl FnOnce() -> A) -> A {
+pub fn with_mark<T: 'static, A>(key: MarkKey<T>, v: T, body: impl Thunk<A>) -> A {
     let _pushed = Pushed::new(key.id, crate::leak(v));
-    body()
+    body.run()
 }
 
 /// A body that may suspend, its mark pushed for each poll.
@@ -100,12 +136,12 @@ impl<F: Future> Future for Marked<F> {
 pub fn with_mark_async<T: 'static, A: 'static>(
     key: MarkKey<T>,
     v: T,
-    body: impl FnOnce() -> crate::suspend::Body<A>,
+    body: impl Thunk<crate::suspend::Body<A>>,
 ) -> crate::suspend::Body<A> {
     Box::pin(Marked {
         key: key.id,
         value: crate::leak(v),
-        body: Box::pin(body()),
+        body: Box::pin(body.run()),
     })
 }
 

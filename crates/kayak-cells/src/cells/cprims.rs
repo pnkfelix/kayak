@@ -19,10 +19,10 @@ pub enum Pdef {
     Pdef(Str, i64, i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Pdef {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Pdef {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Pdef(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Pdef(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -4671,7 +4671,7 @@ pub fn rep_nodes_x(b: i64, names: i64) -> i64 {
     } else {
         let kb = the::<Bytes>(make_bytevector(i64_to_int(bv_length(b)), int_to_u8(int_lit(0))));
         kfx_bytes_of_x(kb, b, 0i64, bv_length(b));
-        let got = (&rep_nodes)(kb, rp_strings_of(names));
+        let got = rep_nodes(kb, rp_strings_of(names));
         frozen2_x(k_product(), rp_nodes_word_x(got.0), rp_symbols_word_x(got.1))
     }
 }

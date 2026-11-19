@@ -6,12 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_4seen_6bumper<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4seen_6bumper<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_4seen_6bumper, A0 0, A1 1);
 
 // A module maker's instance, its item held as a closure in a product of refs, as the REPL's front holds its expander's (C439).
 
@@ -24,6 +19,14 @@ impl<'p, Place_P> Clone for Cnt<'p, Place_P> {
 }
 
 impl<'p, Place_P> Copy for Cnt<'p, Place_P> {}
+
+impl<'p, Place_P> kayak_rt::Trace for Cnt<'p, Place_P> {
+    kayak_rt::trace_whole!();
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
+        kayak_rt::Trace::trace(self.1, t);
+    }
+}
 
 pub mod counter_in {
     use super::*;
@@ -63,11 +66,11 @@ pub fn counter_in<'p, Place_P>(p: &'p Place_P) -> Cnt<'p, Place_P> {
     Cnt(p, counter_in::maker_state(p))
 }
 
-pub type St<'r> = Product_4seen_6bumper<RefAt<'r, i64>, &'r dyn Fn(i64) -> i64>;
+pub type St<'r> = Product_4seen_6bumper<RefAt<'r, i64>, kayak_rt::Proc1<'r, i64, i64>>;
 
 pub fn st_new<'r, Place_R>(r: &'r Place_R) -> St<'r> {
     let x = counter_in(r);
-    Product_4seen_6bumper(new(0i64), lambda1(move |k: i64| {
+    Product_4seen_6bumper(new(0i64), kayak_rt::closure1((x,), |(x,), k: i64| {
         x.bump(k)
     }))
 }
@@ -78,8 +81,8 @@ pub fn main() -> Str {
         impl<'a> Default for Region_A<'a> { fn default() -> Self { Region_A { phantom_: std::marker::PhantomData } } }
         fn letrena__a<'a>(a: &'a Region_A<'a>) -> Str {
             let s = st_new(a);
-            (s.1)(3i64);
-            set(s.0, (s.1)(4i64));
+            (s.1).call(3i64);
+            set(s.0, (s.1).call(4i64));
             i64_to_string(get(s.0))
         }
         let a__arena = Region_A::default();

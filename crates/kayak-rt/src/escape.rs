@@ -15,8 +15,20 @@ pub struct Tag<A, H> {
 }
 
 /// A tag: its number alone, holding nothing of the heap (C480).
-impl<'a, A, H> crate::Trace<'a> for Tag<A, H> {
-    fn trace(&self, _: &mut crate::Tracer<'a>) {}
+impl<A, H> crate::Trace for Tag<A, H> {
+    type Field = ();
+    type Byte = Self;
+    fn split(self) -> ((), Self) {
+        ((), self)
+    }
+    fn join(_: (), b: Self) -> Self {
+        b
+    }
+    fn trace<'a>(self, _: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+    }
 }
 
 impl<A, H> Clone for Tag<A, H> {

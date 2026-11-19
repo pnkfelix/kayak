@@ -6,35 +6,19 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1n_5reply<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1n_5reply<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_1n_5reply, A0 0, A1 1);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_1f_1x_3out<A0, A1, A2>(pub A0, pub A1, pub A2);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1f_1x_3out<A0, A1, A2> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-    }
-}
+kayak_rt::trace_product!(Product_1f_1x_3out, A0 0, A1 1, A2 2);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4stop_5total<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4stop_5total<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_4stop_5total, A0 0, A1 1);
 
 // FX-26's processes and `par` (C101, C102): Fixpt's `programs/processes`,
 // in KFX, where a process is made by a procedure, since KFX makes a
@@ -51,8 +35,8 @@ pub fn start_doubler() -> Addr<Req> {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
             fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<Product_1n_5reply<Int, ICell<Int>>>) -> () {
-                let serve__knot = knot::<&'p dyn Fn() -> ()>();
-                let serve = lambda0(move || {
+                let serve__knot = knot::<kayak_rt::Proc0<'p, ()>>();
+                let serve = kayak_rt::closure0((r#box,), |(r#box,)| {
                     loop {
                         let m = kayak_rt::process::receive(r#box);
                         kayak_rt::process::icell_put_x(m.1, _star(int_lit(2), m.0));
@@ -60,7 +44,7 @@ pub fn start_doubler() -> Addr<Req> {
                     }
                 });
                 serve__knot.set(serve);
-                serve()
+                serve.call()
             }
             let p__arena = Region_P::default();
             letrena__p(&p__arena, r#box)
@@ -76,24 +60,24 @@ pub fn ask(server: Addr<Req>, n: Int) -> Int {
 
 // A process given a procedure in each message, which writes nothing
 // outside itself, so it may cross (Fixpt's closures.fx).
-pub type Job = Product_1f_1x_3out<&'static (dyn Fn(Int) -> Int + Send + Sync), Int, ICell<Int>>;
+pub type Job = Product_1f_1x_3out<kayak_rt::Proc1s<'static, Int, Int>, Int, ICell<Int>>;
 
 pub fn start_worker() -> Addr<Job> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Product_1f_1x_3out<&'static (dyn Fn(Int) -> Int + Send + Sync), Int, ICell<Int>>>| {
+    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Product_1f_1x_3out<kayak_rt::Proc1s<'static, Int, Int>, Int, ICell<Int>>>| {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
-            fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<Product_1f_1x_3out<&'static (dyn Fn(Int) -> Int + Send + Sync), Int, ICell<Int>>>) -> () {
-                let go__knot = knot::<&'p dyn Fn() -> ()>();
-                let go = lambda0(move || {
+            fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<Product_1f_1x_3out<kayak_rt::Proc1s<'static, Int, Int>, Int, ICell<Int>>>) -> () {
+                let go__knot = knot::<kayak_rt::Proc0<'p, ()>>();
+                let go = kayak_rt::closure0((r#box,), |(r#box,)| {
                     loop {
                         let j = kayak_rt::process::receive(r#box);
-                        kayak_rt::process::icell_put_x(j.2, (j.0)(j.1));
+                        kayak_rt::process::icell_put_x(j.2, (j.0).call(j.1));
                         continue;
                     }
                 });
                 go__knot.set(go);
-                go()
+                go.call()
             }
             let p__arena = Region_P::default();
             letrena__p(&p__arena, r#box)
@@ -113,15 +97,15 @@ pub fn start_summer(cells: Summing) -> Addr<Int> {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, r#box: Inbox<Int>, cells: Product_4stop_5total<ICell<()>, ICell<Int>>) -> () {
-                let loop__knot = knot::<&'r dyn Fn(Int) -> ()>();
-                let r#loop = lambda1(move |n: Int| {
+                let loop__knot = knot::<kayak_rt::Proc1<'r, Int, ()>>();
+                let r#loop = kayak_rt::closure1((r#box, cells, loop__knot,), |(r#box, cells, loop__knot,), n: Int| {
                     {
                         let sel_0__ = r#box;
                         let sel_1__ = cells.0;
                         match kayak_rt::process::sync(&[sel_0__ as &dyn kayak_rt::process::Waitable, sel_1__ as &dyn kayak_rt::process::Waitable]) {
                             0 => {
                                 let m = kayak_rt::process::receive(sel_0__);
-                                (loop__knot.get())(_plus(n, m))
+                                (loop__knot.get()).call(_plus(n, m))
                             }
                             1 => {
                                 let u = kayak_rt::process::icell_get(sel_1__);
@@ -132,7 +116,7 @@ pub fn start_summer(cells: Summing) -> Addr<Int> {
                     }
                 });
                 loop__knot.set(r#loop);
-                r#loop(int_lit(0))
+                r#loop.call(int_lit(0))
             }
             let r__arena = Region_R::default();
             letrena__r(&r__arena, r#box, cells)
@@ -203,9 +187,9 @@ pub fn main() -> Str {
     let out = the::<ICell<Int>>(make_icell());
     let cells = Product_4stop_5total(the::<ICell<()>>(make_icell()), the::<ICell<Int>>(make_icell()));
     let summer = start_summer(cells);
-    kayak_rt::process::send(worker, Product_1f_1x_3out(lambda1s(move |k: Int| {
+    kayak_rt::process::send(worker, Product_1f_1x_3out(kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: Int| {
         _star(k, k)
-    }), int_lit(7), out));
+    })), int_lit(7), out));
     kayak_rt::process::send(summer, int_lit(10));
     kayak_rt::process::send(summer, int_lit(20));
     kayak_rt::process::send(summer, int_lit(30));

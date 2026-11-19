@@ -18,17 +18,17 @@ pub fn put_all(mut b: &'static Bloblet<()>, mut at: Int, mut bs: List<Int>) -> (
     }
 }
 
-pub fn subtracter() -> &'static (dyn Fn(Int, Int) -> Int + Send + Sync) {
+pub fn subtracter() -> kayak_rt::Proc2s<'static, Int, Int, Int> {
     let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(7), ()));
     put_all(b, int_lit(0), kayak_rt::heap_cons(int_lit(72), kayak_rt::heap_cons(int_lit(137), kayak_rt::heap_cons(int_lit(248), kayak_rt::heap_cons(int_lit(72), kayak_rt::heap_cons(int_lit(41), kayak_rt::heap_cons(int_lit(240), kayak_rt::heap_cons(int_lit(195), kayak_rt::nil()))))))));
-    kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b))
+    kayak_rt::as_proc(kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b)))
 }
 
 // The clauses, as a program may read them: the first, `target`'s; and the
 // difference made code finds.
 pub fn main() -> Str {
     string_append(car(the::<List<Str>>(native_convention())), string_append(str_lit(" "), int_to_string(if native_code_p() {
-        (subtracter())(int_lit(50), int_lit(8))
+        (subtracter()).call(int_lit(50), int_lit(8))
     } else {
         int_lit(42)
     })))

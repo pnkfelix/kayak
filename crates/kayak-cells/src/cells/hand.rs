@@ -23,11 +23,11 @@ use super::*;
 pub mod made__load__2__fx26_arm64 {
     use super::*;
 
-    pub type ArmOp2 = &'static (dyn Fn(Int, Int) -> Int + Send + Sync);
+    pub type ArmOp2 = kayak_rt::Proc2s<'static, Int, Int, Int>;
 
-    pub type ArmOp3 = &'static (dyn Fn(Int, Int, Int) -> Int + Send + Sync);
+    pub type ArmOp3 = kayak_rt::Proc3s<'static, Int, Int, Int, Int>;
 
-    pub type ArmOp4 = &'static (dyn Fn(Int, Int, Int, Int) -> Int + Send + Sync);
+    pub type ArmOp4 = kayak_rt::Proc4s<'static, Int, Int, Int, Int, Int>;
 
     pub type ArmCode = List<Int>;
 
@@ -482,8 +482,8 @@ pub mod a64 {
     }
 
     pub fn arm_mov_imm64(d: Int, v: Int) -> ArmCode {
-        let ks__knot = knot::<&'static (dyn Fn(Int, Int) -> ArmCode + Send + Sync)>();
-        let ks = lambda2s(move |mut hw: Int, mut rest: Int| {
+        let ks__knot = knot::<kayak_rt::Proc2s<'static, Int, Int, ArmCode>>();
+        let ks = kayak_rt::as_proc(kayak_rt::closure2s((d, ks__knot,), |(d, ks__knot,), mut hw: Int, mut rest: Int| {
             loop {
                 if _eq(hw, int_lit(4)) {
                     return nil::<Int>();
@@ -493,13 +493,13 @@ pub mod a64 {
                         (hw, rest) = (_plus(hw, int_lit(1)), quotient(rest, int_lit(65536)));
                         continue;
                     } else {
-                        return kayak_rt::heap_cons(arm_movk(d, part, hw), (ks__knot.get())(_plus(hw, int_lit(1)), quotient(rest, int_lit(65536))));
+                        return kayak_rt::heap_cons(arm_movk(d, part, hw), (ks__knot.get()).call(_plus(hw, int_lit(1)), quotient(rest, int_lit(65536))));
                     }
                 }
             }
-        });
+        }));
         ks__knot.set(ks);
-        the::<ArmCode>(kayak_rt::heap_cons(arm_movz(d, modulo(v, int_lit(65536)), int_lit(0)), ks(int_lit(1), v)))
+        the::<ArmCode>(kayak_rt::heap_cons(arm_movz(d, modulo(v, int_lit(65536)), int_lit(0)), ks.call(int_lit(1), v)))
     }
 
     #[inline]
@@ -1133,14 +1133,14 @@ pub enum HandItem {
     AlignOdd(Int),
 }
 
-impl<'a> kayak_rt::Trace<'a> for HandItem {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for HandItem {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Ins(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::Jump(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::LabelHere(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::OffsetOf(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::AlignOdd(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Ins(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::Jump(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::LabelHere(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::OffsetOf(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::AlignOdd(f0) => { kayak_rt::Trace::trace(*f0, t); }
         }
     }
 }
@@ -1344,15 +1344,15 @@ pub fn encoded(x: kayak_rt::Handle<'static, HandItem>, at: Int, ls: FlatArray<i6
         HandItem::Jump(k, a, l) => {
             let d = _minus(r#where(ls, l), at);
             if _eq(k, j_b()) {
-                (&a64::arm_b)(d)
+                a64::arm_b(d)
             } else if _eq(k, j_cond()) {
-                (&a64::arm_b_cond)(a, d)
+                a64::arm_b_cond(a, d)
             } else if _eq(k, j_cbz()) {
-                (&a64::arm_cbz)(a, d)
+                a64::arm_cbz(a, d)
             } else if _eq(k, j_cbnz()) {
-                (&a64::arm_cbnz)(a, d)
+                a64::arm_cbnz(a, d)
             } else if _eq(k, j_bl()) {
-                (&a64::arm_bl)(d)
+                a64::arm_bl(d)
             } else {
                 arm_adr(a, _star(int_lit(4), d))
             }
@@ -1372,147 +1372,147 @@ pub fn encoded(x: kayak_rt::Handle<'static, HandItem>, at: Int, ls: FlatArray<i6
 // Instructions, by `arm64.fx`'s encoders.
 #[inline]
 pub fn ldr_x(t: Int, n: Int, o: Int) -> () {
-    e_x((&a64::arm_ldr)(t, n, o))
+    e_x(a64::arm_ldr(t, n, o))
 }
 
 #[inline]
 pub fn str_x(t: Int, n: Int, o: Int) -> () {
-    e_x((&a64::arm_str)(t, n, o))
+    e_x(a64::arm_str(t, n, o))
 }
 
 #[inline]
 pub fn ldur_x(t: Int, n: Int, o: Int) -> () {
-    e_x((&a64::arm_ldur)(t, n, o))
+    e_x(a64::arm_ldur(t, n, o))
 }
 
 #[inline]
 pub fn stur_x(t: Int, n: Int, o: Int) -> () {
-    e_x((&a64::arm_stur)(t, n, o))
+    e_x(a64::arm_stur(t, n, o))
 }
 
 #[inline]
 pub fn ldr_post_x(t: Int, n: Int, o: Int) -> () {
-    e_x((&a64::arm_ldr_post)(t, n, o))
+    e_x(a64::arm_ldr_post(t, n, o))
 }
 
 #[inline]
 pub fn str_post_x(t: Int, n: Int, o: Int) -> () {
-    e_x((&a64::arm_str_post)(t, n, o))
+    e_x(a64::arm_str_post(t, n, o))
 }
 
 #[inline]
 pub fn add_x(d: Int, n: Int, m: Int) -> () {
-    e_x((&a64::arm_add)(d, n, m))
+    e_x(a64::arm_add(d, n, m))
 }
 
 #[inline]
 pub fn sub_x(d: Int, n: Int, m: Int) -> () {
-    e_x((&a64::arm_sub)(d, n, m))
+    e_x(a64::arm_sub(d, n, m))
 }
 
 #[inline]
 pub fn adds_x(d: Int, n: Int, m: Int) -> () {
-    e_x((&a64::arm_adds)(d, n, m))
+    e_x(a64::arm_adds(d, n, m))
 }
 
 #[inline]
 pub fn subs_x(d: Int, n: Int, m: Int) -> () {
-    e_x((&a64::arm_subs)(d, n, m))
+    e_x(a64::arm_subs(d, n, m))
 }
 
 #[inline]
 pub fn addi_x(d: Int, n: Int, i: Int) -> () {
-    e_x((&a64::arm_add_imm)(d, n, i))
+    e_x(a64::arm_add_imm(d, n, i))
 }
 
 #[inline]
 pub fn subi_x(d: Int, n: Int, i: Int) -> () {
-    e_x((&a64::arm_sub_imm)(d, n, i))
+    e_x(a64::arm_sub_imm(d, n, i))
 }
 
 #[inline]
 pub fn cmp_x(n: Int, m: Int) -> () {
-    e_x((&a64::arm_cmp)(n, m))
+    e_x(a64::arm_cmp(n, m))
 }
 
 #[inline]
 pub fn cmpi_x(n: Int, i: Int) -> () {
-    e_x((&a64::arm_cmp_imm)(n, i))
+    e_x(a64::arm_cmp_imm(n, i))
 }
 
 #[inline]
 pub fn mov_x(d: Int, m: Int) -> () {
-    e_x((&a64::arm_mov)(d, m))
+    e_x(a64::arm_mov(d, m))
 }
 
 #[inline]
 pub fn movz_x(d: Int, i: Int) -> () {
-    e_x((&a64::arm_movz)(d, i, int_lit(0)))
+    e_x(a64::arm_movz(d, i, int_lit(0)))
 }
 
 #[inline]
 pub fn orr_x(d: Int, n: Int, m: Int) -> () {
-    e_x((&a64::arm_orr)(d, n, m))
+    e_x(a64::arm_orr(d, n, m))
 }
 
 #[inline]
 pub fn andl_x(d: Int, n: Int, bits: Int) -> () {
-    e_x((&a64::arm_and_low)(d, n, bits))
+    e_x(a64::arm_and_low(d, n, bits))
 }
 
 #[inline]
 pub fn tstl_x(n: Int, bits: Int) -> () {
-    e_x((&a64::arm_tst_low)(n, bits))
+    e_x(a64::arm_tst_low(n, bits))
 }
 
 #[inline]
 pub fn asr_x(d: Int, n: Int, s: Int) -> () {
-    e_x((&a64::arm_asr_imm)(d, n, s))
+    e_x(a64::arm_asr_imm(d, n, s))
 }
 
 #[inline]
 pub fn lsr_x(d: Int, n: Int, s: Int) -> () {
-    e_x((&a64::arm_lsr_imm)(d, n, s))
+    e_x(a64::arm_lsr_imm(d, n, s))
 }
 
 #[inline]
 pub fn csel_x(d: Int, n: Int, m: Int, c: Int) -> () {
-    e_x((&a64::arm_csel)(d, n, m, c))
+    e_x(a64::arm_csel(d, n, m, c))
 }
 
 #[inline]
 pub fn br_x(n: Int) -> () {
-    e_x((&a64::arm_br)(n))
+    e_x(a64::arm_br(n))
 }
 
 #[inline]
 pub fn blr_x(n: Int) -> () {
-    e_x((&a64::arm_blr)(n))
+    e_x(a64::arm_blr(n))
 }
 
 #[inline]
 pub fn stp_pre_x(t: Int, t2: Int, n: Int, i: Int) -> () {
-    e_x((&a64::arm_stp_pre)(t, t2, n, i))
+    e_x(a64::arm_stp_pre(t, t2, n, i))
 }
 
 #[inline]
 pub fn ldp_post_x(t: Int, t2: Int, n: Int, i: Int) -> () {
-    e_x((&a64::arm_ldp_post)(t, t2, n, i))
+    e_x(a64::arm_ldp_post(t, t2, n, i))
 }
 
 #[inline]
 pub fn stp_x(t: Int, t2: Int, n: Int, i: Int) -> () {
-    e_x((&a64::arm_stp)(t, t2, n, i))
+    e_x(a64::arm_stp(t, t2, n, i))
 }
 
 #[inline]
 pub fn ldp_x(t: Int, t2: Int, n: Int, i: Int) -> () {
-    e_x((&a64::arm_ldp)(t, t2, n, i))
+    e_x(a64::arm_ldp(t, t2, n, i))
 }
 
 #[inline]
 pub fn ubfx_x(d: Int, n: Int, lsb: Int, w: Int) -> () {
-    e_x((&a64::arm_ubfx)(d, n, lsb, w))
+    e_x(a64::arm_ubfx(d, n, lsb, w))
 }
 
 // `lsl xd, xn, #s`, which `arm64.fx` has not: `ubfm` of `64 - s`, `63 - s`.
@@ -1544,7 +1544,7 @@ pub fn ret_x() -> () {
 
 #[inline]
 pub fn ldr_reg_x(t: Int, n: Int, m: Int) -> () {
-    e_x((&a64::arm_ldr_reg)(t, n, m))
+    e_x(a64::arm_ldr_reg(t, n, m))
 }
 
 /// `r` times 8.
@@ -2698,10 +2698,10 @@ pub enum Span {
     Span(Str, Int, Int, i64, bool, Int),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Span {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Span {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Span(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+            Self::Span(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
         }
     }
 }
@@ -3564,7 +3564,7 @@ pub fn after_call_x(i: i64) -> () {
 
 #[inline]
 pub fn subsi_x(d: Int, n: Int, i: Int) -> () {
-    e_x((&a64::arm_subs_imm)(d, n, i))
+    e_x(a64::arm_subs_imm(d, n, i))
 }
 
 /// Whether register operation `op` reads an operand from the word, at
@@ -3733,11 +3733,11 @@ pub fn frozen_fields_x(mut r: Int, mut n: Int) -> () {
 pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -> () {
     let kk = i64_plus(f_cell0(), i);
     let op = fix_val(slot_of(rw, kk));
-    let o = lambda1(move |j: Int| {
+    let o = kayak_rt::closure1((rw, kk,), |(rw, kk,), j: Int| {
         fix_val(slot_of(rw, i64_plus(kk, int_to_i64(_plus(j, int_lit(1))))))
     });
     let nx = i64_plus(i, i64_plus(1i64, rop_operands(op)));
-    let to = lambda2(move |ops: Int, off: i64| {
+    let to = kayak_rt::closure2((i, base,), |(i, base,), ops: Int, off: i64| {
         t6_to(base, i64_plus(i, i64_plus(int_to_i64(_plus(ops, int_lit(1))), off)))
     });
     if (i64_eq(op, ro_args()) || i64_eq(op, ro_vargs())) {
@@ -3756,21 +3756,21 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         addi_x(x13(), x13(), int_lit(8));
         stur_x(x13(), x16(), at_field(f_writes()))
     } else if i64_eq(op, ro_reg()) {
-        mov_x(int_lit(0), reg_of(i64_to_int(o(int_lit(0)))))
+        mov_x(int_lit(0), reg_of(i64_to_int(o.call(int_lit(0)))))
     } else if i64_eq(op, ro_setreg()) {
-        mov_x(reg_of(i64_to_int(o(int_lit(0)))), int_lit(0))
+        mov_x(reg_of(i64_to_int(o.call(int_lit(0)))), int_lit(0))
     } else if i64_eq(op, ro_movereg()) {
-        mov_x(reg_of(i64_to_int(o(int_lit(1)))), reg_of(i64_to_int(o(int_lit(0)))))
+        mov_x(reg_of(i64_to_int(o.call(int_lit(1)))), reg_of(i64_to_int(o.call(int_lit(0)))))
     } else if i64_eq(op, ro_lexical()) {
         andl_x(x14(), x_clo(), int_lit(3));
         cmpi_x(x14(), int_lit(4));
         give_if_x(c_ne());
         add_x(x11(), x_mem(), x_clo());
-        movz_x(x13(), _star(int_lit(8), i64_to_int(i64_plus(f_free0(), o(int_lit(0))))));
+        movz_x(x13(), _star(int_lit(8), i64_to_int(i64_plus(f_free0(), o.call(int_lit(0))))));
         field_read_x();
         mov_x(int_lit(0), x16())
     } else if i64_eq(op, ro_save()) {
-        let m = i64_to_int(o(int_lit(0)));
+        let m = i64_to_int(o.call(int_lit(0)));
         add_const_x(x16(), x_dsp(), _star(int_lit(8), _plus(m, int_lit(1))));
         ldr_x(x13(), x_st(), at_st(st_ds_lim()));
         cmp_x(x16(), x13());
@@ -3804,19 +3804,19 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         };
         set(h_link(), m)
     } else if i64_eq(op, ro_pop()) {
-        sub_const_x(x16(), x_dsp(), _star(int_lit(8), _plus(i64_to_int(o(int_lit(0))), int_lit(1))));
+        sub_const_x(x16(), x_dsp(), _star(int_lit(8), _plus(i64_to_int(o.call(int_lit(0))), int_lit(1))));
         cmp_x(x16(), x_dsb());
         give_if_x(c_lo());
         mov_x(x_dsp(), x16())
     } else if (i64_eq(op, ro_stack()) || i64_eq(op, ro_load()) || i64_eq(op, ro_setstk()) || i64_eq(op, ro_store())) {
         let (slot, r) = (i64_to_int(if (i64_eq(op, ro_stack()) || i64_eq(op, ro_setstk())) {
-            o(int_lit(0))
+            o.call(int_lit(0))
         } else {
-            o(int_lit(1))
+            o.call(int_lit(1))
         }), if (i64_eq(op, ro_stack()) || i64_eq(op, ro_setstk())) {
             int_lit(0)
         } else {
-            reg_of(i64_to_int(o(int_lit(0))))
+            reg_of(i64_to_int(o.call(int_lit(0))))
         });
         add_const_x(x14(), x_fp(), _star(int_lit(8), slot));
         if (_gt_eq(get(h_link()), int_lit(0)) && _lt(slot, get(h_link()))) {
@@ -3831,7 +3831,7 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
             str_x(r, x14(), int_lit(0))
         }
     } else if i64_eq(op, ro_op1()) {
-        let r = o(int_lit(0));
+        let r = o.call(int_lit(0));
         if (i64_eq(r, rt_car()) || i64_eq(r, rt_cdr()) || i64_eq(r, rt_pair_car()) || i64_eq(r, rt_pair_cdr())) {
             andl_x(x14(), int_lit(0), int_lit(3));
             cmpi_x(x14(), int_lit(1));
@@ -3846,34 +3846,34 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
             b_x(get(l_give()))
         }
     } else if i64_eq(op, ro_op2()) {
-        op2_fast_x(o(int_lit(0)), reg_of(i64_to_int(o(int_lit(1)))))
+        op2_fast_x(o.call(int_lit(0)), reg_of(i64_to_int(o.call(int_lit(1)))))
     } else if i64_eq(op, ro_op2imm()) {
         opnd_x(x14(), int_lit(1));
-        op2_fast_x(o(int_lit(0)), x14())
+        op2_fast_x(o.call(int_lit(0)), x14())
     } else if i64_eq(op, ro_field()) {
         andl_x(x14(), int_lit(0), int_lit(3));
         cmpi_x(x14(), int_lit(4));
         give_if_x(c_ne());
         add_x(x11(), x_mem(), int_lit(0));
-        movz_x(x13(), _star(int_lit(8), i64_to_int(o(int_lit(0)))));
+        movz_x(x13(), _star(int_lit(8), i64_to_int(o.call(int_lit(0)))));
         field_read_x();
         mov_x(int_lit(0), x16())
-    } else if (i64_eq(op, ro_cellular()) && i64_eq(o(int_lit(0)), rt_cons()) && i64_eq(o(int_lit(1)), 2i64)) {
+    } else if (i64_eq(op, ro_cellular()) && i64_eq(o.call(int_lit(0)), rt_cons()) && i64_eq(o.call(int_lit(1)), 2i64)) {
         allocating_x(int_lit(2), int_lit(31));
         stp_x(int_lit(1), int_lit(2), x16(), int_lit(0));
         addi_x(x15(), x13(), int_lit(2));
         str_x(x15(), x_st(), at_st(st_top()));
         sub_x(int_lit(0), x16(), x_mem());
         addi_x(int_lit(0), int_lit(0), int_lit(1))
-    } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o(int_lit(0))), o_region_cons()) && i64_eq(o(int_lit(1)), 3i64)) {
+    } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o.call(int_lit(0))), o_region_cons()) && i64_eq(o.call(int_lit(1)), 3i64)) {
         allocating_x(int_lit(2), int_lit(31));
         stp_x(int_lit(2), int_lit(3), x16(), int_lit(0));
         addi_x(x15(), x13(), int_lit(2));
         str_x(x15(), x_st(), at_st(st_top()));
         sub_x(int_lit(0), x16(), x_mem());
         addi_x(int_lit(0), int_lit(0), int_lit(1))
-    } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o(int_lit(1)), register_regs()) && i64_eq(o(int_lit(2)), rt_closure())) {
-        let n = i64_to_int(o(int_lit(1)));
+    } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o.call(int_lit(1)), register_regs()) && i64_eq(o.call(int_lit(2)), rt_closure())) {
+        let n = i64_to_int(o.call(int_lit(1)));
         opnd_x(x10(), int_lit(0));
         movz_x(x17(), _star(int_lit(8), n));
         allocating_x(int_lit(3), x17());
@@ -3891,7 +3891,7 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         str_x(x14(), x_st(), at_st(st_top()));
         sub_x(x14(), x11(), x_mem());
         addi_x(int_lit(0), x14(), int_lit(4))
-    } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o(int_lit(0))), o_make_box()) && i64_eq(o(int_lit(1)), 1i64)) {
+    } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o.call(int_lit(0))), o_make_box()) && i64_eq(o.call(int_lit(1)), 1i64)) {
         allocating_x(int_lit(3), int_lit(31));
         movz_x(x15(), _plus(_plus(int_lit(6), _star(int_lit(8), i64_to_int(k_box()))), _star(int_lit(2), int_lit(16384))));
         str_x(x15(), x16(), int_lit(0));
@@ -3902,8 +3902,8 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         str_x(x15(), x_st(), at_st(st_top()));
         sub_x(int_lit(0), x16(), x_mem());
         addi_x(int_lit(0), int_lit(0), int_lit(28))
-    } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o(int_lit(0))), o_make_frozen()) && i64_gt_eq(o(int_lit(1)), 1i64) && i64_lt_eq(o(int_lit(1)), register_regs())) {
-        let (n, kind) = (_minus(i64_to_int(o(int_lit(1))), int_lit(1)), label_x());
+    } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o.call(int_lit(0))), o_make_frozen()) && i64_gt_eq(o.call(int_lit(1)), 1i64) && i64_lt_eq(o.call(int_lit(1)), register_regs())) {
+        let (n, kind) = (_minus(i64_to_int(o.call(int_lit(1))), int_lit(1)), label_x());
         movz_x(x14(), _star(int_lit(8), i64_to_int(k_sum())));
         cmp_x(int_lit(1), x14());
         bc_x(c_eq(), kind);
@@ -3930,15 +3930,15 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         cmpi_x(x14(), int_lit(4));
         give_if_x(c_ne());
         add_x(x11(), x_mem(), int_lit(0));
-        movz_x(x13(), _star(int_lit(8), i64_to_int(o(int_lit(0)))));
+        movz_x(x13(), _star(int_lit(8), i64_to_int(o.call(int_lit(0)))));
         fields_of_x(int_lit(0));
         cmp_x(x13(), x14());
         give_if_x(c_lt());
         cmp_x(x13(), x15());
         give_if_x(c_hi());
         sub_x(x16(), x11(), x13());
-        stur_x(reg_of(i64_to_int(o(int_lit(1)))), x16(), int_lit(-4))
-    } else if (i64_eq(op, ro_prim1()) && i64_eq(prim_op(o(int_lit(0))), o_procedure())) {
+        stur_x(reg_of(i64_to_int(o.call(int_lit(1)))), x16(), int_lit(-4))
+    } else if (i64_eq(op, ro_prim1()) && i64_eq(prim_op(o.call(int_lit(0))), o_procedure())) {
         let (header, yes, done) = (label_x(), label_x(), label_x());
         movz_x(x13(), int_lit(3));
         andl_x(x14(), int_lit(0), int_lit(3));
@@ -3969,9 +3969,9 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         movz_x(x13(), int_lit(11));
         bind_x(done);
         mov_x(int_lit(0), x13())
-    } else if ((i64_eq(op, ro_prim2()) || i64_eq(op, ro_prim2imm())) && i64_eq(prim_op(o(int_lit(0))), o_mul())) {
+    } else if ((i64_eq(op, ro_prim2()) || i64_eq(op, ro_prim2imm())) && i64_eq(prim_op(o.call(int_lit(0))), o_mul())) {
         let y = if i64_eq(op, ro_prim2()) {
-            reg_of(i64_to_int(o(int_lit(1))))
+            reg_of(i64_to_int(o.call(int_lit(1))))
         } else {
             x14()
         };
@@ -3991,13 +3991,13 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         give_if_x(c_ne());
         mov_x(int_lit(0), x16())
     } else if (get(h_6()) && (i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()))) {
-        t6_invoked_x(i64_eq(op, ro_tailinvoke()), i64_to_int(o(int_lit(0))), nx, i64_to_int(flatarray_ref_i64(get(h_6_after()), i)))
+        t6_invoked_x(i64_eq(op, ro_tailinvoke()), i64_to_int(o.call(int_lit(0))), nx, i64_to_int(flatarray_ref_i64(get(h_6_after()), i)))
     } else if (get(h_6()) && i64_eq(op, ro_invokeself())) {
         t6_called_x(_plus(base, int_lit(2)), int_lit(-1), int_lit(-1), nx, i64_to_int(flatarray_ref_i64(get(h_6_after()), i)))
     } else if (get(h_6()) && i64_eq(op, ro_return())) {
         t6_returned_x()
     } else if (i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke())) {
-        let (tail, stack_code, stack_way, n) = (i64_eq(op, ro_tailinvoke()), label_x(), label_x(), i64_to_int(o(int_lit(0))));
+        let (tail, stack_code, stack_way, n) = (i64_eq(op, ro_tailinvoke()), label_x(), label_x(), i64_to_int(o.call(int_lit(0))));
         closure_in_x(int_lit(0));
         ldur_x(x13(), x11(), at_field(f_word()));
         add_x(x14(), x_mem(), x13());
@@ -4082,13 +4082,13 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         str_post_x(int_lit(0), x_dsp(), int_lit(8));
         b_x(get(l_pop_return()))
     } else if i64_eq(op, ro_branch()) {
-        b_x(to(int_lit(1), o(int_lit(0))))
+        b_x(to.call(int_lit(1), o.call(int_lit(0))))
     } else if i64_eq(op, ro_branchf()) {
         cmpi_x(int_lit(0), int_lit(3));
-        bc_x(c_eq(), to(int_lit(1), o(int_lit(0))))
+        bc_x(c_eq(), to.call(int_lit(1), o.call(int_lit(0))))
     } else if i64_eq(op, ro_brancht()) {
         cmpi_x(int_lit(0), int_lit(3));
-        bc_x(c_ne(), to(int_lit(1), o(int_lit(0))))
+        bc_x(c_ne(), to.call(int_lit(1), o.call(int_lit(0))))
     } else if i64_eq(op, ro_global_guard()) {
         opnd_x(x16(), int_lit(0));
         add_x(x16(), x_mem(), x16());
@@ -4102,7 +4102,7 @@ pub fn reg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
                 cmp_x(x13(), x14())
             }
         };
-        bc_x(c_ne(), to(int_lit(3), fix_val(slot_of(rw, i64_plus(kk, 3i64)))))
+        bc_x(c_ne(), to.call(int_lit(3), fix_val(slot_of(rw, i64_plus(kk, 3i64)))))
     } else {
         b_x(get(l_give()))
     };
@@ -4368,7 +4368,7 @@ pub fn words_compiled_x(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut 
     }
 }
 
-pub type HandCode = &'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int;
+pub type HandCode = kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>;
 
 pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, at, modulo(w, int_lit(256)));
@@ -4443,7 +4443,7 @@ pub fn count_of(mut xs: List<Int>, mut n: Int) -> Int {
 pub fn hand_made() -> Ref<List<HandCode>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<HandCode>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>())
+        kayak_rt::heap_new(nil::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>())
     })
 }
 
@@ -4457,7 +4457,7 @@ pub fn hand_made() -> Ref<List<HandCode>> {
 /// tables stays, empty, which the routines still read.
 pub fn hand_code_arm64_x() -> kayak_rt::Sum {
     if not(null_p(get(hand_made()))) {
-        kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made") }, "made", car(get(hand_made())))
+        kayak_rt::sum_new::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made") }, "made", car(get(hand_made())))
     } else {
         set(hand_items(), nil::<kayak_rt::Handle<'static, HandItem>>());
         set(hand_data(), nil::<kayak_rt::Handle<'static, HandItem>>());
@@ -4480,10 +4480,10 @@ pub fn hand_code_arm64_x() -> kayak_rt::Sum {
         if _gt_eq(bad, int_lit(0)) {
             kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit("tier 2: instruction "), string_append(int_to_string(bad), str_lit(" does not encode"))))
         } else {
-            let p = kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b));
+            let p = kayak_rt::as_proc(kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b)));
             code_named_x(ls, int_lit(4), _star(int_lit(4), count), str_lit("kayak tier 2: the machine"));
             set(hand_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
-            kayak_rt::sum_new::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(const { kayak_rt::tag_hash("made") }, "made", p)
+            kayak_rt::sum_new::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made") }, "made", p)
         }
     }
 }

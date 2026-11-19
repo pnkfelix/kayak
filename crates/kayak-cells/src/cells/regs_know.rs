@@ -20,10 +20,10 @@ pub enum Rview {
     Rview(bool, bool, Str, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rview {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rview {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rview(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Rview(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -88,19 +88,19 @@ pub enum Rstd {
     SNone(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rstd {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rstd {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::SOp2(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::SOp1(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::SOp2imm(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::SField(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::SPrim(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::SPure(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::SCellular(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::SOp2(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::SOp1(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::SOp2imm(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::SField(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::SPrim(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::SPure(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::SCellular(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::SIdentity() => { }
             Self::SSet() => { }
-            Self::SSpecial(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::SSpecial(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::SApply() => { }
             Self::SList() => { }
             Self::SNone() => { }
@@ -220,70 +220,70 @@ pub fn r_standard_names() -> Strings {
 // Standard operation `name` applied to `n` arguments, as register code
 // does it (Fixpt's `r-standard`).
 pub fn r_standard(name: Str, n: i64) -> kayak_rt::Handle<'static, Rstd> {
-    let is = lambda2s(move |s: Str, k: i64| {
+    let is = kayak_rt::closure2s((name, n,), |(name, n,), s: Str, k: i64| {
         (string_eq_p(name, s) && i64_eq(n, k))
     });
-    if is(str_lit("+"), 2i64) {
+    if is.call(str_lit("+"), 2i64) {
         s_op2(str_lit("int-add"), false, false)
-    } else if is(str_lit("-"), 2i64) {
+    } else if is.call(str_lit("-"), 2i64) {
         s_op2(str_lit("int-sub"), false, false)
-    } else if is(str_lit("<"), 2i64) {
+    } else if is.call(str_lit("<"), 2i64) {
         s_op2(str_lit("int-less"), false, false)
-    } else if is(str_lit(">"), 2i64) {
+    } else if is.call(str_lit(">"), 2i64) {
         s_op2(str_lit("int-less"), true, false)
-    } else if is(str_lit("<="), 2i64) {
+    } else if is.call(str_lit("<="), 2i64) {
         s_op2(str_lit("int-less"), true, true)
-    } else if is(str_lit(">="), 2i64) {
+    } else if is.call(str_lit(">="), 2i64) {
         s_op2(str_lit("int-less"), false, true)
-    } else if is(str_lit("="), 2i64) {
+    } else if is.call(str_lit("="), 2i64) {
         s_op2(str_lit("int-eq"), false, false)
     } else if (std_eq_name_p(name) && i64_eq(n, 2i64)) {
         s_op2(str_lit("eq"), false, false)
-    } else if is(str_lit("not"), 1i64) {
+    } else if is.call(str_lit("not"), 1i64) {
         s_op2imm(str_lit("eq"), l_bool(false))
-    } else if is(str_lit("null?"), 1i64) {
+    } else if is.call(str_lit("null?"), 1i64) {
         s_op2imm(str_lit("eq"), l_nil())
-    } else if is(str_lit("car"), 1i64) {
+    } else if is.call(str_lit("car"), 1i64) {
         s_op1(str_lit("pair-car"))
-    } else if is(str_lit("cdr"), 1i64) {
+    } else if is.call(str_lit("cdr"), 1i64) {
         s_op1(str_lit("pair-cdr"))
-    } else if is(str_lit("get"), 1i64) {
+    } else if is.call(str_lit("get"), 1i64) {
         s_field(2i64)
-    } else if is(str_lit("cons"), 2i64) {
+    } else if is.call(str_lit("cons"), 2i64) {
         s_cellular(str_lit("cons"))
-    } else if is(str_lit("set"), 2i64) {
+    } else if is.call(str_lit("set"), 2i64) {
         s_set()
-    } else if (is(str_lit("abort-current-continuation"), 2i64) || is(str_lit("escape"), 2i64)) {
+    } else if (is.call(str_lit("abort-current-continuation"), 2i64) || is.call(str_lit("escape"), 2i64)) {
         s_cellular(str_lit("abort"))
-    } else if is(str_lit("call-with-composable-continuation"), 2i64) {
+    } else if is.call(str_lit("call-with-composable-continuation"), 2i64) {
         s_cellular(str_lit("callcomp"))
-    } else if is(str_lit("call-with-oneshot-continuation"), 2i64) {
+    } else if is.call(str_lit("call-with-oneshot-continuation"), 2i64) {
         s_cellular(str_lit("callone"))
-    } else if is(str_lit("cwcc"), 1i64) {
+    } else if is.call(str_lit("cwcc"), 1i64) {
         s_cellular(str_lit("callcc"))
-    } else if is(str_lit("with-mark"), 3i64) {
+    } else if is.call(str_lit("with-mark"), 3i64) {
         s_cellular(str_lit("withmark"))
-    } else if is(str_lit("first-mark"), 2i64) {
+    } else if is.call(str_lit("first-mark"), 2i64) {
         s_cellular(str_lit("firstmark"))
-    } else if is(str_lit("current-marks"), 1i64) {
+    } else if is.call(str_lit("current-marks"), 1i64) {
         s_cellular(str_lit("currentmarks"))
-    } else if is(str_lit("marks-of"), 2i64) {
+    } else if is.call(str_lit("marks-of"), 2i64) {
         s_cellular(str_lit("marksof"))
-    } else if is(str_lit("array-ref"), 2i64) {
+    } else if is.call(str_lit("array-ref"), 2i64) {
         s_special(str_lit("array-ref"))
-    } else if is(str_lit("array-set!"), 3i64) {
+    } else if is.call(str_lit("array-set!"), 3i64) {
         s_special(str_lit("array-set!"))
-    } else if is(str_lit("array-length"), 1i64) {
+    } else if is.call(str_lit("array-length"), 1i64) {
         s_special(str_lit("array-length"))
-    } else if is(str_lit("make-array"), 2i64) {
+    } else if is.call(str_lit("make-array"), 2i64) {
         s_special(str_lit("make-array"))
-    } else if is(str_lit("apply"), 2i64) {
+    } else if is.call(str_lit("apply"), 2i64) {
         s_apply()
     } else if string_eq_p(name, str_lit("list")) {
         s_list()
     } else if (i64_eq(n, 0i64) && string_member_p(name, r_standard_names())) {
         s_special(str_lit("make-box"))
-    } else if (is(str_lit("set-car!"), 2i64) || is(str_lit("set-cdr!"), 2i64)) {
+    } else if (is.call(str_lit("set-car!"), 2i64) || is.call(str_lit("set-cdr!"), 2i64)) {
         s_special(name)
     } else if string_eq_p(name, str_lit("new")) {
         r_prim_std(str_lit("%make-box"), n, 1i64)
@@ -440,10 +440,10 @@ pub enum Sv {
     Sv(Str, bool),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Sv {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Sv {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Sv(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Sv(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -722,10 +722,10 @@ pub enum Rinline {
     Rinline(Str, Strings, kayak_rt::Handle<'static, Cx>, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rinline {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rinline {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rinline(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Rinline(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -772,10 +772,10 @@ pub enum Rspecial {
     Rspecial(Str, Strings, kayak_rt::Handle<'static, Cx>, i64, i64, i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rspecial {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rspecial {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rspecial(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+            Self::Rspecial(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); }
         }
     }
 }
@@ -1060,10 +1060,10 @@ pub enum Rfound {
     Rfound(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rfound {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rfound {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rfound(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Rfound(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -1095,10 +1095,10 @@ pub enum Rspec {
     Rspec(kayak_rt::Handle<'static, Rspecial>, Strings, kayak_rt::Handle<'static, Cx>, Strings, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rspec {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rspec {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rspec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::Rspec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -1114,10 +1114,10 @@ pub enum Rcopy {
     Rcopy(Str, i64, Strings, i64, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rcopy {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rcopy {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rcopy(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::Rcopy(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -1189,10 +1189,10 @@ pub enum Rgconst {
     Rgconst(Str, kayak_rt::Handle<'static, Rconst>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rgconst {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rgconst {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rgconst(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Rgconst(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -1374,14 +1374,14 @@ pub fn r_room(mut x: kayak_rt::Handle<'static, Cx>, mut n0: i64, mut w: bool) ->
                     continue;
                 }
                 Cx::XTagcase(s, arms, els, k, a) => {
-                    return r_room_if_all(c_bound_exps(els), r_room_all(map(lambda1s(move |m: kayak_rt::Handle<'static, Carm>| {
+                    return r_room_if_all(c_bound_exps(els), r_room_all(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: kayak_rt::Handle<'static, Carm>| {
                         let tagcase_ = m;
                         match *tagcase_ {
                             Carm::Carm(t2, p, ns, body) => {
                                 body
                             }
                         }
-                    }), arms), r_room(s, n, w), w), w);
+                    })), arms), r_room(s, n, w), w), w);
                 }
                 _ => {
                     let y = tagcase_;
@@ -1578,10 +1578,10 @@ pub enum Rtest {
     Rtest(Str, Rlocs),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rtest {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rtest {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rtest(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Rtest(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -1714,7 +1714,7 @@ pub fn r_known(mut env: Renv, mut x: kayak_rt::Handle<'static, Cx>) -> List<kaya
                 if null_p(vs) {
                     return nil::<kayak_rt::Handle<'static, Rconst>>();
                 } else {
-                    return kayak_rt::heap_cons(rc_data(l_frozen(str_lit("product"), map(&rconst_lit, car(vs)))), kayak_rt::nil());
+                    return kayak_rt::heap_cons(rc_data(l_frozen(str_lit("product"), map(kayak_rt::as_proc(rconst_lit), car(vs)))), kayak_rt::nil());
                 }
             }
             Cx::XApp(f, args, a) => {

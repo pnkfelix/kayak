@@ -63,7 +63,7 @@ pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
 pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, mut before: Reader) -> Str {
     loop {
         if null_p(fs) {
-            return before(name);
+            return before.call(name);
         } else if {
             let tagcase_ = car(fs);
             match *tagcase_ {
@@ -86,11 +86,11 @@ pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, m
 }
 
 pub fn reread(d: Db, whose: Str) -> Db {
-    let fs = db_saved(d, str_lit("test"), lambda1s(move |k: kayak_rt::Handle<'static, Sexp>| {
+    let fs = db_saved(d, str_lit("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
         true
-    }));
+    })));
     let before = db_reader(d);
-    db_opened(lambda1(move |name: Str| {
+    db_opened(kayak_rt::closure1((fs, before,), |(fs, before,), name: Str| {
         file_in(fs, name, before)
     }), whose)
 }
@@ -128,18 +128,18 @@ pub fn run(d: Db, key: kayak_rt::Handle<'static, Sexp>) -> Str {
     let k = k_text(key);
     let h = string_ref_i64(k, 0i64);
     if char_eq_p(h, 'm') {
-        i64_to_string(i64_remainder(num_of(db_get(d, &run, k_of(string_append(str_lit("x "), key_after(string_chars(k)))))), 3i64))
+        i64_to_string(i64_remainder(num_of(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit("x "), key_after(string_chars(k)))))), 3i64))
     } else if char_eq_p(h, 's') {
-        if string_eq_p(db_get(d, &run, k_of(str_lit("m 0"))), str_lit("0")) {
-            i64_to_string(i64_plus(num_of(db_get(d, &run, k_of(str_lit("m 1")))), num_of(db_get(d, &run, k_of(str_lit("m 2"))))))
+        if string_eq_p(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 0"))), str_lit("0")) {
+            i64_to_string(i64_plus(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 1")))), num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 2"))))))
         } else {
-            db_get(d, &run, k_of(str_lit("m 3")))
+            db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 3")))
         }
     } else if char_eq_p(h, 't') {
-        i64_to_string(i64_plus(num_of(db_get(d, &run, k_of(str_lit("s")))), num_of(db_get(d, &run, k_of(str_lit("m 4"))))))
+        i64_to_string(i64_plus(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("s")))), num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("m 4"))))))
     } else if char_eq_p(h, 'u') {
-        if i64_gt(num_of(db_get(d, &run, k_of(str_lit("t")))), 3i64) {
-            string_append(str_lit("big:"), db_get(d, &run, k_of(str_lit("x 0"))))
+        if i64_gt(num_of(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("t")))), 3i64) {
+            string_append(str_lit("big:"), db_get(d, kayak_rt::as_proc(run), k_of(str_lit("x 0"))))
         } else {
             str_lit("small")
         }
@@ -215,10 +215,10 @@ pub enum Tally {
     Tally(i64, i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Tally {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Tally {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Tally(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Tally(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -243,11 +243,11 @@ pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: ka
         let durs = put_at(durs, i, du);
         db_set_x(d, k_of(string_append(str_lit("x "), i64_to_string(i))), i64_to_string(x), du);
         let before = db_runs(d);
-        let got = db_get(d, &run, k_of(k));
+        let got = db_get(d, kayak_rt::as_proc(run), k_of(k));
         let ours = i64_minus(db_runs(d), before);
         let fresh = db_make();
         set_all_x(fresh, vals, durs, 0i64);
-        let want = db_get(fresh, &run, k_of(k));
+        let want = db_get(fresh, kayak_rt::as_proc(run), k_of(k));
         let tagcase_ = acc;
         match *tagcase_ {
             Tally::Tally(wrong, mine, theirs) => {
@@ -272,11 +272,11 @@ pub fn regression() -> Str {
     db_set_x(d, k_of(str_lit("x 0")), str_lit("0"), 2i64);
     db_set_x(d, k_of(str_lit("x 1")), str_lit("0"), 2i64);
     db_set_x(d, k_of(str_lit("x 2")), str_lit("0"), 2i64);
-    db_get(d, &run, k_of(str_lit("s")));
+    db_get(d, kayak_rt::as_proc(run), k_of(str_lit("s")));
     db_set_x(d, k_of(str_lit("x 1")), str_lit("0"), 0i64);
-    db_get(d, &run, k_of(str_lit("s")));
+    db_get(d, kayak_rt::as_proc(run), k_of(str_lit("s")));
     db_set_x(d, k_of(str_lit("x 1")), str_lit("1"), 0i64);
-    string_append(str_lit("regression s="), db_get(d, &run, k_of(str_lit("s"))))
+    string_append(str_lit("regression s="), db_get(d, kayak_rt::as_proc(run), k_of(str_lit("s"))))
 }
 
 pub fn main() -> Str {

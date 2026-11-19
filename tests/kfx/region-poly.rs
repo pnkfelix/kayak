@@ -6,11 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1k<A0>(pub A0);
 
-impl<'a, A0: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1k<A0> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-    }
-}
+kayak_rt::trace_product!(Product_1k, A0 0);
 
 // Procedures poly over regions (C42): each region binder not within a
 // place is a lifetime of the Rust `fn`, `'r`, its data at that lifetime, so
@@ -40,12 +36,12 @@ pub fn bump<'r>(b: RefAt<'r, i64>, n: i64) -> () {
 }
 
 // A type variable beside the region, and a procedure given that reads it.
-pub fn fold<'r, A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut f: &'r dyn Fn(A, i64) -> i64, mut xs: ListAt<'r, A>, mut acc: i64) -> i64 {
+pub fn fold<'r, A: Copy + 'static + kayak_rt::Trace>(mut f: kayak_rt::Proc2<'r, A, i64, i64>, mut xs: ListAt<'r, A>, mut acc: i64) -> i64 {
     loop {
         if null_p(xs) {
             return acc;
         } else {
-            (xs, acc) = (cdr(xs), f(car(xs), acc));
+            (xs, acc) = (cdr(xs), f.call(car(xs), acc));
             continue;
         }
     }
@@ -127,7 +123,7 @@ pub fn main() -> Str {
                 impl<'s, 'r> Holds<Cons<'s, i64>> for Region_S<'s, 'r> { fn arena(&self) -> &Arena<Cons<'s, i64>> { &self.a0 } }
                 fn letrena__s<'r, 's>(s: &'s Region_S<'s, 'r>, c: RefAt<'r, i64>, ps: ListAt<'r, Product_1k<i64>>, xs: ListAt<'r, i64>, r: &'r Region_R<'r>) -> Str {
                     let ys = the::<ListAt<'s, i64>>(rcons(s, 100i64, nil::<i64>()));
-                    i64_to_string(i64_plus(add_up(xs, 0i64), i64_plus(i64_star(10i64, car(rest_of(xs))), i64_plus(i64_star(100i64, get(c)), i64_plus(i64_star(10000i64, fold(lambda2(move |p: Product_1k<i64>, acc: i64| {
+                    i64_to_string(i64_plus(add_up(xs, 0i64), i64_plus(i64_star(10i64, car(rest_of(xs))), i64_plus(i64_star(100i64, get(c)), i64_plus(i64_star(10000i64, fold(kayak_rt::closure2((), |(), p: Product_1k<i64>, acc: i64| {
                         i64_plus(acc, p.0)
                     }), ps, 0i64)), i64_plus(i64_star(100000i64, both(xs, ys)), i64_plus(i64_star(100000000i64, made(r, 7i64)), i64_star(10000000000i64, counted(4i64)))))))))
                 }

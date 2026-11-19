@@ -8,41 +8,41 @@ use kayak_rt::*;
 // before. A rose tree built in a region of its own, summed, a thousand
 // times over.
 
-pub enum Rose<'r, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>> {
+pub enum Rose<'r, T: Copy + 'static + kayak_rt::Trace> {
     Leaf(T),
     Node(ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>),
 }
 
-impl<'a, 'r: 'a, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>> kayak_rt::Trace<'a> for Rose<'r, T> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::Visit for Rose<'r, T> {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Leaf(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::Node(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Leaf(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::Node(f0) => { kayak_rt::Trace::trace(*f0, t); }
         }
     }
 }
 
-pub fn leaf<'r, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
+pub fn leaf<'r, T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     kayak_rt::alloc(Rose::Leaf(f0))
 }
 
-pub fn leaf_heap<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f0: T) -> kayak_rt::Handle<'static, Rose<'static, T>> {
+pub fn leaf_heap<T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::Handle<'static, Rose<'static, T>> {
     kayak_rt::heap_alloc(Rose::Leaf(f0))
 }
 
-pub fn leaf_in<'r, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
+pub fn leaf_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     place_.arena().alloc(Rose::Leaf(f0))
 }
 
-pub fn node<'r, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
+pub fn node<'r, T: Copy + 'static + kayak_rt::Trace>(f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     kayak_rt::alloc(Rose::Node(f0))
 }
 
-pub fn node_heap<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f0: List<kayak_rt::Handle<'static, Rose<'static, T>>>) -> kayak_rt::Handle<'static, Rose<'static, T>> {
+pub fn node_heap<T: Copy + 'static + kayak_rt::Trace>(f0: List<kayak_rt::Handle<'static, Rose<'static, T>>>) -> kayak_rt::Handle<'static, Rose<'static, T>> {
     kayak_rt::heap_alloc(Rose::Node(f0))
 }
 
-pub fn node_in<'r, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
+pub fn node_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
     place_.arena().alloc(Rose::Node(f0))
 }
 

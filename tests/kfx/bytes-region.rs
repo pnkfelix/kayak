@@ -32,8 +32,8 @@ pub fn joined(ws: List<Str>) -> Str {
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<BytesCells> for Region_R<'r> { fn arena(&self) -> &Arena<BytesCells> { &self.a0 } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, ws: List<Str>) -> Str {
-            let go__knot = knot::<&'r dyn Fn(BytesAt<'r>, Int, List<Str>) -> Str>();
-            let go = lambda3(move |mut buf: BytesAt<'r>, mut at: Int, mut xs: List<Str>| {
+            let go__knot = knot::<kayak_rt::Proc3<'r, BytesAt<'r>, Int, List<Str>, Str>>();
+            let go = kayak_rt::closure3((r,), |(r,), mut buf: BytesAt<'r>, mut at: Int, mut xs: List<Str>| {
                 loop {
                     if null_p(xs) {
                         let tagcase_ = utf8_to_string(the::<BytesAt<'r>>(bytevector_copy_in(r, buf, int_lit(0), at)));
@@ -53,7 +53,7 @@ pub fn joined(ws: List<Str>) -> Str {
                 }
             });
             go__knot.set(go);
-            go(the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4), 0u8)), int_lit(0), ws)
+            go.call(the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4), 0u8)), int_lit(0), ws)
         }
         let r__arena = Region_R::default();
         letrena__r(&r__arena, ws)

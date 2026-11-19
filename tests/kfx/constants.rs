@@ -21,11 +21,11 @@ pub fn bump_x() -> i64 {
 }
 
 // A procedure over state of its own, made once.
-pub fn next_x() -> &'static dyn Fn() -> i64 {
-    kayak_rt::kept_constant!(ONCE: &'static dyn Fn() -> i64);
+pub fn next_x() -> kayak_rt::Proc0<'static, i64> {
+    kayak_rt::kept_constant!(ONCE: kayak_rt::Proc0<'static, i64>);
     once(&ONCE, || {
         let n = the::<Ref<i64>>(kayak_rt::heap_new(0i64));
-        lambda0(move || {
+        kayak_rt::closure0((n,), |(n,)| {
             set(n, i64_plus(get(n), 10i64));
             get(n)
         })
@@ -44,8 +44,8 @@ pub fn tally() -> Ref<i64> {
 pub fn main() -> Str {
     let a = bump_x();
     let b = bump_x();
-    let c = next_x()();
-    let d = next_x()();
+    let c = next_x().call();
+    let d = next_x().call();
     set(tally(), i64_plus(get(tally()), 1i64));
     string_append(i64_to_string(a), string_append(str_lit(" "), string_append(i64_to_string(b), string_append(str_lit(" "), string_append(i64_to_string(c), string_append(str_lit(" "), string_append(i64_to_string(d), string_append(str_lit(" "), i64_to_string(get(tally()))))))))))
 }

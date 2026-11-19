@@ -6,13 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1x_1n_1y<A0, A1, A2>(pub A0, pub A1, pub A2);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1x_1n_1y<A0, A1, A2> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-    }
-}
+kayak_rt::trace_product!(Product_1x_1n_1y, A0 0, A1 1, A2 2);
 
 impl<A0: Flat, A1: Flat, A2: Flat> Flat for Product_1x_1n_1y<A0, A1, A2> {
     fn zeroed() -> Self {
@@ -24,14 +18,7 @@ impl<A0: Flat, A1: Flat, A2: Flat> Flat for Product_1x_1n_1y<A0, A1, A2> {
 #[derive(Clone, Copy)]
 pub struct Product_1a_1b_1c_1d<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1a_1b_1c_1d<A0, A1, A2, A3> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-    }
-}
+kayak_rt::trace_product!(Product_1a_1b_1c_1d, A0 0, A1 1, A2 2, A3 3);
 
 impl<A0: Flat, A1: Flat, A2: Flat, A3: Flat> Flat for Product_1a_1b_1c_1d<A0, A1, A2, A3> {
     fn zeroed() -> Self {
@@ -105,9 +92,9 @@ pub fn total(n: i64) -> f64 {
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> f64 {
             let b = the::<&'r TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>(rmake_tbloblet::<_, FlatArr<std::cell::Cell<f64>, 100>, _>(r, int_lit(800), (std::cell::Cell::new(n),)));
             let xs = the::<&'r FlatArr<std::cell::Cell<f64>, 100>>((&(b).suffix));
-            let fill__knot = knot::<&'r dyn Fn(i64) -> ()>();
-            let add__knot = knot::<&'r dyn Fn(i64, f64) -> f64>();
-            let fill = lambda1(move |mut i: i64| {
+            let fill__knot = knot::<kayak_rt::Proc1<'r, i64, ()>>();
+            let add__knot = knot::<kayak_rt::Proc2<'r, i64, f64, f64>>();
+            let fill = kayak_rt::closure1((b, xs,), |(b, xs,), mut i: i64| {
                 loop {
                     if i64_eq(i, (b).fields.0.get()) {
                         return ();
@@ -118,7 +105,7 @@ pub fn total(n: i64) -> f64 {
                     }
                 }
             });
-            let add = lambda2(move |mut i: i64, mut acc: f64| {
+            let add = kayak_rt::closure2((b, xs,), |(b, xs,), mut i: i64, mut acc: f64| {
                 loop {
                     if i64_eq(i, (b).fields.0.get()) {
                         return acc;
@@ -130,8 +117,8 @@ pub fn total(n: i64) -> f64 {
             });
             fill__knot.set(fill);
             add__knot.set(add);
-            fill(0i64);
-            add(0i64, 0.0f64)
+            fill.call(0i64);
+            add.call(0i64, 0.0f64)
         }
         let r__arena = Region_R::default();
         letrena__r(&r__arena, n)

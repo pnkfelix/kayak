@@ -6,12 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1x_1y<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1x_1y<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_1x_1y, A0 0, A1 1);
 
 // FX-26's `import` (C119): what a module gives, by name, defined where the
 // import is; values, `(type t ...)` and `(effect e ...)`; at the top level
@@ -43,8 +38,8 @@ pub fn origin() -> Product_1x_1y<i64, i64> {
 }
 
 #[inline]
-pub fn shift() -> &'static (dyn Fn(Product_1x_1y<i64, i64>, i64) -> Product_1x_1y<i64, i64> + Send + Sync) {
-    &shapes::shift
+pub fn shift() -> kayak_rt::Proc2s<'static, Product_1x_1y<i64, i64>, i64, Product_1x_1y<i64, i64>> {
+    kayak_rt::as_proc(shapes::shift)
 }
 
 pub type Point = shapes::Point;
@@ -53,8 +48,8 @@ pub mod m {
     use super::*;
 
     #[inline]
-    pub fn x_of() -> &'static (dyn Fn(Product_1x_1y<i64, i64>) -> i64 + Send + Sync) {
-        &shapes::x_of
+    pub fn x_of() -> kayak_rt::Proc1s<'static, Product_1x_1y<i64, i64>, i64> {
+        kayak_rt::as_proc(shapes::x_of)
     }
 
     pub type Point = shapes::Point;
@@ -66,13 +61,13 @@ pub mod m {
 
     #[inline]
     pub fn reach(p: Point) -> i64 {
-        i64_plus(x_of()(p), 3i64)
+        i64_plus(x_of().call(p), 3i64)
     }
 }
 
 #[inline]
 pub fn mover(p: Point) -> Point {
-    shift()(p, 2i64)
+    shift().call(p, 2i64)
 }
 
 #[inline]

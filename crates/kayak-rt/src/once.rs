@@ -60,7 +60,7 @@ impl<T: Copy> OnceSlot<T> for kayak_sync::Global<T> {
 
 /// The value `slot` keeps, made by `make` the first time.
 #[inline]
-pub fn once<T: for<'t> crate::Trace<'t>, S: OnceSlot<T> + ?Sized>(
+pub fn once<T: crate::Trace + 'static, S: OnceSlot<T> + ?Sized>(
     slot: &'static S,
     make: impl FnOnce() -> T,
 ) -> T {
@@ -72,7 +72,7 @@ pub fn once<T: for<'t> crate::Trace<'t>, S: OnceSlot<T> + ?Sized>(
 
 #[cold]
 #[inline(never)]
-fn made_first<T: for<'t> crate::Trace<'t>, S: OnceSlot<T> + ?Sized>(
+fn made_first<T: crate::Trace + 'static, S: OnceSlot<T> + ?Sized>(
     slot: &'static S,
     make: impl FnOnce() -> T,
 ) -> T {

@@ -14,11 +14,11 @@ pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, _plus(at, int_lit(3)), quotient(w, int_lit(16777216)))
 }
 
-pub fn adder() -> &'static (dyn Fn(Int, Int) -> Int + Send + Sync) {
+pub fn adder() -> kayak_rt::Proc2s<'static, Int, Int, Int> {
     let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(8), ()));
     put4(b, int_lit(0), int_lit(2332164128));
     put4(b, int_lit(4), int_lit(3596551104));
-    kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b))
+    kayak_rt::as_proc(kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b)))
 }
 
 // Whether this machine runs made code, and the leaf's sum, or the answer
@@ -30,7 +30,7 @@ pub fn main() -> Str {
     } else {
         str_lit("interpreted ")
     }, int_to_string(if here_p() {
-        (adder())(int_lit(20), int_lit(22))
+        (adder()).call(int_lit(20), int_lit(22))
     } else {
         int_lit(42)
     }))

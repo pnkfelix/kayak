@@ -19,10 +19,10 @@ pub enum Rnamed {
     Rnamed(Str, kayak_rt::Handle<'static, Rcode>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rnamed {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rnamed {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rnamed(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Rnamed(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -285,7 +285,7 @@ pub fn r_assemble(g: kayak_rt::Handle<'static, Rgen>) -> kayak_rt::Handle<'stati
 
 // Items' labels moved up by `k`.
 pub fn relabelled(xs: Ritems, k: i64) -> Ritems {
-    map(lambda1s(move |x: kayak_rt::Handle<'static, Ritem>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((k,), |(k,), x: kayak_rt::Handle<'static, Ritem>| {
         let tagcase_ = x;
         match *tagcase_ {
             Ritem::RiLabel(n) => {
@@ -302,7 +302,7 @@ pub fn relabelled(xs: Ritems, k: i64) -> Ritems {
                 x
             }
         }
-    }), xs)
+    })), xs)
 }
 
 pub fn r_guards_of(cs: Strings, to: i64) -> Ritems {
@@ -438,14 +438,14 @@ pub fn r_closure_free_p(mut x: kayak_rt::Handle<'static, Cx>) -> bool {
                 continue;
             }
             Cx::XTagcase(s, arms, els, k, a) => {
-                return (r_closure_free_p(s) && r_closure_free_all_p(map(lambda1s(move |m: kayak_rt::Handle<'static, Carm>| {
+                return (r_closure_free_p(s) && r_closure_free_all_p(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: kayak_rt::Handle<'static, Carm>| {
                     let tagcase_ = m;
                     match *tagcase_ {
                         Carm::Carm(t2, p, ns, body) => {
                             body
                         }
                     }
-                }), arms)) && r_closure_free_all_p(c_bound_exps(els)));
+                })), arms)) && r_closure_free_all_p(c_bound_exps(els)));
             }
             _ => {
                 let y = tagcase_;
@@ -546,14 +546,14 @@ pub fn r_consts_named(t: kayak_rt::Handle<'static, Twin>) -> Renv {
     let tagcase_ = t;
     match *tagcase_ {
         Twin::Twin(w, ps, body, inner, me, own, at) => {
-            r_consts_of(c_free(body, map(lambda1s(move |e: kayak_rt::Handle<'static, Centry>| {
+            r_consts_of(c_free(body, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), e: kayak_rt::Handle<'static, Centry>| {
                 let tagcase_ = e;
                 match *tagcase_ {
                     Centry::Centry(n, l) => {
                         n
                     }
                 }
-            }), inner), nil::<Str>()), nil::<kayak_rt::Handle<'static, Rbind>>())
+            })), inner), nil::<Str>()), nil::<kayak_rt::Handle<'static, Rbind>>())
         }
     }
 }
@@ -572,14 +572,14 @@ pub fn r_plain_code(t: kayak_rt::Handle<'static, Twin>, spec: List<kayak_rt::Han
 // it where the fast version is a leaf, or loops: else only the plain one.
 pub fn r_fast_code(t: kayak_rt::Handle<'static, Twin>, spec: List<kayak_rt::Handle<'static, Rspec>>) -> List<kayak_rt::Handle<'static, Rcode>> {
     let consts = r_consts_named(t);
-    let assumed = the::<Ref<Strings>>(kayak_rt::heap_new(the::<Strings>(reverse(map(lambda1s(move |b: kayak_rt::Handle<'static, Rbind>| {
+    let assumed = the::<Ref<Strings>>(kayak_rt::heap_new(the::<Strings>(reverse(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Rbind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Rbind::Rbind(n, l) => {
                 after_prefix(n, str_lit("%const:"))
             }
         }
-    }), consts)))));
+    })), consts)))));
     let fast = r_register_body(t, true, assumed, consts, spec);
     let assumptions = the::<Strings>(reverse(get(assumed)));
     if (null_p(assumptions) || null_p(fast) || not((g_leaf(car(fast)) || get(x_looped(g_ctx(car(fast))))))) {
@@ -772,14 +772,14 @@ pub fn r_scope_names(e: Cenv) -> Strings {
 
 #[inline]
 pub fn r_bind_names(bs: Cbinds) -> Strings {
-    map(lambda1s(move |b: kayak_rt::Handle<'static, Cbind>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Cbind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Cbind::Cbind(n, x) => {
                 n
             }
         }
-    }), bs)
+    })), bs)
 }
 
 // Of the form's lambdas' words, the oldest made for the lambda of `ps` whose
@@ -977,7 +977,7 @@ pub fn r_copies_in(mut x: kayak_rt::Handle<'static, Cx>, mut bound: Strings) -> 
                 continue;
             }
             Cx::XModule(its, a) => {
-                return r_copies_all(map(&cmem_value, its), onto(map(&cmem_name, its), bound));
+                return r_copies_all(map(kayak_rt::as_proc(cmem_value), its), onto(map(kayak_rt::as_proc(cmem_name), its), bound));
             }
             Cx::XWith(m, ns, ks, body, a) => {
                 r_copies_in(m, bound);

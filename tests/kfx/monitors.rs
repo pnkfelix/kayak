@@ -47,8 +47,8 @@ pub fn start_collector(count: Int, out: ICell<Int>) -> Addr<Report> {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, count: Int, out: ICell<Int>, r#box: Inbox<kayak_rt::Sum>) -> () {
-                let go__knot = knot::<&'r dyn Fn(Int, Int) -> ()>();
-                let go = lambda2(move |mut n: Int, mut total: Int| {
+                let go__knot = knot::<kayak_rt::Proc2<'r, Int, Int, ()>>();
+                let go = kayak_rt::closure2((count, out, r#box,), |(count, out, r#box,), mut n: Int, mut total: Int| {
                     loop {
                         if _eq(n, count) {
                             return {
@@ -73,7 +73,7 @@ pub fn start_collector(count: Int, out: ICell<Int>) -> Addr<Report> {
                     }
                 });
                 go__knot.set(go);
-                go(int_lit(0), int_lit(0))
+                go.call(int_lit(0), int_lit(0))
             }
             let r__arena = Region_R::default();
             letrena__r(&r__arena, count, out, r#box)
@@ -93,7 +93,7 @@ pub fn work(k: Int) -> Int {
 // A worker, which answers one number, or fails (Fixpt's worker-fails.fx).
 #[inline]
 pub fn start_worker(collector: Addr<Report>) -> Addr<Int> {
-    kayak_rt::process::spawn_monitored(collector, &failed, move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_monitored(collector, kayak_rt::as_proc(failed), move |r#box: kayak_rt::Inbox<Int>| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -109,7 +109,7 @@ pub fn start_worker(collector: Addr<Report>) -> Addr<Int> {
 // A worker whose `par` branches may fail, the left at 0, the right too if
 // `both` (Fixpt's par-branch.fx, one-message.fx).
 pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
-    kayak_rt::process::spawn_monitored(collector, &failed, move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_monitored(collector, kayak_rt::as_proc(failed), move |r#box: kayak_rt::Inbox<Int>| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -138,7 +138,7 @@ pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
 // says of it, not `error` (Fixpt's trap.fx).
 #[inline]
 pub fn start_divider(collector: Addr<Report>) -> Addr<Int> {
-    kayak_rt::process::spawn_monitored(collector, &failed, move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_monitored(collector, kayak_rt::as_proc(failed), move |r#box: kayak_rt::Inbox<Int>| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -192,8 +192,8 @@ pub fn start_counter(out: ICell<Int>) -> Addr<Int> {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, out: ICell<Int>, r#box: Inbox<Int>) -> () {
-                let go__knot = knot::<&'r dyn Fn(Int) -> ()>();
-                let go = lambda1(move |mut steps: Int| {
+                let go__knot = knot::<kayak_rt::Proc1<'r, Int, ()>>();
+                let go = kayak_rt::closure1((out, r#box,), |(out, r#box,), mut steps: Int| {
                     loop {
                         let n = kayak_rt::process::receive(r#box);
                         if _eq(n, int_lit(0)) {
@@ -206,7 +206,7 @@ pub fn start_counter(out: ICell<Int>) -> Addr<Int> {
                     }
                 });
                 go__knot.set(go);
-                go(int_lit(0))
+                go.call(int_lit(0))
             }
             let r__arena = Region_R::default();
             letrena__r(&r__arena, out, r#box)

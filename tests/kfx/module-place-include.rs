@@ -16,11 +16,11 @@ pub mod shapes {
         Rect(i64, i64),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Shape {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Shape {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Sq(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::Rect(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Sq(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::Rect(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -43,6 +43,14 @@ impl<'p, Place_P> Clone for Tally<'p, Place_P> {
 }
 
 impl<'p, Place_P> Copy for Tally<'p, Place_P> {}
+
+impl<'p, Place_P> kayak_rt::Trace for Tally<'p, Place_P> {
+    kayak_rt::trace_whole!();
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
+        kayak_rt::Trace::trace(self.1, t);
+    }
+}
 
 pub mod tally_in {
     use super::*;
@@ -86,19 +94,19 @@ pub mod tally_in {
     }
 
     #[inline]
-    pub fn applied<'p, Place_P>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, f: &'p dyn Fn(i64) -> i64, n: i64) -> i64 {
-        f(n)
+    pub fn applied<'p, Place_P>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, f: kayak_rt::Proc1<'p, i64, i64>, n: i64) -> i64 {
+        f.call(n)
     }
 
     #[inline]
-    pub fn twice<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
-        f(f(x))
+    pub fn twice<A: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A, A>, x: A) -> A {
+        f.call(f.call(x))
     }
 
     pub fn add<'p, Place_P>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, w: i64, h: i64) -> () {
-        set(maker_st.bonus.get().unwrap(), twice(lambda1s(move |k: i64| {
+        set(maker_st.bonus.get().unwrap(), twice(kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: i64| {
             i64_plus(k, 1i64)
-        }), get(maker_st.bonus.get().unwrap())));
+        })), get(maker_st.bonus.get().unwrap())));
         set(maker_st.kept.get().unwrap(), cons(if i64_eq(w, h) {
             sq(w)
         } else {
@@ -108,7 +116,7 @@ pub mod tally_in {
 
     #[inline]
     pub fn total<'p, Place_P>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>) -> i64 {
-        applied(p, maker_st, lambda1(move |n: i64| {
+        applied(p, maker_st, kayak_rt::closure1((p, maker_st,), |(p, maker_st,), n: i64| {
             with_bonus(p, maker_st, n)
         }), total_of(get(maker_st.kept.get().unwrap())))
     }

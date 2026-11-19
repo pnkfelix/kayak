@@ -20,14 +20,14 @@ pub enum Rconst {
     RcData(kayak_rt::Handle<'static, Lit>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rconst {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rconst {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::RcInt(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RcBool(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RcChar(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RcInt(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RcBool(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RcChar(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::RcNil() => { }
-            Self::RcData(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RcData(f0) => { kayak_rt::Trace::trace(*f0, t); }
         }
     }
 }
@@ -90,19 +90,19 @@ pub enum Rloc {
     RlJoin(List<kayak_rt::Handle<'static, Rloc>>, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rloc {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rloc {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::RlReg(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RlSlot(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RlFree(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RlGlobal(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RlReg(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RlSlot(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RlFree(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RlGlobal(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::RlLoop() => { }
-            Self::RlPending(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RlConst(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RlTest(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::RlSeen(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RlJoin(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::RlPending(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RlConst(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RlTest(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::RlSeen(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RlJoin(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -173,10 +173,10 @@ pub enum Rbind {
     Rbind(Str, kayak_rt::Handle<'static, Rloc>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rbind {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rbind {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rbind(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Rbind(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -242,10 +242,10 @@ pub enum Rmove {
     Rmove(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Rmove {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Rmove {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Rmove(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Rmove(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }

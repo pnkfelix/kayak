@@ -10,31 +10,31 @@ use kayak_rt::*;
 pub mod made__load__0__conditions {
     use super::*;
 
-    pub async fn handle<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, H: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(body: &'static dyn Fn(Tag<A, H>) -> kayak_rt::suspend::Body<A>, on_escape: &'static dyn Fn(H) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
+    pub async fn handle<A: Copy + 'static + kayak_rt::Trace, H: Copy + 'static + kayak_rt::Trace>(body: kayak_rt::Proc1<'static, Tag<A, H>, kayak_rt::suspend::Body<A>>, on_escape: kayak_rt::Proc1<'static, H, kayak_rt::suspend::Body<A>>) -> Result<A, Unwind> {
         let t = make_escape_tag();
         Ok({
             let prompt_tag__ = t;
             match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-                Ok(kayak_rt::suspend::body((body)(t)).await?)
+                Ok(kayak_rt::suspend::body((body).call(t)).await?)
             })).await {
                 Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-                Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (on_escape)(h_).await?,
+                Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (on_escape).call(h_).await?,
                 Err(u_) => return Err(u_),
             }
         })
     }
 
-    pub async fn with_handler<C: Copy + 'static + for<'t> kayak_rt::Trace<'t>, V: Copy + 'static + for<'t> kayak_rt::Trace<'t>, A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(handler: &'static dyn Fn(C) -> kayak_rt::suspend::Body<V>, body: &'static dyn Fn(MarkKey<&'static dyn Fn(C) -> kayak_rt::suspend::Body<V>>) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
+    pub async fn with_handler<C: Copy + 'static + kayak_rt::Trace, V: Copy + 'static + kayak_rt::Trace, A: Copy + 'static + kayak_rt::Trace>(handler: kayak_rt::Proc1<'static, C, kayak_rt::suspend::Body<V>>, body: kayak_rt::Proc1<'static, MarkKey<kayak_rt::Proc1<'static, C, kayak_rt::suspend::Body<V>>>, kayak_rt::suspend::Body<A>>) -> Result<A, Unwind> {
         let key = make_continuation_mark_key();
-        Ok(kayak_rt::suspend::body(with_mark_async(key, handler, lambda0(move || kayak_rt::suspend::body(async move {
-            Ok(kayak_rt::suspend::body((body)(key)).await?)
+        Ok(kayak_rt::suspend::body(with_mark_async(key, handler, kayak_rt::closure0((body, key,), |(body, key,)| kayak_rt::suspend::body(async move {
+            Ok(kayak_rt::suspend::body((body).call(key)).await?)
         })))).await?)
     }
 
-    pub async fn raise<C: Copy + 'static + for<'t> kayak_rt::Trace<'t>, V: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(key: MarkKey<&'static dyn Fn(C) -> kayak_rt::suspend::Body<V>>, condition: C) -> Result<V, Unwind> {
-        Ok(kayak_rt::suspend::body((first_mark(key, lambda1(move |x: C| kayak_rt::suspend::body(async move {
+    pub async fn raise<C: Copy + 'static + kayak_rt::Trace, V: Copy + 'static + kayak_rt::Trace>(key: MarkKey<kayak_rt::Proc1<'static, C, kayak_rt::suspend::Body<V>>>, condition: C) -> Result<V, Unwind> {
+        Ok(kayak_rt::suspend::body((first_mark(key, kayak_rt::closure1((), |(), x: C| kayak_rt::suspend::body(async move {
             Ok(error(str_lit("a condition raised with no handler")))
-        }))))(condition)).await?)
+        })))).call(condition)).await?)
     }
 }
 
@@ -52,7 +52,7 @@ pub use c::raise;
 
 // A digit's value; a character that is none raised, with the handler's
 // effect `eh`, whatever it is.
-pub async fn digit(key: MarkKey<&'static dyn Fn(char) -> kayak_rt::suspend::Body<Int>>, ch: char) -> Result<Int, Unwind> {
+pub async fn digit(key: MarkKey<kayak_rt::Proc1<'static, char, kayak_rt::suspend::Body<Int>>>, ch: char) -> Result<Int, Unwind> {
     if (char_gt_eq_p(ch, '0') && char_lt_eq_p(ch, '9')) {
         Ok(_minus(char_to_integer(ch), int_lit(48)))
     } else {
@@ -61,21 +61,21 @@ pub async fn digit(key: MarkKey<&'static dyn Fn(char) -> kayak_rt::suspend::Body
 }
 
 // The number `s`'s characters from `i` make, after `acc`, each by `f`.
-pub async fn number_from(f: &'static dyn Fn(char) -> kayak_rt::suspend::Body<Int>, s: Str, i: Int, acc: Int) -> Result<Int, Unwind> {
+pub async fn number_from(f: kayak_rt::Proc1<'static, char, kayak_rt::suspend::Body<Int>>, s: Str, i: Int, acc: Int) -> Result<Int, Unwind> {
     if _gt_eq(i, string_length(s)) {
         Ok(acc)
     } else {
-        Ok(kayak_rt::suspend::body((lambda4(move |a__0, a__1, a__2, a__3| kayak_rt::suspend::body(number_from(a__0, a__1, a__2, a__3))))(f, s, _plus(i, int_lit(1)), _plus(_star(acc, int_lit(10)), kayak_rt::suspend::body(f(string_ref(s, i))).await?))).await?)
+        Ok(kayak_rt::suspend::body(number_from(f, s, _plus(i, int_lit(1)), _plus(_star(acc, int_lit(10)), kayak_rt::suspend::body(f.call(string_ref(s, i))).await?))).await?)
     }
 }
 
 // Hex letters let through, each its value: the handler gives one, and the
 // parse goes on where it was.
 pub fn lax(s: Str) -> Int {
-    kayak_rt::suspend::block(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(with_handler::<char, Int, Int>(a__0, a__1))))(lambda1s(move |ch: char| kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::block(kayak_rt::suspend::body(with_handler::<char, Int, Int>(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ch: char| kayak_rt::suspend::body(async move {
         Ok(_plus(int_lit(10), _minus(char_to_integer(ch), char_to_integer('a'))))
-    })), lambda1(move |key: MarkKey<&'static dyn Fn(char) -> kayak_rt::suspend::Body<Int>>| kayak_rt::suspend::body(async move {
-        Ok(kayak_rt::suspend::body(number_from(lambda1(move |ch: char| kayak_rt::suspend::body(async move {
+    }))), kayak_rt::closure1((s,), |(s,), key: MarkKey<kayak_rt::Proc1<'static, char, kayak_rt::suspend::Body<Int>>>| kayak_rt::suspend::body(async move {
+        Ok(kayak_rt::suspend::body(number_from(kayak_rt::closure1((key,), |(key,), ch: char| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(digit(key, ch)).await?)
         })), s, int_lit(0), int_lit(0))).await?)
     }))))).unwrap_or_else(|u| unreachable_unwind(u))
@@ -84,17 +84,17 @@ pub fn lax(s: Str) -> Int {
 // Any character that is no digit makes the whole -1: the handler escapes
 // to a `handle` around it, a restart.
 pub fn strict(s: Str) -> Int {
-    kayak_rt::suspend::block(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(handle::<Int, Str>(a__0, a__1))))(lambda1(move |t: Tag<Int, Str>| kayak_rt::suspend::body(async move {
-        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(with_handler::<char, Int, Int>(a__0, a__1))))(lambda1(move |ch: char| kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::block(kayak_rt::suspend::body(handle::<Int, Str>(kayak_rt::closure1((s,), |(s,), t: Tag<Int, Str>| kayak_rt::suspend::body(async move {
+        Ok(kayak_rt::suspend::body(with_handler::<char, Int, Int>(kayak_rt::closure1((t,), |(t,), ch: char| kayak_rt::suspend::body(async move {
             (return Err(unwind(t, string_append(str_lit("no digit: "), char_to_string(ch)))))
-        })), lambda1(move |key: MarkKey<&'static dyn Fn(char) -> kayak_rt::suspend::Body<Int>>| kayak_rt::suspend::body(async move {
-            Ok(kayak_rt::suspend::body(number_from(lambda1(move |ch: char| kayak_rt::suspend::body(async move {
+        })), kayak_rt::closure1((s,), |(s,), key: MarkKey<kayak_rt::Proc1<'static, char, kayak_rt::suspend::Body<Int>>>| kayak_rt::suspend::body(async move {
+            Ok(kayak_rt::suspend::body(number_from(kayak_rt::closure1((key,), |(key,), ch: char| kayak_rt::suspend::body(async move {
                 Ok(kayak_rt::suspend::body(digit(key, ch)).await?)
             })), s, int_lit(0), int_lit(0))).await?)
         })))).await?)
-    })), lambda1s(move |why: Str| kayak_rt::suspend::body(async move {
+    })), kayak_rt::as_proc(kayak_rt::closure1s((), |(), why: Str| kayak_rt::suspend::body(async move {
         Ok(int_lit(-1))
-    }))))).unwrap_or_else(|u| unreachable_unwind(u))
+    })))))).unwrap_or_else(|u| unreachable_unwind(u))
 }
 
 // An escape-only tag and a mark, with no library: the first negative
@@ -113,8 +113,8 @@ pub fn first_negative<'r>(t: Tag<Int, Int>, xs: List<Int>, n: Int) -> Result<Int
     } else if _lt(car(xs), int_lit(0)) {
         (return Err(unwind(t, _star(int_lit(100), first_mark(depth(), int_lit(0))))))
     } else {
-        Ok(kayak_rt::suspend::block(kayak_rt::suspend::body(with_mark_async(depth(), _plus(n, int_lit(1)), lambda0(move || kayak_rt::suspend::body(async move {
-            Ok((&first_negative)(t, cdr(xs), _plus(n, int_lit(1)))?)
+        Ok(kayak_rt::suspend::block(kayak_rt::suspend::body(with_mark_async(depth(), _plus(n, int_lit(1)), kayak_rt::closure0((t, xs, n,), |(t, xs, n,)| kayak_rt::suspend::body(async move {
+            Ok(first_negative(t, cdr(xs), _plus(n, int_lit(1)))?)
         })))))?)
     }
 }
@@ -124,12 +124,12 @@ pub fn found(xs: List<Int>) -> Int {
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            Ok((&first_negative)(t, xs, int_lit(0))?)
+            Ok(first_negative(t, xs, int_lit(0))?)
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: Int| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: Int| {
                 v
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }

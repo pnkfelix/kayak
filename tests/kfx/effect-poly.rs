@@ -8,20 +8,20 @@ use kayak_rt::*;
 // procedure an `async fn` returning a `Result`, and a caller that cannot
 // suspend runs it to its end.
 
-pub async fn each(mut f: &'static dyn Fn(i64) -> kayak_rt::suspend::Body<()>, mut xs: List<i64>) -> Result<(), Unwind> {
+pub async fn each(mut f: kayak_rt::Proc1<'static, i64, kayak_rt::suspend::Body<()>>, mut xs: List<i64>) -> Result<(), Unwind> {
     loop {
         if null_p(xs) {
             return Ok(());
         } else {
-            kayak_rt::suspend::body(f(car(xs))).await?;
+            kayak_rt::suspend::body(f.call(car(xs))).await?;
             xs = cdr(xs);
             continue;
         }
     }
 }
 
-pub async fn twice<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static dyn Fn(A) -> kayak_rt::suspend::Body<A>, x: A) -> Result<A, Unwind> {
-    Ok(kayak_rt::suspend::body(f(kayak_rt::suspend::body(f(x)).await?)).await?)
+pub async fn twice<A: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1<'static, A, kayak_rt::suspend::Body<A>>, x: A) -> Result<A, Unwind> {
+    Ok(kayak_rt::suspend::body(f.call(kayak_rt::suspend::body(f.call(x)).await?)).await?)
 }
 
 #[inline]
@@ -34,10 +34,10 @@ pub fn total() -> Ref<i64> {
 
 // A pure procedure given, and one that writes.
 pub fn add_all(xs: List<i64>) -> i64 {
-    kayak_rt::suspend::block(kayak_rt::suspend::body(each(lambda1(move |x: i64| kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::block(kayak_rt::suspend::body(each(kayak_rt::closure1((), |(), x: i64| kayak_rt::suspend::body(async move {
         Ok(())
     })), xs))).unwrap_or_else(|u| unreachable_unwind(u));
-    kayak_rt::suspend::block(kayak_rt::suspend::body(each(lambda1(move |x: i64| kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::block(kayak_rt::suspend::body(each(kayak_rt::closure1((), |(), x: i64| kayak_rt::suspend::body(async move {
         Ok(set(total(), i64_plus(get(total()), x)))
     })), xs))).unwrap_or_else(|u| unreachable_unwind(u));
     get(total())
@@ -49,7 +49,7 @@ pub fn first_big(xs: List<i64>) -> i64 {
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            kayak_rt::suspend::block(kayak_rt::suspend::body(each(lambda1(move |x: i64| kayak_rt::suspend::body(async move {
+            kayak_rt::suspend::block(kayak_rt::suspend::body(each(kayak_rt::closure1((t,), |(t,), x: i64| kayak_rt::suspend::body(async move {
                 if i64_gt(x, 2i64) {
                     (return Err(unwind(t, x)))
                 } else {
@@ -59,9 +59,9 @@ pub fn first_big(xs: List<i64>) -> i64 {
             Ok(-1i64)
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 v
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }
@@ -69,8 +69,8 @@ pub fn first_big(xs: List<i64>) -> i64 {
 
 // An abbreviation over an effect and a region: what it stands for in Rust
 // depends on the effect given, so each use is expanded (C46).
-pub async fn run_it(f: &'static dyn Fn() -> kayak_rt::suspend::Body<i64>) -> Result<i64, Unwind> {
-    Ok(kayak_rt::suspend::body(f()).await?)
+pub async fn run_it(f: kayak_rt::Proc0<'static, kayak_rt::suspend::Body<i64>>) -> Result<i64, Unwind> {
+    Ok(kayak_rt::suspend::body(f.call()).await?)
 }
 
 pub async fn plain() -> Result<i64, Unwind> {
@@ -79,13 +79,13 @@ pub async fn plain() -> Result<i64, Unwind> {
 
 #[inline]
 pub fn read_total() -> i64 {
-    i64_plus(kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(lambda0(move || kayak_rt::suspend::body(async move {
+    i64_plus(kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(kayak_rt::closure0((), |()| kayak_rt::suspend::body(async move {
         Ok(get(total()))
-    }))))).unwrap_or_else(|u| unreachable_unwind(u)), kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(lambda0(move || kayak_rt::suspend::body(plain()))))).unwrap_or_else(|u| unreachable_unwind(u)))
+    }))))).unwrap_or_else(|u| unreachable_unwind(u)), kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(kayak_rt::closure0((), |()| kayak_rt::suspend::body(plain()))))).unwrap_or_else(|u| unreachable_unwind(u)))
 }
 
 pub fn main() -> Str {
-    i64_to_string(i64_plus(add_all(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil()))))), i64_plus(i64_star(100i64, first_big(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil())))))), i64_plus(i64_star(1000i64, kayak_rt::suspend::block(kayak_rt::suspend::body(twice(lambda1(move |x: i64| kayak_rt::suspend::body(async move {
+    i64_to_string(i64_plus(add_all(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil()))))), i64_plus(i64_star(100i64, first_big(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil())))))), i64_plus(i64_star(1000i64, kayak_rt::suspend::block(kayak_rt::suspend::body(twice(kayak_rt::closure1((), |(), x: i64| kayak_rt::suspend::body(async move {
         Ok(i64_star(x, 3i64))
     })), 2i64))).unwrap_or_else(|u| unreachable_unwind(u))), i64_star(100000i64, read_total())))))
 }

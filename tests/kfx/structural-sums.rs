@@ -6,12 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1w_1h<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1w_1h<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_1w_1h, A0 0, A1 1);
 
 const _: () = kayak_rt::tags_apart_from_runtime(&["dot", "rect", "circle"]);
 

@@ -15,7 +15,7 @@
 
 #![allow(unsafe_code)]
 
-use crate::trace::{Trace, Tracer};
+use crate::trace::{Trace, Tracer, Visit};
 use std::cell::OnceCell;
 use std::sync::Mutex;
 
@@ -38,11 +38,38 @@ std::thread_local! {
 }
 static TOP: Mutex<usize> = Mutex::new(0);
 
+/// An object kept in a block of its own (a closure, C481): its bytes, and
+/// it, visited as it is.
+struct One {
+    start: usize,
+    end: usize,
+    it: *const (dyn Visit + 'static),
+}
+
+// SAFETY: read only by a mark, under the lock, of objects never freed.
+unsafe impl Send for One {}
+
+static ONES: Mutex<Vec<One>> = Mutex::new(Vec::new());
+
+/// An object kept in a block of its own, never freed.
+pub(crate) fn one<'r>(v: &'r (dyn Visit + 'r)) {
+    let start = std::ptr::from_ref(v).cast::<()>() as usize;
+    let size = v.visit_size().max(1);
+    // SAFETY: a lifetime only, erased: the object is never freed, and a
+    // mark reads it as kept.
+    let it: *const (dyn Visit + 'static) = unsafe { std::mem::transmute(std::ptr::from_ref(v)) };
+    ONES.lock().unwrap_or_else(|e| e.into_inner()).push(One {
+        start,
+        end: start + size,
+        it,
+    });
+}
+
 /// A cell at `addr`, traced if it holds a value.
 ///
 /// # Safety
 /// `addr` is a cell of a block `block` noted for `T`, which the heap keeps.
-unsafe fn trace_cell<T: for<'t> Trace<'t> + 'static>(addr: usize, t: &mut Tracer<'static>) {
+unsafe fn trace_cell<T: Visit + 'static>(addr: usize, t: &mut Tracer<'static>) {
     // SAFETY: the caller's: a `OnceCell<T>` of a heap arena, never freed.
     let c: &'static OnceCell<T> = unsafe { &*(addr as *const OnceCell<T>) };
     if let Some(v) = c.get() {
@@ -51,7 +78,7 @@ unsafe fn trace_cell<T: for<'t> Trace<'t> + 'static>(addr: usize, t: &mut Tracer
 }
 
 /// A heap arena's new block, of `len` cells of `T` from `p`.
-pub(crate) fn block<T: for<'t> Trace<'t> + 'static>(p: *const OnceCell<T>, len: usize) {
+pub(crate) fn block<T: Visit + 'static>(p: *const OnceCell<T>, len: usize) {
     let cell = std::mem::size_of::<OnceCell<T>>();
     let start = p as usize;
     let mut b = BLOCKS.lock().unwrap_or_else(|e| e.into_inner());
@@ -74,7 +101,7 @@ pub(crate) fn opaque(p: usize, size: usize) {
 }
 
 /// A constant, made: its slot, read again and traced at each mark.
-pub(crate) fn constant_of<T: for<'t> Trace<'t>, S: crate::once::OnceSlot<T> + ?Sized>(
+pub(crate) fn constant_of<T: Trace + 'static, S: crate::once::OnceSlot<T> + ?Sized>(
     slot: &'static S,
 ) {
     let root: Root = Box::new(move |t: &mut Tracer<'static>| {
@@ -91,12 +118,12 @@ pub(crate) fn stack_top(addr: usize) {
 }
 
 /// The block holding `w`, by a sorted list's search.
-fn found<'b, T>(
-    sorted: &'b [T],
+fn found<T>(
+    sorted: &[T],
     w: usize,
     start: impl Fn(&T) -> usize,
     end: impl Fn(&T) -> usize,
-) -> Option<&'b T> {
+) -> Option<&T> {
     let i = sorted.partition_point(|b| start(b) <= w);
     if i == 0 {
         return None;
@@ -129,6 +156,8 @@ pub(crate) fn mark(allocated: u64) {
     blocks.sort_by_key(|b| b.start);
     let mut opaque = OPAQUE.lock().unwrap_or_else(|e| e.into_inner());
     opaque.sort_by_key(|b| b.0);
+    let mut ones = ONES.lock().unwrap_or_else(|e| e.into_inner());
+    ones.sort_by_key(|o| o.start);
     let mut t = Tracer::default();
     let mut f = Found::default();
     let mut seen_opaque = std::collections::HashSet::new();
@@ -155,8 +184,17 @@ pub(crate) fn mark(allocated: u64) {
                 }
                 // SAFETY: a cell of a noted block, at a cell's start.
                 unsafe { (b.trace)(b.start + (w - b.start) / b.cell * b.cell, &mut t) };
-            } else if let Some(&(p, n)) = found(&opaque, w, |b| b.0, |b| b.0 + b.1) {
-                if seen_opaque.insert(p) {
+            } else if let Some(o) = found(&ones, w, |o| o.start, |o| o.end) {
+                f.roots += 1;
+                if inside {
+                    f.via_opaque += 1;
+                }
+                // SAFETY: an object `one` noted, never freed.
+                t.reach(unsafe { &*o.it });
+            } else if let Some(&(p, n)) = found(&opaque, w, |b| b.0, |b| b.0 + b.1)
+                && seen_opaque.insert(p)
+            {
+                {
                     f.opaque_blocks += 1;
                     f.opaque_bytes += n as u64;
                     let mut q = (p + 7) & !7;

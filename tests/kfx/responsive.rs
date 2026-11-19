@@ -6,12 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1n_5reply<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1n_5reply<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_1n_5reply, A0 0, A1 1);
 
 // Responsiveness by effects (C388): a handler that must not wait says so by
 // its type, an effect with no `receive`, no `await`, no standard input. It
@@ -29,8 +24,8 @@ pub fn start_worker() -> Addr<Req> {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
             fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<Product_1n_5reply<Int, ICell<Int>>>) -> () {
-                let serve__knot = knot::<&'p dyn Fn() -> ()>();
-                let serve = lambda0(move || {
+                let serve__knot = knot::<kayak_rt::Proc0<'p, ()>>();
+                let serve = kayak_rt::closure0((r#box,), |(r#box,)| {
                     loop {
                         let m = kayak_rt::process::receive(r#box);
                         kayak_rt::process::icell_put_x(m.1, _star(int_lit(2), m.0));
@@ -38,7 +33,7 @@ pub fn start_worker() -> Addr<Req> {
                     }
                 });
                 serve__knot.set(serve);
-                serve()
+                serve.call()
             }
             let p__arena = Region_P::default();
             letrena__p(&p__arena, r#box)

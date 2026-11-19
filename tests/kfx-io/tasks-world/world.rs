@@ -20,15 +20,15 @@ use super::*;
 // An operation filed, and where its answer goes.
 // The world as tasks see it: the loop, the operations filed (the latest
 // first), and the steps taken.
-pub fn make_world_loop() -> Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>> {
-    Product_4loop_5filed_5steps((&make_loop)(), the::<Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>>(kayak_rt::heap_new(nil::<Product_2op_5reply<kayak_rt::Sum, Ref<kayak_rt::Sum>>>())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)))
+pub fn make_world_loop() -> Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>> {
+    Product_4loop_5filed_5steps(make_loop(), the::<Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>>(kayak_rt::heap_new(nil::<Product_2op_5reply<kayak_rt::Sum, Ref<kayak_rt::Sum>>>())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)))
 }
 
 // An operation performed by a task: filed, and its answer waited for.
-pub async fn perform_in_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, o: Op) -> Result<Answer, Unwind> {
-    let iv = the::<Ref<kayak_rt::Sum>>((&make_ivar::<kayak_rt::Sum>)(wl.0));
+pub async fn perform_in_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, o: Op) -> Result<Answer, Unwind> {
+    let iv = the::<Ref<kayak_rt::Sum>>(make_ivar::<kayak_rt::Sum>(wl.0));
     set(wl.1, kayak_rt::heap_cons(Product_2op_5reply(o, iv), get(wl.1)));
-    Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(ivar_get_x::<kayak_rt::Sum>(a__0, a__1))))(wl.0, iv)).await?)
+    Ok(kayak_rt::suspend::body(ivar_get_x::<kayak_rt::Sum>(wl.0, iv)).await?)
 }
 
 #[inline]
@@ -36,34 +36,34 @@ pub fn reverse_filed(xs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>, acc: 
     if null_p(xs) {
         acc
     } else {
-        (&reverse_filed)(cdr(xs), kayak_rt::heap_cons(car(xs), acc))
+        reverse_filed(cdr(xs), kayak_rt::heap_cons(car(xs), acc))
     }
 }
 
 // Each operation filed answered, in order, each at its step.
-pub async fn answer_all_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, fs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>) -> Result<(), Unwind> {
+pub async fn answer_all_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, answer: kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>>, fs: List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>) -> Result<(), Unwind> {
     if null_p(fs) {
         Ok(())
     } else {
         let f = car(fs);
         let n = get(wl.2);
         set(wl.2, i64_plus(n, 1i64));
-        (&ivar_put_x::<kayak_rt::Sum>)(wl.0, f.1, kayak_rt::suspend::body(answer(n, f.0)).await?);
-        Ok(kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(answer_all_x(a__0, a__1, a__2))))(wl, answer, cdr(fs))).await?)
+        ivar_put_x::<kayak_rt::Sum>(wl.0, f.1, kayak_rt::suspend::body(answer.call(n, f.0)).await?);
+        Ok(kayak_rt::suspend::body(answer_all_x(wl, answer, cdr(fs))).await?)
     }
 }
 
 // Run the tasks until none is left, the world answering by `answer`.
-pub async fn run_world_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_ready_x(a__0))))(wl.0)).await?;
+pub async fn run_world_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>, answer: kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>>) -> Result<(), Unwind> {
+    kayak_rt::suspend::body(run_ready_x(wl.0)).await?;
     let fs = get(wl.1);
     if not(null_p(fs)) {
         set(wl.1, nil::<Product_2op_5reply<kayak_rt::Sum, Ref<kayak_rt::Sum>>>());
-        kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(answer_all_x(a__0, a__1, a__2))))(wl, answer, (&reverse_filed)(fs, nil::<Product_2op_5reply<kayak_rt::Sum, Ref<kayak_rt::Sum>>>()))).await?;
-        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_world_x(a__0, a__1))))(wl, answer)).await?)
-    } else if (&sleeping_p)(wl.0) {
-        (&wake_first_x)(wl.0);
-        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_world_x(a__0, a__1))))(wl, answer)).await?)
+        kayak_rt::suspend::body(answer_all_x(wl, answer, reverse_filed(fs, nil::<Product_2op_5reply<kayak_rt::Sum, Ref<kayak_rt::Sum>>>()))).await?;
+        Ok(kayak_rt::suspend::body(run_world_x(wl, answer)).await?)
+    } else if sleeping_p(wl.0) {
+        wake_first_x(wl.0);
+        Ok(kayak_rt::suspend::body(run_world_x(wl, answer)).await?)
     } else {
         Ok(())
     }

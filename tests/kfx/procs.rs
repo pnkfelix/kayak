@@ -13,21 +13,21 @@ pub type Strings = List<Str>;
 pub type Ints = List<i64>;
 
 #[inline]
-pub fn map<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+pub fn map<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A, B>, xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
     } else {
-        kayak_rt::heap_cons(f(car(xs)), map(f, cdr(xs)))
+        kayak_rt::heap_cons(f.call(car(xs)), map(f, cdr(xs)))
     }
 }
 
 /// A self tail call in a poly procedure: it loops too.
-pub fn fold<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(mut f: &'static (dyn Fn(B, A) -> B + Send + Sync), mut acc: B, mut xs: List<A>) -> B {
+pub fn fold<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(mut f: kayak_rt::Proc2s<'static, B, A, B>, mut acc: B, mut xs: List<A>) -> B {
     loop {
         if null_p(xs) {
             return acc;
         } else {
-            (acc, xs) = (f(acc, car(xs)), cdr(xs));
+            (acc, xs) = (f.call(acc, car(xs)), cdr(xs));
             continue;
         }
     }
@@ -37,9 +37,9 @@ pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
         str_lit("")
     } else {
-        fold(lambda2s(move |acc: Str, w: Str| {
+        fold(kayak_rt::as_proc(kayak_rt::closure2s((), |(), acc: Str, w: Str| {
             string_append(acc, string_append(str_lit(" "), w))
-        }), car(xs), cdr(xs))
+        })), car(xs), cdr(xs))
     }
 }
 
@@ -49,30 +49,30 @@ pub fn add1(n: i64) -> i64 {
 }
 
 #[inline]
-pub fn adder(n: i64) -> &'static (dyn Fn(i64) -> i64 + Send + Sync) {
-    lambda1s(move |m: i64| {
+pub fn adder(n: i64) -> kayak_rt::Proc1s<'static, i64, i64> {
+    kayak_rt::as_proc(kayak_rt::closure1s((n,), |(n,), m: i64| {
         i64_plus(n, m)
-    })
+    }))
 }
 
 #[inline]
-pub fn twice<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
-    f(f(x))
+pub fn twice<A: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A, A>, x: A) -> A {
+    f.call(f.call(x))
 }
 
 pub enum Op {
-    Op(Str, &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)),
+    Op(Str, kayak_rt::Proc2s<'static, i64, i64, i64>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Op {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Op {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Op(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Op(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
 
-pub fn op(f0: Str, f1: &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)) -> kayak_rt::Handle<'static, Op> {
+pub fn op(f0: Str, f1: kayak_rt::Proc2s<'static, i64, i64, i64>) -> kayak_rt::Handle<'static, Op> {
     kayak_rt::heap_alloc(Op::Op(f0, f1))
 }
 
@@ -81,7 +81,7 @@ pub fn apply_op(o: kayak_rt::Handle<'static, Op>, a: i64, b: i64) -> Str {
     let tagcase_ = o;
     match *tagcase_ {
         Op::Op(name, f) => {
-            string_append(name, string_append(str_lit("="), i64_to_string(f(a, b))))
+            string_append(name, string_append(str_lit("="), i64_to_string(f.call(a, b))))
         }
     }
 }
@@ -94,15 +94,15 @@ pub fn i64_star_wrapped(a: i64, b: i64) -> i64 {
 pub fn main() -> Str {
     let xs = the::<Ints>(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))));
     let k = the::<i64>(100i64);
-    let shows = map(&i64_to_string, map(&add1, xs));
-    words(kayak_rt::heap_cons(words(shows), kayak_rt::heap_cons(words(map(lambda1s(move |x: i64| {
+    let shows = map(kayak_rt::as_proc(i64_to_string), map(kayak_rt::as_proc(add1), xs));
+    words(kayak_rt::heap_cons(words(shows), kayak_rt::heap_cons(words(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: i64| {
         i64_to_string(i64_star(x, 10i64))
-    }), xs)), kayak_rt::heap_cons(words(map(&i64_to_string, map(adder(k), xs))), kayak_rt::heap_cons(i64_to_string((adder(3i64))(4i64)), kayak_rt::heap_cons(i64_to_string(twice(&add1, 0i64)), kayak_rt::heap_cons(twice(lambda1s(move |s: Str| {
+    })), xs)), kayak_rt::heap_cons(words(map(kayak_rt::as_proc(i64_to_string), map(adder(k), xs))), kayak_rt::heap_cons(i64_to_string((adder(3i64)).call(4i64)), kayak_rt::heap_cons(i64_to_string(twice(kayak_rt::as_proc(add1), 0i64)), kayak_rt::heap_cons(twice(kayak_rt::as_proc(kayak_rt::closure1s((), |(), s: Str| {
         string_append(s, str_lit("!"))
-    }), str_lit("hey")), kayak_rt::heap_cons(i64_to_string(fold(lambda2s(move |acc: i64, x: i64| {
+    })), str_lit("hey")), kayak_rt::heap_cons(i64_to_string(fold(kayak_rt::as_proc(kayak_rt::closure2s((), |(), acc: i64, x: i64| {
         i64_plus(acc, x)
-    }), 0i64, xs)), kayak_rt::heap_cons(apply_op(op(str_lit("plus"), lambda2s(move |a: i64, b: i64| {
+    })), 0i64, xs)), kayak_rt::heap_cons(apply_op(op(str_lit("plus"), kayak_rt::as_proc(kayak_rt::closure2s((), |(), a: i64, b: i64| {
         i64_plus(a, b)
-    })), 2i64, 3i64), kayak_rt::heap_cons(apply_op(op(str_lit("times"), &i64_star_wrapped), 2i64, 3i64), kayak_rt::nil()))))))))))
+    }))), 2i64, 3i64), kayak_rt::heap_cons(apply_op(op(str_lit("times"), kayak_rt::as_proc(i64_star_wrapped)), 2i64, 3i64), kayak_rt::nil()))))))))))
 }
 

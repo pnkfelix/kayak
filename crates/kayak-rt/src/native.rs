@@ -121,12 +121,12 @@ impl Native for char {
 /// A list, copied each way, as pairs of Fixpt's layout made by kayak-jit
 /// and as kayak's. No KFX program can tell the copy from the list, since
 /// none tells pairs apart nor writes through one (C116).
-impl<T: Native + Clone + 'static + for<'t> crate::Trace<'t>> Native for crate::List<T> {
+impl<T: Native + Clone + 'static + crate::Trace> Native for crate::List<T> {
     fn word(self) -> u64 {
         let mut items = Vec::new();
         let mut at = self;
         while let Some(c) = at {
-            items.push(c.car.clone());
+            items.push(c.car);
             at = c.cdr;
         }
         items
@@ -223,23 +223,23 @@ crossing_bloblet!(4; A 0, B 1, C 2, D 3);
 /// `foreign` routine: a closure of Fixpt's layout over it. Native code
 /// gives none back to KFX (its checker sees to it).
 macro_rules! given {
-    ($($a:ident $i:tt),*) => {
-        impl<$($a: Native + 'static,)* R: Native + 'static> Native for &'static dyn Fn($($a),*) -> R {
+    ($proc:ident $procs:ident; $($a:ident $i:tt),*) => {
+        impl<$($a: Native + 'static,)* R: Native + 'static> Native for crate::$proc<'static, $($a,)* R> {
             fn word(self) -> u64 {
                 kayak_jit::foreign_procedure(Box::new(move |args: &[u64]| {
                     if args.len() != given!(@count $($a)*) {
                         fail("native code: called a procedure with the wrong number of arguments");
                     }
-                    self($($a::of_word(args[$i])),*).word()
+                    self.call($($a::of_word(args[$i])),*).word()
                 }))
             }
             fn of_word(_: u64) -> Self {
                 fail("native code: gave a procedure, which kayak cannot yet take back")
             }
         }
-        impl<$($a: Native + 'static,)* R: Native + 'static> Native for &'static (dyn Fn($($a),*) -> R + Send + Sync) {
+        impl<$($a: Native + 'static,)* R: Native + 'static> Native for crate::$procs<'static, $($a,)* R> {
             fn word(self) -> u64 {
-                let f: &'static dyn Fn($($a),*) -> R = self;
+                let f: crate::$proc<'static, $($a,)* R> = crate::as_proc(self);
                 f.word()
             }
             fn of_word(_: u64) -> Self {
@@ -248,22 +248,22 @@ macro_rules! given {
         }
         /// One of the emitter's async mode (C376), its answer a future:
         /// native code waits for it, `block`.
-        impl<$($a: Native + 'static,)* R: Native + 'static> Native for &'static dyn Fn($($a),*) -> crate::suspend::Fut<R> {
+        impl<$($a: Native + 'static,)* R: Native + 'static> Native for crate::$proc<'static, $($a,)* crate::suspend::Fut<R>> {
             fn word(self) -> u64 {
                 kayak_jit::foreign_procedure(Box::new(move |args: &[u64]| {
                     if args.len() != given!(@count $($a)*) {
                         fail("native code: called a procedure with the wrong number of arguments");
                     }
-                    crate::suspend::block(self($($a::of_word(args[$i])),*)).word()
+                    crate::suspend::block(self.call($($a::of_word(args[$i])),*)).word()
                 }))
             }
             fn of_word(_: u64) -> Self {
                 fail("native code: gave a procedure, which kayak cannot yet take back")
             }
         }
-        impl<$($a: Native + 'static,)* R: Native + 'static> Native for &'static (dyn Fn($($a),*) -> crate::suspend::Fut<R> + Send + Sync) {
+        impl<$($a: Native + 'static,)* R: Native + 'static> Native for crate::$procs<'static, $($a,)* crate::suspend::Fut<R>> {
             fn word(self) -> u64 {
-                let f: &'static dyn Fn($($a),*) -> crate::suspend::Fut<R> = self;
+                let f: crate::$proc<'static, $($a,)* crate::suspend::Fut<R>> = crate::as_proc(self);
                 f.word()
             }
             fn of_word(_: u64) -> Self {
@@ -274,10 +274,10 @@ macro_rules! given {
     (@count) => { 0 };
     (@count $x:ident $($y:ident)*) => { 1 + given!(@count $($y)*) };
 }
-given!();
-given!(A 0);
-given!(A 0, B 1);
-given!(A 0, B 1, C 2);
+given!(Proc0 Proc0s;);
+given!(Proc1 Proc1s; A 0);
+given!(Proc2 Proc2s; A 0, B 1);
+given!(Proc3 Proc3s; A 0, B 1, C 2);
 
 /// `(native-convention)`: the clauses of the convention made code keeps
 /// here, one a string, as Fixpt gives its own (kayak-jit's, which is
@@ -388,45 +388,55 @@ fn sealed(c: &dyn Sealed) -> (kayak_jit::Code, u64, usize) {
     }
 }
 
-/// `(native-procedure c)` at `(subr (conv native) E () R)`.
-pub fn native_procedure0<'a, R: Native>(c: &dyn Sealed) -> &'a (dyn Fn() -> R + Send + Sync) {
-    let (code, clo, entry) = sealed(c);
-    crate::lambda0s(move || R::of_word(run(code, clo, entry, &[])))
+/// `(native-procedure c)` at `(subr (conv native) E () R)`: a closure of
+/// the sealed copy's code (C481), `Send + Sync`, which `as_proc` makes the
+/// procedure type wanted.
+pub fn native_procedure0<'a, R: Native + 'a>(c: &dyn Sealed) -> crate::Proc0s<'a, R> {
+    crate::closure0s(sealed(c), |(code, clo, entry)| {
+        R::of_word(run(code, clo, entry, &[]))
+    })
 }
 
 /// At `(subr (conv native) E (A) R)`.
-pub fn native_procedure1<'a, A: Native, R: Native>(
+pub fn native_procedure1<'a, A: Native + 'a, R: Native + 'a>(
     c: &dyn Sealed,
-) -> &'a (dyn Fn(A) -> R + Send + Sync) {
-    let (code, clo, entry) = sealed(c);
-    crate::lambda1s(move |a: A| R::of_word(run(code, clo, entry, &[a.word()])))
+) -> crate::Proc1s<'a, A, R> {
+    crate::closure1s(sealed(c), |(code, clo, entry), a: A| {
+        R::of_word(run(code, clo, entry, &[a.word()]))
+    })
 }
 
 /// At `(subr (conv native) E (A B) R)`.
-pub fn native_procedure2<'a, A: Native, B: Native, R: Native>(
+pub fn native_procedure2<'a, A: Native + 'a, B: Native + 'a, R: Native + 'a>(
     c: &dyn Sealed,
-) -> &'a (dyn Fn(A, B) -> R + Send + Sync) {
-    let (code, clo, entry) = sealed(c);
-    crate::lambda2s(move |a: A, b: B| R::of_word(run(code, clo, entry, &[a.word(), b.word()])))
+) -> crate::Proc2s<'a, A, B, R> {
+    crate::closure2s(sealed(c), |(code, clo, entry), a: A, b: B| {
+        R::of_word(run(code, clo, entry, &[a.word(), b.word()]))
+    })
 }
 
 /// At `(subr (conv native) E (A B C) R)`.
-pub fn native_procedure3<'a, A: Native, B: Native, C: Native, R: Native>(
+pub fn native_procedure3<'a, A: Native + 'a, B: Native + 'a, C: Native + 'a, R: Native + 'a>(
     c: &dyn Sealed,
-) -> &'a (dyn Fn(A, B, C) -> R + Send + Sync) {
-    let (code, clo, entry) = sealed(c);
-    crate::lambda3s(move |a: A, b: B, d: C| {
+) -> crate::Proc3s<'a, A, B, C, R> {
+    crate::closure3s(sealed(c), |(code, clo, entry), a: A, b: B, d: C| {
         R::of_word(run(code, clo, entry, &[a.word(), b.word(), d.word()]))
     })
 }
 
 /// At `(subr (conv native) E (A B C D) R)`: tier 2's machine is given its
 /// registers, heap and two stacks (C126).
-pub fn native_procedure4<'a, A: Native, B: Native, C: Native, D: Native, R: Native>(
+pub fn native_procedure4<
+    'a,
+    A: Native + 'a,
+    B: Native + 'a,
+    C: Native + 'a,
+    D: Native + 'a,
+    R: Native + 'a,
+>(
     c: &dyn Sealed,
-) -> &'a (dyn Fn(A, B, C, D) -> R + Send + Sync) {
-    let (code, clo, entry) = sealed(c);
-    crate::lambda4s(move |a: A, b: B, d: C, e: D| {
+) -> crate::Proc4s<'a, A, B, C, D, R> {
+    crate::closure4s(sealed(c), |(code, clo, entry), a: A, b: B, d: C, e: D| {
         R::of_word(run(
             code,
             clo,
@@ -435,3 +445,7 @@ pub fn native_procedure4<'a, A: Native, B: Native, C: Native, D: Native, R: Nati
         ))
     })
 }
+
+// A sealed copy's code: plain bytes to a trace (C481), its own block
+// kayak-jit's.
+crate::trace_bytes!(kayak_jit::Code);

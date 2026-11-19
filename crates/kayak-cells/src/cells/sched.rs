@@ -383,11 +383,11 @@ pub fn heap_items(l: i64) -> List<i64> {
     }
 }
 
-pub fn kept_of(mut xs: List<i64>, mut drop: &'static dyn Fn(i64) -> bool) -> List<i64> {
+pub fn kept_of(mut xs: List<i64>, mut drop: kayak_rt::Proc1<'static, i64, bool>) -> List<i64> {
     loop {
         if null_p(xs) {
             return nil::<i64>();
-        } else if drop(car(xs)) {
+        } else if drop.call(car(xs)) {
             xs = cdr(xs);
             continue;
         } else {
@@ -1348,9 +1348,9 @@ pub fn preempt_due_x() -> i64 {
 /// `gs`, with every group inside one of them (`BRANCH_GROUP`).
 pub fn groups_within(mut gs: List<i64>) -> List<i64> {
     loop {
-        let more = kept_of(heap_cars(kept_of(heap_items(sched_st(s_parents())), lambda1(move |e: i64| {
+        let more = kept_of(heap_cars(kept_of(heap_items(sched_st(s_parents())), kayak_rt::closure1((gs,), |(gs,), e: i64| {
             not(i64_in_p(gs, pair_cdr(e)))
-        }))), lambda1(move |g: i64| {
+        }))), kayak_rt::closure1((gs,), |(gs,), g: i64| {
             i64_in_p(gs, g)
         }));
         if null_p(more) {
@@ -1429,7 +1429,7 @@ pub fn task_failed_x(message: Str, reach: bool) -> i64 {
         v_false()
     } else {
         let gs = groups_within(kayak_rt::heap_cons(g, kayak_rt::nil()));
-        pushed_cancelled_x(heap_cars(kept_of(heap_items(sched_st(s_groups())), lambda1(move |e: i64| {
+        pushed_cancelled_x(heap_cars(kept_of(heap_items(sched_st(s_groups())), kayak_rt::closure1((cur, gs,), |(cur, gs,), e: i64| {
             (not(i64_in_p(gs, pair_cdr(e))) || i64_eq(pair_car(e), cur))
         }))));
         sched_st_set_x(s_failure(), cons_x(make_string_x(message), mon));

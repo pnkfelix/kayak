@@ -45,16 +45,16 @@ pub mod kc_asm {
         OImem(i64, Str, i64),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Opd {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Opd {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::OReg(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::OImm(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::OIsym(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::OMem(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::OSym(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::OIreg(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::OImem(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::OReg(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::OImm(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::OIsym(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::OMem(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::OSym(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::OIreg(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::OImem(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
             }
         }
     }
@@ -101,15 +101,15 @@ pub mod kc_asm {
         PFix(i64, Str, i64, i64),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Piece {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Piece {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::PBytes(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::PLabel(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::PAlign(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::PBranch(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::PCall(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::PFix(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::PBytes(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::PLabel(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::PAlign(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::PBranch(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::PCall(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::PFix(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
             }
         }
     }
@@ -652,11 +652,11 @@ pub mod kc_asm {
                 kayak_rt::heap_cons(v, kayak_rt::nil())
             }
             Opd::OIsym(s) => {
-                map(lambda1s(move |x: Product_11_12<Str, i64>| {
+                map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12<Str, i64>| {
                     x.1
-                }), filter(lambda1s(move |x: Product_11_12<Str, i64>| {
+                })), filter(kayak_rt::as_proc(kayak_rt::closure1s((s,), |(s,), x: Product_11_12<Str, i64>| {
                     string_eq_p(x.0, s)
-                }), sets))
+                })), sets))
             }
             _ => {
                 let other = tagcase_;
@@ -876,10 +876,10 @@ pub mod kc_asm {
         Reading(List<Pieces>, i64, Strings, List<Product_11_12_13<Str, i64, i64>>, List<Product_11_12<Str, i64>>, List<Product_11_12<Str, i64>>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Reading {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Reading {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Reading(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::Reading(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
             }
         }
     }
@@ -970,7 +970,7 @@ pub mod kc_asm {
                     }
                 } else {
                     let w = word_end(string_chars(line), nil::<char>());
-                    let os = map(&operand_of, split_commas(w.1, 0i64, nil::<char>(), nil::<Str>()));
+                    let os = map(kayak_rt::as_proc(operand_of), split_commas(w.1, 0i64, nil::<char>(), nil::<Str>()));
                     added(r, instruction(w.0, os, sets))
                 }
             }
@@ -1196,10 +1196,10 @@ pub mod kc_asm {
         Reloc(i64, i64, Str, i64),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Reloc {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Reloc {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Reloc(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+                Self::Reloc(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
             }
         }
     }
@@ -1214,10 +1214,10 @@ pub mod kc_asm {
         Where(i64, i64, bool),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Where {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Where {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Where(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::Where(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
             }
         }
     }
@@ -1244,10 +1244,10 @@ pub mod kc_asm {
         Made(Bytes, List<kayak_rt::Handle<'static, Reloc>>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Made {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Made {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Made(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Made(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -1353,11 +1353,11 @@ pub mod kc_asm {
                     }
                     Piece::PFix(n, s, a, k) => {
                         if i64_eq(k, 0i64) {
-                            let v = map(lambda1s(move |x: Product_11_12<Str, i64>| {
+                            let v = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12<Str, i64>| {
                                 x.1
-                            }), filter(lambda1s(move |x: Product_11_12<Str, i64>| {
+                            })), filter(kayak_rt::as_proc(kayak_rt::closure1s((s,), |(s,), x: Product_11_12<Str, i64>| {
                                 string_eq_p(x.0, s)
-                            }), sets));
+                            })), sets));
                             (ps, off, out) = (cdr(ps), i64_plus(off, n), rev_onto_bytes(le_bytes(if null_p(v) {
                                 not_yet(string_append(str_lit("a symbol never set, "), s))
                             } else {
@@ -1536,14 +1536,14 @@ pub mod kc_asm {
     }
 
     pub fn rela_bytes(rs: List<kayak_rt::Handle<'static, Reloc>>, symbols: Strings) -> Bytes {
-        concat(map(lambda1s(move |r: kayak_rt::Handle<'static, Reloc>| {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((symbols,), |(symbols,), r: kayak_rt::Handle<'static, Reloc>| {
             let tagcase_ = r;
             match *tagcase_ {
                 Reloc::Reloc(off, r#type, s, a) => {
                     concat(kayak_rt::heap_cons(u64(off), kayak_rt::heap_cons(u64(i64_plus(i64_shl(index_of_symbol(s, symbols, 0i64), int_lit(32)), r#type)), kayak_rt::heap_cons(u64(a), kayak_rt::nil()))))
                 }
             }
-        }), rs))
+        })), rs))
     }
 
     pub fn pad_to(mut acc: Bytes, mut have: i64, mut want: i64) -> Bytes {
@@ -1702,22 +1702,22 @@ pub mod kc_asm {
         let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
         match *tagcase_ {
             Reading::Reading(ss0, cur, gs, commons, sets, labels) => {
-                let ss = map(lambda1s(move |ps: Pieces| {
+                let ss = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
                     rev_onto_pieces(ps, nil::<kayak_rt::Handle<'static, kc_asm::Piece>>())
-                }), ss0);
-                let longs = map(lambda1s(move |ps: Pieces| {
+                })), ss0);
+                let longs = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
                     settled(ps, branches_of(ps, nil::<bool>()))
-                }), ss);
-                let syms = concat(map(lambda1s(move |k: i64| {
-                    map(lambda1s(move |x: Product_11_12<Str, i64>| {
+                })), ss);
+                let syms = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((gs, ss, longs,), |(gs, ss, longs,), k: i64| {
+                    map(kayak_rt::as_proc(kayak_rt::closure1s((gs, k,), |(gs, k,), x: Product_11_12<Str, i64>| {
                         Product_11_12_13_14(x.0, k, x.1, string_member_p(x.0, gs))
-                    }), offsets(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), 0i64, nil::<Product_11_12<Str, i64>>()).0)
-                }), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil())))))));
-                let mades = map(lambda1s(move |k: i64| {
-                    emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(lambda1s(move |c: Product_11_12_13<Str, i64, i64>| {
+                    })), offsets(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), 0i64, nil::<Product_11_12<Str, i64>>()).0)
+                })), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil())))))));
+                let mades = map(kayak_rt::as_proc(kayak_rt::closure1s((commons, sets, ss, longs, syms,), |(commons, sets, ss, longs, syms,), k: i64| {
+                    emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
                         c.0
-                    }), commons), sets, nil::<i64>(), nil::<kayak_rt::Handle<'static, kc_asm::Reloc>>())
-                }), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
+                    })), commons), sets, nil::<i64>(), nil::<kayak_rt::Handle<'static, kc_asm::Reloc>>())
+                })), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
                 let text_m = car(mades);
                 let data_m = car(cdr(mades));
                 let bss_m = car(cdr(cdr(mades)));
@@ -1784,10 +1784,10 @@ pub mod kc_asm {
                 let b0 = aligned(i64_plus(d0, size(data)), 16i64);
                 let cs = commons_placed(the::<List<Product_11_12_13<Str, i64, i64>>>(commons), i64_plus(b0, bss_size), nil::<Product_11_12<Str, i64>>());
                 let bases = the::<List<i64>>(kayak_rt::heap_cons(t0, kayak_rt::heap_cons(d0, kayak_rt::heap_cons(b0, kayak_rt::heap_cons(r0, kayak_rt::nil())))));
-                let fix = lambda3s(move |rs: List<kayak_rt::Handle<'static, Reloc>>, base: i64, bs: Bytes| {
+                let fix = kayak_rt::closure3s((syms, cs, bases,), |(syms, cs, bases,), rs: List<kayak_rt::Handle<'static, Reloc>>, base: i64, bs: Bytes| {
                     patched(bs, 0i64, image_fixes(rs, base, syms, cs.0, bases, nil::<Product_11_12<i64, i64>>()), nil::<i64>())
                 });
-                concat(kayak_rt::heap_cons(fix(text_rs, t0, code), kayak_rt::heap_cons(zeros(i64_minus(r0, size(code)), nil::<i64>()), kayak_rt::heap_cons(fix(ro_rs, r0, ro), kayak_rt::heap_cons(zeros(i64_minus(d0, i64_plus(r0, size(ro))), nil::<i64>()), kayak_rt::heap_cons(fix(data_rs, d0, data), kayak_rt::heap_cons(zeros(i64_minus(cs.1, i64_plus(d0, size(data))), nil::<i64>()), kayak_rt::nil())))))))
+                concat(kayak_rt::heap_cons(fix.call(text_rs, t0, code), kayak_rt::heap_cons(zeros(i64_minus(r0, size(code)), nil::<i64>()), kayak_rt::heap_cons(fix.call(ro_rs, r0, ro), kayak_rt::heap_cons(zeros(i64_minus(d0, i64_plus(r0, size(ro))), nil::<i64>()), kayak_rt::heap_cons(fix.call(data_rs, d0, data), kayak_rt::heap_cons(zeros(i64_minus(cs.1, i64_plus(d0, size(data))), nil::<i64>()), kayak_rt::nil())))))))
             }
         }
     }
@@ -1798,22 +1798,22 @@ pub mod kc_asm {
         let tagcase_ = lines_read(reading(kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::heap_cons(nil::<kayak_rt::Handle<'static, kc_asm::Piece>>(), kayak_rt::nil()))))), 0i64, nil::<Str>(), nil::<Product_11_12_13<Str, i64, i64>>(), nil::<Product_11_12<Str, i64>>(), nil::<Product_11_12<Str, i64>>()), lines_of(string_chars(text), nil::<char>(), nil::<Str>()));
         match *tagcase_ {
             Reading::Reading(ss0, cur, gs, commons, sets, labels) => {
-                let ss = map(lambda1s(move |ps: Pieces| {
+                let ss = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
                     rev_onto_pieces(ps, nil::<kayak_rt::Handle<'static, kc_asm::Piece>>())
-                }), ss0);
-                let longs = map(lambda1s(move |ps: Pieces| {
+                })), ss0);
+                let longs = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), ps: Pieces| {
                     settled(ps, branches_of(ps, nil::<bool>()))
-                }), ss);
-                let syms = concat(map(lambda1s(move |k: i64| {
-                    map(lambda1s(move |x: Product_11_12<Str, i64>| {
+                })), ss);
+                let syms = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((gs, ss, longs,), |(gs, ss, longs,), k: i64| {
+                    map(kayak_rt::as_proc(kayak_rt::closure1s((gs, k,), |(gs, k,), x: Product_11_12<Str, i64>| {
                         Product_11_12_13_14(x.0, k, x.1, string_member_p(x.0, gs))
-                    }), offsets(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), 0i64, nil::<Product_11_12<Str, i64>>()).0)
-                }), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil())))))));
-                let mades = map(lambda1s(move |k: i64| {
-                    emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(lambda1s(move |c: Product_11_12_13<Str, i64, i64>| {
+                    })), offsets(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), 0i64, nil::<Product_11_12<Str, i64>>()).0)
+                })), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil())))))));
+                let mades = map(kayak_rt::as_proc(kayak_rt::closure1s((commons, sets, ss, longs, syms,), |(commons, sets, ss, longs, syms,), k: i64| {
+                    emitted(car(sexps_after_sections(ss, k)), car(sexps_after_longs(longs, k)), k, 0i64, syms, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
                         c.0
-                    }), commons), sets, nil::<i64>(), nil::<kayak_rt::Handle<'static, kc_asm::Reloc>>())
-                }), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
+                    })), commons), sets, nil::<i64>(), nil::<kayak_rt::Handle<'static, kc_asm::Reloc>>())
+                })), the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))));
                 let text_m = car(mades);
                 let data_m = car(cdr(mades));
                 let bss_m = car(cdr(cdr(mades)));
@@ -1866,34 +1866,34 @@ pub mod kc_asm {
                         }
                     }
                 };
-                let locals = filter(lambda1s(move |x: Product_11_12_13_14<Str, i64, i64, bool>| {
+                let locals = filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12_13_14<Str, i64, i64, bool>| {
                     (not(x.3) && not(has_prefix_p(x.0, str_lit(".L"))))
-                }), syms);
-                let defined = filter(lambda1s(move |x: Product_11_12_13_14<Str, i64, i64, bool>| {
+                })), syms);
+                let defined = filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12_13_14<Str, i64, i64, bool>| {
                     x.3
-                }), syms);
-                let named_by_relocs = map(lambda1s(move |r: kayak_rt::Handle<'static, Reloc>| {
+                })), syms);
+                let named_by_relocs = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), r: kayak_rt::Handle<'static, Reloc>| {
                     let tagcase_ = r;
                     match *tagcase_ {
                         Reloc::Reloc(o, t, s, a) => {
                             s
                         }
                     }
-                }), onto(text_rs, data_rs));
-                let undefined = undefined_names(named_by_relocs, syms, map(lambda1s(move |c: Product_11_12_13<Str, i64, i64>| {
+                })), onto(text_rs, data_rs));
+                let undefined = undefined_names(named_by_relocs, syms, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
                     c.0
-                }), commons), nil::<Str>());
-                let local_names = map(lambda1s(move |x: Product_11_12_13_14<Str, i64, i64, bool>| {
+                })), commons), nil::<Str>());
+                let local_names = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12_13_14<Str, i64, i64, bool>| {
                     x.0
-                }), locals);
-                let global_names = onto(map(lambda1s(move |x: Product_11_12_13_14<Str, i64, i64, bool>| {
+                })), locals);
+                let global_names = onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Product_11_12_13_14<Str, i64, i64, bool>| {
                     x.0
-                }), defined), onto(map(lambda1s(move |c: Product_11_12_13<Str, i64, i64>| {
+                })), defined), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Product_11_12_13<Str, i64, i64>| {
                     c.0
-                }), commons), undefined));
+                })), commons), undefined));
                 let symbol_order = onto(kayak_rt::heap_cons(str_lit(""), kayak_rt::heap_cons(str_lit(".text"), kayak_rt::heap_cons(str_lit(".data"), kayak_rt::heap_cons(str_lit(".bss"), kayak_rt::heap_cons(str_lit(".rodata"), kayak_rt::nil()))))), onto(local_names, global_names));
                 let st = strtab(onto(local_names, global_names), the::<Bytes>(kayak_rt::heap_cons(0i64, kayak_rt::nil())), 1i64, nil::<Product_11_12<Str, i64>>());
-                let shndx = lambda1s(move |k: i64| {
+                let shndx = kayak_rt::closure1s((), |(), k: i64| {
                     if i64_eq(k, 0i64) {
                         the::<i64>(1i64)
                     } else if i64_eq(k, 1i64) {
@@ -1904,20 +1904,20 @@ pub mod kc_asm {
                         the::<i64>(6i64)
                     }
                 });
-                let symtab = concat(kayak_rt::heap_cons(symbol_entry(0i64, 0i64, 0i64, 0i64, 0i64), kayak_rt::heap_cons(symbol_entry(0i64, 3i64, 1i64, 0i64, 0i64), kayak_rt::heap_cons(symbol_entry(0i64, 3i64, 3i64, 0i64, 0i64), kayak_rt::heap_cons(symbol_entry(0i64, 3i64, 5i64, 0i64, 0i64), kayak_rt::heap_cons(symbol_entry(0i64, 3i64, 6i64, 0i64, 0i64), kayak_rt::heap_cons(concat(map(lambda1s(move |x: Product_11_12_13_14<Str, i64, i64, bool>| {
-                    symbol_entry(name_at(x.0, st.1), 0i64, shndx(x.1), x.2, 0i64)
-                }), locals)), kayak_rt::heap_cons(concat(map(lambda1s(move |x: Product_11_12_13_14<Str, i64, i64, bool>| {
-                    symbol_entry(name_at(x.0, st.1), 16i64, shndx(x.1), x.2, 0i64)
-                }), defined)), kayak_rt::heap_cons(concat(map(lambda1s(move |c: Product_11_12_13<Str, i64, i64>| {
+                let symtab = concat(kayak_rt::heap_cons(symbol_entry(0i64, 0i64, 0i64, 0i64, 0i64), kayak_rt::heap_cons(symbol_entry(0i64, 3i64, 1i64, 0i64, 0i64), kayak_rt::heap_cons(symbol_entry(0i64, 3i64, 3i64, 0i64, 0i64), kayak_rt::heap_cons(symbol_entry(0i64, 3i64, 5i64, 0i64, 0i64), kayak_rt::heap_cons(symbol_entry(0i64, 3i64, 6i64, 0i64, 0i64), kayak_rt::heap_cons(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((st, shndx,), |(st, shndx,), x: Product_11_12_13_14<Str, i64, i64, bool>| {
+                    symbol_entry(name_at(x.0, st.1), 0i64, shndx.call(x.1), x.2, 0i64)
+                })), locals)), kayak_rt::heap_cons(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((st, shndx,), |(st, shndx,), x: Product_11_12_13_14<Str, i64, i64, bool>| {
+                    symbol_entry(name_at(x.0, st.1), 16i64, shndx.call(x.1), x.2, 0i64)
+                })), defined)), kayak_rt::heap_cons(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((st,), |(st,), c: Product_11_12_13<Str, i64, i64>| {
                     symbol_entry(name_at(c.0, st.1), 17i64, 65522i64, c.2, c.1)
-                }), commons)), kayak_rt::heap_cons(concat(map(lambda1s(move |n: Str| {
+                })), commons)), kayak_rt::heap_cons(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((st,), |(st,), n: Str| {
                     symbol_entry(name_at(n, st.1), 16i64, 0i64, 0i64, 0i64)
-                }), undefined)), kayak_rt::nil()))))))))));
+                })), undefined)), kayak_rt::nil()))))))))));
                 let first_global = i64_plus(5i64, size(locals));
                 let rela_text = rela_bytes(text_rs, symbol_order);
                 let rela_data = rela_bytes(data_rs, symbol_order);
                 let shs = strtab(kayak_rt::heap_cons(str_lit(".text"), kayak_rt::heap_cons(str_lit(".rela.text"), kayak_rt::heap_cons(str_lit(".data"), kayak_rt::heap_cons(str_lit(".rela.data"), kayak_rt::heap_cons(str_lit(".bss"), kayak_rt::heap_cons(str_lit(".rodata"), kayak_rt::heap_cons(str_lit(".note.GNU-stack"), kayak_rt::heap_cons(str_lit(".symtab"), kayak_rt::heap_cons(str_lit(".strtab"), kayak_rt::heap_cons(str_lit(".shstrtab"), kayak_rt::nil())))))))))), the::<Bytes>(kayak_rt::heap_cons(0i64, kayak_rt::nil())), 1i64, nil::<Product_11_12<Str, i64>>());
-                let sh = lambda1s(move |n: Str| {
+                let sh = kayak_rt::closure1s((shs,), |(shs,), n: Str| {
                     name_at(n, shs.1)
                 });
                 let o_text = the::<i64>(64i64);
@@ -1930,7 +1930,7 @@ pub mod kc_asm {
                 let o_shs = i64_plus(o_str, size(st.0));
                 let o_sh = aligned(i64_plus(o_shs, size(shs.0)), 8i64);
                 let header = concat(kayak_rt::heap_cons(the::<Bytes>(kayak_rt::heap_cons(127i64, kayak_rt::heap_cons(69i64, kayak_rt::heap_cons(76i64, kayak_rt::heap_cons(70i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(0i64, kayak_rt::nil()))))))))))))))))), kayak_rt::heap_cons(u16(1i64), kayak_rt::heap_cons(u16(62i64), kayak_rt::heap_cons(u32(1i64), kayak_rt::heap_cons(u64(0i64), kayak_rt::heap_cons(u64(0i64), kayak_rt::heap_cons(u64(o_sh), kayak_rt::heap_cons(u32(0i64), kayak_rt::heap_cons(u16(64i64), kayak_rt::heap_cons(u16(0i64), kayak_rt::heap_cons(u16(0i64), kayak_rt::heap_cons(u16(64i64), kayak_rt::heap_cons(u16(11i64), kayak_rt::heap_cons(u16(10i64), kayak_rt::nil())))))))))))))));
-                let headers = concat(kayak_rt::heap_cons(section_header(0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64), kayak_rt::heap_cons(section_header(sh(str_lit(".text")), 1i64, 6i64, o_text, size(code), 0i64, 0i64, 16i64, 0i64), kayak_rt::heap_cons(section_header(sh(str_lit(".rela.text")), 4i64, 64i64, o_rt, size(rela_text), 8i64, 1i64, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh(str_lit(".data")), 1i64, 3i64, o_data, size(data), 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh(str_lit(".rela.data")), 4i64, 64i64, o_rd, size(rela_data), 8i64, 3i64, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh(str_lit(".bss")), 8i64, 3i64, o_ro, bss_size, 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh(str_lit(".rodata")), 1i64, 2i64, o_ro, size(ro), 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh(str_lit(".note.GNU-stack")), 1i64, 0i64, o_sh, 0i64, 0i64, 0i64, 1i64, 0i64), kayak_rt::heap_cons(section_header(sh(str_lit(".symtab")), 2i64, 0i64, o_sym, size(symtab), 9i64, first_global, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh(str_lit(".strtab")), 3i64, 0i64, o_str, size(st.0), 0i64, 0i64, 1i64, 0i64), kayak_rt::heap_cons(section_header(sh(str_lit(".shstrtab")), 3i64, 0i64, o_shs, size(shs.0), 0i64, 0i64, 1i64, 0i64), kayak_rt::nil()))))))))))));
+                let headers = concat(kayak_rt::heap_cons(section_header(0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".text")), 1i64, 6i64, o_text, size(code), 0i64, 0i64, 16i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".rela.text")), 4i64, 64i64, o_rt, size(rela_text), 8i64, 1i64, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".data")), 1i64, 3i64, o_data, size(data), 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".rela.data")), 4i64, 64i64, o_rd, size(rela_data), 8i64, 3i64, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".bss")), 8i64, 3i64, o_ro, bss_size, 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".rodata")), 1i64, 2i64, o_ro, size(ro), 0i64, 0i64, 8i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".note.GNU-stack")), 1i64, 0i64, o_sh, 0i64, 0i64, 0i64, 1i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".symtab")), 2i64, 0i64, o_sym, size(symtab), 9i64, first_global, 8i64, 24i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".strtab")), 3i64, 0i64, o_str, size(st.0), 0i64, 0i64, 1i64, 0i64), kayak_rt::heap_cons(section_header(sh.call(str_lit(".shstrtab")), 3i64, 0i64, o_shs, size(shs.0), 0i64, 0i64, 1i64, 0i64), kayak_rt::nil()))))))))))));
                 let f0 = placed(nil::<i64>(), 0i64, 0i64, header);
                 let f1 = placed(f0.0, f0.1, o_text, code);
                 let f2 = placed(f1.0, f1.1, o_data, data);

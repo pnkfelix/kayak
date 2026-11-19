@@ -237,8 +237,12 @@ pub struct BlobRef<B> {
 }
 
 /// A suffix's reference: its owner's (C480).
-impl<'a, B: crate::Trace<'a>> crate::Trace<'a> for BlobRef<B> {
-    fn trace(&self, t: &mut crate::Tracer<'a>) {
+impl<B: crate::Trace> crate::Trace for BlobRef<B> {
+    crate::trace_whole!();
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
         self.owner.trace(t);
     }
 }

@@ -16,6 +16,14 @@ impl<'p, Place_P> Clone for Builder<'p, Place_P> {
 
 impl<'p, Place_P> Copy for Builder<'p, Place_P> {}
 
+impl<'p, Place_P> kayak_rt::Trace for Builder<'p, Place_P> {
+    kayak_rt::trace_whole!();
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
+        kayak_rt::Trace::trace(self.1, t);
+    }
+}
+
 pub mod builder_in {
     use super::*;
 

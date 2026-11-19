@@ -185,10 +185,10 @@ pub enum Iline {
     Iline(i64, Chars),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Iline {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Iline {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Iline(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Iline(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -201,10 +201,10 @@ pub enum Block {
     Block(Str, i64, i64, List<kayak_rt::Handle<'static, Iline>>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Block {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Block {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Block(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Block(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -291,10 +291,10 @@ pub enum Ltext {
     Ltext(Str, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Ltext {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Ltext {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Ltext(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Ltext(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -347,10 +347,10 @@ pub enum Cpos {
     Cpos(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Cpos {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Cpos {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Cpos(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Cpos(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -462,10 +462,10 @@ pub enum Lab {
     Lab(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Lab {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Lab {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Lab(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Lab(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -488,10 +488,10 @@ pub enum Lgot {
     Lgot(i64, Chars),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Lgot {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Lgot {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Lgot(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Lgot(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -504,10 +504,10 @@ pub enum Gint {
     Gint(Int, Chars),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Gint {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Gint {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Gint(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Gint(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -520,10 +520,10 @@ pub enum Gtext {
     Gtext(Str, Chars),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Gtext {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Gtext {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Gtext(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Gtext(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -536,10 +536,10 @@ pub enum Gall {
     Gall(List<i64>, Chars),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Gall {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Gall {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Gall(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Gall(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -779,8 +779,8 @@ pub fn until_delimiter(mut cs: Chars, mut acc: Chars) -> Chars {
 
 pub fn vector_literal_x(xs: List<i64>) -> i64 {
     let v = make_bloblet_x(k_vector(), args_count(xs, 0i64), 0i64, true, false);
-    let fill__knot = knot::<&'static dyn Fn(List<i64>, i64) -> ()>();
-    let fill = lambda2(move |mut ys: List<i64>, mut i: i64| {
+    let fill__knot = knot::<kayak_rt::Proc2<'static, List<i64>, i64, ()>>();
+    let fill = kayak_rt::closure2((v,), |(v,), mut ys: List<i64>, mut i: i64| {
         loop {
             if null_p(ys) {
                 return ();
@@ -792,7 +792,7 @@ pub fn vector_literal_x(xs: List<i64>) -> i64 {
         }
     });
     fill__knot.set(fill);
-    fill(xs, 0i64);
+    fill.call(xs, 0i64);
     v
 }
 
@@ -1138,10 +1138,10 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
     let ops = spaces_dropped(chars_dropped(text, string_length_i64(name)));
     let n = position_in(rop_names(), name, 0i64);
     let second = spaces_dropped(after_char(ops, ' '));
-    let num = lambda1s(move |cs: Chars| {
+    let num = kayak_rt::closure1s((), |(), cs: Chars| {
         fix(number_of(cs))
     });
-    let routine = lambda1s(move |cs: Chars| {
+    let routine = kayak_rt::closure1s((), |(), cs: Chars| {
         let r = position_in(routine_names(), list_to_string(chars_before_char(cs, ' ')), 0i64);
         if i64_lt(r, 0i64) {
             match listing_error(string_append(str_lit("no routine is named "), list_to_string(cs))) {};
@@ -1150,7 +1150,7 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
             fix(r)
         }
     });
-    let prim = lambda1s(move |cs: Chars| {
+    let prim = kayak_rt::closure1s((), |(), cs: Chars| {
         let p = prim_number(list_to_string(chars_before_char(cs, ' ')));
         if i64_lt(p, 0i64) {
             match listing_error(string_append(str_lit("a primitive tier 1 does not have yet: "), list_to_string(cs))) {};
@@ -1170,37 +1170,37 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
         } else if (i64_eq(n, ro_global()) || i64_eq(n, ro_setglbl())) {
             reg_put_x(rw, at, 1i64, global_named(list_to_string(ops)))
         } else if i64_eq(n, ro_op1()) {
-            reg_put_x(rw, at, 1i64, routine(ops))
+            reg_put_x(rw, at, 1i64, routine.call(ops))
         } else if (i64_eq(n, ro_op2()) || i64_eq(n, ro_cellular())) {
-            reg_put_x(rw, at, 1i64, routine(ops));
-            reg_put_x(rw, at, 2i64, num(second))
+            reg_put_x(rw, at, 1i64, routine.call(ops));
+            reg_put_x(rw, at, 2i64, num.call(second))
         } else if i64_eq(n, ro_op2imm()) {
-            reg_put_x(rw, at, 1i64, routine(ops));
+            reg_put_x(rw, at, 1i64, routine.call(ops));
             reg_put_x(rw, at, 2i64, literal(second))
         } else if i64_eq(n, ro_prim()) {
-            reg_put_x(rw, at, 1i64, prim(ops));
-            reg_put_x(rw, at, 2i64, num(second))
+            reg_put_x(rw, at, 1i64, prim.call(ops));
+            reg_put_x(rw, at, 2i64, num.call(second))
         } else if i64_eq(n, ro_prim1()) {
-            reg_put_x(rw, at, 1i64, prim(ops))
+            reg_put_x(rw, at, 1i64, prim.call(ops))
         } else if i64_eq(n, ro_prim2()) {
-            reg_put_x(rw, at, 1i64, prim(ops));
-            reg_put_x(rw, at, 2i64, num(second))
+            reg_put_x(rw, at, 1i64, prim.call(ops));
+            reg_put_x(rw, at, 2i64, num.call(second))
         } else if i64_eq(n, ro_prim2imm()) {
-            reg_put_x(rw, at, 1i64, prim(ops));
+            reg_put_x(rw, at, 1i64, prim.call(ops));
             reg_put_x(rw, at, 2i64, literal(second))
         } else if i64_eq(n, ro_prim3imm()) {
-            reg_put_x(rw, at, 1i64, prim(ops));
+            reg_put_x(rw, at, 1i64, prim.call(ops));
             let tagcase_ = lit_datum(second);
             match *tagcase_ {
                 Lgot::Lgot(v, rest) => {
                     reg_put_x(rw, at, 2i64, v);
-                    reg_put_x(rw, at, 3i64, num(spaces_dropped(rest)))
+                    reg_put_x(rw, at, 3i64, num.call(spaces_dropped(rest)))
                 }
             }
         } else if i64_eq(n, ro_lambda()) {
             let rest = chars_dropped(ops, 5i64);
             reg_put_x(rw, at, 1i64, listing_word(chars_before_char(rest, ' ')));
-            reg_put_x(rw, at, 2i64, num(chars_dropped(after_char(rest, ' '), 5i64)));
+            reg_put_x(rw, at, 2i64, num.call(chars_dropped(after_char(rest, ' '), 5i64)));
             reg_put_x(rw, at, 3i64, fix(rt_closure()))
         } else if (i64_eq(n, ro_branch()) || i64_eq(n, ro_branchf()) || i64_eq(n, ro_brancht())) {
             reg_put_x(rw, at, 1i64, fix(i64_minus(number_of(chars_dropped(ops, 2i64)), i64_plus(at, 2i64))))
@@ -1208,13 +1208,13 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
             let written = after_char(after_char(ops, ' '), ' ');
             let to = chars_dropped(after_char(after_char(written, ' '), ' '), 2i64);
             reg_put_x(rw, at, 1i64, global_named(list_to_string(chars_before_char(ops, ' '))));
-            reg_put_x(rw, at, 2i64, num(written));
+            reg_put_x(rw, at, 2i64, num.call(written));
             reg_put_x(rw, at, 3i64, fix(i64_minus(number_of(to), i64_plus(at, 4i64))))
         } else if i64_eq(rop_operands(n), 1i64) {
-            reg_put_x(rw, at, 1i64, num(ops))
+            reg_put_x(rw, at, 1i64, num.call(ops))
         } else {
-            reg_put_x(rw, at, 1i64, num(ops));
-            reg_put_x(rw, at, 2i64, num(second))
+            reg_put_x(rw, at, 1i64, num.call(ops));
+            reg_put_x(rw, at, 2i64, num.call(second))
         }
     }
 }

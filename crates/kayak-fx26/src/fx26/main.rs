@@ -89,14 +89,14 @@ pub fn loads_read(mut todo: Strings, mut done: Fileds) -> Fileds {
     loop {
         if null_p(todo) {
             return done;
-        } else if any_p(lambda1s(move |s: kayak_rt::Handle<'static, Filed>| {
+        } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), s: kayak_rt::Handle<'static, Filed>| {
             let tagcase_ = s;
             match *tagcase_ {
                 Filed::Filed(n, t) => {
                     string_eq_p(n, car(todo))
                 }
             }
-        }), done) {
+        })), done) {
             todo = cdr(todo);
             continue;
         } else {
@@ -120,7 +120,7 @@ pub fn read_files(paths: Strings) -> Sexps {
 
 /// Whether any of `es` is, or holds, a list headed by one of `heads`.
 pub fn forms_mention_p(es: Sexps, heads: Strings) -> bool {
-    any_p(lambda1s(move |e: kayak_rt::Handle<'static, Sexp>| {
+    any_p(kayak_rt::as_proc(kayak_rt::closure1s((heads,), |(heads,), e: kayak_rt::Handle<'static, Sexp>| {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
@@ -142,7 +142,7 @@ pub fn forms_mention_p(es: Sexps, heads: Strings) -> bool {
                 false
             }
         }
-    }), es)
+    })), es)
 }
 
 #[inline]
@@ -208,13 +208,13 @@ pub mod made__load__2__expander {
         Vec(List<kayak_rt::Handle<'static, Syn>>, kayak_rt::value::Value, Int, Int, Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Syn {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Syn {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Atom(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-                Self::MxEagerReaderTypesLst(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::Dotted(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::Vec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::Atom(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+                Self::MxEagerReaderTypesLst(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::Dotted(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::Vec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
             }
         }
     }
@@ -245,12 +245,12 @@ pub mod made__load__2__expander {
         RlNames(MxParserTypesNames, MxParserTypesNames),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Relied {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Relied {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
                 Self::RlNone() => { }
                 Self::RlUnknown() => { }
-                Self::RlNames(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::RlNames(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -272,11 +272,11 @@ pub mod made__load__2__expander {
         ShFun(List<List<kayak_rt::Handle<'static, MxParserTypesShape>>>, List<kayak_rt::Handle<'static, MxParserTypesShape>>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for MxParserTypesShape {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for MxParserTypesShape {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::ShModule(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::ShFun(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::ShModule(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::ShFun(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -301,14 +301,14 @@ pub mod made__load__2__expander {
         DatumFits(Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for KDatum {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for KDatum {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::DatumField(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::DatumBlobrefField(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::DatumLayout(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::DatumArray(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::DatumFits(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::DatumField(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::DatumBlobrefField(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::DatumLayout(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::DatumArray(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::DatumFits(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -367,38 +367,38 @@ pub mod made__load__2__expander {
         EWith(Symbol, kayak_rt::Handle<'static, Exp>, Int, Int, Int, Int, kayak_rt::Handle<'static, Relied>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Exp {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Exp {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::EVar(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EInt(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EBool(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EStr(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EChar(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EFloat(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::ESym(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EQuote(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EUnit(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-                Self::ELambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::EApp(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::EPlambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::EProj(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::EIf(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
-                Self::ELetrec(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::ELet(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::EBegin(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EPrompt(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
-                Self::ELetregion(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
-                Self::ERlambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::EThe(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::EConvention(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::EBloblet(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
-                Self::EProduct(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EExtract(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
-                Self::ESum(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
-                Self::ETagcase(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
-                Self::EModule(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::EWith(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+                Self::EVar(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EInt(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EBool(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EStr(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EChar(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EFloat(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::ESym(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EQuote(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EUnit(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+                Self::ELambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::EApp(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::EPlambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::EProj(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::EIf(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); }
+                Self::ELetrec(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::ELet(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::EBegin(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EPrompt(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); }
+                Self::ELetregion(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); }
+                Self::ERlambda(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::EThe(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::EConvention(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::EBloblet(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); }
+                Self::EProduct(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EExtract(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); }
+                Self::ESum(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
+                Self::ETagcase(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); }
+                Self::EModule(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::EWith(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); }
             }
         }
     }
@@ -530,17 +530,17 @@ pub mod made__load__2__expander {
         MxParserTypesTExp(kayak_rt::Handle<'static, Exp>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for MxParserTypesTop {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for MxParserTypesTop {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::MxParserTypesTDefine(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::MxParserTypesTDefineRec(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-                Self::TDefineType(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-                Self::TDefineEffect(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-                Self::TDefineConvention(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-                Self::TDefineSyscall(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-                Self::TDefineGenerative(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
-                Self::MxParserTypesTExp(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::MxParserTypesTDefine(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::MxParserTypesTDefineRec(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+                Self::TDefineType(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+                Self::TDefineEffect(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+                Self::TDefineConvention(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+                Self::TDefineSyscall(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+                Self::TDefineGenerative(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
+                Self::MxParserTypesTExp(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -582,11 +582,11 @@ pub mod made__load__2__expander {
         PErr(Str, Int, Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Presult {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Presult {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::POk(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::PErr(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::POk(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::PErr(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
             }
         }
     }
@@ -613,12 +613,12 @@ pub mod made__load__2__expander {
         RingShape(Addr),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Ring {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Ring {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::RingRib(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::RingAt(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::RingShape(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::RingRib(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::RingAt(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::RingShape(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -643,12 +643,12 @@ pub mod made__load__2__expander {
         AtmLit(Int, bool),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Atm {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Atm {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::AtmVar(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-                Self::AtmRibOf(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::AtmLit(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::AtmVar(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+                Self::AtmRibOf(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::AtmLit(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -675,14 +675,14 @@ pub mod made__load__2__expander {
         BindShape(Addr),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for MxTypesBind {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for MxTypesBind {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::BindRib(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::BindCage(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::BindDirect(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::BindEarlier(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::BindShape(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::BindRib(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::BindCage(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::BindDirect(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::BindEarlier(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::BindShape(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -735,8 +735,8 @@ pub mod made__load__2__expander {
         SRules(),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Sty {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Sty {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
                 Self::SExpr() => { }
                 Self::SBvar() => { }
@@ -745,16 +745,16 @@ pub mod made__load__2__expander {
                 Self::SType() => { }
                 Self::SLabel() => { }
                 Self::SNil() => { }
-                Self::SLiteral(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::SPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::SImport(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::SExport(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::SMark(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::SMu(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-                Self::SVar(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::SMany(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::SUnion(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::STyped(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::SLiteral(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::SPair(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::SImport(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::SExport(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::SMark(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::SMu(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+                Self::SVar(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::SMany(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::SUnion(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::STyped(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
                 Self::SLambda() => { }
                 Self::SDefn() => { }
                 Self::SDvar() => { }
@@ -874,13 +874,13 @@ pub mod made__load__2__expander {
         LvShape(Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Level {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Level {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::LvRib(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::LvCage(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::LvEarlier(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::LvShape(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::LvRib(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::LvCage(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::LvEarlier(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::LvShape(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -910,11 +910,11 @@ pub mod made__load__2__expander {
         IxNode(Int, Symbol, bool, Int, kayak_rt::Handle<'static, Index>, kayak_rt::Handle<'static, Index>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Index {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Index {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
                 Self::IxLeaf() => { }
-                Self::IxNode(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+                Self::IxNode(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
             }
         }
     }
@@ -932,11 +932,11 @@ pub mod made__load__2__expander {
         GrShape(Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Group {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Group {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::GrNames(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::GrShape(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::GrNames(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::GrShape(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -955,10 +955,10 @@ pub mod made__load__2__expander {
         EnvOf(Product_11_12<Levels, MxEnvIndexedGroups>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for MxEnvIndexedEnv {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for MxEnvIndexedEnv {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::EnvOf(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::EnvOf(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -977,16 +977,16 @@ pub mod made__load__2__expander {
         ActMark(Symbol),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Action {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Action {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::ActRename(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::ActRename(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
                 Self::ActAlias() => { }
-                Self::ActModuleType(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::ActInstanceType(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ActModuleType(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::ActInstanceType(f0) => { kayak_rt::Trace::trace(*f0, t); }
                 Self::ActStandardType() => { }
-                Self::ActMacroHead(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::ActMark(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ActMacroHead(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::ActMark(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -1059,17 +1059,17 @@ pub mod made__load__2__expander {
         KOther(),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for MxNodesKids {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for MxNodesKids {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::KPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::KPair(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
                 Self::KNil() => { }
-                Self::KPvar(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::KBinder(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::KRef(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-                Self::KForm(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::KDesc(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::MxNodesKSeq(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::KPvar(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::KBinder(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::KRef(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+                Self::KForm(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::KDesc(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::MxNodesKSeq(f0) => { kayak_rt::Trace::trace(*f0, t); }
                 Self::KOther() => { }
             }
         }
@@ -1134,11 +1134,11 @@ pub mod made__load__2__expander {
         PtPath(bool),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for MxScopesPart {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for MxScopesPart {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::PtUse(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::PtPath(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::PtUse(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::PtPath(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -1204,15 +1204,15 @@ pub mod made__load__2__expander {
         ShUnion(List<Int>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for MxInferShape {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for MxInferShape {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
                 Self::ShNil() => { }
-                Self::ShPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-                Self::ShSeq(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::ShLit(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ShPair(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+                Self::ShSeq(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::ShLit(f0) => { kayak_rt::Trace::trace(*f0, t); }
                 Self::ShLeaf() => { }
-                Self::ShUnion(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ShUnion(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -1258,15 +1258,15 @@ pub mod made__load__2__expander {
         ClPair(kayak_rt::Handle<'static, Syn>, kayak_rt::Handle<'static, Syn>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Class {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Class {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::ClSeq(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ClSeq(f0) => { kayak_rt::Trace::trace(*f0, t); }
                 Self::ClWild() => { }
-                Self::ClLit(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::ClVar(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::ClLit(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::ClVar(f0) => { kayak_rt::Trace::trace(*f0, t); }
                 Self::ClNil() => { }
-                Self::ClPair(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::ClPair(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -1308,11 +1308,11 @@ pub mod made__load__2__expander {
         KdRef(Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Kd {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Kd {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::KdTy(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::KdRef(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::KdTy(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::KdRef(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -1382,11 +1382,11 @@ pub mod made__load__2__expander {
         IvCage(Int),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Lv {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Lv {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::IvRib(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::IvCage(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::IvRib(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::IvCage(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -1406,11 +1406,11 @@ pub mod made__load__2__expander {
         RdRib(Pents),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Rd {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Rd {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::RdAt(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::RdRib(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::RdAt(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::RdRib(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -1430,11 +1430,11 @@ pub mod made__load__2__expander {
         DmCage(Rds),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Demand {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Demand {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::DmRib(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::DmCage(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::DmRib(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::DmCage(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -1532,11 +1532,11 @@ pub mod made__load__2__expander {
         NmNode(Int, Symbol, MxParserTypesShapes, kayak_rt::Handle<'static, NameTree>, kayak_rt::Handle<'static, NameTree>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for NameTree {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for NameTree {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
                 Self::NmLeaf() => { }
-                Self::NmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+                Self::NmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
             }
         }
     }
@@ -1580,6 +1580,14 @@ impl<'mxp, Place_Mxp> Clone for MadeLoad3MainFace<'mxp, Place_Mxp> {
 
 impl<'mxp, Place_Mxp> Copy for MadeLoad3MainFace<'mxp, Place_Mxp> {}
 
+impl<'mxp, Place_Mxp> kayak_rt::Trace for MadeLoad3MainFace<'mxp, Place_Mxp> {
+    kayak_rt::trace_whole!();
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
+        kayak_rt::Trace::trace(self.1, t);
+    }
+}
+
 pub mod made__load__3__main {
     use super::*;
 
@@ -1589,7 +1597,7 @@ pub mod made__load__3__main {
     /// values, made as it is made (C433).
     pub struct MadeLoad3MainFaceState<'mxp, Place_Mxp> {
         pub mx_phase1_given: std::cell::Cell<Option<RefAt<'mxp, kayak_rt::value::Value>>>,
-        pub mx_phase1_asker: std::cell::Cell<Option<RefAt<'mxp, &'mxp (dyn Fn(Str) -> Str + Send + Sync)>>>,
+        pub mx_phase1_asker: std::cell::Cell<Option<RefAt<'mxp, kayak_rt::Proc1s<'mxp, Str, Str>>>>,
         pub load_base: std::cell::Cell<Option<Int>>,
         pub parse_tag: std::cell::Cell<Option<Tag<kayak_rt::Handle<'static, Presult>, kayak_rt::Handle<'static, Presult>>>>,
         pub dt_type_forms: std::cell::Cell<Option<List<Symbol>>>,
@@ -1899,7 +1907,7 @@ pub mod made__load__3__main {
         if not(string_eq_p(a, str_lit(""))) {
             a
         } else {
-            let b = (get(maker_st.mx_phase1_asker.get().unwrap()))(request);
+            let b = (get(maker_st.mx_phase1_asker.get().unwrap())).call(request);
             if string_eq_p(b, str_lit("")) {
                 str_lit("!a procedural macro's transformer, run as the program is read: not yet here")
             } else {
@@ -1989,8 +1997,8 @@ pub mod made__load__3__main {
     }
 
     pub fn text_place(text: Str, at: Int) -> Str {
-        let go__knot = knot::<&'static (dyn Fn(Int, Int, Int) -> Str + Send + Sync)>();
-        let go = lambda3s(move |mut i: Int, mut line: Int, mut col: Int| {
+        let go__knot = knot::<kayak_rt::Proc3s<'static, Int, Int, Int, Str>>();
+        let go = kayak_rt::as_proc(kayak_rt::closure3s((text, at,), |(text, at,), mut i: Int, mut line: Int, mut col: Int| {
             loop {
                 if (_gt_eq(i, at) || _gt_eq(i, string_length(text))) {
                     return string_append(int_to_string(line), string_append(str_lit(":"), int_to_string(col)));
@@ -2002,9 +2010,9 @@ pub mod made__load__3__main {
                     continue;
                 }
             }
-        });
+        }));
         go__knot.set(go);
-        go(int_lit(0), int_lit(1), int_lit(1))
+        go.call(int_lit(0), int_lit(1), int_lit(1))
     }
 
     pub fn in_loaded_as<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, fs: LoadedFiles, base: Int, path: Str, m: Str, at: Int) -> Str {
@@ -2540,16 +2548,16 @@ pub mod made__load__3__main {
     }
 
     pub fn datum_parts(d: kayak_rt::value::Value) -> List<SynsA> {
-        let go__knot = knot::<&'static (dyn Fn(kayak_rt::value::Value) -> SynsA + Send + Sync)>();
-        let end__knot = knot::<&'static (dyn Fn(kayak_rt::value::Value) -> kayak_rt::value::Value + Send + Sync)>();
-        let go = lambda1s(move |x: kayak_rt::value::Value| {
+        let go__knot = knot::<kayak_rt::Proc1s<'static, kayak_rt::value::Value, SynsA>>();
+        let end__knot = knot::<kayak_rt::Proc1s<'static, kayak_rt::value::Value, kayak_rt::value::Value>>();
+        let go = kayak_rt::as_proc(kayak_rt::closure1s((go__knot,), |(go__knot,), x: kayak_rt::value::Value| {
             if kayak_rt::value::pair_p(x) {
-                kayak_rt::heap_cons(datum_to_syn(kayak_rt::value::car(x)), (go__knot.get())(kayak_rt::value::cdr(x)))
+                kayak_rt::heap_cons(datum_to_syn(kayak_rt::value::car(x)), (go__knot.get()).call(kayak_rt::value::cdr(x)))
             } else {
                 nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>()
             }
-        });
-        let end = lambda1s(move |mut x: kayak_rt::value::Value| {
+        }));
+        let end = kayak_rt::as_proc(kayak_rt::closure1s((), |(), mut x: kayak_rt::value::Value| {
             loop {
                 if kayak_rt::value::pair_p(x) {
                     x = kayak_rt::value::cdr(x);
@@ -2558,14 +2566,14 @@ pub mod made__load__3__main {
                     return x;
                 }
             }
-        });
+        }));
         go__knot.set(go);
         end__knot.set(end);
-        let e = end(d);
+        let e = end.call(d);
         if kayak_rt::value::null_p(e) {
-            kayak_rt::heap_cons(go(d), kayak_rt::nil())
+            kayak_rt::heap_cons(go.call(d), kayak_rt::nil())
         } else {
-            kayak_rt::heap_cons(go(d), kayak_rt::heap_cons(the::<SynsA>(kayak_rt::heap_cons(atom(e, int_lit(0), int_lit(0), int_lit(0)), kayak_rt::nil())), kayak_rt::nil()))
+            kayak_rt::heap_cons(go.call(d), kayak_rt::heap_cons(the::<SynsA>(kayak_rt::heap_cons(atom(e, int_lit(0), int_lit(0), int_lit(0)), kayak_rt::nil())), kayak_rt::nil()))
         }
     }
 
@@ -2701,16 +2709,16 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn fail_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, message: Str, s: kayak_rt::Handle<'static, Syn>) -> Result<Void, Unwind> {
-        Ok(match mx_fail(message, syn_start(s), syn_end(s))? {})
+    pub fn fail_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, message: Str, s: kayak_rt::Handle<'static, Syn>) -> Result<Void, Unwind> {
+        Ok(match mx_fail.call(message, syn_start(s), syn_end(s))? {})
     }
 
     #[inline]
-    pub fn one_var<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, c: Stys, f: &'mxp dyn Fn(kayak_rt::Handle<'static, Sty>) -> kayak_rt::Handle<'static, Sty>) -> Stys {
+    pub fn one_var<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, c: Stys, f: kayak_rt::Proc1<'mxp, kayak_rt::Handle<'static, Sty>, kayak_rt::Handle<'static, Sty>>) -> Stys {
         if null_p(c) {
             nil::<kayak_rt::Handle<'static, made__load__2__expander::Sty>>()
         } else {
-            kayak_rt::cons(f(car(c)), kayak_rt::nil())
+            kayak_rt::cons(f.call(car(c)), kayak_rt::nil())
         }
     }
 
@@ -2759,7 +2767,7 @@ pub mod made__load__3__main {
                 }
             }
             made__load__2__expander::Sty::SMu(b, r, p) => {
-                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, _plus(k, int_lit(1)), op, d, x, env), lambda1(move |c: kayak_rt::Handle<'static, Sty>| {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, _plus(k, int_lit(1)), op, d, x, env), kayak_rt::closure1((r, p,), |(r, p,), c: kayak_rt::Handle<'static, Sty>| {
                     s_mu(c, r, p)
                 }))
             }
@@ -2772,22 +2780,22 @@ pub mod made__load__3__main {
                 }
             }
             made__load__2__expander::Sty::SImport(b, y) => {
-                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), lambda1(move |c: kayak_rt::Handle<'static, Sty>| {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), kayak_rt::closure1((y,), |(y,), c: kayak_rt::Handle<'static, Sty>| {
                     s_import(c, y)
                 }))
             }
             made__load__2__expander::Sty::SExport(b, y) => {
-                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), lambda1(move |c: kayak_rt::Handle<'static, Sty>| {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), kayak_rt::closure1((y,), |(y,), c: kayak_rt::Handle<'static, Sty>| {
                     s_export(c, y)
                 }))
             }
             made__load__2__expander::Sty::SMany(b) => {
-                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), lambda1(move |c: kayak_rt::Handle<'static, Sty>| {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), kayak_rt::closure1((), |(), c: kayak_rt::Handle<'static, Sty>| {
                     s_many(c)
                 }))
             }
             made__load__2__expander::Sty::STyped(b, h) => {
-                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), lambda1(move |c: kayak_rt::Handle<'static, Sty>| {
+                one_var(mxp, maker_st, vars_map(mxp, maker_st, b, k, op, d, x, env), kayak_rt::closure1((h,), |(h,), c: kayak_rt::Handle<'static, Sty>| {
                     s_typed(c, h)
                 }))
             }
@@ -3241,7 +3249,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mu_read<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
+    pub fn mu_read<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
         if (null_p(scope) && not(oneofs_apart_p(mxp, maker_st, t, nil::<kayak_rt::Handle<'static, made__load__2__expander::Sty>>()))) {
             match fail_at(mxp, maker_st, mx_fail, maker_st.oneof_apart.get().unwrap(), s)? {}
         } else {
@@ -3333,7 +3341,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_sty_name<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
+    pub fn read_sty_name<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
         let n = syn_symbol(mxp, maker_st, s)?;
         let mu = scope_of(n, scope);
         if _gt_eq(mu, int_lit(0)) {
@@ -3485,7 +3493,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_hole<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut parts: SynsA, mut kind: Str, mut s: kayak_rt::Handle<'static, Syn>, mut ty: SynsA, mut eff: SynsA) -> Result<Hole, Unwind> {
+    pub fn read_hole<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut parts: SynsA, mut kind: Str, mut s: kayak_rt::Handle<'static, Syn>, mut ty: SynsA, mut eff: SynsA) -> Result<Hole, Unwind> {
         loop {
             let expr_p = string_eq_p(kind, str_lit("expr"));
             let usage = string_append(str_lit("a syntax type: "), if expr_p {
@@ -3522,7 +3530,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_delta<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, d: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
+    pub fn read_delta<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, d: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
         let (n, ds) = (if syn_symbol_p(d) {
             syn_name(d)
         } else {
@@ -3553,7 +3561,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn path_steps<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ks: SynsA) -> Result<Addr, Unwind> {
+    pub fn path_steps<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ks: SynsA) -> Result<Addr, Unwind> {
         if null_p(ks) {
             Ok(nil::<bool>())
         } else {
@@ -3595,7 +3603,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_addr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, a: kayak_rt::Handle<'static, Syn>) -> Result<Addr, Unwind> {
+    pub fn read_addr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, a: kayak_rt::Handle<'static, Syn>) -> Result<Addr, Unwind> {
         let name = if syn_symbol_p(a) {
             syn_name(a)
         } else {
@@ -3616,7 +3624,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, es: SynsA) -> Result<Entries, Unwind> {
+    pub fn read_rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, es: SynsA) -> Result<Entries, Unwind> {
         if null_p(es) {
             Ok(nil::<Product_11_12<List<bool>, Int>>())
         } else {
@@ -3630,7 +3638,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_rings<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, rs: SynsA) -> Result<Rings, Unwind> {
+    pub fn read_rings<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, rs: SynsA) -> Result<Rings, Unwind> {
         if null_p(rs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Ring>>())
         } else {
@@ -3654,7 +3662,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_bind<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, b: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, MxTypesBind>, Unwind> {
+    pub fn read_bind<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, b: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, MxTypesBind>, Unwind> {
         let items = proper_items(b);
         let head = if (pair_p(items) && syn_symbol_p(car(items))) {
             syn_name(car(items))
@@ -3688,7 +3696,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_sty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
+    pub fn read_sty<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
         if syn_nil_p(s) {
             Ok(s_nil())
         } else if syn_symbol_p(s) {
@@ -3787,7 +3795,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_seq_list<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, items: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
+    pub fn read_seq_list<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, items: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
         if null_p(cdr(cdr(items))) {
             Ok(mu_read(mxp, maker_st, mx_fail, seq_type(mxp, maker_st, read_sty(mxp, maker_st, mx_fail, car(items), mx_types_named, cons(Product_11_12(string_to_symbol(str_lit("")), false), scope))?), s, scope)?)
         } else {
@@ -3797,11 +3805,11 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn read_pair<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, parts: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
+    pub fn read_pair<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, parts: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
         Ok(s_pair(read_sty(mxp, maker_st, mx_fail, car(parts), mx_types_named, scope)?, read_sty(mxp, maker_st, mx_fail, nth(parts, int_lit(1)), mx_types_named, scope)?))
     }
 
-    pub fn read_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<Stys, Unwind> {
+    pub fn read_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: SynsA, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<Stys, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Sty>>())
         } else {
@@ -3809,7 +3817,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_mu<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
+    pub fn read_mu<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, mx_types_named: MxTypesNamed, scope: MuScope) -> Result<kayak_rt::Handle<'static, Sty>, Unwind> {
         let args = proper_items(s);
         if (_eq(len(args), int_lit(3)) && syn_symbol_p(nth(args, int_lit(1)))) {
             let body = read_sty(mxp, maker_st, mx_fail, nth(args, int_lit(2)), mx_types_named, cons(Product_11_12(syn_symbol(mxp, maker_st, nth(args, int_lit(1)))?, true), scope))?;
@@ -4474,7 +4482,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn read_kernel<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut fs: SynsA, mut mx_types_named: MxTypesNamed, mut out: MxTypesNamed, mut defs: MxTypesNamed) -> Result<Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>, Unwind> {
+    pub fn read_kernel<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut fs: SynsA, mut mx_types_named: MxTypesNamed, mut out: MxTypesNamed, mut defs: MxTypesNamed) -> Result<Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>, Unwind> {
         loop {
             if null_p(fs) {
                 return Ok(Product_11_12_13(out, defs, mx_types_named));
@@ -4497,7 +4505,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn kernel_tables<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>) -> Result<Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>, Unwind> {
+    pub fn kernel_tables<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>) -> Result<Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>, Unwind> {
         if null_p(get(maker_st.kernel_read.get().unwrap()).0) {
             set(maker_st.kernel_read.get().unwrap(), read_kernel(mxp, maker_st, mx_fail, proper_items(datum_to_syn(maker_st.kernel_forms.get().unwrap())), kayak_rt::cons(Product_11_12(symbol_lit(str_lit("defn")), s_defn()), kayak_rt::nil()), nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Sty>>>(), nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Sty>>>())?)
         } else {
@@ -4507,16 +4515,16 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn kernel_sigs<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>) -> Result<MxTypesNamed, Unwind> {
+    pub fn kernel_sigs<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>) -> Result<MxTypesNamed, Unwind> {
         Ok(kernel_tables(mxp, maker_st, mx_fail)?.0)
     }
 
     #[inline]
-    pub fn kernel_definitions<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>) -> Result<MxTypesNamed, Unwind> {
+    pub fn kernel_definitions<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>) -> Result<MxTypesNamed, Unwind> {
         Ok(kernel_tables(mxp, maker_st, mx_fail)?.1)
     }
 
-    pub fn scope_tables<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>) -> Result<Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>, Unwind> {
+    pub fn scope_tables<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>) -> Result<Product_11_12_13<MxTypesNamed, MxTypesNamed, MxTypesNamed>, Unwind> {
         if null_p(get(maker_st.scope_read.get().unwrap()).0) {
             set(maker_st.scope_read.get().unwrap(), read_kernel(mxp, maker_st, mx_fail, proper_items(datum_to_syn(maker_st.scope_forms.get().unwrap())), kernel_tables(mxp, maker_st, mx_fail)?.2, nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Sty>>>(), nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Sty>>>())?)
         } else {
@@ -4526,12 +4534,12 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn scope_sigs<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>) -> Result<MxTypesNamed, Unwind> {
+    pub fn scope_sigs<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>) -> Result<MxTypesNamed, Unwind> {
         Ok(scope_tables(mxp, maker_st, mx_fail)?.0)
     }
 
     #[inline]
-    pub fn scope_definitions<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>) -> Result<MxTypesNamed, Unwind> {
+    pub fn scope_definitions<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>) -> Result<MxTypesNamed, Unwind> {
         Ok(scope_tables(mxp, maker_st, mx_fail)?.1)
     }
 
@@ -4889,7 +4897,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn indexed<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut r#as: Atms, mut ix: kayak_rt::Handle<'static, Index>, mut name: &'mxp dyn Fn(Int) -> List<Symbol>) -> kayak_rt::Handle<'static, Index> {
+    pub fn indexed<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut r#as: Atms, mut ix: kayak_rt::Handle<'static, Index>, mut name: kayak_rt::Proc1<'mxp, Int, List<Symbol>>) -> kayak_rt::Handle<'static, Index> {
         loop {
             if null_p(r#as) {
                 return ix;
@@ -4898,7 +4906,7 @@ pub mod made__load__3__main {
                     let tagcase_ = car(r#as);
                     match *tagcase_ {
                         made__load__2__expander::Atm::AtmLit(b, d) => {
-                            let m = name(b);
+                            let m = name.call(b);
                             if null_p(m) {
                                 ix
                             } else {
@@ -4916,7 +4924,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_env_indexed_grouped<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut ls: Levels, mut ix: kayak_rt::Handle<'static, Index>, mut open: bool, mut name: &'mxp dyn Fn(Int) -> List<Symbol>) -> MxEnvIndexedGroups {
+    pub fn mx_env_indexed_grouped<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut ls: Levels, mut ix: kayak_rt::Handle<'static, Index>, mut open: bool, mut name: kayak_rt::Proc1<'mxp, Int, List<Symbol>>) -> MxEnvIndexedGroups {
         loop {
             if null_p(ls) {
                 if open {
@@ -4952,7 +4960,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn env_within<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, e: kayak_rt::Handle<'static, MxEnvIndexedEnv>, ls: Levels, name: &'mxp dyn Fn(Int) -> List<Symbol>) -> kayak_rt::Handle<'static, MxEnvIndexedEnv> {
+    pub fn env_within<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, e: kayak_rt::Handle<'static, MxEnvIndexedEnv>, ls: Levels, name: kayak_rt::Proc1<'mxp, Int, List<Symbol>>) -> kayak_rt::Handle<'static, MxEnvIndexedEnv> {
         let x = down_env(e);
         env_of(Product_11_12(append(ls, x.0), append(mx_env_indexed_grouped(mxp, maker_st, ls, ix_leaf(), false, name), x.1)))
     }
@@ -5053,7 +5061,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn env_lookup<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, e: kayak_rt::Handle<'static, MxEnvIndexedEnv>, n: Symbol, d: bool, from: Int, name: &'mxp dyn Fn(Int) -> List<Symbol>) -> Looked {
+    pub fn env_lookup<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, e: kayak_rt::Handle<'static, MxEnvIndexedEnv>, n: Symbol, d: bool, from: Int, name: kayak_rt::Proc1<'mxp, Int, List<Symbol>>) -> Looked {
         looked_in(mx_env_indexed_dropped(down_env(e).1, from), n, symbol_name_hash(n), d, from)
     }
 
@@ -5247,10 +5255,10 @@ pub mod made__load__3__main {
         array_set_x(get(maker_st.node_holes.get().unwrap()), i, the::<Holes>(kayak_rt::cons(h, kayak_rt::nil())))
     }
 
-    pub fn array_grown<'mxp, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, a: Array<T>, fill: T) -> Array<T> {
+    pub fn array_grown<'mxp, T: Copy + 'static + kayak_rt::Trace, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, a: Array<T>, fill: T) -> Array<T> {
         let b = the::<Array<T>>(make_array(_star(int_lit(2), array_length(a)), fill));
-        let copied__knot = knot::<&'mxp dyn Fn(Int) -> ()>();
-        let copied = lambda1(move |mut i: Int| {
+        let copied__knot = knot::<kayak_rt::Proc1<'mxp, Int, ()>>();
+        let copied = kayak_rt::closure1((a, b,), |(a, b,), mut i: Int| {
             loop {
                 if _eq(i, array_length(a)) {
                     return ();
@@ -5262,7 +5270,7 @@ pub mod made__load__3__main {
             }
         });
         copied__knot.set(copied);
-        copied(int_lit(0));
+        copied.call(int_lit(0));
         b
     }
 
@@ -5472,7 +5480,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn fits_within_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut t: kayak_rt::Handle<'static, Sty>, mut s: kayak_rt::Handle<'static, Syn>, mut mode: Int, mut pvar_p: &'mxp dyn Fn(Symbol) -> Int, mut depth: Int) -> Result<bool, Unwind> {
+    pub fn fits_within_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut t: kayak_rt::Handle<'static, Sty>, mut s: kayak_rt::Handle<'static, Syn>, mut mode: Int, mut pvar_p: kayak_rt::Proc1<'mxp, Symbol, Int>, mut depth: Int) -> Result<bool, Unwind> {
         loop {
             let (u, x, program_p) = (unfold(mxp, maker_st, t), if _gt_eq(mode, int_lit(2)) {
                 the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
@@ -5488,14 +5496,14 @@ pub mod made__load__3__main {
                     return Ok(false);
                 }
             } else {
-                if (syn_symbol_p(s) && _lt(mode, int_lit(3)) && _lt(pvar_p(syn_symbol(mxp, maker_st, s)?), int_lit(0))) {
+                if (syn_symbol_p(s) && _lt(mode, int_lit(3)) && _lt(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(0))) {
                     let tagcase_ = u;
                     match *tagcase_ {
                         made__load__2__expander::Sty::SUnion(ms) => {
                             return Ok(any_fits_p(mxp, maker_st, ms, s, mode, pvar_p, depth)?);
                         }
                         made__load__2__expander::Sty::SMark(n, i) => {
-                            return Ok(_eq(i, _minus(int_lit(0), pvar_p(syn_symbol(mxp, maker_st, s)?))));
+                            return Ok(_eq(i, _minus(int_lit(0), pvar_p.call(syn_symbol(mxp, maker_st, s)?))));
                         }
                         made__load__2__expander::Sty::SLiteral(n) => {
                             return Ok(symbol_eq_p(syn_symbol(mxp, maker_st, s)?, n));
@@ -5509,7 +5517,7 @@ pub mod made__load__3__main {
                         }
                     }
                 } else {
-                    if (syn_symbol_p(s) && ((_eq(mode, int_lit(0)) && not(_eq(mx_types_kind_of(u), int_lit(7))) && not(_eq(mx_types_kind_of(u), int_lit(15))) && not(string_eq_p(syn_name(s), str_lit("_"))) && not(string_eq_p(syn_name(s), str_lit("...")))) || (_eq(mode, int_lit(1)) && _gt(pvar_p(syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not((_eq(pvar_p(syn_symbol(mxp, maker_st, s)?), int_lit(1)) && (_eq(mx_types_kind_of(u), int_lit(8)) || _eq(mx_types_kind_of(u), int_lit(6)) || _eq(mx_types_kind_of(u), int_lit(10)))))))) {
+                    if (syn_symbol_p(s) && ((_eq(mode, int_lit(0)) && not(_eq(mx_types_kind_of(u), int_lit(7))) && not(_eq(mx_types_kind_of(u), int_lit(15))) && not(string_eq_p(syn_name(s), str_lit("_"))) && not(string_eq_p(syn_name(s), str_lit("...")))) || (_eq(mode, int_lit(1)) && _gt(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not((_eq(pvar_p.call(syn_symbol(mxp, maker_st, s)?), int_lit(1)) && (_eq(mx_types_kind_of(u), int_lit(8)) || _eq(mx_types_kind_of(u), int_lit(6)) || _eq(mx_types_kind_of(u), int_lit(10)))))))) {
                         return Ok(true);
                     } else {
                         let tagcase_ = u;
@@ -5541,7 +5549,7 @@ pub mod made__load__3__main {
                                 return Ok((syn_symbol_p(s) && symbol_eq_p(syn_symbol(mxp, maker_st, s)?, n)));
                             }
                             made__load__2__expander::Sty::SMark(n, i) => {
-                                return Ok((syn_symbol_p(s) && _eq(i, _minus(int_lit(0), pvar_p(syn_symbol(mxp, maker_st, s)?)))));
+                                return Ok((syn_symbol_p(s) && _eq(i, _minus(int_lit(0), pvar_p.call(syn_symbol(mxp, maker_st, s)?)))));
                             }
                             made__load__2__expander::Sty::SBvar() => {
                                 return Ok((syn_symbol_p(s) && (program_p || not(reserved_syn_p(mxp, maker_st, s)?))));
@@ -5575,7 +5583,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn any_fits_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut s: kayak_rt::Handle<'static, Syn>, mut mode: Int, mut pvar_p: &'mxp dyn Fn(Symbol) -> Int, mut depth: Int) -> Result<bool, Unwind> {
+    pub fn any_fits_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut ms: Stys, mut s: kayak_rt::Handle<'static, Syn>, mut mode: Int, mut pvar_p: kayak_rt::Proc1<'mxp, Symbol, Int>, mut depth: Int) -> Result<bool, Unwind> {
         loop {
             if not(null_p(ms)) {
                 if fits_within_p(mxp, maker_st, car(ms), s, mode, pvar_p, depth)? {
@@ -5591,7 +5599,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn mx_nodes_fits_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, mode: Int, pvar_p: &'mxp dyn Fn(Symbol) -> Int) -> Result<bool, Unwind> {
+    pub fn mx_nodes_fits_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, mode: Int, pvar_p: kayak_rt::Proc1<'mxp, Symbol, Int>) -> Result<bool, Unwind> {
         Ok(fits_within_p(mxp, maker_st, t, s, mode, pvar_p, maker_st.fits_depth.get().unwrap())?)
     }
 
@@ -5600,7 +5608,7 @@ pub mod made__load__3__main {
             let (ds, ks) = (get(maker_st.defined.get().unwrap()), get(maker_st.marks.get().unwrap()));
             if null_p(ms) {
                 return Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Sty>>());
-            } else if mx_nodes_fits_p(mxp, maker_st, car(ms), s, mode, lambda1(move |n: Symbol| {
+            } else if mx_nodes_fits_p(mxp, maker_st, car(ms), s, mode, kayak_rt::closure1((ps, ds, ks,), |(ps, ds, ks,), n: Symbol| {
                 let p = pvar_shape(n, ps);
                 if _gt(p, int_lit(0)) {
                     p
@@ -5787,7 +5795,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn rules_word_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol) -> Result<bool, Unwind> {
+    pub fn rules_word_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol) -> Result<bool, Unwind> {
         let name = symbol_to_string(n);
         Ok((string_eq_p(name, str_lit("_")) || reserved_p(mxp, maker_st, name) || not(null_p(sig_of_name(n, kernel_sigs(mxp, maker_st, mx_fail)?))) || not(null_p(sig_of_name(n, kernel_definitions(mxp, maker_st, mx_fail)?))) || desc_word_p(mxp, maker_st, name, true) || type_form_p(mxp, maker_st, name) || mx_syntax_name_in_p(n, kayak_rt::cons(symbol_lit(str_lit("else")), kayak_rt::cons(symbol_lit(str_lit("=>")), kayak_rt::cons(symbol_lit(str_lit("quote")), kayak_rt::cons(symbol_lit(str_lit("quasiquote")), kayak_rt::cons(symbol_lit(str_lit("unquote")), kayak_rt::cons(symbol_lit(str_lit("unquote-splicing")), kayak_rt::cons(symbol_lit(str_lit("syntax-rules")), kayak_rt::cons(symbol_lit(str_lit("trailmark")), kayak_rt::cons(symbol_lit(str_lit("er-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit("sc-macro-transformer")), kayak_rt::cons(symbol_lit(str_lit("rsc-macro-transformer")), kayak_rt::nil())))))))))))) || macro_p(mxp, maker_st, n) || _gt(mark_now(mxp, maker_st, n), int_lit(0))))
     }
@@ -5927,7 +5935,7 @@ pub mod made__load__3__main {
         Ok((syn_keyword_p(hd) || (syn_symbol_p(hd) && pvar_p(syn_symbol(mxp, maker_st, hd)?, ps) && _eq(mx_types_kind_of(car(pvar_of(syn_symbol(mxp, maker_st, hd)?, ps)).0), int_lit(5)))))
     }
 
-    pub fn defines_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<bool, Unwind> {
+    pub fn defines_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<bool, Unwind> {
         let items = proper_items(s);
         let head = if (not(null_p(items)) && syn_symbol_p(car(items))) {
             syn_name(car(items))
@@ -5944,7 +5952,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn all_define_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut xs: SynsA) -> Result<bool, Unwind> {
+    pub fn all_define_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut xs: SynsA) -> Result<bool, Unwind> {
         loop {
             if null_p(xs) {
                 return Ok(true);
@@ -6010,7 +6018,7 @@ pub mod made__load__3__main {
         syntax_read_in(d, get(maker_st.syntax_read.get().unwrap()))
     }
 
-    pub fn unknown_head_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, h: Symbol, ps: Pvars) -> Result<bool, Unwind> {
+    pub fn unknown_head_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, h: Symbol, ps: Pvars) -> Result<bool, Unwind> {
         if pvar_p(h, ps) {
             Ok(_eq(mx_types_kind_of(car(pvar_of(h, ps)).0), int_lit(1)))
         } else {
@@ -6154,7 +6162,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn fill_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mode: Int, at: Int, s: kayak_rt::Handle<'static, Syn>, d: bool) -> Result<(), Unwind> {
+    pub fn fill_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, at: Int, s: kayak_rt::Handle<'static, Syn>, d: bool) -> Result<(), Unwind> {
         if (syn_symbol_p(s) && _eq(mode, int_lit(1)) && macro_p(mxp, maker_st, syn_symbol(mxp, maker_st, s)?)) {
             Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), str_lit("` is a macro's name, which is not bound"))), s)? {})
         } else if (syn_symbol_p(s) && _eq(mode, int_lit(3))) {
@@ -6175,7 +6183,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn not_definition<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, what: Str) -> Result<(), Unwind> {
+    pub fn not_definition<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, what: Str) -> Result<(), Unwind> {
         Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(show_syn(s), string_append(str_lit("` is not a definition: a macro that makes "), string_append(str_lit("definitions makes "), what)))), s)? {})
     }
 
@@ -6234,7 +6242,7 @@ pub mod made__load__3__main {
         mx_nodes_kids
     }
 
-    pub fn name_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, n: kayak_rt::Handle<'static, Syn>, d: bool) -> Result<kayak_rt::Handle<'static, Atm>, Unwind> {
+    pub fn name_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, n: kayak_rt::Handle<'static, Syn>, d: bool) -> Result<kayak_rt::Handle<'static, Atm>, Unwind> {
         if (syn_symbol_p(n) && pvar_p(syn_symbol(mxp, maker_st, n)?, ps)) {
             with_kids(mxp, maker_st, at, k_pvar(syn_symbol(mxp, maker_st, n)?));
             Ok(atm_var(syn_symbol(mxp, maker_st, n)?, d, int_lit(0)))
@@ -6248,12 +6256,12 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn desc_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, n: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Atm>, Unwind> {
+    pub fn desc_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, n: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Atm>, Unwind> {
         with_core(mxp, maker_st, at, s_dvar());
         Ok(name_binder(mxp, maker_st, mx_fail, ps, at, n, true)?)
     }
 
-    pub fn dletrec_parts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, ks: List<Int>, es: SynsA) -> Result<Dparts, Unwind> {
+    pub fn dletrec_parts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, ks: List<Int>, es: SynsA) -> Result<Dparts, Unwind> {
         if (null_p(es) || null_p(ks)) {
             Ok(nil::<Product_11_12_13<kayak_rt::Handle<'static, made__load__2__expander::Atm>, Int, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>())
         } else {
@@ -6293,12 +6301,12 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn value_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, n: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Atm>, Unwind> {
+    pub fn value_binder<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, n: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Atm>, Unwind> {
         with_core(mxp, maker_st, at, s_bvar());
         Ok(name_binder(mxp, maker_st, mx_fail, ps, at, n, false)?)
     }
 
-    pub fn desc_values<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut free: Int) -> Result<(), Unwind> {
+    pub fn desc_values<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut free: Int) -> Result<(), Unwind> {
         loop {
             if null_p(ks) {
                 return Ok(());
@@ -6320,7 +6328,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn spec<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn spec<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let tagcase_ = s;
         match *tagcase_ {
             made__load__2__expander::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
@@ -6352,7 +6360,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn spec_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA) -> Result<(), Unwind> {
+    pub fn spec_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA) -> Result<(), Unwind> {
         loop {
             if (null_p(ks) || null_p(xs)) {
                 return Ok(());
@@ -6364,7 +6372,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_clause<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, c: kayak_rt::Handle<'static, Syn>, r#as: Atms) -> Result<(), Unwind> {
+    pub fn desc_clause<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, c: kayak_rt::Handle<'static, Syn>, r#as: Atms) -> Result<(), Unwind> {
         let parts = proper_items(c);
         let q = desc_kids(mxp, maker_st, at, parts);
         let head = syn_name(car(parts));
@@ -6380,7 +6388,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn select_path<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut at: Int, mut s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn select_path<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut at: Int, mut s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         loop {
             if syn_symbol_p(s) {
                 return Ok(desc_values(mxp, maker_st, mx_fail, ps, kayak_rt::cons(at, kayak_rt::nil()), int_lit(1))?);
@@ -6455,7 +6463,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn align<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mode: Int, ps: Pvars, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, root: Int, path: Addr) -> Result<Int, Unwind> {
+    pub fn align<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, root: Int, path: Addr) -> Result<Int, Unwind> {
         let at = node_new(mxp, maker_st, s, path, t);
         fill(mxp, maker_st, mx_fail, mode, ps, at, t, s, if _lt(root, int_lit(0)) {
             at
@@ -6465,7 +6473,7 @@ pub mod made__load__3__main {
         Ok(at)
     }
 
-    pub fn fill<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut mode: Int, mut ps: Pvars, mut at: Int, mut t: kayak_rt::Handle<'static, Sty>, mut s: kayak_rt::Handle<'static, Syn>, mut root: Int) -> Result<(), Unwind> {
+    pub fn fill<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut mode: Int, mut ps: Pvars, mut at: Int, mut t: kayak_rt::Handle<'static, Sty>, mut s: kayak_rt::Handle<'static, Syn>, mut root: Int) -> Result<(), Unwind> {
         loop {
             let tagcase_ = t;
             match *tagcase_ {
@@ -6501,7 +6509,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn fill_core<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, root: Int) -> Result<(), Unwind> {
+    pub fn fill_core<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, root: Int) -> Result<(), Unwind> {
         with_core(mxp, maker_st, at, t);
         if (_eq(mode, int_lit(0)) && syn_symbol_p(s) && _gt(mark_now(mxp, maker_st, syn_symbol(mxp, maker_st, s)?), int_lit(0)) && not((_eq(mx_types_kind_of(unfold(mxp, maker_st, t)), int_lit(15)) || mx_nodes_union_p(unfold(mxp, maker_st, t))))) {
             Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), string_append(str_lit("` is a trailmark, which a pattern "), string_append(str_lit("matches where its signature writes `(trailmark "), string_append(syn_name(s), str_lit(")`, and no pattern variable")))))), s)? {})
@@ -6527,7 +6535,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn fill_rules<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mode: Int, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, root: Int) -> Result<(), Unwind> {
+    pub fn fill_rules<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, root: Int) -> Result<(), Unwind> {
         let items = rules_items(s);
         if not(_eq(mode, int_lit(1))) {
             Ok(())
@@ -6563,7 +6571,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn fill_seq<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, x: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn fill_seq<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, x: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let elem = seq_elem(mxp, maker_st, t);
         if null_p(elem) {
             Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(show_syn(s), string_append(str_lit("` repeats a part by `...` where the form "), str_lit("takes no list of them")))), s)? {})
@@ -6597,10 +6605,10 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn fill_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, root: Int) -> Result<(), Unwind> {
-        let (said, shown) = (lambda1(move |why: Str| {
+    pub fn fill_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, t: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, root: Int) -> Result<(), Unwind> {
+        let (said, shown) = (kayak_rt::closure1((mxp, maker_st, mx_fail, s,), |(mxp, maker_st, mx_fail, s,), why: Str| {
             Ok(match fail_at(mxp, maker_st, mx_fail, why, s)? {})
-        }), the::<&'mxp dyn Fn() -> Str>(lambda0(move || {
+        }), the::<kayak_rt::Proc0<'mxp, Str>>(kayak_rt::closure0((s,), |(s,)| {
             string_append(str_lit("`"), string_append(show_syn(s), str_lit("`")))
         })));
         let tagcase_ = t;
@@ -6616,17 +6624,17 @@ pub mod made__load__3__main {
                     all
                 };
                 if null_p(fit) {
-                    Ok(match said(string_append(shown(), string_append(str_lit(" is of none of the shapes this part "), str_lit("may have"))))? {})
+                    Ok(match said.call(string_append(shown.call(), string_append(str_lit(" is of none of the shapes this part "), str_lit("may have"))))? {})
                 } else if null_p(cdr(fit)) {
                     Ok(fill(mxp, maker_st, mx_fail, mode, ps, at, car(fit), s, at)?)
                 } else {
-                    Ok(match said(string_append(shown(), string_append(str_lit(" could be of more than one of this part's "), str_lit("shapes"))))? {})
+                    Ok(match said.call(string_append(shown.call(), string_append(str_lit(" could be of more than one of this part's "), str_lit("shapes"))))? {})
                 }
             }
             made__load__2__expander::Sty::SPair(a, d) => {
                 let parts = split(s);
                 if null_p(parts) {
-                    Ok(match said(string_append(shown(), str_lit(" is not a list as this part must be")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a list as this part must be")))? {})
                 } else {
                     let path = node_path(mxp, maker_st, at);
                     let no = _eq(mode, int_lit(2));
@@ -6647,21 +6655,21 @@ pub mod made__load__3__main {
                 if syn_nil_p(s) {
                     Ok(with_kids(mxp, maker_st, at, k_nil()))
                 } else {
-                    Ok(match said(string_append(shown(), str_lit(" is more than this part may have")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit(" is more than this part may have")))? {})
                 }
             }
             made__load__2__expander::Sty::SLiteral(n) => {
                 if (syn_symbol_p(s) && symbol_eq_p(syn_symbol(mxp, maker_st, s)?, n)) {
                     Ok(())
                 } else {
-                    Ok(match said(string_append(shown(), string_append(str_lit(" where `"), string_append(symbol_to_string(n), str_lit("` is written")))))? {})
+                    Ok(match said.call(string_append(shown.call(), string_append(str_lit(" where `"), string_append(symbol_to_string(n), str_lit("` is written")))))? {})
                 }
             }
             made__load__2__expander::Sty::SMark(n, i) => {
                 if (syn_symbol_p(s) && _eq(mark_now(mxp, maker_st, syn_symbol(mxp, maker_st, s)?), i)) {
                     Ok(())
                 } else {
-                    Ok(match said(string_append(shown(), string_append(str_lit(" where the trailmark `"), string_append(symbol_to_string(n), str_lit("` is written")))))? {})
+                    Ok(match said.call(string_append(shown.call(), string_append(str_lit(" where the trailmark `"), string_append(symbol_to_string(n), str_lit("` is written")))))? {})
                 }
             }
             made__load__2__expander::Sty::SBvar() => {
@@ -6681,7 +6689,7 @@ pub mod made__load__3__main {
                         Ok(())
                     }
                 } else {
-                    Ok(match said(string_append(shown(), str_lit(" is not a variable")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a variable")))? {})
                 }
             }
             made__load__2__expander::Sty::SLabel() => {
@@ -6692,9 +6700,9 @@ pub mod made__load__3__main {
                 } else if (_eq(mode, int_lit(3)) && syn_number_p(s)) {
                     Ok(())
                 } else if syn_symbol_p(s) {
-                    Ok(match said(string_append(str_lit("a tag or label in a template is a keyword: `#:"), string_append(syn_name(s), string_append(str_lit("`, not `"), string_append(syn_name(s), str_lit("`"))))))? {})
+                    Ok(match said.call(string_append(str_lit("a tag or label in a template is a keyword: `#:"), string_append(syn_name(s), string_append(str_lit("`, not `"), string_append(syn_name(s), str_lit("`"))))))? {})
                 } else {
-                    Ok(match said(string_append(shown(), str_lit(" is not a tag or label")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a tag or label")))? {})
                 }
             }
             made__load__2__expander::Sty::SLambda() => {
@@ -6705,14 +6713,14 @@ pub mod made__load__3__main {
                 } else if (_eq(mode, int_lit(2)) && lambda_shaped_p(s)) {
                     Ok(())
                 } else {
-                    Ok(match said(string_append(shown(), str_lit(" is not a lambda, as this part must be")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a lambda, as this part must be")))? {})
                 }
             }
             made__load__2__expander::Sty::SExpr() => {
                 if _eq(mode, int_lit(3)) {
                     Ok(program_expr(mxp, maker_st, mx_fail, ps, at, s)?)
                 } else if reserved_syn_p(mxp, maker_st, s)? {
-                    Ok(match said(string_append(str_lit("`"), string_append(syn_name(s), str_lit("` is a form's name, not an expression"))))? {})
+                    Ok(match said.call(string_append(str_lit("`"), string_append(syn_name(s), str_lit("` is a form's name, not an expression"))))? {})
                 } else if (syn_symbol_p(s) && string_eq_p(syn_name(s), str_lit("#u"))) {
                     Ok(())
                 } else if (syn_symbol_p(s) && _eq(mode, int_lit(1))) {
@@ -6720,7 +6728,7 @@ pub mod made__load__3__main {
                 } else if (not(syn_nil_p(s)) && not(null_p(split(s))) && _eq(mode, int_lit(1))) {
                     Ok(mx_align_form(mxp, maker_st, mx_fail, ps, at, s, false)?)
                 } else if syn_nil_p(s) {
-                    Ok(match said(str_lit("`()` is not an expression"))? {})
+                    Ok(match said.call(str_lit("`()` is not an expression"))? {})
                 } else {
                     Ok(())
                 }
@@ -6729,7 +6737,7 @@ pub mod made__load__3__main {
                 if (writes_p(mode) && not(syn_nil_p(s)) && not(null_p(split(s)))) {
                     Ok(mx_align_form(mxp, maker_st, mx_fail, ps, at, s, true)?)
                 } else {
-                    Ok(match said(string_append(shown(), str_lit(" is not a definition")))? {})
+                    Ok(match said.call(string_append(shown.call(), str_lit(" is not a definition")))? {})
                 }
             }
             made__load__2__expander::Sty::SType() => {
@@ -6758,7 +6766,7 @@ pub mod made__load__3__main {
                 let z = tagcase_;
                 let inside = pvar_inside(mxp, maker_st, s, ps)?;
                 if (_eq(mode, int_lit(1)) && not(null_p(inside))) {
-                    Ok(match said(string_append(str_lit("pattern variable `"), string_append(symbol_to_string(car(inside)), str_lit("` inside a quoted datum: only a whole one is placed"))))? {})
+                    Ok(match said.call(string_append(str_lit("pattern variable `"), string_append(symbol_to_string(car(inside)), str_lit("` inside a quoted datum: only a whole one is placed"))))? {})
                 } else {
                     Ok(())
                 }
@@ -6767,7 +6775,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn mx_align_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<(), Unwind> {
+    pub fn mx_align_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<(), Unwind> {
         if get(maker_st.program_walk.get().unwrap()) {
             Ok(program_form(mxp, maker_st, mx_fail, ps, at, s, defn)?)
         } else {
@@ -6775,7 +6783,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn template_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<(), Unwind> {
+    pub fn template_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<(), Unwind> {
         let parts = split(s);
         let hd = car(parts);
         let head = if (syn_symbol_p(hd) && not(pvar_p(syn_symbol(mxp, maker_st, hd)?, ps))) {
@@ -6846,7 +6854,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn pending_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<(), Unwind> {
+    pub fn pending_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<(), Unwind> {
         let (read, n) = (head_read(mxp, maker_st, s), syn_name(car(split(s))));
         pending_x(mxp, maker_st, at, defn);
         if not(null_p(read)) {
@@ -6870,7 +6878,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn program_expr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn program_expr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         if syn_symbol_p(s) {
             if {
                 let n = syn_symbol(mxp, maker_st, s)?;
@@ -6889,7 +6897,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn program_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<(), Unwind> {
+    pub fn program_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<(), Unwind> {
         let parts = split(s);
         let hd = car(parts);
         let n = if syn_symbol_p(hd) {
@@ -6928,7 +6936,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn scoped_read_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<bool, Unwind> {
+    pub fn scoped_read_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, defn: bool) -> Result<bool, Unwind> {
         let app = {
             pending_x(mxp, maker_st, at, defn);
             addr_in_p(node_path(mxp, maker_st, at), get(maker_st.scoped_apps.get().unwrap()))
@@ -6948,16 +6956,16 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn operands_as<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mode: Int, ps: Pvars, at: Int, sig: kayak_rt::Handle<'static, Sty>, rest: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn operands_as<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mode: Int, ps: Pvars, at: Int, sig: kayak_rt::Handle<'static, Sty>, rest: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, mode, ps, sig, rest, int_lit(-1), path_plus(mxp, maker_st, node_path(mxp, maker_st, at), false))?)))
     }
 
     #[inline]
-    pub fn unquoted<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, s: kayak_rt::Handle<'static, Syn>, path: Addr, depth: Int, mx_nodes_kids: List<Int>) -> Result<List<Int>, Unwind> {
+    pub fn unquoted<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, s: kayak_rt::Handle<'static, Syn>, path: Addr, depth: Int, mx_nodes_kids: List<Int>) -> Result<List<Int>, Unwind> {
         Ok(the::<List<Int>>(reverse(unquoted_onto(mxp, maker_st, mx_fail, ps, s, path, depth, mx_nodes_kids)?)))
     }
 
-    pub fn unquoted_onto<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut s: kayak_rt::Handle<'static, Syn>, mut path: Addr, mut depth: Int, mut mx_nodes_kids: List<Int>) -> Result<List<Int>, Unwind> {
+    pub fn unquoted_onto<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut s: kayak_rt::Handle<'static, Syn>, mut path: Addr, mut depth: Int, mut mx_nodes_kids: List<Int>) -> Result<List<Int>, Unwind> {
         loop {
             let tagcase_ = s;
             match *tagcase_ {
@@ -6999,7 +7007,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn unquoted_items<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut items: SynsA, mut path: Addr, mut depth: Int, mut mx_nodes_kids: List<Int>) -> Result<List<Int>, Unwind> {
+    pub fn unquoted_items<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut items: SynsA, mut path: Addr, mut depth: Int, mut mx_nodes_kids: List<Int>) -> Result<List<Int>, Unwind> {
         loop {
             if null_p(items) {
                 return Ok(mx_nodes_kids);
@@ -7010,7 +7018,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn defn_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, mode: Int) -> Result<(), Unwind> {
+    pub fn defn_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, mode: Int) -> Result<(), Unwind> {
         let parts = split(s);
         let hd = car(parts);
         let items = proper_items(s);
@@ -7054,11 +7062,11 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn operands<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, sig: kayak_rt::Handle<'static, Sty>, rest: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn operands<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, sig: kayak_rt::Handle<'static, Sty>, rest: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         Ok(with_kids(mxp, maker_st, at, k_form(align(mxp, maker_st, mx_fail, int_lit(1), ps, sig, rest, int_lit(-1), path_plus(mxp, maker_st, node_path(mxp, maker_st, at), false))?)))
     }
 
-    pub fn desc<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn desc<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let tagcase_ = s;
         match *tagcase_ {
             made__load__2__expander::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
@@ -7089,7 +7097,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_list<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, items: SynsA) -> Result<(), Unwind> {
+    pub fn desc_list<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, items: SynsA) -> Result<(), Unwind> {
         if (syn_symbol_p(car(items)) && not(pvar_p(syn_symbol(mxp, maker_st, car(items))?, ps)) && macro_p(mxp, maker_st, syn_symbol(mxp, maker_st, car(items))?)) {
             Ok(desc_use(mxp, maker_st, mx_fail, ps, at, s, syn_symbol(mxp, maker_st, car(items))?)?)
         } else {
@@ -7097,7 +7105,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_use<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, n: Symbol) -> Result<(), Unwind> {
+    pub fn desc_use<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, n: Symbol) -> Result<(), Unwind> {
         if (get(maker_st.scoped_on.get().unwrap()) && get(maker_st.scoped_whole.get().unwrap()) && makes_desc_p(mxp, maker_st, n)) {
             pending_x(mxp, maker_st, at, false);
             Ok(use_whole_x(mxp, maker_st, at, false))
@@ -7112,7 +7120,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_items<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, items: SynsA) -> Result<(), Unwind> {
+    pub fn desc_items<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, items: SynsA) -> Result<(), Unwind> {
         let mx_nodes_kids = desc_kids(mxp, maker_st, at, items);
         let h = car(items);
         let head = if (syn_symbol_p(h) && not(pvar_p(syn_symbol(mxp, maker_st, h)?, ps))) {
@@ -7167,7 +7175,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA) -> Result<(), Unwind> {
+    pub fn desc_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA) -> Result<(), Unwind> {
         loop {
             if (null_p(xs) || null_p(ks)) {
                 return Ok(());
@@ -7180,18 +7188,18 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn desc_scoped<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, r#as: Atms) -> Result<(), Unwind> {
+    pub fn desc_scoped<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>, r#as: Atms) -> Result<(), Unwind> {
         with_import(mxp, maker_st, at, bind_direct(r#as), at);
         Ok(desc(mxp, maker_st, mx_fail, ps, at, s)?)
     }
 
     #[inline]
-    pub fn desc_binders<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, bs: kayak_rt::Handle<'static, Syn>) -> Result<Atms, Unwind> {
+    pub fn desc_binders<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, bs: kayak_rt::Handle<'static, Syn>) -> Result<Atms, Unwind> {
         let entries = proper_items(bs);
         Ok(desc_binders_from(mxp, maker_st, mx_fail, ps, desc_kids(mxp, maker_st, at, entries), entries, nil::<kayak_rt::Handle<'static, made__load__2__expander::Atm>>())?)
     }
 
-    pub fn desc_binders_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut es: SynsA, mut out: Atms) -> Result<Atms, Unwind> {
+    pub fn desc_binders_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut es: SynsA, mut out: Atms) -> Result<Atms, Unwind> {
         loop {
             if (null_p(es) || null_p(ks)) {
                 return Ok(out);
@@ -7216,7 +7224,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_dletrec<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, mx_nodes_kids: List<Int>, items: SynsA) -> Result<(), Unwind> {
+    pub fn desc_dletrec<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, mx_nodes_kids: List<Int>, items: SynsA) -> Result<(), Unwind> {
         let entries = proper_items(nth(items, int_lit(1)));
         let parts = dletrec_parts(mxp, maker_st, mx_fail, ps, desc_kids(mxp, maker_st, kid(mx_nodes_kids, int_lit(1)), entries), entries)?;
         let r#as = dparts_atms(parts);
@@ -7224,7 +7232,7 @@ pub mod made__load__3__main {
         Ok(desc_scoped(mxp, maker_st, mx_fail, ps, kid(mx_nodes_kids, int_lit(2)), nth(items, int_lit(2)), r#as)?)
     }
 
-    pub fn dparts_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ds: Dparts, mut r#as: Atms) -> Result<(), Unwind> {
+    pub fn dparts_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ds: Dparts, mut r#as: Atms) -> Result<(), Unwind> {
         loop {
             if null_p(ds) {
                 return Ok(());
@@ -7236,7 +7244,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_fields<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut fs: SynsA) -> Result<(), Unwind> {
+    pub fn desc_fields<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut fs: SynsA) -> Result<(), Unwind> {
         loop {
             if (null_p(fs) || null_p(ks)) {
                 return Ok(());
@@ -7266,7 +7274,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_each_scoped<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA, mut r#as: Atms) -> Result<(), Unwind> {
+    pub fn desc_each_scoped<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA, mut r#as: Atms) -> Result<(), Unwind> {
         loop {
             if (null_p(xs) || null_p(ks)) {
                 return Ok(());
@@ -7278,7 +7286,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut ms: SynsA, mut r#as: Atms, mut template: bool) -> Result<(), Unwind> {
+    pub fn desc_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut ms: SynsA, mut r#as: Atms, mut template: bool) -> Result<(), Unwind> {
         loop {
             if (null_p(ms) || null_p(ks)) {
                 return Ok(());
@@ -7341,7 +7349,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_subr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, s: kayak_rt::Handle<'static, Syn>, items: SynsA, mx_nodes_kids: List<Int>) -> Result<(), Unwind> {
+    pub fn desc_subr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, s: kayak_rt::Handle<'static, Syn>, items: SynsA, mx_nodes_kids: List<Int>) -> Result<(), Unwind> {
         let plain = _minus(len(items), clauses_at_end(reverse(items)));
         if (_lt(plain, int_lit(3)) || not(_eq(len_kids(mx_nodes_kids), len(items)))) {
             Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`(subr effect (param …) result)` or `(-> (param …) "), str_lit("result)`, then a specification's clauses")), s)? {})
@@ -7350,7 +7358,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_subr_parts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA, mut i: Int, mut pi: Int, mut r#as: Atms) -> Result<(), Unwind> {
+    pub fn desc_subr_parts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA, mut i: Int, mut pi: Int, mut r#as: Atms) -> Result<(), Unwind> {
         loop {
             if (null_p(ks) || null_p(xs)) {
                 return Ok(());
@@ -7373,7 +7381,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_params<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Atms, Unwind> {
+    pub fn desc_params<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Atms, Unwind> {
         if syn_nil_p(s) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Atm>>())
         } else if null_p(proper_items(s)) {
@@ -7384,7 +7392,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_params_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA, mut r#as: Atms) -> Result<Atms, Unwind> {
+    pub fn desc_params_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut ks: List<Int>, mut xs: SynsA, mut r#as: Atms) -> Result<Atms, Unwind> {
         loop {
             if (null_p(ks) || null_p(xs)) {
                 return Ok(r#as);
@@ -7411,7 +7419,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn desc_result<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, at: Int, r: kayak_rt::Handle<'static, Syn>, r#as: Atms) -> Result<(), Unwind> {
+    pub fn desc_result<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, at: Int, r: kayak_rt::Handle<'static, Syn>, r#as: Atms) -> Result<(), Unwind> {
         let parts = proper_items(r);
         if (not(null_p(parts)) && syn_symbol_p(car(parts)) && string_eq_p(syn_name(car(parts)), str_lit("bool")) && not(pvar_p(syn_symbol(mxp, maker_st, car(parts))?, ps))) {
             let inside = pvar_inside(mxp, maker_st, r, ps)?;
@@ -7481,7 +7489,7 @@ pub mod made__load__3__main {
         (_eq(delta, int_lit(1)) || _eq(delta, int_lit(4)) || _eq(delta, int_lit(5)) || _gt_eq(delta, int_lit(100)))
     }
 
-    pub fn binder_atms<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, t: Int, delta: Int) -> Result<Atms, Unwind> {
+    pub fn binder_atms<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: Int, delta: Int) -> Result<Atms, Unwind> {
         let d = (not(_eq(delta, int_lit(1))) && _lt(delta, int_lit(100)));
         let desc_p = {
             let tagcase_ = node_kids(mxp, maker_st, t);
@@ -7498,7 +7506,7 @@ pub mod made__load__3__main {
                 }
             }
         };
-        let one = lambda1(move |e: bool| {
+        let one = kayak_rt::closure1((mxp, maker_st, t,), |(mxp, maker_st, t,), e: bool| {
             let tagcase_ = node_kids(mxp, maker_st, t);
             match *tagcase_ {
                 made__load__2__expander::MxNodesKids::KPvar(n) => {
@@ -7520,14 +7528,14 @@ pub mod made__load__3__main {
             }, str_lit(" binder is here"))), node_syn(mxp, maker_st, t))? {}
         };
         if _eq(delta, int_lit(5)) {
-            Ok(kayak_rt::cons(one(true), kayak_rt::cons(one(false), kayak_rt::nil())))
+            Ok(kayak_rt::cons(one.call(true), kayak_rt::cons(one.call(false), kayak_rt::nil())))
         } else {
-            Ok(kayak_rt::cons(one(d), kayak_rt::nil()))
+            Ok(kayak_rt::cons(one.call(d), kayak_rt::nil()))
         }
     }
 
     #[inline]
-    pub fn env_in_rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn env_in_rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("a ribcage (`env`) in a rib: write it `(at ℓ)` in a `cage`"), s)? {})
     }
 
@@ -7596,7 +7604,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn nav<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut root: Int, mut a: Addr, mut s: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
+    pub fn nav<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut root: Int, mut a: Addr, mut s: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
         loop {
             if null_p(a) {
                 return Ok(root);
@@ -7625,7 +7633,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, es: Entries, root: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Atms, Unwind> {
+    pub fn rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, es: Entries, root: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Atms, Unwind> {
         if null_p(es) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Atm>>())
         } else {
@@ -7678,7 +7686,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn exported_rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, t: Int, ts: kayak_rt::Handle<'static, Syn>, s: kayak_rt::Handle<'static, Syn>) -> Result<Atms, Unwind> {
+    pub fn exported_rib<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: Int, ts: kayak_rt::Handle<'static, Syn>, s: kayak_rt::Handle<'static, Syn>) -> Result<Atms, Unwind> {
         let e = node_export(mxp, maker_st, exporter(mxp, maker_st, t));
         if null_p(e) {
             if mx_scopes_form_node_p(mxp, maker_st, t) {
@@ -7727,7 +7735,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn evaluate<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, b: kayak_rt::Handle<'static, MxTypesBind>, root: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn evaluate<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, b: kayak_rt::Handle<'static, MxTypesBind>, root: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
         let tagcase_ = b;
         match *tagcase_ {
             made__load__2__expander::MxTypesBind::BindRib(es) => {
@@ -7748,7 +7756,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn cage<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, rings: Rings, root: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn cage<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, rings: Rings, root: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
         if null_p(rings) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Level>>())
         } else {
@@ -7769,7 +7777,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn levels_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, t: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn levels_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
         let tagcase_ = node_kids(mxp, maker_st, t);
         match *tagcase_ {
             made__load__2__expander::MxNodesKids::KPvar(n) => {
@@ -7789,7 +7797,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn exported_levels<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, t: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn exported_levels<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, t: Int, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
         let e = node_export(mxp, maker_st, exporter(mxp, maker_st, t));
         if not(null_p(e)) {
             Ok(evaluate(mxp, maker_st, mx_fail, car(e).0, car(e).1, s)?)
@@ -7801,9 +7809,9 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn earlier<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, x: Int, mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>) -> Result<kayak_rt::Handle<'static, MxEnvIndexedEnv>, Unwind> {
+    pub fn earlier<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, x: Int, mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>) -> Result<kayak_rt::Handle<'static, MxEnvIndexedEnv>, Unwind> {
         let ls = levels_of(mxp, maker_st, mx_fail, x, node_syn(mxp, maker_st, x))?;
-        Ok(env_within(mxp, maker_st, mx_env_indexed_env, cons(lv_earlier(earlier_atoms(ls)), earlier_cages(ls)), kayak_rt::lambda1(move |a0| mx_nodes_binder_name(mxp, maker_st, a0))))
+        Ok(env_within(mxp, maker_st, mx_env_indexed_env, cons(lv_earlier(earlier_atoms(ls)), earlier_cages(ls)), kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0))))
     }
 
     pub fn levels_shaped<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut shaped: bool, mut ls: Levels) -> Levels {
@@ -7839,18 +7847,18 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_scopes_imported<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut is: Rooted, mut mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, mut s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, MxEnvIndexedEnv>, Unwind> {
+    pub fn mx_scopes_imported<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut is: Rooted, mut mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, mut s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, MxEnvIndexedEnv>, Unwind> {
         loop {
             if null_p(is) {
                 return Ok(mx_env_indexed_env);
             } else {
-                (is, mx_env_indexed_env) = (cdr(is), env_within(mxp, maker_st, mx_env_indexed_env, own_first(mxp, maker_st, evaluate(mxp, maker_st, mx_fail, car(is).0, car(is).1, s)?), kayak_rt::lambda1(move |a0| mx_nodes_binder_name(mxp, maker_st, a0))));
+                (is, mx_env_indexed_env) = (cdr(is), env_within(mxp, maker_st, mx_env_indexed_env, own_first(mxp, maker_st, evaluate(mxp, maker_st, mx_fail, car(is).0, car(is).1, s)?), kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0))));
                 continue;
             }
         }
     }
 
-    pub fn mx_scopes_walk<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, at: Int, mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, many0: bool, depth0: Int) -> Result<MxNodesFound, Unwind> {
+    pub fn mx_scopes_walk<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: Int, mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, many0: bool, depth0: Int) -> Result<MxNodesFound, Unwind> {
         let many = (many0 || node_many_p(mxp, maker_st, at));
         let depth = if mx_nodes_repeated_p(mxp, maker_st, at) {
             _plus(depth0, int_lit(1))
@@ -7904,7 +7912,7 @@ pub mod made__load__3__main {
         }))
     }
 
-    pub fn walk_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: List<Int>, mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, many: bool, depth: Int) -> Result<MxNodesFound, Unwind> {
+    pub fn walk_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: List<Int>, mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, many: bool, depth: Int) -> Result<MxNodesFound, Unwind> {
         if null_p(xs) {
             Ok(nil::<Product_11_12_13_14<Int, kayak_rt::Handle<'static, made__load__2__expander::MxEnvIndexedEnv>, bool, Int>>())
         } else {
@@ -8246,15 +8254,15 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_scopes_placed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, info: Pinfo, want: kayak_rt::Handle<'static, Sty>, mx_env_indexed_env: Levels, s: kayak_rt::Handle<'static, Syn>, ps: Pvars) -> Result<(), Unwind> {
+    pub fn mx_scopes_placed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, info: Pinfo, want: kayak_rt::Handle<'static, Sty>, mx_env_indexed_env: Levels, s: kayak_rt::Handle<'static, Syn>, ps: Pvars) -> Result<(), Unwind> {
         let name = symbol_to_string(n);
         let have = info.0;
         let kh = mx_types_kind_of(have);
         let kw = mx_types_kind_of(unfold(mxp, maker_st, want));
-        let said = lambda1(move |why: Str| {
+        let said = kayak_rt::closure1((mxp, maker_st, mx_fail, s, name,), |(mxp, maker_st, mx_fail, s, name,), why: Str| {
             Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(name, string_append(str_lit("` "), why))), s)? {})
         });
-        let simple_p = lambda1s(move |k: Int| {
+        let simple_p = kayak_rt::closure1s((), |(), k: Int| {
             simple_kind_p(k)
         });
         if ((_eq(kh, int_lit(1)) && _eq(kw, int_lit(1))) || (_eq(kh, int_lit(12)) && _eq(kw, int_lit(12)))) {
@@ -8263,7 +8271,7 @@ pub mod made__load__3__main {
             let d = _eq(kw, int_lit(4));
             let i = rib_binding(n, d, mx_env_indexed_env, int_lit(0));
             if _lt(i, int_lit(0)) {
-                Ok(match said(str_lit("is referred to where the template does not bind it"))? {})
+                Ok(match said.call(str_lit("is referred to where the template does not bind it"))? {})
             } else if {
                 let tagcase_ = nth_level(mx_env_indexed_env, i);
                 match *tagcase_ {
@@ -8276,14 +8284,14 @@ pub mod made__load__3__main {
                     }
                 }
             } {
-                Ok(match said(maker_st.mx_scopes_repeats_said.get().unwrap())? {})
+                Ok(match said.call(maker_st.mx_scopes_repeats_said.get().unwrap())? {})
             } else if shadowing_p(mx_env_indexed_env, i, ps, d) {
-                Ok(match said(string_append(str_lit("is referred to where another of the pattern's binders "), string_append(str_lit("may shadow it (Herman's shadow restriction): a use "), str_lit("giving both one name would change what it refers to"))))? {})
+                Ok(match said.call(string_append(str_lit("is referred to where another of the pattern's binders "), string_append(str_lit("may shadow it (Herman's shadow restriction): a use "), str_lit("giving both one name would change what it refers to"))))? {})
             } else {
                 Ok(())
             }
         } else if (_eq(kh, int_lit(0)) && _eq(kw, int_lit(10)) && not(null_p(info.3))) {
-            Ok(match said(string_append(str_lit("is placed where a lambda is wanted: a typed hole there is a "), str_lit("lambda, `(lambda #:type T)`")))? {})
+            Ok(match said.call(string_append(str_lit("is placed where a lambda is wanted: a typed hole there is a "), str_lit("lambda, `(lambda #:type T)`")))? {})
         } else if ((_eq(kh, int_lit(3)) && _eq(kw, int_lit(3))) || (_eq(kh, int_lit(4)) && _eq(kw, int_lit(4))) || (_eq(kh, int_lit(5)) && _eq(kw, int_lit(5))) || (_eq(kh, int_lit(13)) && _eq(kw, int_lit(13)))) {
             Ok(())
         } else {
@@ -8297,15 +8305,15 @@ pub mod made__load__3__main {
                 true
             } else if (_eq(kh, int_lit(2)) && (_eq(kw, int_lit(0)) || _eq(kw, int_lit(2)))) {
                 true
-            } else if (simple_p(kh) || simple_p(kw)) {
+            } else if (simple_p.call(kh) || simple_p.call(kw)) {
                 false
             } else {
                 sub_p(mxp, maker_st, have, want, nil::<Product_11_12<kayak_rt::Handle<'static, made__load__2__expander::Sty>, kayak_rt::Handle<'static, made__load__2__expander::Sty>>>())
             };
             if not(fits) {
-                Ok(match said(str_lit("is placed where its syntax type is not one the form takes there"))? {})
+                Ok(match said.call(str_lit("is placed where its syntax type is not one the form takes there"))? {})
             } else if not(levels_eq_p(normal(mx_env_indexed_env), normal(info.1))) {
-                Ok(match said(str_lit("is placed in the scope of other bindings than its signature says it is"))? {})
+                Ok(match said.call(str_lit("is placed in the scope of other bindings than its signature says it is"))? {})
             } else {
                 Ok(())
             }
@@ -8343,7 +8351,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_scopes_binder_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut n: Symbol, mut d: bool, mut mx_env_indexed_env: Levels, mut s: kayak_rt::Handle<'static, Syn>) -> Result<List<Int>, Unwind> {
+    pub fn mx_scopes_binder_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut n: Symbol, mut d: bool, mut mx_env_indexed_env: Levels, mut s: kayak_rt::Handle<'static, Syn>) -> Result<List<Int>, Unwind> {
         loop {
             if null_p(mx_env_indexed_env) {
                 return Ok(nil::<Int>());
@@ -8393,14 +8401,14 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn new_heads<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, rs: HeadReadings) -> Result<List<Product_11_12_13<Int, Int, Int>>, Unwind> {
+    pub fn new_heads<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, rs: HeadReadings) -> Result<List<Product_11_12_13<Int, Int, Int>>, Unwind> {
         if null_p(rs) {
             Ok(nil::<Product_11_12_13<Int, Int, Int>>())
         } else {
             let s = node_syn(mxp, maker_st, car(rs).0);
             let was = head_read(mxp, maker_st, s);
             let now = car(rs).1;
-            let said = lambda1s(move |r: List<Int>| {
+            let said = kayak_rt::closure1s((), |(), r: List<Int>| {
                 if null_p(r) {
                     str_lit("an application")
                 } else {
@@ -8415,13 +8423,13 @@ pub mod made__load__3__main {
             } else if (not(null_p(now)) && _eq(car(was), car(now))) {
                 Ok(rest)
             } else {
-                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("this template's scopes have no one reading: `"), string_append(show_syn(s), string_append(str_lit("`, headed by `"), string_append(symbol_to_string(syn_symbol(mxp, maker_st, car(split(s)))?), string_append(str_lit("`, is read as "), string_append(said(was), string_append(str_lit(" and then as "), said(now)))))))), s)? {};
+                match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("this template's scopes have no one reading: `"), string_append(show_syn(s), string_append(str_lit("`, headed by `"), string_append(symbol_to_string(syn_symbol(mxp, maker_st, car(split(s)))?), string_append(str_lit("`, is read as "), string_append(said.call(was), string_append(str_lit(" and then as "), said.call(now)))))))), s)? {};
                 Ok(rest)
             }
         }
     }
 
-    pub fn syntax_entries<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, es: Entries, root: Int, s: kayak_rt::Handle<'static, Syn>, out: List<SyntaxBinder>) -> Result<List<SyntaxBinder>, Unwind> {
+    pub fn syntax_entries<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, es: Entries, root: Int, s: kayak_rt::Handle<'static, Syn>, out: List<SyntaxBinder>) -> Result<List<SyntaxBinder>, Unwind> {
         if null_p(es) {
             Ok(out)
         } else {
@@ -8451,7 +8459,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn syntax_binders<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut i: Int, mut n: Int, mut out: List<SyntaxBinder>) -> Result<List<SyntaxBinder>, Unwind> {
+    pub fn syntax_binders<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut i: Int, mut n: Int, mut out: List<SyntaxBinder>) -> Result<List<SyntaxBinder>, Unwind> {
         loop {
             if _eq(i, n) {
                 return Ok(out);
@@ -8591,7 +8599,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn readings_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: List<Product_11_12<Int, bool>>, fs: MxNodesFound, sx: List<SyntaxBinder>) -> Result<HeadReadings, Unwind> {
+    pub fn readings_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: List<Product_11_12<Int, bool>>, fs: MxNodesFound, sx: List<SyntaxBinder>) -> Result<HeadReadings, Unwind> {
         if null_p(ps) {
             Ok(nil::<Product_11_12_13<Int, List<Int>, List<Int>>>())
         } else {
@@ -8603,12 +8611,12 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_scopes_heads_read<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, fs: MxNodesFound) -> Result<HeadReadings, Unwind> {
+    pub fn mx_scopes_heads_read<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, fs: MxNodesFound) -> Result<HeadReadings, Unwind> {
         let sx = syntax_binders(mxp, maker_st, mx_fail, int_lit(0), get(maker_st.nnodes.get().unwrap()), nil::<Product_11_12_13_14<bool, Symbol, Int, Int>>())?;
         Ok(readings_of(mxp, maker_st, mx_fail, reverse(get(maker_st.pending.get().unwrap())), fs, sx)?)
     }
 
-    pub fn aligned_heads<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut made: kayak_rt::Handle<'static, Sty>, mut template: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12_13<Int, MxNodesFound, HeadReadings>, Unwind> {
+    pub fn aligned_heads<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut made: kayak_rt::Handle<'static, Sty>, mut template: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12_13<Int, MxNodesFound, HeadReadings>, Unwind> {
         loop {
             let root = {
                 nodes_reset_x(mxp, maker_st);
@@ -8632,7 +8640,7 @@ pub mod made__load__3__main {
 
     pub fn mx_scopes_bound_in_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut n: Symbol, mut mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, mut from: Int) -> bool {
         loop {
-            let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, false, from, kayak_rt::lambda1(move |a0| mx_nodes_binder_name(mxp, maker_st, a0)));
+            let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, false, from, kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0)));
             match l.0 {
                 case_ if kayak_rt::_eq(case_, int_lit(0)) => {
                     return true;
@@ -8753,7 +8761,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn program_scoped_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut core: kayak_rt::Handle<'static, Sty>, mut s: kayak_rt::Handle<'static, Syn>, mut bound: MxParserTypesNames) -> Result<Product_11_12_13<Int, MxNodesFound, MxScopesHeadsRead>, Unwind> {
+    pub fn program_scoped_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut core: kayak_rt::Handle<'static, Sty>, mut s: kayak_rt::Handle<'static, Syn>, mut bound: MxParserTypesNames) -> Result<Product_11_12_13<Int, MxNodesFound, MxScopesHeadsRead>, Unwind> {
         loop {
             let root = {
                 nodes_reset_x(mxp, maker_st);
@@ -8779,7 +8787,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn program_scoped<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, core: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, whole: bool, bound: MxParserTypesNames) -> Result<Product_11_12_13<Int, MxNodesFound, MxScopesHeadsRead>, Unwind> {
+    pub fn program_scoped<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, core: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, whole: bool, bound: MxParserTypesNames) -> Result<Product_11_12_13<Int, MxNodesFound, MxScopesHeadsRead>, Unwind> {
         set(maker_st.scoped_apps.get().unwrap(), nil::<List<bool>>());
         set(maker_st.scoped_whole.get().unwrap(), whole);
         Ok(program_scoped_from(mxp, maker_st, mx_fail, core, s, bound)?)
@@ -8811,7 +8819,7 @@ pub mod made__load__3__main {
         indices(reverse(p), int_lit(0))
     }
 
-    pub fn path_parts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut i: Int, mut n: Int, mut out: MxScopesUses) -> Result<MxScopesUses, Unwind> {
+    pub fn path_parts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut i: Int, mut n: Int, mut out: MxScopesUses) -> Result<MxScopesUses, Unwind> {
         loop {
             if _gt_eq(i, n) {
                 return Ok(out);
@@ -8963,7 +8971,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn uses_found<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, core: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, bound: MxParserTypesNames) -> Result<MxScopesUses, Unwind> {
+    pub fn uses_found<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, core: kayak_rt::Handle<'static, Sty>, s: kayak_rt::Handle<'static, Syn>, bound: MxParserTypesNames) -> Result<MxScopesUses, Unwind> {
         let read = program_scoped(mxp, maker_st, mx_fail, core, s, true, bound)?.2;
         Ok(uses_sorted(path_parts(mxp, maker_st, mx_fail, int_lit(0), get(maker_st.nnodes.get().unwrap()), uses_of(mxp, maker_st, read, bound, nil::<Product_11_12<List<Int>, kayak_rt::Handle<'static, made__load__2__expander::MxScopesPart>>>())?)?))
     }
@@ -9636,7 +9644,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn unsaid_nested<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, b: List<Int>, nested: Nested, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn unsaid_nested<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, b: List<Int>, nested: Nested, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let m = nested_of(n, nested);
         if (null_p(b) && not(null_p(m))) {
             let n = symbol_to_string(n);
@@ -9707,7 +9715,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn path_refused<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn path_refused<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(s), string_append(str_lit("` is not a path: a path is names joined "), str_lit("by `::`, `module::name`")))), s)? {};
         Ok(s)
     }
@@ -9722,7 +9730,7 @@ pub mod made__load__3__main {
         mx_eager_reader_types_lst(xs, kayak_rt::value::list(syn_datums(xs)), syn_start(s), _plus(syn_start(s), b), syn_expansion(s))
     }
 
-    pub fn path_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut s: kayak_rt::Handle<'static, Syn>, mut d: bool, mut out: kayak_rt::Handle<'static, Syn>, mut len: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn path_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut s: kayak_rt::Handle<'static, Syn>, mut d: bool, mut out: kayak_rt::Handle<'static, Syn>, mut len: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         loop {
             let n = syn_name(s);
             let start = _plus(len, int_lit(2));
@@ -9750,7 +9758,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn path_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, d: bool) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn path_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, d: bool) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let k = string_search(syn_name(s), str_lit("::"), int_lit(0));
         if _eq(k, int_lit(0)) {
             Ok(path_refused(mxp, maker_st, mx_fail, s)?)
@@ -9796,7 +9804,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn repeated_ref<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, b: List<Int>, depth: Int, bd: Depths, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn repeated_ref<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, b: List<Int>, depth: Int, bd: Depths, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         if (not(null_p(b)) && _gt(depth_of(car(b), bd), depth)) {
             Ok(match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), string_append(str_lit("` is bound in each repetition of a "), string_append(str_lit("part, and referred to under fewer ellipses than it is "), str_lit("bound: which repetition's it is is not said"))))), s)? {})
         } else {
@@ -9819,7 +9827,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn heads_done_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut rs: HeadReadings, mut bd: Depths) -> Result<Actions, Unwind> {
+    pub fn heads_done_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut rs: HeadReadings, mut bd: Depths) -> Result<Actions, Unwind> {
         loop {
             if null_p(rs) {
                 return Ok(nil::<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__2__expander::Action>>>());
@@ -9847,7 +9855,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn heads_done<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, rs: HeadReadings, bd: Depths) -> Result<Actions, Unwind> {
+    pub fn heads_done<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, rs: HeadReadings, bd: Depths) -> Result<Actions, Unwind> {
         set(maker_st.heads_checked.get().unwrap(), nil::<Int>());
         Ok(heads_done_each(mxp, maker_st, mx_fail, rs, bd)?)
     }
@@ -9925,7 +9933,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn note_named<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ds: SynsA) -> Result<(), Unwind> {
+    pub fn note_named<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ds: SynsA) -> Result<(), Unwind> {
         loop {
             if null_p(ds) {
                 return Ok(());
@@ -9961,7 +9969,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn def_gives<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, def: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
+    pub fn def_gives<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, def: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
         let items = proper_items(def);
         if mx_facts_head_is_p(def, str_lit("union")) {
             Ok(members_gives(mxp, maker_st, mx_fail, cdr(items), int_lit(0))?)
@@ -9974,7 +9982,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn members_gives<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ms: SynsA, mut g: Int) -> Result<Int, Unwind> {
+    pub fn members_gives<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ms: SynsA, mut g: Int) -> Result<Int, Unwind> {
         loop {
             if null_p(ms) {
                 return Ok(g);
@@ -9994,7 +10002,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn named_gives<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: List<Product_11_12_13<Symbol, kayak_rt::Handle<'static, Syn>, Int>>) -> Result<List<Product_11_12_13<Symbol, kayak_rt::Handle<'static, Syn>, Int>>, Unwind> {
+    pub fn named_gives<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: List<Product_11_12_13<Symbol, kayak_rt::Handle<'static, Syn>, Int>>) -> Result<List<Product_11_12_13<Symbol, kayak_rt::Handle<'static, Syn>, Int>>, Unwind> {
         if null_p(xs) {
             Ok(nil::<Product_11_12_13<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Syn>, Int>>())
         } else {
@@ -10002,7 +10010,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn mx_facts_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if not(mx_facts_head_is_p(s, str_lit("letrec-shape"))) {
             Ok(s)
         } else {
@@ -10042,7 +10050,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn labelled_name<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, l: Product_11_12_13_14<Int, MxFactsSteps, MxFactsSteps, Int>, ls: MxFactsLabels, at: kayak_rt::Handle<'static, Syn>) -> Result<MxFactsLabels, Unwind> {
+    pub fn labelled_name<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, l: Product_11_12_13_14<Int, MxFactsSteps, MxFactsSteps, Int>, ls: MxFactsLabels, at: kayak_rt::Handle<'static, Syn>) -> Result<MxFactsLabels, Unwind> {
         if not(null_p(mx_facts_label_of(n, ls))) {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(n), str_lit("` labels two parts"))), at)? {};
             Ok(ls)
@@ -10051,7 +10059,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn repeated_labels<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut inner: MxFactsLabels, mut p: MxFactsSteps, mut ls: MxFactsLabels, mut t: kayak_rt::Handle<'static, Syn>) -> Result<MxFactsLabels, Unwind> {
+    pub fn repeated_labels<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut inner: MxFactsLabels, mut p: MxFactsSteps, mut ls: MxFactsLabels, mut t: kayak_rt::Handle<'static, Syn>) -> Result<MxFactsLabels, Unwind> {
         loop {
             if null_p(inner) {
                 return Ok(ls);
@@ -10065,7 +10073,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_labelled<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: kayak_rt::Handle<'static, Syn>, l: Product_11_12_13_14<Int, MxFactsSteps, MxFactsSteps, Int>, ls: MxFactsLabels) -> Result<MxFactsLabels, Unwind> {
+    pub fn mx_facts_labelled<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: kayak_rt::Handle<'static, Syn>, l: Product_11_12_13_14<Int, MxFactsSteps, MxFactsSteps, Int>, ls: MxFactsLabels) -> Result<MxFactsLabels, Unwind> {
         if not(syn_symbol_p(n)) {
             match fail_at(mxp, maker_st, mx_fail, str_lit("a part's label is a name, `name @ σ`"), n)? {};
             Ok(ls)
@@ -10130,7 +10138,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn rib_entry<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, a: Int, b: Int, p: MxFactsSteps, g: Int) -> kayak_rt::Handle<'static, Syn> {
+    pub fn rib_entry<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, a: Int, b: Int, p: MxFactsSteps, g: Int) -> kayak_rt::Handle<'static, Syn> {
         mk_list(kayak_rt::cons(path_syn(p, a, b), kayak_rt::cons(mk_symbol(if _eq(g, int_lit(1)) {
             str_lit("var")
         } else if _eq(g, int_lit(2)) {
@@ -10161,7 +10169,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn each_bound<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, f: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels) -> Result<Eaches, Unwind> {
+    pub fn each_bound<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, f: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels) -> Result<Eaches, Unwind> {
         let (items, a, b, outside) = (proper_items(f), syn_start(f), syn_end(f), string_append(str_lit("a fact under `...` that names what is outside its "), str_lit("repetition: not yet (TODO §289)")));
         if not((mx_facts_head_is_p(f, str_lit("bind")) && _eq(len(items), int_lit(4)) && mx_facts_sym_is_p(nth(items, int_lit(2)), str_lit("in")))) {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a fact under `...` is a `bind`, each repetition's: "), string_append(str_lit("what a list exports is every repetition's, `(export "), str_lit("(x ...))`"))), f)? {};
@@ -10210,7 +10218,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn each_facts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut fs: SynsA, mut ls: MxFactsLabels, mut out: SynsA, mut each: Eaches) -> Result<Product_11_12<SynsA, Eaches>, Unwind> {
+    pub fn each_facts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut fs: SynsA, mut ls: MxFactsLabels, mut out: SynsA, mut each: Eaches) -> Result<Product_11_12<SynsA, Eaches>, Unwind> {
         loop {
             if null_p(fs) {
                 return Ok(Product_11_12(reverse(out), each));
@@ -10239,7 +10247,7 @@ pub mod made__load__3__main {
         list_with(kayak_rt::heap_cons(car_s, kayak_rt::nil()), kayak_rt::heap_cons(cdr_s, kayak_rt::nil()), syn_start(s), syn_end(s))
     }
 
-    pub fn annotate<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, sigma: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, how: Str, bd: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn annotate<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sigma: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, how: Str, bd: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if null_p(path) {
             Ok(mk_list(kayak_rt::cons(mk_symbol(how, syn_start(sigma), syn_end(sigma)), kayak_rt::cons(sigma, kayak_rt::cons(bd, kayak_rt::nil()))), syn_start(sigma), syn_end(sigma)))
         } else {
@@ -10257,7 +10265,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn in_element<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, sigma: kayak_rt::Handle<'static, Syn>, lp: MxFactsSteps, p: MxFactsSteps, bd: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn in_element<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sigma: kayak_rt::Handle<'static, Syn>, lp: MxFactsSteps, p: MxFactsSteps, bd: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let ps = split(sigma);
         if null_p(ps) {
             match fail_at(mxp, maker_st, mx_fail, str_lit("a repeated part not found in its tree"), sigma)? {};
@@ -10271,7 +10279,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn each_annotated<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut sigma: kayak_rt::Handle<'static, Syn>, mut xs: Eaches) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn each_annotated<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut sigma: kayak_rt::Handle<'static, Syn>, mut xs: Eaches) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         loop {
             if null_p(xs) {
                 return Ok(sigma);
@@ -10282,7 +10290,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_entry<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, l: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels, ring: bool) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Adds>, Unwind> {
+    pub fn mx_facts_entry<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, l: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels, ring: bool) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Adds>, Unwind> {
         let items = proper_items(l);
         let rep = (_eq(len(items), int_lit(2)) && mx_facts_sym_is_p(nth(items, int_lit(1)), str_lit("...")));
         let n = if rep {
@@ -10334,7 +10342,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_entries_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut xs: SynsA, mut ls: MxFactsLabels, mut ring: bool, mut out: SynsA, mut elems: Adds) -> Result<Product_11_12<SynsA, Adds>, Unwind> {
+    pub fn mx_facts_entries_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut xs: SynsA, mut ls: MxFactsLabels, mut ring: bool, mut out: SynsA, mut elems: Adds) -> Result<Product_11_12<SynsA, Adds>, Unwind> {
         loop {
             if null_p(xs) {
                 return Ok(Product_11_12(out, elems));
@@ -10346,7 +10354,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_bound<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, l: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Adds>, Unwind> {
+    pub fn mx_facts_bound<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, l: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Adds>, Unwind> {
         let e = mx_facts_entry(mxp, maker_st, mx_fail, l, ls, false)?;
         let a = syn_start(l);
         let b = syn_end(l);
@@ -10358,7 +10366,7 @@ pub mod made__load__3__main {
         }, a, b), kayak_rt::cons(e.0, kayak_rt::nil())), a, b), e.1))
     }
 
-    pub fn facts_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut fs: SynsA, mut ls: MxFactsLabels, mut top: bool, mut imports: Adds, mut rib: SynsA, mut rings: SynsA, mut star: SynsA, mut elems: Adds) -> Result<Product_11_12_13_14_15<Adds, SynsA, SynsA, SynsA, Adds>, Unwind> {
+    pub fn facts_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut fs: SynsA, mut ls: MxFactsLabels, mut top: bool, mut imports: Adds, mut rib: SynsA, mut rings: SynsA, mut star: SynsA, mut elems: Adds) -> Result<Product_11_12_13_14_15<Adds, SynsA, SynsA, SynsA, Adds>, Unwind> {
         loop {
             if null_p(fs) {
                 return Ok(Product_11_12_13_14_15(imports, rib, rings, star, elems));
@@ -10402,7 +10410,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn imports_annotated<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut sigma: kayak_rt::Handle<'static, Syn>, mut xs: Adds) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn imports_annotated<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut sigma: kayak_rt::Handle<'static, Syn>, mut xs: Adds) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         loop {
             if null_p(xs) {
                 return Ok(sigma);
@@ -10467,7 +10475,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn element_annotated<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, sigma: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, es: SynsA) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn element_annotated<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sigma: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, es: SynsA) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let (ps, a, b) = (split(sigma), syn_start(sigma), syn_end(sigma));
         if null_p(ps) {
             match fail_at(mxp, maker_st, mx_fail, str_lit("a repeated part not found in its tree"), sigma)? {};
@@ -10481,7 +10489,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn elements_annotated<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut sigma: kayak_rt::Handle<'static, Syn>, mut xs: Adds) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn elements_annotated<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut sigma: kayak_rt::Handle<'static, Syn>, mut xs: Adds) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         loop {
             if null_p(xs) {
                 return Ok(sigma);
@@ -10495,7 +10503,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_facts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, sigma: kayak_rt::Handle<'static, Syn>, fs: SynsA, ls: MxFactsLabels, top: bool, pre: Adds) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn mx_facts_facts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sigma: kayak_rt::Handle<'static, Syn>, fs: SynsA, ls: MxFactsLabels, top: bool, pre: Adds) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let e = each_facts(mxp, maker_st, mx_fail, fs, ls, nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>(), nil::<Product_11_12_13<List<bool>, List<bool>, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>())?;
         let r = facts_each(mxp, maker_st, mx_fail, e.0, ls, top, nil::<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>(), nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>(), nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>(), nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>(), reverse(pre))?;
         let imports = r.0;
@@ -10519,7 +10527,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn tree<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, MxFactsLabels>, Unwind> {
+    pub fn tree<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, MxFactsLabels>, Unwind> {
         if form_p(s) {
             Ok(mx_facts_form(mxp, maker_st, mx_fail, s, path, ls)?)
         } else if syn_nil_p(s) {
@@ -10537,7 +10545,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_parts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut xs: SynsA, mut t: SynsA, mut p: MxFactsSteps, mut ls: MxFactsLabels, mut out: SynsA) -> Result<Product_11_12_13<SynsA, SynsA, MxFactsLabels>, Unwind> {
+    pub fn mx_facts_parts<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut xs: SynsA, mut t: SynsA, mut p: MxFactsSteps, mut ls: MxFactsLabels, mut out: SynsA) -> Result<Product_11_12_13<SynsA, SynsA, MxFactsLabels>, Unwind> {
         loop {
             if null_p(xs) {
                 if null_p(t) {
@@ -10592,7 +10600,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, MxFactsLabels>, Unwind> {
+    pub fn mx_facts_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, path: MxFactsSteps, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, MxFactsLabels>, Unwind> {
         let (items, a, b) = (proper_items(s), syn_start(s), syn_end(s));
         if (mx_facts_head_is_p(s, str_lit("many")) && _eq(len(items), int_lit(2))) {
             let r = tree(mxp, maker_st, mx_fail, nth(items, int_lit(1)), path, ls)?;
@@ -10604,7 +10612,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn unlabelled_members<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ms: SynsA) -> Result<SynsA, Unwind> {
+    pub fn unlabelled_members<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ms: SynsA) -> Result<SynsA, Unwind> {
         if null_p(ms) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -10618,7 +10626,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_reference<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, n: Symbol) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn mx_facts_reference<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, n: Symbol) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if mx_facts_name_in_p(n, get(maker_st.open.get().unwrap())) {
             Ok(s)
         } else {
@@ -10629,7 +10637,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn def_sigma<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, def: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn def_sigma<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, def: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if mx_facts_head_is_p(def, str_lit("union")) {
             let (kind, a, b) = (def_gives(mxp, maker_st, mx_fail, def)?, syn_start(def), syn_end(def));
             Ok(mk_list(cons(mk_symbol(str_lit("oneof"), a, b), members_sigma(mxp, maker_st, mx_fail, cdr(proper_items(def)), kind)?), a, b))
@@ -10638,7 +10646,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn members_sigma<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ms: SynsA, kind: Int) -> Result<SynsA, Unwind> {
+    pub fn members_sigma<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ms: SynsA, kind: Int) -> Result<SynsA, Unwind> {
         if null_p(ms) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -10658,7 +10666,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn node_sigma<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, node: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn node_sigma<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, node: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let items = proper_items(node);
         if _lt(len(items), int_lit(2)) {
             match fail_at(mxp, maker_st, mx_fail, str_lit("a node is `(node-name tree fact …)`"), node)? {};
@@ -10669,7 +10677,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn made_entries<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ds: SynsA, mut ls: MxFactsLabels, mut out: SynsA, mut adds: Adds) -> Result<Product_11_12<SynsA, Adds>, Unwind> {
+    pub fn made_entries<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ds: SynsA, mut ls: MxFactsLabels, mut out: SynsA, mut adds: Adds) -> Result<Product_11_12<SynsA, Adds>, Unwind> {
         loop {
             if null_p(ds) {
                 return Ok(Product_11_12(reverse(out), reverse(adds)));
@@ -10721,7 +10729,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_facts_made_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, m: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Adds>, Unwind> {
+    pub fn mx_facts_made_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, m: kayak_rt::Handle<'static, Syn>, ls: MxFactsLabels) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Adds>, Unwind> {
         if not(mx_facts_head_is_p(m, str_lit("defn"))) {
             Ok(Product_11_12(m, the::<Adds>(nil::<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>())))
         } else {
@@ -10730,7 +10738,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn elaborated<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn elaborated<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let items = proper_items(s);
         let a = syn_start(s);
         let b = syn_end(s);
@@ -10921,7 +10929,7 @@ pub mod made__load__3__main {
         (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("import-with-syntax")))
     }
 
-    pub fn all_names<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut xs: SynsA) -> Result<(), Unwind> {
+    pub fn all_names<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut xs: SynsA) -> Result<(), Unwind> {
         loop {
             if null_p(xs) {
                 return Ok(());
@@ -10934,7 +10942,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn name_filter<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, f: kayak_rt::Handle<'static, Syn>) -> Result<MxFilesFilter, Unwind> {
+    pub fn name_filter<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, f: kayak_rt::Handle<'static, Syn>) -> Result<MxFilesFilter, Unwind> {
         let items = proper(f);
         let head = if (not(null_p(items)) && syn_symbol_p(car(items))) {
             syn_name(car(items))
@@ -11336,7 +11344,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn literals_said<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut lits: MxParserTypesNames, mut i: Int) -> Result<(), Unwind> {
+    pub fn literals_said<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut lits: MxParserTypesNames, mut i: Int) -> Result<(), Unwind> {
         loop {
             if _eq(i, get(maker_st.nnodes.get().unwrap())) {
                 return Ok(());
@@ -11430,7 +11438,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn rules_parts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, parts: SynsA, rules: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<MxParserTypesNames, SynsA>, Unwind> {
+    pub fn rules_parts<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, parts: SynsA, rules: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<MxParserTypesNames, SynsA>, Unwind> {
         let none = Product_11_12(the::<MxParserTypesNames>(nil::<Symbol>()), the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>()));
         if null_p(parts) {
             match fail_at(mxp, maker_st, mx_fail, maker_st.rules_usage.get().unwrap(), rules)? {};
@@ -11457,7 +11465,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn rules_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, sig: SynsA, rules: kayak_rt::Handle<'static, Syn>, at: kayak_rt::Handle<'static, Syn>) -> Result<MxFilesWritten, Unwind> {
+    pub fn rules_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, sig: SynsA, rules: kayak_rt::Handle<'static, Syn>, at: kayak_rt::Handle<'static, Syn>) -> Result<MxFilesWritten, Unwind> {
         let rp = rules_parts(mxp, maker_st, mx_fail, cdr(proper(rules)), rules)?;
         let lits = rp.0;
         let unbound = names_only_unmarked(mxp, maker_st, lits);
@@ -11474,7 +11482,7 @@ pub mod made__load__3__main {
         (not(null_p(items)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("trailmark")))
     }
 
-    pub fn written_one<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, name: kayak_rt::Handle<'static, Syn>, rest: SynsA, at: kayak_rt::Handle<'static, Syn>, usage: Str) -> Result<MxFilesWritten, Unwind> {
+    pub fn written_one<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, name: kayak_rt::Handle<'static, Syn>, rest: SynsA, at: kayak_rt::Handle<'static, Syn>, usage: Str) -> Result<MxFilesWritten, Unwind> {
         let none = Product_11_12_13_14_15(string_to_symbol(str_lit("")), the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>()), the::<MxParserTypesNames>(nil::<Symbol>()), the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>()), at);
         if (not(syn_symbol_p(name)) || reserved_syn_p(mxp, maker_st, name)?) {
             match fail_at(mxp, maker_st, mx_fail, string_append(usage, str_lit(": a macro's name, not a form's")), name)? {};
@@ -11495,7 +11503,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn written_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ms: SynsA, mut out: Writtens) -> Result<Writtens, Unwind> {
+    pub fn written_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ms: SynsA, mut out: Writtens) -> Result<Writtens, Unwind> {
         loop {
             if null_p(ms) {
                 return Ok(reverse(out));
@@ -11518,7 +11526,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_files_written_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>) -> Result<Writtens, Unwind> {
+    pub fn mx_files_written_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>) -> Result<Writtens, Unwind> {
         let items = proper(form);
         if _lt(len(items), int_lit(2)) {
             match fail_at(mxp, maker_st, mx_fail, if string_eq_p(mx_files_head_name(form), str_lit("define-syntax-rec")) {
@@ -11556,7 +11564,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn define_trailmark<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>) -> Result<MxParserTypesNames, Unwind> {
+    pub fn define_trailmark<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>) -> Result<MxParserTypesNames, Unwind> {
         let name = nth(proper(form), int_lit(1));
         let t = nth(proper(form), int_lit(2));
         let said = cdr(proper(t));
@@ -11586,7 +11594,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn signature_poly<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<SynsA, kayak_rt::Handle<'static, Syn>>, Unwind> {
+    pub fn signature_poly<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<SynsA, kayak_rt::Handle<'static, Syn>>, Unwind> {
         let items = proper(s);
         if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("poly"))) {
             if (syn_nil_p(nth(items, int_lit(1))) || not(null_p(proper(nth(items, int_lit(1)))))) {
@@ -11670,7 +11678,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn defined_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, body: kayak_rt::Handle<'static, Syn>, made: kayak_rt::Handle<'static, Syn>, entries: SynsA) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn defined_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, body: kayak_rt::Handle<'static, Syn>, made: kayak_rt::Handle<'static, Syn>, entries: SynsA) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let (bs, a, b) = (proper_items(body), syn_start(made), syn_end(made));
         if null_p(entries) {
             Ok(body)
@@ -11683,7 +11691,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn signature_made<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Int>, Unwind> {
+    pub fn signature_made<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, Int>, Unwind> {
         let items = proper_items(s);
         if (_eq(len(items), int_lit(3)) && syn_symbol_p(car(items)) && string_eq_p(syn_name(car(items)), str_lit("macro/addressed"))) {
             let m = nth(items, int_lit(2));
@@ -11724,7 +11732,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn signature_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s0: kayak_rt::Handle<'static, Syn>) -> Result<Signed, Unwind> {
+    pub fn signature_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s0: kayak_rt::Handle<'static, Syn>) -> Result<Signed, Unwind> {
         let poly0 = signature_poly(mxp, maker_st, mx_fail, s0)?;
         let poly = if contract_p(poly0.1) {
             Product_11_12(poly0.0, elaborated(mxp, maker_st, mx_fail, poly0.1)?)
@@ -11769,7 +11777,7 @@ pub mod made__load__3__main {
         Ok(Product_11_12_13(poly.0, t, made.1))
     }
 
-    pub fn syntax_sigs_read_x<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut es: Entries) -> Result<(), Unwind> {
+    pub fn syntax_sigs_read_x<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut es: Entries) -> Result<(), Unwind> {
         loop {
             if null_p(es) {
                 return Ok(());
@@ -11828,7 +11836,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn signed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ws: Writtens) -> Result<List<SignedOpt>, Unwind> {
+    pub fn signed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ws: Writtens) -> Result<List<SignedOpt>, Unwind> {
         if null_p(ws) {
             Ok(nil::<List<Product_11_12_13<List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, kayak_rt::Handle<'static, made__load__2__expander::Sty>, Int>>>())
         } else {
@@ -11843,9 +11851,9 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn said_fail<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Str, shown: Str) -> &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind> {
-        lambda3(move |m: Str, a: Int, b: Int| {
-            Ok(match mx_fail(string_append(str_lit("`"), string_append(n, string_append(str_lit("` is refused: no signature is written, and the one inferred "), string_append(str_lit("from its clauses does not fit them: "), string_append(m, string_append(str_lit("\n  inferred: "), string_append(shown, string_append(str_lit("\n  write one: (define-syntax "), string_append(n, str_lit(" SIGNATURE (syntax-rules …))")))))))))), a, b)? {})
+    pub fn said_fail<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Str, shown: Str) -> kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>> {
+        kayak_rt::closure3((mx_fail, n, shown,), |(mx_fail, n, shown,), m: Str, a: Int, b: Int| {
+            Ok(match mx_fail.call(string_append(str_lit("`"), string_append(n, string_append(str_lit("` is refused: no signature is written, and the one inferred "), string_append(str_lit("from its clauses does not fit them: "), string_append(m, string_append(str_lit("\n  inferred: "), string_append(shown, string_append(str_lit("\n  write one: (define-syntax "), string_append(n, str_lit(" SIGNATURE (syntax-rules …))")))))))))), a, b)? {})
         })
     }
 
@@ -12115,7 +12123,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn class_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, it: MxInferItem, lits: LitsOf) -> Result<kayak_rt::Handle<'static, Class>, Unwind> {
+    pub fn class_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, it: MxInferItem, lits: LitsOf) -> Result<kayak_rt::Handle<'static, Class>, Unwind> {
         let s = it.1;
         let x = ellipsis_of(s);
         if not(null_p(x)) {
@@ -12150,7 +12158,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn classes_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, its: MxInferItems, lits: LitsOf) -> Result<Classes, Unwind> {
+    pub fn classes_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, its: MxInferItems, lits: LitsOf) -> Result<Classes, Unwind> {
         if null_p(its) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Class>>())
         } else {
@@ -12431,7 +12439,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn take<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut it: MxInferItem, mut c: MxInferCx, mut acc: Took) -> Result<List<Took>, Unwind> {
+    pub fn take<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut it: MxInferItem, mut c: MxInferCx, mut acc: Took) -> Result<List<Took>, Unwind> {
         loop {
             let (cid, depth, es, vs, tk, sq) = (it.0, it.2, acc.0, acc.1, acc.2, acc.3);
             let tagcase_ = class_of(mxp, maker_st, mx_fail, it, c.0)?;
@@ -12459,7 +12467,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn take_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut its: MxInferItems, mut c: MxInferCx, mut acc: Took) -> Result<List<Took>, Unwind> {
+    pub fn take_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut its: MxInferItems, mut c: MxInferCx, mut acc: Took) -> Result<List<Took>, Unwind> {
         loop {
             if null_p(its) {
                 return Ok(kayak_rt::cons(acc, kayak_rt::nil()));
@@ -12609,7 +12617,7 @@ pub mod made__load__3__main {
         Ok(any_disagree_p(mxp, maker_st, known, known))
     }
 
-    pub fn absorbable<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, its: MxInferItems, cs: Classes, c: MxInferCx) -> Result<List<Took>, Unwind> {
+    pub fn absorbable<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, its: MxInferItems, cs: Classes, c: MxInferCx) -> Result<List<Took>, Unwind> {
         if (not(any_list_end_p(cs)) || all_nil_p(cs)) {
             Ok(nil::<Product_11_12_13_14<List<Product_11_12_13<Int, kayak_rt::Handle<'static, made__load__2__expander::Syn>, Int>>, List<Product_11_12_13_14<Int, Symbol, Int, Int>>, bool, bool>>())
         } else {
@@ -12626,7 +12634,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn merge<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, its: MxInferItems, path: Addr, root: Int, c: MxInferCx) -> Result<Int, Unwind> {
+    pub fn merge<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, its: MxInferItems, path: Addr, root: Int, c: MxInferCx) -> Result<Int, Unwind> {
         let id = part_new(mxp, maker_st, path, root);
         let cs = classes_of(mxp, maker_st, mx_fail, its, c.0)?;
         if all_leafy_p(cs) {
@@ -12659,7 +12667,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn members_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, its: MxInferItems, gs: MxInferGroups, id: Int, c: MxInferCx) -> Result<MxInferInts, Unwind> {
+    pub fn members_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, its: MxInferItems, gs: MxInferGroups, id: Int, c: MxInferCx) -> Result<MxInferInts, Unwind> {
         if null_p(gs) {
             Ok(nil::<Int>())
         } else {
@@ -12671,7 +12679,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn one_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, id: Int, its: MxInferItems, cs: Classes, c: MxInferCx) -> Result<(), Unwind> {
+    pub fn one_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, id: Int, its: MxInferItems, cs: Classes, c: MxInferCx) -> Result<(), Unwind> {
         let tagcase_ = car(cs);
         match *tagcase_ {
             made__load__2__expander::Class::ClNil() => {
@@ -13093,7 +13101,7 @@ pub mod made__load__3__main {
 
     #[inline]
     pub fn kernel_form_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, n: Str) -> Result<bool, Unwind> {
-        Ok(mx_infer_named_in_p(string_to_symbol(n), kernel_sigs(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)))?))
+        Ok(mx_infer_named_in_p(string_to_symbol(n), kernel_sigs(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)))?))
     }
 
     pub fn makes_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, t: kayak_rt::Handle<'static, Syn>, pv: MxParserTypesNames, us: Unsigneds, known: MakesKnown) -> Result<MxInferInts, Unwind> {
@@ -13164,7 +13172,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn makes_round<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut us: Unsigneds, mut rs: Rules, mut known: MakesKnown, mut next: MakesKnown) -> Result<MakesKnown, Unwind> {
+    pub fn makes_round<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut us: Unsigneds, mut rs: Rules, mut known: MakesKnown, mut next: MakesKnown) -> Result<MakesKnown, Unwind> {
         loop {
             if null_p(rs) {
                 return Ok(next);
@@ -13191,7 +13199,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn makes_rounds<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut us: Unsigneds, mut rs: Rules, mut known: MakesKnown, mut n: Int) -> Result<MakesKnown, Unwind> {
+    pub fn makes_rounds<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut us: Unsigneds, mut rs: Rules, mut known: MakesKnown, mut n: Int) -> Result<MakesKnown, Unwind> {
         loop {
             if _lt(n, int_lit(0)) {
                 return Ok(known);
@@ -13208,7 +13216,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn makes_all<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, us: Unsigneds, rs: Rules) -> Result<MxInferInts, Unwind> {
+    pub fn makes_all<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, us: Unsigneds, rs: Rules) -> Result<MxInferInts, Unwind> {
         let known = makes_rounds(mxp, maker_st, mx_fail, us, rs, nones(len_us(us)), len_us(us))?;
         Ok(made_or_expr(known))
     }
@@ -13445,7 +13453,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn placed_as<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, cid: Int, template: kayak_rt::Handle<'static, Syn>, made: Int, s: Sol, mx_parser_types_names: bool) -> Result<MxInferPlaced, Unwind> {
+    pub fn placed_as<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, cid: Int, template: kayak_rt::Handle<'static, Syn>, made: Int, s: Sol, mx_parser_types_names: bool) -> Result<MxInferPlaced, Unwind> {
         nodes_reset_x(mxp, maker_st);
         let ps = pvars_for(mxp, maker_st, cid, get(maker_st.found_vars.get().unwrap()), s, mx_parser_types_names);
         let ty = if _eq(made, int_lit(1)) {
@@ -13469,13 +13477,13 @@ pub mod made__load__3__main {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.mx_infer_got.get().unwrap(), kayak_rt::cons(placed_as(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), cid, template, made, s, mx_parser_types_names)?, kayak_rt::nil()));
+                set(maker_st.mx_infer_got.get().unwrap(), kayak_rt::cons(placed_as(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), cid, template, made, s, mx_parser_types_names)?, kayak_rt::nil()));
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -13900,82 +13908,82 @@ pub mod made__load__3__main {
 
     pub fn show_sty<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut t: kayak_rt::Handle<'static, Sty>, mut a: Int, mut b: Int) -> kayak_rt::Handle<'static, Syn> {
         loop {
-            let sym = lambda1s(move |s: Str| {
+            let sym = kayak_rt::closure1s((a, b,), |(a, b,), s: Str| {
                 mk_symbol(s, a, b)
             });
             let tagcase_ = t;
             match *tagcase_ {
                 made__load__2__expander::Sty::SExpr() => {
-                    return sym(str_lit("expr"));
+                    return sym.call(str_lit("expr"));
                 }
                 made__load__2__expander::Sty::SLambda() => {
-                    return sym(str_lit("lambda"));
+                    return sym.call(str_lit("lambda"));
                 }
                 made__load__2__expander::Sty::SBvar() => {
-                    return sym(str_lit("bvar"));
+                    return sym.call(str_lit("bvar"));
                 }
                 made__load__2__expander::Sty::SId() => {
-                    return sym(str_lit("id"));
+                    return sym.call(str_lit("id"));
                 }
                 made__load__2__expander::Sty::SData() => {
-                    return sym(str_lit("data"));
+                    return sym.call(str_lit("data"));
                 }
                 made__load__2__expander::Sty::SType() => {
-                    return sym(str_lit("desc"));
+                    return sym.call(str_lit("desc"));
                 }
                 made__load__2__expander::Sty::SLabel() => {
-                    return sym(str_lit("label"));
+                    return sym.call(str_lit("label"));
                 }
                 made__load__2__expander::Sty::SDvar() => {
-                    return sym(str_lit("dvar"));
+                    return sym.call(str_lit("dvar"));
                 }
                 made__load__2__expander::Sty::SKind() => {
-                    return sym(str_lit("kind"));
+                    return sym.call(str_lit("kind"));
                 }
                 made__load__2__expander::Sty::SDefn() => {
-                    return sym(str_lit("defn"));
+                    return sym.call(str_lit("defn"));
                 }
                 made__load__2__expander::Sty::SItem() => {
-                    return sym(str_lit("item"));
+                    return sym.call(str_lit("item"));
                 }
                 made__load__2__expander::Sty::SRules() => {
-                    return sym(str_lit("rules"));
+                    return sym.call(str_lit("rules"));
                 }
                 made__load__2__expander::Sty::SNil() => {
                     return mk_list(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>(), a, b);
                 }
                 made__load__2__expander::Sty::SLiteral(n) => {
-                    return mk_list(kayak_rt::cons(sym(if word_p(mxp, maker_st, n) {
+                    return mk_list(kayak_rt::cons(sym.call(if word_p(mxp, maker_st, n) {
                         str_lit("literal")
                     } else {
                         str_lit("trailmark")
                     }), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(n), a, b, int_lit(0)), kayak_rt::nil())), a, b);
                 }
                 made__load__2__expander::Sty::SMark(n, i) => {
-                    return mk_list(kayak_rt::cons(sym(str_lit("trailmark")), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(n), a, b, int_lit(0)), kayak_rt::nil())), a, b);
+                    return mk_list(kayak_rt::cons(sym.call(str_lit("trailmark")), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(n), a, b, int_lit(0)), kayak_rt::nil())), a, b);
                 }
                 made__load__2__expander::Sty::SPair(x, y) => {
                     return show_pair(mxp, maker_st, t, nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>(), a, b);
                 }
                 made__load__2__expander::Sty::SImport(x, bd) => {
-                    return mk_list(kayak_rt::cons(sym(str_lit("import")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::cons(show_bind(mxp, maker_st, bd, a, b), kayak_rt::nil()))), a, b);
+                    return mk_list(kayak_rt::cons(sym.call(str_lit("import")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::cons(show_bind(mxp, maker_st, bd, a, b), kayak_rt::nil()))), a, b);
                 }
                 made__load__2__expander::Sty::SExport(x, bd) => {
-                    return mk_list(kayak_rt::cons(sym(str_lit("export")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::cons(show_bind(mxp, maker_st, bd, a, b), kayak_rt::nil()))), a, b);
+                    return mk_list(kayak_rt::cons(sym.call(str_lit("export")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::cons(show_bind(mxp, maker_st, bd, a, b), kayak_rt::nil()))), a, b);
                 }
                 made__load__2__expander::Sty::SMany(x) => {
-                    return mk_list(kayak_rt::cons(sym(str_lit("many")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::nil())), a, b);
+                    return mk_list(kayak_rt::cons(sym.call(str_lit("many")), kayak_rt::cons(show_sty(mxp, maker_st, x, a, b), kayak_rt::nil())), a, b);
                 }
                 made__load__2__expander::Sty::STyped(x, h) => {
                     t = x;
                     continue;
                 }
                 made__load__2__expander::Sty::SUnion(ms) => {
-                    return mk_list(cons(sym(str_lit("oneof")), mx_show_show_each(mxp, maker_st, ms, a, b)), a, b);
+                    return mk_list(cons(sym.call(str_lit("oneof")), mx_show_show_each(mxp, maker_st, ms, a, b)), a, b);
                 }
                 made__load__2__expander::Sty::SVar(j) => {
                     set(maker_st.shown.get().unwrap(), used_x(j, get(maker_st.shown.get().unwrap())));
-                    return sym(nth_shown(mxp, maker_st, j).0);
+                    return sym.call(nth_shown(mxp, maker_st, j).0);
                 }
                 made__load__2__expander::Sty::SMu(x, r, p) => {
                     return show_mu(mxp, maker_st, t, a, b);
@@ -14248,7 +14256,7 @@ pub mod made__load__3__main {
         } else {
             match cannot(mxp, maker_st, e)? {}
         };
-        let p = read_addr(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(parts))?;
+        let p = read_addr(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(parts))?;
         let d = syn_name(nth(parts, int_lit(1)));
         let er = element_of(mxp, maker_st, r, p);
         if (string_eq_p(d, str_lit("rib")) && _gt_eq(er, int_lit(0))) {
@@ -14291,7 +14299,7 @@ pub mod made__load__3__main {
                 b = nth(items, int_lit(1));
                 continue;
             } else if (mx_facts_head_is_p(b, str_lit("at")) && _eq(len(items), int_lit(2))) {
-                let p = read_addr(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), nth(items, int_lit(1)))?;
+                let p = read_addr(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), nth(items, int_lit(1)))?;
                 let w = want_x(mxp, maker_st, r, p);
                 return Ok(Product_11_12_13(int_lit(0), r, p));
             } else {
@@ -14357,7 +14365,7 @@ pub mod made__load__3__main {
             let one = if syn_symbol_p(d) {
                 Product_11_12(mx_shown_entry(mxp, maker_st, car(es), int_lit(0))?, the::<SynsA>(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>()))
             } else {
-                let p = read_addr(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(parts))?;
+                let p = read_addr(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(parts))?;
                 let w = want_x(mxp, maker_st, int_lit(0), p);
                 Product_11_12(Product_11_12_13(int_lit(0), int_lit(0), p), kayak_rt::cons(d, kayak_rt::nil()))
             };
@@ -14909,7 +14917,7 @@ pub mod made__load__3__main {
                 mk_list(kayak_rt::cons(mk_symbol(str_lit("letrec-shape"), a, b), kayak_rt::cons(mk_list(defs, a, b), kayak_rt::cons(top, kayak_rt::nil()))), a, b)
             };
             let shown = mk_list(cons(mk_symbol(str_lit("macro"), a, b), cons(shape, cons(car(r.2), r.1))), a, b);
-            let back = elaborated(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), shown)?;
+            let back = elaborated(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), shown)?;
             if string_eq_p(flat(back), flat(sig)) {
                 Ok(shown)
             } else {
@@ -14929,9 +14937,9 @@ pub mod made__load__3__main {
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -16420,7 +16428,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn rules_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, cs: SynsA, mi: Int) -> Result<Rules, Unwind> {
+    pub fn rules_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, cs: SynsA, mi: Int) -> Result<Rules, Unwind> {
         if null_p(cs) {
             Ok(nil::<Product_11_12_13<Int, kayak_rt::Handle<'static, made__load__2__expander::Syn>, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>())
         } else {
@@ -16440,7 +16448,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn rules_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, us: Unsigneds, mi: Int) -> Result<Rules, Unwind> {
+    pub fn rules_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, us: Unsigneds, mi: Int) -> Result<Rules, Unwind> {
         if null_p(us) {
             Ok(nil::<Product_11_12_13<Int, kayak_rt::Handle<'static, made__load__2__expander::Syn>, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>())
         } else {
@@ -16518,7 +16526,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn roots_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, us: Unsigneds, rs: Rules, mi: Int, c: MxInferCx) -> Result<MxInferInts, Unwind> {
+    pub fn roots_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, us: Unsigneds, rs: Rules, mi: Int, c: MxInferCx) -> Result<MxInferInts, Unwind> {
         if null_p(us) {
             Ok(nil::<Int>())
         } else {
@@ -16581,7 +16589,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn infer_loop<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut us: Unsigneds, mut rs: Rules, mut makes: MxInferInts, mut s0: Sol, mut sticky: Spans, mut shape_was: Str, mut last: List<Product_11_12<MxSolveStrings, SynsA>>, mut n: Int, mut saved: MacroEnv) -> Result<SynsA, Unwind> {
+    pub fn infer_loop<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut us: Unsigneds, mut rs: Rules, mut makes: MxInferInts, mut s0: Sol, mut sticky: Spans, mut shape_was: Str, mut last: List<Product_11_12<MxSolveStrings, SynsA>>, mut n: Int, mut saved: MacroEnv) -> Result<SynsA, Unwind> {
         loop {
             if _eq(n, int_lit(0)) {
                 if null_p(last) {
@@ -16618,7 +16626,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn infer<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, us: Unsigneds) -> Result<SynsA, Unwind> {
+    pub fn infer<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, us: Unsigneds) -> Result<SynsA, Unwind> {
         let rs = rules_of(mxp, maker_st, mx_fail, us, int_lit(0))?;
         let makes = makes_all(mxp, maker_st, mx_fail, us, rs)?;
         let saved = get(maker_st.defined.get().unwrap());
@@ -16632,13 +16640,13 @@ pub mod made__load__3__main {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.caught_sigs.get().unwrap(), infer(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), us)?);
+                set(maker_st.caught_sigs.get().unwrap(), infer(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), us)?);
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -17058,7 +17066,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn leaves_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut i: Int, mut n: Int, mut out: MxContractsPlaces) -> Result<MxContractsPlaces, Unwind> {
+    pub fn leaves_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut i: Int, mut n: Int, mut out: MxContractsPlaces) -> Result<MxContractsPlaces, Unwind> {
         loop {
             if _eq(i, n) {
                 return Ok(out);
@@ -17135,7 +17143,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn atoms_binders<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut r#as: Atms, mut part: kayak_rt::Handle<'static, Syn>, mut out: List<Symbol>) -> Result<List<Symbol>, Unwind> {
+    pub fn atoms_binders<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut r#as: Atms, mut part: kayak_rt::Handle<'static, Syn>, mut out: List<Symbol>) -> Result<List<Symbol>, Unwind> {
         loop {
             if null_p(r#as) {
                 return Ok(out);
@@ -17156,7 +17164,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn scope_binders<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ls: Levels, mut part: kayak_rt::Handle<'static, Syn>, mut out: List<Symbol>) -> Result<List<Symbol>, Unwind> {
+    pub fn scope_binders<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: Levels, mut part: kayak_rt::Handle<'static, Syn>, mut out: List<Symbol>) -> Result<List<Symbol>, Unwind> {
         loop {
             if null_p(ls) {
                 return Ok(the::<List<Symbol>>(reverse(out)));
@@ -17181,7 +17189,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn part_vars<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut fs: MxNodesFound, mut parts: SynsA, mut out: List<PartVar>) -> Result<List<PartVar>, Unwind> {
+    pub fn part_vars<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut fs: MxNodesFound, mut parts: SynsA, mut out: List<PartVar>) -> Result<List<PartVar>, Unwind> {
         loop {
             if null_p(fs) {
                 return Ok(out);
@@ -17330,7 +17338,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn contract_renames<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<Renamings, MxContractsRenames>, Unwind> {
+    pub fn contract_renames<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>) -> Result<Product_11_12<Renamings, MxContractsRenames>, Unwind> {
         let leaves = leaves_of(mxp, maker_st, mx_fail, int_lit(0), get(maker_st.nnodes.get().unwrap()), nil::<Product_11_12<Int, Int>>())?;
         let made = {
             set(maker_st.pseudo_parts.get().unwrap(), nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>());
@@ -17552,13 +17560,13 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn references_renamed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, part: kayak_rt::Handle<'static, Syn>, core: kayak_rt::Handle<'static, Sty>, rs: MxContractsRenames) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn references_renamed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, part: kayak_rt::Handle<'static, Syn>, core: kayak_rt::Handle<'static, Sty>, rs: MxContractsRenames) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let mx_nodes_found = program_scoped(mxp, maker_st, mx_fail, core, part, false, nil::<Symbol>())?.1;
         let at = free_refs(mxp, maker_st, mx_nodes_found, rs, nil::<Product_11_12_13<Int, Int, Symbol>>());
         Ok(syn_renamed_at(part, at))
     }
 
-    pub fn renamed_use<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, ps: Renamings) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn renamed_use<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, ps: Renamings) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let r = part_renames_at(syn_start(s), syn_end(s), ps);
         if not(null_p(r)) {
             let tagcase_ = car(r).1;
@@ -17593,7 +17601,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn renamed_use_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA, ps: Renamings) -> Result<SynsA, Unwind> {
+    pub fn renamed_use_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: SynsA, ps: Renamings) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -17615,7 +17623,7 @@ pub mod made__load__3__main {
     }
 
     pub fn anode_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, i: Int, fs: MxNodesFound) -> Anode {
-        let (none, no, bit) = (the::<List<Symbol>>(nil::<Symbol>()), the::<List<kayak_rt::Handle<'static, Syn>>>(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>()), lambda1s(move |d: bool| {
+        let (none, no, bit) = (the::<List<Symbol>>(nil::<Symbol>()), the::<List<kayak_rt::Handle<'static, Syn>>>(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>()), kayak_rt::closure1s((), |(), d: bool| {
             if d {
                 int_lit(1)
             } else {
@@ -17631,12 +17639,12 @@ pub mod made__load__3__main {
                 Product_11_12_13_14(int_lit(1), nil::<Int>(), none, no)
             }
             made__load__2__expander::MxNodesKids::KBinder(m, d) => {
-                Product_11_12_13_14(int_lit(2), kayak_rt::cons(bit(d), kayak_rt::nil()), none, no)
+                Product_11_12_13_14(int_lit(2), kayak_rt::cons(bit.call(d), kayak_rt::nil()), none, no)
             }
             made__load__2__expander::MxNodesKids::KRef(m, d, f) => {
                 let b = bound_by(mxp, maker_st, env_levels(env_at(mxp, maker_st, i, fs)), m, d);
                 if _eq(b, int_lit(-1)) {
-                    Product_11_12_13_14(int_lit(4), kayak_rt::cons(bit(d), kayak_rt::nil()), kayak_rt::cons(m, kayak_rt::nil()), no)
+                    Product_11_12_13_14(int_lit(4), kayak_rt::cons(bit.call(d), kayak_rt::nil()), kayak_rt::cons(m, kayak_rt::nil()), no)
                 } else {
                     Product_11_12_13_14(int_lit(3), kayak_rt::cons(b, kayak_rt::nil()), none, no)
                 }
@@ -17668,7 +17676,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn alpha_nodes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, made: kayak_rt::Handle<'static, Sty>) -> Result<Anodes, Unwind> {
+    pub fn alpha_nodes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, made: kayak_rt::Handle<'static, Sty>) -> Result<Anodes, Unwind> {
         let mx_nodes_found = program_scoped(mxp, maker_st, mx_fail, made, s, false, nil::<Symbol>())?.1;
         Ok(anodes_from(mxp, maker_st, int_lit(0), get(maker_st.nnodes.get().unwrap()), mx_nodes_found, nil::<Product_11_12_13_14<Int, List<Int>, List<Symbol>, List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>>>()))
     }
@@ -17828,9 +17836,9 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn contract_held<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, in_use: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, out: kayak_rt::Handle<'static, Syn>, out2: kayak_rt::Handle<'static, Syn>, fresh: MxContractsRenames, made: Int, ty: kayak_rt::Handle<'static, Sty>) -> Result<(), Unwind> {
-        let ours = lambda3(move |m: Str, a: Int, b: Int| {
-            Ok(match in_use(string_append(str_lit("its expansion: "), m), syn_start(s), syn_end(s))? {})
+    pub fn contract_held<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, in_use: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, out: kayak_rt::Handle<'static, Syn>, out2: kayak_rt::Handle<'static, Syn>, fresh: MxContractsRenames, made: Int, ty: kayak_rt::Handle<'static, Sty>) -> Result<(), Unwind> {
+        let ours = kayak_rt::closure3((in_use, s,), |(in_use, s,), m: Str, a: Int, b: Int| {
+            Ok(match in_use.call(string_append(str_lit("its expansion: "), m), syn_start(s), syn_end(s))? {})
         });
         let a = alpha_nodes(mxp, maker_st, ours, out, ty)?;
         let b = alpha_nodes(mxp, maker_st, ours, out2, ty)?;
@@ -17838,7 +17846,7 @@ pub mod made__load__3__main {
             Ok(())
         } else {
             let x = mx_contracts_escaped(mxp, maker_st, b, fresh, made);
-            Ok(match in_use(if null_p(x) {
+            Ok(match in_use.call(if null_p(x) {
                 str_lit("its expansion depends on how its use's bound names are spelled")
             } else {
                 string_append(str_lit("its expansion places `"), string_append(symbol_to_string(car(x)), string_append(str_lit("` where its contract does not put it in `"), string_append(symbol_to_string(car(x)), str_lit("`'s scope")))))
@@ -17880,11 +17888,11 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn said_not_yet<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, at: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn said_not_yet<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         Ok(match fail_at(mxp, maker_st, mx_fail, str_lit("a contract whose uses define what a part of theirs defines: not yet"), at)? {})
     }
 
-    pub fn said_names<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut r#as: Atms, mut parts: SynsA, mut at: kayak_rt::Handle<'static, Syn>) -> Result<NamedNs, Unwind> {
+    pub fn said_names<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut r#as: Atms, mut parts: SynsA, mut at: kayak_rt::Handle<'static, Syn>) -> Result<NamedNs, Unwind> {
         loop {
             if null_p(r#as) {
                 return Ok(nil::<Product_11_12<Symbol, bool>>());
@@ -17913,7 +17921,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn contract_said<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>) -> Result<NamedNs, Unwind> {
+    pub fn contract_said<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>) -> Result<NamedNs, Unwind> {
         let r#use = {
             nodes_reset_x(mxp, maker_st);
             align(mxp, maker_st, mx_fail, int_lit(2), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::Handle<'static, made__load__2__expander::Sty>, List<kayak_rt::Handle<'static, made__load__2__expander::Level>>, bool, List<Product_11_12<List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>>>, Int>>>()), sig, operands, int_lit(-1), nil::<bool>())?
@@ -18000,7 +18008,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn defines_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut i: Int, mut n: Int, mut out: NamedNs) -> Result<NamedNs, Unwind> {
+    pub fn defines_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut i: Int, mut n: Int, mut out: NamedNs) -> Result<NamedNs, Unwind> {
         loop {
             if _eq(i, n) {
                 return Ok(out);
@@ -18032,7 +18040,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn expansion_defines<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, out: kayak_rt::Handle<'static, Syn>) -> Result<NamedNs, Unwind> {
+    pub fn expansion_defines<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, out: kayak_rt::Handle<'static, Syn>) -> Result<NamedNs, Unwind> {
         let scoped = program_scoped(mxp, maker_st, mx_fail, s_defn(), out, false, nil::<Symbol>())?;
         let ds = {
             set(maker_st.program_walk.get().unwrap(), true);
@@ -18042,10 +18050,10 @@ pub mod made__load__3__main {
         Ok(ds)
     }
 
-    pub fn defined_held<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>, out: kayak_rt::Handle<'static, Syn>, made: Int) -> Result<(), Unwind> {
+    pub fn defined_held<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>, out: kayak_rt::Handle<'static, Syn>, made: Int) -> Result<(), Unwind> {
         let said = contract_said(mxp, maker_st, mx_fail, sig, operands)?;
-        let ours = lambda3(move |m: Str, a: Int, b: Int| {
-            Ok(match mx_fail(string_append(str_lit("its expansion: "), m), a, b)? {})
+        let ours = kayak_rt::closure3((mx_fail,), |(mx_fail,), m: Str, a: Int, b: Int| {
+            Ok(match mx_fail.call(string_append(str_lit("its expansion: "), m), a, b)? {})
         });
         let defines = expansion_defines(mxp, maker_st, ours, out)?;
         let own = string_append(str_lit("%~"), string_append(mx_fresh_tag_of(mxp, maker_st, made), str_lit(":")));
@@ -18117,12 +18125,12 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn same_signature_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, said: kayak_rt::Handle<'static, Syn>) -> Result<bool, Unwind> {
+    pub fn same_signature_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, said: kayak_rt::Handle<'static, Syn>) -> Result<bool, Unwind> {
         let (have, want) = (car(macro_of(n, get(maker_st.defined.get().unwrap()))), signature_of(mxp, maker_st, mx_fail, said)?);
         Ok((null_p(want.0) && null_p(have.2) && _eq(have.3, want.2) && sub_p(mxp, maker_st, have.0, want.1, nil::<Product_11_12<kayak_rt::Handle<'static, made__load__2__expander::Sty>, kayak_rt::Handle<'static, made__load__2__expander::Sty>>>()) && sub_p(mxp, maker_st, want.1, have.0, nil::<Product_11_12<kayak_rt::Handle<'static, made__load__2__expander::Sty>, kayak_rt::Handle<'static, made__load__2__expander::Sty>>>())))
     }
 
-    pub fn syntax_held_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut name: Symbol, mut s: kayak_rt::Handle<'static, Syn>, mut from: Int, mut es: Entries) -> Result<(), Unwind> {
+    pub fn syntax_held_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut name: Symbol, mut s: kayak_rt::Handle<'static, Syn>, mut from: Int, mut es: Entries) -> Result<(), Unwind> {
         loop {
             if null_p(es) {
                 return Ok(());
@@ -18140,15 +18148,15 @@ pub mod made__load__3__main {
                     } else {
                         str_lit("")
                     };
-                    let refused = lambda1(move |m: Str| {
-                        Ok(match mx_fail(string_append(str_lit("a use of `"), string_append(symbol_to_string(name), string_append(str_lit("`: "), m))), syn_start(s), syn_end(s))? {})
+                    let refused = kayak_rt::closure1((mx_fail, name, s,), |(mx_fail, name, s,), m: Str| {
+                        Ok(match mx_fail.call(string_append(str_lit("a use of `"), string_append(symbol_to_string(name), string_append(str_lit("`: "), m))), syn_start(s), syn_end(s))? {})
                     });
                     if string_eq_p(x, str_lit("")) {
-                        return Ok(match refused(string_append(str_lit("its signature says a macro of `"), string_append(shown, string_append(str_lit("` is "), str_lit("defined at a part that is not a name")))))? {});
+                        return Ok(match refused.call(string_append(str_lit("its signature says a macro of `"), string_append(shown, string_append(str_lit("` is "), str_lit("defined at a part that is not a name")))))? {});
                     } else if not(name_in_from_p(string_to_symbol(x), get(maker_st.made_syntax.get().unwrap()), from)) {
-                        return Ok(match refused(string_append(str_lit("its signature says it defines `"), string_append(x, string_append(str_lit("`, a macro "), string_append(str_lit("of `"), string_append(shown, str_lit("`, and its expansion does not")))))))? {});
+                        return Ok(match refused.call(string_append(str_lit("its signature says it defines `"), string_append(x, string_append(str_lit("`, a macro "), string_append(str_lit("of `"), string_append(shown, str_lit("`, and its expansion does not")))))))? {});
                     } else if not(same_signature_p(mxp, maker_st, mx_fail, string_to_symbol(x), said)?) {
-                        return Ok(match refused(string_append(str_lit("its signature says `"), string_append(x, string_append(str_lit("` is a macro of `"), string_append(shown, string_append(str_lit("`, and its expansion defines one of "), str_lit("another signature")))))))? {});
+                        return Ok(match refused.call(string_append(str_lit("its signature says `"), string_append(x, string_append(str_lit("` is a macro of `"), string_append(shown, string_append(str_lit("`, and its expansion defines one of "), str_lit("another signature")))))))? {});
                     } else {
                         es = cdr(es);
                         continue;
@@ -18158,7 +18166,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn syntax_held<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, name: Symbol, s: kayak_rt::Handle<'static, Syn>, from: Int) -> Result<(), Unwind> {
+    pub fn syntax_held<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, name: Symbol, s: kayak_rt::Handle<'static, Syn>, from: Int) -> Result<(), Unwind> {
         let m = macro_of(name, get(maker_st.defined.get().unwrap()));
         if null_p(m) {
             Ok(())
@@ -18606,7 +18614,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn closed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, macro_env: bool, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn closed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, macro_env: bool, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let tagcase_ = s;
         match *tagcase_ {
             made__load__2__expander::Syn::Atom(d, a, b, x) => {
@@ -18637,7 +18645,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_procedural_closed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA, macro_env: bool, made: Int) -> Result<SynsA, Unwind> {
+    pub fn mx_procedural_closed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: SynsA, macro_env: bool, made: Int) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -18645,9 +18653,9 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn opened_closure<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, items: SynsA, outer: bool, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn opened_closure<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, items: SynsA, outer: bool, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if not(_eq(len(items), int_lit(4))) {
-            match mx_fail(str_lit("a syntactic closure is `(%sc env (free …) form)`"), syn_start(s), syn_end(s))? {};
+            match mx_fail.call(str_lit("a syntactic closure is `(%sc env (free …) form)`"), syn_start(s), syn_end(s))? {};
             Ok(s)
         } else {
             let env = car(cdr(items));
@@ -18659,7 +18667,7 @@ pub mod made__load__3__main {
                 str_lit("")
             };
             if not((string_eq_p(e, str_lit("%env:use")) || string_eq_p(e, str_lit("%env:macro")))) {
-                match mx_fail(str_lit("a syntactic closure's environment is one a transformer was given"), syn_start(env), syn_end(env))? {};
+                match mx_fail.call(str_lit("a syntactic closure's environment is one a transformer was given"), syn_start(env), syn_end(env))? {};
                 Ok(s)
             } else {
                 Ok(opened(mxp, maker_st, mx_fail, form, string_eq_p(e, str_lit("%env:macro")), outer, free_names(mxp, maker_st, free)?, made)?)
@@ -18667,7 +18675,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn opened<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, inner: bool, outer: bool, free: List<Symbol>, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn opened<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, inner: bool, outer: bool, free: List<Symbol>, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let tagcase_ = s;
         match *tagcase_ {
             made__load__2__expander::Syn::Atom(d, a, b, x) => {
@@ -18696,7 +18704,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn opened_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA, inner: bool, outer: bool, free: List<Symbol>, made: Int) -> Result<SynsA, Unwind> {
+    pub fn opened_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: SynsA, inner: bool, outer: bool, free: List<Symbol>, made: Int) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -18755,7 +18763,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_procedural_keyword_name_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Str) -> Result<bool, Unwind> {
+    pub fn mx_procedural_keyword_name_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Str) -> Result<bool, Unwind> {
         Ok((reserved_p(mxp, maker_st, n) || desc_word_p(mxp, maker_st, n, true) || type_form_p(mxp, maker_st, n) || named_p(n, kernel_sigs(mxp, maker_st, mx_fail)?) || named_p(n, kernel_definitions(mxp, maker_st, mx_fail)?) || string_eq_p(n, str_lit("else")) || string_eq_p(n, str_lit("=>")) || string_eq_p(n, str_lit("quote")) || string_eq_p(n, str_lit("quasiquote")) || string_eq_p(n, str_lit("unquote")) || string_eq_p(n, str_lit("unquote-splicing")) || string_eq_p(n, str_lit("syntax-rules")) || string_eq_p(n, str_lit("trailmark")) || _gt_eq(style_named(n), int_lit(0)) || macro_p(mxp, maker_st, string_to_symbol(n))))
     }
 
@@ -18798,7 +18806,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn keywords<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn keywords<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let tagcase_ = s;
         match *tagcase_ {
             made__load__2__expander::Syn::Atom(d, a, b, x) => {
@@ -18840,7 +18848,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn keywords_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA) -> Result<SynsA, Unwind> {
+    pub fn keywords_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: SynsA) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -18889,15 +18897,15 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn expand_procedural<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, name: Symbol, s: kayak_rt::Handle<'static, Syn>, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn expand_procedural<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, name: Symbol, s: kayak_rt::Handle<'static, Syn>, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let p = car(procedural_of(mxp, maker_st, name));
         let style = p.0;
         let a = syn_start(s);
         let b = syn_end(s);
-        let in_use = lambda1(move |m: Str| {
-            Ok(match mx_fail(string_append(str_lit("a use of `"), string_append(symbol_to_string(name), string_append(str_lit("`: "), m))), a, b)? {})
+        let in_use = kayak_rt::closure1((mx_fail, name, a, b,), |(mx_fail, name, a, b,), m: Str| {
+            Ok(match mx_fail.call(string_append(str_lit("a use of `"), string_append(symbol_to_string(name), string_append(str_lit("`: "), m))), a, b)? {})
         });
-        let opened = lambda1(move |at: kayak_rt::Handle<'static, Syn>| {
+        let opened = kayak_rt::closure1((mxp, maker_st, mx_fail, made, style,), |(mxp, maker_st, mx_fail, made, style,), at: kayak_rt::Handle<'static, Syn>| {
             Ok(keywords(mxp, maker_st, mx_fail, if _eq(style, int_lit(1)) {
                 closed(mxp, maker_st, mx_fail, at, true, made)?
             } else if _eq(style, int_lit(2)) {
@@ -18910,10 +18918,10 @@ pub mod made__load__3__main {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("ok") } {
             let d: kayak_rt::value::Value = kayak_rt::sum_payload::<kayak_rt::value::Value>(tagcase_);
-            Ok(opened(syn_of_datum(d, new_source_key(mxp, maker_st, a, made), new_source_key(mxp, maker_st, b, made), made))?)
+            Ok(opened.call(syn_of_datum(d, new_source_key(mxp, maker_st, a, made), new_source_key(mxp, maker_st, b, made), made))?)
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            match in_use(string_append(str_lit("its transformer: "), why))? {};
+            match in_use.call(string_append(str_lit("its transformer: "), why))? {};
             Ok(s)
         } else if tag_ == const { kayak_rt::tag_hash("apart") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -18921,28 +18929,28 @@ pub mod made__load__3__main {
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                match in_use(string_append(str_lit("its transformer: "), why))? {};
+                match in_use.call(string_append(str_lit("its transformer: "), why))? {};
                 Ok(s)
             } else if tag_ == const { kayak_rt::tag_hash("ok") } {
                 let out: Str = kayak_rt::sum_payload::<Str>(tagcase_);
                 let read = read_answer(out, new_source_key(mxp, maker_st, a, made), new_source_key(mxp, maker_st, b, made), made);
                 if null_p(read) {
-                    match in_use(string_append(str_lit("its transformer gave `"), string_append(out, str_lit("`, not one form"))))? {};
+                    match in_use.call(string_append(str_lit("its transformer gave `"), string_append(out, str_lit("`, not one form"))))? {};
                     Ok(s)
                 } else {
-                    Ok(opened(car(read))?)
+                    Ok(opened.call(car(read))?)
                 }
             } else { unreachable!() }
         } else { unreachable!() }
     }
 
-    pub fn procedural_expanded<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, name: Symbol, s: kayak_rt::Handle<'static, Syn>, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn procedural_expanded<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, name: Symbol, s: kayak_rt::Handle<'static, Syn>, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let shown = string_append(str_lit("a use of `"), string_append(symbol_to_string(name), str_lit("`: ")));
-        let in_use = lambda3(move |m: Str, a: Int, b: Int| {
-            Ok(match mx_fail(string_append(shown, m), a, b)? {})
+        let in_use = kayak_rt::closure3((mx_fail, shown,), |(mx_fail, shown,), m: Str, a: Int, b: Int| {
+            Ok(match mx_fail.call(string_append(shown, m), a, b)? {})
         });
-        let at_use = lambda3(move |m: Str, a: Int, b: Int| {
-            Ok(match mx_fail(string_append(shown, m), syn_start(s), syn_end(s))? {})
+        let at_use = kayak_rt::closure3((mx_fail, s, shown,), |(mx_fail, s, shown,), m: Str, a: Int, b: Int| {
+            Ok(match mx_fail.call(string_append(shown, m), syn_start(s), syn_end(s))? {})
         });
         let m = car(macro_of_defined(name, get(maker_st.defined.get().unwrap())));
         let sig = m.0;
@@ -18991,13 +18999,13 @@ pub mod made__load__3__main {
         let tagcase_ = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                align(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_apart(mxp, maker_st, a0, a1, a2)), int_lit(1), ps, sig, operands, int_lit(-1), nil::<bool>())?;
+                align(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_apart(mxp, maker_st, a0, a1, a2)), int_lit(1), ps, sig, operands, int_lit(-1), nil::<bool>())?;
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r: kayak_rt::Handle<'static, Presult>| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r: kayak_rt::Handle<'static, Presult>| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -19103,14 +19111,14 @@ pub mod made__load__3__main {
         (_gt_eq(i, int_lit(0)) && _lt(i, array_length(get(maker_st.trusts.get().unwrap()))) && array_ref(get(maker_st.trusts.get().unwrap()), i))
     }
 
-    pub fn use_aligned_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, in_use: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn use_aligned_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, in_use: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, sig: kayak_rt::Handle<'static, Sty>, operands: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let trusted = trusted_key_p(mxp, maker_st, syn_start(s));
         if (trusted && _eq(get(maker_st.recheck.get().unwrap()), int_lit(0))) {
             Ok(())
         } else {
             align(mxp, maker_st, if trusted {
-                lambda3(move |msg: Str, a: Int, b: Int| {
-                    Ok(match in_use(string_append(msg, string_append(str_lit(" (a use a template made, which its macro's "), string_append(str_lit("definition found fits: a fault in the "), str_lit("binding-shape check, not in the program)")))), a, b)? {})
+                kayak_rt::closure3((in_use,), |(in_use,), msg: Str, a: Int, b: Int| {
+                    Ok(match in_use.call(string_append(msg, string_append(str_lit(" (a use a template made, which its macro's "), string_append(str_lit("definition found fits: a fault in the "), str_lit("binding-shape check, not in the program)")))), a, b)? {})
                 })
             } else {
                 in_use
@@ -19168,7 +19176,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn for_syntax_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn for_syntax_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let fs = append(get(maker_st.phase1_forms.get().unwrap()), syns_texts({
             let tagcase_ = s;
             match *tagcase_ {
@@ -19188,7 +19196,7 @@ pub mod made__load__3__main {
             Ok(set(maker_st.phase1_forms.get().unwrap(), fs))
         } else if tag_ == const { kayak_rt::tag_hash("failed") } {
             let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            Ok(match mx_fail(string_append(str_lit("`begin-for-syntax`: "), why), syn_start(s), syn_end(s))? {})
+            Ok(match mx_fail.call(string_append(str_lit("`begin-for-syntax`: "), why), syn_start(s), syn_end(s))? {})
         } else { unreachable!() }
     }
 
@@ -19232,7 +19240,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn define_procedural<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>, e: DefEnv) -> Result<List<Symbol>, Unwind> {
+    pub fn define_procedural<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>, e: DefEnv) -> Result<List<Symbol>, Unwind> {
         let p = car(procedural_form(form));
         let name = p.0;
         let code = p.2;
@@ -19248,7 +19256,7 @@ pub mod made__load__3__main {
             car(signed).1
         };
         if (not(syn_symbol_p(name)) || reserved_p(mxp, maker_st, syn_name(name))) {
-            match mx_fail(str_lit("a macro's name, not a form's"), syn_start(name), syn_end(name))? {};
+            match mx_fail.call(str_lit("a macro's name, not a form's"), syn_start(name), syn_end(name))? {};
             Ok(nil::<Symbol>())
         } else if (not(null_p(signed)) && (not(null_p(car(signed).0)) || _eq(car(signed).2, int_lit(2)))) {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(name), string_append(str_lit("`'s contract: a procedural "), string_append(str_lit("macro's is an expression's or definitions', of "), str_lit("untyped parts, not yet another"))))), car(p.3))? {};
@@ -19267,7 +19275,7 @@ pub mod made__load__3__main {
                 Ok(kayak_rt::cons(syn_symbol(mxp, maker_st, name)?, kayak_rt::nil()))
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                match mx_fail(string_append(str_lit("`"), string_append(syn_name(name), string_append(str_lit("`'s transformer: "), why))), syn_start(code), syn_end(code))? {};
+                match mx_fail.call(string_append(str_lit("`"), string_append(syn_name(name), string_append(str_lit("`'s transformer: "), why))), syn_start(code), syn_end(code))? {};
                 Ok(nil::<Symbol>())
             } else { unreachable!() }
         }
@@ -19385,7 +19393,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn limit_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, name: Str) -> Result<Int, Unwind> {
+    pub fn limit_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, name: Str) -> Result<Int, Unwind> {
         let a = mx_limit(name);
         let rest = substring(a, int_lit(1), string_length(a));
         if char_eq_p(string_ref(a, int_lit(0)), '=') {
@@ -19396,7 +19404,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn chain_begun_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
+    pub fn chain_begun_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<Int, Unwind> {
         let u = limit_of(mxp, maker_st, mx_fail, s, str_lit("USES"))?;
         let d = if _lt(u, int_lit(0)) {
             int_lit(-1)
@@ -19573,7 +19581,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn limit_failed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, s: kayak_rt::Handle<'static, Syn>, ls: List<Link>, why: Str) -> Result<bool, Unwind> {
+    pub fn limit_failed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, s: kayak_rt::Handle<'static, Syn>, ls: List<Link>, why: Str) -> Result<bool, Unwind> {
         let r = first_repeat(mxp, maker_st, sized(cons(Product_11_12_13(n, s, int_lit(-1)), ls)))?;
         if null_p(r) {
             match fail_at(mxp, maker_st, mx_fail, why, s)? {}
@@ -19598,7 +19606,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn use_entered_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, s: kayak_rt::Handle<'static, Syn>, fuel: Int) -> Result<bool, Unwind> {
+    pub fn use_entered_p<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, s: kayak_rt::Handle<'static, Syn>, fuel: Int) -> Result<bool, Unwind> {
         let (ls, shown) = (get(maker_st.chain.get().unwrap()), string_append(str_lit("`"), string_append(symbol_to_string(n), str_lit("`"))));
         if _eq(fuel, int_lit(0)) {
             Ok(limit_failed(mxp, maker_st, mx_fail, n, s, ls, string_append(str_lit("this macro's expansion does not end: "), string_append(int_to_string(get(maker_st.max_uses.get().unwrap())), string_append(str_lit(" uses expanded in one form, the last of "), string_append(shown, inside_said(ls, int_lit(4), str_lit("")))))))?)
@@ -19642,7 +19650,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn clause_def_env<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: kayak_rt::Handle<'static, Syn>, ps: Pvars, poly: SynsA, file: Scopes) -> Result<DefEnv, Unwind> {
+    pub fn clause_def_env<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: kayak_rt::Handle<'static, Syn>, ps: Pvars, poly: SynsA, file: Scopes) -> Result<DefEnv, Unwind> {
         let (e, cs) = (def_env_of_file(mxp, maker_st, file), contracts_of(mxp, maker_st, ps, binder_names(mxp, maker_st, poly)?, file)?);
         if (_eq(e.0, int_lit(2)) && not(null_p(cs))) {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(symbol_to_string(car(cs).0), string_append(str_lit("`: a typed "), str_lit("hole in a macro a file uses itself, not yet")))), c)? {}
@@ -19660,7 +19668,7 @@ pub mod made__load__3__main {
         Product_11_12_13_14_15(node_core(mxp, maker_st, at), env_levels(f.1), f.2, node_hole(mxp, maker_st, at), f.3)
     }
 
-    pub fn pvars_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut fs: MxNodesFound, mut ps: Pvars, mut defn: Int) -> Result<Pvars, Unwind> {
+    pub fn pvars_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut fs: MxNodesFound, mut ps: Pvars, mut defn: Int) -> Result<Pvars, Unwind> {
         loop {
             if null_p(fs) {
                 return Ok(ps);
@@ -19698,7 +19706,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn pattern_vars<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, sig: kayak_rt::Handle<'static, Sty>, pattern: kayak_rt::Handle<'static, Syn>, defn: Int, lits: MxParserTypesNames) -> Result<Product_11_12<Pvars, List<MxExportsExported>>, Unwind> {
+    pub fn pattern_vars<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, sig: kayak_rt::Handle<'static, Sty>, pattern: kayak_rt::Handle<'static, Syn>, defn: Int, lits: MxParserTypesNames) -> Result<Product_11_12<Pvars, List<MxExportsExported>>, Unwind> {
         nodes_reset_x(mxp, maker_st);
         let root = align(mxp, maker_st, mx_fail, int_lit(0), the::<Pvars>(nil::<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::Handle<'static, made__load__2__expander::Sty>, List<kayak_rt::Handle<'static, made__load__2__expander::Level>>, bool, List<Product_11_12<List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>>>, Int>>>()), sig, pattern, int_lit(-1), nil::<bool>())?;
         let mx_top_said = literals_said(mxp, maker_st, mx_fail, lits, int_lit(0))?;
@@ -19766,7 +19774,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_top_repeats_said<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut rs: List<Product_11_12<Int, Int>>, mut ps: Pvars, mut acts: Actions) -> Result<(), Unwind> {
+    pub fn mx_top_repeats_said<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut rs: List<Product_11_12<Int, Int>>, mut ps: Pvars, mut acts: Actions) -> Result<(), Unwind> {
         loop {
             if null_p(rs) {
                 return Ok(());
@@ -19779,7 +19787,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn ref_action<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, b: List<Int>, free: Int, file: Scopes, s: kayak_rt::Handle<'static, Syn>, bd: Depths) -> Result<List<kayak_rt::Handle<'static, Action>>, Unwind> {
+    pub fn ref_action<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, b: List<Int>, free: Int, file: Scopes, s: kayak_rt::Handle<'static, Syn>, bd: Depths) -> Result<List<kayak_rt::Handle<'static, Action>>, Unwind> {
         if not(null_p(b)) {
             Ok(kayak_rt::cons(act_rename(node_path(mxp, maker_st, car(b)), depth_of(car(b), bd)), kayak_rt::nil()))
         } else if _eq(free, int_lit(2)) {
@@ -19811,7 +19819,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn name_actions<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ps: Pvars, mut fs: MxNodesFound, mut file: Scopes, mut out: Actions, mut mx_scopes_uses: MxParserTypesNames, mut nested: Nested, mut bd: Depths) -> Result<Actions, Unwind> {
+    pub fn name_actions<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ps: Pvars, mut fs: MxNodesFound, mut file: Scopes, mut out: Actions, mut mx_scopes_uses: MxParserTypesNames, mut nested: Nested, mut bd: Depths) -> Result<Actions, Unwind> {
         loop {
             if null_p(fs) {
                 return Ok(out);
@@ -19895,7 +19903,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn type_actions<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut i: Int, mut n: Int, mut file: Scopes, mut out: Actions) -> Result<Actions, Unwind> {
+    pub fn type_actions<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut i: Int, mut n: Int, mut file: Scopes, mut out: Actions) -> Result<Actions, Unwind> {
         loop {
             if _eq(i, n) {
                 return Ok(out);
@@ -19931,7 +19939,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn template_actions<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Pvars, template: kayak_rt::Handle<'static, Syn>, defn: Int, declared: List<MxExportsExported>, file: Scopes) -> Result<Actions, Unwind> {
+    pub fn template_actions<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Pvars, template: kayak_rt::Handle<'static, Syn>, defn: Int, declared: List<MxExportsExported>, file: Scopes) -> Result<Actions, Unwind> {
         set(maker_st.heads.get().unwrap(), nil::<Product_11_12_13<Int, Int, Int>>());
         set(maker_st.heads_on.get().unwrap(), uses_syntax_macro_p(mxp, maker_st, template)?);
         let made = if _eq(defn, int_lit(1)) {
@@ -19964,7 +19972,7 @@ pub mod made__load__3__main {
         Ok(type_actions(mxp, maker_st, mx_fail, int_lit(0), get(maker_st.nnodes.get().unwrap()), file, named)?)
     }
 
-    pub fn check_clause<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: kayak_rt::Handle<'static, Syn>, sig: kayak_rt::Handle<'static, Sty>, defn: Int, poly: SynsA, lits: MxParserTypesNames, file: Scopes, name: Symbol) -> Result<Clause, Unwind> {
+    pub fn check_clause<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: kayak_rt::Handle<'static, Syn>, sig: kayak_rt::Handle<'static, Sty>, defn: Int, poly: SynsA, lits: MxParserTypesNames, file: Scopes, name: Symbol) -> Result<Clause, Unwind> {
         let two = proper(c);
         if not(_eq(len(two), int_lit(2))) {
             match fail_at(mxp, maker_st, mx_fail, maker_st.mx_top_clause_usage.get().unwrap(), c)? {};
@@ -20002,13 +20010,13 @@ pub mod made__load__3__main {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.tried_sigs.get().unwrap(), kayak_rt::cons(signature_of(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?, kayak_rt::nil()));
+                set(maker_st.tried_sigs.get().unwrap(), kayak_rt::cons(signature_of(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?, kayak_rt::nil()));
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -20032,7 +20040,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn inferred_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ws: Writtens, mx_files_written: List<SignedOpt>, inferred: SynsA) -> Result<List<MxTopSaid>, Unwind> {
+    pub fn inferred_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ws: Writtens, mx_files_written: List<SignedOpt>, inferred: SynsA) -> Result<List<MxTopSaid>, Unwind> {
         if null_p(ws) {
             Ok(nil::<Product_11_12<List<Product_11_12_13<List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, kayak_rt::Handle<'static, made__load__2__expander::Sty>, Int>>, List<Str>>>())
         } else if not(null_p(car(mx_files_written))) {
@@ -20057,7 +20065,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn check_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, cs: SynsA, sig: kayak_rt::Handle<'static, Sty>, defn: Int, poly: SynsA, lits: MxParserTypesNames, file: Scopes, name: Symbol) -> Result<Clauses, Unwind> {
+    pub fn check_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, cs: SynsA, sig: kayak_rt::Handle<'static, Sty>, defn: Int, poly: SynsA, lits: MxParserTypesNames, file: Scopes, name: Symbol) -> Result<Clauses, Unwind> {
         if null_p(cs) {
             Ok(nil::<Product_11_12_13_14_15_16_17_18<kayak_rt::Handle<'static, made__load__2__expander::Syn>, kayak_rt::Handle<'static, made__load__2__expander::Syn>, List<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__2__expander::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::Handle<'static, made__load__2__expander::Sty>, List<kayak_rt::Handle<'static, made__load__2__expander::Level>>, bool, List<Product_11_12<List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>())
         } else {
@@ -20070,13 +20078,13 @@ pub mod made__load__3__main {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.tried_checks.get().unwrap(), kayak_rt::cons(check_each(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), w.3, s.1, s.2, s.0, w.2, file, w.0)?, kayak_rt::nil()));
+                set(maker_st.tried_checks.get().unwrap(), kayak_rt::cons(check_each(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), w.3, s.1, s.2, s.0, w.2, file, w.0)?, kayak_rt::nil()));
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -20112,7 +20120,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn checked_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ws: Writtens, sigs: List<MxTopSaid>, file: Scopes) -> Result<MacroEnv, Unwind> {
+    pub fn checked_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ws: Writtens, sigs: List<MxTopSaid>, file: Scopes) -> Result<MacroEnv, Unwind> {
         if null_p(ws) {
             Ok(nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::Handle<'static, made__load__2__expander::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::Handle<'static, made__load__2__expander::Syn>, kayak_rt::Handle<'static, made__load__2__expander::Syn>, List<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__2__expander::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::Handle<'static, made__load__2__expander::Sty>, List<kayak_rt::Handle<'static, made__load__2__expander::Level>>, bool, List<Product_11_12<List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, Int>>>())
         } else {
@@ -20144,7 +20152,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn define_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ws: Writtens, file: Scopes, before: MacroEnv) -> Result<MxParserTypesNames, Unwind> {
+    pub fn define_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ws: Writtens, file: Scopes, before: MacroEnv) -> Result<MxParserTypesNames, Unwind> {
         let mx_files_written = signed_each(mxp, maker_st, mx_fail, ws)?;
         let us = unsigned_of(ws);
         let inferred = if null_p(us) {
@@ -20159,11 +20167,11 @@ pub mod made__load__3__main {
         Ok(written_names(ws))
     }
 
-    pub fn define_macro<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>, file: Scopes) -> Result<MxParserTypesNames, Unwind> {
+    pub fn define_macro<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>, file: Scopes) -> Result<MxParserTypesNames, Unwind> {
         let before = get(maker_st.defined.get().unwrap());
-        let undo = lambda3(move |m: Str, a: Int, b: Int| {
+        let undo = kayak_rt::closure3((maker_st, mx_fail, before,), |(maker_st, mx_fail, before,), m: Str, a: Int, b: Int| {
             set(maker_st.defined.get().unwrap(), before);
-            Ok(match mx_fail(m, a, b)? {})
+            Ok(match mx_fail.call(m, a, b)? {})
         });
         if not(null_p(trailmark_form(form))) {
             Ok(define_trailmark(mxp, maker_st, mx_fail, form)?)
@@ -20457,7 +20465,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn transcribe_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: Clause, t: kayak_rt::Handle<'static, Syn>, path: Addr, bs: MxMatchBinds, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn transcribe_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, t: kayak_rt::Handle<'static, Syn>, path: Addr, bs: MxMatchBinds, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let ta = syn_start(t);
         let tb = syn_end(t);
         let act = action_at(path, c.2);
@@ -20545,7 +20553,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn repeat_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut c: Clause, mut x: kayak_rt::Handle<'static, Syn>, mut p: Addr, mut bs: MxMatchBinds, mut made: Int, mut drivers: MxParserTypesNames, mut lists: List<SynsA>, mut r: Int, mut n: Int, mut out: SynsA) -> Result<SynsA, Unwind> {
+    pub fn repeat_each<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut c: Clause, mut x: kayak_rt::Handle<'static, Syn>, mut p: Addr, mut bs: MxMatchBinds, mut made: Int, mut drivers: MxParserTypesNames, mut lists: List<SynsA>, mut r: Int, mut n: Int, mut out: SynsA) -> Result<SynsA, Unwind> {
         loop {
             if _eq(r, n) {
                 return Ok(the::<SynsA>(reverse(out)));
@@ -20563,7 +20571,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn transcribe_items<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: Clause, xs: SynsA, path: Addr, bs: MxMatchBinds, made: Int) -> Result<SynsA, Unwind> {
+    pub fn transcribe_items<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, xs: SynsA, path: Addr, bs: MxMatchBinds, made: Int) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else if (not(null_p(cdr(xs))) && ellipsis_p(car(cdr(xs)))) {
@@ -20575,7 +20583,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_top_repeated<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: Clause, x: kayak_rt::Handle<'static, Syn>, p: Addr, bs: MxMatchBinds, made: Int) -> Result<SynsA, Unwind> {
+    pub fn mx_top_repeated<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, x: kayak_rt::Handle<'static, Syn>, p: Addr, bs: MxMatchBinds, made: Int) -> Result<SynsA, Unwind> {
         let level = mx_match_len_ints(get(maker_st.iters.get().unwrap()));
         let drivers = drivers_of(mxp, maker_st, c.3, x, level)?;
         let lists = driver_lists(drivers, bs);
@@ -20601,7 +20609,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn transcribe<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: Clause, t: kayak_rt::Handle<'static, Syn>, path: Addr, bs: MxMatchBinds, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn transcribe<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, t: kayak_rt::Handle<'static, Syn>, path: Addr, bs: MxMatchBinds, made: Int) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if null_p(path) {
             set(maker_st.mx_top_fresh.get().unwrap(), nil::<Product_11_12_13<List<bool>, List<Int>, Symbol>>());
             set(maker_st.mx_top_counts.get().unwrap(), nil::<Product_11_12_13<List<bool>, List<Int>, Int>>());
@@ -20612,7 +20620,7 @@ pub mod made__load__3__main {
         Ok(transcribe_at(mxp, maker_st, mx_fail, c, t, path, bs, made)?)
     }
 
-    pub fn first_match<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut name: Symbol, mut s: kayak_rt::Handle<'static, Syn>, mut operands: kayak_rt::Handle<'static, Syn>, mut cs: Clauses) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn first_match<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut name: Symbol, mut s: kayak_rt::Handle<'static, Syn>, mut operands: kayak_rt::Handle<'static, Syn>, mut cs: Clauses) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         loop {
             if null_p(cs) {
                 match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("a use of `"), string_append(symbol_to_string(name), string_append(str_lit("` that no clause "), str_lit("of it matches")))), s)? {};
@@ -20626,8 +20634,8 @@ pub mod made__load__3__main {
                     let made = record_expansion(mxp, maker_st, name, s, holed_p(car(cs).3));
                     let shown = symbol_to_string(name);
                     let noted = def_env_x(mxp, maker_st, made, car(cs).5);
-                    let in_use = lambda3(move |msg: Str, a: Int, b: Int| {
-                        Ok(match mx_fail(string_append(str_lit("a use of `"), string_append(shown, string_append(str_lit("`: "), msg))), syn_start(s), syn_end(s))? {})
+                    let in_use = kayak_rt::closure3((mx_fail, s, shown,), |(mx_fail, s, shown,), msg: Str, a: Int, b: Int| {
+                        Ok(match mx_fail.call(string_append(str_lit("a use of `"), string_append(shown, string_append(str_lit("`: "), msg))), syn_start(s), syn_end(s))? {})
                     });
                     return Ok(transcribe(mxp, maker_st, in_use, car(cs), car(cs).1, nil::<bool>(), car(mx_match_binds), made)?);
                 }
@@ -20635,12 +20643,12 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn expand_use<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, name: Symbol, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn expand_use<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, name: Symbol, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let m = car(macro_of(name, get(maker_st.defined.get().unwrap())));
         let operands = nth(split(s), int_lit(1));
         let shown = symbol_to_string(name);
-        let in_use = lambda3(move |msg: Str, a: Int, b: Int| {
-            Ok(match mx_fail(string_append(str_lit("a use of `"), string_append(shown, string_append(str_lit("`: "), msg))), a, b)? {})
+        let in_use = kayak_rt::closure3((mx_fail, shown,), |(mx_fail, shown,), msg: Str, a: Int, b: Int| {
+            Ok(match mx_fail.call(string_append(str_lit("a use of `"), string_append(shown, string_append(str_lit("`: "), msg))), a, b)? {})
         });
         if not(null_p(procedural_of(mxp, maker_st, name))) {
             let made = record_expansion(mxp, maker_st, name, s, false);
@@ -20654,7 +20662,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn expand_region<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, core: kayak_rt::Handle<'static, Sty>, bound: MxParserTypesNames, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn expand_region<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, core: kayak_rt::Handle<'static, Sty>, bound: MxParserTypesNames, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         Ok(expand_at(mxp, maker_st, mx_fail, s, if names_macro_p(mxp, maker_st, s)? {
             uses_found(mxp, maker_st, mx_fail, core, s, bound)?
         } else {
@@ -20662,7 +20670,7 @@ pub mod made__load__3__main {
         }, withs)?)
     }
 
-    pub fn expand_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, us: MxScopesUses, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn expand_at<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, us: MxScopesUses, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let items = list_items(s);
         let hd = if null_p(items) {
             s
@@ -20701,7 +20709,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn expand_one<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, h: Symbol, bound: MxParserTypesNames, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn expand_one<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, h: Symbol, bound: MxParserTypesNames, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let hd = car(list_items(s));
         if makes_defns_p(mxp, maker_st, h) {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(syn_name(hd), string_append(str_lit("` makes definitions, which are "), str_lit("made at the top level, not where an expression is")))), s)? {};
@@ -20725,7 +20733,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn expand_items<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA, k: Int, us: MxScopesUses, with: bool, s: kayak_rt::Handle<'static, Syn>, withs: MxFilesPlaces) -> Result<SynsA, Unwind> {
+    pub fn expand_items<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: SynsA, k: Int, us: MxScopesUses, with: bool, s: kayak_rt::Handle<'static, Syn>, withs: MxFilesPlaces) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -20738,7 +20746,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn expand_tail<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, k: Int, us: MxScopesUses, withs: MxFilesPlaces) -> Result<SynsA, Unwind> {
+    pub fn expand_tail<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, k: Int, us: MxScopesUses, withs: MxFilesPlaces) -> Result<SynsA, Unwind> {
         let tagcase_ = s;
         match *tagcase_ {
             made__load__2__expander::Syn::Dotted(items, t, d, a, b, x) => {
@@ -20752,11 +20760,11 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn expand_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn expand_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>, withs: MxFilesPlaces) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         Ok(expand_region(mxp, maker_st, mx_fail, s, s_item(), nil::<Symbol>(), withs)?)
     }
 
-    pub fn expand<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn expand<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if (null_p(get(maker_st.defined.get().unwrap())) && not(names_macro_p(mxp, maker_st, form)?)) {
             Ok(form)
         } else {
@@ -20770,7 +20778,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn expand_defn<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<SynsA, Unwind> {
+    pub fn expand_defn<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<SynsA, Unwind> {
         let items = list_items(s);
         let hd = if null_p(items) {
             s
@@ -20804,7 +20812,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn expand_defns<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA) -> Result<SynsA, Unwind> {
+    pub fn expand_defns<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: SynsA) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -20812,7 +20820,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn expand_top<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>) -> Result<SynsA, Unwind> {
+    pub fn expand_top<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>) -> Result<SynsA, Unwind> {
         let items = list_items(form);
         if (not(null_p(items)) && syn_symbol_p(car(items)) && makes_top_defns_p(mxp, maker_st, syn_symbol(mxp, maker_st, car(items))?)) {
             let n = {
@@ -20886,7 +20894,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn bvar_binds<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut c: Clause, mut ps: Pvars, mut out: MxMatchBinds) -> Result<MxMatchBinds, Unwind> {
+    pub fn bvar_binds<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut c: Clause, mut ps: Pvars, mut out: MxMatchBinds) -> Result<MxMatchBinds, Unwind> {
         loop {
             if null_p(ps) {
                 return Ok(out);
@@ -20922,7 +20930,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn written_subr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: Clause, n: Symbol, ty: SynsA) -> Result<SynsA, Unwind> {
+    pub fn written_subr<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, n: Symbol, ty: SynsA) -> Result<SynsA, Unwind> {
         let items = if null_p(ty) {
             nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>()
         } else {
@@ -20976,7 +20984,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn rib_scope<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: Clause, n: Symbol, r#as: Atms, ps: Pvars) -> Result<ScopeVars, Unwind> {
+    pub fn rib_scope<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, n: Symbol, r#as: Atms, ps: Pvars) -> Result<ScopeVars, Unwind> {
         if null_p(r#as) {
             Ok(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>())
         } else {
@@ -21005,7 +21013,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn hole_scope<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: Clause, n: Symbol, levels: Levels, ps: Pvars) -> Result<ScopeVars, Unwind> {
+    pub fn hole_scope<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Clause, n: Symbol, levels: Levels, ps: Pvars) -> Result<ScopeVars, Unwind> {
         if null_p(levels) {
             Ok(nil::<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>())
         } else {
@@ -21041,7 +21049,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn hole_params<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut c: Clause, mut ps: Pvars, mut a: Int, mut b: Int, mut acc: Params) -> Result<Params, Unwind> {
+    pub fn hole_params<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut c: Clause, mut ps: Pvars, mut a: Int, mut b: Int, mut acc: Params) -> Result<Params, Unwind> {
         loop {
             if null_p(ps) {
                 return Ok(acc);
@@ -21086,7 +21094,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn template_check<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, m: Macro, c: Clause) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn template_check<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, m: Macro, c: Clause) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let template = c.1;
         let a = syn_start(template);
         let b = syn_end(template);
@@ -21111,7 +21119,7 @@ pub mod made__load__3__main {
         Ok(mk_list(kayak_rt::cons(mk_symbol(str_lit("define"), a, b), kayak_rt::cons(atom(kayak_rt::value::ToValue::to_value(hidden), a, b, int_lit(0)), kayak_rt::cons(proc, kayak_rt::nil()))), a, b))
     }
 
-    pub fn checks_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut n: Symbol, mut m: Macro, mut cs: Clauses) -> Result<SynsA, Unwind> {
+    pub fn checks_of<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut n: Symbol, mut m: Macro, mut cs: Clauses) -> Result<SynsA, Unwind> {
         loop {
             if null_p(cs) {
                 return Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>());
@@ -21125,7 +21133,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn template_checks<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol) -> Result<SynsA, Unwind> {
+    pub fn template_checks<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol) -> Result<SynsA, Unwind> {
         let m = macro_of(n, get(maker_st.defined.get().unwrap()));
         if null_p(m) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
@@ -21417,7 +21425,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn give_one<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, n: Symbol, own: MacroEnv, own_marks: Marked, internal: List<Product_11_12<Symbol, Symbol>>, mx_files_filter: List<MxFilesFilter>, first: kayak_rt::Handle<'static, Syn>) -> Result<MxImportsGiven, Unwind> {
+    pub fn give_one<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, n: Symbol, own: MacroEnv, own_marks: Marked, internal: List<Product_11_12<Symbol, Symbol>>, mx_files_filter: List<MxFilesFilter>, first: kayak_rt::Handle<'static, Syn>) -> Result<MxImportsGiven, Unwind> {
         let k = own_mark(n, own_marks);
         if taken_p(mxp, maker_st, n, mx_files_filter)? {
             if _gt(k, int_lit(0)) {
@@ -21439,7 +21447,7 @@ pub mod made__load__3__main {
         Ok(kayak_rt::cons(Product_11_12(n, car(internal_of(n, internal))), kayak_rt::nil()))
     }
 
-    pub fn give_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, made: Mades, own: MacroEnv, own_marks: Marked, internal: List<Product_11_12<Symbol, Symbol>>, mx_files_filter: List<MxFilesFilter>, first: kayak_rt::Handle<'static, Syn>, seen: MxParserTypesNames) -> Result<MxImportsGiven, Unwind> {
+    pub fn give_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, made: Mades, own: MacroEnv, own_marks: Marked, internal: List<Product_11_12<Symbol, Symbol>>, mx_files_filter: List<MxFilesFilter>, first: kayak_rt::Handle<'static, Syn>, seen: MxParserTypesNames) -> Result<MxImportsGiven, Unwind> {
         if null_p(made) {
             Ok(nil::<Product_11_12<Symbol, Symbol>>())
         } else {
@@ -21458,7 +21466,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn file_macros_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>, f: LoadedFile, mx_files_filter: List<MxFilesFilter>, fs: Files, inst: MxParserTypesNames) -> Result<MxImportsGiven, Unwind> {
+    pub fn file_macros_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>, f: LoadedFile, mx_files_filter: List<MxFilesFilter>, fs: Files, inst: MxParserTypesNames) -> Result<MxImportsGiven, Unwind> {
         let (forms, path) = (raw_forms(mxp, maker_st, f), f.3);
         if (null_p(inst) && not(null_p(forms)) && string_eq_p(mx_files_head_name(car(forms)), str_lit("module-parameters"))) {
             match fail_at(mxp, maker_st, mx_fail, string_append(str_lit("`"), string_append(path, string_append(str_lit("` takes module parameters: import the "), string_append(str_lit("macros of an instance of it, `(define name ((proj "), string_append(str_lit("(load-module \""), string_append(path, str_lit("\") arg …)))`"))))))), form)? {};
@@ -21466,12 +21474,12 @@ pub mod made__load__3__main {
         } else {
             let key = f.6;
             let base = f.1;
-            let in_file = lambda3(move |m: Str, x: Int, y: Int| {
+            let in_file = kayak_rt::closure3((mxp, maker_st, mx_fail, form, fs, path, base,), |(mxp, maker_st, mx_fail, form, fs, path, base,), m: Str, x: Int, y: Int| {
                 if (_gt_eq(x, base) && _lt(x, _plus(base, maker_st.load_base.get().unwrap()))) {
                     let at = syn_start(form);
-                    Ok(match mx_fail(in_loaded_as(mxp, maker_st, fs, base, path, m, x), at, at)? {})
+                    Ok(match mx_fail.call(in_loaded_as(mxp, maker_st, fs, base, path, m, x), at, at)? {})
                 } else {
-                    Ok(match mx_fail(m, x, y)? {})
+                    Ok(match mx_fail.call(m, x, y)? {})
                 }
             });
             let ms = file_syntax(forms);
@@ -21505,7 +21513,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn define_file<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, forms: SynsA, mx_nodes_scope: MxNodesScope, mx_files_filter: List<MxFilesFilter>, fs: Files, key: Str, prefix: Str, kind: Int, first: kayak_rt::Handle<'static, Syn>) -> Result<MxImportsGiven, Unwind> {
+    pub fn define_file<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, forms: SynsA, mx_nodes_scope: MxNodesScope, mx_files_filter: List<MxFilesFilter>, fs: Files, key: Str, prefix: Str, kind: Int, first: kayak_rt::Handle<'static, Syn>) -> Result<MxImportsGiven, Unwind> {
         let (program, program_marks, program_phase1, program_env, keys) = (get(maker_st.defined.get().unwrap()), get(maker_st.marks.get().unwrap()), phase1_forms_now(mxp, maker_st), def_env_is(mxp, maker_st), file_keys_begin_x(mxp, maker_st, prefix));
         set(maker_st.defined.get().unwrap(), nil::<Product_11_12<Symbol, Product_11_12_13_14<kayak_rt::Handle<'static, made__load__2__expander::Sty>, List<Product_11_12_13_14_15_16_17_18<kayak_rt::Handle<'static, made__load__2__expander::Syn>, kayak_rt::Handle<'static, made__load__2__expander::Syn>, List<Product_11_12<List<bool>, kayak_rt::Handle<'static, made__load__2__expander::Action>>>, List<Product_11_12<Symbol, Product_11_12_13_14_15<kayak_rt::Handle<'static, made__load__2__expander::Sty>, List<kayak_rt::Handle<'static, made__load__2__expander::Level>>, bool, List<Product_11_12<List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>>>, Int>>>, List<Product_11_12<Symbol, kayak_rt::Handle<'static, made__load__2__expander::Syn>>>, Product_11_12_13<Int, Symbol, List<Symbol>>, List<Product_11_12<Symbol, Int>>, List<Int>>>, List<kayak_rt::Handle<'static, made__load__2__expander::Syn>>, Int>>>());
         set(maker_st.marks.get().unwrap(), nil::<Product_11_12<Symbol, Int>>());
@@ -21524,7 +21532,7 @@ pub mod made__load__3__main {
         Ok(give_each(mxp, maker_st, mx_fail, reverse_mades(st.1, nil::<Product_11_12<Symbol, bool>>()), own, own_marks, st.0, mx_files_filter, first, nil::<Symbol>())?)
     }
 
-    pub fn define_forms<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut xs: SynsA, mut h: bool, mut mx_nodes_scope: MxNodesScope, mut fs: Files, mut key: Str, mut st: FileState) -> Result<FileState, Unwind> {
+    pub fn define_forms<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut xs: SynsA, mut h: bool, mut mx_nodes_scope: MxNodesScope, mut fs: Files, mut key: Str, mut st: FileState) -> Result<FileState, Unwind> {
         loop {
             if null_p(xs) {
                 return Ok(st);
@@ -21537,7 +21545,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn define_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, x: kayak_rt::Handle<'static, Syn>, h: bool, mx_nodes_scope: MxNodesScope, fs: Files, key: Str, st: FileState) -> Result<FileState, Unwind> {
+    pub fn define_form<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, x: kayak_rt::Handle<'static, Syn>, h: bool, mx_nodes_scope: MxNodesScope, fs: Files, key: Str, st: FileState) -> Result<FileState, Unwind> {
         let (internal, made, ls) = (st.0, st.1, st.2);
         if (not(h) && hide_form_p(x)) {
             Ok(define_forms(mxp, maker_st, mx_fail, cdr(proper(x)), true, mx_nodes_scope, fs, key, st)?)
@@ -21592,7 +21600,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn import_file_macros<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>, fs: Files) -> Result<SynsA, Unwind> {
+    pub fn import_file_macros<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>, fs: Files) -> Result<SynsA, Unwind> {
         let items = proper(form);
         let a = syn_start(form);
         let b = syn_end(form);
@@ -21634,7 +21642,7 @@ pub mod made__load__3__main {
         get(maker_st.mx_imports_imported.get().unwrap())
     }
 
-    pub fn import_in_file<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>, ls: FileLoads, fs: Files) -> Result<SynsA, Unwind> {
+    pub fn import_in_file<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>, ls: FileLoads, fs: Files) -> Result<SynsA, Unwind> {
         let items = proper(form);
         let a = syn_start(form);
         let b = syn_end(form);
@@ -21665,7 +21673,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_walk_walked<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>, top: bool) -> Result<Product_11_12<Int, MxNodesFound>, Unwind> {
+    pub fn mx_walk_walked<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>, top: bool) -> Result<Product_11_12<Int, MxNodesFound>, Unwind> {
         let r = program_scoped(mxp, maker_st, mx_fail, if top {
             s_item()
         } else {
@@ -21723,7 +21731,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn defined_binders<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut i: Int, mut n: Int, mut out: List<Int>) -> Result<List<Int>, Unwind> {
+    pub fn defined_binders<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut i: Int, mut n: Int, mut out: List<Int>) -> Result<List<Int>, Unwind> {
         loop {
             if _eq(i, n) {
                 return Ok(out);
@@ -21756,7 +21764,7 @@ pub mod made__load__3__main {
     }
 
     pub fn binder_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, n: Symbol, mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>) -> Int {
-        let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, false, int_lit(0), kayak_rt::lambda1(move |a0| mx_nodes_binder_name(mxp, maker_st, a0)));
+        let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, false, int_lit(0), kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0)));
         match l.0 {
             case_ if kayak_rt::_eq(case_, int_lit(0)) => {
                 l.1
@@ -22015,7 +22023,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn alpha_renamed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn alpha_renamed<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let w = mx_walk_walked(mxp, maker_st, mx_fail, form, true)?;
         let root = w.0;
         let mx_nodes_found = w.1;
@@ -22037,13 +22045,13 @@ pub mod made__load__3__main {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.walked_out.get().unwrap(), show_renamed(alpha_renamed(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), form)?));
+                set(maker_st.walked_out.get().unwrap(), show_renamed(alpha_renamed(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), form)?));
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r: kayak_rt::Handle<'static, Presult>| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r: kayak_rt::Handle<'static, Presult>| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -23156,7 +23164,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_shaper_source_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, b: Int) -> Result<Source, Unwind> {
+    pub fn mx_shaper_source_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, b: Int) -> Result<Source, Unwind> {
         let pq = position(mxp, maker_st, b);
         let q = pq.0;
         let i = pq.1;
@@ -23467,7 +23475,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_shaper_exported<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ex: Rooted, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
+    pub fn mx_shaper_exported<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ex: Rooted, s: kayak_rt::Handle<'static, Syn>) -> Result<Levels, Unwind> {
         if null_p(ex) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Level>>())
         } else {
@@ -23556,7 +23564,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn binder_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, b: Int) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn binder_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, b: Int) -> Result<MxParserTypesShapes, Unwind> {
         let src = mx_shaper_source_of(mxp, maker_st, mx_fail, b)?;
         match src.0 {
             case_ if kayak_rt::_eq(case_, int_lit(0)) => {
@@ -23581,13 +23589,13 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn resolve<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, at: Int, n: Symbol, d: bool) -> Result<Product_11_12<Int, Int>, Unwind> {
+    pub fn resolve<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: Int, n: Symbol, d: bool) -> Result<Product_11_12<Int, Int>, Unwind> {
         Ok(resolve_in(mxp, maker_st, mx_fail, at, n, d, array_ref(get(maker_st.envs.get().unwrap()), at), int_lit(0))?)
     }
 
-    pub fn resolve_in<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut at: Int, mut n: Symbol, mut d: bool, mut mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, mut from: Int) -> Result<Product_11_12<Int, Int>, Unwind> {
+    pub fn resolve_in<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut at: Int, mut n: Symbol, mut d: bool, mut mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, mut from: Int) -> Result<Product_11_12<Int, Int>, Unwind> {
         loop {
-            let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, d, from, kayak_rt::lambda1(move |a0| mx_nodes_binder_name(mxp, maker_st, a0)));
+            let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, d, from, kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0)));
             let m = l.1;
             let next = l.2;
             match l.0 {
@@ -23622,7 +23630,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_shaper_reference<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, at: Int, n: Symbol, d: bool) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn mx_shaper_reference<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: Int, n: Symbol, d: bool) -> Result<MxParserTypesShapes, Unwind> {
         let r = resolve(mxp, maker_st, mx_fail, at, n, d)?;
         let b = r.0;
         if _gt_eq(b, int_lit(0)) {
@@ -23636,7 +23644,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn exp_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, at: Int) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn exp_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: Int) -> Result<MxParserTypesShapes, Unwind> {
         match array_ref(get(maker_st.exp_state.get().unwrap()), at) {
             case_ if kayak_rt::_eq(case_, int_lit(2)) => {
                 Ok(array_ref(get(maker_st.exp_made.get().unwrap()), at))
@@ -23654,7 +23662,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn mx_shaper_ty_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, at: Int) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn mx_shaper_ty_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: Int) -> Result<MxParserTypesShapes, Unwind> {
         if _lt(at, int_lit(0)) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>())
         } else {
@@ -23676,7 +23684,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn exp_found<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, at: Int) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn exp_found<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: Int) -> Result<MxParserTypesShapes, Unwind> {
         let tagcase_ = node_kids(mxp, maker_st, at);
         match *tagcase_ {
             made__load__2__expander::MxNodesKids::KRef(n, d, free) => {
@@ -23697,7 +23705,7 @@ pub mod made__load__3__main {
                 } else {
                     int_lit(-1)
                 };
-                let at_e = lambda1s(move |i: Int| {
+                let at_e = kayak_rt::closure1s((e,), |(e,), i: Int| {
                     mx_shaper_int_at(e, i)
                 });
                 if _eq(k, int_lit(0)) {
@@ -23707,9 +23715,9 @@ pub mod made__load__3__main {
                 } else if (string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("load-input")) || string_eq_p(h, str_lit("%loaded"))) {
                     Ok(load_shape(mxp, maker_st, syn_start_of_list(s), false))
                 } else if string_eq_p(h, str_lit("the")) {
-                    Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e(int_lit(1)))?)
+                    Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?)
                 } else if string_eq_p(h, str_lit("extend")) {
-                    Ok(extended(exp_shape(mxp, maker_st, mx_fail, at_e(int_lit(1)))?, exp_shape(mxp, maker_st, mx_fail, last)?))
+                    Ok(extended(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, exp_shape(mxp, maker_st, mx_fail, last)?))
                 } else if (string_eq_p(h, str_lit("with")) && _eq(k, int_lit(3)) && syn_symbol_p(nth(items, int_lit(1))) && string_eq_p(syn_name(nth(items, int_lit(1))), str_lit("#%toplevel")) && syn_symbol_p(nth(items, int_lit(2)))) {
                     Ok(top_shape(mxp, maker_st, syn_symbol(mxp, maker_st, nth(items, int_lit(2)))?, false))
                 } else if name_in_list_p(h, kayak_rt::cons(str_lit("with"), kayak_rt::cons(str_lit("let"), kayak_rt::cons(str_lit("let*"), kayak_rt::cons(str_lit("letrec"), kayak_rt::cons(str_lit("begin"), kayak_rt::cons(str_lit("letregion"), kayak_rt::cons(str_lit("letfreeze"), kayak_rt::cons(str_lit("letrena"), kayak_rt::cons(str_lit("letreap"), kayak_rt::cons(str_lit("plambda"), kayak_rt::cons(str_lit("dlambda"), kayak_rt::nil())))))))))))) {
@@ -23719,16 +23727,16 @@ pub mod made__load__3__main {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>())
                     }
                 } else if string_eq_p(h, str_lit("proj")) {
-                    Ok(exp_shape(mxp, maker_st, mx_fail, at_e(int_lit(1)))?)
+                    Ok(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?)
                 } else if (string_eq_p(h, str_lit("if")) && _eq(k, int_lit(4))) {
-                    let (a, b) = (exp_shape(mxp, maker_st, mx_fail, at_e(int_lit(2)))?, exp_shape(mxp, maker_st, mx_fail, at_e(int_lit(3)))?);
+                    let (a, b) = (exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(2)))?, exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(3)))?);
                     if (not(null_p(a)) && shapes_eq_p(a, b)) {
                         Ok(a)
                     } else {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>())
                     }
                 } else if (string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("rlambda"))) {
-                    let formals = at_e(if string_eq_p(h, str_lit("lambda")) {
+                    let formals = at_e.call(if string_eq_p(h, str_lit("lambda")) {
                         int_lit(1)
                     } else {
                         int_lit(2)
@@ -23755,11 +23763,11 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn formals_shapes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, f: Int) -> Result<List<MxParserTypesShapes>, Unwind> {
+    pub fn formals_shapes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, f: Int) -> Result<List<MxParserTypesShapes>, Unwind> {
         Ok(map_shapes(mxp, maker_st, mx_fail, elems(mxp, maker_st, f))?)
     }
 
-    pub fn map_shapes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: List<Int>) -> Result<List<MxParserTypesShapes>, Unwind> {
+    pub fn map_shapes<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: List<Int>) -> Result<List<MxParserTypesShapes>, Unwind> {
         if null_p(ps) {
             Ok(nil::<List<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>>())
         } else {
@@ -23784,11 +23792,11 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn module_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, items: List<Int>) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn module_shape<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, items: List<Int>) -> Result<MxParserTypesShapes, Unwind> {
         Ok(module_from(mxp, maker_st, mx_fail, items, nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>>>(), nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>>>(), nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>>>(), nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>>>())?)
     }
 
-    pub fn module_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut items: List<Int>, mut vs: MxParserTypesMembers, mut ds: MxParserTypesMembers, mut hvs: MxParserTypesMembers, mut hds: MxParserTypesMembers) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn module_from<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut items: List<Int>, mut vs: MxParserTypesMembers, mut ds: MxParserTypesMembers, mut hvs: MxParserTypesMembers, mut hds: MxParserTypesMembers) -> Result<MxParserTypesShapes, Unwind> {
         loop {
             if null_p(items) {
                 return Ok(one(sh_module(members_hidden(members_latest(vs, nm_leaf(), nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>>>()), names_onto(hvs, nm_leaf())), members_hidden(members_latest(ds, nm_leaf(), nil::<Product_11_12<Symbol, List<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>>>()), names_onto(hds, nm_leaf())))));
@@ -23836,7 +23844,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn levels_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ls: Levels, mut got: Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>) -> Result<Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>, Unwind> {
+    pub fn levels_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: Levels, mut got: Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>) -> Result<Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>, Unwind> {
         loop {
             if (null_p(ls) || not(got.2)) {
                 return Ok(got);
@@ -23877,7 +23885,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn atms_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut r#as: Atms, mut got: Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>) -> Result<Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>, Unwind> {
+    pub fn atms_members<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut r#as: Atms, mut got: Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>) -> Result<Product_11_12_13<MxParserTypesMembers, MxParserTypesMembers, bool>, Unwind> {
         loop {
             if null_p(r#as) {
                 return Ok(got);
@@ -23913,7 +23921,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn ty_found<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, at: Int) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn ty_found<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, at: Int) -> Result<MxParserTypesShapes, Unwind> {
         let tagcase_ = node_kids(mxp, maker_st, at);
         match *tagcase_ {
             made__load__2__expander::MxNodesKids::KRef(n, d, free) => {
@@ -23930,7 +23938,7 @@ pub mod made__load__3__main {
                 let h = mx_shaper_head_of(s);
                 let e = elems(mxp, maker_st, at);
                 let k = len(items);
-                let at_e = lambda1s(move |i: Int| {
+                let at_e = kayak_rt::closure1s((e,), |(e,), i: Int| {
                     mx_shaper_int_at(e, i)
                 });
                 if (syn_symbol_p(s) && _gt(string_length(syn_name(s)), int_lit(11)) && string_eq_p(substring(syn_name(s), int_lit(0), int_lit(11)), str_lit("#%toplevel:"))) {
@@ -23949,7 +23957,7 @@ pub mod made__load__3__main {
                 } else if (string_eq_p(h, str_lit("load-moduleof")) || string_eq_p(h, str_lit("load-input-moduleof"))) {
                     Ok(load_shape(mxp, maker_st, syn_start_of_list(s), true))
                 } else if string_eq_p(h, str_lit("restrict")) {
-                    let (m, kept) = (mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e(int_lit(1)))?, mx_shaper_symbols_of(mxp, maker_st, cdr(cdr(items)))?);
+                    let (m, kept) = (mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, mx_shaper_symbols_of(mxp, maker_st, cdr(cdr(items)))?);
                     if null_p(m) {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>())
                     } else {
@@ -23965,14 +23973,14 @@ pub mod made__load__3__main {
                         }
                     }
                 } else if string_eq_p(h, str_lit("poly")) {
-                    Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e(_minus(k, int_lit(1))))?)
+                    Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(_minus(k, int_lit(1))))?)
                 } else if (string_eq_p(h, str_lit("select")) && _eq(k, int_lit(3)) && syn_symbol_p(nth(items, int_lit(2)))) {
-                    Ok(mx_shaper_member_shape(exp_shape(mxp, maker_st, mx_fail, at_e(int_lit(1)))?, syn_symbol(mxp, maker_st, nth(items, int_lit(2)))?, true))
+                    Ok(mx_shaper_member_shape(exp_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, syn_symbol(mxp, maker_st, nth(items, int_lit(2)))?, true))
                 } else if (string_eq_p(h, str_lit("->")) && _eq(k, int_lit(3))) {
-                    if _lt(at_e(int_lit(1)), int_lit(0)) {
+                    if _lt(at_e.call(int_lit(1)), int_lit(0)) {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>())
                     } else {
-                        Ok(sh_fun_of(param_types(mxp, maker_st, mx_fail, at_e(int_lit(1)))?, mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e(int_lit(2)))?))
+                        Ok(sh_fun_of(param_types(mxp, maker_st, mx_fail, at_e.call(int_lit(1)))?, mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(2)))?))
                     }
                 } else if string_eq_p(h, str_lit("subr")) {
                     let conv = (_gt(k, int_lit(1)) && string_eq_p(mx_shaper_head_of(nth(items, int_lit(1))), str_lit("conv")));
@@ -23981,13 +23989,13 @@ pub mod made__load__3__main {
                     } else {
                         int_lit(3)
                     };
-                    if _lt(at_e(_minus(j, int_lit(1))), int_lit(0)) {
+                    if _lt(at_e.call(_minus(j, int_lit(1))), int_lit(0)) {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>())
                     } else {
-                        Ok(sh_fun_of(param_types(mxp, maker_st, mx_fail, at_e(_minus(j, int_lit(1))))?, mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e(j))?))
+                        Ok(sh_fun_of(param_types(mxp, maker_st, mx_fail, at_e.call(_minus(j, int_lit(1))))?, mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(j))?))
                     }
-                } else if (_gt_eq(at_e(int_lit(0)), int_lit(0)) && {
-                    let tagcase_ = node_kids(mxp, maker_st, at_e(int_lit(0)));
+                } else if (_gt_eq(at_e.call(int_lit(0)), int_lit(0)) && {
+                    let tagcase_ = node_kids(mxp, maker_st, at_e.call(int_lit(0)));
                     match *tagcase_ {
                         made__load__2__expander::MxNodesKids::KRef(n, d, free) => {
                             d
@@ -23998,7 +24006,7 @@ pub mod made__load__3__main {
                         }
                     }
                 }) {
-                    Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e(int_lit(0)))?)
+                    Ok(mx_shaper_ty_shape(mxp, maker_st, mx_fail, at_e.call(int_lit(0)))?)
                 } else {
                     Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>())
                 }
@@ -24007,11 +24015,11 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn param_types<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: Int) -> Result<List<MxParserTypesShapes>, Unwind> {
+    pub fn param_types<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: Int) -> Result<List<MxParserTypesShapes>, Unwind> {
         Ok(param_types_of(mxp, maker_st, mx_fail, elems(mxp, maker_st, ps))?)
     }
 
-    pub fn param_types_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, ps: List<Int>) -> Result<List<MxParserTypesShapes>, Unwind> {
+    pub fn param_types_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, ps: List<Int>) -> Result<List<MxParserTypesShapes>, Unwind> {
         if null_p(ps) {
             Ok(nil::<List<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>>())
         } else {
@@ -24028,7 +24036,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn moduleof_shape<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ms: List<kayak_rt::Handle<'static, Syn>>, mut es: List<Int>, mut vs: MxParserTypesMembers, mut ds: MxParserTypesMembers) -> Result<MxParserTypesShapes, Unwind> {
+    pub fn moduleof_shape<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ms: List<kayak_rt::Handle<'static, Syn>>, mut es: List<Int>, mut vs: MxParserTypesMembers, mut ds: MxParserTypesMembers) -> Result<MxParserTypesShapes, Unwind> {
         loop {
             if null_p(ms) {
                 return Ok(one(sh_module(reverse(vs), reverse(ds))));
@@ -24082,7 +24090,7 @@ pub mod made__load__3__main {
                 } else {
                     mx_shaper_symbols_of(mxp, maker_st, kayak_rt::cons(car(proper_items(second)), kayak_rt::nil()))?
                 };
-                let t = lambda0(move || {
+                let t = kayak_rt::closure0((mxp, maker_st, mx_fail, x, at,), |(mxp, maker_st, mx_fail, x, at,)| {
                     if _lt(x, int_lit(0)) {
                         Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>())
                     } else {
@@ -24101,7 +24109,7 @@ pub mod made__load__3__main {
                         nil::<Int>()
                     } else {
                         cdr(es)
-                    }, cons(Product_11_12(car(mx_parser_types_names), t()?), vs));
+                    }, cons(Product_11_12(car(mx_parser_types_names), t.call()?), vs));
                     continue;
                 } else if string_eq_p(word, str_lit("abs")) {
                     (ms, es, ds) = (cdr(ms), if null_p(es) {
@@ -24115,7 +24123,7 @@ pub mod made__load__3__main {
                         nil::<Int>()
                     } else {
                         cdr(es)
-                    }, cons(Product_11_12(car(mx_parser_types_names), t()?), ds));
+                    }, cons(Product_11_12(car(mx_parser_types_names), t.call()?), ds));
                     continue;
                 } else {
                     return Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesShape>>());
@@ -24174,7 +24182,7 @@ pub mod made__load__3__main {
         set(maker_st.global_descs.get().unwrap(), names_onto(ds, nm_leaf()))
     }
 
-    pub fn asked_all<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut fs: MxNodesFound) -> Result<(), Unwind> {
+    pub fn asked_all<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut fs: MxNodesFound) -> Result<(), Unwind> {
         loop {
             if null_p(fs) {
                 return Ok(());
@@ -24383,7 +24391,7 @@ pub mod made__load__3__main {
         Ok(written_under(mxp, maker_st, s, writings_from_top(ws))?)
     }
 
-    pub fn defined_atoms<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut r#as: Atms) -> Result<(), Unwind> {
+    pub fn defined_atoms<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut r#as: Atms) -> Result<(), Unwind> {
         loop {
             if null_p(r#as) {
                 return Ok(());
@@ -24420,7 +24428,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn defined_onto<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut ls: Levels) -> Result<(), Unwind> {
+    pub fn defined_onto<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut ls: Levels) -> Result<(), Unwind> {
         loop {
             if null_p(ls) {
                 return Ok(());
@@ -24461,7 +24469,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn defined_kept<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, root: Int, form: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn defined_kept<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, root: Int, form: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let tagcase_ = node_kids(mxp, maker_st, root);
         match *tagcase_ {
             made__load__2__expander::MxNodesKids::KForm(x) => {
@@ -24479,7 +24487,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn shaped<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, form: kayak_rt::Handle<'static, Syn>, top: bool) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, MxParserTypesShapes>, Unwind> {
+    pub fn shaped<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, form: kayak_rt::Handle<'static, Syn>, top: bool) -> Result<Product_11_12<kayak_rt::Handle<'static, Syn>, MxParserTypesShapes>, Unwind> {
         let w = mx_walk_walked(mxp, maker_st, mx_fail, form, top)?;
         let root = w.0;
         let mx_nodes_found = w.1;
@@ -24679,13 +24687,13 @@ pub mod made__load__3__main {
             let r = {
                 let prompt_tag__ = maker_st.parse_tag.get().unwrap();
                 match (move || -> Result<_, Unwind> {
-                    set(maker_st.file_out.get().unwrap(), shaped(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), form, false)?);
+                    set(maker_st.file_out.get().unwrap(), shaped(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), form, false)?);
                     Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
                 })() {
                     Ok(v_) => v_,
-                    Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r: kayak_rt::Handle<'static, Presult>| {
+                    Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r: kayak_rt::Handle<'static, Presult>| {
                         r
-                    }))(prompt_tag__.payload(u_)),
+                    })).call(prompt_tag__.payload(u_)),
                     Err(u_) => return Err(u_),
                 }
             };
@@ -24777,7 +24785,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn sealed_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn sealed_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let tagcase_ = s;
         match *tagcase_ {
             made__load__2__expander::Syn::MxEagerReaderTypesLst(items, d, a, b, x) => {
@@ -24785,7 +24793,7 @@ pub mod made__load__3__main {
                 if (symbol_eq_p(h, symbol_lit(str_lit("quote"))) || symbol_eq_p(h, symbol_lit(str_lit("quasiquote"))) || symbol_eq_p(h, symbol_lit(str_lit("%datum")))) {
                     Ok(s)
                 } else if (not(symbol_eq_p(h, maker_st.no_head.get().unwrap())) && not(null_p(shape_named(mxp, maker_st, h)))) {
-                    match mx_fail(string_append(str_lit("`"), string_append(symbol_to_string(h), string_append(str_lit("` is a shape, not a macro: it is "), str_lit("written as a `define`'s or `the`'s type")))), a, b)? {};
+                    match mx_fail.call(string_append(str_lit("`"), string_append(symbol_to_string(h), string_append(str_lit("` is a shape, not a macro: it is "), str_lit("written as a `define`'s or `the`'s type")))), a, b)? {};
                     Ok(s)
                 } else {
                     let xs = sealed_each(mxp, maker_st, mx_fail, items)?;
@@ -24820,7 +24828,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn sealed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, xs: SynsA) -> Result<SynsA, Unwind> {
+    pub fn sealed_each<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, xs: SynsA) -> Result<SynsA, Unwind> {
         if null_p(xs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
@@ -24832,13 +24840,13 @@ pub mod made__load__3__main {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.sealed_out.get().unwrap(), sealed_each(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), xs)?);
+                set(maker_st.sealed_out.get().unwrap(), sealed_each(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), xs)?);
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r: kayak_rt::Handle<'static, Presult>| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r: kayak_rt::Handle<'static, Presult>| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -24876,13 +24884,13 @@ pub mod made__load__3__main {
             let r = {
                 let prompt_tag__ = maker_st.parse_tag.get().unwrap();
                 match (move || -> Result<_, Unwind> {
-                    set(maker_st.file_out.get().unwrap(), shaped(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), car(form), false)?);
+                    set(maker_st.file_out.get().unwrap(), shaped(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), car(form), false)?);
                     Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
                 })() {
                     Ok(v_) => v_,
-                    Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r: kayak_rt::Handle<'static, Presult>| {
+                    Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r: kayak_rt::Handle<'static, Presult>| {
                         r
-                    }))(prompt_tag__.payload(u_)),
+                    })).call(prompt_tag__.payload(u_)),
                     Err(u_) => return Err(u_),
                 }
             };
@@ -24988,13 +24996,13 @@ pub mod made__load__3__main {
         let r = {
             let prompt_tag__ = maker_st.parse_tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
-                set(maker_st.file_out.get().unwrap(), shaped(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), x, true)?);
+                set(maker_st.file_out.get().unwrap(), shaped(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_walk(mxp, maker_st, a0, a1, a2)), x, true)?);
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r: kayak_rt::Handle<'static, Presult>| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r: kayak_rt::Handle<'static, Presult>| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -25288,7 +25296,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn captor_noted<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, c: Int, top: MxShapesInts, base: Str, inst: bool, s: kayak_rt::Handle<'static, Syn>, x: kayak_rt::Handle<'static, Syn>, cs: MxShapesInts) -> Result<MxShapesInts, Unwind> {
+    pub fn captor_noted<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, c: Int, top: MxShapesInts, base: Str, inst: bool, s: kayak_rt::Handle<'static, Syn>, x: kayak_rt::Handle<'static, Syn>, cs: MxShapesInts) -> Result<MxShapesInts, Unwind> {
         if _eq(c, int_lit(-1)) {
             Ok(cs)
         } else if (_gt_eq(c, int_lit(0)) && not(mx_shapes_int_in_p(c, top)) && within_module_p(x, reverse(node_path(mxp, maker_st, c)))) {
@@ -25309,7 +25317,7 @@ pub mod made__load__3__main {
     }
 
     pub fn captor_of<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, n: Symbol, d: bool, mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>) -> Int {
-        let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, d, int_lit(0), kayak_rt::lambda1(move |a0| mx_nodes_binder_name(mxp, maker_st, a0)));
+        let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, d, int_lit(0), kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0)));
         match l.0 {
             case_ if kayak_rt::_eq(case_, int_lit(0)) => {
                 l.1
@@ -25323,17 +25331,17 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn alias_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, base: Str, d: bool, free: Int, h: DefEnv, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn alias_written<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, base: Str, d: bool, free: Int, h: DefEnv, s: kayak_rt::Handle<'static, Syn>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         let ab = syn_span(s);
         let a = ab.0;
         let b = ab.1;
-        let with_of = lambda1s(move |m: Str| {
+        let with_of = kayak_rt::closure1s((base, a, b,), |(base, a, b,), m: Str| {
             mk_list(kayak_rt::cons(mk_symbol(str_lit("with"), a, b), kayak_rt::cons(mk_symbol(m, a, b), kayak_rt::cons(mk_symbol(base, a, b), kayak_rt::nil()))), a, b)
         });
         match h.0 {
             case_ if kayak_rt::_eq(case_, int_lit(0)) => {
                 if (_eq(free, int_lit(0)) || (_eq(free, int_lit(3)) && not(d))) {
-                    Ok(with_of(str_lit("#%toplevel")))
+                    Ok(with_of.call(str_lit("#%toplevel")))
                 } else if _eq(free, int_lit(2)) {
                     Ok(mk_symbol(base, a, b))
                 } else {
@@ -25345,11 +25353,11 @@ pub mod made__load__3__main {
             }
             _ => {
                 if (_eq(free, int_lit(0)) && mx_syntax_name_in_p(string_to_symbol(base), h.2)) {
-                    Ok(with_of(symbol_to_string(h.1)))
+                    Ok(with_of.call(symbol_to_string(h.1)))
                 } else if instance_named_p(base, free, h) {
                     Ok(mk_symbol(base, a, b))
                 } else if _eq(free, int_lit(0)) {
-                    Ok(with_of(str_lit("#%fx")))
+                    Ok(with_of.call(str_lit("#%fx")))
                 } else if _eq(free, int_lit(2)) {
                     Ok(mk_symbol(base, a, b))
                 } else {
@@ -25388,7 +25396,7 @@ pub mod made__load__3__main {
 
     pub fn bound_from_p<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut n: Symbol, mut d: bool, mut mx_env_indexed_env: kayak_rt::Handle<'static, MxEnvIndexedEnv>, mut from: Int) -> bool {
         loop {
-            let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, d, from, kayak_rt::lambda1(move |a0| mx_nodes_binder_name(mxp, maker_st, a0)));
+            let l = env_lookup(mxp, maker_st, mx_env_indexed_env, n, d, from, kayak_rt::closure1((mxp, maker_st,), |(mxp, maker_st,), a0| mx_nodes_binder_name(mxp, maker_st, a0)));
             match l.0 {
                 case_ if kayak_rt::_eq(case_, int_lit(0)) => {
                     return true;
@@ -25429,7 +25437,7 @@ pub mod made__load__3__main {
         alias_defined_in_p(n, d, get(maker_st.aliases_defined.get().unwrap()))
     }
 
-    pub fn aliases_written<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, mut fs: MxNodesFound, mut hs: MxNodesDefEnvs, mut top: MxShapesInts, mut x: kayak_rt::Handle<'static, Syn>, mut out: MxShapesWrittenOf) -> Result<MxShapesWrittenOf, Unwind> {
+    pub fn aliases_written<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, mut fs: MxNodesFound, mut hs: MxNodesDefEnvs, mut top: MxShapesInts, mut x: kayak_rt::Handle<'static, Syn>, mut out: MxShapesWrittenOf) -> Result<MxShapesWrittenOf, Unwind> {
         loop {
             if null_p(fs) {
                 return Ok(out);
@@ -25505,7 +25513,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn root_binders<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, root: Int, x: kayak_rt::Handle<'static, Syn>) -> Result<MxShapesInts, Unwind> {
+    pub fn root_binders<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, root: Int, x: kayak_rt::Handle<'static, Syn>) -> Result<MxShapesInts, Unwind> {
         let tagcase_ = node_kids(mxp, maker_st, root);
         match *tagcase_ {
             made__load__2__expander::MxNodesKids::KForm(f) => {
@@ -25523,7 +25531,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn captors_named<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut cs: MxShapesInts, mut out: Captors, mut tag: &'mxp dyn Fn() -> Result<Str, Unwind>) -> Result<Captors, Unwind> {
+    pub fn captors_named<'mxp, Place_Mxp>(mut mxp: &'mxp Place_Mxp, mut maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mut cs: MxShapesInts, mut out: Captors, mut tag: kayak_rt::Proc0<'mxp, Result<Str, Unwind>>) -> Result<Captors, Unwind> {
         loop {
             if null_p(cs) {
                 return Ok(out);
@@ -25531,7 +25539,7 @@ pub mod made__load__3__main {
                 let tagcase_ = node_kids(mxp, maker_st, car(cs));
                 match *tagcase_ {
                     made__load__2__expander::MxNodesKids::KBinder(n, e) => {
-                        (cs, out) = (cdr(cs), cons(Product_11_12(car(cs), string_to_symbol(string_append(str_lit("%"), string_append(symbol_to_string(n), string_append(str_lit("~"), tag()?))))), out));
+                        (cs, out) = (cdr(cs), cons(Product_11_12(car(cs), string_to_symbol(string_append(str_lit("%"), string_append(symbol_to_string(n), string_append(str_lit("~"), tag.call()?))))), out));
                         continue;
                     }
                     _ => {
@@ -25665,7 +25673,7 @@ pub mod made__load__3__main {
         }
     }
 
-    pub fn aliases_defined_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, root: Int, x: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
+    pub fn aliases_defined_in<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, root: Int, x: kayak_rt::Handle<'static, Syn>) -> Result<(), Unwind> {
         let tagcase_ = node_kids(mxp, maker_st, root);
         match *tagcase_ {
             made__load__2__expander::MxNodesKids::KForm(f) => {
@@ -25769,7 +25777,7 @@ pub mod made__load__3__main {
         parts_under(s, parts_from_top(ws))
     }
 
-    pub fn aliases_resolved<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: &'mxp dyn Fn(Str, Int, Int) -> Result<Void, Unwind>, x: kayak_rt::Handle<'static, Syn>, hs: MxNodesDefEnvs, tag: &'mxp dyn Fn() -> Result<Str, Unwind>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
+    pub fn aliases_resolved<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, mx_fail: kayak_rt::Proc3<'mxp, Str, Int, Int, Result<Void, Unwind>>, x: kayak_rt::Handle<'static, Syn>, hs: MxNodesDefEnvs, tag: kayak_rt::Proc0<'mxp, Result<Str, Unwind>>) -> Result<kayak_rt::Handle<'static, Syn>, Unwind> {
         if not(alias_in_p(mxp, maker_st, x)?) {
             Ok(x)
         } else {
@@ -26239,7 +26247,7 @@ pub mod made__load__3__main {
         if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("import")) || string_eq_p(h, str_lit("define-datatype"))) {
             Ok(x)
         } else {
-            Ok(top_shaped(mxp, maker_st, aliases_resolved(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), sealed_written(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), x)?, def_envs_given(mxp, maker_st), lambda0(move || Ok((kayak_rt::lambda0(move || captor_tag(mxp, maker_st)))())))?)?)
+            Ok(top_shaped(mxp, maker_st, aliases_resolved(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), sealed_written(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), x)?, def_envs_given(mxp, maker_st), kayak_rt::closure0((mxp, maker_st,), |(mxp, maker_st,)| Ok((kayak_rt::closure0((mxp, maker_st,), |(mxp, maker_st,)| captor_tag(mxp, maker_st))).call())))?)?)
         }
     }
 
@@ -26256,7 +26264,7 @@ pub mod made__load__3__main {
         if null_p(cs) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
-            Ok(cons(aliases_resolved(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), expand(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(cs))?, def_envs_given(mxp, maker_st), lambda0(move || Ok((kayak_rt::lambda0(move || captor_tag(mxp, maker_st)))())))?, drive_checked(mxp, maker_st, cdr(cs))?))
+            Ok(cons(aliases_resolved(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), expand(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(cs))?, def_envs_given(mxp, maker_st), kayak_rt::closure0((mxp, maker_st,), |(mxp, maker_st,)| Ok((kayak_rt::closure0((mxp, maker_st,), |(mxp, maker_st,)| captor_tag(mxp, maker_st))).call())))?, drive_checked(mxp, maker_st, cdr(cs))?))
         }
     }
 
@@ -26264,7 +26272,7 @@ pub mod made__load__3__main {
         if null_p(ns) {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else {
-            Ok(append(drive_checked(mxp, maker_st, template_checks(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(ns))?)?, drive_checks(mxp, maker_st, cdr(ns))?))
+            Ok(append(drive_checked(mxp, maker_st, template_checks(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), car(ns))?)?, drive_checks(mxp, maker_st, cdr(ns))?))
         }
     }
 
@@ -26291,16 +26299,16 @@ pub mod made__load__3__main {
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else if defines_syntax_p(s) {
             drive_taken(mxp, maker_st, syntax_names(mxp, maker_st, s)?, s)?;
-            Ok(drive_checks(mxp, maker_st, define_macro(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s, nil::<Product_11_12_13_14_15<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>>>())?)?)
+            Ok(drive_checks(mxp, maker_st, define_macro(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s, nil::<Product_11_12_13_14_15<Symbol, List<Symbol>, List<Symbol>, List<Product_11_12<Symbol, Symbol>>, List<Symbol>>>())?)?)
         } else if for_syntax_p(s) {
-            for_syntax_x(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?;
+            for_syntax_x(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?;
             Ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::Syn>>())
         } else if imports_syntax_p(s) {
             Ok(drive_not_yet(mxp, maker_st, s, str_lit("a file's macros, `import-with-syntax`"))?)
         } else if string_eq_p(drive_head(s), str_lit("hide")) {
             Ok(drive_forms(mxp, maker_st, cdr(proper_items(s)))?)
         } else {
-            let xs = expand_top(mxp, maker_st, kayak_rt::lambda3(move |a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?;
+            let xs = expand_top(mxp, maker_st, kayak_rt::closure3((mxp, maker_st,), |(mxp, maker_st,), a0, a1, a2| pfail_at(mxp, maker_st, a0, a1, a2)), s)?;
             let ms = made_syntax_taken_x(mxp, maker_st);
             let ws = drive_written_each(mxp, maker_st, xs)?;
             drive_taken(mxp, maker_st, ms, s)?;
@@ -26334,9 +26342,9 @@ pub mod made__load__3__main {
                     Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
                 })() {
                     Ok(v_) => v_,
-                    Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                    Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r| {
                         r
-                    }))(prompt_tag__.payload(u_)),
+                    })).call(prompt_tag__.payload(u_)),
                     Err(u_) => return Err(u_),
                 }
             };
@@ -26387,9 +26395,9 @@ pub mod made__load__3__main {
                         Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
                     })() {
                         Ok(v_) => v_,
-                        Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                        Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r| {
                             r
-                        }))(prompt_tag__.payload(u_)),
+                        })).call(prompt_tag__.payload(u_)),
                         Err(u_) => return Err(u_),
                     }
                 };
@@ -26725,9 +26733,9 @@ pub mod made__load__3__main {
                 Ok(p_ok(nil::<kayak_rt::Handle<'static, made__load__2__expander::MxParserTypesTop>>()))
             })() {
                 Ok(v_) => v_,
-                Err(u_) if u_.is(prompt_tag__) => (lambda1(move |r| {
+                Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), r| {
                     r
-                }))(prompt_tag__.payload(u_)),
+                })).call(prompt_tag__.payload(u_)),
                 Err(u_) => return Err(u_),
             }
         };
@@ -26856,7 +26864,7 @@ pub mod made__load__3__main {
     }
 
     #[inline]
-    pub fn drive_asker_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, f: &'mxp (dyn Fn(Str) -> Str + Send + Sync)) -> Result<(), Unwind> {
+    pub fn drive_asker_x<'mxp, Place_Mxp>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, f: kayak_rt::Proc1s<'mxp, Str, Str>) -> Result<(), Unwind> {
         Ok(set(maker_st.mx_phase1_asker.get().unwrap(), f))
     }
 
@@ -27052,9 +27060,9 @@ pub mod made__load__3__main {
             phantom_: std::marker::PhantomData,
         }).to_ref();
         maker_st.mx_phase1_given.set(Some(new(the::<kayak_rt::value::Value>(kayak_rt::value::Value::Nil))));
-        maker_st.mx_phase1_asker.set(Some(new(lambda1s(move |r: Str| {
+        maker_st.mx_phase1_asker.set(Some(new(kayak_rt::as_proc(kayak_rt::closure1s((), |(), r: Str| {
             str_lit("")
-        }))));
+        })))));
         maker_st.load_base.set(Some(int_lit(1000000000)));
         maker_st.parse_tag.set(Some(make_continuation_prompt_tag()));
         maker_st.dt_type_forms.set(Some(kayak_rt::cons(symbol_lit(str_lit("arrayof")), kayak_rt::cons(symbol_lit(str_lit("narrayof")), kayak_rt::cons(symbol_lit(str_lit("bloblet")), kayak_rt::cons(symbol_lit(str_lit("composable")), kayak_rt::cons(symbol_lit(str_lit("dletrec")), kayak_rt::cons(symbol_lit(str_lit("icell")), kayak_rt::cons(symbol_lit(str_lit("listof")), kayak_rt::cons(symbol_lit(str_lit("mark-key")), kayak_rt::cons(symbol_lit(str_lit("moduleof")), kayak_rt::cons(symbol_lit(str_lit("mu")), kayak_rt::cons(symbol_lit(str_lit("nat")), kayak_rt::cons(symbol_lit(str_lit("nlist")), kayak_rt::cons(symbol_lit(str_lit("oneshot")), kayak_rt::cons(symbol_lit(str_lit("pairof")), kayak_rt::cons(symbol_lit(str_lit("place")), kayak_rt::cons(symbol_lit(str_lit("poly")), kayak_rt::cons(symbol_lit(str_lit("productof")), kayak_rt::cons(symbol_lit(str_lit("prompt-tag")), kayak_rt::cons(symbol_lit(str_lit("proves")), kayak_rt::cons(symbol_lit(str_lit("ref")), kayak_rt::cons(symbol_lit(str_lit("select")), kayak_rt::cons(symbol_lit(str_lit("subr")), kayak_rt::cons(symbol_lit(str_lit("sumof")), kayak_rt::cons(symbol_lit(str_lit("tupleof")), kayak_rt::cons(symbol_lit(str_lit("bool")), kayak_rt::cons(symbol_lit(str_lit("oneof")), kayak_rt::cons(symbol_lit(str_lit("union")), kayak_rt::cons(symbol_lit(str_lit("anyof")), kayak_rt::cons(symbol_lit(str_lit("allof")), kayak_rt::cons(symbol_lit(str_lit("->")), kayak_rt::cons(symbol_lit(str_lit("->*")), kayak_rt::cons(symbol_lit(str_lit("restrict")), kayak_rt::cons(symbol_lit(str_lit("modnames")), kayak_rt::nil())))))))))))))))))))))))))))))))))));
@@ -27283,7 +27291,7 @@ impl<'mxp, Place_Mxp> MadeLoad3MainFace<'mxp, Place_Mxp> {
         made__load__3__main::drive_macros_p(self.0, self.1, s)
     }
 
-    pub fn drive_asker_x(self, f: &'mxp (dyn Fn(Str) -> Str + Send + Sync)) -> Result<(), Unwind> {
+    pub fn drive_asker_x(self, f: kayak_rt::Proc1s<'mxp, Str, Str>) -> Result<(), Unwind> {
         made__load__3__main::drive_asker_x(self.0, self.1, f)
     }
 
@@ -27306,7 +27314,7 @@ pub fn entry_expanded(forms: Sexps) -> Result<Product_11_12<kayak_rt::value::Val
         impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
         fn letrena__p<'p>(p: &'p Region_P<'p>, forms: List<kayak_rt::Handle<'static, Sexp>>) -> Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind> {
             let x = made__load__3__main(p);
-            x.drive_asker_x(&phase1_asked)?;
+            x.drive_asker_x(kayak_rt::as_proc(phase1_asked))?;
             let e = x.drive_entry(sexps_located(forms), int_lit(0))?;
             Ok(Product_11_12(e.0, e.1))
         }
@@ -27608,9 +27616,9 @@ pub fn engine_main() -> Result<Int, Unwind> {
         match exit(int_lit(2)) {};
         Ok(int_lit(2))
     } else if string_eq_p(car(r#as), str_lit("--expanded")) {
-        say_each(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+        say_each(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
             string_append(show_sexp(f), str_lit("\n"))
-        }), files_expanded(cdr(r#as))?));
+        })), files_expanded(cdr(r#as))?));
         Ok(int_lit(0))
     } else if (string_eq_p(car(r#as), str_lit("--expanded-located")) && not(null_p(cdr(r#as)))) {
         say_each(located_expanded(read_all(read_text(car(cdr(r#as))), car(cdr(r#as)), 1i64))?);

@@ -77,13 +77,13 @@ pub enum Value {
     VNone(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Value {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Value {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::VText(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::VRead(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::VFile(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::VAt(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::VText(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::VRead(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::VFile(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::VAt(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
             Self::VNone() => { }
         }
     }
@@ -117,10 +117,10 @@ pub enum Node {
     Node(kayak_rt::Handle<'static, Sexp>, bool, i64, i64, i64, List<i64>, i64, kayak_rt::Handle<'static, Value>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Node {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Node {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Node(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); }
+            Self::Node(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); }
         }
     }
 }
@@ -136,11 +136,11 @@ pub enum Imap {
     ImNode(kayak_rt::Handle<'static, Imap>, i64, kayak_rt::Handle<'static, Node>, i64, kayak_rt::Handle<'static, Imap>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Imap {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Imap {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
             Self::ImNone() => { }
-            Self::ImNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::ImNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -158,11 +158,11 @@ pub enum Kmap {
     KmNode(kayak_rt::Handle<'static, Kmap>, Str, i64, i64, kayak_rt::Handle<'static, Kmap>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Kmap {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Kmap {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
             Self::KmNone() => { }
-            Self::KmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::KmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -181,10 +181,10 @@ pub enum Frame {
     Frame(i64, List<i64>, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Frame {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Frame {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Frame(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Frame(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -203,10 +203,10 @@ pub enum Shard {
     Shard(Str, i64, Str, i64, bool, bool),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Shard {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Shard {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Shard(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); }
+            Self::Shard(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
         }
     }
 }
@@ -220,11 +220,11 @@ pub enum Smap {
     SmNode(kayak_rt::Handle<'static, Smap>, i64, kayak_rt::Handle<'static, Shard>, i64, kayak_rt::Handle<'static, Smap>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Smap {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Smap {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
             Self::SmNone() => { }
-            Self::SmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::SmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -239,7 +239,7 @@ pub fn sm_node(f0: kayak_rt::Handle<'static, Smap>, f1: i64, f2: kayak_rt::Handl
 
 // What reads a file of the database by its name (`` the head's): its text,
 // or `` if there is none.
-pub type Reader = &'static dyn Fn(Str) -> Str;
+pub type Reader = kayak_rt::Proc1<'static, Str, Str>;
 
 // The database: the revision; the nodes, by number, those read or made; the
 // numbers, by key, of the shards read; the shards, by number, and their
@@ -250,7 +250,7 @@ pub type Reader = &'static dyn Fn(Str) -> Str;
 pub type Db = Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<Reader>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<Sexps>>;
 
 // What runs a query: given the database and a key, its value.
-pub type Runner = &'static dyn Fn(Db, kayak_rt::Handle<'static, Sexp>) -> Str;
+pub type Runner = kayak_rt::Proc2<'static, Db, kayak_rt::Handle<'static, Sexp>, Str>;
 
 #[inline]
 pub fn durabilities() -> i64 {
@@ -883,10 +883,10 @@ pub enum Scanned {
     Scanned(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Scanned {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Scanned {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Scanned(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Scanned(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -1028,10 +1028,10 @@ pub enum Atom {
     Atom(kayak_rt::Handle<'static, Sexp>, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Atom {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Atom {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Atom(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Atom(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -1045,11 +1045,11 @@ pub enum Amap {
     AmNode(kayak_rt::Handle<'static, Amap>, i64, kayak_rt::Handle<'static, Atom>, i64, kayak_rt::Handle<'static, Amap>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Amap {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Amap {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
             Self::AmNone() => { }
-            Self::AmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::AmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -1066,10 +1066,10 @@ pub enum Part {
     Part(kayak_rt::Handle<'static, Sexp>, Str, kayak_rt::Handle<'static, Amap>, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Part {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Part {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Part(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Part(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -1082,10 +1082,10 @@ pub enum Parts {
     Parts(Sexps, List<Str>, kayak_rt::Handle<'static, Amap>, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Parts {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Parts {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Parts(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Parts(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -1440,7 +1440,7 @@ pub fn nodes_scanned_x(d: Db, s: Str, i: i64, n: i64) -> () {
 // short), is not believed.
 #[inline]
 pub fn value_checked(x: Str, fp: i64) -> List<Str> {
-    if i64_eq((&queries::fnv_string)(x, queries::fnv_offset()), fp) {
+    if i64_eq(queries::fnv_string(x, queries::fnv_offset()), fp) {
         kayak_rt::heap_cons(x, kayak_rt::nil())
     } else {
         nil::<Str>()
@@ -1470,7 +1470,7 @@ pub fn key_group(k: kayak_rt::Handle<'static, Sexp>) -> Str {
 
 #[inline]
 pub fn group_hash(g: Str) -> Str {
-    i64_to_string((&queries::fnv_string)(g, queries::fnv_offset()))
+    i64_to_string(queries::fnv_string(g, queries::fnv_offset()))
 }
 
 #[inline]
@@ -1643,7 +1643,7 @@ pub fn db_shard_read_x(d: Db, n: i64) -> () {
                     let text = if i64_lt(slot, 0i64) {
                         str_lit("")
                     } else {
-                        (get(d.6))(shard_file(n, slot))
+                        (get(d.6)).call(shard_file(n, slot))
                     };
                     let m = string_length_i64(text);
                     let hd = str_lit("(kayak-shard 3 ");
@@ -1697,7 +1697,7 @@ pub fn db_node_read_x(d: Db, i: i64) -> () {
         let tagcase_ = node_kept(car(n));
         match *tagcase_ {
             Value::VFile(j) => {
-                let x = value_checked((get(d.6))(value_file(i)), node_fp(car(n)));
+                let x = value_checked((get(d.6)).call(value_file(i)), node_fp(car(n)));
                 let tagcase_ = car(n);
                 match *tagcase_ {
                     Node::Node(k, inp, v, c, f, ds, du, val) => {
@@ -1718,7 +1718,7 @@ pub fn db_node_read_x(d: Db, i: i64) -> () {
 }
 
 pub fn db_make() -> Db {
-    Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<kayak_rt::Handle<'static, Imap>>>(kayak_rt::heap_new(im_none())), the::<Ref<kayak_rt::Handle<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<kayak_rt::Handle<'static, Smap>>>(kayak_rt::heap_new(sm_none())), the::<Ref<kayak_rt::Handle<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Reader>>(kayak_rt::heap_new(lambda1(move |name: Str| {
+    Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran(the::<Ref<i64>>(kayak_rt::heap_new(1i64)), the::<Ref<kayak_rt::Handle<'static, Imap>>>(kayak_rt::heap_new(im_none())), the::<Ref<kayak_rt::Handle<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<kayak_rt::Handle<'static, Smap>>>(kayak_rt::heap_new(sm_none())), the::<Ref<kayak_rt::Handle<'static, Kmap>>>(kayak_rt::heap_new(km_none())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Reader>>(kayak_rt::heap_new(kayak_rt::closure1((), |(), name: Str| {
         str_lit("")
     }))), the::<Ref<bool>>(kayak_rt::heap_new(false)), the::<Ref<List<kayak_rt::Handle<'static, Frame>>>>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Frame>>())), the::<Ref<List<i64>>>(kayak_rt::heap_new(zeros(durabilities()))), the::<Ref<i64>>(kayak_rt::heap_new(0i64)), the::<Ref<Sexps>>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Sexp>>())))
 }
@@ -1907,7 +1907,7 @@ pub fn node_value_in(d: Db, n: kayak_rt::Handle<'static, Node>) -> Str {
             s
         }
         Value::VFile(i) => {
-            let x = value_checked((get(d.6))(value_file(i)), node_fp(n));
+            let x = value_checked((get(d.6)).call(value_file(i)), node_fp(n));
             if null_p(x) {
                 str_lit("")
             } else {
@@ -1953,7 +1953,7 @@ pub fn db_side(d: Db, k: Str) -> Str {
 
 pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
     let key = key1(str_lit("%side"), k);
-    db_put_x(d, db_id(d, key), node(key, true, 0i64, 0i64, (&queries::fnv_string)(text, queries::fnv_offset()), nil::<i64>(), 0i64, v_text(text)))
+    db_put_x(d, db_id(d, key), node(key, true, 0i64, 0i64, queries::fnv_string(text, queries::fnv_offset()), nil::<i64>(), 0i64, v_text(text)))
 }
 
 // Input `k` set to `text`, of durability `du`: a new revision if its value
@@ -1963,7 +1963,7 @@ pub fn db_side_put_x(d: Db, k: Str, text: Str) -> () {
 // sending every node to be verified again. Not in `models/db.qnt` yet,
 // whose inputs all are from the first.
 pub fn db_set_x(d: Db, k: kayak_rt::Handle<'static, Sexp>, text: Str, du: i64) -> () {
-    let fp = (&queries::fnv_string)(text, queries::fnv_offset());
+    let fp = queries::fnv_string(text, queries::fnv_offset());
     let i = db_id(d, k);
     let old = db_node_at(d, i);
     if (not(null_p(old)) && node_input_p(car(old)) && i64_eq(node_fp(car(old)), fp) && i64_eq(node_durability(car(old)), du)) {
@@ -2092,10 +2092,10 @@ pub fn db_reads_durability(mut d: Db, mut run: Runner, mut is: List<i64>, mut si
 /// same as `old`'s, its revision of change kept (early cutoff).
 pub fn db_execute(d: Db, run: Runner, i: i64, k: kayak_rt::Handle<'static, Sexp>, old: List<kayak_rt::Handle<'static, Node>>) -> Str {
     set(d.8, kayak_rt::heap_cons(frame(i, nil::<i64>(), i64_minus(durabilities(), 1i64)), get(d.8)));
-    let x = run(d, k);
+    let x = run.call(d, k);
     let fr = car(get(d.8));
     let r = get(d.0);
-    let fp = (&queries::fnv_string)(x, queries::fnv_offset());
+    let fp = queries::fnv_string(x, queries::fnv_offset());
     set(d.8, cdr(get(d.8)));
     set(d.10, i64_plus(get(d.10), 1i64));
     set(d.11, kayak_rt::heap_cons(k, get(d.11)));
@@ -2182,10 +2182,10 @@ pub enum DbFile {
     DbFile(Str, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for DbFile {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for DbFile {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::DbFile(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::DbFile(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -2198,10 +2198,10 @@ pub enum KeyedOut {
     KeyedOut(List<Str>, kayak_rt::Handle<'static, Kmap>, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for KeyedOut {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for KeyedOut {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::KeyedOut(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::KeyedOut(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -2301,10 +2301,10 @@ pub enum MadeFiles {
     MadeFiles(List<Str>, List<Str>, List<kayak_rt::Handle<'static, DbFile>>, List<Str>, kayak_rt::Handle<'static, Kmap>, i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for MadeFiles {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for MadeFiles {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::MadeFiles(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); }
+            Self::MadeFiles(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); }
         }
     }
 }
@@ -2322,11 +2322,11 @@ pub enum Placed {
     Nowhere(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Placed {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Placed {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::InShard(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
-            Self::InFile(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::InShard(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
+            Self::InFile(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::Nowhere() => { }
         }
     }
@@ -2378,7 +2378,7 @@ pub fn value_placed(d: Db, n: kayak_rt::Handle<'static, Node>, kept: bool) -> ka
 /// Each node of shard `sh` of `is`, its key into the keys, its record
 /// into the nodes, its value into the shard's values or a file of its
 /// own (C473), and as they have it after.
-pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> bool + Send + Sync), mut m: kayak_rt::Handle<'static, MadeFiles>) -> kayak_rt::Handle<'static, MadeFiles> {
+pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, bool>, mut m: kayak_rt::Handle<'static, MadeFiles>) -> kayak_rt::Handle<'static, MadeFiles> {
     loop {
         if null_p(is) {
             return m;
@@ -2394,7 +2394,7 @@ pub fn nodes_files(mut d: Db, mut sh: i64, mut is: List<i64>, mut keep: &'static
                         let tagcase_ = key_written(node_key(n), seen, labels, kayak_rt::heap_cons(string_append(str_lit("#"), string_append(i64_to_string(car(is)), str_lit("="))), kayak_rt::nil()));
                         match *tagcase_ {
                             KeyedOut::KeyedOut(key_parts, seen2, labels2) => {
-                                let p = value_placed(d, n, (node_input_p(n) || keep(node_key(n))));
+                                let p = value_placed(d, n, (node_input_p(n) || keep.call(node_key(n))));
                                 let after = {
                                     let tagcase_ = p;
                                     match *tagcase_ {
@@ -2530,7 +2530,7 @@ pub fn sm_numbers(mut t: kayak_rt::Handle<'static, Smap>, mut acc: List<i64>) ->
 
 /// Each shard of `ns`: if a node of it changed, its file written to its
 /// other slot, and its values' files; its line of the head.
-pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> bool + Send + Sync), mut values: List<kayak_rt::Handle<'static, DbFile>>, mut graphs: List<kayak_rt::Handle<'static, DbFile>>, mut heads: List<Str>) -> Product_11_12_13<List<kayak_rt::Handle<'static, DbFile>>, List<kayak_rt::Handle<'static, DbFile>>, List<Str>> {
+pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, bool>, mut values: List<kayak_rt::Handle<'static, DbFile>>, mut graphs: List<kayak_rt::Handle<'static, DbFile>>, mut heads: List<Str>) -> Product_11_12_13<List<kayak_rt::Handle<'static, DbFile>>, List<kayak_rt::Handle<'static, DbFile>>, List<Str>> {
     loop {
         if null_p(ns) {
             return Product_11_12_13(values, graphs, reverse(heads));
@@ -2567,7 +2567,7 @@ pub fn shards_saved(mut d: Db, mut ns: List<i64>, mut keep: &'static (dyn Fn(kay
 // saved, `whose` it is, `keep` saying of a query's key whether its value is
 // kept, in the order to write them: the values', the shards', the head
 // last. Its nodes after are as those files have them.
-pub fn db_saved(d: Db, whose: Str, keep: &'static (dyn Fn(kayak_rt::Handle<'static, Sexp>) -> bool + Send + Sync)) -> List<kayak_rt::Handle<'static, DbFile>> {
+pub fn db_saved(d: Db, whose: Str, keep: kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, bool>) -> List<kayak_rt::Handle<'static, DbFile>> {
     let r = shards_saved(d, sm_numbers(get(d.3), nil::<i64>()), keep, nil::<kayak_rt::Handle<'static, DbFile>>(), nil::<kayak_rt::Handle<'static, DbFile>>(), nil::<Str>());
     set(d.7, false);
     onto(r.0, onto(r.1, kayak_rt::heap_cons(db_file(str_lit(""), string_list_append(append(kayak_rt::heap_cons(str_lit("("), kayak_rt::heap_cons(db_format(), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(str_text(whose), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(get(d.0)), kayak_rt::heap_cons(str_lit(" ("), kayak_rt::nil()))))))), append(cdr(numbers_text(get(d.9))), append(kayak_rt::heap_cons(str_lit(") ("), kayak_rt::nil()), append(r.2, kayak_rt::heap_cons(str_lit("))\n"), kayak_rt::nil()))))))), kayak_rt::nil())))
@@ -2595,7 +2595,7 @@ pub fn db_opened(rd: Reader, whose: Str) -> Db {
     let d = db_make();
     let graph = {
         set(d.6, rd);
-        rd(str_lit(""))
+        rd.call(str_lit(""))
     };
     let h = string_append(str_lit("("), string_append(db_format(), str_lit(" ")));
     let n = string_length_i64(graph);

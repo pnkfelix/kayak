@@ -9,26 +9,26 @@ use kayak_rt::*;
 // is `a__0`).
 
 #[inline]
-pub fn mk<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>() -> List<A> {
+pub fn mk<A: Copy + 'static + kayak_rt::Trace>() -> List<A> {
     nil::<A>()
 }
 
 #[inline]
-pub fn apply_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<i64, Unwind>, x: i64) -> Result<i64, Unwind> {
-    Ok(f(x)?)
+pub fn apply_to<'r>(t: Tag<i64, i64>, f: kayak_rt::Proc1<'r, i64, Result<i64, Unwind>>, x: i64) -> Result<i64, Unwind> {
+    Ok(f.call(x)?)
 }
 
-pub fn go(a_0: &'static (dyn Fn(i64) -> i64 + Send + Sync)) -> i64 {
+pub fn go(a_0: kayak_rt::Proc1s<'static, i64, i64>) -> i64 {
     let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            Ok(apply_to(t, lambda1(move |a__0| Ok((a_0)(a__0))), 5i64)?)
+            Ok(apply_to(t, kayak_rt::closure1((a_0,), |(a_0,), a__0| Ok((a_0).call(a__0))), 5i64)?)
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 v
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }
@@ -51,8 +51,8 @@ pub fn main() -> Str {
         str_lit("empty ")
     } else {
         str_lit("full ")
-    }, i64_to_string(go(lambda1s(move |y: i64| {
+    }, i64_to_string(go(kayak_rt::as_proc(kayak_rt::closure1s((), |(), y: i64| {
         i64_plus(y, 1i64)
-    }))))))
+    })))))))
 }
 

@@ -10,11 +10,11 @@ pub enum Tree {
     Node(kayak_rt::Handle<'static, Tree>, i64, kayak_rt::Handle<'static, Tree>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Tree {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Tree {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
             Self::Leaf() => { }
-            Self::Node(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Node(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -33,11 +33,11 @@ pub enum Shape {
     Dot(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Shape {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Shape {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Circle(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Circle(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             Self::Dot() => { }
         }
     }

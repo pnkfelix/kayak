@@ -14,10 +14,10 @@ pub enum Source {
     Source(Str, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Source {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Source {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Source(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Source(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -30,10 +30,10 @@ pub enum Output {
     Output(Str, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Output {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Output {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Output(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Output(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -188,7 +188,7 @@ pub fn units_forms(ss: Sources, loaded: Fileds, known: Keyeds) -> List<List<kaya
 // `%load:PATH`, its path from the manifest's directory, as its files' are;
 // and the unit's own files, the rest.
 pub fn unit_loaded(ss: Sources) -> Fileds {
-    concat(map(lambda1s(move |s: kayak_rt::Handle<'static, Source>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), s: kayak_rt::Handle<'static, Source>| {
         let tagcase_ = s;
         match *tagcase_ {
             Source::Source(n, t) => {
@@ -199,19 +199,19 @@ pub fn unit_loaded(ss: Sources) -> Fileds {
                 }
             }
         }
-    }), ss))
+    })), ss))
 }
 
 #[inline]
 pub fn unit_files(ss: Sources) -> Sources {
-    filter(lambda1s(move |s: kayak_rt::Handle<'static, Source>| {
+    filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), s: kayak_rt::Handle<'static, Source>| {
         let tagcase_ = s;
         match *tagcase_ {
             Source::Source(n, t) => {
                 not(has_prefix_p(n, str_lit("%load:")))
             }
         }
-    }), ss)
+    })), ss)
 }
 
 #[inline]
@@ -283,10 +283,10 @@ pub enum Compiled {
     Compiled(Outputs, Memos),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Compiled {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Compiled {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Compiled(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Compiled(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -305,9 +305,9 @@ pub fn memo_modules(mut c: kayak_rt::Handle<'static, Ctx>, mut fs: Facts, mut gl
                 Source::Source(name, text) => {
                     let file = string_append(name, str_lit(".kfx"));
                     let forms = car(fss);
-                    let starts = map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+                    let starts = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
                         datum_pos(f)
-                    }), forms);
+                    })), forms);
                     let texts = incremental::form_texts(text, string_length_i64(text), starts);
                     let tagcase_ = incremental::put_tops_memo(c, incremental::facts_of_file(fs, file), global, old, forms, texts, starts, put(module_header(), nil::<char>()), made);
                     match *tagcase_ {
@@ -341,9 +341,9 @@ pub fn sources_texts(ss: Sources, fss: SourcesForms) -> Strings {
         let tagcase_ = car(ss);
         match *tagcase_ {
             Source::Source(name, text) => {
-                onto(incremental::form_texts(text, string_length_i64(text), map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+                onto(incremental::form_texts(text, string_length_i64(text), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
                     datum_pos(f)
-                }), car(fss))), sources_texts(cdr(ss), cdr(fss)))
+                })), car(fss))), sources_texts(cdr(ss), cdr(fss)))
             }
         }
     }

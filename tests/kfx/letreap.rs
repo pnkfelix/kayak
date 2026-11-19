@@ -12,9 +12,9 @@ pub fn total(n: i64) -> i64 {
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a0 } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
-            let build__knot = knot::<&'r dyn Fn(i64, ListAt<'r, i64>) -> ListAt<'r, i64>>();
-            let add_up__knot = knot::<&'r dyn Fn(ListAt<'r, i64>, i64) -> i64>();
-            let build = lambda2(move |mut i: i64, mut acc: ListAt<'r, i64>| {
+            let build__knot = knot::<kayak_rt::Proc2<'r, i64, ListAt<'r, i64>, ListAt<'r, i64>>>();
+            let add_up__knot = knot::<kayak_rt::Proc2<'r, ListAt<'r, i64>, i64, i64>>();
+            let build = kayak_rt::closure2((r,), |(r,), mut i: i64, mut acc: ListAt<'r, i64>| {
                 loop {
                     if i64_eq(i, 0i64) {
                         return acc;
@@ -24,7 +24,7 @@ pub fn total(n: i64) -> i64 {
                     }
                 }
             });
-            let add_up = lambda2(move |mut xs: ListAt<'r, i64>, mut acc: i64| {
+            let add_up = kayak_rt::closure2((), |(), mut xs: ListAt<'r, i64>, mut acc: i64| {
                 loop {
                     if null_p(xs) {
                         return acc;
@@ -36,7 +36,7 @@ pub fn total(n: i64) -> i64 {
             });
             build__knot.set(build);
             add_up__knot.set(add_up);
-            add_up(build(n, nil::<i64>()), 0i64)
+            add_up.call(build.call(n, nil::<i64>()), 0i64)
         }
         let r__arena = Region_R::default();
         letrena__r(&r__arena, n)

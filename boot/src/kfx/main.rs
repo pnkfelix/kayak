@@ -31,7 +31,7 @@ use super::*;
 // wrong use, with 2.
 
 // The runner the compiler's reads and writes go to.
-pub type Drt = Tag<Int, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<Int>>>;
+pub type Drt = Tag<Int, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<Int>>>>;
 
 #[inline]
 pub fn fail_with(message: Str, status: Int) -> Void {
@@ -40,7 +40,7 @@ pub fn fail_with(message: Str, status: Int) -> Void {
 }
 
 pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<Int>(a__0, a__1))))(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", path))).await?;
+    let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", path))).await?;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("text") } {
         let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -55,7 +55,7 @@ pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
 }
 
 pub async fn write_text(rt: Drt, path: Str, text: Str) -> Result<(), Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<Int>(a__0, a__1))))(rt, kayak_rt::sum_new::<Product_4path_4text<Str, Str>>(const { kayak_rt::tag_hash("write-file") }, "write-file", Product_4path_4text(path, text)))).await?;
+    let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_new::<Product_4path_4text<Str, Str>>(const { kayak_rt::tag_hash("write-file") }, "write-file", Product_4path_4text(path, text)))).await?;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -144,14 +144,14 @@ pub async fn unit_loads_read(mut rt: Drt, mut dir: Str, mut todo: Strings, mut d
     loop {
         if null_p(todo) {
             return Ok(done);
-        } else if any_p(lambda1s(move |s: kayak_rt::Handle<'static, Filed>| {
+        } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), s: kayak_rt::Handle<'static, Filed>| {
             let tagcase_ = s;
             match *tagcase_ {
                 Filed::Filed(n, t) => {
                     string_eq_p(n, car(todo))
                 }
             }
-        }), done) {
+        })), done) {
             todo = cdr(todo);
             continue;
         } else if has_prefix_p(car(todo), str_lit("fx26:")) {
@@ -179,14 +179,14 @@ pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result
             } else {
                 let path = path_joined(dir, line);
                 let text = kayak_rt::suspend::body(read_text(rt, path)).await?;
-                return Ok(kayak_rt::heap_cons(source(stem(path), text), onto(map(lambda1s(move |x: kayak_rt::Handle<'static, Filed>| {
+                return Ok(kayak_rt::heap_cons(source(stem(path), text), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Filed>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Filed::Filed(n, t) => {
                             source(string_append(str_lit("%load:"), n), t)
                         }
                     }
-                }), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit("")), nil::<kayak_rt::Handle<'static, Filed>>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
+                })), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit("")), nil::<kayak_rt::Handle<'static, Filed>>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
             }
         }
     }
@@ -211,7 +211,7 @@ pub async fn write_outputs(mut rt: Drt, mut dir: Str, mut os: Outputs) -> Result
 
 // The compiler, run.
 pub async fn put_out(rt: Drt, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<Int>(a__0, a__1))))(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
+    kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
     Ok(())
 }
 
@@ -221,14 +221,14 @@ pub async fn loads_read(mut rt: Drt, mut todo: Strings, mut done: Fileds) -> Res
     loop {
         if null_p(todo) {
             return Ok(done);
-        } else if any_p(lambda1s(move |s: kayak_rt::Handle<'static, Filed>| {
+        } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), s: kayak_rt::Handle<'static, Filed>| {
             let tagcase_ = s;
             match *tagcase_ {
                 Filed::Filed(n, t) => {
                     string_eq_p(n, car(todo))
                 }
             }
-        }), done) {
+        })), done) {
             todo = cdr(todo);
             continue;
         } else {
@@ -247,7 +247,7 @@ pub async fn loaded_for(rt: Drt, file: Str, text: Str) -> Result<Fileds, Unwind>
 // declare syscalls (C225): a line `--syscalls`, as Fixpt's flag.
 #[inline]
 pub fn runtime_unit_p(text: Str) -> bool {
-    string_member_p(str_lit("--syscalls"), map(&line_trimmed, lines_from(string_chars(text), nil::<char>())))
+    string_member_p(str_lit("--syscalls"), map(kayak_rt::as_proc(line_trimmed), lines_from(string_chars(text), nil::<char>())))
 }
 
 pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
@@ -281,7 +281,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
         let text = kayak_rt::suspend::body(read_text(rt, unit)).await?;
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(unit), lines_from(string_chars(text), nil::<char>()))).await?;
         let old = {
-            let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<Int>(a__0, a__1))))(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", cache))).await?;
+            let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", cache))).await?;
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("text") } {
                 let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -320,14 +320,14 @@ pub async fn main() -> Result<Int, Unwind> {
     let r#as = the::<Strings>(args());
     if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--record")) && not(null_p(cdr(r#as)))) {
         let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>()));
-        let status = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under::<Int>(a__0, a__1))))((&recording)((&live)(), log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        let status = kayak_rt::suspend::body(run_under::<Int>(recording(live(), log), kayak_rt::closure1((r#as,), |(r#as,), rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
         })))).await?;
-        write_text_now(car(cdr(r#as)), (&log_text)(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())));
+        write_text_now(car(cdr(r#as)), log_text(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())));
         Ok(status)
     } else if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--replay")) && not(null_p(cdr(r#as)))) {
-        let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new((&log_of_text)(read_text_now(car(cdr(r#as))))));
-        let status = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under::<Int>(a__0, a__1))))((&replaying)(log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(log_of_text(read_text_now(car(cdr(r#as))))));
+        let status = kayak_rt::suspend::body(run_under::<Int>(replaying(log), kayak_rt::closure1((r#as,), |(r#as,), rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
         })))).await?;
         if null_p(get(log)) {
@@ -337,7 +337,7 @@ pub async fn main() -> Result<Int, Unwind> {
             Ok(int_lit(1))
         }
     } else {
-        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under::<Int>(a__0, a__1))))((&live)(), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        Ok(kayak_rt::suspend::body(run_under::<Int>(live(), kayak_rt::closure1((r#as,), |(r#as,), rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, r#as)).await?)
         })))).await?)
     }

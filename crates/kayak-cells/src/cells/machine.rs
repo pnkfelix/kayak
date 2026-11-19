@@ -1728,18 +1728,18 @@ pub fn reg_op_x() -> i64 {
     let o0 = slot_of(w, i64_plus(k, 1i64));
     let o1 = slot_of(w, i64_plus(k, 2i64));
     let nx = i64_plus(k, i64_plus(1i64, rop_operands(op)));
-    let val = lambda1(move |v: i64| {
+    let val = kayak_rt::closure1((nx,), |(nx,), v: i64| {
         result_x(v);
         set(kk(), nx);
         next()
     });
-    let slot_ok_p = lambda1(move |i: i64| {
+    let slot_ok_p = kayak_rt::closure1((), |(), i: i64| {
         i64_lt(i64_plus(get(fp()), i), get(dsp()))
     });
     if i64_eq(op, ro_const()) {
-        val(o0)
+        val.call(o0)
     } else if i64_eq(op, ro_reg()) {
-        val(reg_at(fix_val(o0)))
+        val.call(reg_at(fix_val(o0)))
     } else if i64_eq(op, ro_setreg()) {
         reg_set_x(fix_val(o0), result());
         set(kk(), nx);
@@ -1749,7 +1749,7 @@ pub fn reg_op_x() -> i64 {
         set(kk(), nx);
         next()
     } else if i64_eq(op, ro_global()) {
-        val(slot_of(o0, f_value()))
+        val.call(slot_of(o0, f_value()))
     } else if i64_eq(op, ro_setglbl()) {
         slot_set_x(o0, f_value(), result());
         slot_set_x(o0, f_writes(), fix(i64_plus(fix_val(slot_of(o0, f_writes())), 1i64)));
@@ -1757,7 +1757,7 @@ pub fn reg_op_x() -> i64 {
         next()
     } else if i64_eq(op, ro_lexical()) {
         if (is_bloblet_p(get(clo())) && field_ok_p(get(clo()), i64_plus(f_free0(), fix_val(o0)))) {
-            val(slot_of(get(clo()), i64_plus(f_free0(), fix_val(o0))))
+            val.call(slot_of(get(clo()), i64_plus(f_free0(), fix_val(o0))))
         } else {
             field_trap_x(rt_free());
             next()
@@ -1785,11 +1785,11 @@ pub fn reg_op_x() -> i64 {
         } else {
             o1
         });
-        if not(slot_ok_p(i)) {
+        if not(slot_ok_p.call(i)) {
             field_trap_x(rt_slot());
             next()
         } else if i64_eq(op, ro_stack()) {
-            val(ds_at(i64_plus(get(fp()), i)))
+            val.call(ds_at(i64_plus(get(fp()), i)))
         } else {
             reg_set_x(fix_val(o0), ds_at(i64_plus(get(fp()), i)));
             set(kk(), nx);
@@ -1801,7 +1801,7 @@ pub fn reg_op_x() -> i64 {
         } else {
             o1
         });
-        if not(slot_ok_p(i)) {
+        if not(slot_ok_p.call(i)) {
             field_trap_x(rt_slot_set());
             next()
         } else {
@@ -1838,7 +1838,7 @@ pub fn reg_op_x() -> i64 {
             type_trap_x(rt_field());
             next()
         } else if field_ok_p(x, fix_val(o0)) {
-            val(slot_of(x, fix_val(o0)))
+            val.call(slot_of(x, fix_val(o0)))
         } else {
             field_trap_x(rt_field());
             next()
@@ -1857,22 +1857,22 @@ pub fn reg_op_x() -> i64 {
             next()
         }
     } else if i64_eq(op, ro_prim1()) {
-        val({
+        val.call({
             pargs1_x(result());
             prim_apply_x(fix_val(o0))
         })
     } else if i64_eq(op, ro_prim2()) {
-        val({
+        val.call({
             pargs2_x(result(), reg_at(fix_val(o1)));
             prim_apply_x(fix_val(o0))
         })
     } else if i64_eq(op, ro_prim2imm()) {
-        val({
+        val.call({
             pargs2_x(result(), o1);
             prim_apply_x(fix_val(o0))
         })
     } else if i64_eq(op, ro_prim3imm()) {
-        val({
+        val.call({
             pargs3_x(result(), o1, reg_at(fix_val(slot_of(w, i64_plus(k, 3i64)))));
             prim_apply_x(fix_val(o0))
         })
@@ -2269,7 +2269,7 @@ pub fn hand_x(m: HandCode) -> bool {
     flatarray_set_i64_x(s, int_to_i64(st_code_delta()), i64_minus(get(code_distance()), i64_plus(8i64, t_bloblet())));
     set(hand_entries(), i64_plus(get(hand_entries()), 1i64));
     regs_copied_x(get(rr()), 0i64, s, int_to_i64(st_regs()), 9i64);
-    let why = int_to_i64(m(s, get(mem()), get(ds()), get(rs())));
+    let why = int_to_i64(m.call(s, get(mem()), get(ds()), get(rs())));
     set(cur(), flatarray_ref_i64(s, int_to_i64(st_cur())));
     set(kk(), flatarray_ref_i64(s, int_to_i64(st_kk())));
     set(fp(), flatarray_ref_i64(s, int_to_i64(st_fp())));
@@ -2307,11 +2307,11 @@ pub enum Ran {
     RanFailed(Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Ran {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Ran {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::RanAnswer(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::RanFailed(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::RanAnswer(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::RanFailed(f0) => { kayak_rt::Trace::trace(*f0, t); }
         }
     }
 }
@@ -2346,7 +2346,7 @@ pub fn run_word_x(w: i64, steps: i64) -> kayak_rt::Handle<'static, Ran> {
             let tagcase_ = hand_code_x();
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("made") } {
-                let m: &'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int = kayak_rt::sum_payload::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(tagcase_);
+                let m: kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int> = kayak_rt::sum_payload::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(tagcase_);
                 hand_run_x(m, 0i64)
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -2442,7 +2442,7 @@ pub fn native_callback(r#box: FlatArray<i64>, held: FlatArray<i64>) -> i64 {
             let tagcase_ = hand_code_x();
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("made") } {
-                let m: &'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int = kayak_rt::sum_payload::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int>(tagcase_);
+                let m: kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int> = kayak_rt::sum_payload::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(tagcase_);
                 hand_run_x(m, 0i64)
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let why: Str = kayak_rt::sum_payload::<Str>(tagcase_);

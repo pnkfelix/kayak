@@ -51,9 +51,9 @@ pub fn total<Mod_M: Checks>(a: i64, b: i64, c: i64) -> i64 {
             Ok(i64_plus(Mod_M::check(t, a)?, i64_plus(Mod_M::check(t, b)?, Mod_M::check(t, c)?)))
         })() {
             Ok(v_) => v_,
-            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Err(u_) if u_.is(prompt_tag__) => (kayak_rt::closure1((), |(), v: i64| {
                 i64_minus(v, 1000i64)
-            }))(prompt_tag__.payload(u_)),
+            })).call(prompt_tag__.payload(u_)),
             Err(u_) => unreachable_unwind(u_),
         }
     }

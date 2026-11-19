@@ -93,7 +93,7 @@ pub fn closure_over_x(w: i64, frees: List<i64>) -> i64 {
 /// (lambda () (with stage-module CODE))))`, the listing read, and the inner
 /// lambda's word, the thunk's, made a closure over `m`.
 pub fn stage_run_cells_x(m: i64, code: i64, given: i64, rep_text: i64, names: i64) -> i64 {
-    let t = (&rep_ty)(rep_filled_x(rep_of_text_x(string_text(rep_text)), given, string_text(names)));
+    let t = rep_ty(rep_filled_x(rep_of_text_x(string_text(rep_text)), given, string_text(names)));
     let thunk = staged_thunk(code_sexp_x(code));
     let prog = staged_program(thunk);
     let why = stage_worked(prog, t);
@@ -204,14 +204,14 @@ pub fn session_state_cells_x(sw: i64, mt: kayak_rt::Handle<'static, Ty>) -> i64 
         let k2 = size(get(sessions()));
         let m = elt_ref(sw, 0i64);
         let rp_abs = data_names_with(str_lit("rp.."), mt);
-        let mt = data_renamed(rp_abs, map(lambda1s(move |n: Str| {
+        let mt = data_renamed(rp_abs, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), n: Str| {
             string_append(str_lit("stage-module.."), after_prefix(n, str_lit("rp..")))
-        }), rp_abs), mt);
+        })), rp_abs), mt);
         let v = module_types_opened(with_binds(stage_cv(), kayak_rt::heap_cons(bind(str_lit("stage-module"), scheme(nil::<Str>(), mt), str_lit("global")), session_marks())), mt);
         let gm = session_global_cell_x(k2, str_lit("stage-module"), m);
-        let vals = map(&mitem_name, filter(lambda1s(move |x: kayak_rt::Handle<'static, Ty>| {
+        let vals = map(kayak_rt::as_proc(mitem_name), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Ty>| {
             string_eq_p(mitem_kind(x), str_lit("%val"))
-        }), mtype_items(mt)));
+        })), mtype_items(mt)));
         let made = seeded_cells(k2, v, kayak_rt::heap_cons(sglobal(str_lit("stage-module"), gm), kayak_rt::nil()), m, vals, 0i64);
         set(sessions(), onto(get(sessions()), kayak_rt::heap_cons(made, kayak_rt::nil())));
         elt_set_x(sw, 1i64, fix(k2));
@@ -231,7 +231,7 @@ pub fn session_expression_cells_x(k: i64, st: kayak_rt::Handle<'static, Sess>, c
                 refused_word_x(why)
             } else {
                 let s = {
-                    let tagcase_ = (&expressions::check)(at(v, str_lit("staged code"), nil::<Str>()), new_state(), thunk, t);
+                    let tagcase_ = expressions::check(at(v, str_lit("staged code"), nil::<Str>()), new_state(), thunk, t);
                     match *tagcase_ {
                         Res::Res(u, es, s) => {
                             s
@@ -261,7 +261,7 @@ pub fn session_expression_cells_x(k: i64, st: kayak_rt::Handle<'static, Sess>, c
 /// `(%kayak-session-run s code given REP NAMES)`, `session-check`'s, as the
 /// engine's `session-run!`.
 pub fn session_run_cells_x(sw: i64, code: i64, given: i64, rep_text: i64, names: i64) -> i64 {
-    let whole = (&rep_ty)(rep_filled_x(rep_of_text_x(string_text(rep_text)), given, string_text(names)));
+    let whole = rep_ty(rep_filled_x(rep_of_text_x(string_text(rep_text)), given, string_text(names)));
     let mt = {
         let tagcase_ = whole;
         match *tagcase_ {
@@ -357,9 +357,9 @@ pub fn ready_cells_x(sw: i64, d: i64, decision: i64) -> i64 {
                         } else {
                             kayak_rt::heap_cons(sglobal(name, i), gl)
                         };
-                        let kept = filter(lambda1s(move |x: kayak_rt::Handle<'static, Defn>| {
+                        let kept = filter(kayak_rt::as_proc(kayak_rt::closure1s((name,), |(name,), x: kayak_rt::Handle<'static, Defn>| {
                             not(string_member_p(name, defn_names(x)))
-                        }), ds);
+                        })), ds);
                         let again = if (needed && string_eq_p(how, str_lit("rerun"))) {
                             session_reruns(v2, gl2, users_of(kept, kayak_rt::heap_cons(name, kayak_rt::nil())), name, nil::<kayak_rt::Handle<'static, Runs>>())
                         } else {

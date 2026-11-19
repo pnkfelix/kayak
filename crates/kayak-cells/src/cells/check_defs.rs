@@ -32,10 +32,10 @@ pub fn prelude() -> Str {
 // The prelude's (kfx/prelude.fx), at the types it gives them. To FX-26
 // they are globals, the prelude's definitions: calling one reads it.
 pub fn table_binds(v: kayak_rt::Handle<'static, Cv>, table: Str, file: Str, wher: Str) -> Binds {
-    map(lambda1s(move |p: kayak_rt::Handle<'static, Sexp>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((v, wher,), |(v, wher,), p: kayak_rt::Handle<'static, Sexp>| {
         let xs = items(p);
         bind(name_of(v, car(xs)), parse_scheme_of(v, second(xs), false), wher)
-    }), read_all(table, file, 1i64))
+    })), read_all(table, file, 1i64))
 }
 
 /// The standard bindings, their types read in the standard scope, as
@@ -50,14 +50,14 @@ pub fn prim_binds(v0: kayak_rt::Handle<'static, Cv>) -> Binds {
             }
         }
     };
-    onto(table_binds(v, primitives(), str_lit("kayak-rt's primitives"), str_lit("prim")), onto(map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
+    onto(table_binds(v, primitives(), str_lit("kayak-rt's primitives"), str_lit("prim")), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Bind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
                 bind(string_append(str_lit("%form "), n), sc, w)
             }
         }
-    }), table_binds(v, process_forms(), str_lit("FX-26's processes"), str_lit("prim"))), table_binds(v, prelude(), str_lit("kfx/prelude.fx"), str_lit("global"))))
+    })), table_binds(v, process_forms(), str_lit("FX-26's processes"), str_lit("prim"))), table_binds(v, prelude(), str_lit("kfx/prelude.fx"), str_lit("global"))))
 }
 
 #[inline]
@@ -77,16 +77,16 @@ pub fn head_name(v: kayak_rt::Handle<'static, Cv>, head: kayak_rt::Handle<'stati
 /// A define-datatype's name, parameters and variants, whose fields'
 /// types may name the parameters; no two tags camel-cased alike in Rust.
 pub fn datatype_of(v: kayak_rt::Handle<'static, Cv>, xs: Sexps) -> kayak_rt::Handle<'static, Dt> {
-    if repeated_p(map(lambda1s(move |vt: kayak_rt::Handle<'static, Sexp>| {
+    if repeated_p(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), vt: kayak_rt::Handle<'static, Sexp>| {
         variant_name(label_of(car(items(vt))))
-    }), cdr(xs))) {
+    })), cdr(xs))) {
         match refuse(v, str_lit("two tags of one datatype named alike in Rust (camel-cased)")) {}
     } else {
         let params = family_params(v, car(xs));
-        dt(head_name(v, car(xs)), params, map(lambda1s(move |vt: kayak_rt::Handle<'static, Sexp>| {
+        dt(head_name(v, car(xs)), params, map(kayak_rt::as_proc(kayak_rt::closure1s((v, params,), |(v, params,), vt: kayak_rt::Handle<'static, Sexp>| {
             let ys = items(vt);
             variant(tag_of(v, car(ys)), parse_types(v, params, cdr(ys)))
-        }), cdr(xs)))
+        })), cdr(xs)))
     }
 }
 
@@ -94,16 +94,16 @@ pub fn constructors(d: kayak_rt::Handle<'static, Dt>) -> Binds {
     let tagcase_ = d;
     match *tagcase_ {
         Dt::Dt(name, ps, vs) => {
-            map(lambda1s(move |vt: kayak_rt::Handle<'static, Variant>| {
+            map(kayak_rt::as_proc(kayak_rt::closure1s((name, ps,), |(name, ps,), vt: kayak_rt::Handle<'static, Variant>| {
                 let tagcase_ = vt;
                 match *tagcase_ {
                     Variant::Variant(tag, fields) => {
-                        bind(tag, scheme(ps, ty_proc(nil::<Str>(), fields, ty_data(name, map(lambda1s(move |p: Str| {
+                        bind(tag, scheme(ps, ty_proc(nil::<Str>(), fields, ty_data(name, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), p: Str| {
                             ty_var(p)
-                        }), ps)))), str_lit("global"))
+                        })), ps)))), str_lit("global"))
                     }
                 }
-            }), vs)
+            })), vs)
         }
     }
 }
@@ -197,9 +197,9 @@ pub fn declared_convention(v: kayak_rt::Handle<'static, Cv>, xs: Sexps) -> Str {
         }
     })) {
         match refuse(v, str_lit("(define-convention name clause ...)")) {}
-    } else if not(strings_eq_p(sorted_strings(map(lambda1s(move |c: Str| {
+    } else if not(strings_eq_p(sorted_strings(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: Str| {
         newer_clause(c)
-    }), map(&show_sexp, cdr(cdr(xs))))), sorted_strings(the::<Strings>(native_convention())))) {
+    })), map(kayak_rt::as_proc(show_sexp), cdr(cdr(xs))))), sorted_strings(the::<Strings>(native_convention())))) {
         match refuse(v, string_append(str_lit("a convention not the native one, which alone this implementation supports: "), sym_name(second(xs)))) {}
     } else {
         sym_name(second(xs))
@@ -261,7 +261,7 @@ pub fn no_type_form_variants(v: kayak_rt::Handle<'static, Cv>, f: kayak_rt::Hand
             }
         }
     };
-    all_p(lambda1s(move |vt: kayak_rt::Handle<'static, Sexp>| {
+    all_p(kayak_rt::as_proc(kayak_rt::closure1s((v, name,), |(v, name,), vt: kayak_rt::Handle<'static, Sexp>| {
         let tag = {
             let tagcase_ = vt;
             match *tagcase_ {
@@ -293,7 +293,7 @@ pub fn no_type_form_variants(v: kayak_rt::Handle<'static, Cv>, f: kayak_rt::Hand
                 true
             }
         }
-    }), cdr(cdr(items(f))))
+    })), cdr(cdr(items(f))))
 }
 
 /// The datatypes' names, before their variants' types can be read.
@@ -342,7 +342,7 @@ pub fn selects_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
                         true
                     }
                 }
-            }) || any_p(&selects_p, xs))
+            }) || any_p(kayak_rt::as_proc(selects_p), xs))
         }
         _ => {
             let other = tagcase_;
@@ -487,7 +487,7 @@ pub fn global(v: kayak_rt::Handle<'static, Cv>, name: Str, sc0: kayak_rt::Handle
 /// variance (C188).
 pub fn polarities(mut v: kayak_rt::Handle<'static, Cv>, mut t: kayak_rt::Handle<'static, Ty>, mut x: Str, mut pol: Str) -> Strings {
     loop {
-        let (inv, flip) = (lambda1s(move |u: kayak_rt::Handle<'static, Ty>| {
+        let (inv, flip) = (kayak_rt::closure1s((v, x,), |(v, x,), u: kayak_rt::Handle<'static, Ty>| {
             polarities(v, u, x, str_lit("="))
         }), if string_eq_p(pol, str_lit("+")) {
             str_lit("-")
@@ -512,30 +512,30 @@ pub fn polarities(mut v: kayak_rt::Handle<'static, Cv>, mut t: kayak_rt::Handle<
                     t = e;
                     continue;
                 } else {
-                    return inv(e);
+                    return inv.call(e);
                 }
             }
             Ty::TyRef(e, r) => {
-                return inv(e);
+                return inv.call(e);
             }
             Ty::TyFlat(e, r) => {
-                return inv(e);
+                return inv.call(e);
             }
             Ty::TyShape(p, ls, ts) => {
-                return concat(map(lambda1s(move |u: kayak_rt::Handle<'static, Ty>| {
+                return concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, x, pol,), |(v, x, pol,), u: kayak_rt::Handle<'static, Ty>| {
                     polarities(v, u, x, pol)
-                }), ts));
+                })), ts));
             }
             Ty::TyProc(es, ps, r) => {
-                return onto(polarities(v, r, x, pol), concat(map(lambda1s(move |u: kayak_rt::Handle<'static, Ty>| {
+                return onto(polarities(v, r, x, pol), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, x, flip,), |(v, x, flip,), u: kayak_rt::Handle<'static, Ty>| {
                     polarities(v, u, x, flip)
-                }), ps)));
+                })), ps)));
             }
             Ty::TyData(d, args) => {
                 if string_eq_p(d, str_lit("%union")) {
-                    return concat(map(lambda1s(move |u: kayak_rt::Handle<'static, Ty>| {
+                    return concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, x, pol,), |(v, x, pol,), u: kayak_rt::Handle<'static, Ty>| {
                         polarities(v, u, x, pol)
-                    }), args));
+                    })), args));
                 } else if (string_eq_p(d, str_lit("%pairof")) && frozen_region_p(st(nil::<kayak_rt::Handle<'static, Sb>>(), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>()), car(cdr(cdr(args))))) {
                     return onto(polarities(v, car(args), x, pol), polarities(v, car(cdr(args)), x, pol));
                 } else {
@@ -555,14 +555,14 @@ pub fn variance_of(head: kayak_rt::Handle<'static, Sexp>) -> Strings {
     let tagcase_ = head;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+            map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                 let ys = items(b);
                 if i64_eq(size(ys), 3i64) {
                     sym_name(third(ys))
                 } else {
                     str_lit("=")
                 }
-            }), cdr(xs))
+            })), cdr(xs))
         }
         _ => {
             let other = tagcase_;
@@ -576,7 +576,7 @@ pub fn unmarked(head: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'stat
     let tagcase_ = head;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+            lst(kayak_rt::heap_cons(car(xs), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                 let tagcase_ = b;
                 match *tagcase_ {
                     Sexp::Lst(ys, f2, l2, p2) => {
@@ -591,7 +591,7 @@ pub fn unmarked(head: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'stat
                         b
                     }
                 }
-            }), cdr(xs))), f, l, p)
+            })), cdr(xs))), f, l, p)
         }
         _ => {
             let other = tagcase_;
@@ -631,16 +631,16 @@ pub fn conversions(v: kayak_rt::Handle<'static, Cv>, xs: Sexps) -> Binds {
     let name = head_name(v, second(xs));
     let marks = variance_of(second(xs));
     let params = family_params(v, unmarked(second(xs)));
-    let made = ty_data(name, map(lambda1s(move |p: Str| {
+    let made = ty_data(name, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), p: Str| {
         ty_var(p)
-    }), params));
+    })), params));
     let repr = parse_type(with_tvars(v, params), params, third(xs));
-    map2(lambda2s(move |p: Str, m: Str| {
+    map2(kayak_rt::as_proc(kayak_rt::closure2s((v, repr,), |(v, repr,), p: Str, m: Str| {
         if not(string_member_p(m, conversions_names())) {
             match refuse(v, string_append(str_lit("a variance mark is `+` or `-`: "), m)) {}
-        } else if (not(string_eq_p(m, str_lit("="))) && any_p(lambda1s(move |q: Str| {
+        } else if (not(string_eq_p(m, str_lit("="))) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((m,), |(m,), q: Str| {
             not(string_eq_p(q, m))
-        }), polarities(v, repr, p, str_lit("+")))) {
+        })), polarities(v, repr, p, str_lit("+")))) {
             match refuse(v, string_append(str_lit("`"), string_append(p, string_append(str_lit("` is declared "), string_append(if string_eq_p(m, str_lit("+")) {
                 str_lit("covariant")
             } else {
@@ -649,13 +649,13 @@ pub fn conversions(v: kayak_rt::Handle<'static, Cv>, xs: Sexps) -> Binds {
         } else {
             ()
         }
-    }), params, marks);
-    onto(conversion_binds(name, names, scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(repr, kayak_rt::nil()), made)), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(made, kayak_rt::nil()), repr)), str_lit("global")), if any_p(lambda1s(move |m: Str| {
+    })), params, marks);
+    onto(conversion_binds(name, names, scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(repr, kayak_rt::nil()), made)), scheme(params, ty_proc(nil::<Str>(), kayak_rt::heap_cons(made, kayak_rt::nil()), repr)), str_lit("global")), if any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: Str| {
         not(string_eq_p(m, str_lit("=")))
-    }), marks) {
-        the::<Binds>(kayak_rt::heap_cons(bind(string_append(str_lit("%variance "), name), scheme(nil::<Str>(), ty_data(str_lit("%variance"), map(lambda1s(move |m: Str| {
+    })), marks) {
+        the::<Binds>(kayak_rt::heap_cons(bind(string_append(str_lit("%variance "), name), scheme(nil::<Str>(), ty_data(str_lit("%variance"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: Str| {
             ty_rconst(m)
-        }), marks))), str_lit("global")), kayak_rt::nil()))
+        })), marks))), str_lit("global")), kayak_rt::nil()))
     } else {
         nil::<kayak_rt::Handle<'static, Bind>>()
     })
@@ -696,9 +696,9 @@ pub fn with_facts(v: kayak_rt::Handle<'static, Cv>, more: Facts) -> kayak_rt::Ha
 /// Whether effect `es` may read a member of `group`, or any global, and says
 /// no `spin`.
 pub fn reads_unspun_p(group: Strings, es: Strings) -> bool {
-    (not(string_member_p(str_lit("spin"), es)) && (string_member_p(str_lit("@globals"), es) || any_p(lambda1s(move |n: Str| {
+    (not(string_member_p(str_lit("spin"), es)) && (string_member_p(str_lit("@globals"), es) || any_p(kayak_rt::as_proc(kayak_rt::closure1s((es,), |(es,), n: Str| {
         string_member_p(string_append(str_lit("g:"), n), es)
-    }), group)))
+    })), group)))
 }
 
 /// A procedure type `t` holds, as data, that may read a member of
@@ -759,9 +759,9 @@ pub fn held_knot_first(mut group: Strings, mut ts: Tys) -> Tys {
 /// The first member of `group` effect `es` reads; `` if none (Fixpt's
 /// `k-first-read`).
 pub fn first_read(group: Strings, es: Strings) -> Str {
-    let m = filter(lambda1s(move |n: Str| {
+    let m = filter(kayak_rt::as_proc(kayak_rt::closure1s((es,), |(es,), n: Str| {
         string_member_p(string_append(str_lit("g:"), n), es)
-    }), group);
+    })), group);
     if null_p(m) {
         str_lit("")
     } else {
@@ -849,7 +849,7 @@ pub fn makes_pairs_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, file, line, pos) => {
-            (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("list")) || sym_is_p(car(xs), str_lit("cons")) || any_p(&makes_pairs_p, cdr(xs))))
+            (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("list")) || sym_is_p(car(xs), str_lit("cons")) || any_p(kayak_rt::as_proc(makes_pairs_p), cdr(xs))))
         }
         _ => {
             let other = tagcase_;
@@ -863,13 +863,13 @@ pub fn makes_pairs_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
 /// emitter is told; nothing else, since when it is made is not when
 /// FX-26 makes it, where it is defined.
 pub fn constant_made(v: kayak_rt::Handle<'static, Cv>, s: kayak_rt::Handle<'static, St>, e: kayak_rt::Handle<'static, Sexp>, es: Strings, t: kayak_rt::Handle<'static, Ty>) -> kayak_rt::Handle<'static, St> {
-    if any_p(lambda1s(move |x: Str| {
+    if any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
         not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("alloc:"))))
-    }), es) {
+    })), es) {
         kfx_restricted(v, s, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
-    } else if (not(null_p(scope_bind(str_lit("%loaded"), v))) && any_p(lambda1s(move |x: Str| {
+    } else if (not(null_p(scope_bind(str_lit("%loaded"), v))) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
         not((string_eq_p(x, str_lit("@globals")) || global_atom_p(x)))
-    }), es)) {
+    })), es)) {
         // In a file loaded (C88): FX-26 makes it once, for all its loads, so
         // making it must be pure but for reading globals.
         if null_p(scope_bind(str_lit("%instance"), v)) {
@@ -877,9 +877,9 @@ pub fn constant_made(v: kayak_rt::Handle<'static, Cv>, s: kayak_rt::Handle<'stat
         } else {
             kfx_restricted(v, s, string_append(str_lit("a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "), string_append(show_effs(es), str_lit(": make its state in a `lambda` it gives, which each caller applies"))))
         }
-    } else if (any_p(lambda1s(move |x: Str| {
+    } else if (any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
         has_prefix_p(x, str_lit("alloc:"))
-    }), es) || makes_pairs_p(e)) {
+    })), es) || makes_pairs_p(e)) {
         // Kept for the whole program if its type's Rust is `Sync`, which a
         // process may hold; else for each thread, which none may (C102).
         let tagcase_ = e;
@@ -908,7 +908,7 @@ pub fn place_marks_of(t: kayak_rt::Handle<'static, Ty>) -> Strings {
     let tagcase_ = t;
     match *tagcase_ {
         Ty::TyProc(es, ps, r) => {
-            concat(map(lambda1s(move |p: kayak_rt::Handle<'static, Ty>| {
+            concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), p: kayak_rt::Handle<'static, Ty>| {
                 let tagcase_ = p;
                 match *tagcase_ {
                     Ty::TyData(d, args) => {
@@ -932,7 +932,7 @@ pub fn place_marks_of(t: kayak_rt::Handle<'static, Ty>) -> Strings {
                         nil::<Str>()
                     }
                 }
-            }), ps))
+            })), ps))
         }
         _ => {
             let other = tagcase_;
@@ -961,12 +961,12 @@ pub fn rlambda_under_p(mut e: kayak_rt::Handle<'static, Sexp>) -> bool {
 /// `generalizable`, Fixpt 0d933ff; C393): no cell is polymorphic, the value
 /// restriction.
 pub fn plambda_body_pure(v: kayak_rt::Handle<'static, Cv>, body: kayak_rt::Handle<'static, Sexp>, es: Strings) -> () {
-    let reads_global = lambda1s(move |a: Str| {
+    let reads_global = kayak_rt::closure1s((), |(), a: Str| {
         (string_eq_p(a, str_lit("@globals")) || global_atom_p(a))
     });
-    if (all_p(reads_global, es) || (rlambda_under_p(body) && all_p(lambda1s(move |a: Str| {
-        (reads_global(a) || has_prefix_p(a, str_lit("alloc:")))
-    }), es))) {
+    if (all_p(reads_global, es) || (rlambda_under_p(body) && all_p(kayak_rt::as_proc(kayak_rt::closure1s((reads_global,), |(reads_global,), a: Str| {
+        (reads_global.call(a) || has_prefix_p(a, str_lit("alloc:")))
+    })), es))) {
         ()
     } else {
         match refuse(v, string_append(str_lit("a `plambda` body must be pure, and this one has "), show_effs(es))) {};
@@ -1007,9 +1007,9 @@ pub fn check_procedure(v: kayak_rt::Handle<'static, Cv>, defined: kayak_rt::Hand
                     let tagcase_ = expressions::check(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), third(items(defined)), t);
                     match *tagcase_ {
                         Res::Res(u, es, s) => {
-                            plambda_body_pure(v, third(items(defined)), map(lambda1s(move |a: Str| {
+                            plambda_body_pure(v, third(items(defined)), map(kayak_rt::as_proc(kayak_rt::closure1s((s,), |(s,), a: Str| {
                                 resolve_atom(s, a)
-                            }), es));
+                            })), es));
                             with_facts(v, expressions::settle_facts(s))
                         }
                     }
@@ -1104,9 +1104,9 @@ pub fn place_need(what: Str, places: Strings) -> Str {
 /// kind T` at its definition, for its calls and for the Rust it is: a
 /// place's type, a type parameter bound to hold each.
 pub fn with_place_needs(v: kayak_rt::Handle<'static, Cv>, name: Str, sc: kayak_rt::Handle<'static, Scheme>, before: i64, file: Str, pos: i64) -> kayak_rt::Handle<'static, Cv> {
-    let places = concat(map(lambda1s(move |m: Str| {
+    let places = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: Str| {
         the::<Strings>(kayak_rt::heap_cons(after_prefix(m, str_lit("%place ")), kayak_rt::nil()))
-    }), place_marks_of({
+    })), place_marks_of({
         let tagcase_ = sc;
         match *tagcase_ {
             Scheme::Scheme(tv, t) => {
@@ -1119,7 +1119,7 @@ pub fn with_place_needs(v: kayak_rt::Handle<'static, Cv>, name: Str, sc: kayak_r
     if null_p(places) {
         v
     } else {
-        with_facts(v, concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Fact>| {
+        with_facts(v, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((name, file, pos, places,), |(name, file, pos, places,), f: kayak_rt::Handle<'static, Fact>| {
             let tagcase_ = f;
             match *tagcase_ {
                 Fact::Fact(ff, fp, what) => {
@@ -1131,16 +1131,16 @@ pub fn with_place_needs(v: kayak_rt::Handle<'static, Cv>, name: Str, sc: kayak_r
                     }
                 }
             }
-        }), new)))
+        })), new)))
     }
 }
 
 /// `s`'s words, split at spaces.
 #[inline]
 pub fn split_words_check(s: Str) -> Strings {
-    map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
         sym_name(x)
-    }), read_all(s, str_lit(""), 1i64))
+    })), read_all(s, str_lit(""), 1i64))
 }
 
 /// A define-rec's procedures given places (C34): its members call each
@@ -1150,11 +1150,11 @@ pub fn split_words_check(s: Str) -> Strings {
 pub fn with_group_needs(v: kayak_rt::Handle<'static, Cv>, bindings: Sexps, before: i64) -> kayak_rt::Handle<'static, Cv> {
     let fs = cv_facts(v);
     let new = first_n(fs, i64_minus(size(fs), before));
-    let members = map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    let members = map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), b: kayak_rt::Handle<'static, Sexp>| {
         let ys = items(b);
-        fact(datum_file(b), datum_pos(b), string_append(sym_name(car(ys)), string_append(str_lit(" "), words_of(map(lambda1s(move |m: Str| {
+        fact(datum_file(b), datum_pos(b), string_append(sym_name(car(ys)), string_append(str_lit(" "), words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: Str| {
             after_prefix(m, str_lit("%place "))
-        }), place_marks_of({
+        })), place_marks_of({
             let tagcase_ = parse_scheme(v, second(ys));
             match *tagcase_ {
                 Scheme::Scheme(tv, t) => {
@@ -1162,16 +1162,16 @@ pub fn with_group_needs(v: kayak_rt::Handle<'static, Cv>, bindings: Sexps, befor
                 }
             }
         }))))))
-    }), bindings);
-    let all_places = concat(map(lambda1s(move |m: kayak_rt::Handle<'static, Fact>| {
+    })), bindings);
+    let all_places = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = m;
         match *tagcase_ {
             Fact::Fact(f, p, w) => {
                 cdr(split_words_check(w))
             }
         }
-    }), members));
-    let needs = concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Fact>| {
+    })), members));
+    let needs = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((all_places,), |(all_places,), f: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(ff, fp, what) => {
@@ -1183,48 +1183,48 @@ pub fn with_group_needs(v: kayak_rt::Handle<'static, Cv>, bindings: Sexps, befor
                 }
             }
         }
-    }), new));
+    })), new));
     if null_p(all_places) {
         v
     } else {
-        with_facts(v, concat(map(lambda1s(move |m: kayak_rt::Handle<'static, Fact>| {
+        with_facts(v, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((needs,), |(needs,), m: kayak_rt::Handle<'static, Fact>| {
             let tagcase_ = m;
             match *tagcase_ {
                 Fact::Fact(f, p, w) => {
                     let ws = split_words_check(w);
                     let mine = cdr(ws);
-                    concat(map(lambda1s(move |n: Str| {
+                    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((f, p, ws, mine,), |(f, p, ws, mine,), n: Str| {
                         if string_member_p(before_char(n, ' '), mine) {
                             the::<Facts>(kayak_rt::heap_cons(fact(f, p, string_append(str_lit("place-needs "), string_append(car(ws), string_append(str_lit(" "), n)))), kayak_rt::nil()))
                         } else {
                             nil::<kayak_rt::Handle<'static, Fact>>()
                         }
-                    }), needs))
+                    })), needs))
                 }
             }
-        }), members)))
+        })), members)))
     }
 }
 
 /// A define-rec: every member in scope in each, and each a lambda.
 pub fn check_rec(v: kayak_rt::Handle<'static, Cv>, bindings: Sexps) -> kayak_rt::Handle<'static, Cv> {
-    let names = map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    let names = map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), b: kayak_rt::Handle<'static, Sexp>| {
         name_of(v, car(items(b)))
-    }), bindings);
-    let ends = termination::terminates_p(v, names, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), bindings);
+    let ends = termination::terminates_p(v, names, map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), b: kayak_rt::Handle<'static, Sexp>| {
         let tagcase_ = parse_scheme(v, second(items(b)));
         match *tagcase_ {
             Scheme::Scheme(tvars, t) => {
                 t
             }
         }
-    }), bindings), map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), bindings), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
         third(items(b))
-    }), bindings));
-    let named = with_binds(v, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), bindings));
+    let named = with_binds(v, map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), b: kayak_rt::Handle<'static, Sexp>| {
         let ys = items(b);
         global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
-    }), bindings));
+    })), bindings));
     with_group_needs(check_members(named, bindings, if ends {
         nil::<Str>()
     } else {
@@ -1287,9 +1287,9 @@ pub fn check_define_star(v: kayak_rt::Handle<'static, Cv>, xs: Sexps, src_file: 
                             let tagcase_ = found;
                             match *tagcase_ {
                                 Res::Res(u, es, s) => {
-                                    map(lambda1s(move |a: Str| {
+                                    map(kayak_rt::as_proc(kayak_rt::closure1s((s,), |(s,), a: Str| {
                                         resolve_atom(s, a)
-                                    }), expand_effs(s, es))
+                                    })), expand_effs(s, es))
                                 }
                             }
                         };
@@ -1308,13 +1308,13 @@ pub fn check_define_star(v: kayak_rt::Handle<'static, Cv>, xs: Sexps, src_file: 
                                 the::<Facts>(kayak_rt::heap_cons(fact(src_file, src_pos, str_lit("suspends")), kayak_rt::nil()))
                             } else {
                                 nil::<kayak_rt::Handle<'static, Fact>>()
-                            }, concat(map(lambda1s(move |m: Str| {
+                            }, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((src_file, src_pos, name,), |(src_file, src_pos, name,), m: Str| {
                                 if has_prefix_p(m, str_lit("%within ")) {
                                     the::<Facts>(kayak_rt::heap_cons(fact(src_file, src_pos, string_append(str_lit("region-within "), string_append(name, string_append(str_lit(" "), after_prefix(m, str_lit("%within ")))))), kayak_rt::nil()))
                                 } else {
                                     nil::<kayak_rt::Handle<'static, Fact>>()
                                 }
-                            }), place_marks(third(xs))))))
+                            })), place_marks(third(xs))))))
                         } else {
                             match refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared))))) {}
                         }
@@ -1402,7 +1402,7 @@ pub fn atom_sexp(a: Str) -> kayak_rt::Handle<'static, Sexp> {
 
 #[inline]
 pub fn effect_sexp(es: Strings) -> kayak_rt::Handle<'static, Sexp> {
-    lst(kayak_rt::heap_cons(sym(str_lit("maxeff"), str_lit(""), 0i64), map(&atom_sexp, es)), str_lit(""), 0i64, 0i64)
+    lst(kayak_rt::heap_cons(sym(str_lit("maxeff"), str_lit(""), 0i64), map(kayak_rt::as_proc(atom_sexp), es)), str_lit(""), 0i64, 0i64)
 }
 
 /// The effect of `->*` definition `name`'s lambda (Fixpt's
@@ -1430,9 +1430,9 @@ pub fn found_latent(v: kayak_rt::Handle<'static, Cv>, name: Str, r#type: kayak_r
                             let tagcase_ = found;
                             match *tagcase_ {
                                 Res::Res(u, es, s) => {
-                                    map(lambda1s(move |a: Str| {
+                                    map(kayak_rt::as_proc(kayak_rt::closure1s((s,), |(s,), a: Str| {
                                         resolve_atom(s, a)
-                                    }), expand_effs(s, es))
+                                    })), expand_effs(s, es))
                                 }
                             }
                         };
@@ -1502,9 +1502,9 @@ pub fn found_members(bs: Sexps, es: List<Strings>, shared: Strings, names: Strin
                         car(bs)
                     } else {
                         let all = effs_union(car(es), shared);
-                        let all = if any_p(lambda1s(move |n: Str| {
+                        let all = if any_p(kayak_rt::as_proc(kayak_rt::closure1s((all,), |(all,), n: Str| {
                             string_member_p(string_append(str_lit("g:"), n), all)
-                        }), names) {
+                        })), names) {
                             effs_union(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()), all)
                         } else {
                             all
@@ -1549,9 +1549,9 @@ pub fn found_each(bs: Sexps, es: List<Strings>, names: Strings) -> Sexps {
                     if not(arrow_star_p(second(ys))) {
                         car(bs)
                     } else {
-                        let all = if any_p(lambda1s(move |n: Str| {
+                        let all = if any_p(kayak_rt::as_proc(kayak_rt::closure1s((es,), |(es,), n: Str| {
                             string_member_p(string_append(str_lit("g:"), n), car(es))
-                        }), names) {
+                        })), names) {
                             effs_union(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()), car(es))
                         } else {
                             car(es)
@@ -1577,36 +1577,36 @@ pub fn found_each(bs: Sexps, es: List<Strings>, names: Strings) -> Sexps {
 /// `bidirectional/arrow-star-groups.fx`), and `spin` if that reads a
 /// member's global.
 pub fn found_rec(v: kayak_rt::Handle<'static, Cv>, bindings: Sexps) -> Sexps {
-    let names = map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    let names = map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), b: kayak_rt::Handle<'static, Sexp>| {
         name_of(v, car(items(b)))
-    }), bindings);
-    let placed = map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), bindings);
+    let placed = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
         let ys = items(b);
         if arrow_star_p(second(ys)) {
             lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(effect_put(second(ys), sym(str_lit("pure"), str_lit(""), 0i64)), kayak_rt::heap_cons(third(ys), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
         } else {
             b
         }
-    }), bindings);
-    let ends = termination::terminates_p(v, names, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), bindings);
+    let ends = termination::terminates_p(v, names, map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), b: kayak_rt::Handle<'static, Sexp>| {
         let tagcase_ = parse_scheme(v, second(items(b)));
         match *tagcase_ {
             Scheme::Scheme(tvars, t) => {
                 t
             }
         }
-    }), placed), map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), placed), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
         third(items(b))
-    }), bindings));
-    let named = with_binds(v, map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), bindings));
+    let named = with_binds(v, map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), b: kayak_rt::Handle<'static, Sexp>| {
         let ys = items(b);
         bind(name_of(v, car(ys)), parse_scheme(v, second(ys)), if null_p(scope_bind(str_lit("%module"), v)) {
             str_lit("global")
         } else {
             str_lit("item")
         })
-    }), placed));
-    let own = map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), placed));
+    let own = map(kayak_rt::as_proc(kayak_rt::closure1s((v, names, ends, named,), |(v, names, ends, named,), b: kayak_rt::Handle<'static, Sexp>| {
         let ys = items(b);
         if arrow_star_p(second(ys)) {
             found_latent(at(named, name_of(v, car(ys)), if ends {
@@ -1631,36 +1631,36 @@ pub fn found_rec(v: kayak_rt::Handle<'static, Cv>, bindings: Sexps) -> Sexps {
                 }
             }
         }
-    }), bindings);
-    let calls = map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+    })), bindings);
+    let calls = map(kayak_rt::as_proc(kayak_rt::closure1s((names,), |(names,), b: kayak_rt::Handle<'static, Sexp>| {
         called_of(names, third(items(b)))
-    }), bindings);
-    let reached = map(lambda1s(move |n: Str| {
+    })), bindings);
+    let reached = map(kayak_rt::as_proc(kayak_rt::closure1s((names, calls,), |(names, calls,), n: Str| {
         reach_from(names, calls, kayak_rt::heap_cons(n, kayak_rt::nil()), nil::<Str>())
-    }), names);
-    let each = map(lambda1s(move |r: Strings| {
+    })), names);
+    let each = map(kayak_rt::as_proc(kayak_rt::closure1s((bindings, names, own,), |(bindings, names, own,), r: Strings| {
         reached_effects(names, own, bindings, r)
-    }), reached);
+    })), reached);
     found_each(bindings, each, names)
 }
 
 /// The names of a module's items whose type is `->*`'s.
 pub fn star_items(forms: Sexps) -> Strings {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && arrow_star_p(third(items(f)))) {
             the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
         } else if head_is_p(f, str_lit("define-rec")) {
-            concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+            concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                 if (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b)))) {
                     the::<Strings>(kayak_rt::heap_cons(sym_name(car(items(b))), kayak_rt::nil()))
                 } else {
                     nil::<Str>()
                 }
-            }), cdr(items(f))))
+            })), cdr(items(f))))
         } else {
             nil::<Str>()
         }
-    }), forms))
+    })), forms))
 }
 
 // Lemmas (C185; Fixpt's `lemma.rs`, fx26.md "Lemmas: proofs as erased
@@ -1678,7 +1678,7 @@ pub fn proves_parts(v: kayak_rt::Handle<'static, Cv>, t: kayak_rt::Handle<'stati
     } else {
         match refuse(v, str_lit("(proves (<= A B))")) {}
     };
-    let le_p = lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+    let le_p = kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
         (head_is_p(x, str_lit("<=")) && i64_eq(size(items(x)), 3i64))
     });
     let poly = head_is_p(p, str_lit("poly"));
@@ -1696,18 +1696,18 @@ pub fn proves_parts(v: kayak_rt::Handle<'static, Cv>, t: kayak_rt::Handle<'stati
     } else {
         nil::<kayak_rt::Handle<'static, Sexp>>()
     };
-    if (not(le_p(main)) || any_p(lambda1s(move |h: kayak_rt::Handle<'static, Sexp>| {
-        not(le_p(h))
-    }), hyps)) {
+    if (not(le_p.call(main)) || any_p(kayak_rt::as_proc(kayak_rt::closure1s((le_p,), |(le_p,), h: kayak_rt::Handle<'static, Sexp>| {
+        not(le_p.call(h))
+    })), hyps)) {
         match refuse(v, str_lit("a lemma's proposition is `(<= A B)`, under a `poly` with its hypotheses `(<= X Y)` after it")) {}
     } else {
         kayak_rt::heap_cons(if poly {
             second(items(p))
         } else {
             lst(nil::<kayak_rt::Handle<'static, Sexp>>(), str_lit(""), 0i64, 0i64)
-        }, kayak_rt::heap_cons(second(items(main)), kayak_rt::heap_cons(third(items(main)), concat(map(lambda1s(move |h: kayak_rt::Handle<'static, Sexp>| {
+        }, kayak_rt::heap_cons(second(items(main)), kayak_rt::heap_cons(third(items(main)), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), h: kayak_rt::Handle<'static, Sexp>| {
             the::<Sexps>(kayak_rt::heap_cons(second(items(h)), kayak_rt::heap_cons(third(items(h)), kayak_rt::nil())))
-        }), hyps)))))
+        })), hyps)))))
     }
 }
 
@@ -1747,10 +1747,10 @@ pub enum Proof {
     Proof(Str, Strings, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Proof {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Proof {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Proof(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Proof(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -1893,7 +1893,7 @@ pub fn proof_rebuilt(v: kayak_rt::Handle<'static, Cv>, e: kayak_rt::Handle<'stat
     let tagcase_ = p;
     match *tagcase_ {
         Proof::Proof(me, hyps, want) => {
-            let (no, x) = (lambda1s(move |why: Str| {
+            let (no, x) = (kayak_rt::closure1s((v, want,), |(v, want,), why: Str| {
                 match refuse(v, string_append(str_lit("this does not prove "), string_append(want, string_append(str_lit(": "), why)))) {}
             }), lemma_stripped(v, e));
             if strings_eq_p(place_of(v, x), at) {
@@ -1902,34 +1902,34 @@ pub fn proof_rebuilt(v: kayak_rt::Handle<'static, Cv>, e: kayak_rt::Handle<'stat
                 let xs = cdr(items(x));
                 let view = generative_rep(v, t);
                 if not(strings_eq_p(place_of(v, car(xs)), at)) {
-                    match no(str_lit("a proof takes apart only what was given here")) {}
+                    match no.call(str_lit("a proof takes apart only what was given here")) {}
                 } else {
                     let tagcase_ = view;
                     match *tagcase_ {
                         Ty::TyShape(q, ls, ts) => {
                             if q {
-                                match no(str_lit("what is given here is not a sum")) {}
+                                match no.call(str_lit("what is given here is not a sum")) {}
                             } else {
-                                map(lambda1s(move |arm: kayak_rt::Handle<'static, Sexp>| {
+                                map(kayak_rt::as_proc(kayak_rt::closure1s(((v, at, t, guarded, p, me, hyps, no,), (ls, ts,),), |((v, at, t, guarded, p, me, hyps, no,), (ls, ts,),), arm: kayak_rt::Handle<'static, Sexp>| {
                                     let ys = items(arm);
                                     let tag = label_of(car(ys));
                                     if string_eq_p(tag, str_lit("else")) {
                                         let y = sym_name(second(ys));
                                         if (string_eq_p(y, me) || string_member_p(y, hyps)) {
-                                            match no(str_lit("a proof may not rebind the names it relies on")) {}
+                                            match no.call(str_lit("a proof may not rebind the names it relies on")) {}
                                         } else {
                                             proof_rebuilt(v, third(ys), kayak_rt::heap_cons(y, kayak_rt::nil()), t, guarded, p)
                                         }
                                     } else {
                                         proof_arm(v, ys, tag, ls, ts, at, p)
                                     }
-                                }), cdr(xs));
+                                })), cdr(xs));
                                 ()
                             }
                         }
                         _ => {
                             let other = tagcase_;
-                            match no(str_lit("what is given here is not a sum")) {}
+                            match no.call(str_lit("what is given here is not a sum")) {}
                         }
                     }
                 }
@@ -1937,21 +1937,21 @@ pub fn proof_rebuilt(v: kayak_rt::Handle<'static, Cv>, e: kayak_rt::Handle<'stat
                 let tagcase_ = generative_rep(v, t);
                 match *tagcase_ {
                     Ty::TyShape(q, ls, ts) => {
-                        let gs = map(&items, cdr(items(x)));
-                        if (not(q) || not(strings_eq_p(map(lambda1s(move |g: Sexps| {
+                        let gs = map(kayak_rt::as_proc(items), cdr(items(x)));
+                        if (not(q) || not(strings_eq_p(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: Sexps| {
                             label_of(car(g))
-                        }), gs), ls))) {
-                            match no(str_lit("a product is rebuilt with its fields, in order")) {}
+                        })), gs), ls))) {
+                            match no.call(str_lit("a product is rebuilt with its fields, in order")) {}
                         } else {
-                            map2(lambda2s(move |g: Sexps, ft: kayak_rt::Handle<'static, Ty>| {
+                            map2(kayak_rt::as_proc(kayak_rt::closure2s((v, at, p,), |(v, at, p,), g: Sexps, ft: kayak_rt::Handle<'static, Ty>| {
                                 proof_rebuilt(v, second(g), onto(at, kayak_rt::heap_cons(label_of(car(g)), kayak_rt::nil())), ft, true, p)
-                            }), gs, ts);
+                            })), gs, ts);
                             ()
                         }
                     }
                     _ => {
                         let other = tagcase_;
-                        match no(str_lit("what is given here is not a product")) {}
+                        match no.call(str_lit("what is given here is not a product")) {}
                     }
                 }
             } else if ({
@@ -1969,29 +1969,29 @@ pub fn proof_rebuilt(v: kayak_rt::Handle<'static, Cv>, e: kayak_rt::Handle<'stat
                 let f = operator_of(car(items(x)));
                 let args = cdr(items(x));
                 if string_eq_p(f, str_lit("")) {
-                    match no(str_lit("a proof may call only its hypotheses, itself, or another proof")) {}
+                    match no.call(str_lit("a proof may call only its hypotheses, itself, or another proof")) {}
                 } else if string_member_p(f, hyps) {
                     if (i64_eq(size(args), 1i64) && strings_eq_p(place_of(v, car(args)), at)) {
                         ()
                     } else {
-                        match no(str_lit("a hypothesis applies only to what was given here")) {}
+                        match no.call(str_lit("a hypothesis applies only to what was given here")) {}
                     }
                 } else if (not(string_eq_p(f, me)) && null_p(scope_bind(string_append(str_lit("%lemma "), f), v))) {
-                    match no(str_lit("a proof may call only its hypotheses, itself, or another proof")) {}
+                    match no.call(str_lit("a proof may call only its hypotheses, itself, or another proof")) {}
                 } else if (string_eq_p(f, me) && not(guarded)) {
-                    match no(str_lit("it uses itself before rebuilding anything, which proves nothing")) {}
+                    match no.call(str_lit("it uses itself before rebuilding anything, which proves nothing")) {}
                 } else if null_p(args) {
-                    match no(str_lit("a proof applies to something")) {}
+                    match no.call(str_lit("a proof applies to something")) {}
                 } else if not(strings_eq_p(place_of(v, last(args)), at)) {
-                    match no(str_lit("a proof applies only to what was given here")) {}
+                    match no.call(str_lit("a proof applies only to what was given here")) {}
                 } else {
-                    map(lambda1s(move |c: kayak_rt::Handle<'static, Sexp>| {
+                    map(kayak_rt::as_proc(kayak_rt::closure1s((v, guarded, p,), |(v, guarded, p,), c: kayak_rt::Handle<'static, Sexp>| {
                         proof_coercion(v, c, guarded, p)
-                    }), but_last_sexps(args));
+                    })), but_last_sexps(args));
                     ()
                 }
             } else {
-                match no(str_lit("a proof may only take apart and rebuild what it was given")) {}
+                match no.call(str_lit("a proof may only take apart and rebuild what it was given")) {}
             }
         }
     }
@@ -2001,7 +2001,7 @@ pub fn proof_arm(v: kayak_rt::Handle<'static, Cv>, ys: Sexps, tag: Str, ls: Stri
     let tagcase_ = p;
     match *tagcase_ {
         Proof::Proof(me, hyps, want) => {
-            let no = lambda1s(move |why: Str| {
+            let no = kayak_rt::closure1s((v, want,), |(v, want,), why: Str| {
                 match refuse(v, string_append(str_lit("this does not prove "), string_append(want, string_append(str_lit(": "), why)))) {}
             });
             let binds = {
@@ -2011,7 +2011,7 @@ pub fn proof_arm(v: kayak_rt::Handle<'static, Cv>, ys: Sexps, tag: Str, ls: Stri
                         the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                     }
                     Sexp::Lst(zs, f, l, q) => {
-                        map(&sym_name, zs)
+                        map(kayak_rt::as_proc(sym_name), zs)
                     }
                     _ => {
                         let other = tagcase_;
@@ -2020,14 +2020,14 @@ pub fn proof_arm(v: kayak_rt::Handle<'static, Cv>, ys: Sexps, tag: Str, ls: Stri
                 }
             };
             let body = lemma_stripped(v, third(ys));
-            if any_p(lambda1s(move |n: Str| {
+            if any_p(kayak_rt::as_proc(kayak_rt::closure1s((at, me, hyps,), |(at, me, hyps,), n: Str| {
                 (string_eq_p(n, car(at)) || string_eq_p(n, me) || string_member_p(n, hyps))
-            }), binds) {
-                match no(str_lit("a proof may not rebind the names it relies on")) {}
+            })), binds) {
+                match no.call(str_lit("a proof may not rebind the names it relies on")) {}
             } else if not(string_member_p(tag, ls)) {
-                match no(str_lit("an arm for a tag that is not there")) {}
+                match no.call(str_lit("an arm for a tag that is not there")) {}
             } else if not((head_is_p(body, str_lit("sum")) && i64_eq(size(items(body)), 3i64) && string_eq_p(label_of(second(items(body))), tag))) {
-                match no(str_lit("each arm rebuilds its own tag")) {}
+                match no.call(str_lit("each arm rebuilds its own tag")) {}
             } else {
                 let (vt, inner) = (label_type(tag, ls, ts), third(items(body)));
                 let tagcase_ = second(ys);
@@ -2042,21 +2042,21 @@ pub fn proof_arm(v: kayak_rt::Handle<'static, Cv>, ys: Sexps, tag: Str, ls: Stri
                             Ty::TyShape(q2, fls, fts) => {
                                 let in2 = lemma_stripped(v, inner);
                                 let gs = if head_is_p(in2, str_lit("product")) {
-                                    map(&items, cdr(items(in2)))
+                                    map(kayak_rt::as_proc(items), cdr(items(in2)))
                                 } else {
                                     nil::<List<kayak_rt::Handle<'static, Sexp>>>()
                                 };
-                                if (not(q2) || not(head_is_p(in2, str_lit("product"))) || not(i64_eq(size(gs), size(fls))) || not(i64_eq(size(binds), size(fls))) || not(strings_eq_p(map(lambda1s(move |g: Sexps| {
+                                if (not(q2) || not(head_is_p(in2, str_lit("product"))) || not(i64_eq(size(gs), size(fls))) || not(i64_eq(size(binds), size(fls))) || not(strings_eq_p(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: Sexps| {
                                     label_of(car(g))
-                                }), gs), fls))) {
-                                    match no(str_lit("each arm rebuilds its fields, in order")) {}
+                                })), gs), fls))) {
+                                    match no.call(str_lit("each arm rebuilds its fields, in order")) {}
                                 } else {
                                     proof_fields(v, binds, gs, fts, p)
                                 }
                             }
                             _ => {
                                 let other2 = tagcase_;
-                                match no(str_lit("fields of something that is not a product")) {}
+                                match no.call(str_lit("fields of something that is not a product")) {}
                             }
                         }
                     }
@@ -2085,7 +2085,7 @@ pub fn proof_coercion(v: kayak_rt::Handle<'static, Cv>, c: kayak_rt::Handle<'sta
     let tagcase_ = p;
     match *tagcase_ {
         Proof::Proof(me, hyps, want) => {
-            let (no, x) = (lambda1s(move |why: Str| {
+            let (no, x) = (kayak_rt::closure1s((v, want,), |(v, want,), why: Str| {
                 match refuse(v, string_append(str_lit("this does not prove "), string_append(want, string_append(str_lit(": "), why)))) {}
             }), lemma_stripped(v, c));
             let tagcase_ = x;
@@ -2097,12 +2097,12 @@ pub fn proof_coercion(v: kayak_rt::Handle<'static, Cv>, c: kayak_rt::Handle<'sta
                         if guarded {
                             ()
                         } else {
-                            match no(str_lit("it passes itself on before rebuilding anything")) {}
+                            match no.call(str_lit("it passes itself on before rebuilding anything")) {}
                         }
                     } else if not(null_p(scope_bind(string_append(str_lit("%lemma "), n), v))) {
                         ()
                     } else {
-                        match no(str_lit("a proof is given only hypotheses, proofs, or coercions that rebuild")) {}
+                        match no.call(str_lit("a proof is given only hypotheses, proofs, or coercions that rebuild")) {}
                     }
                 }
                 _ => {
@@ -2123,15 +2123,15 @@ pub fn proof_coercion(v: kayak_rt::Handle<'static, Cv>, c: kayak_rt::Handle<'sta
                         }) {
                             let n = sym_name(car(items(car(ps))));
                             if (string_eq_p(n, me) || string_member_p(n, hyps)) {
-                                match no(str_lit("a proof may not rebind the names it relies on")) {}
+                                match no.call(str_lit("a proof may not rebind the names it relies on")) {}
                             } else {
                                 proof_rebuilt(v, last(items(x)), kayak_rt::heap_cons(n, kayak_rt::nil()), parse_type(v, cv_tvars(v), second(items(car(ps)))), guarded, p)
                             }
                         } else {
-                            match no(str_lit("a coercion given to a proof takes one parameter, with its type written")) {}
+                            match no.call(str_lit("a coercion given to a proof takes one parameter, with its type written")) {}
                         }
                     } else {
-                        match no(str_lit("a proof is given only hypotheses, proofs, or coercions that rebuild")) {}
+                        match no.call(str_lit("a proof is given only hypotheses, proofs, or coercions that rebuild")) {}
                     }
                 }
             }
@@ -2182,7 +2182,7 @@ pub fn lemma_proved(v: kayak_rt::Handle<'static, Cv>, name: Str, t: kayak_rt::Ha
                     if not(head_is_p(lam, str_lit("lambda"))) {
                         match refuse(v, string_append(str_lit("a proof of "), string_append(want, str_lit(" is a lambda")))) {}
                     } else {
-                        let params = map(&param_name, items(second(items(lam))));
+                        let params = map(kayak_rt::as_proc(param_name), items(second(items(lam))));
                         if not(i64_eq(size(params), i64_plus(n, 1i64))) {
                             match refuse(v, string_append(str_lit("a proof of "), string_append(want, str_lit(" takes a coercion for each hypothesis, then what it proves of")))) {}
                         } else if not(i64_eq(size(items(lam)), 3i64)) {
@@ -2233,9 +2233,9 @@ pub fn syscall_host_message() -> Str {
 }
 
 pub fn host_part_p(cs: List<char>) -> bool {
-    (not(null_p(cs)) && not(any_p(lambda1s(move |c: char| {
+    (not(null_p(cs)) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
         not(((char_gt_eq_p(c, 'a') && char_lt_eq_p(c, 'z')) || (char_gt_eq_p(c, '0') && char_lt_eq_p(c, '9')) || char_eq_p(c, '-')))
-    }), cs)))
+    })), cs)))
 }
 
 pub fn syscall_chars_before(cs: List<char>, c: char) -> List<char> {
@@ -2267,9 +2267,9 @@ pub fn valid_host_p(h: Str) -> bool {
     let backwards = the::<List<char>>(reverse(rest));
     let version = the::<List<char>>(reverse(syscall_chars_before(backwards, '/')));
     let name = the::<List<char>>(reverse(syscall_chars_after(backwards, '/')));
-    (string_member_p(str_lit(":"), map(&char_to_string, cs)) && string_member_p(str_lit("/"), map(&char_to_string, rest)) && host_part_p(syscall_chars_before(cs, ':')) && host_part_p(name) && not(null_p(version)) && not(char_eq_p(car(version), '0')) && not(any_p(lambda1s(move |c: char| {
+    (string_member_p(str_lit(":"), map(kayak_rt::as_proc(char_to_string), cs)) && string_member_p(str_lit("/"), map(kayak_rt::as_proc(char_to_string), rest)) && host_part_p(syscall_chars_before(cs, ':')) && host_part_p(name) && not(null_p(version)) && not(char_eq_p(car(version), '0')) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
         not((char_gt_eq_p(c, '0') && char_lt_eq_p(c, '9')))
-    }), version)))
+    })), version)))
 }
 
 /// Region `r` as the canonical form names it, `rI`, or "" if no binder
@@ -2288,7 +2288,7 @@ pub fn syscall_region(mut tvars: Strings, mut r: Str, mut i: i64) -> Str {
 }
 
 pub fn syscall_crossing(v: kayak_rt::Handle<'static, Cv>, tvars: Strings, t: kayak_rt::Handle<'static, Ty>) -> Str {
-    let rgn = lambda1s(move |r: kayak_rt::Handle<'static, Ty>| {
+    let rgn = kayak_rt::closure1s((v, tvars,), |(v, tvars,), r: kayak_rt::Handle<'static, Ty>| {
         let n = {
             let tagcase_ = r;
             match *tagcase_ {
@@ -2331,7 +2331,7 @@ pub fn syscall_crossing(v: kayak_rt::Handle<'static, Cv>, tvars: Strings, t: kay
             if (string_eq_p(d, str_lit("u64")) && null_p(args)) {
                 str_lit("u64")
             } else if (string_eq_p(d, str_lit("%bytes")) && i64_eq(size(args), 1i64)) {
-                string_append(str_lit("(bytevectorof "), string_append(rgn(car(args)), str_lit(")")))
+                string_append(str_lit("(bytevectorof "), string_append(rgn.call(car(args)), str_lit(")")))
             } else {
                 match refuse(v, syscall_crossing_message()) {}
             }
@@ -2340,7 +2340,7 @@ pub fn syscall_crossing(v: kayak_rt::Handle<'static, Cv>, tvars: Strings, t: kay
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyI64() => {
-                    string_append(str_lit("(flatarrayof i64 "), string_append(rgn(r), str_lit(")")))
+                    string_append(str_lit("(flatarrayof i64 "), string_append(rgn.call(r), str_lit(")")))
                 }
                 _ => {
                     let other = tagcase_;
@@ -2379,7 +2379,7 @@ pub fn syscall_effect(v: kayak_rt::Handle<'static, Cv>, tvars: Strings, es: Stri
     if null_p(es) {
         str_lit("pure")
     } else {
-        let texts = strings_once(sorted_strings(map(lambda1s(move |a: Str| {
+        let texts = strings_once(sorted_strings(map(kayak_rt::as_proc(kayak_rt::closure1s((v, tvars,), |(v, tvars,), a: Str| {
             if (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet"))) {
                 a
             } else if has_prefix_p(a, str_lit("io:")) {
@@ -2389,7 +2389,7 @@ pub fn syscall_effect(v: kayak_rt::Handle<'static, Cv>, tvars: Strings, es: Stri
             } else {
                 match refuse(v, syscall_effects_message()) {}
             }
-        }), es)));
+        })), es)));
         if null_p(cdr(texts)) {
             car(texts)
         } else {
@@ -2412,9 +2412,9 @@ pub fn syscall_canonical(v: kayak_rt::Handle<'static, Cv>, sc: kayak_rt::Handle<
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            if any_p(lambda1s(move |b: Str| {
+            if any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: Str| {
                 not(string_eq_p(binder_kind_shown(b), str_lit("region")))
-            }), tvars) {
+            })), tvars) {
                 match refuse(v, syscall_shape()) {}
             } else {
                 let tagcase_ = t;
@@ -2424,9 +2424,9 @@ pub fn syscall_canonical(v: kayak_rt::Handle<'static, Cv>, sc: kayak_rt::Handle<
                             match refuse(v, str_lit("a syscall takes at most 6 arguments")) {}
                         } else {
                             let eff = syscall_effect(v, tvars, es);
-                            let params = map(lambda1s(move |p: kayak_rt::Handle<'static, Ty>| {
+                            let params = map(kayak_rt::as_proc(kayak_rt::closure1s((v, tvars,), |(v, tvars,), p: kayak_rt::Handle<'static, Ty>| {
                                 syscall_crossing(v, tvars, p)
-                            }), ps);
+                            })), ps);
                             let subr = string_append(str_lit("(subr "), string_append(eff, string_append(str_lit(" ("), string_append(words_of(params), string_append(str_lit(") "), string_append(syscall_crossing(v, tvars, r), str_lit(")")))))));
                             if null_p(tvars) {
                                 subr
@@ -2526,13 +2526,13 @@ pub fn found_types(old: Sexps, new: Sexps) -> Facts {
     if (head_is_p(lst(old, str_lit(""), 0i64, 0i64), str_lit("define")) && i64_eq(size(old), 4i64) && arrow_star_p(third(old))) {
         kayak_rt::heap_cons(fact(datum_file(fourth(new)), datum_pos(fourth(new)), string_append(str_lit("def-type "), show_sexp(unpolied(third(new))))), kayak_rt::nil())
     } else if head_is_p(lst(old, str_lit(""), 0i64, 0i64), str_lit("define-rec")) {
-        concat(map2(lambda2s(move |b: kayak_rt::Handle<'static, Sexp>, c: kayak_rt::Handle<'static, Sexp>| {
+        concat(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), b: kayak_rt::Handle<'static, Sexp>, c: kayak_rt::Handle<'static, Sexp>| {
             if (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b)))) {
                 kayak_rt::heap_cons(fact(datum_file(third(items(c))), datum_pos(third(items(c))), string_append(str_lit("def-type "), show_sexp(unpolied(second(items(c)))))), kayak_rt::nil())
             } else {
                 nil::<kayak_rt::Handle<'static, Fact>>()
             }
-        }), cdr(old), cdr(new)))
+        })), cdr(old), cdr(new)))
     } else {
         nil::<kayak_rt::Handle<'static, Fact>>()
     }
@@ -2601,15 +2601,15 @@ pub fn check_top_found(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<
                 } else {
                     let name = head_name(v, second(xs));
                     let params = family_params(v, second(xs));
-                    let body = mu_wrapped(v, name, parse_type(v, kayak_rt::heap_cons(str_lit("%fun-ok"), kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
+                    let body = mu_wrapped(v, name, parse_type(v, kayak_rt::heap_cons(str_lit("%fun-ok"), kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), p: Str| {
                         string_append(str_lit("%place "), p)
-                    }), concat(map(lambda1s(move |p: Str| {
+                    })), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), p: Str| {
                         if has_prefix_p(p, str_lit("'")) {
                             the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
                         } else {
                             nil::<Str>()
                         }
-                    }), params))), params))), third(xs)));
+                    })), params))), params))), third(xs)));
                     if null_p(params) {
                         with_binds(v, kayak_rt::heap_cons(bind(string_append(str_lit("%shows "), name), scheme(nil::<Str>(), body), str_lit("mark")), kayak_rt::nil()))
                     } else {
@@ -2635,13 +2635,13 @@ pub fn check_top_found(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<
                     let v = no_reaching_itself(v, kayak_rt::heap_cons(name, kayak_rt::nil()), sc);
                     let named = with_binds(v, kayak_rt::heap_cons(global(v, name, sc), kayak_rt::nil()));
                     if lambda_form_p(fourth(xs)) {
-                        with_facts(with_place_needs(check_procedure(with_tvars(named, place_marks(third(xs))), fourth(xs), sc), name, sc, size(cv_facts(named)), src_file, src_pos), onto(concat(map(lambda1s(move |m: Str| {
+                        with_facts(with_place_needs(check_procedure(with_tvars(named, place_marks(third(xs))), fourth(xs), sc), name, sc, size(cv_facts(named)), src_file, src_pos), onto(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((src_file, src_pos, name,), |(src_file, src_pos, name,), m: Str| {
                             if has_prefix_p(m, str_lit("%within ")) {
                                 the::<Facts>(kayak_rt::heap_cons(fact(src_file, src_pos, string_append(str_lit("region-within "), string_append(name, string_append(str_lit(" "), after_prefix(m, str_lit("%within ")))))), kayak_rt::nil()))
                             } else {
                                 nil::<kayak_rt::Handle<'static, Fact>>()
                             }
-                        }), place_marks(third(xs)))), {
+                        })), place_marks(third(xs)))), {
                             let tagcase_ = third(xs);
                             match *tagcase_ {
                                 Sexp::Sym(n, f, p) => {
@@ -2796,9 +2796,9 @@ pub fn maker_items_found(mut v: kayak_rt::Handle<'static, Cv>, mut its: Sexps, m
                 (v, its, out) = (with_binds(v, kayak_rt::heap_cons(local(v, sym_name(second(xs)), parse_type(v, cv_tvars(v), third(xs))), kayak_rt::nil())), cdr(its), kayak_rt::heap_cons(f, out));
                 continue;
             } else if head_is_p(f, str_lit("define-rec")) {
-                let found = if any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+                let found = if any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                     (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b))))
-                }), cdr(xs)) {
+                })), cdr(xs)) {
                     the::<Sexps>(kayak_rt::heap_cons(car(xs), found_rec({
                         let tagcase_ = f;
                         match *tagcase_ {
@@ -2814,14 +2814,14 @@ pub fn maker_items_found(mut v: kayak_rt::Handle<'static, Cv>, mut its: Sexps, m
                 } else {
                     xs
                 };
-                (v, its, out, fs) = (with_binds(v, concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+                (v, its, out, fs) = (with_binds(v, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), b: kayak_rt::Handle<'static, Sexp>| {
                     let ys = items(b);
                     if i64_eq(size(ys), 3i64) {
                         the::<Binds>(kayak_rt::heap_cons(local(v, sym_name(car(ys)), parse_type(v, cv_tvars(v), second(ys))), kayak_rt::nil()))
                     } else {
                         nil::<kayak_rt::Handle<'static, Bind>>()
                     }
-                }), cdr(found)))), cdr(its), kayak_rt::heap_cons(relist(f, found), out), onto(found_types(xs, found), fs));
+                })), cdr(found)))), cdr(its), kayak_rt::heap_cons(relist(f, found), out), onto(found_types(xs, found), fs));
                 continue;
             } else if (head_is_p(f, str_lit("include")) && i64_eq(size(xs), 2i64)) {
                 (v, its, out) = (expressions::include_opened(v, new_state(), second(xs)), cdr(its), kayak_rt::heap_cons(f, out));
@@ -2847,7 +2847,7 @@ pub fn maker_items_found(mut v: kayak_rt::Handle<'static, Cv>, mut its: Sexps, m
 pub fn maker_found(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Product_11_12<kayak_rt::Handle<'static, Sexp>, Facts> {
     let xs = items(form);
     let lam = items(fourth(xs));
-    let ps = map(lambda1s(move |q: kayak_rt::Handle<'static, Sexp>| {
+    let ps = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), q: kayak_rt::Handle<'static, Sexp>| {
         let tagcase_ = q;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
@@ -2861,7 +2861,7 @@ pub fn maker_found(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'sta
                 str_lit("")
             }
         }
-    }), items(second(lam)));
+    })), items(second(lam)));
     let m0 = items(third(lam));
     let ld = if (not(null_p(cdr(m0))) && head_is_p(second(m0), str_lit("%loaded"))) {
         the::<Sexps>(kayak_rt::heap_cons(second(m0), kayak_rt::nil()))
@@ -2874,11 +2874,11 @@ pub fn maker_found(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'sta
         kayak_rt::heap_cons(car(m0), cdr(cdr(m0)))
     };
     let stars = star_items(cdr(m));
-    let checked = map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    let checked = map(kayak_rt::as_proc(kayak_rt::closure1s((v, stars,), |(v, stars,), f: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(lambda_form_p(fourth(items(f))))) {
-            let named = filter(lambda1s(move |n: Str| {
+            let named = filter(kayak_rt::as_proc(kayak_rt::closure1s((stars,), |(stars,), n: Str| {
                 string_member_p(n, stars)
-            }), names_named_onto(fourth(items(f)), nil::<Str>()));
+            })), names_named_onto(fourth(items(f)), nil::<Str>()));
             if null_p(named) {
                 ()
             } else {
@@ -2901,11 +2901,11 @@ pub fn maker_found(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'sta
         } else {
             ()
         }
-    }), cdr(m));
+    })), cdr(m));
     let v = if null_p(ld) {
         v
     } else {
-        loaded_scope(v, map(&sym_name, cdr(cdr(items(car(ld))))))
+        loaded_scope(v, map(kayak_rt::as_proc(sym_name), cdr(cdr(items(car(ld))))))
     };
     let r = maker_items_found(with_tvars(with_binds({
         let tagcase_ = form;
@@ -2918,9 +2918,9 @@ pub fn maker_found(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'sta
                 v
             }
         }
-    }, kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), sym_name(second(xs))), kayak_rt::nil())), concat(map(lambda1s(move |q: Str| {
+    }, kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), sym_name(second(xs))), kayak_rt::nil())), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), q: Str| {
         the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("'"), q), kayak_rt::heap_cons(string_append(str_lit("%place "), q), kayak_rt::nil())))
-    }), ps))), cdr(m), nil::<kayak_rt::Handle<'static, Sexp>>(), nil::<kayak_rt::Handle<'static, Fact>>());
+    })), ps))), cdr(m), nil::<kayak_rt::Handle<'static, Sexp>>(), nil::<kayak_rt::Handle<'static, Fact>>());
     Product_11_12(relist(form, kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(relist(fourth(xs), kayak_rt::heap_cons(car(lam), kayak_rt::heap_cons(second(lam), kayak_rt::heap_cons(relist(third(lam), kayak_rt::heap_cons(car(m), onto(ld, r.0))), kayak_rt::nil())))), kayak_rt::nil()))))), r.1)
 }
 
@@ -2930,13 +2930,13 @@ pub fn maker_form_p(form: kayak_rt::Handle<'static, Sexp>) -> bool {
     let tagcase_ = form;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            (head_is_p(form, str_lit("define")) && i64_eq(size(xs), 4i64) && head_is_p(fourth(xs), str_lit("lambda")) && i64_eq(size(items(fourth(xs))), 3i64) && head_is_p(third(items(fourth(xs))), str_lit("module")) && head_is_p(third(xs), str_lit("poly")) && i64_eq(size(items(third(xs))), 3i64) && all_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+            (head_is_p(form, str_lit("define")) && i64_eq(size(xs), 4i64) && head_is_p(fourth(xs), str_lit("lambda")) && i64_eq(size(items(fourth(xs))), 3i64) && head_is_p(third(items(fourth(xs))), str_lit("module")) && head_is_p(third(xs), str_lit("poly")) && i64_eq(size(items(third(xs))), 3i64) && all_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                 (i64_eq(size(items_or_nil(b)), 2i64) && sym_is_p(second(items(b)), str_lit("place")))
-            }), items(second(items(third(xs))))) && any_p(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
-                ((head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64) && arrow_star_p(third(items(g)))) || (head_is_p(g, str_lit("define-rec")) && any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+            })), items(second(items(third(xs))))) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
+                ((head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64) && arrow_star_p(third(items(g)))) || (head_is_p(g, str_lit("define-rec")) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                     (i64_eq(size(items_or_nil(b)), 3i64) && arrow_star_p(second(items(b))))
-                }), cdr(items(g)))))
-            }), cdr(items(third(items(fourth(xs)))))))
+                })), cdr(items(g)))))
+            })), cdr(items(third(items(fourth(xs)))))))
         }
         _ => {
             let other = tagcase_;
@@ -2965,9 +2965,9 @@ pub fn check_top_plain(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<
                     }
                 }
             };
-            let star = ((string_eq_p(h, str_lit("define")) && i64_eq(size(xs), 4i64) && arrow_star_p(third(xs))) || (string_eq_p(h, str_lit("define-rec")) && any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+            let star = ((string_eq_p(h, str_lit("define")) && i64_eq(size(xs), 4i64) && arrow_star_p(third(xs))) || (string_eq_p(h, str_lit("define-rec")) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                 (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b))))
-            }), cdr(xs))));
+            })), cdr(xs))));
             if maker_form_p(form) {
                 // A module maker, its module's `->*` items found (C435).
                 let r = maker_found(v, form);
@@ -3025,9 +3025,9 @@ pub fn check_top_form(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'
     let tagcase_ = form;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            if ((head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-datatype"))) && i64_gt(size(xs), 1i64) && any_p(lambda1s(move |m: Str| {
+            if ((head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-datatype"))) && i64_gt(size(xs), 1i64) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: Str| {
                 not(string_eq_p(m, str_lit("=")))
-            }), variance_of(second(xs)))) {
+            })), variance_of(second(xs)))) {
                 match refuse(near(v, f, l, p), str_lit("a parameter is `(name kind)`: only a generative type's is marked")) {}
             } else {
                 if (i64_eq(size(xs), 4i64) && (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) && head_is_p(third(xs), str_lit("proves"))) {
@@ -3070,9 +3070,9 @@ pub fn item_names(f: kayak_rt::Handle<'static, Sexp>) -> Strings {
             }
         }
     } else if head_is_p(f, str_lit("define-rec")) {
-        map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
             sym_name(car(items(b)))
-        }), cdr(items(f)))
+        })), cdr(items(f)))
     } else if head_is_p(f, str_lit("define-datatype")) {
         let tagcase_ = second(items(f));
         match *tagcase_ {
@@ -3096,7 +3096,7 @@ pub fn module_def_p(form: kayak_rt::Handle<'static, Sexp>) -> bool {
 /// Module items without their strings, a `hide`'s too: FX-26's, a string
 /// among a module's items is a comment (Fixpt, 2026-10-12).
 pub fn uncommented(forms: Sexps) -> Sexps {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         let tagcase_ = f;
         match *tagcase_ {
             Sexp::Str(s, file, pos) => {
@@ -3114,7 +3114,7 @@ pub fn uncommented(forms: Sexps) -> Sexps {
                 the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
             }
         }
-    }), forms))
+    })), forms))
 }
 
 // `(extend e0 e1)` (C87, FX-91's): a module of both's values and types,
@@ -3164,15 +3164,15 @@ pub fn module_noted(form: kayak_rt::Handle<'static, Sexp>) -> Sexps {
                     kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e0, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("except-module"), file, pos), kayak_rt::heap_cons(e1, kayak_rt::nil())), file, line, pos), kayak_rt::nil()))), file, line, pos), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e1, kayak_rt::nil())), file, line, pos), kayak_rt::nil()))
                 } else if head_is_p(e1, str_lit("module")) {
                     let own = cdr(items(e1));
-                    kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e0, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("except"), file, pos), map(lambda1s(move |n: Str| {
+                    kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e0, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("except"), file, pos), map(kayak_rt::as_proc(kayak_rt::closure1s((file, pos,), |(file, pos,), n: Str| {
                         sym(n, file, pos)
-                    }), concat(map(&item_names, concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+                    })), concat(map(kayak_rt::as_proc(item_names), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
                         if head_is_p(g, str_lit("hide")) {
                             cdr(items(g))
                         } else {
                             the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
                         }
-                    }), uncommented(own))))))), file, line, pos), kayak_rt::nil()))), file, line, pos), own)
+                    })), uncommented(own))))))), file, line, pos), kayak_rt::nil()))), file, line, pos), own)
                 } else {
                     error(str_lit("kfx: an extend's second module is a name or a module"))
                 }
@@ -3205,7 +3205,7 @@ pub fn include_except(f: kayak_rt::Handle<'static, Sexp>) -> Sexps {
 
 /// The names of the types and modules `forms` define, one Rust scope's.
 pub fn type_level_names(forms: Sexps) -> Strings {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) {
             let tagcase_ = second(items(f));
             match *tagcase_ {
@@ -3234,24 +3234,24 @@ pub fn type_level_names(forms: Sexps) -> Strings {
         } else {
             nil::<Str>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// Each Rust scope's type and module names: the program's, then each module's.
 pub fn type_scopes(forms: Sexps) -> List<Strings> {
-    kayak_rt::heap_cons(type_level_names(forms), concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    kayak_rt::heap_cons(type_level_names(forms), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if module_def_p(f) {
-            the::<List<Strings>>(kayak_rt::heap_cons(type_level_names(concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+            the::<List<Strings>>(kayak_rt::heap_cons(type_level_names(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
                 if head_is_p(g, str_lit("hide")) {
                     cdr(items(g))
                 } else {
                     the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
                 }
-            }), module_written(f)))), kayak_rt::nil()))
+            })), module_written(f)))), kayak_rt::nil()))
         } else {
             nil::<List<Str>>()
         }
-    }), forms)))
+    })), forms)))
 }
 
 /// The form among `forms`, or in their modules, that defines the type or
@@ -3263,13 +3263,13 @@ pub fn type_namer(mut forms: Sexps, mut name: Str) -> Sexps {
         } else if string_member_p(name, type_level_names(kayak_rt::heap_cons(car(forms), kayak_rt::nil()))) {
             return kayak_rt::heap_cons(car(forms), kayak_rt::nil());
         } else if module_def_p(car(forms)) {
-            let inner = type_namer(concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+            let inner = type_namer(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
                 if head_is_p(g, str_lit("hide")) {
                     cdr(items(g))
                 } else {
                     the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
                 }
-            }), module_written(car(forms)))), name);
+            })), module_written(car(forms)))), name);
             if null_p(inner) {
                 forms = cdr(forms);
                 continue;
@@ -3305,11 +3305,11 @@ pub fn type_namer_near(v: kayak_rt::Handle<'static, Cv>, forms: Sexps, name: Str
 /// The labels of every product and sum written in `es`, types and
 /// `product` forms alike, each a shape the Rust names by its labels.
 pub fn label_lists(es: Sexps) -> List<Strings> {
-    concat(map(lambda1s(move |e: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), e: kayak_rt::Handle<'static, Sexp>| {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
-                let here = if (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof")) || sym_is_p(car(xs), str_lit("product"))) && not(null_p(cdr(xs))) && not(any_p(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                let here = if (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof")) || sym_is_p(car(xs), str_lit("product"))) && not(null_p(cdr(xs))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Sexp::Lst(ys, f2, l2, p2) => {
@@ -3320,8 +3320,8 @@ pub fn label_lists(es: Sexps) -> List<Strings> {
                             true
                         }
                     }
-                }), cdr(xs)))) {
-                    the::<List<Strings>>(kayak_rt::heap_cons(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                })), cdr(xs)))) {
+                    the::<List<Strings>>(kayak_rt::heap_cons(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
                         let tagcase_ = car(items(x));
                         match *tagcase_ {
                             Sexp::Sym(n, f3, p3) => {
@@ -3332,7 +3332,7 @@ pub fn label_lists(es: Sexps) -> List<Strings> {
                                 str_lit("")
                             }
                         }
-                    }), cdr(xs)), kayak_rt::nil()))
+                    })), cdr(xs)), kayak_rt::nil()))
                 } else {
                     nil::<List<Str>>()
                 };
@@ -3343,18 +3343,18 @@ pub fn label_lists(es: Sexps) -> List<Strings> {
                 nil::<List<Str>>()
             }
         }
-    }), es))
+    })), es))
 }
 
 /// No two shapes of different labels named alike in Rust, their labels
 /// mangled (`a?` and `a-p` are both `a_p`).
 pub fn shapes_apart(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
     let lists = label_lists(forms);
-    if any_p(lambda1s(move |ls: Strings| {
-        any_p(lambda1s(move |ms: Strings| {
-            (not(string_eq_p(words_of(ls), words_of(ms))) && string_eq_p(words_of(map(&mangle, ls)), words_of(map(&mangle, ms))))
-        }), lists)
-    }), lists) {
+    if any_p(kayak_rt::as_proc(kayak_rt::closure1s((lists,), |(lists,), ls: Strings| {
+        any_p(kayak_rt::as_proc(kayak_rt::closure1s((ls,), |(ls,), ms: Strings| {
+            (not(string_eq_p(words_of(ls), words_of(ms))) && string_eq_p(words_of(map(kayak_rt::as_proc(mangle), ls)), words_of(map(kayak_rt::as_proc(mangle), ms))))
+        })), lists)
+    })), lists) {
         match refuse(v, str_lit("two products or sums whose labels are one in Rust, mangled (`a?` and `a-p` are both `a_p`)")) {}
     } else {
         ()
@@ -3367,7 +3367,7 @@ pub fn shapes_apart(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
 /// pass's (restrict.kfx, C61).
 pub fn type_names_free(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
     shapes_apart(v, forms);
-    map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((v, forms,), |(v, forms,), f: kayak_rt::Handle<'static, Sexp>| {
         if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) && string_member_p({
             let tagcase_ = second(items(f));
             match *tagcase_ {
@@ -3391,7 +3391,7 @@ pub fn type_names_free(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
                     str_lit("")
                 }
             }
-        }, concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+        }, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
             if head_is_p(g, str_lit("define-effect")) {
                 let tagcase_ = second(items(g));
                 match *tagcase_ {
@@ -3406,7 +3406,7 @@ pub fn type_names_free(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
             } else {
                 nil::<Str>()
             }
-        }), forms)))) {
+        })), forms)))) {
             let tagcase_ = f;
             match *tagcase_ {
                 Sexp::Lst(xs, file, line, pos) => {
@@ -3420,8 +3420,8 @@ pub fn type_names_free(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
         } else {
             ()
         }
-    }), forms);
-    map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    })), forms);
+    map(kayak_rt::as_proc(kayak_rt::closure1s((v, forms,), |(v, forms,), f: kayak_rt::Handle<'static, Sexp>| {
         if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype"))) && {
             let tagcase_ = second(items(f));
             match *tagcase_ {
@@ -3448,7 +3448,7 @@ pub fn type_names_free(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
         } else {
             ()
         }
-    }), forms);
+    })), forms);
     ()
 }
 
@@ -3459,10 +3459,10 @@ pub enum Typed {
     Typed(Str, kayak_rt::Handle<'static, Sexp>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Typed {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Typed {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Typed(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Typed(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -3477,10 +3477,10 @@ pub enum Elab {
     Elab(kayak_rt::Handle<'static, Cv>, Typeds),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Elab {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Elab {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Elab(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Elab(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -3612,9 +3612,9 @@ pub fn check_untyped(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'s
                     } else {
                         constant_made(v, s, e, es, t)
                     });
-                    let s = if (has_prefix_p(name, str_lit("%run-")) && not(any_p(lambda1s(move |x: Str| {
+                    let s = if (has_prefix_p(name, str_lit("%run-")) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
                         not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("read:"))))
-                    }), es))) {
+                    })), es))) {
                         match refuse(v, str_lit("an expression among a module's items is run for what it does as the module is made, and this one only reads")) {}
                     } else {
                         s
@@ -3633,21 +3633,21 @@ pub fn check_untyped(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'s
 // conversions stay inside. Outside, `m`'s values and types are named `m x`,
 // found by `with` and `select`.
 pub fn tag_taken_p(tag: Str, ds: Dts) -> bool {
-    any_p(lambda1s(move |d: kayak_rt::Handle<'static, Dt>| {
+    any_p(kayak_rt::as_proc(kayak_rt::closure1s((tag,), |(tag,), d: kayak_rt::Handle<'static, Dt>| {
         let tagcase_ = d;
         match *tagcase_ {
             Dt::Dt(n, ps, vs) => {
-                any_p(lambda1s(move |x: kayak_rt::Handle<'static, Variant>| {
+                any_p(kayak_rt::as_proc(kayak_rt::closure1s((tag,), |(tag,), x: kayak_rt::Handle<'static, Variant>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Variant::Variant(t, fs) => {
                             string_eq_p(t, tag)
                         }
                     }
-                }), vs)
+                })), vs)
             }
         }
-    }), ds)
+    })), ds)
 }
 
 /// Whether item `f`, a type's or an effect's, is `(select r t)` of `r` a
@@ -3657,7 +3657,7 @@ pub fn selects_own_value_p(forms: Sexps, f: kayak_rt::Handle<'static, Sexp>) -> 
         let tagcase_ = second(items(third(items(f))));
         match *tagcase_ {
             Sexp::Sym(r, a, b) => {
-                any_p(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+                any_p(kayak_rt::as_proc(kayak_rt::closure1s((r,), |(r,), g: kayak_rt::Handle<'static, Sexp>| {
                     ((head_is_p(g, str_lit("define")) || head_is_p(g, str_lit("define*"))) && i64_gt_eq(size(items(g)), 3i64) && {
                         let tagcase_ = second(items(g));
                         match *tagcase_ {
@@ -3670,7 +3670,7 @@ pub fn selects_own_value_p(forms: Sexps, f: kayak_rt::Handle<'static, Sexp>) -> 
                             }
                         }
                     } && not(head_is_p(last(items(g)), str_lit("module"))))
-                }), forms)
+                })), forms)
             }
             _ => {
                 let other = tagcase_;
@@ -3740,7 +3740,7 @@ pub fn qualify_type(m: Str, names: Strings, t: kayak_rt::Handle<'static, Sexp>) 
                 t
             } else if (head_is_p(t, str_lit("productof")) || head_is_p(t, str_lit("sumof"))) {
                 // A field's label is no type (C288): its type alone qualified.
-                lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |fd: kayak_rt::Handle<'static, Sexp>| {
+                lst(kayak_rt::heap_cons(car(xs), map(kayak_rt::as_proc(kayak_rt::closure1s((m, names,), |(m, names,), fd: kayak_rt::Handle<'static, Sexp>| {
                     let tagcase_ = fd;
                     match *tagcase_ {
                         Sexp::Lst(ys, f2, l2, p2) => {
@@ -3755,11 +3755,11 @@ pub fn qualify_type(m: Str, names: Strings, t: kayak_rt::Handle<'static, Sexp>) 
                             qualify_type(m, names, fd)
                         }
                     }
-                }), cdr(xs))), file, line, pos)
+                })), cdr(xs))), file, line, pos)
             } else {
-                lst(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                lst(map(kayak_rt::as_proc(kayak_rt::closure1s((m, names,), |(m, names,), x: kayak_rt::Handle<'static, Sexp>| {
                     qualify_type(m, names, x)
-                }), xs), file, line, pos)
+                })), xs), file, line, pos)
             }
         }
         _ => {
@@ -3773,7 +3773,7 @@ pub fn qualify_type(m: Str, names: Strings, t: kayak_rt::Handle<'static, Sexp>) 
 /// family, `(t (p kind) ...)` (C89), the same, applied: `t` stands for
 /// `(m..t p ...)`.
 pub fn module_aliases(v: kayak_rt::Handle<'static, Cv>, m: Str, names: Strings, forms: Sexps, inside: bool) -> Aliases {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, m, names, forms, inside,), |(v, m, names, forms, inside,), f: kayak_rt::Handle<'static, Sexp>| {
         if not((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype")))) {
             nil::<kayak_rt::Handle<'static, Alias>>()
         } else {
@@ -3789,13 +3789,13 @@ pub fn module_aliases(v: kayak_rt::Handle<'static, Cv>, m: Str, names: Strings, 
             let named = alias(name, ps, if null_p(ps) {
                 sym(q, str_lit(""), 0i64)
             } else {
-                lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), map(lambda1s(move |p: Str| {
+                lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), p: Str| {
                     sym(if has_prefix_p(p, str_lit("'")) {
                         after_prefix(p, str_lit("'"))
                     } else {
                         p
                     }, str_lit(""), 0i64)
-                }), ps)), str_lit(""), 0i64, 0i64)
+                })), ps)), str_lit(""), 0i64, 0i64)
             });
             if head_is_p(f, str_lit("define-type")) {
                 the::<Aliases>(kayak_rt::heap_cons(named, kayak_rt::heap_cons(alias(q, ps, if not(selects_own_value_p(forms, f)) {
@@ -3807,23 +3807,23 @@ pub fn module_aliases(v: kayak_rt::Handle<'static, Cv>, m: Str, names: Strings, 
                 the::<Aliases>(kayak_rt::heap_cons(named, kayak_rt::nil()))
             }
         }
-    }), forms))
+    })), forms))
 }
 
 pub fn module_dts(v: kayak_rt::Handle<'static, Cv>, m: Str, forms: Sexps) -> Dts {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, m,), |(v, m,), f: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
             the::<Dts>(kayak_rt::heap_cons(dt(string_append(m, string_append(str_lit(".."), head_name(v, second(items(f))))), family_params(v, second(items(f))), nil::<kayak_rt::Handle<'static, Variant>>()), kayak_rt::nil()))
         } else {
             nil::<kayak_rt::Handle<'static, Dt>>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// A module's generative types' conversions, as each names them (C428): its
 /// items', not in its type, so that outside `m..t` is abstract.
 pub fn module_conversions(v: kayak_rt::Handle<'static, Cv>, m: Str, forms: Sexps) -> Binds {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, m,), |(v, m,), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("define-generative")) {
             let names = generative_names(v, f);
             let xs = items(f);
@@ -3834,12 +3834,12 @@ pub fn module_conversions(v: kayak_rt::Handle<'static, Cv>, m: Str, forms: Sexps
         } else {
             nil::<kayak_rt::Handle<'static, Bind>>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// A module's datatypes, their variants read where its types are named.
 pub fn module_datatypes(v: kayak_rt::Handle<'static, Cv>, m: Str, forms: Sexps) -> Dts {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, m,), |(v, m,), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("define-datatype")) {
             let tagcase_ = datatype_of(v, cdr(items(f)));
             match *tagcase_ {
@@ -3850,16 +3850,16 @@ pub fn module_datatypes(v: kayak_rt::Handle<'static, Cv>, m: Str, forms: Sexps) 
         } else {
             nil::<kayak_rt::Handle<'static, Dt>>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// A module's effect abbreviations, as `m e`: what each is, as the module
 /// read it.
 pub fn module_effects(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((m, es,), |(m, es,), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("define-effect")) {
             let name = sym_name(second(items(f)));
-            concat(map(lambda1s(move |d: kayak_rt::Handle<'static, Effdef>| {
+            concat(map(kayak_rt::as_proc(kayak_rt::closure1s((m, name,), |(m, name,), d: kayak_rt::Handle<'static, Effdef>| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Effdef::Effdef(n, atoms) => {
@@ -3870,11 +3870,11 @@ pub fn module_effects(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
                         }
                     }
                 }
-            }), es))
+            })), es))
         } else {
             nil::<kayak_rt::Handle<'static, Effdef>>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// A module's own items, those bound after its mark.
@@ -3897,7 +3897,7 @@ pub fn own_items(bs: Binds) -> Binds {
 /// module an item names, `m..t`, which is not known outside it (C170;
 /// Fixpt's `modules/inner-escape.fx`).
 pub fn items_kept_in(v: kayak_rt::Handle<'static, Cv>, bs: Binds) -> Binds {
-    let mods = concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
+    let mods = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Bind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
@@ -3915,8 +3915,8 @@ pub fn items_kept_in(v: kayak_rt::Handle<'static, Cv>, bs: Binds) -> Binds {
                 }
             }
         }
-    }), own_items(bs)));
-    map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
+    })), own_items(bs)));
+    map(kayak_rt::as_proc(kayak_rt::closure1s((v, mods,), |(v, mods,), b: kayak_rt::Handle<'static, Bind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
@@ -3926,9 +3926,9 @@ pub fn items_kept_in(v: kayak_rt::Handle<'static, Cv>, bs: Binds) -> Binds {
                     let tagcase_ = sc;
                     match *tagcase_ {
                         Scheme::Scheme(tv, t) => {
-                            mentions_module_of_p(t, filter(lambda1s(move |x: Str| {
+                            mentions_module_of_p(t, filter(kayak_rt::as_proc(kayak_rt::closure1s((n,), |(n,), x: Str| {
                                 not(string_eq_p(x, n))
-                            }), mods))
+                            })), mods))
                         }
                     }
                 };
@@ -3939,7 +3939,7 @@ pub fn items_kept_in(v: kayak_rt::Handle<'static, Cv>, bs: Binds) -> Binds {
                 }
             }
         }
-    }), own_items(bs));
+    })), own_items(bs));
     bs
 }
 
@@ -3977,13 +3977,13 @@ pub fn untyped_p(form: kayak_rt::Handle<'static, Sexp>) -> bool {
 // in its type. The module included is one defined at the top level.
 /// The items, those of a `hide` among them.
 pub fn unhidden(forms: Sexps) -> Sexps {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
             the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
         }
-    }), forms))
+    })), forms))
 }
 
 /// The names among `names` that `e` mentions (a local of the same name
@@ -3999,9 +3999,9 @@ pub fn item_names_in(e: kayak_rt::Handle<'static, Sexp>, names: Strings) -> Stri
             }
         }
         Sexp::Lst(xs, f, l, p) => {
-            concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+            concat(map(kayak_rt::as_proc(kayak_rt::closure1s((names,), |(names,), x: kayak_rt::Handle<'static, Sexp>| {
                 item_names_in(x, names)
-            }), xs))
+            })), xs))
         }
         _ => {
             let other = tagcase_;
@@ -4072,26 +4072,26 @@ pub fn distinct_aliases(mut als: Aliases) -> Aliases {
     loop {
         if null_p(als) {
             return nil::<kayak_rt::Handle<'static, Alias>>();
-        } else if any_p(lambda1s(move |b: kayak_rt::Handle<'static, Alias>| {
+        } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((als,), |(als,), b: kayak_rt::Handle<'static, Alias>| {
             let tagcase_ = car(als);
             match *tagcase_ {
                 Alias::Alias(n, ps, body) => {
                     let tagcase_ = b;
                     match *tagcase_ {
                         Alias::Alias(m, qs, body2) => {
-                            (string_eq_p(n, m) && string_eq_p(show_sexp(body), show_sexp(body2)) && null_p(item_names_in(body, map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+                            (string_eq_p(n, m) && string_eq_p(show_sexp(body), show_sexp(body2)) && null_p(item_names_in(body, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Alias>| {
                                 let tagcase_ = a;
                                 match *tagcase_ {
                                     Alias::Alias(k, ks, kb) => {
                                         k
                                     }
                                 }
-                            }), als))))
+                            })), als))))
                         }
                     }
                 }
             }
-        }), cdr(als)) {
+        })), cdr(als)) {
             als = cdr(als);
             continue;
         } else {
@@ -4102,22 +4102,22 @@ pub fn distinct_aliases(mut als: Aliases) -> Aliases {
 
 #[inline]
 pub fn hidden_items(forms: Sexps) -> Sexps {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// The values hidden items define: a hidden datatype's constructors too.
 /// A hidden type does not hide a value of its name, nor a value a type's
 /// (C86, FX-26's).
 pub fn hidden_value_names(forms: Sexps) -> Strings {
-    concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(g, str_lit("define-datatype")) {
-            map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+            map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
                 let tagcase_ = x;
                 match *tagcase_ {
                     Sexp::Lst(ys, f, l, p) => {
@@ -4131,16 +4131,16 @@ pub fn hidden_value_names(forms: Sexps) -> Strings {
                         str_lit("")
                     }
                 }
-            }), cdr(cdr(items(g))))
+            })), cdr(cdr(items(g))))
         } else {
             item_value_names(g)
         }
-    }), hidden_items(forms)))
+    })), hidden_items(forms)))
 }
 
 #[inline]
 pub fn hidden_type_names(forms: Sexps) -> Strings {
-    concat(map(&item_type_names, hidden_items(forms)))
+    concat(map(kayak_rt::as_proc(item_type_names), hidden_items(forms)))
 }
 
 /// Whether module `n` is one made in place, defined before its user as
@@ -4153,7 +4153,7 @@ pub fn made_in_place_p(n: Str) -> bool {
 /// A hidden datatype or generative type in a type the module shows is
 /// refused, as FX-26 refuses it, for now (`modules/hide-escape.fx`).
 pub fn hidden_escapes(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
-    let r#abstract = concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    let r#abstract = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), g: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(g, str_lit("define-datatype")) || head_is_p(g, str_lit("define-generative"))) {
             item_names(g)
         } else if (head_is_p(g, str_lit("include")) && made_in_place_p(sym_name(second(items(g))))) {
@@ -4162,7 +4162,7 @@ pub fn hidden_escapes(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
             // module's stay its own, as FX-26 has it (C116: Fixpt's
             // `convention.fx`, its `let`'s module included).
             let n = sym_name(second(items(g)));
-            concat(map(lambda1s(move |d: kayak_rt::Handle<'static, Dt>| {
+            concat(map(kayak_rt::as_proc(kayak_rt::closure1s((n,), |(n,), d: kayak_rt::Handle<'static, Dt>| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Dt::Dt(dn, ps, vs) => {
@@ -4173,49 +4173,49 @@ pub fn hidden_escapes(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> () {
                         }
                     }
                 }
-            }), cv_dts(v)))
+            })), cv_dts(v)))
         } else {
             nil::<Str>()
         }
-    }), hidden_items(forms)));
+    })), hidden_items(forms)));
     if null_p(r#abstract) {
         ()
     } else {
-        map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((v, r#abstract,), |(v, r#abstract,), f: kayak_rt::Handle<'static, Sexp>| {
             let ts = if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64)) {
                 the::<Sexps>(kayak_rt::heap_cons(third(items(f)), kayak_rt::nil()))
             } else if head_is_p(f, str_lit("define*")) {
                 the::<Sexps>(kayak_rt::heap_cons(third(items(f)), kayak_rt::nil()))
             } else if head_is_p(f, str_lit("define-rec")) {
-                map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+                map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                     second(items(b))
-                }), cdr(items(f)))
+                })), cdr(items(f)))
             } else if head_is_p(f, str_lit("define-type")) {
                 the::<Sexps>(kayak_rt::heap_cons(third(items(f)), kayak_rt::nil()))
             } else {
                 nil::<kayak_rt::Handle<'static, Sexp>>()
             };
-            if any_p(lambda1s(move |t: kayak_rt::Handle<'static, Sexp>| {
+            if any_p(kayak_rt::as_proc(kayak_rt::closure1s((r#abstract,), |(r#abstract,), t: kayak_rt::Handle<'static, Sexp>| {
                 not(null_p(item_names_in(t, r#abstract)))
-            }), ts) {
+            })), ts) {
                 match refuse(v, string_append(str_lit("a hidden type in a type the module shows: "), words_of(r#abstract))) {}
             } else {
                 ()
             }
-        }), concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+        })), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
             if head_is_p(f, str_lit("hide")) {
                 nil::<kayak_rt::Handle<'static, Sexp>>()
             } else {
                 the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
             }
-        }), forms)));
+        })), forms)));
         ()
     }
 }
 
 /// The modules `forms` include, each defined at the top level.
 pub fn included(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> Strings {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("include")) {
             let n = name_of(v, second(items(f)));
             if (null_p(scope_bind(n, v)) || not({
@@ -4233,55 +4233,55 @@ pub fn included(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> Strings {
         } else {
             nil::<Str>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// The names an `include` of `n` among `written` does not take (C87): an
 /// `extend`'s second module's.
 pub fn except_names(v: kayak_rt::Handle<'static, Cv>, written: Sexps, n: Str) -> Strings {
-    let incs = concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    let incs = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((n,), |(n,), f: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(f, str_lit("include")) && string_eq_p(sym_name(second(items(f))), n)) {
             include_except(f)
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         }
-    }), onto(written, concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    })), onto(written, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         }
-    }), written)))));
+    })), written)))));
     if null_p(incs) {
         nil::<Str>()
     } else {
         let x = car(incs);
         if head_is_p(x, str_lit("except-module")) {
             let b = sym_name(second(items(x)));
-            onto(map(lambda1s(move |d: kayak_rt::Handle<'static, Bind>| {
+            onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), d: kayak_rt::Handle<'static, Bind>| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Bind::Bind(k, sc, w) => {
                         k
                     }
                 }
-            }), opened_binds(b, cv_binds(v))), map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+            })), opened_binds(b, cv_binds(v))), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Alias>| {
                 let tagcase_ = a;
                 match *tagcase_ {
                     Alias::Alias(k, ps, body) => {
                         k
                     }
                 }
-            }), expressions::opened_aliases(b, cv_aliases(v))))
+            })), expressions::opened_aliases(b, cv_aliases(v))))
         } else {
-            map(&sym_name, cdr(items(x)))
+            map(kayak_rt::as_proc(sym_name), cdr(items(x)))
         }
     }
 }
 
 pub fn excepted_binds(v: kayak_rt::Handle<'static, Cv>, written: Sexps, n: Str, bs: Binds) -> Binds {
     let ex = except_names(v, written, n);
-    concat(map(lambda1s(move |d: kayak_rt::Handle<'static, Bind>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((ex,), |(ex,), d: kayak_rt::Handle<'static, Bind>| {
         let tagcase_ = d;
         match *tagcase_ {
             Bind::Bind(k, sc, w) => {
@@ -4292,7 +4292,7 @@ pub fn excepted_binds(v: kayak_rt::Handle<'static, Cv>, written: Sexps, n: Str, 
                 }
             }
         }
-    }), opened_binds(n, bs)))
+    })), opened_binds(n, bs)))
 }
 
 // Each module a module includes, with the values it gives it, found once.
@@ -4300,10 +4300,10 @@ pub enum TypedBinds {
     TypedBinds(Str, Binds),
 }
 
-impl<'a> kayak_rt::Trace<'a> for TypedBinds {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for TypedBinds {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::TypedBinds(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::TypedBinds(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -4339,7 +4339,7 @@ pub fn binds_of_include(mut n: Str, mut ibs: List<kayak_rt::Handle<'static, Type
 
 pub fn excepted_aliases(v: kayak_rt::Handle<'static, Cv>, written: Sexps, n: Str, als: Aliases) -> Aliases {
     let ex = except_names(v, written, n);
-    concat(map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((ex,), |(ex,), a: kayak_rt::Handle<'static, Alias>| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(k, ps, body) => {
@@ -4350,13 +4350,13 @@ pub fn excepted_aliases(v: kayak_rt::Handle<'static, Cv>, written: Sexps, n: Str
                 }
             }
         }
-    }), expressions::opened_aliases(n, als)))
+    })), expressions::opened_aliases(n, als)))
 }
 
 /// Module `m`'s effects, named as `m` names them: an `include` gives them
 /// the module, as a `with` gives them its body (C87, FX-26's).
 pub fn opened_effdefs(m: Str, es: Effdefs) -> Effdefs {
-    concat(map(lambda1s(move |d: kayak_rt::Handle<'static, Effdef>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((m,), |(m,), d: kayak_rt::Handle<'static, Effdef>| {
         let tagcase_ = d;
         match *tagcase_ {
             Effdef::Effdef(n, atoms) => {
@@ -4367,35 +4367,35 @@ pub fn opened_effdefs(m: Str, es: Effdefs) -> Effdefs {
                 }
             }
         }
-    }), es))
+    })), es))
 }
 
 /// The modules included not in a `hide`: their types are the module's.
 pub fn unhidden_includes(v: kayak_rt::Handle<'static, Cv>, written: Sexps) -> Strings {
-    included(v, concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    included(v, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("hide")) {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         } else {
             the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
         }
-    }), written)))
+    })), written)))
 }
 
 /// Module `n`'s types, opened, as module `m`'s: `m t`.
 pub fn renamed_aliases(n: Str, m: Str, als: Aliases) -> Aliases {
-    map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((m,), |(m,), a: kayak_rt::Handle<'static, Alias>| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(t, ps, body) => {
                 alias(string_append(m, string_append(str_lit(" "), t)), ps, body)
             }
         }
-    }), als)
+    })), als)
 }
 
 /// A module's exported types, those hidden dropped.
 pub fn without_aliases(hidden: Strings, m: Str, als: Aliases) -> Aliases {
-    concat(map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((hidden, m,), |(hidden, m,), a: kayak_rt::Handle<'static, Alias>| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(t, ps, body) => {
@@ -4406,7 +4406,7 @@ pub fn without_aliases(hidden: Strings, m: Str, als: Aliases) -> Aliases {
                 }
             }
         }
-    }), als))
+    })), als))
 }
 
 // A module's items as FX-26's `letrec*` (C85, docs/research/modules.md
@@ -4446,10 +4446,10 @@ pub enum Mitem {
     Mitem(kayak_rt::Handle<'static, Sexp>, Strings, Strings, bool),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Mitem {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Mitem {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Mitem(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Mitem(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -4478,9 +4478,9 @@ pub fn item_value(f: kayak_rt::Handle<'static, Sexp>) -> Sexps {
     } else if head_is_p(f, str_lit("define*")) {
         the::<Sexps>(kayak_rt::heap_cons(fourth(xs), kayak_rt::nil()))
     } else if head_is_p(f, str_lit("define-rec")) {
-        map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
             third(items(b))
-        }), cdr(xs))
+        })), cdr(xs))
     } else {
         nil::<kayak_rt::Handle<'static, Sexp>>()
     }
@@ -4503,16 +4503,16 @@ pub fn nset_names(s: kayak_rt::Handle<'static, Nset>) -> Strings {
 /// parameters mostly are not items' names (C363): made again at each, the
 /// set was most of what a compile made.
 pub fn nset_without(s: kayak_rt::Handle<'static, Nset>, out: Strings) -> kayak_rt::Handle<'static, Nset> {
-    if any_p(lambda1s(move |n: Str| {
+    if any_p(kayak_rt::as_proc(kayak_rt::closure1s((s,), |(s,), n: Str| {
         in_nset_p(n, s)
-    }), out) {
-        nset_of(concat(map(lambda1s(move |n: Str| {
+    })), out) {
+        nset_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((out,), |(out,), n: Str| {
             if string_member_p(n, out) {
                 nil::<Str>()
             } else {
                 the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
             }
-        }), nset_names(s))))
+        })), nset_names(s))))
     } else {
         s
     }
@@ -4547,9 +4547,9 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                 }
             }) {
                 let m = sym_name(second(xs));
-                let own = concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+                let own = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((names, bs, m,), |(names, bs, m,), g: kayak_rt::Handle<'static, Sexp>| {
                     if (module_def_p(g) && string_eq_p(sym_name(second(items(g))), m)) {
-                        onto(concat(map(&item_names, module_written(g))), concat(map(lambda1s(move |h: kayak_rt::Handle<'static, Sexp>| {
+                        onto(concat(map(kayak_rt::as_proc(item_names), module_written(g))), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((names, bs,), |(names, bs,), h: kayak_rt::Handle<'static, Sexp>| {
                             if (head_is_p(h, str_lit("include")) && {
                                 let tagcase_ = second(items(h));
                                 match *tagcase_ {
@@ -4562,29 +4562,29 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                                     }
                                 }
                             }) {
-                                filter(lambda1s(move |n: Str| {
+                                filter(kayak_rt::as_proc(kayak_rt::closure1s((bs, h,), |(bs, h,), n: Str| {
                                     not(null_p(find_bind(string_append(sym_name(second(items(h))), string_append(str_lit(" "), n)), bs)))
-                                }), nset_names(names))
+                                })), nset_names(names))
                             } else {
                                 nil::<Str>()
                             }
-                        }), module_written(g))))
+                        })), module_written(g))))
                     } else {
                         nil::<Str>()
                     }
-                }), forms));
-                let given = if (not(null_p(own)) || any_p(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+                })), forms));
+                let given = if (not(null_p(own)) || any_p(kayak_rt::as_proc(kayak_rt::closure1s((m,), |(m,), g: kayak_rt::Handle<'static, Sexp>| {
                     (module_def_p(g) && string_eq_p(sym_name(second(items(g))), m))
-                }), forms)) {
+                })), forms)) {
                     own
-                } else if any_p(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+                } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((m,), |(m,), g: kayak_rt::Handle<'static, Sexp>| {
                     (not(module_def_p(g)) && not(null_p(item_value(g))) && string_member_p(m, item_names(g)))
-                }), forms) {
+                })), forms) {
                     nset_names(names)
                 } else {
-                    filter(lambda1s(move |n: Str| {
+                    filter(kayak_rt::as_proc(kayak_rt::closure1s((bs, m,), |(bs, m,), n: Str| {
                         not(null_p(find_bind(string_append(m, string_append(str_lit(" "), n)), bs)))
-                    }), nset_names(names))
+                    })), nset_names(names))
                 };
                 let inner = if null_p(given) {
                     names
@@ -4595,9 +4595,9 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                     the::<Strings>(kayak_rt::heap_cons(m, kayak_rt::nil()))
                 } else {
                     nil::<Str>()
-                }, concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                }, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((forms, bs, inner,), |(forms, bs, inner,), x: kayak_rt::Handle<'static, Sexp>| {
                     refs_in(x, inner, forms, bs)
-                }), cdr(cdr(xs)))))
+                })), cdr(cdr(xs)))))
             } else {
                 if (head_is_p(e, str_lit("quote")) && i64_eq(size(xs), 2i64)) {
                     // A quoted datum names nothing (C429).
@@ -4605,7 +4605,7 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                 } else if ((head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) && not(null_p(cdr(xs)))) {
                     // A module a local `let` binds (C288): known to a `with` of it in
                     // the body, as an item's is, so its names are its own.
-                    let mods = concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+                    let mods = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                         let tagcase_ = b;
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -4620,7 +4620,7 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                                 nil::<kayak_rt::Handle<'static, Sexp>>()
                             }
                         }
-                    }), {
+                    })), {
                         let tagcase_ = second(xs);
                         match *tagcase_ {
                             Sexp::Lst(ys, f2, l2, p2) => {
@@ -4632,9 +4632,9 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                             }
                         }
                     }));
-                    concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((names, forms, bs, mods,), |(names, forms, bs, mods,), x: kayak_rt::Handle<'static, Sexp>| {
                         refs_in(x, names, onto(mods, forms), bs)
-                    }), cdr(xs)))
+                    })), cdr(xs)))
                 } else if ((head_is_p(e, str_lit("lambda")) || head_is_p(e, str_lit("letrec"))) && not(null_p(cdr(xs)))) {
                     // A name a `lambda` or a `letrec` binds is its own, not an item's,
                     // where it is bound (C315; Fixpt's free variables: `stage/
@@ -4651,7 +4651,7 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                             }
                         }
                     };
-                    let bound = concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+                    let bound = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                         let tagcase_ = b;
                         match *tagcase_ {
                             Sexp::Sym(n, f2, p2) => {
@@ -4678,20 +4678,20 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                                 nil::<Str>()
                             }
                         }
-                    }), binders));
+                    })), binders));
                     let inner = if null_p(bound) {
                         names
                     } else {
                         nset_without(names, bound)
                     };
                     if head_is_p(e, str_lit("lambda")) {
-                        concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((forms, bs, inner,), |(forms, bs, inner,), x: kayak_rt::Handle<'static, Sexp>| {
                             refs_in(x, inner, forms, bs)
-                        }), cdr(cdr(xs))))
+                        })), cdr(cdr(xs))))
                     } else {
-                        concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((forms, bs, inner,), |(forms, bs, inner,), x: kayak_rt::Handle<'static, Sexp>| {
                             refs_in(x, inner, forms, bs)
-                        }), onto(concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+                        })), onto(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                             let tagcase_ = b;
                             match *tagcase_ {
                                 Sexp::Lst(ys, f2, l2, p2) => {
@@ -4702,23 +4702,23 @@ pub fn refs_in(e: kayak_rt::Handle<'static, Sexp>, names: kayak_rt::Handle<'stat
                                     nil::<kayak_rt::Handle<'static, Sexp>>()
                                 }
                             }
-                        }), binders)), cdr(cdr(xs)))))
+                        })), binders)), cdr(cdr(xs)))))
                     }
                 } else if head_is_p(e, str_lit("module")) {
                     // A module made here: its items' own names are its, not the outer
                     // items' (C288).
-                    let own = concat(map(&item_names, cdr(xs)));
-                    concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                    let own = concat(map(kayak_rt::as_proc(item_names), cdr(xs)));
+                    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((names, forms, bs, own,), |(names, forms, bs, own,), x: kayak_rt::Handle<'static, Sexp>| {
                         refs_in(x, if null_p(own) {
                             names
                         } else {
                             nset_without(names, own)
                         }, forms, bs)
-                    }), cdr(xs)))
+                    })), cdr(xs)))
                 } else {
-                    concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((names, forms, bs,), |(names, forms, bs,), x: kayak_rt::Handle<'static, Sexp>| {
                         refs_in(x, names, forms, bs)
-                    }), xs))
+                    })), xs))
                 }
             }
         }
@@ -4739,40 +4739,40 @@ pub fn standard_scope(v: kayak_rt::Handle<'static, Cv>, sees: Strings) -> kayak_
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-            let of = lambda1s(move |n: Str| {
-                (has_prefix_p(n, str_lit("made--load--")) || any_p(lambda1s(move |m: Str| {
+            let of = kayak_rt::closure1s((sees,), |(sees,), n: Str| {
+                (has_prefix_p(n, str_lit("made--load--")) || any_p(kayak_rt::as_proc(kayak_rt::closure1s((n,), |(n,), m: Str| {
                     (string_eq_p(n, m) || has_prefix_p(n, string_append(m, str_lit(" "))) || has_prefix_p(n, string_append(m, str_lit(".."))))
-                }), sees))
+                })), sees))
             });
-            let bare = cv_reindexed(cv(filter(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
+            let bare = cv_reindexed(cv(filter(kayak_rt::as_proc(kayak_rt::closure1s((of,), |(of,), b: kayak_rt::Handle<'static, Bind>| {
                 let tagcase_ = b;
                 match *tagcase_ {
                     Bind::Bind(n, sc, w) => {
-                        of(n)
+                        of.call(n)
                     }
                 }
-            }), bs), filter(lambda1s(move |d: kayak_rt::Handle<'static, Dt>| {
+            })), bs), filter(kayak_rt::as_proc(kayak_rt::closure1s((of,), |(of,), d: kayak_rt::Handle<'static, Dt>| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Dt::Dt(n, ps, vs) => {
-                        of(n)
+                        of.call(n)
                     }
                 }
-            }), ds), filter(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+            })), ds), filter(kayak_rt::as_proc(kayak_rt::closure1s((of,), |(of,), a: kayak_rt::Handle<'static, Alias>| {
                 let tagcase_ = a;
                 match *tagcase_ {
                     Alias::Alias(n, ps, b) => {
-                        of(n)
+                        of.call(n)
                     }
                 }
-            }), als), filter(lambda1s(move |e: kayak_rt::Handle<'static, Effdef>| {
+            })), als), filter(kayak_rt::as_proc(kayak_rt::closure1s((of,), |(of,), e: kayak_rt::Handle<'static, Effdef>| {
                 let tagcase_ = e;
                 match *tagcase_ {
                     Effdef::Effdef(n, xs) => {
-                        of(n)
+                        of.call(n)
                     }
                 }
-            }), es), here, group, file, line, fs, tv, at, bempty(), nil::<kayak_rt::Handle<'static, Bind>>()));
+            })), es), here, group, file, line, fs, tv, at, bempty(), nil::<kayak_rt::Handle<'static, Bind>>()));
             with_binds(bare, kayak_rt::heap_cons(bind(str_lit("%loaded"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), onto(if string_member_p(str_lit("%instance"), sees) {
                 the::<Binds>(kayak_rt::heap_cons(bind(str_lit("%instance"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::nil()))
             } else {
@@ -4785,50 +4785,50 @@ pub fn standard_scope(v: kayak_rt::Handle<'static, Cv>, sees: Strings) -> kayak_
 /// The value items: each its form, its names, the items it names, and
 /// whether it is procedures (made, not run, when its item is).
 pub fn letrec_items(forms: Sexps, bs: Binds) -> Mitems {
-    let values = concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    let values = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if null_p(item_value(f)) {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         } else {
             the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
         }
-    }), forms));
-    let names = concat(map(&item_names, values));
+    })), forms));
+    let names = concat(map(kayak_rt::as_proc(item_names), values));
     let all = nset_of(names);
-    map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((forms, bs, names, all,), |(forms, bs, names, all,), f: kayak_rt::Handle<'static, Sexp>| {
         mitem(f, item_names(f), {
             let own = if module_def_p(f) {
-                concat(map(&item_names, unhidden(module_written(f))))
+                concat(map(kayak_rt::as_proc(item_names), unhidden(module_written(f))))
             } else {
                 nil::<Str>()
             };
             let set = if null_p(own) {
                 all
             } else {
-                nset_of(concat(map(lambda1s(move |n: Str| {
+                nset_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((own,), |(own,), n: Str| {
                     if string_member_p(n, own) {
                         nil::<Str>()
                     } else {
                         the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                     }
-                }), names)))
+                })), names)))
             };
-            concat(map(lambda1s(move |e: kayak_rt::Handle<'static, Sexp>| {
+            concat(map(kayak_rt::as_proc(kayak_rt::closure1s((forms, bs, set,), |(forms, bs, set,), e: kayak_rt::Handle<'static, Sexp>| {
                 refs_in(e, set, forms, bs)
-            }), item_value(f)))
-        }, ((head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || i64_eq(size(items(f)), 4i64)) && not(any_p(lambda1s(move |e: kayak_rt::Handle<'static, Sexp>| {
+            })), item_value(f)))
+        }, ((head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || i64_eq(size(items(f)), 4i64)) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), e: kayak_rt::Handle<'static, Sexp>| {
             not(lambda_form_p(e))
-        }), item_value(f)))))
-    }), values)
+        })), item_value(f)))))
+    })), values)
 }
 
 pub enum Reached {
     Reached(Str, Strings),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Reached {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Reached {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Reached(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Reached(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -4868,11 +4868,11 @@ pub enum Itree {
     Inode(kayak_rt::Handle<'static, Itree>, Str, kayak_rt::Handle<'static, Mitem>, kayak_rt::Handle<'static, Itree>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Itree {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Itree {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
             Self::Ileaf() => { }
-            Self::Inode(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
+            Self::Inode(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
         }
     }
 }
@@ -4889,10 +4889,10 @@ pub enum NamedItem {
     NamedItem(Str, kayak_rt::Handle<'static, Mitem>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for NamedItem {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for NamedItem {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::NamedItem(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::NamedItem(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -4973,16 +4973,16 @@ pub fn named_merged(a: List<kayak_rt::Handle<'static, NamedItem>>, b: List<kayak
 }
 
 pub fn itree_of(its: Mitems) -> kayak_rt::Handle<'static, Itree> {
-    let pairs = named_sorted(concat(map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+    let pairs = named_sorted(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), it: kayak_rt::Handle<'static, Mitem>| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
-                map(lambda1s(move |n: Str| {
+                map(kayak_rt::as_proc(kayak_rt::closure1s((it,), |(it,), n: Str| {
                     named_item(n, it)
-                }), ns)
+                })), ns)
             }
         }
-    }), its)));
+    })), its)));
     itree_built(pairs, size(pairs))
 }
 
@@ -5081,28 +5081,28 @@ pub fn index_in(mut n: Str, mut ns: Strings, mut i: i64) -> i64 {
 /// FX-26's rule: a value that is no procedure is made when its item is,
 /// so every item it reaches through procedures must be made before it.
 pub fn made_before(v: kayak_rt::Handle<'static, Cv>, its: Mitems, t: kayak_rt::Handle<'static, Itree>) -> () {
-    let order = concat(map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+    let order = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), it: kayak_rt::Handle<'static, Mitem>| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
                 ns
             }
         }
-    }), its));
-    map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+    })), its));
+    map(kayak_rt::as_proc(kayak_rt::closure1s((v, t, order,), |(v, t, order,), it: kayak_rt::Handle<'static, Mitem>| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
                 if l {
                     ()
                 } else {
-                    let late = concat(map(lambda1s(move |n: Str| {
+                    let late = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((order, ns,), |(order, ns,), n: Str| {
                         if i64_gt_eq(index_in(n, order, 0i64), index_in(car(ns), order, 0i64)) {
                             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                         } else {
                             nil::<Str>()
                         }
-                    }), reach(rs, t, nil::<Str>(), true)));
+                    })), reach(rs, t, nil::<Str>(), true)));
                     if null_p(late) {
                         ()
                     } else {
@@ -5111,7 +5111,7 @@ pub fn made_before(v: kayak_rt::Handle<'static, Cv>, its: Mitems, t: kayak_rt::H
                 }
             }
         }
-    }), its);
+    })), its);
     ()
 }
 
@@ -5133,7 +5133,7 @@ pub fn components(todo: Mitems, its: Mitems, rs: List<kayak_rt::Handle<'static, 
             }
         };
         let mine = reached_of(n, rs);
-        let same = concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Mitem>| {
+        let same = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((rs, n, mine,), |(rs, n, mine,), x: kayak_rt::Handle<'static, Mitem>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs2, l) => {
@@ -5144,47 +5144,47 @@ pub fn components(todo: Mitems, its: Mitems, rs: List<kayak_rt::Handle<'static, 
                     }
                 }
             }
-        }), its));
-        let rest = concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Mitem>| {
+        })), its));
+        let rest = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((same,), |(same,), x: kayak_rt::Handle<'static, Mitem>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs2, l) => {
-                    if any_p(lambda1s(move |y: kayak_rt::Handle<'static, Mitem>| {
+                    if any_p(kayak_rt::as_proc(kayak_rt::closure1s((ns,), |(ns,), y: kayak_rt::Handle<'static, Mitem>| {
                         let tagcase_ = y;
                         match *tagcase_ {
                             Mitem::Mitem(g, ms, qs, k) => {
                                 string_eq_p(car(ms), car(ns))
                             }
                         }
-                    }), same) {
+                    })), same) {
                         nil::<kayak_rt::Handle<'static, Mitem>>()
                     } else {
                         the::<Mitems>(kayak_rt::heap_cons(x, kayak_rt::nil()))
                     }
                 }
             }
-        }), todo));
-        let deps = concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Mitem>| {
+        })), todo));
+        let deps = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((mine, same,), |(mine, same,), x: kayak_rt::Handle<'static, Mitem>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs2, l) => {
-                    if (string_member_p(car(ns), mine) && not(any_p(lambda1s(move |y: kayak_rt::Handle<'static, Mitem>| {
+                    if (string_member_p(car(ns), mine) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((ns,), |(ns,), y: kayak_rt::Handle<'static, Mitem>| {
                         let tagcase_ = y;
                         match *tagcase_ {
                             Mitem::Mitem(g, ms, qs, k) => {
                                 string_eq_p(car(ms), car(ns))
                             }
                         }
-                    }), same))) {
+                    })), same))) {
                         the::<Mitems>(kayak_rt::heap_cons(x, kayak_rt::nil()))
                     } else {
                         nil::<kayak_rt::Handle<'static, Mitem>>()
                     }
                 }
             }
-        }), rest));
-        let later = concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Mitem>| {
-            if any_p(lambda1s(move |y: kayak_rt::Handle<'static, Mitem>| {
+        })), rest));
+        let later = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((deps,), |(deps,), x: kayak_rt::Handle<'static, Mitem>| {
+            if any_p(kayak_rt::as_proc(kayak_rt::closure1s((x,), |(x,), y: kayak_rt::Handle<'static, Mitem>| {
                 let tagcase_ = y;
                 match *tagcase_ {
                     Mitem::Mitem(g, ms, qs, k) => {
@@ -5196,12 +5196,12 @@ pub fn components(todo: Mitems, its: Mitems, rs: List<kayak_rt::Handle<'static, 
                         }
                     }
                 }
-            }), deps) {
+            })), deps) {
                 nil::<kayak_rt::Handle<'static, Mitem>>()
             } else {
                 the::<Mitems>(kayak_rt::heap_cons(x, kayak_rt::nil()))
             }
-        }), rest));
+        })), rest));
         onto(components(deps, its, rs), kayak_rt::heap_cons(same, components(later, its, rs)))
     }
 }
@@ -5212,14 +5212,14 @@ pub fn rec_of(members: Sexps) -> Sexps {
     let tagcase_ = car(members);
     match *tagcase_ {
         Sexp::Lst(xs, file, line, pos) => {
-            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define-rec"), file, pos), concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define-rec"), file, pos), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((line,), |(line,), g: kayak_rt::Handle<'static, Sexp>| {
                 if head_is_p(g, str_lit("define-rec")) {
                     cdr(items(g))
                 } else {
                     let ys = items(g);
                     the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(car(item_value(g)), kayak_rt::nil()))), datum_file(g), line, datum_pos(g)), kayak_rt::nil()))
                 }
-            }), members))), file, line, pos), kayak_rt::nil()))
+            })), members))), file, line, pos), kayak_rt::nil()))
         }
         _ => {
             let other = tagcase_;
@@ -5234,9 +5234,9 @@ pub fn alone_p(group: Mitems) -> bool {
         let tagcase_ = car(group);
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
-                (not(l) || head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || not(any_p(lambda1s(move |r: Str| {
+                (not(l) || head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((ns,), |(ns,), r: Str| {
                     string_member_p(r, ns)
-                }), rs)))
+                })), rs)))
             }
         }
     })
@@ -5254,31 +5254,31 @@ pub fn as_group(v: kayak_rt::Handle<'static, Cv>, group: Mitems) -> Sexps {
                 }
             }
         }, kayak_rt::nil()))
-    } else if any_p(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+    } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), it: kayak_rt::Handle<'static, Mitem>| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
                 (not(l) || head_is_p(f, str_lit("define*")))
             }
         }
-    }), group) {
-        match refuse(v, string_append(str_lit("items that reach one another, not each a typed lambda: "), words_of(concat(map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+    })), group) {
+        match refuse(v, string_append(str_lit("items that reach one another, not each a typed lambda: "), words_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), it: kayak_rt::Handle<'static, Mitem>| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
                     ns
                 }
             }
-        }), group))))) {}
+        })), group))))) {}
     } else {
-        rec_of(map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+        rec_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), it: kayak_rt::Handle<'static, Mitem>| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
                     f
                 }
             }
-        }), group))
+        })), group))
     }
 }
 
@@ -5311,10 +5311,10 @@ pub enum Ordered {
     Ordered(Sexps, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Ordered {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Ordered {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Ordered(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Ordered(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -5340,9 +5340,9 @@ pub fn selected_value(forms: Sexps, f: kayak_rt::Handle<'static, Sexp>) -> Strin
         }
     }) {
         let r = sym_name(second(items(third(items(f)))));
-        if any_p(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+        if any_p(kayak_rt::as_proc(kayak_rt::closure1s((r,), |(r,), g: kayak_rt::Handle<'static, Sexp>| {
             (not(null_p(item_value(g))) && not(module_def_p(g)) && string_member_p(r, item_value_names(g)))
-        }), forms) {
+        })), forms) {
             the::<Strings>(kayak_rt::heap_cons(r, kayak_rt::nil()))
         } else {
             nil::<Str>()
@@ -5356,23 +5356,23 @@ pub fn selected_value(forms: Sexps, f: kayak_rt::Handle<'static, Sexp>) -> Strin
 /// but a type or an effect selected from a value it makes, after that
 /// value (`selected-after`).
 pub fn first_checked(forms: Sexps) -> Sexps {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((forms,), |(forms,), f: kayak_rt::Handle<'static, Sexp>| {
         if ((null_p(item_value(f)) || module_def_p(f)) && null_p(selected_value(forms, f))) {
             the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// The items among `forms` that select a type or an effect from a value
 /// `members` define, as written (C203).
 pub fn selected_after(forms: Sexps, members: Sexps) -> Sexps {
-    let names = concat(map(&item_value_names, members));
-    filter(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    let names = concat(map(kayak_rt::as_proc(item_value_names), members));
+    filter(kayak_rt::as_proc(kayak_rt::closure1s((forms, names,), |(forms, names,), f: kayak_rt::Handle<'static, Sexp>| {
         let r = selected_value(forms, f);
         (not(null_p(r)) && string_member_p(car(r), names))
-    }), forms)
+    })), forms)
 }
 
 /// A module's items in the order KFX checks them: its types and modules
@@ -5382,7 +5382,7 @@ pub fn selected_after(forms: Sexps, members: Sexps) -> Sexps {
 pub fn module_order_coded(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> kayak_rt::Handle<'static, Ordered> {
     let its = letrec_items(forms, cv_binds(v));
     let t = itree_of(its);
-    let values = concat(map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+    let values = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), it: kayak_rt::Handle<'static, Mitem>| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
@@ -5393,41 +5393,41 @@ pub fn module_order_coded(v: kayak_rt::Handle<'static, Cv>, forms: Sexps) -> kay
                 }
             }
         }
-    }), its));
+    })), its));
     let groups = {
         made_before(v, its, t);
-        components(values, its, map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+        components(values, its, map(kayak_rt::as_proc(kayak_rt::closure1s((t,), |(t,), it: kayak_rt::Handle<'static, Mitem>| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
                     reached(car(ns), reach(kayak_rt::heap_cons(car(ns), kayak_rt::nil()), t, nil::<Str>(), false))
                 }
             }
-        }), its))
+        })), its))
     };
-    ordered(onto(first_checked(forms), concat(map(lambda1s(move |g: Mitems| {
-        onto(as_group(v, g), selected_after(forms, map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+    ordered(onto(first_checked(forms), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, forms,), |(v, forms,), g: Mitems| {
+        onto(as_group(v, g), selected_after(forms, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), it: kayak_rt::Handle<'static, Mitem>| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
                     f
                 }
             }
-        }), g)))
-    }), groups))), words_of(map(lambda1s(move |g: Mitems| {
+        })), g)))
+    })), groups))), words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((forms,), |(forms,), g: Mitems| {
         string_append(if alone_p(g) {
             str_lit("(s ")
         } else {
             str_lit("(r ")
-        }, string_append(words_of(map(lambda1s(move |it: kayak_rt::Handle<'static, Mitem>| {
+        }, string_append(words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((forms,), |(forms,), it: kayak_rt::Handle<'static, Mitem>| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
                     i64_to_string(i64_minus(datum_pos(f), first_position(forms)))
                 }
             }
-        }), g)), str_lit(")")))
-    }), groups)))
+        })), g)), str_lit(")")))
+    })), groups)))
 }
 
 #[inline]
@@ -5455,8 +5455,8 @@ pub fn form_at(mut p: i64, mut forms: Sexps) -> Sexps {
 
 /// An order kept (`module-order-coded`'s code), made again.
 pub fn order_from_code(forms: Sexps, code: Str) -> Sexps {
-    onto(first_checked(forms), concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
-        let members = concat(map(lambda1s(move |p: kayak_rt::Handle<'static, Sexp>| {
+    onto(first_checked(forms), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((forms,), |(forms,), g: kayak_rt::Handle<'static, Sexp>| {
+        let members = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((forms,), |(forms,), p: kayak_rt::Handle<'static, Sexp>| {
             form_at({
                 let tagcase_ = p;
                 match *tagcase_ {
@@ -5469,13 +5469,13 @@ pub fn order_from_code(forms: Sexps, code: Str) -> Sexps {
                     }
                 }
             }, forms)
-        }), cdr(items(g))));
+        })), cdr(items(g))));
         onto(if head_is_p(g, str_lit("s")) {
             members
         } else {
             rec_of(members)
         }, selected_after(forms, members))
-    }), read_all(code, str_lit(""), 1i64))))
+    })), read_all(code, str_lit(""), 1i64))))
 }
 
 // A module checked (C91): its scope made (`module-prep`), its items checked
@@ -5485,10 +5485,10 @@ pub enum Mprep {
     Mprep(kayak_rt::Handle<'static, Cv>, kayak_rt::Handle<'static, Cv>, kayak_rt::Handle<'static, Cv>, Str, kayak_rt::Handle<'static, Bind>, Sexps, bool, Sexps, Strings, Strings, Strings, Binds),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Mprep {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Mprep {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Mprep(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); kayak_rt::Trace::trace(f5, t); kayak_rt::Trace::trace(f6, t); kayak_rt::Trace::trace(f7, t); kayak_rt::Trace::trace(f8, t); kayak_rt::Trace::trace(f9, t); kayak_rt::Trace::trace(f10, t); kayak_rt::Trace::trace(f11, t); }
+            Self::Mprep(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); kayak_rt::Trace::trace(*f8, t); kayak_rt::Trace::trace(*f9, t); kayak_rt::Trace::trace(*f10, t); kayak_rt::Trace::trace(*f11, t); }
         }
     }
 }
@@ -5574,42 +5574,42 @@ pub fn module_prep(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'sta
     let loaded = (not(null_p(written)) && head_is_p(car(written), str_lit("%loaded")));
     let outer = v;
     let v = if loaded {
-        standard_scope(v, map(&sym_name, cdr(cdr(items(car(written))))))
+        standard_scope(v, map(kayak_rt::as_proc(sym_name), cdr(cdr(items(car(written))))))
     } else {
         v
     };
     let forms = unhidden(written);
     let escapes = hidden_escapes(v, written);
     let hidden_types = hidden_type_names(written);
-    let all_includes = onto(included(v, forms), included(v, concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    let all_includes = onto(included(v, forms), included(v, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         }
-    }), written))));
-    let include_binds = map(lambda1s(move |n: Str| {
+    })), written))));
+    let include_binds = map(kayak_rt::as_proc(kayak_rt::closure1s((written, v,), |(written, v,), n: Str| {
         typed_binds(n, excepted_binds(v, written, n, cv_binds(v)))
-    }), all_includes);
-    let hidden = onto(hidden_value_names(written), map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
+    })), all_includes);
+    let hidden = onto(hidden_value_names(written), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Bind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
                 n
             }
         }
-    }), concat(map(lambda1s(move |n: Str| {
+    })), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((include_binds,), |(include_binds,), n: Str| {
         binds_of_include(n, include_binds)
-    }), included(v, concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    })), included(v, concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         }
-    }), written)))))));
+    })), written)))))));
     let includes = included(v, forms);
     let names = module_types(v, forms);
-    let given_values = onto(concat(map(&item_value_names, forms)), concat(map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
+    let given_values = onto(concat(map(kayak_rt::as_proc(item_value_names), forms)), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Bind>| {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
@@ -5620,28 +5620,28 @@ pub fn module_prep(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'sta
                 }
             }
         }
-    }), concat(map(lambda1s(move |n: Str| {
+    })), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((include_binds,), |(include_binds,), n: Str| {
         binds_of_include(n, include_binds)
-    }), includes)))));
-    let given_types = concat(map(&item_type_names, forms));
-    let included_aliases = map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+    })), includes)))));
+    let given_types = concat(map(kayak_rt::as_proc(item_type_names), forms));
+    let included_aliases = map(kayak_rt::as_proc(kayak_rt::closure1s((v,), |(v,), a: kayak_rt::Handle<'static, Alias>| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(n, ps, body) => {
                 alias(n, ps, resolved_alias(body, cv_aliases(v)))
             }
         }
-    }), concat(map(lambda1s(move |n: Str| {
+    })), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((written, v,), |(written, v,), n: Str| {
         excepted_aliases(v, written, n, cv_aliases(v))
-    }), includes)));
-    let all_types = onto(given_types, map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+    })), includes)));
+    let all_types = onto(given_types, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Alias>| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(n, ps, b) => {
                 n
             }
         }
-    }), distinct_aliases(included_aliases)));
+    })), distinct_aliases(included_aliases)));
     let v = if (repeated_p(given_values) || repeated_p(all_types)) {
         match refuse(v, string_append(str_lit("a name defined twice in this module, its own or included: "), if repeated_p(given_values) {
             first_repeated(given_values)
@@ -5655,13 +5655,13 @@ pub fn module_prep(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'sta
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                cv_reindexed(cv(bind_onto(reverse(concat(map(lambda1s(move |n: Str| {
+                cv_reindexed(cv(bind_onto(reverse(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((include_binds,), |(include_binds,), n: Str| {
                     binds_of_include(n, include_binds)
-                }), includes))), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(lambda1s(move |n: Str| {
+                })), includes))), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((written, v, als,), |(written, v, als,), n: Str| {
                     excepted_aliases(v, written, n, als)
-                }), includes)), als)), onto(concat(map(lambda1s(move |n: Str| {
+                })), includes)), als)), onto(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((es,), |(es,), n: Str| {
                     opened_effdefs(n, es)
-                }), includes)), es), here, group, file, line, fs, tv, at, bempty(), nil::<kayak_rt::Handle<'static, Bind>>()))
+                })), includes)), es), here, group, file, line, fs, tv, at, bempty(), nil::<kayak_rt::Handle<'static, Bind>>()))
             }
         }
     };
@@ -5676,12 +5676,12 @@ pub fn module_prep(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'sta
         }
     };
     let conversions = module_conversions(typed, m, forms);
-    let inner = defined_once(typed, onto(conversions, concat(map(&constructors, datatypes))));
+    let inner = defined_once(typed, onto(conversions, concat(map(kayak_rt::as_proc(constructors), datatypes))));
     mprep(outer, v, inner, m, made, written, loaded, forms, hidden, hidden_types, names, conversions)
 }
 
 pub fn nested_modules(forms: Sexps) -> Strings {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         if module_def_p(f) {
             let tagcase_ = second(items(f));
             match *tagcase_ {
@@ -5696,15 +5696,15 @@ pub fn nested_modules(forms: Sexps) -> Strings {
         } else {
             nil::<Str>()
         }
-    }), forms))
+    })), forms))
 }
 
 /// The types module `m`'s modules give, `n t`, given on as `m n t`, as
 /// their values are (C203: a loaded file's instance re-exported,
 /// `load-layers.fx`).
 pub fn nested_aliases(m: Str, forms: Sexps, als: Aliases) -> Aliases {
-    concat(map(lambda1s(move |n: Str| {
-        concat(map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((m, als,), |(m, als,), n: Str| {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((m, n,), |(m, n,), a: kayak_rt::Handle<'static, Alias>| {
             let tagcase_ = a;
             match *tagcase_ {
                 Alias::Alias(k, ps, body) => {
@@ -5715,14 +5715,14 @@ pub fn nested_aliases(m: Str, forms: Sexps, als: Aliases) -> Aliases {
                     }
                 }
             }
-        }), als))
-    }), nested_modules(forms)))
+        })), als))
+    })), nested_modules(forms)))
 }
 
 /// The effects module `m`'s modules give, `n e`, given on as `m n e`.
 pub fn nested_effdefs(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
-    concat(map(lambda1s(move |n: Str| {
-        concat(map(lambda1s(move |d: kayak_rt::Handle<'static, Effdef>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((m, es,), |(m, es,), n: Str| {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((m, n,), |(m, n,), d: kayak_rt::Handle<'static, Effdef>| {
             let tagcase_ = d;
             match *tagcase_ {
                 Effdef::Effdef(k, atoms) => {
@@ -5733,8 +5733,8 @@ pub fn nested_effdefs(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
                     }
                 }
             }
-        }), es))
-    }), nested_modules(forms)))
+        })), es))
+    })), nested_modules(forms)))
 }
 
 pub fn module_finish(p: kayak_rt::Handle<'static, Mprep>, checked: kayak_rt::Handle<'static, Elab>) -> kayak_rt::Handle<'static, Elab> {
@@ -5747,29 +5747,29 @@ pub fn module_finish(p: kayak_rt::Handle<'static, Mprep>, checked: kayak_rt::Han
                     let tagcase_ = done;
                     match *tagcase_ {
                         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                            elab(cv_reindexed(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1s(move |b: kayak_rt::Handle<'static, Bind>| {
+                            elab(cv_reindexed(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Bind>| {
                                 let tagcase_ = b;
                                 match *tagcase_ {
                                     Bind::Bind(n, sc, w) => {
                                         n
                                     }
                                 }
-                            }), conversions)), items_kept_in(v, bs)), cv_binds(outer))), if loaded {
+                            })), conversions)), items_kept_in(v, bs)), cv_binds(outer))), if loaded {
                                 onto(ds, cv_dts(outer))
                             } else {
                                 ds
-                            }, onto(without_aliases(hidden_types, m, module_aliases(v, m, names, forms, false)), onto(concat(map(lambda1s(move |n: Str| {
+                            }, onto(without_aliases(hidden_types, m, module_aliases(v, m, names, forms, false)), onto(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((v, m, written, als,), |(v, m, written, als,), n: Str| {
                                 renamed_aliases(n, m, excepted_aliases(v, written, n, als))
-                            }), unhidden_includes(v, written))), onto(nested_aliases(m, forms, als), cv_aliases(outer)))), onto(onto(module_effects(m, forms, es), nested_effdefs(m, forms, es)), onto(concat(map(lambda1s(move |n: Str| {
-                                map(lambda1s(move |d: kayak_rt::Handle<'static, Effdef>| {
+                            })), unhidden_includes(v, written))), onto(nested_aliases(m, forms, als), cv_aliases(outer)))), onto(onto(module_effects(m, forms, es), nested_effdefs(m, forms, es)), onto(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((m, es,), |(m, es,), n: Str| {
+                                map(kayak_rt::as_proc(kayak_rt::closure1s((m,), |(m,), d: kayak_rt::Handle<'static, Effdef>| {
                                     let tagcase_ = d;
                                     match *tagcase_ {
                                         Effdef::Effdef(k, atoms) => {
                                             effdef(string_append(m, string_append(str_lit(" "), k)), atoms)
                                         }
                                     }
-                                }), opened_effdefs(n, es))
-                            }), unhidden_includes(v, written))), cv_effdefs(outer))), here, group, file, line, fs, tv, at, bempty(), nil::<kayak_rt::Handle<'static, Bind>>())), found)
+                                })), opened_effdefs(n, es))
+                            })), unhidden_includes(v, written))), cv_effdefs(outer))), here, group, file, line, fs, tv, at, bempty(), nil::<kayak_rt::Handle<'static, Bind>>())), found)
                         }
                     }
                 }
@@ -5808,14 +5808,14 @@ pub fn check_item(v: kayak_rt::Handle<'static, Cv>, m: Str, form: kayak_rt::Hand
                 let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), form);
                 match *tagcase_ {
                     Elab::Elab(v2, more) => {
-                        elab(at(v2, str_lit(""), nil::<Str>()), map(lambda1s(move |x: kayak_rt::Handle<'static, Typed>| {
+                        elab(at(v2, str_lit(""), nil::<Str>()), map(kayak_rt::as_proc(kayak_rt::closure1s((m,), |(m,), x: kayak_rt::Handle<'static, Typed>| {
                             let tagcase_ = x;
                             match *tagcase_ {
                                 Typed::Typed(n, t) => {
                                     typed(string_append(m, string_append(str_lit(" "), n)), t)
                                 }
                             }
-                        }), more))
+                        })), more))
                     }
                 }
             }
@@ -5849,11 +5849,11 @@ pub fn check_items(mut v: kayak_rt::Handle<'static, Cv>, mut m: Str, mut forms: 
 pub fn check_module(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Elab> {
     let p = module_prep(v, form);
     let stars = star_items(prep_forms(p));
-    if any_p(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
-        (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(lambda_form_p(fourth(items(f)))) && any_p(lambda1s(move |n: Str| {
+    if any_p(kayak_rt::as_proc(kayak_rt::closure1s((stars,), |(stars,), f: kayak_rt::Handle<'static, Sexp>| {
+        (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(lambda_form_p(fourth(items(f)))) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((stars,), |(stars,), n: Str| {
             string_member_p(n, stars)
-        }), names_named_onto(fourth(items(f)), nil::<Str>())))
-    }), prep_forms(p)) {
+        })), names_named_onto(fourth(items(f)), nil::<Str>())))
+    })), prep_forms(p)) {
         match refuse(v, str_lit("a module's value names a `->*` procedure of the module, whose effect is found only after the module's values are made (Fixpt's)")) {}
     } else {
         module_finish(p, check_items(prep_inner(p), prep_name(p), module_order(prep_inner(p), prep_forms(p)), nil::<kayak_rt::Handle<'static, Typed>>()))
@@ -5920,10 +5920,10 @@ pub enum Verdict {
     Verdict(Typeds, Facts),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Verdict {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Verdict {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Verdict(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Verdict(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -5999,10 +5999,10 @@ pub enum Filed {
     Filed(Str, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Filed {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Filed {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Filed(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Filed(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -6120,9 +6120,9 @@ pub fn load_paths(e: kayak_rt::Handle<'static, Sexp>, dir: Str) -> Strings {
                     }
                 }
             } else {
-                concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                concat(map(kayak_rt::as_proc(kayak_rt::closure1s((dir,), |(dir,), x: kayak_rt::Handle<'static, Sexp>| {
                     load_paths(x, dir)
-                }), xs))
+                })), xs))
             }
         }
         _ => {
@@ -6138,7 +6138,7 @@ pub fn loads_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            (head_is_p(e, str_lit("load-module")) || head_is_p(e, str_lit("load-input")) || head_is_p(e, str_lit("load-moduleof")) || any_p(&loads_p, xs))
+            (head_is_p(e, str_lit("load-module")) || head_is_p(e, str_lit("load-input")) || head_is_p(e, str_lit("load-moduleof")) || any_p(kayak_rt::as_proc(loads_p), xs))
         }
         _ => {
             let other = tagcase_;
@@ -6149,9 +6149,9 @@ pub fn loads_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
 
 #[inline]
 pub fn load_paths_all(forms: Sexps, dir: Str) -> Strings {
-    concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((dir,), |(dir,), f: kayak_rt::Handle<'static, Sexp>| {
         load_paths(f, dir)
-    }), forms))
+    })), forms))
 }
 
 pub fn renamed(e: kayak_rt::Handle<'static, Sexp>, from: Str, to: Str) -> kayak_rt::Handle<'static, Sexp> {
@@ -6165,9 +6165,9 @@ pub fn renamed(e: kayak_rt::Handle<'static, Sexp>, from: Str, to: Str) -> kayak_
             }
         }
         Sexp::Lst(xs, f, l, p) => {
-            lst(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+            lst(map(kayak_rt::as_proc(kayak_rt::closure1s((from, to,), |(from, to,), x: kayak_rt::Handle<'static, Sexp>| {
                 renamed(x, from, to)
-            }), xs), f, l, p)
+            })), xs), f, l, p)
         }
         _ => {
             let other = tagcase_;
@@ -6181,9 +6181,9 @@ pub fn renamed_all(mut es: Sexps, mut froms: Strings, mut tos: Strings) -> Sexps
         if null_p(froms) {
             return es;
         } else {
-            (es, froms, tos) = (map(lambda1s(move |e: kayak_rt::Handle<'static, Sexp>| {
+            (es, froms, tos) = (map(kayak_rt::as_proc(kayak_rt::closure1s((froms, tos,), |(froms, tos,), e: kayak_rt::Handle<'static, Sexp>| {
                 renamed(e, car(froms), car(tos))
-            }), es), cdr(froms), cdr(tos));
+            })), es), cdr(froms), cdr(tos));
             continue;
         }
     }
@@ -6201,10 +6201,10 @@ pub enum Keyed {
     Keyed(Str, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Keyed {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Keyed {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Keyed(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Keyed(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -6219,10 +6219,10 @@ pub enum SplicedTo {
     SplicedTo(kayak_rt::Handle<'static, Sexp>, Sexps, Keyeds),
 }
 
-impl<'a> kayak_rt::Trace<'a> for SplicedTo {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for SplicedTo {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::SplicedTo(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::SplicedTo(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -6335,13 +6335,13 @@ pub fn spliced_known(s: kayak_rt::Handle<'static, SplicedTo>) -> Keyeds {
 /// other character `-`; so that the loads of two files of one program,
 /// each counted from 0, are not named alike.
 pub fn file_tag(f: Str) -> Str {
-    rev_to_string(reverse(the::<Chars>(map(lambda1s(move |c: char| {
+    rev_to_string(reverse(the::<Chars>(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
         if (char_lower_p(c) || char_numeric_p(c)) {
             c
         } else {
             '-'
         }
-    }), string_chars(stem(f))))))
+    })), string_chars(stem(f))))))
 }
 
 /// The module a load's module includes, `(module (include n))`: `n`.
@@ -6371,7 +6371,7 @@ pub fn included_module(name: Str, f: Str, l: i64, p: i64) -> kayak_rt::Handle<'s
 /// was a load, now a module including the shared one: `m` and that
 /// module's name.
 pub fn shared_names(its: Sexps) -> Keyeds {
-    concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 3i64) && head_is_p(third(items(g)), str_lit("module")) && i64_eq(size(items(third(items(g)))), 2i64) && head_is_p(second(items(third(items(g)))), str_lit("include"))) {
             let tagcase_ = second(items(second(items(third(items(g))))));
             match *tagcase_ {
@@ -6403,7 +6403,7 @@ pub fn shared_names(its: Sexps) -> Keyeds {
         } else {
             nil::<kayak_rt::Handle<'static, Keyed>>()
         }
-    }), its))
+    })), its))
 }
 
 /// `e`, each `(select m x)` of a shared load's `m` the shared module's:
@@ -6417,7 +6417,7 @@ pub fn selects_renamed(e: kayak_rt::Handle<'static, Sexp>, shared: Keyeds) -> ka
                 let tagcase_ = second(xs);
                 match *tagcase_ {
                     Sexp::Sym(n, f2, p2) => {
-                        concat(map(lambda1s(move |k: kayak_rt::Handle<'static, Keyed>| {
+                        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((n,), |(n,), k: kayak_rt::Handle<'static, Keyed>| {
                             let tagcase_ = k;
                             match *tagcase_ {
                                 Keyed::Keyed(m, made) => {
@@ -6428,7 +6428,7 @@ pub fn selects_renamed(e: kayak_rt::Handle<'static, Sexp>, shared: Keyeds) -> ka
                                     }
                                 }
                             }
-                        }), shared))
+                        })), shared))
                     }
                     _ => {
                         let other = tagcase_;
@@ -6439,9 +6439,9 @@ pub fn selects_renamed(e: kayak_rt::Handle<'static, Sexp>, shared: Keyeds) -> ka
                 nil::<Str>()
             };
             if null_p(to) {
-                lst(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                lst(map(kayak_rt::as_proc(kayak_rt::closure1s((shared,), |(shared,), x: kayak_rt::Handle<'static, Sexp>| {
                     selects_renamed(x, shared)
-                }), xs), f, l, p)
+                })), xs), f, l, p)
             } else {
                 lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(sym(car(to), f, p), kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), f, l, p)
             }
@@ -6468,9 +6468,9 @@ pub fn substituted(e: kayak_rt::Handle<'static, Sexp>, from: Str, to: kayak_rt::
             if head_is_p(e, str_lit("quote")) {
                 e
             } else {
-                lst(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                lst(map(kayak_rt::as_proc(kayak_rt::closure1s((from, to,), |(from, to,), x: kayak_rt::Handle<'static, Sexp>| {
                     substituted(x, from, to)
-                }), xs), f, l, p)
+                })), xs), f, l, p)
             }
         }
         _ => {
@@ -6485,9 +6485,9 @@ pub fn substituted_all(mut es: Sexps, mut froms: Sexps, mut tos: Sexps) -> Sexps
         if (null_p(froms) || null_p(tos)) {
             return es;
         } else {
-            (es, froms, tos) = (map(lambda1s(move |e: kayak_rt::Handle<'static, Sexp>| {
+            (es, froms, tos) = (map(kayak_rt::as_proc(kayak_rt::closure1s((froms, tos,), |(froms, tos,), e: kayak_rt::Handle<'static, Sexp>| {
                 substituted(e, sym_name(car(items(car(froms)))), car(tos))
-            }), es), cdr(froms), cdr(tos));
+            })), es), cdr(froms), cdr(tos));
             continue;
         }
     }
@@ -6560,10 +6560,10 @@ pub enum ItemsRan {
     ItemsRan(Sexps, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for ItemsRan {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for ItemsRan {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::ItemsRan(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::ItemsRan(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -6629,23 +6629,23 @@ pub fn run_items(its: Sexps) -> Sexps {
 pub fn parameters_given(forms: Sexps, args: Sexps, path: Str) -> Sexps {
     if (not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))) {
         let params = items(second(items(car(forms))));
-        let kinds = filter(&kind_parameter_p, params);
-        let mods = filter(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+        let kinds = filter(kayak_rt::as_proc(kind_parameter_p), params);
+        let mods = filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
             not(kind_parameter_p(b))
-        }), params);
+        })), params);
         if not(i64_eq(size(params), size(args))) {
             error(string_append(str_lit("kfx: "), string_append(path, str_lit(": given other than its module parameters, as many as the file has"))))
         } else {
             let kargs = sexps_first(args, size(kinds));
             let margs = sexps_after(args, size(kinds));
             let its = substituted_all(substituted_all(cdr(forms), kinds, kargs), mods, margs);
-            let included = concat(map2(lambda2s(move |b: kayak_rt::Handle<'static, Sexp>, m: kayak_rt::Handle<'static, Sexp>| {
+            let included = concat(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), b: kayak_rt::Handle<'static, Sexp>, m: kayak_rt::Handle<'static, Sexp>| {
                 if (i64_eq(size(items(b)), 3i64) && sym_is_p(third(items(b)), str_lit("qualified"))) {
                     nil::<kayak_rt::Handle<'static, Sexp>>()
                 } else {
                     the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), str_lit(""), 0i64), kayak_rt::heap_cons(m, kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
                 }
-            }), mods, margs));
+            })), mods, margs));
             if null_p(included) {
                 its
             } else {
@@ -6665,8 +6665,8 @@ pub fn parameters_given(forms: Sexps, args: Sexps, path: Str) -> Sexps {
 /// given, which it sees as well as the standard environment (C286).
 pub fn module_arguments(forms: Sexps, args: Sexps) -> Strings {
     if (not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))) {
-        let n = size(filter(&kind_parameter_p, items(second(items(car(forms))))));
-        concat(map(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
+        let n = size(filter(kayak_rt::as_proc(kind_parameter_p), items(second(items(car(forms))))));
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Sexp>| {
             let tagcase_ = a;
             match *tagcase_ {
                 Sexp::Sym(m, f, p) => {
@@ -6677,7 +6677,7 @@ pub fn module_arguments(forms: Sexps, args: Sexps) -> Strings {
                     nil::<Str>()
                 }
             }
-        }), sexps_after(args, n)))
+        })), sexps_after(args, n)))
     } else {
         nil::<Str>()
     }
@@ -6708,14 +6708,14 @@ pub fn import_defs(g: kayak_rt::Handle<'static, Sexp>) -> Sexps {
                 error(string_append(r#where, str_lit(": an import names its module by a variable")))
             } else {
                 let m = second(xs);
-                concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                concat(map(kayak_rt::as_proc(kayak_rt::closure1s((f, l, p, r#where, m,), |(f, l, p, r#where, m,), x: kayak_rt::Handle<'static, Sexp>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Sexp::Sym(n, f2, p2) => {
                             the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(x, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("with"), f, p), kayak_rt::heap_cons(m, kayak_rt::heap_cons(x, kayak_rt::nil()))), f, l, p), kayak_rt::nil()))), f, l, p), kayak_rt::nil()))
                         }
                         Sexp::Lst(ys, f2, l2, p2) => {
-                            if ((head_is_p(x, str_lit("type")) || head_is_p(x, str_lit("effect"))) && not(any_p(lambda1s(move |y: kayak_rt::Handle<'static, Sexp>| {
+                            if ((head_is_p(x, str_lit("type")) || head_is_p(x, str_lit("effect"))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), y: kayak_rt::Handle<'static, Sexp>| {
                                 let tagcase_ = y;
                                 match *tagcase_ {
                                     Sexp::Sym(n, f3, p3) => {
@@ -6726,14 +6726,14 @@ pub fn import_defs(g: kayak_rt::Handle<'static, Sexp>) -> Sexps {
                                         true
                                     }
                                 }
-                            }), cdr(ys)))) {
-                                map(lambda1s(move |y: kayak_rt::Handle<'static, Sexp>| {
+                            })), cdr(ys)))) {
+                                map(kayak_rt::as_proc(kayak_rt::closure1s((f, l, p, m, x,), |(f, l, p, m, x,), y: kayak_rt::Handle<'static, Sexp>| {
                                     lst(kayak_rt::heap_cons(sym(if head_is_p(x, str_lit("type")) {
                                         str_lit("define-type")
                                     } else {
                                         str_lit("define-effect")
                                     }, f, p), kayak_rt::heap_cons(y, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("select"), f, p), kayak_rt::heap_cons(m, kayak_rt::heap_cons(y, kayak_rt::nil()))), f, l, p), kayak_rt::nil()))), f, l, p)
-                                }), cdr(ys))
+                                })), cdr(ys))
                             } else {
                                 error(string_append(r#where, str_lit(": an import's names are names, (type name ...) or (effect name ...)")))
                             }
@@ -6743,7 +6743,7 @@ pub fn import_defs(g: kayak_rt::Handle<'static, Sexp>) -> Sexps {
                             error(string_append(r#where, str_lit(": an import's names are names, (type name ...) or (effect name ...)")))
                         }
                     }
-                }), cdr(cdr(xs))))
+                })), cdr(cdr(xs))))
             }
         }
         _ => {
@@ -6755,13 +6755,13 @@ pub fn import_defs(g: kayak_rt::Handle<'static, Sexp>) -> Sexps {
 
 /// Items, each `import` its definitions, each other its imports expanded.
 pub fn import_items(its: Sexps) -> Sexps {
-    concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(g, str_lit("import")) && i64_gt(size(items(g)), 1i64)) {
             import_defs(g)
         } else {
             the::<Sexps>(kayak_rt::heap_cons(imports_in(g), kayak_rt::nil()))
         }
-    }), its))
+    })), its))
 }
 
 /// A quasiquoted datum at `depth`, as the checker reads one (`quasi`):
@@ -6780,9 +6780,9 @@ pub fn imports_in_quasi(d: kayak_rt::Handle<'static, Sexp>, depth: i64) -> kayak
             } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
                 lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(imports_in_quasi(second(ys), i64_plus(depth, 1i64)), kayak_rt::nil())), f, l, p)
             } else {
-                lst(map(lambda1s(move |y: kayak_rt::Handle<'static, Sexp>| {
+                lst(map(kayak_rt::as_proc(kayak_rt::closure1s((depth,), |(depth,), y: kayak_rt::Handle<'static, Sexp>| {
                     imports_in_quasi(y, depth)
-                }), ys), f, l, p)
+                })), ys), f, l, p)
             }
         }
         _ => {
@@ -6836,7 +6836,7 @@ pub fn imports_in(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'stati
                     str_lit("product")
                 }, f, p), numbered_fields(cdr(xs), 1i64, f, l, p)), f, l, p)
             } else {
-                lst(map(&imports_in, xs), f, l, p)
+                lst(map(kayak_rt::as_proc(imports_in), xs), f, l, p)
             }
         }
         _ => {
@@ -6877,10 +6877,10 @@ pub enum PlaceDef {
     PlaceDef(Str, kayak_rt::Handle<'static, Sexp>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for PlaceDef {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for PlaceDef {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::PlaceDef(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::PlaceDef(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -6892,7 +6892,7 @@ pub fn place_def(f0: Str, f1: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Hand
 /// The file's own `(define-effect e E)` or `(define-type t T)`, `head` the
 /// one, by name, a `hide`'s too.
 pub fn place_names_of(its: Sexps, head: Str) -> List<kayak_rt::Handle<'static, PlaceDef>> {
-    concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((head,), |(head,), g: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(g, str_lit("hide")) {
             place_names_of(cdr(items(g)), head)
         } else if (head_is_p(g, head) && i64_eq(size(items(g)), 3i64)) {
@@ -6909,11 +6909,11 @@ pub fn place_names_of(its: Sexps, head: Str) -> List<kayak_rt::Handle<'static, P
         } else {
             nil::<kayak_rt::Handle<'static, PlaceDef>>()
         }
-    }), its))
+    })), its))
 }
 
 pub fn place_named_find(n: Str, xs: List<kayak_rt::Handle<'static, PlaceDef>>) -> Sexps {
-    concat(map(lambda1s(move |x: kayak_rt::Handle<'static, PlaceDef>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((n,), |(n,), x: kayak_rt::Handle<'static, PlaceDef>| {
         let tagcase_ = x;
         match *tagcase_ {
             PlaceDef::PlaceDef(m, e) => {
@@ -6924,7 +6924,7 @@ pub fn place_named_find(n: Str, xs: List<kayak_rt::Handle<'static, PlaceDef>>) -
                 }
             }
         }
-    }), xs))
+    })), xs))
 }
 
 /// Type `e` as the top level reads it: each of the file's own type
@@ -6951,9 +6951,9 @@ pub fn place_spelt(mut e: kayak_rt::Handle<'static, Sexp>, mut effs: List<kayak_
                     if head_is_p(e, str_lit("maxeff")) {
                         return lst(kayak_rt::heap_cons(car(xs), place_atoms(cdr(xs), effs, depth)), f, l, p);
                     } else {
-                        return lst(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                        return lst(map(kayak_rt::as_proc(kayak_rt::closure1s((effs, types, depth,), |(effs, types, depth,), x: kayak_rt::Handle<'static, Sexp>| {
                             place_spelt(x, effs, types, depth)
-                        }), xs), f, l, p);
+                        })), xs), f, l, p);
                     }
                 }
                 _ => {
@@ -6966,7 +6966,7 @@ pub fn place_spelt(mut e: kayak_rt::Handle<'static, Sexp>, mut effs: List<kayak_
 }
 
 pub fn place_atoms(r#as: Sexps, effs: List<kayak_rt::Handle<'static, PlaceDef>>, depth: i64) -> Sexps {
-    concat(map(lambda1s(move |a: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((effs, depth,), |(effs, depth,), a: kayak_rt::Handle<'static, Sexp>| {
         let d = {
             let tagcase_ = a;
             match *tagcase_ {
@@ -6986,13 +6986,13 @@ pub fn place_atoms(r#as: Sexps, effs: List<kayak_rt::Handle<'static, PlaceDef>>,
         } else {
             place_atoms(kayak_rt::heap_cons(car(d), kayak_rt::nil()), effs, i64_plus(depth, 1i64))
         }
-    }), r#as))
+    })), r#as))
 }
 
 /// The types `its` define, a module's among them (the loads' a file of a
 /// place loads, C443).
 pub fn type_names_in(its: Sexps) -> Strings {
-    concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(g, str_lit("hide")) || head_is_p(g, str_lit("module"))) {
             type_names_in(cdr(items(g)))
         } else if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 3i64)) {
@@ -7027,7 +7027,7 @@ pub fn type_names_in(its: Sexps) -> Strings {
         } else {
             nil::<Str>()
         }
-    }), its))
+    })), its))
 }
 
 /// The interface of a file of a place: each of its procedures whose type
@@ -7035,12 +7035,12 @@ pub fn type_names_in(its: Sexps) -> Strings {
 /// not one whose type names a type of a file it loads (`foreign`), which
 /// the top level cannot name (C443): kfx refuses a `with` that names one.
 pub fn place_vals(its: Sexps, effs: List<kayak_rt::Handle<'static, PlaceDef>>, types: List<kayak_rt::Handle<'static, PlaceDef>>, foreign: Strings) -> Sexps {
-    concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((effs, types, foreign,), |(effs, types, foreign,), g: kayak_rt::Handle<'static, Sexp>| {
         if head_is_p(g, str_lit("hide")) {
             place_vals(cdr(items(g)), effs, types, foreign)
-        } else if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64) && head_is_p(third(items(g)), str_lit("subr")) && not(sym_is_p(second(items(third(items(g)))), str_lit("%found"))) && not(any_p(lambda1s(move |n: Str| {
+        } else if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64) && head_is_p(third(items(g)), str_lit("subr")) && not(sym_is_p(second(items(third(items(g)))), str_lit("%found"))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((foreign,), |(foreign,), n: Str| {
             string_member_p(n, foreign)
-        }), names_in(place_spelt(third(items(g)), effs, types, 0i64))))) {
+        })), names_in(place_spelt(third(items(g)), effs, types, 0i64))))) {
             let tagcase_ = second(items(g));
             match *tagcase_ {
                 Sexp::Sym(n, f, p) => {
@@ -7054,7 +7054,7 @@ pub fn place_vals(its: Sexps, effs: List<kayak_rt::Handle<'static, PlaceDef>>, t
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         }
-    }), its))
+    })), its))
 }
 
 /// The maker of a file of place `pn`, `name`, its items `its`: its
@@ -7109,7 +7109,7 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                         }
                     };
                     let key = string_append(str_lit("input:"), path);
-                    let had = concat(map(lambda1s(move |k: kayak_rt::Handle<'static, Keyed>| {
+                    let had = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((key,), |(key,), k: kayak_rt::Handle<'static, Keyed>| {
                         let tagcase_ = k;
                         match *tagcase_ {
                             Keyed::Keyed(kk, n) => {
@@ -7120,7 +7120,7 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                                 }
                             }
                         }
-                    }), known));
+                    })), known));
                     if not(null_p(had)) {
                         return spliced_to(sym(car(had), f, p), nil::<kayak_rt::Handle<'static, Sexp>>(), known);
                     } else {
@@ -7131,7 +7131,7 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                                 the::<Strings>(kayak_rt::heap_cons(built_in_text(path), kayak_rt::nil()))
                             }
                         } else {
-                            concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Filed>| {
+                            concat(map(kayak_rt::as_proc(kayak_rt::closure1s((path,), |(path,), x: kayak_rt::Handle<'static, Filed>| {
                                 let tagcase_ = x;
                                 match *tagcase_ {
                                     Filed::Filed(n, text) => {
@@ -7142,7 +7142,7 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                                         }
                                     }
                                 }
-                            }), loaded))
+                            })), loaded))
                         };
                         if null_p(found) {
                             return error(string_append(str_lit("kfx: cannot read "), path));
@@ -7211,7 +7211,7 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                     };
                     let args = cdr(load);
                     let key = string_append(path, string_append(str_lit(" "), show_sexps(args)));
-                    let had = concat(map(lambda1s(move |k: kayak_rt::Handle<'static, Keyed>| {
+                    let had = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((key,), |(key,), k: kayak_rt::Handle<'static, Keyed>| {
                         let tagcase_ = k;
                         match *tagcase_ {
                             Keyed::Keyed(kk, n) => {
@@ -7222,8 +7222,8 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                                 }
                             }
                         }
-                    }), known));
-                    let made_place = concat(map(lambda1s(move |k: kayak_rt::Handle<'static, Keyed>| {
+                    })), known));
+                    let made_place = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((path,), |(path,), k: kayak_rt::Handle<'static, Keyed>| {
                         let tagcase_ = k;
                         match *tagcase_ {
                             Keyed::Keyed(kk, n) => {
@@ -7234,7 +7234,7 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                                 }
                             }
                         }
-                    }), known));
+                    })), known));
                     if (not(null_p(made_place)) && i64_eq(size(args), 1i64)) {
                         return spliced_to(lst(kayak_rt::heap_cons(sym(car(made_place), f, p), kayak_rt::heap_cons(car(args), kayak_rt::nil())), f, l, p), nil::<kayak_rt::Handle<'static, Sexp>>(), known);
                     } else if not(null_p(had)) {
@@ -7247,7 +7247,7 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                                 the::<Strings>(kayak_rt::heap_cons(built_in_text(path), kayak_rt::nil()))
                             }
                         } else {
-                            concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Filed>| {
+                            concat(map(kayak_rt::as_proc(kayak_rt::closure1s((path,), |(path,), x: kayak_rt::Handle<'static, Filed>| {
                                 let tagcase_ = x;
                                 match *tagcase_ {
                                     Filed::Filed(n, text) => {
@@ -7258,7 +7258,7 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                                         }
                                     }
                                 }
-                            }), loaded))
+                            })), loaded))
                         };
                         if string_member_p(path, chain) {
                             return error(string_append(str_lit("kfx: "), string_append(f, string_append(str_lit(": a load cycle: "), words_of(reverse(the::<Strings>(kayak_rt::heap_cons(path, chain))))))));
@@ -7278,16 +7278,16 @@ pub fn spliced(mut e: kayak_rt::Handle<'static, Sexp>, mut dir: Str, mut loaded:
                             let its = run_items(parameters_given(forms, args, path));
                             let inner = spliced_each(its, directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known, nil::<kayak_rt::Handle<'static, Sexp>>(), nil::<kayak_rt::Handle<'static, Sexp>>(), f, l, p);
                             let name = string_append(str_lit("made--load--"), string_append(i64_to_string(size(spliced_known(inner))), string_append(str_lit("--"), file_tag(f))));
-                            let sees = onto(map(lambda1s(move |k: kayak_rt::Handle<'static, Keyed>| {
+                            let sees = onto(map(kayak_rt::as_proc(kayak_rt::closure1s((f, p,), |(f, p,), k: kayak_rt::Handle<'static, Keyed>| {
                                 let tagcase_ = k;
                                 match *tagcase_ {
                                     Keyed::Keyed(kk, n) => {
                                         sym(n, f, p)
                                     }
                                 }
-                            }), spliced_known(inner)), map(lambda1s(move |m: Str| {
+                            })), spliced_known(inner)), map(kayak_rt::as_proc(kayak_rt::closure1s((f, p,), |(f, p,), m: Str| {
                                 sym(m, f, p)
-                            }), module_arguments(forms, args)));
+                            })), module_arguments(forms, args)));
                             let made = lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), if (null_p(args) && not((not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))))) {
                                 sees
                             } else {
@@ -7320,9 +7320,9 @@ pub fn spliced_each(mut xs: Sexps, mut dir: Str, mut loaded: Fileds, mut chain: 
             return spliced_to(lst(if null_p(shared) {
                 its
             } else {
-                map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                map(kayak_rt::as_proc(kayak_rt::closure1s((shared,), |(shared,), x: kayak_rt::Handle<'static, Sexp>| {
                     selects_renamed(x, shared)
-                }), its)
+                })), its)
             }, f, l, p), defs, known);
         } else {
             let tagcase_ = spliced(car(xs), dir, loaded, chain, known);
@@ -7352,7 +7352,7 @@ pub fn made_here_p(e: kayak_rt::Handle<'static, Sexp>) -> bool {
 
 /// The modules made in place among a module's items, each defined.
 pub fn made_in(its: Sexps) -> Sexps {
-    concat(map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(g, str_lit("include")) && made_here_p(second(items(g)))) {
             the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(made_name(second(items(g))), str_lit(""), 0i64), kayak_rt::heap_cons(second(items(g)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
         } else if head_is_p(g, str_lit("hide")) {
@@ -7360,12 +7360,12 @@ pub fn made_in(its: Sexps) -> Sexps {
         } else {
             nil::<kayak_rt::Handle<'static, Sexp>>()
         }
-    }), its))
+    })), its))
 }
 
 /// A module's items, each module made in place named.
 pub fn named_made(its: Sexps) -> Sexps {
-    map(lambda1s(move |g: kayak_rt::Handle<'static, Sexp>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(g, str_lit("include")) && made_here_p(second(items(g)))) {
             lst(kayak_rt::heap_cons(car(items(g)), kayak_rt::heap_cons(sym(made_name(second(items(g))), str_lit(""), 0i64), cdr(cdr(items(g))))), str_lit(""), 0i64, 0i64)
         } else if head_is_p(g, str_lit("hide")) {
@@ -7373,7 +7373,7 @@ pub fn named_made(its: Sexps) -> Sexps {
         } else {
             g
         }
-    }), its)
+    })), its)
 }
 
 /// A top-level form, after the modules it makes in place, each defined.
@@ -7429,7 +7429,7 @@ pub fn flat_definition(f: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'
             if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_eq(size(xs), 4i64)) {
                 lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(flat_poly(third(xs)), kayak_rt::heap_cons(flat_plambda(fourth(xs)), kayak_rt::nil())))), file, line, pos)
             } else if head_is_p(f, str_lit("define-rec")) {
-                lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |m: kayak_rt::Handle<'static, Sexp>| {
+                lst(kayak_rt::heap_cons(car(xs), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), m: kayak_rt::Handle<'static, Sexp>| {
                     let tagcase_ = m;
                     match *tagcase_ {
                         Sexp::Lst(ys, f2, l2, p2) => {
@@ -7444,19 +7444,19 @@ pub fn flat_definition(f: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'
                             m
                         }
                     }
-                }), cdr(xs))), file, line, pos)
+                })), cdr(xs))), file, line, pos)
             } else if (head_is_p(f, str_lit("module")) || head_is_p(f, str_lit("hide"))) {
-                lst(kayak_rt::heap_cons(car(xs), map(&flat_definition, cdr(xs))), file, line, pos)
+                lst(kayak_rt::heap_cons(car(xs), map(kayak_rt::as_proc(flat_definition), cdr(xs))), file, line, pos)
             } else if (head_is_p(f, str_lit("define-type")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("moduleof"))) {
                 // A module type's value whose type is a `poly` in a `poly`, as
                 // Fixpt's `tables-sig` writes `make-table`: one (C119).
-                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(map(lambda1s(move |it: kayak_rt::Handle<'static, Sexp>| {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), it: kayak_rt::Handle<'static, Sexp>| {
                     if (head_is_p(it, str_lit("val")) && i64_eq(size(items(it)), 3i64)) {
                         lst(kayak_rt::heap_cons(car(items(it)), kayak_rt::heap_cons(second(items(it)), kayak_rt::heap_cons(flat_poly(third(items(it))), kayak_rt::nil()))), datum_file(it), 0i64, datum_pos(it))
                     } else {
                         it
                     }
-                }), items(third(xs))), file, line, datum_pos(third(xs))), kayak_rt::nil()))), file, line, pos)
+                })), items(third(xs))), file, line, datum_pos(third(xs))), kayak_rt::nil()))), file, line, pos)
             } else if (head_is_p(f, str_lit("define")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("module"))) {
                 lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(flat_definition(third(xs)), kayak_rt::nil()))), file, line, pos)
             } else {
@@ -7493,9 +7493,9 @@ pub fn loads_from(e: kayak_rt::Handle<'static, Sexp>, dir: Str) -> kayak_rt::Han
                     }
                 }
             } else {
-                lst(map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                lst(map(kayak_rt::as_proc(kayak_rt::closure1s((dir,), |(dir,), x: kayak_rt::Handle<'static, Sexp>| {
                     loads_from(x, dir)
-                }), xs), f, l, p)
+                })), xs), f, l, p)
             }
         }
         _ => {
@@ -7538,7 +7538,7 @@ pub fn input_expanded(f: kayak_rt::Handle<'static, Sexp>, dir: Str, loaded: File
                 let text = if built_in_path_p(path) {
                     built_in_text(path)
                 } else {
-                    let found = concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Filed>| {
+                    let found = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((path,), |(path,), x: kayak_rt::Handle<'static, Filed>| {
                         let tagcase_ = x;
                         match *tagcase_ {
                             Filed::Filed(n, t) => {
@@ -7549,7 +7549,7 @@ pub fn input_expanded(f: kayak_rt::Handle<'static, Sexp>, dir: Str, loaded: File
                                 }
                             }
                         }
-                    }), loaded));
+                    })), loaded));
                     if null_p(found) {
                         str_lit("")
                     } else {
@@ -7559,13 +7559,13 @@ pub fn input_expanded(f: kayak_rt::Handle<'static, Sexp>, dir: Str, loaded: File
                 let es = if string_eq_p(text, str_lit("")) {
                     error(string_append(str_lit("kfx: "), string_append(fl, string_append(str_lit(": cannot read "), path))))
                 } else {
-                    map(lambda1s(move |x: kayak_rt::Handle<'static, Sexp>| {
+                    map(kayak_rt::as_proc(kayak_rt::closure1s((path,), |(path,), x: kayak_rt::Handle<'static, Sexp>| {
                         imports_in(if built_in_path_p(path) {
                             x
                         } else {
                             loads_from(x, directory_of(path))
                         })
-                    }), read_all(text, path, 1i64))
+                    })), read_all(text, path, 1i64))
                 };
                 let e = if i64_eq(size(es), 1i64) {
                     car(es)
@@ -7582,22 +7582,22 @@ pub fn input_expanded(f: kayak_rt::Handle<'static, Sexp>, dir: Str, loaded: File
                 } else {
                     e
                 };
-                let names = map(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+                let names = map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                     sym_name(car(items(b)))
-                }), bound);
-                let lifted = map(lambda1s(move |n: Str| {
+                })), bound);
+                let lifted = map(kayak_rt::as_proc(kayak_rt::closure1s((xs,), |(xs,), n: Str| {
                     string_append(str_lit("made--input--"), string_append(i64_to_string(datum_pos(third(xs))), string_append(str_lit("--"), n)))
-                }), names);
-                if (not(head_is_p(body, str_lit("module"))) || (head_is_p(e, str_lit("let")) && not(i64_eq(size(items(e)), 3i64))) || any_p(lambda1s(move |b: kayak_rt::Handle<'static, Sexp>| {
+                })), names);
+                if (not(head_is_p(body, str_lit("module"))) || (head_is_p(e, str_lit("let")) && not(i64_eq(size(items(e)), 3i64))) || any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
                     not(head_is_p(second(items(b)), str_lit("load-module")))
-                }), bound)) {
+                })), bound)) {
                     kayak_rt::heap_cons(f, kayak_rt::nil())
                 } else {
-                    onto(map2(lambda2s(move |b: kayak_rt::Handle<'static, Sexp>, n: Str| {
+                    onto(map2(kayak_rt::as_proc(kayak_rt::closure2s((fl, l, p,), |(fl, l, p,), b: kayak_rt::Handle<'static, Sexp>, n: Str| {
                         lst(kayak_rt::heap_cons(sym(str_lit("define"), fl, p), kayak_rt::heap_cons(sym(n, fl, p), kayak_rt::heap_cons(second(items(b)), kayak_rt::nil()))), fl, l, p)
-                    }), bound, lifted), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), fl, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), fl, p), kayak_rt::heap_cons(str(path, fl, p), map(lambda1s(move |n: Str| {
+                    })), bound, lifted), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), fl, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), fl, p), kayak_rt::heap_cons(str(path, fl, p), map(kayak_rt::as_proc(kayak_rt::closure1s((fl, p,), |(fl, p,), n: Str| {
                         sym(n, fl, p)
-                    }), lifted))), fl, l, p), renamed_all(cdr(items(body)), names, lifted))), fl, l, p), kayak_rt::nil()))), fl, l, p), kayak_rt::nil()))
+                    })), lifted))), fl, l, p), renamed_all(cdr(items(body)), names, lifted))), fl, l, p), kayak_rt::nil()))), fl, l, p), kayak_rt::nil()))
                 }
             } else {
                 kayak_rt::heap_cons(f, kayak_rt::nil())
@@ -7650,7 +7650,7 @@ pub fn spliced_tops(forms: Sexps, dir: Str, loaded: Fileds, known: Keyeds) -> Se
 /// Whether module items `its` include a module neither named nor (where
 /// `outer`, a module defined at the top level) written in place.
 pub fn include_of_value_p(its: Sexps, outer: bool) -> bool {
-    any_p(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    any_p(kayak_rt::as_proc(kayak_rt::closure1s((outer,), |(outer,), f: kayak_rt::Handle<'static, Sexp>| {
         if (head_is_p(f, str_lit("include")) && i64_gt(size(items(f)), 1i64)) {
             let e = second(items(f));
             not(({
@@ -7672,7 +7672,7 @@ pub fn include_of_value_p(its: Sexps, outer: bool) -> bool {
         } else {
             false
         }
-    }), its)
+    })), its)
 }
 
 pub fn as_module_value(f: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Sexp> {
@@ -7726,7 +7726,7 @@ pub fn syscall_asked(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'st
             }) {
                 sym(string_append(str_lit("%syscall-available:"), sym_name(second(xs))), f, p)
             } else {
-                lst(map(&syscall_asked, xs), f, l, p)
+                lst(map(kayak_rt::as_proc(syscall_asked), xs), f, l, p)
             }
         }
         _ => {
@@ -7782,15 +7782,15 @@ pub fn labels_unkeyworded(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handl
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            let ys = map(&labels_unkeyworded, xs);
+            let ys = map(kayak_rt::as_proc(labels_unkeyworded), xs);
             if (head_is_p(e, str_lit("quote")) || head_is_p(e, str_lit("quasiquote"))) {
                 e
             } else if (head_is_p(e, str_lit("product")) || head_is_p(e, str_lit("productof")) || head_is_p(e, str_lit("sumof"))) {
-                lst(kayak_rt::heap_cons(car(ys), map(&headed_unkeyworded, cdr(ys))), f, l, p)
+                lst(kayak_rt::heap_cons(car(ys), map(kayak_rt::as_proc(headed_unkeyworded), cdr(ys))), f, l, p)
             } else if (head_is_p(e, str_lit("tagcase")) && i64_gt(size(ys), 1i64)) {
-                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), map(&headed_unkeyworded, cdr(cdr(ys))))), f, l, p)
+                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), map(kayak_rt::as_proc(headed_unkeyworded), cdr(cdr(ys))))), f, l, p)
             } else if (head_is_p(e, str_lit("define-datatype")) && i64_gt(size(ys), 1i64)) {
-                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), map(&headed_unkeyworded, cdr(cdr(ys))))), f, l, p)
+                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), map(kayak_rt::as_proc(headed_unkeyworded), cdr(cdr(ys))))), f, l, p)
             } else if (head_is_p(e, str_lit("extract")) && i64_eq(size(ys), 3i64)) {
                 lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(keyword_unwritten(third(ys)), kayak_rt::nil()))), f, l, p)
             } else if (head_is_p(e, str_lit("sum")) && i64_eq(size(ys), 3i64)) {
@@ -7819,23 +7819,23 @@ pub fn stage_expanded(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'s
             let (ys, sy, sx) = (if (head_is_p(e, str_lit("quote")) || head_is_p(e, str_lit("quasiquote"))) {
                 xs
             } else {
-                map(&stage_expanded, xs)
-            }, lambda1s(move |n: Str| {
+                map(kayak_rt::as_proc(stage_expanded), xs)
+            }, kayak_rt::closure1s((f, p,), |(f, p,), n: Str| {
                 sym(n, f, p)
-            }), lambda1s(move |zs: Sexps| {
+            }), kayak_rt::closure1s((f, l, p,), |(f, l, p,), zs: Sexps| {
                 lst(zs, f, l, p)
             }));
             if (head_is_p(e, str_lit("session-commit!")) && i64_eq(size(ys), 4i64)) {
                 // `(session-commit! s d decision)` as Fixpt's parsers write it (C309):
                 // the initializer, which the program runs, then what it made kept, or
                 // why not.
-                let b = lambda2s(move |n: Str, x: kayak_rt::Handle<'static, Sexp>| {
-                    sx(kayak_rt::heap_cons(sy(n), kayak_rt::heap_cons(x, kayak_rt::nil())))
+                let b = kayak_rt::closure2s((sy, sx,), |(sy, sx,), n: Str, x: kayak_rt::Handle<'static, Sexp>| {
+                    sx.call(kayak_rt::heap_cons(sy.call(n), kayak_rt::heap_cons(x, kayak_rt::nil())))
                 });
-                sx(kayak_rt::heap_cons(sy(str_lit("let")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(b(str_lit("%session"), second(ys)), kayak_rt::heap_cons(b(str_lit("%pending"), third(ys)), kayak_rt::heap_cons(b(str_lit("%decision"), car(cdr(cdr(cdr(ys))))), kayak_rt::nil())))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("tagcase")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%session-ready")), kayak_rt::heap_cons(sy(str_lit("%session")), kayak_rt::heap_cons(sy(str_lit("%pending")), kayak_rt::heap_cons(sy(str_lit("%decision")), kayak_rt::nil()))))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("go")), kayak_rt::heap_cons(sy(str_lit("%run")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("begin")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%run")), kayak_rt::nil())), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("%session-committed!")), kayak_rt::heap_cons(sy(str_lit("%session")), kayak_rt::heap_cons(sy(str_lit("%pending")), kayak_rt::nil())))), kayak_rt::nil())))), kayak_rt::nil())))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("failed")), kayak_rt::heap_cons(sy(str_lit("%why")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("sum")), kayak_rt::heap_cons(sy(str_lit("failed")), kayak_rt::heap_cons(sy(str_lit("%why")), kayak_rt::nil())))), kayak_rt::nil())))), kayak_rt::nil()))))), kayak_rt::nil()))))
+                sx.call(kayak_rt::heap_cons(sy.call(str_lit("let")), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(b.call(str_lit("%session"), second(ys)), kayak_rt::heap_cons(b.call(str_lit("%pending"), third(ys)), kayak_rt::heap_cons(b.call(str_lit("%decision"), car(cdr(cdr(cdr(ys))))), kayak_rt::nil())))), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("tagcase")), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("%session-ready")), kayak_rt::heap_cons(sy.call(str_lit("%session")), kayak_rt::heap_cons(sy.call(str_lit("%pending")), kayak_rt::heap_cons(sy.call(str_lit("%decision")), kayak_rt::nil()))))), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("go")), kayak_rt::heap_cons(sy.call(str_lit("%run")), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("begin")), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("%run")), kayak_rt::nil())), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("%session-committed!")), kayak_rt::heap_cons(sy.call(str_lit("%session")), kayak_rt::heap_cons(sy.call(str_lit("%pending")), kayak_rt::nil())))), kayak_rt::nil())))), kayak_rt::nil())))), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("failed")), kayak_rt::heap_cons(sy.call(str_lit("%why")), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("sum")), kayak_rt::heap_cons(sy.call(str_lit("failed")), kayak_rt::heap_cons(sy.call(str_lit("%why")), kayak_rt::nil())))), kayak_rt::nil())))), kayak_rt::nil()))))), kayak_rt::nil()))))
             } else if ((head_is_p(e, str_lit("stage")) || head_is_p(e, str_lit("session-check"))) && (i64_eq(size(ys), 7i64) || i64_eq(size(ys), 8i64))) {
                 let m = second(ys);
-                let eff = sx(kayak_rt::heap_cons(sy(str_lit("maxeff")), kayak_rt::heap_cons(third(ys), kayak_rt::nil())));
+                let eff = sx.call(kayak_rt::heap_cons(sy.call(str_lit("maxeff")), kayak_rt::heap_cons(third(ys), kayak_rt::nil())));
                 let r = car(cdr(cdr(cdr(ys))));
                 let code = car(cdr(cdr(cdr(cdr(ys)))));
                 let ok = car(cdr(cdr(cdr(cdr(cdr(ys))))));
@@ -7845,14 +7845,14 @@ pub fn stage_expanded(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'s
                 } else {
                     nil::<kayak_rt::Handle<'static, Sexp>>()
                 };
-                let fields = map2(lambda2s(move |g: kayak_rt::Handle<'static, Sexp>, k: i64| {
-                    sx(kayak_rt::heap_cons(num(k, i64_to_string(k), p), kayak_rt::heap_cons(g, kayak_rt::nil())))
-                }), given, counting(1i64, i64_plus(size(given), 1i64)));
-                sx(kayak_rt::heap_cons(sy(str_lit("tagcase")), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(if head_is_p(e, str_lit("stage")) {
+                let fields = map2(kayak_rt::as_proc(kayak_rt::closure2s((p, sx,), |(p, sx,), g: kayak_rt::Handle<'static, Sexp>, k: i64| {
+                    sx.call(kayak_rt::heap_cons(num(k, i64_to_string(k), p), kayak_rt::heap_cons(g, kayak_rt::nil())))
+                })), given, counting(1i64, i64_plus(size(given), 1i64)));
+                sx.call(kayak_rt::heap_cons(sy.call(str_lit("tagcase")), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(if head_is_p(e, str_lit("stage")) {
                     str_lit("%stage")
                 } else {
                     str_lit("%session-check")
-                }), kayak_rt::heap_cons(eff, kayak_rt::heap_cons(r, kayak_rt::heap_cons(m, kayak_rt::heap_cons(code, kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("product")), fields)), kayak_rt::nil()))))))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("ok")), items(ok))), kayak_rt::heap_cons(sx(kayak_rt::heap_cons(sy(str_lit("failed")), items(bad))), kayak_rt::nil())))))
+                }), kayak_rt::heap_cons(eff, kayak_rt::heap_cons(r, kayak_rt::heap_cons(m, kayak_rt::heap_cons(code, kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("product")), fields)), kayak_rt::nil()))))))), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("ok")), items(ok))), kayak_rt::heap_cons(sx.call(kayak_rt::heap_cons(sy.call(str_lit("failed")), items(bad))), kayak_rt::nil())))))
             } else {
                 lst(ys, f, l, p)
             }
@@ -7868,29 +7868,29 @@ pub fn stage_expanded(e: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'s
 /// what reads a program but `with-loads`: the REPL's entries.
 #[inline]
 pub fn program_read(text: Str, file: Str, line: i64) -> Sexps {
-    map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         stage_expanded(labels_unkeyworded(f))
-    }), read_all(text, file, line))
+    })), read_all(text, file, line))
 }
 
 // `with-loads`, of a unit's file (C444): the loads of the files before it,
 // `known`, shared with it, as one program's are, so that two files loading
 // one path make one module; the forms, and what is loaded after them.
 pub fn with_loads_known(forms: Sexps, file: Str, loaded: Fileds, known: Keyeds) -> kayak_rt::Handle<'static, SplicedTo> {
-    let forms = map(&as_module_value, concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    let forms = map(kayak_rt::as_proc(as_module_value), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((file, loaded,), |(file, loaded,), f: kayak_rt::Handle<'static, Sexp>| {
         input_expanded(f, directory_of(file), loaded)
-    }), import_items(forms))));
-    if (null_p(loaded) && not(any_p(&loads_p, forms))) {
-        spliced_to(lst(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    })), import_items(forms))));
+    if (null_p(loaded) && not(any_p(kayak_rt::as_proc(loads_p), forms))) {
+        spliced_to(lst(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
             stage_expanded(labels_unkeyworded(syscall_asked(flat_definition(f))))
-        }), concat(map(&hoisted, forms))), str_lit(""), 0i64, 0i64), nil::<kayak_rt::Handle<'static, Sexp>>(), known)
+        })), concat(map(kayak_rt::as_proc(hoisted), forms))), str_lit(""), 0i64, 0i64), nil::<kayak_rt::Handle<'static, Sexp>>(), known)
     } else {
         let tagcase_ = spliced_tops_known(forms, directory_of(file), loaded, known, nil::<kayak_rt::Handle<'static, Sexp>>());
         match *tagcase_ {
             SplicedTo::SplicedTo(x, d, k) => {
-                spliced_to(lst(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+                spliced_to(lst(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
                     stage_expanded(labels_unkeyworded(syscall_asked(flat_definition(f))))
-                }), concat(map(&hoisted, items(x)))), str_lit(""), 0i64, 0i64), nil::<kayak_rt::Handle<'static, Sexp>>(), k)
+                })), concat(map(kayak_rt::as_proc(hoisted), items(x)))), str_lit(""), 0i64, 0i64), nil::<kayak_rt::Handle<'static, Sexp>>(), k)
             }
         }
     }
@@ -7901,12 +7901,12 @@ pub fn with_loads_known(forms: Sexps, file: Str, loaded: Fileds, known: Keyeds) 
 /// definition, one (C107); a `load-input` of a module, the module (C116);
 /// a module KFX's cannot be, a module value (C171).
 pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
-    let forms = map(&as_module_value, concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    let forms = map(kayak_rt::as_proc(as_module_value), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((file, loaded,), |(file, loaded,), f: kayak_rt::Handle<'static, Sexp>| {
         input_expanded(f, directory_of(file), loaded)
-    }), import_items(forms))));
-    map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+    })), import_items(forms))));
+    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
         stage_expanded(labels_unkeyworded(syscall_asked(flat_definition(f))))
-    }), concat(map(&hoisted, if (null_p(loaded) && not(any_p(&loads_p, forms))) {
+    })), concat(map(kayak_rt::as_proc(hoisted), if (null_p(loaded) && not(any_p(kayak_rt::as_proc(loads_p), forms))) {
         forms
     } else {
         spliced_tops(forms, directory_of(file), loaded, nil::<kayak_rt::Handle<'static, Keyed>>())

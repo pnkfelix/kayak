@@ -7,8 +7,8 @@ use kayak_rt::*;
 // through knots, as FX-26's I-cells tie them.
 
 pub fn count_to(n: i64, step: i64) -> Str {
-    let go__knot = knot::<&'static (dyn Fn(i64, Str) -> Str + Send + Sync)>();
-    let go = lambda2s(move |mut i: i64, mut acc: Str| {
+    let go__knot = knot::<kayak_rt::Proc2s<'static, i64, Str, Str>>();
+    let go = kayak_rt::as_proc(kayak_rt::closure2s((n, step,), |(n, step,), mut i: i64, mut acc: Str| {
         loop {
             if i64_gt(i, n) {
                 return acc;
@@ -17,31 +17,31 @@ pub fn count_to(n: i64, step: i64) -> Str {
                 continue;
             }
         }
-    });
+    }));
     go__knot.set(go);
-    go(0i64, str_lit(""))
+    go.call(0i64, str_lit(""))
 }
 
 pub fn parity(n: i64) -> Str {
-    let ev_p__knot = knot::<&'static (dyn Fn(i64) -> bool + Send + Sync)>();
-    let od_p__knot = knot::<&'static (dyn Fn(i64) -> bool + Send + Sync)>();
-    let ev_p = lambda1s(move |k: i64| {
+    let ev_p__knot = knot::<kayak_rt::Proc1s<'static, i64, bool>>();
+    let od_p__knot = knot::<kayak_rt::Proc1s<'static, i64, bool>>();
+    let ev_p = kayak_rt::as_proc(kayak_rt::closure1s((od_p__knot,), |(od_p__knot,), k: i64| {
         if i64_eq(k, 0i64) {
             true
         } else {
-            (od_p__knot.get())(i64_minus(k, 1i64))
+            (od_p__knot.get()).call(i64_minus(k, 1i64))
         }
-    });
-    let od_p = lambda1s(move |k: i64| {
+    }));
+    let od_p = kayak_rt::as_proc(kayak_rt::closure1s((ev_p__knot,), |(ev_p__knot,), k: i64| {
         if i64_eq(k, 0i64) {
             false
         } else {
-            (ev_p__knot.get())(i64_minus(k, 1i64))
+            (ev_p__knot.get()).call(i64_minus(k, 1i64))
         }
-    });
+    }));
     ev_p__knot.set(ev_p);
     od_p__knot.set(od_p);
-    if ev_p(n) {
+    if ev_p.call(n) {
         str_lit("even")
     } else {
         str_lit("odd")
@@ -51,12 +51,12 @@ pub fn parity(n: i64) -> Str {
 /// A parameter named as the procedure is: inside, the parameter.
 #[inline]
 pub fn shadow(x: i64) -> i64 {
-    let f__knot = knot::<&'static (dyn Fn(i64) -> i64 + Send + Sync)>();
-    let f = lambda1s(move |f: i64| {
+    let f__knot = knot::<kayak_rt::Proc1s<'static, i64, i64>>();
+    let f = kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: i64| {
         i64_star(f, 2i64)
-    });
+    }));
     f__knot.set(f);
-    f(x)
+    f.call(x)
 }
 
 pub fn main() -> Str {

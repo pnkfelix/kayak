@@ -6,40 +6,40 @@ use kayak_rt::*;
 // pub type Closures<'r, 'l> = ListAt<'l, &'r dyn Fn(i64) -> i64>, a use of it in a
 // letrena at its lifetimes. Fixpt's run/region-closures.fx, at i64, as written.
 
-pub type Closures<'r, 'l> = ListAt<'l, &'r dyn Fn(i64) -> i64>;
+pub type Closures<'r, 'l> = ListAt<'l, kayak_rt::Proc1<'r, i64, i64>>;
 
 pub fn adders(n: i64) -> i64 {
     {
         struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
-            let make__knot = knot::<&'r dyn Fn(i64, Closures<'r, 'r>) -> Closures<'r, 'r>>();
-            let apply_all__knot = knot::<&'r dyn Fn(Closures<'r, 'r>, i64) -> i64>();
-            let make = lambda2(move |mut i: i64, mut acc: Closures<'r, 'r>| {
+            let make__knot = knot::<kayak_rt::Proc2<'r, i64, Closures<'r, 'r>, Closures<'r, 'r>>>();
+            let apply_all__knot = knot::<kayak_rt::Proc2<'r, Closures<'r, 'r>, i64, i64>>();
+            let make = kayak_rt::closure2((), |(), mut i: i64, mut acc: Closures<'r, 'r>| {
                 loop {
                     if i64_eq(i, 0i64) {
                         return acc;
                     } else {
-                        (i, acc) = (i64_minus(i, 1i64), cons(lambda1(move |x: i64| {
+                        (i, acc) = (i64_minus(i, 1i64), cons(kayak_rt::closure1((i,), |(i,), x: i64| {
                             i64_plus(x, i)
                         }), acc));
                         continue;
                     }
                 }
             });
-            let apply_all = lambda2(move |mut fs: Closures<'r, 'r>, mut acc: i64| {
+            let apply_all = kayak_rt::closure2((), |(), mut fs: Closures<'r, 'r>, mut acc: i64| {
                 loop {
                     if null_p(fs) {
                         return acc;
                     } else {
-                        (fs, acc) = (cdr(fs), (car(fs))(acc));
+                        (fs, acc) = (cdr(fs), (car(fs)).call(acc));
                         continue;
                     }
                 }
             });
             make__knot.set(make);
             apply_all__knot.set(apply_all);
-            apply_all(make(n, nil::<&'r dyn Fn(i64) -> i64>()), 0i64)
+            apply_all.call(make.call(n, nil::<kayak_rt::Proc1<'r, i64, i64>>()), 0i64)
         }
         let r__arena = Region_R::default();
         letrena__r(&r__arena, n)

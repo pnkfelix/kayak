@@ -97,14 +97,14 @@ pub fn c_tops(mut ts: List<kayak_rt::Handle<'static, Ctop>>, mut c: Code, mut ha
                         ()
                     };
                     c_rec_globals_x(bs);
-                    set(cg_form_writes(), map(lambda1s(move |b: kayak_rt::Handle<'static, Cbind>| {
+                    set(cg_form_writes(), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Cbind>| {
                         let tagcase_ = b;
                         match *tagcase_ {
                             Cbind::Cbind(n, x) => {
                                 n
                             }
                         }
-                    }), bs));
+                    })), bs));
                     c_rec_fill_x(bs, c);
                     (ts, has_value) = (cdr(ts), false);
                     continue;
@@ -162,37 +162,37 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     set(cg_form_file(), get(cg_source()));
     set(cg_files(), nil::<Str>());
     set(cg_qnodes(), nil::<kayak_rt::Handle<'static, Qnode>>());
-    set(cg_convert_facts(), filter(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+    set(cg_convert_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
                 (has_prefix_p(what, str_lit("convert ")) || has_prefix_p(what, str_lit("convention ")))
             }
         }
-    }), fs));
+    })), fs));
     set(cg_fx_calls(), nil::<i64>());
     set(cg_native_calls(), nil::<i64>());
-    set(cg_module_facts(), filter(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+    set(cg_module_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
                 (has_prefix_p(what, str_lit("with-spec ")) || has_prefix_p(what, str_lit("module-arg ")) || has_prefix_p(what, str_lit("module-had ")) || has_prefix_p(what, str_lit("module-made ")) || string_eq_p(what, str_lit("module-value")) || string_eq_p(what, str_lit("with-value")))
             }
         }
-    }), fs));
+    })), fs));
     set(cg_layouts(), nil::<kayak_rt::Handle<'static, Clayout>>());
     set(cg_included(), nil::<kayak_rt::Handle<'static, Clayout>>());
     set(cg_made(), nil::<kayak_rt::Handle<'static, Cmade>>());
     set(cg_words(), nil::<kayak_rt::Handle<'static, Word>>());
     globals_reset_x();
-    set(cg_call_facts(), filter(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+    set(cg_call_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
                 (string_eq_p(what, str_lit("call-fx")) || string_eq_p(what, str_lit("call-native")))
             }
         }
-    }), fs));
+    })), fs));
     set(cg_standard_words(), nil::<Str>());
     set(c_this_params(), -1i64);
     set(cg_twins(), nil::<kayak_rt::Handle<'static, Twin>>());
@@ -259,10 +259,10 @@ pub enum Qseen {
     Qseen(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Qseen {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Qseen {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Qseen(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Qseen(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }

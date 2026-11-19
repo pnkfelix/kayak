@@ -10,15 +10,15 @@ const _: () = kayak_rt::tags_apart_from_runtime(&["resolved", "pending"]);
 // `await!` among the promise's waiters. Every suspension resumes with unit;
 // the value awaited is read from the promise.
 
-pub type Task = &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>;
+pub type Task = kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>;
 
 pub type Tasks = List<Task>;
 
 pub type Promise = Ref<kayak_rt::Sum>;
 
 #[inline]
-pub fn sched() -> Tag<(), &'static dyn Fn() -> ()> {
-    kayak_rt::kept_constant!(ONCE: Tag<(), &'static dyn Fn() -> ()>);
+pub fn sched() -> Tag<(), kayak_rt::Proc0<'static, ()>> {
+    kayak_rt::kept_constant!(ONCE: Tag<(), kayak_rt::Proc0<'static, ()>>);
     once(&ONCE, || {
         make_continuation_prompt_tag()
     })
@@ -28,7 +28,7 @@ pub fn sched() -> Tag<(), &'static dyn Fn() -> ()> {
 pub fn queue() -> Ref<Tasks> {
     kayak_rt::kept_constant!(ONCE: Ref<Tasks>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())
+        kayak_rt::heap_new(nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())
     })
 }
 
@@ -53,19 +53,19 @@ pub fn reverse_tasks(mut xs: Tasks, mut acc: Tasks) -> Tasks {
 
 #[inline]
 pub fn enqueue_x(k: Task) -> () {
-    set(queue(), reverse_tasks(kayak_rt::heap_cons(k, reverse_tasks(get(queue()), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
+    set(queue(), reverse_tasks(kayak_rt::heap_cons(k, reverse_tasks(get(queue()), nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())), nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
 }
 
-pub async fn suspend_x(file: &'static dyn Fn(Task) -> ()) -> Result<(), Unwind> {
+pub async fn suspend_x(file: kayak_rt::Proc1<'static, Task, ()>) -> Result<(), Unwind> {
     Ok(kayak_rt::suspend::abort_with_continuation(sched(), move |k: Task| {
-        lambda0(move || {
-            file(k)
+        kayak_rt::closure0((file, k,), |(file, k,)| {
+            file.call(k)
         })
     }).await?)
 }
 
 pub async fn yield_x() -> Result<(), Unwind> {
-    Ok(kayak_rt::suspend::body(suspend_x(&enqueue_x)).await?)
+    Ok(kayak_rt::suspend::body(suspend_x(kayak_rt::as_proc(enqueue_x))).await?)
 }
 
 pub async fn await_x(mut pr: Promise) -> Result<i64, Unwind> {
@@ -76,9 +76,9 @@ pub async fn await_x(mut pr: Promise) -> Result<i64, Unwind> {
             let v: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
             return Ok(v);
         } else if tag_ == const { kayak_rt::tag_hash("pending") } {
-            let ws: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> = kayak_rt::sum_payload::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(tagcase_);
-            kayak_rt::suspend::body(suspend_x(lambda1(move |k: Task| {
-                set(pr, kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("pending") }, "pending", kayak_rt::heap_cons(k, ws)))
+            let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
+            kayak_rt::suspend::body(suspend_x(kayak_rt::closure1((pr, ws,), |(pr, ws,), k: Task| {
+                set(pr, kayak_rt::sum_new::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(const { kayak_rt::tag_hash("pending") }, "pending", kayak_rt::heap_cons(k, ws)))
             }))).await?;
             continue;
         } else { unreachable!() }
@@ -104,9 +104,9 @@ pub fn resolve_x(pr: Promise, v: i64) -> () {
         let u: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
         ()
     } else if tag_ == const { kayak_rt::tag_hash("pending") } {
-        let ws: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> = kayak_rt::sum_payload::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(tagcase_);
+        let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
         set(pr, kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("resolved") }, "resolved", v));
-        enqueue_all_x(reverse_tasks(ws, nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
+        enqueue_all_x(reverse_tasks(ws, nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
     } else { unreachable!() }
 }
 
@@ -120,12 +120,12 @@ pub async fn run_x() -> Result<(), Unwind> {
             {
                 let prompt_tag__ = sched();
                 match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-                    Ok(kayak_rt::suspend::body((car(q))(())).await?)
+                    Ok(kayak_rt::suspend::body((car(q)).call(())).await?)
                 })).await {
                     Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-                    Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |file: &'static dyn Fn() -> ()| {
-                        file()
-                    }))(h_),
+                    Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((), |(), file: kayak_rt::Proc0<'static, ()>| {
+                        file.call()
+                    })).call(h_),
                     Err(u_) => return Err(u_),
                 }
             };
@@ -134,17 +134,17 @@ pub async fn run_x() -> Result<(), Unwind> {
     }
 }
 
-pub async fn spawn_x(thunk: &'static dyn Fn() -> kayak_rt::suspend::Body<()>) -> Result<(), Unwind> {
+pub async fn spawn_x(thunk: kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>) -> Result<(), Unwind> {
     Ok({
         let prompt_tag__ = sched();
         match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
             kayak_rt::suspend::body(yield_x()).await?;
-            Ok(kayak_rt::suspend::body(thunk()).await?)
+            Ok(kayak_rt::suspend::body(thunk.call()).await?)
         })).await {
             Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |file: &'static dyn Fn() -> ()| {
-                file()
-            }))(h_),
+            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((), |(), file: kayak_rt::Proc0<'static, ()>| {
+                file.call()
+            })).call(h_),
             Err(u_) => return Err(u_),
         }
     })
@@ -154,7 +154,7 @@ pub async fn spawn_x(thunk: &'static dyn Fn() -> kayak_rt::suspend::Body<()>) ->
 pub fn fut() -> Promise {
     kayak_rt::kept_constant!(ONCE: Promise);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("pending") }, "pending", nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
+        kayak_rt::heap_new(kayak_rt::sum_new::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(const { kayak_rt::tag_hash("pending") }, "pending", nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
     })
 }
 
@@ -184,11 +184,11 @@ pub fn reverse_log(mut xs: List<i64>, mut acc: List<i64>) -> List<i64> {
 }
 
 pub async fn main() -> Result<Str, Unwind> {
-    kayak_rt::suspend::body(spawn_x(lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body(spawn_x(kayak_rt::closure0((), |()| kayak_rt::suspend::body(async move {
         note_x(1i64);
         Ok(note_x(kayak_rt::suspend::body(await_x(fut())).await?))
     })))).await?;
-    kayak_rt::suspend::body(spawn_x(lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body(spawn_x(kayak_rt::closure0((), |()| kayak_rt::suspend::body(async move {
         note_x(2i64);
         kayak_rt::suspend::body(yield_x()).await?;
         note_x(3i64);

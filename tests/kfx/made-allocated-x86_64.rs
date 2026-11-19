@@ -6,287 +6,115 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1x_2at<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_1x_2at<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_1x_2at, A0 0, A1 1);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_2xs_2at<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_2xs_2at<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_2xs_2at, A0 0, A1 1);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4name_6number<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4name_6number<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_4name_6number, A0 0, A1 1);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4name_9registers<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4name_9registers<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_4name_9registers, A0 0, A1 1);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>, A7: kayak_rt::Trace<'a>, A8: kayak_rt::Trace<'a>, A9: kayak_rt::Trace<'a>, A10: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-        kayak_rt::Trace::trace(&self.4, t);
-        kayak_rt::Trace::trace(&self.5, t);
-        kayak_rt::Trace::trace(&self.6, t);
-        kayak_rt::Trace::trace(&self.7, t);
-        kayak_rt::Trace::trace(&self.8, t);
-        kayak_rt::Trace::trace(&self.9, t);
-        kayak_rt::Trace::trace(&self.10, t);
-    }
-}
+kayak_rt::trace_product!(Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6, A7 7, A8 8, A9 9, A10 10);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4name_2at_5width<A0, A1, A2>(pub A0, pub A1, pub A2);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4name_2at_5width<A0, A1, A2> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-    }
-}
+kayak_rt::trace_product!(Product_4name_2at_5width, A0 0, A1 1, A2 2);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>, A7: kayak_rt::Trace<'a>, A8: kayak_rt::Trace<'a>, A9: kayak_rt::Trace<'a>, A10: kayak_rt::Trace<'a>, A11: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-        kayak_rt::Trace::trace(&self.4, t);
-        kayak_rt::Trace::trace(&self.5, t);
-        kayak_rt::Trace::trace(&self.6, t);
-        kayak_rt::Trace::trace(&self.7, t);
-        kayak_rt::Trace::trace(&self.8, t);
-        kayak_rt::Trace::trace(&self.9, t);
-        kayak_rt::Trace::trace(&self.10, t);
-        kayak_rt::Trace::trace(&self.11, t);
-    }
-}
+kayak_rt::trace_product!(Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6, A7 7, A8 8, A9 9, A10 10, A11 11);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4kind_10code_field_16first_free_field_25native_when_code_at_least_16code_always_runs<A0, A1, A2, A3, A4>(pub A0, pub A1, pub A2, pub A3, pub A4);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4kind_10code_field_16first_free_field_25native_when_code_at_least_16code_always_runs<A0, A1, A2, A3, A4> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-        kayak_rt::Trace::trace(&self.4, t);
-    }
-}
+kayak_rt::trace_product!(Product_4kind_10code_field_16first_free_field_25native_when_code_at_least_16code_always_runs, A0 0, A1 1, A2 2, A3 3, A4 4);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_19field_k_before_code<A0>(pub A0);
 
-impl<'a, A0: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_19field_k_before_code<A0> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-    }
-}
+kayak_rt::trace_product!(Product_19field_k_before_code, A0 0);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<A0, A1, A2, A3, A4, A5, A6, A7, A8>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>, A7: kayak_rt::Trace<'a>, A8: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<A0, A1, A2, A3, A4, A5, A6, A7, A8> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-        kayak_rt::Trace::trace(&self.4, t);
-        kayak_rt::Trace::trace(&self.5, t);
-        kayak_rt::Trace::trace(&self.6, t);
-        kayak_rt::Trace::trace(&self.7, t);
-        kayak_rt::Trace::trace(&self.8, t);
-    }
-}
+kayak_rt::trace_product!(Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6, A7 7, A8 8);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11, pub A12, pub A13, pub A14, pub A15, pub A16, pub A17, pub A18, pub A19, pub A20, pub A21, pub A22, pub A23, pub A24, pub A25, pub A26, pub A27);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>, A7: kayak_rt::Trace<'a>, A8: kayak_rt::Trace<'a>, A9: kayak_rt::Trace<'a>, A10: kayak_rt::Trace<'a>, A11: kayak_rt::Trace<'a>, A12: kayak_rt::Trace<'a>, A13: kayak_rt::Trace<'a>, A14: kayak_rt::Trace<'a>, A15: kayak_rt::Trace<'a>, A16: kayak_rt::Trace<'a>, A17: kayak_rt::Trace<'a>, A18: kayak_rt::Trace<'a>, A19: kayak_rt::Trace<'a>, A20: kayak_rt::Trace<'a>, A21: kayak_rt::Trace<'a>, A22: kayak_rt::Trace<'a>, A23: kayak_rt::Trace<'a>, A24: kayak_rt::Trace<'a>, A25: kayak_rt::Trace<'a>, A26: kayak_rt::Trace<'a>, A27: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-        kayak_rt::Trace::trace(&self.4, t);
-        kayak_rt::Trace::trace(&self.5, t);
-        kayak_rt::Trace::trace(&self.6, t);
-        kayak_rt::Trace::trace(&self.7, t);
-        kayak_rt::Trace::trace(&self.8, t);
-        kayak_rt::Trace::trace(&self.9, t);
-        kayak_rt::Trace::trace(&self.10, t);
-        kayak_rt::Trace::trace(&self.11, t);
-        kayak_rt::Trace::trace(&self.12, t);
-        kayak_rt::Trace::trace(&self.13, t);
-        kayak_rt::Trace::trace(&self.14, t);
-        kayak_rt::Trace::trace(&self.15, t);
-        kayak_rt::Trace::trace(&self.16, t);
-        kayak_rt::Trace::trace(&self.17, t);
-        kayak_rt::Trace::trace(&self.18, t);
-        kayak_rt::Trace::trace(&self.19, t);
-        kayak_rt::Trace::trace(&self.20, t);
-        kayak_rt::Trace::trace(&self.21, t);
-        kayak_rt::Trace::trace(&self.22, t);
-        kayak_rt::Trace::trace(&self.23, t);
-        kayak_rt::Trace::trace(&self.24, t);
-        kayak_rt::Trace::trace(&self.25, t);
-        kayak_rt::Trace::trace(&self.26, t);
-        kayak_rt::Trace::trace(&self.27, t);
-    }
-}
+kayak_rt::trace_product!(Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6, A7 7, A8 8, A9 9, A10 10, A11 11, A12 12, A13 13, A14 14, A15 15, A16 16, A17 17, A18 18, A19 19, A20 20, A21 21, A22 22, A23 23, A24 24, A25 25, A26 26, A27 27);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_5entry_2in_3out_11may_collect<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_5entry_2in_3out_11may_collect<A0, A1, A2, A3> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-    }
-}
+kayak_rt::trace_product!(Product_5entry_2in_3out_11may_collect, A0 0, A1 1, A2 2, A3 3);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<A0, A1, A2, A3, A4, A5, A6, A7>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>, A7: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<A0, A1, A2, A3, A4, A5, A6, A7> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-        kayak_rt::Trace::trace(&self.4, t);
-        kayak_rt::Trace::trace(&self.5, t);
-        kayak_rt::Trace::trace(&self.6, t);
-        kayak_rt::Trace::trace(&self.7, t);
-    }
-}
+kayak_rt::trace_product!(Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6, A7 7);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_5entry_4kind_5kinds<A0, A1, A2>(pub A0, pub A1, pub A2);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_5entry_4kind_5kinds<A0, A1, A2> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-    }
-}
+kayak_rt::trace_product!(Product_5entry_4kind_5kinds, A0 0, A1 1, A2 2);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<A0, A1, A2, A3, A4, A5>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<A0, A1, A2, A3, A4, A5> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-        kayak_rt::Trace::trace(&self.4, t);
-        kayak_rt::Trace::trace(&self.5, t);
-    }
-}
+kayak_rt::trace_product!(Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_8register_8subtract<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_8register_8subtract<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_8register_8subtract, A0 0, A1 1);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_5cards_10card_shift_4mark<A0, A1, A2>(pub A0, pub A1, pub A2);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_5cards_10card_shift_4mark<A0, A1, A2> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-    }
-}
+kayak_rt::trace_product!(Product_5cards_10card_shift_4mark, A0 0, A1 1, A2 2);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>, A2: kayak_rt::Trace<'a>, A3: kayak_rt::Trace<'a>, A4: kayak_rt::Trace<'a>, A5: kayak_rt::Trace<'a>, A6: kayak_rt::Trace<'a>, A7: kayak_rt::Trace<'a>, A8: kayak_rt::Trace<'a>, A9: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-        kayak_rt::Trace::trace(&self.2, t);
-        kayak_rt::Trace::trace(&self.3, t);
-        kayak_rt::Trace::trace(&self.4, t);
-        kayak_rt::Trace::trace(&self.5, t);
-        kayak_rt::Trace::trace(&self.6, t);
-        kayak_rt::Trace::trace(&self.7, t);
-        kayak_rt::Trace::trace(&self.8, t);
-        kayak_rt::Trace::trace(&self.9, t);
-    }
-}
+kayak_rt::trace_product!(Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier, A0 0, A1 1, A2 2, A3 3, A4 4, A5 5, A6 6, A7 7, A8 8, A9 9);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_3x86_2sn<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_3x86_2sn<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_3x86_2sn, A0 0, A1 1);
 
 const _: () = kayak_rt::tags_apart_from_runtime(&["refused", "ok"]);
 
@@ -305,12 +133,12 @@ pub mod made__load__0__fx26_convention {
         CxList(List<kayak_rt::Handle<'static, CvSx>>),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for CvSx {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for CvSx {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::CxName(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::CxInt(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::CxList(f0) => { kayak_rt::Trace::trace(f0, t); }
+                Self::CxName(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::CxInt(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::CxList(f0) => { kayak_rt::Trace::trace(*f0, t); }
             }
         }
     }
@@ -671,10 +499,10 @@ pub mod cv {
     }
 
     pub fn cv_registers_of(rg: CvSxs, st: CvSxs) -> CvRegisters {
-        let (pin, at) = (cx_get(rg, str_lit("pinned")), lambda2s(move |xs: CvSxs, role: Str| {
+        let (pin, at) = (cx_get(rg, str_lit("pinned")), kayak_rt::closure2s((st,), |(st,), xs: CvSxs, role: Str| {
             cx_reg_at(st, xs, role)
         }));
-        Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance(cx_regs(st, cx_get(rg, str_lit("arguments"))), at(rg, str_lit("rest-in")), at(rg, str_lit("count")), at(rg, str_lit("result")), at(rg, str_lit("closure")), at(rg, str_lit("link")), at(rg, str_lit("frame")), at(pin, str_lit("state")), at(pin, str_lit("fuel")), at(pin, str_lit("stack-limit")), at(pin, str_lit("code-distance")))
+        Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance(cx_regs(st, cx_get(rg, str_lit("arguments"))), at.call(rg, str_lit("rest-in")), at.call(rg, str_lit("count")), at.call(rg, str_lit("result")), at.call(rg, str_lit("closure")), at.call(rg, str_lit("link")), at.call(rg, str_lit("frame")), at.call(pin, str_lit("state")), at.call(pin, str_lit("fuel")), at.call(pin, str_lit("stack-limit")), at.call(pin, str_lit("code-distance")))
     }
 
     pub fn cv_values_of(vs: CvSxs) -> CvValues {
@@ -696,10 +524,10 @@ pub mod cv {
     }
 
     pub fn cv_state_of(st: CvSxs) -> CvState {
-        let at = lambda1s(move |n: Str| {
+        let at = kayak_rt::closure1s((st,), |(st,), n: Str| {
             cx_int_at(st, n)
         });
-        Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4(at(str_lit("fuel")), at(str_lit("reserve")), at(str_lit("trap")), at(str_lit("pc")), at(str_lit("args")), at(str_lit("nargs")), at(str_lit("aux")), at(str_lit("callout")), at(str_lit("rust-sp")), at(str_lit("native-sp")), at(str_lit("fp")), at(str_lit("top")), at(str_lit("words")), at(str_lit("alloc-limit")), at(str_lit("code")), at(str_lit("clo")), at(str_lit("delta")), at(str_lit("code-lo")), at(str_lit("trap-stub")), at(str_lit("foreign")), at(str_lit("closure")), at(str_lit("cards")), at(str_lit("stack-limit")), at(str_lit("overflow")), at(str_lit("poll")), at(str_lit("cons")), at(str_lit("bloblet")), at(str_lit("reg4")))
+        Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4(at.call(str_lit("fuel")), at.call(str_lit("reserve")), at.call(str_lit("trap")), at.call(str_lit("pc")), at.call(str_lit("args")), at.call(str_lit("nargs")), at.call(str_lit("aux")), at.call(str_lit("callout")), at.call(str_lit("rust-sp")), at.call(str_lit("native-sp")), at.call(str_lit("fp")), at.call(str_lit("top")), at.call(str_lit("words")), at.call(str_lit("alloc-limit")), at.call(str_lit("code")), at.call(str_lit("clo")), at.call(str_lit("delta")), at.call(str_lit("code-lo")), at.call(str_lit("trap-stub")), at.call(str_lit("foreign")), at.call(str_lit("closure")), at.call(str_lit("cards")), at.call(str_lit("stack-limit")), at.call(str_lit("overflow")), at.call(str_lit("poll")), at.call(str_lit("cons")), at.call(str_lit("bloblet")), at.call(str_lit("reg4")))
     }
 
     pub fn cv_routine_of(r: CvSxs, st: CvSxs) -> CvRoutine {
@@ -837,17 +665,17 @@ pub mod cv {
     }
 
     pub fn cv_state_names(s: CvState) -> CvNames {
-        let f = lambda2s(move |n: Str, k: Int| {
+        let f = kayak_rt::closure2s((), |(), n: Str, k: Int| {
             Product_4name_6number(n, k)
         });
-        append(kayak_rt::heap_cons(f(str_lit("fuel"), s.0), kayak_rt::heap_cons(f(str_lit("reserve"), s.1), kayak_rt::heap_cons(f(str_lit("trap"), s.2), kayak_rt::heap_cons(f(str_lit("pc"), s.3), kayak_rt::heap_cons(f(str_lit("args"), s.4), kayak_rt::heap_cons(f(str_lit("nargs"), s.5), kayak_rt::heap_cons(f(str_lit("aux"), s.6), kayak_rt::heap_cons(f(str_lit("callout"), s.7), kayak_rt::heap_cons(f(str_lit("rust-sp"), s.8), kayak_rt::heap_cons(f(str_lit("native-sp"), s.9), kayak_rt::heap_cons(f(str_lit("fp"), s.10), kayak_rt::heap_cons(f(str_lit("top"), s.11), kayak_rt::heap_cons(f(str_lit("words"), s.12), kayak_rt::heap_cons(f(str_lit("alloc-limit"), s.13), kayak_rt::heap_cons(f(str_lit("code"), s.14), kayak_rt::heap_cons(f(str_lit("clo"), s.15), kayak_rt::heap_cons(f(str_lit("delta"), s.16), kayak_rt::heap_cons(f(str_lit("code-lo"), s.17), kayak_rt::heap_cons(f(str_lit("trap-stub"), s.18), kayak_rt::heap_cons(f(str_lit("foreign"), s.19), kayak_rt::heap_cons(f(str_lit("closure"), s.20), kayak_rt::heap_cons(f(str_lit("cards"), s.21), kayak_rt::heap_cons(f(str_lit("stack-limit"), s.22), kayak_rt::heap_cons(f(str_lit("overflow"), s.23), kayak_rt::heap_cons(f(str_lit("poll"), s.24), kayak_rt::heap_cons(f(str_lit("cons"), s.25), kayak_rt::heap_cons(f(str_lit("bloblet"), s.26), kayak_rt::nil()))))))))))))))))))))))))))), cv_reg_names(s.27, int_lit(8), nil::<Product_4name_6number<Str, Int>>()))
+        append(kayak_rt::heap_cons(f.call(str_lit("fuel"), s.0), kayak_rt::heap_cons(f.call(str_lit("reserve"), s.1), kayak_rt::heap_cons(f.call(str_lit("trap"), s.2), kayak_rt::heap_cons(f.call(str_lit("pc"), s.3), kayak_rt::heap_cons(f.call(str_lit("args"), s.4), kayak_rt::heap_cons(f.call(str_lit("nargs"), s.5), kayak_rt::heap_cons(f.call(str_lit("aux"), s.6), kayak_rt::heap_cons(f.call(str_lit("callout"), s.7), kayak_rt::heap_cons(f.call(str_lit("rust-sp"), s.8), kayak_rt::heap_cons(f.call(str_lit("native-sp"), s.9), kayak_rt::heap_cons(f.call(str_lit("fp"), s.10), kayak_rt::heap_cons(f.call(str_lit("top"), s.11), kayak_rt::heap_cons(f.call(str_lit("words"), s.12), kayak_rt::heap_cons(f.call(str_lit("alloc-limit"), s.13), kayak_rt::heap_cons(f.call(str_lit("code"), s.14), kayak_rt::heap_cons(f.call(str_lit("clo"), s.15), kayak_rt::heap_cons(f.call(str_lit("delta"), s.16), kayak_rt::heap_cons(f.call(str_lit("code-lo"), s.17), kayak_rt::heap_cons(f.call(str_lit("trap-stub"), s.18), kayak_rt::heap_cons(f.call(str_lit("foreign"), s.19), kayak_rt::heap_cons(f.call(str_lit("closure"), s.20), kayak_rt::heap_cons(f.call(str_lit("cards"), s.21), kayak_rt::heap_cons(f.call(str_lit("stack-limit"), s.22), kayak_rt::heap_cons(f.call(str_lit("overflow"), s.23), kayak_rt::heap_cons(f.call(str_lit("poll"), s.24), kayak_rt::heap_cons(f.call(str_lit("cons"), s.25), kayak_rt::heap_cons(f.call(str_lit("bloblet"), s.26), kayak_rt::nil()))))))))))))))))))))))))))), cv_reg_names(s.27, int_lit(8), nil::<Product_4name_6number<Str, Int>>()))
     }
 
     pub fn cv_pr_registers(nm: CvNm, r: CvRegisters) -> Str {
-        let one = lambda2s(move |role: Str, n: Int| {
+        let one = kayak_rt::closure2s((nm,), |(nm,), role: Str, n: Int| {
             cv_par(role, kayak_rt::heap_cons(cv_reg(nm, n), kayak_rt::nil()))
         });
-        cv_par(str_lit("registers"), kayak_rt::heap_cons(cv_par(str_lit("arguments"), cv_pr_regs(nm, r.0)), kayak_rt::heap_cons(one(str_lit("rest-in"), r.1), kayak_rt::heap_cons(one(str_lit("count"), r.2), kayak_rt::heap_cons(one(str_lit("result"), r.3), kayak_rt::heap_cons(one(str_lit("closure"), r.4), kayak_rt::heap_cons(one(str_lit("link"), r.5), kayak_rt::heap_cons(one(str_lit("frame"), r.6), kayak_rt::heap_cons(cv_par(str_lit("pinned"), kayak_rt::heap_cons(one(str_lit("state"), r.7), kayak_rt::heap_cons(one(str_lit("fuel"), r.8), kayak_rt::heap_cons(one(str_lit("stack-limit"), r.9), kayak_rt::heap_cons(one(str_lit("code-distance"), r.10), kayak_rt::nil()))))), kayak_rt::heap_cons(str_lit("(lost-across-calls all-but-pinned)"), kayak_rt::nil()))))))))))
+        cv_par(str_lit("registers"), kayak_rt::heap_cons(cv_par(str_lit("arguments"), cv_pr_regs(nm, r.0)), kayak_rt::heap_cons(one.call(str_lit("rest-in"), r.1), kayak_rt::heap_cons(one.call(str_lit("count"), r.2), kayak_rt::heap_cons(one.call(str_lit("result"), r.3), kayak_rt::heap_cons(one.call(str_lit("closure"), r.4), kayak_rt::heap_cons(one.call(str_lit("link"), r.5), kayak_rt::heap_cons(one.call(str_lit("frame"), r.6), kayak_rt::heap_cons(cv_par(str_lit("pinned"), kayak_rt::heap_cons(one.call(str_lit("state"), r.7), kayak_rt::heap_cons(one.call(str_lit("fuel"), r.8), kayak_rt::heap_cons(one.call(str_lit("stack-limit"), r.9), kayak_rt::heap_cons(one.call(str_lit("code-distance"), r.10), kayak_rt::nil()))))), kayak_rt::heap_cons(str_lit("(lost-across-calls all-but-pinned)"), kayak_rt::nil()))))))))))
     }
 
     pub fn cv_pr_bits(bs: CvBits) -> CvStrs {
@@ -864,21 +692,21 @@ pub mod cv {
     }
 
     pub fn cv_pr_made(nm: CvNm, f: CvFrames, fp: Int, lr: Int) -> Str {
-        let (sp, above) = (cv_sp(nm), lambda1s(move |k: Int| {
+        let (sp, above) = (cv_sp(nm), kayak_rt::closure1s((f,), |(f,), k: Int| {
             int_to_string(_minus(k, f.1))
         }));
         cv_par(str_lit("made"), if nm.0 {
-            kayak_rt::heap_cons(str_lit("pop"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("sub"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(str_lit("store"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above(f.2), kayak_rt::heap_cons(str_lit("store"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above(f.3), kayak_rt::heap_cons(str_lit("lea"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above(int_lit(0)), kayak_rt::nil()))))))))))))))))
+            kayak_rt::heap_cons(str_lit("pop"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("sub"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(str_lit("store"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above.call(f.2), kayak_rt::heap_cons(str_lit("store"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above.call(f.3), kayak_rt::heap_cons(str_lit("lea"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above.call(int_lit(0)), kayak_rt::nil()))))))))))))))))
         } else {
-            kayak_rt::heap_cons(str_lit("sub"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(str_lit("stp"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(cv_reg(nm, lr), kayak_rt::heap_cons(str_lit("add"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above(int_lit(0)), kayak_rt::nil())))))))))
+            kayak_rt::heap_cons(str_lit("sub"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(str_lit("stp"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(cv_reg(nm, lr), kayak_rt::heap_cons(str_lit("add"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above.call(int_lit(0)), kayak_rt::nil())))))))))
         })
     }
 
     pub fn cv_pr_frames(nm: CvNm, f: CvFrames, fp: Int, lr: Int) -> Str {
-        let at = lambda2s(move |role: Str, k: Int| {
+        let at = kayak_rt::closure2s((nm, fp,), |(nm, fp,), role: Str, k: Int| {
             cv_par(role, kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(int_to_string(k), kayak_rt::nil())))
         });
-        cv_par(str_lit("frames"), kayak_rt::heap_cons(cv_kv(str_lit("align"), f.0), kayak_rt::heap_cons(at(str_lit("header"), f.1), kayak_rt::heap_cons(at(str_lit("link"), f.2), kayak_rt::heap_cons(at(str_lit("return"), f.3), kayak_rt::heap_cons(cv_par(str_lit("map"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(int_to_string(f.4), kayak_rt::heap_cons(cv_kv(str_lit("live-slots-below"), f.6), kayak_rt::heap_cons(cv_par(str_lit("fields-above"), kayak_rt::heap_cons(int_to_string(f.7), kayak_rt::heap_cons(str_lit("link"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("map"), kayak_rt::heap_cons(str_lit("values"), kayak_rt::nil())))))), kayak_rt::heap_cons(str_lit("(all-live negative)"), kayak_rt::nil())))))), kayak_rt::heap_cons(at(str_lit("values-from"), f.5), kayak_rt::heap_cons(str_lit("(raw-after-values)"), kayak_rt::heap_cons(str_lit("(keeps-its-code)"), kayak_rt::heap_cons(str_lit("(map-stored-before calls routines-that-collect)"), kayak_rt::heap_cons(cv_pr_made(nm, f, fp, lr), kayak_rt::heap_cons(cv_kv(str_lit("stub"), f.8), kayak_rt::nil()))))))))))))
+        cv_par(str_lit("frames"), kayak_rt::heap_cons(cv_kv(str_lit("align"), f.0), kayak_rt::heap_cons(at.call(str_lit("header"), f.1), kayak_rt::heap_cons(at.call(str_lit("link"), f.2), kayak_rt::heap_cons(at.call(str_lit("return"), f.3), kayak_rt::heap_cons(cv_par(str_lit("map"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(int_to_string(f.4), kayak_rt::heap_cons(cv_kv(str_lit("live-slots-below"), f.6), kayak_rt::heap_cons(cv_par(str_lit("fields-above"), kayak_rt::heap_cons(int_to_string(f.7), kayak_rt::heap_cons(str_lit("link"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("map"), kayak_rt::heap_cons(str_lit("values"), kayak_rt::nil())))))), kayak_rt::heap_cons(str_lit("(all-live negative)"), kayak_rt::nil())))))), kayak_rt::heap_cons(at.call(str_lit("values-from"), f.5), kayak_rt::heap_cons(str_lit("(raw-after-values)"), kayak_rt::heap_cons(str_lit("(keeps-its-code)"), kayak_rt::heap_cons(str_lit("(map-stored-before calls routines-that-collect)"), kayak_rt::heap_cons(cv_pr_made(nm, f, fp, lr), kayak_rt::heap_cons(cv_kv(str_lit("stub"), f.8), kayak_rt::nil()))))))))))))
     }
 
     #[inline]
@@ -1043,19 +871,19 @@ pub mod made__load__1__fx26_x86_64 {
 
     pub type X86Bytes = List<Int>;
 
-    pub type X86Op0 = &'static dyn Fn() -> X86Bytes;
+    pub type X86Op0 = kayak_rt::Proc0<'static, X86Bytes>;
 
-    pub type X86Op1 = &'static dyn Fn(Int) -> X86Bytes;
+    pub type X86Op1 = kayak_rt::Proc1<'static, Int, X86Bytes>;
 
-    pub type X86Op2 = &'static dyn Fn(Int, Int) -> X86Bytes;
+    pub type X86Op2 = kayak_rt::Proc2<'static, Int, Int, X86Bytes>;
 
-    pub type X86Op3 = &'static dyn Fn(Int, Int, Int) -> X86Bytes;
+    pub type X86Op3 = kayak_rt::Proc3<'static, Int, Int, Int, X86Bytes>;
 
-    pub type X86Op4 = &'static dyn Fn(Int, Int, Int, Int) -> X86Bytes;
+    pub type X86Op4 = kayak_rt::Proc4<'static, Int, Int, Int, Int, X86Bytes>;
 
-    pub type X86Op5 = &'static dyn Fn(Int, Int, Int, Int, Int) -> X86Bytes;
+    pub type X86Op5 = kayak_rt::Proc5<'static, Int, Int, Int, Int, Int, X86Bytes>;
 
-    pub type X86Op6 = &'static dyn Fn(Int, Int, Int, Int, Int, Int) -> X86Bytes;
+    pub type X86Op6 = kayak_rt::Proc6<'static, Int, Int, Int, Int, Int, Int, X86Bytes>;
 
     pub trait X8664Sig {
         fn x86_mov() -> X86Op2;
@@ -1764,30 +1592,25 @@ pub fn pack_code(c: Convention, at: List<Int>) -> List<Ins> {
     let a1 = car(rg.0);
     let a2 = car(cdr(rg.0));
     let out = bl.2;
-    let fixnum = lambda1s(move |k: Int| {
+    let fixnum = kayak_rt::closure1s((vs,), |(vs,), k: Int| {
         arithmetic_shift(k, vs.1)
     });
-    let slot = lambda1s(move |k: Int| {
+    let slot = kayak_rt::closure1s((fr,), |(fr,), k: Int| {
         _plus(fr.5, _star(int_lit(8), k))
     });
     let size = {
-        let (a, b) = (fr.0, _minus(slot(int_lit(3)), fr.1));
+        let (a, b) = (fr.0, _minus(slot.call(int_lit(3)), fr.1));
         _star(a, quotient(_plus(b, _minus(a, int_lit(1))), a))
     };
-    let field = lambda1s(move |k: Int| {
+    let field = kayak_rt::closure1s((vs,), |(vs,), k: Int| {
         _minus(int_lit(0), _plus(_star(vs.9, _plus(k, int_lit(2))), vs.8))
     });
     let code_at = _minus(int_lit(0), _plus(_star(vs.9, c.3.1), vs.8));
-    let fields = quotient(_minus(slot(int_lit(3)), fr.2), int_lit(8));
-    let map = fixnum(_plus(arithmetic_shift(fields, fr.7), int_lit(7)));
+    let fields = quotient(_minus(slot.call(int_lit(3)), fr.2), int_lit(8));
+    let map = fixnum.call(_plus(arithmetic_shift(fields, fr.7), int_lit(7)));
     let o = rs.1;
     let link_at = _minus(fr.2, fr.1);
     let return_at = _minus(fr.3, fr.1);
-    let load = &x86::x86_load;
-    let store = &x86::x86_store;
-    let call_m = &x86::x86_call_m;
-    let jcc = &x86::x86_jcc;
-    let jmp = &x86::x86_jmp;
     let sub = int_lit(5);
     let add = int_lit(0);
     let cmp = int_lit(7);
@@ -1797,27 +1620,27 @@ pub fn pack_code(c: Convention, at: List<Int>) -> List<Ins> {
     let r11 = int_lit(11);
     let r9 = int_lit(9);
     let r14 = int_lit(14);
-    let to = lambda2(move |j: Int, t: Int| {
+    let to = kayak_rt::closure2((at,), |(at,), j: Int, t: Int| {
         _minus(nth(at, t), nth(at, _plus(j, int_lit(1))))
     });
-    let with_place = lambda3(move |op: Int, r: Int, p: Int| {
+    let with_place = kayak_rt::closure3((in_state, s,), |(in_state, s,), op: Int, r: Int, p: Int| {
         if _gt_eq(p, in_state) {
-            (&x86::x86_alu_rm)(op, r, s, _minus(p, in_state))
+            x86::x86_alu_rm(op, r, s, _minus(p, in_state))
         } else {
-            (&x86::x86_alu)(op, r, p)
+            x86::x86_alu(op, r, p)
         }
     });
-    let mark = lambda1(move |off: Int| {
-        the::<List<Ins>>(kayak_rt::heap_cons((&x86::x86_lea)(r9, out, off), kayak_rt::heap_cons((&x86::x86_shift_imm)(shr, r9, ba.1), kayak_rt::heap_cons(load(r14, s, ba.0), kayak_rt::heap_cons((&x86::x86_store8_imm)(r14, r9, int_lit(1), int_lit(0), ba.2), kayak_rt::nil())))))
+    let mark = kayak_rt::closure1((ba, s, out, shr, r9, r14,), |(ba, s, out, shr, r9, r14,), off: Int| {
+        the::<List<Ins>>(kayak_rt::heap_cons(x86::x86_lea(r9, out, off), kayak_rt::heap_cons(x86::x86_shift_imm(shr, r9, ba.1), kayak_rt::heap_cons(x86::x86_load(r14, s, ba.0), kayak_rt::heap_cons(x86::x86_store8_imm(r14, r9, int_lit(1), int_lit(0), ba.2), kayak_rt::nil())))))
     });
-    append(kayak_rt::heap_cons((&x86::x86_pop)(r11), kayak_rt::heap_cons((&x86::x86_alu_imm)(sub, sp, size), kayak_rt::heap_cons(store(sp, link_at, fp), kayak_rt::heap_cons(store(sp, return_at, r11), kayak_rt::heap_cons((&x86::x86_lea)(fp, sp, _minus(int_lit(0), fr.1)), kayak_rt::heap_cons(with_place(cmp, sp, rg.9), kayak_rt::heap_cons(jcc(b, to(int_lit(6), int_lit(39))), kayak_rt::heap_cons(load(r9, cl, code_at), kayak_rt::heap_cons(store(fp, slot(int_lit(0)), a1), kayak_rt::heap_cons(store(fp, slot(int_lit(1)), a2), kayak_rt::heap_cons(store(fp, slot(int_lit(2)), r9), kayak_rt::heap_cons((&x86::x86_mov_imm)(r14, map), kayak_rt::heap_cons(store(fp, fr.4, r14), kayak_rt::heap_cons({
+    append(kayak_rt::heap_cons(x86::x86_pop(r11), kayak_rt::heap_cons(x86::x86_alu_imm(sub, sp, size), kayak_rt::heap_cons(x86::x86_store(sp, link_at, fp), kayak_rt::heap_cons(x86::x86_store(sp, return_at, r11), kayak_rt::heap_cons(x86::x86_lea(fp, sp, _minus(int_lit(0), fr.1)), kayak_rt::heap_cons(with_place.call(cmp, sp, rg.9), kayak_rt::heap_cons(x86::x86_jcc(b, to.call(int_lit(6), int_lit(39))), kayak_rt::heap_cons(x86::x86_load(r9, cl, code_at), kayak_rt::heap_cons(x86::x86_store(fp, slot.call(int_lit(0)), a1), kayak_rt::heap_cons(x86::x86_store(fp, slot.call(int_lit(1)), a2), kayak_rt::heap_cons(x86::x86_store(fp, slot.call(int_lit(2)), r9), kayak_rt::heap_cons(x86::x86_mov_imm(r14, map), kayak_rt::heap_cons(x86::x86_store(fp, fr.4, r14), kayak_rt::heap_cons({
         let (f, k) = (rg.8, c.8.1);
         if _gt_eq(f, in_state) {
-            (&x86::x86_alu_mi)(sub, s, _minus(f, in_state), k)
+            x86::x86_alu_mi(sub, s, _minus(f, in_state), k)
         } else {
-            (&x86::x86_alu_imm)(sub, f, k)
+            x86::x86_alu_imm(sub, f, k)
         }
-    }, kayak_rt::heap_cons(jcc(b, to(int_lit(14), int_lit(37))), kayak_rt::heap_cons(load(role_reg(bl.1, str_lit("bytes")), fp, slot(int_lit(1))), kayak_rt::heap_cons((&x86::x86_mov_imm)(role_reg(bl.1, str_lit("fields")), fixnum(int_lit(2))), kayak_rt::heap_cons(call_m(s, bl.0), kayak_rt::heap_cons(load(r9, fp, slot(int_lit(0))), kayak_rt::heap_cons(store(out, field(int_lit(0)), r9), kayak_rt::nil())))))))))))))))))))), append(mark(field(int_lit(0))), append(kayak_rt::heap_cons(load(r9, fp, slot(int_lit(1))), kayak_rt::heap_cons(store(out, field(int_lit(1)), r9), kayak_rt::nil())), append(mark(field(int_lit(1))), kayak_rt::heap_cons(load(r11, fp, fr.3), kayak_rt::heap_cons(load(fp, fp, fr.2), kayak_rt::heap_cons((&x86::x86_alu_imm)(add, sp, _minus(size, int_lit(8))), kayak_rt::heap_cons(store(sp, int_lit(0), r11), kayak_rt::heap_cons((&x86::x86_ret)(), kayak_rt::heap_cons(call_m(s, rs.2.0), kayak_rt::heap_cons(jmp(to(int_lit(36), int_lit(15))), kayak_rt::heap_cons(load(o.1, cl, code_at), kayak_rt::heap_cons((&x86::x86_mov_imm)(o.2, _plus(arithmetic_shift(int_lit(2), o.3), arithmetic_shift(int_lit(1), o.5))), kayak_rt::heap_cons(call_m(s, o.0), kayak_rt::heap_cons(jmp(to(int_lit(40), int_lit(7))), kayak_rt::nil())))))))))))))))
+    }, kayak_rt::heap_cons(x86::x86_jcc(b, to.call(int_lit(14), int_lit(37))), kayak_rt::heap_cons(x86::x86_load(role_reg(bl.1, str_lit("bytes")), fp, slot.call(int_lit(1))), kayak_rt::heap_cons(x86::x86_mov_imm(role_reg(bl.1, str_lit("fields")), fixnum.call(int_lit(2))), kayak_rt::heap_cons(x86::x86_call_m(s, bl.0), kayak_rt::heap_cons(x86::x86_load(r9, fp, slot.call(int_lit(0))), kayak_rt::heap_cons(x86::x86_store(out, field.call(int_lit(0)), r9), kayak_rt::nil())))))))))))))))))))), append(mark.call(field.call(int_lit(0))), append(kayak_rt::heap_cons(x86::x86_load(r9, fp, slot.call(int_lit(1))), kayak_rt::heap_cons(x86::x86_store(out, field.call(int_lit(1)), r9), kayak_rt::nil())), append(mark.call(field.call(int_lit(1))), kayak_rt::heap_cons(x86::x86_load(r11, fp, fr.3), kayak_rt::heap_cons(x86::x86_load(fp, fp, fr.2), kayak_rt::heap_cons(x86::x86_alu_imm(add, sp, _minus(size, int_lit(8))), kayak_rt::heap_cons(x86::x86_store(sp, int_lit(0), r11), kayak_rt::heap_cons(x86::x86_ret(), kayak_rt::heap_cons(x86::x86_call_m(s, rs.2.0), kayak_rt::heap_cons(x86::x86_jmp(to.call(int_lit(36), int_lit(15))), kayak_rt::heap_cons(x86::x86_load(o.1, cl, code_at), kayak_rt::heap_cons(x86::x86_mov_imm(o.2, _plus(arithmetic_shift(int_lit(2), o.3), arithmetic_shift(int_lit(1), o.5))), kayak_rt::heap_cons(x86::x86_call_m(s, o.0), kayak_rt::heap_cons(x86::x86_jmp(to.call(int_lit(40), int_lit(7))), kayak_rt::nil())))))))))))))))
 }
 
 #[inline]
@@ -1866,13 +1689,13 @@ pub fn put_all(mut b: &'static Bloblet<()>, mut at: Int, mut bs: List<Int>) -> (
 
 pub type Packed = &'static Bloblet<(std::cell::Cell<Str>, std::cell::Cell<Int>,)>;
 
-pub type Packer = &'static (dyn Fn(Str, Int) -> Packed + Send + Sync);
+pub type Packer = kayak_rt::Proc2s<'static, Str, Int, Packed>;
 
 pub fn pack(c: Convention) -> Packer {
     let bs = code_bytes(c);
     let b = the::<&'static Bloblet<()>>(make_bloblet(list_length(bs), ()));
     put_all(b, int_lit(0), bs);
-    kayak_rt::native_procedure2::<Str, Int, &'static Bloblet<(std::cell::Cell<Str>, std::cell::Cell<Int>,)>>(seal_code(b))
+    kayak_rt::as_proc(kayak_rt::native_procedure2::<Str, Int, &'static Bloblet<(std::cell::Cell<Str>, std::cell::Cell<Int>,)>>(seal_code(b)))
 }
 
 #[inline]
@@ -1885,7 +1708,7 @@ pub fn many(mut pk: Packer, mut i: Int, mut acc: List<Packed>) -> List<Packed> {
         if _eq(i, int_lit(0)) {
             return acc;
         } else {
-            (i, acc) = (_minus(i, int_lit(1)), kayak_rt::heap_cons(pk(int_to_string(modulo(i, int_lit(10))), modulo(i, int_lit(50))), acc));
+            (i, acc) = (_minus(i, int_lit(1)), kayak_rt::heap_cons(pk.call(int_to_string(modulo(i, int_lit(10))), modulo(i, int_lit(50))), acc));
             continue;
         }
     }
@@ -1905,7 +1728,7 @@ pub fn total(mut bs: List<Packed>, mut acc: Int) -> Int {
 
 #[inline]
 pub fn conv() -> Convention {
-    let tagcase_ = (&cv::cv_native)();
+    let tagcase_ = cv::cv_native();
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("ok") } {
         let c: Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<Str, Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<List<Int>, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<List<Product_4name_6number<Str, Int>>, Int, Int, List<Product_4name_6number<Str, Int>>, Int, Int, Int, Int, Int, Int, List<Product_4name_2at_5width<Str, Int, Int>>, List<Product_4name_6number<Str, Int>>>, Product_4kind_10code_field_16first_free_field_25native_when_code_at_least_16code_always_runs<Int, Int, Int, Int, bool>, Product_19field_k_before_code<Int>, Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<Int, Int, Int, Int, Int, Int, Int, List<Int>>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4kind_5kinds<Int, Int, List<Product_4name_6number<Str, Int>>>>, Product_8register_8subtract<Int, Int>, Product_5cards_10card_shift_4mark<Int, Int, Int>> = kayak_rt::sum_payload::<Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<Str, Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<List<Int>, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<List<Product_4name_6number<Str, Int>>, Int, Int, List<Product_4name_6number<Str, Int>>, Int, Int, Int, Int, Int, Int, List<Product_4name_2at_5width<Str, Int, Int>>, List<Product_4name_6number<Str, Int>>>, Product_4kind_10code_field_16first_free_field_25native_when_code_at_least_16code_always_runs<Int, Int, Int, Int, bool>, Product_19field_k_before_code<Int>, Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<Int, Int, Int, Int, Int, Int, Int, List<Int>>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4kind_5kinds<Int, Int, List<Product_4name_6number<Str, Int>>>>, Product_8register_8subtract<Int, Int>, Product_5cards_10card_shift_4mark<Int, Int, Int>>>(tagcase_);
@@ -1920,7 +1743,7 @@ pub fn conv() -> Convention {
 // summed.
 pub fn main() -> Str {
     string_append(if native_code_p() {
-        shown((pack(conv()))(str_lit("made"), int_lit(24)))
+        shown((pack(conv())).call(str_lit("made"), int_lit(24)))
     } else {
         str_lit("made 24 24")
     }, string_append(str_lit(" "), int_to_string(if native_code_p() {

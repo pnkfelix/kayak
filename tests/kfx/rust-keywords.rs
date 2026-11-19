@@ -6,12 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_2fn_2in<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_2fn_2in<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_2fn_2in, A0 0, A1 1);
 
 const _: () = kayak_rt::tags_apart_from_runtime(&["where", "dyn"]);
 
@@ -31,10 +26,10 @@ pub enum Enum {
     Unsafe(),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Enum {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Enum {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Struct(f0) => { kayak_rt::Trace::trace(f0, t); }
+            Self::Struct(f0) => { kayak_rt::Trace::trace(*f0, t); }
             Self::Unsafe() => { }
         }
     }
@@ -108,7 +103,7 @@ pub fn build<'r#yield, Place_Yield: Holds<Cons<'r#yield, i64>>>(r#async: &'r#yie
 
 // A region named `static`, Rust's `'r#static`, and a type variable `in`.
 #[inline]
-pub fn keep<In: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: In) -> In {
+pub fn keep<In: Copy + 'static + kayak_rt::Trace>(x: In) -> In {
     x
 }
 
@@ -134,8 +129,8 @@ pub fn first() -> i64 {
 pub fn main() -> Str {
     let r#use = the::<Match>(Product_2fn_2in(2i64, 3i64));
     let r#for = i64_plus(r#use.0, r#use.1);
-    let while__knot = knot::<&'static (dyn Fn(i64, i64) -> i64 + Send + Sync)>();
-    let r#while = lambda2s(move |mut r#else: i64, mut r#continue: i64| {
+    let while__knot = knot::<kayak_rt::Proc2s<'static, i64, i64, i64>>();
+    let r#while = kayak_rt::as_proc(kayak_rt::closure2s((), |(), mut r#else: i64, mut r#continue: i64| {
         loop {
             if i64_eq(r#else, 0i64) {
                 return r#continue;
@@ -144,15 +139,15 @@ pub fn main() -> Str {
                 continue;
             }
         }
-    });
+    }));
     while__knot.set(r#while);
     {
         struct Region_Box<'r#box> { a0: Arena<Cons<'r#box, i64>>, phantom_: std::marker::PhantomData<(&'r#box (),)> }
         impl<'r#box> Default for Region_Box<'r#box> { fn default() -> Self { Region_Box { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r#box> Holds<Cons<'r#box, i64>> for Region_Box<'r#box> { fn arena(&self) -> &Arena<Cons<'r#box, i64>> { &self.a0 } }
-        fn letrena__box<'r#box>(r#box: &'r#box Region_Box<'r#box>, r#for: i64, r#while: &'r#box (dyn Fn(i64, i64) -> i64 + Send + Sync)) -> Str {
+        fn letrena__box<'r#box>(r#box: &'r#box Region_Box<'r#box>, r#for: i64, r#while: kayak_rt::Proc2s<'r#box, i64, i64, i64>) -> Str {
             let r#pub = build(r#box, r#where(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("where") }, "where", 4i64)));
-            i64_to_string(i64_plus(r#loop(3i64, r#mod()), i64_plus(i64_star(10i64, r#for), i64_plus(i64_star(100i64, r#while(2i64, 0i64)), i64_plus(i64_star(1000i64, r#const(r#struct(5i64))), i64_plus(r#impl::r#return(0i64), i64_plus(i64_star(10000i64, car(r#pub)), i64_star(1000000i64, first()))))))))
+            i64_to_string(i64_plus(r#loop(3i64, r#mod()), i64_plus(i64_star(10i64, r#for), i64_plus(i64_star(100i64, r#while.call(2i64, 0i64)), i64_plus(i64_star(1000i64, r#const(r#struct(5i64))), i64_plus(r#impl::r#return(0i64), i64_plus(i64_star(10000i64, car(r#pub)), i64_star(1000000i64, first()))))))))
         }
         let box__arena = Region_Box::default();
         letrena__box(&box__arena, r#for, r#while)

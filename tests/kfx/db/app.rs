@@ -57,7 +57,7 @@ pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
 pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, mut before: Reader) -> Str {
     loop {
         if null_p(fs) {
-            return before(name);
+            return before.call(name);
         } else if {
             let tagcase_ = car(fs);
             match *tagcase_ {
@@ -80,11 +80,11 @@ pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, m
 }
 
 pub fn reread(d: Db, whose: Str) -> Db {
-    let fs = db_saved(d, str_lit("test"), lambda1s(move |k: kayak_rt::Handle<'static, Sexp>| {
+    let fs = db_saved(d, str_lit("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
         true
-    }));
+    })));
     let before = db_reader(d);
-    db_opened(lambda1(move |name: Str| {
+    db_opened(kayak_rt::closure1((fs, before,), |(fs, before,), name: Str| {
         file_in(fs, name, before)
     }), whose)
 }
@@ -140,9 +140,9 @@ pub fn run(d: Db, key: kayak_rt::Handle<'static, Sexp>) -> Str {
     let k = k_text(key);
     let q = car(words_from(string_chars(k), nil::<char>(), nil::<Str>()));
     if string_eq_p(q, str_lit("len")) {
-        i64_to_string(string_length_i64(db_get(d, &run, k_of(string_append(str_lit("file "), after_space(k))))))
+        i64_to_string(string_length_i64(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit("file "), after_space(k))))))
     } else if string_eq_p(q, str_lit("total")) {
-        i64_to_string(sum_lens(d, words_from(string_chars(db_get(d, &run, k_of(str_lit("files")))), nil::<char>(), nil::<Str>()), 0i64))
+        i64_to_string(sum_lens(d, words_from(string_chars(db_get(d, kayak_rt::as_proc(run), k_of(str_lit("files")))), nil::<char>(), nil::<Str>()), 0i64))
     } else {
         error(string_append(str_lit("no query "), k));
         str_lit("")
@@ -154,7 +154,7 @@ pub fn sum_lens(mut d: Db, mut ns: List<Str>, mut acc: i64) -> i64 {
         if null_p(ns) {
             return acc;
         } else {
-            (ns, acc) = (cdr(ns), i64_plus(acc, string_to_i64_of(db_get(d, &run, k_of(string_append(str_lit("len "), car(ns)))))));
+            (ns, acc) = (cdr(ns), i64_plus(acc, string_to_i64_of(db_get(d, kayak_rt::as_proc(run), k_of(string_append(str_lit("len "), car(ns)))))));
             continue;
         }
     }
@@ -174,7 +174,7 @@ pub fn long_text(mut n: i64, mut acc: Str) -> Str {
 // An ask of `total`: its value and the bodies it ran.
 pub fn asked(d: Db, what: Str) -> Str {
     let before = db_runs(d);
-    let v = db_get(d, &run, k_of(str_lit("total")));
+    let v = db_get(d, kayak_rt::as_proc(run), k_of(str_lit("total")));
     string_append(what, string_append(str_lit("="), string_append(v, string_append(str_lit("/"), i64_to_string(i64_minus(db_runs(d), before))))))
 }
 

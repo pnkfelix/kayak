@@ -22,90 +22,90 @@ use super::*;
 // A procedure a task runs: it may suspend.
 // A loop: its prompt tag, the ready queue, the sleepers (by time, the
 // earlier first; at one time, in the order they slept), and the clock.
-pub fn make_loop() -> Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>> {
-    Product_3tag_5ready_8sleeping_5clock(the::<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>>(make_continuation_prompt_tag()), the::<Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>(kayak_rt::heap_new(nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())), the::<Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>>(kayak_rt::heap_new(nil::<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)))
+pub fn make_loop() -> Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>> {
+    Product_3tag_5ready_8sleeping_5clock(the::<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>>(make_continuation_prompt_tag()), the::<Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>(kayak_rt::heap_new(nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())), the::<Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>>(kayak_rt::heap_new(nil::<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>())), the::<Ref<i64>>(kayak_rt::heap_new(0i64)))
 }
 
 // The loop's clock: virtual, moved only when no task is ready.
 #[inline]
-pub fn now(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> i64 {
+pub fn now(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>) -> i64 {
     get(lp.3)
 }
 
 #[inline]
-pub fn reverse_tasks(xs: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, acc: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>) -> List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> {
+pub fn reverse_tasks(xs: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>, acc: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>) -> List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> {
     if null_p(xs) {
         acc
     } else {
-        (&reverse_tasks)(cdr(xs), kayak_rt::heap_cons(car(xs), acc))
+        reverse_tasks(cdr(xs), kayak_rt::heap_cons(car(xs), acc))
     }
 }
 
 // A task at the back of the ready queue.
-pub fn enqueue_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>) -> () {
+pub fn enqueue_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, k: kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>) -> () {
     let ready = lp.1;
-    set(ready, (&reverse_tasks)(kayak_rt::heap_cons(k, (&reverse_tasks)(get(ready), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
+    set(ready, reverse_tasks(kayak_rt::heap_cons(k, reverse_tasks(get(ready), nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())), nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
 }
 
 // The one way to suspend: the task's rest given to `file`, run by the loop.
-pub async fn suspend_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, file: &'static dyn Fn(&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>) -> kayak_rt::suspend::Body<()>) -> Result<(), Unwind> {
-    Ok(kayak_rt::suspend::abort_with_continuation(lp.0, move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| {
-        lambda0(move || kayak_rt::suspend::body(async move {
-            Ok(kayak_rt::suspend::body(file(k)).await?)
+pub async fn suspend_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, file: kayak_rt::Proc1<'static, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>, kayak_rt::suspend::Body<()>>) -> Result<(), Unwind> {
+    Ok(kayak_rt::suspend::abort_with_continuation(lp.0, move |k: kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>| {
+        kayak_rt::closure0((file, k,), |(file, k,)| kayak_rt::suspend::body(async move {
+            Ok(kayak_rt::suspend::body(file.call(k)).await?)
         }))
     }).await?)
 }
 
 // To the back of the ready queue.
-pub async fn yield_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Result<(), Unwind> {
-    Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(suspend_x(a__0, a__1))))(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
-        Ok((&enqueue_x)(lp, k))
+pub async fn yield_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>) -> Result<(), Unwind> {
+    Ok(kayak_rt::suspend::body(suspend_x(lp, kayak_rt::closure1((lp,), |(lp,), k: kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>| kayak_rt::suspend::body(async move {
+        Ok(enqueue_x(lp, k))
     })))).await?)
 }
 
-pub fn insert_sleeper(at: i64, k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>, ss: List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>) -> List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>> {
+pub fn insert_sleeper(at: i64, k: kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>, ss: List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>) -> List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>> {
     if null_p(ss) {
-        kayak_rt::heap_cons(Product_2at_1k(at, k), nil::<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>())
+        kayak_rt::heap_cons(Product_2at_1k(at, k), nil::<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>())
     } else if i64_lt(at, car(ss).0) {
         kayak_rt::heap_cons(Product_2at_1k(at, k), ss)
     } else {
-        kayak_rt::heap_cons(car(ss), (&insert_sleeper)(at, k, cdr(ss)))
+        kayak_rt::heap_cons(car(ss), insert_sleeper(at, k, cdr(ss)))
     }
 }
 
 // Asleep until the clock reads `d` more than now.
-pub async fn sleep_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, d: i64) -> Result<(), Unwind> {
-    let at = i64_plus((&now)(lp), d);
-    Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(suspend_x(a__0, a__1))))(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
+pub async fn sleep_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, d: i64) -> Result<(), Unwind> {
+    let at = i64_plus(now(lp), d);
+    Ok(kayak_rt::suspend::body(suspend_x(lp, kayak_rt::closure1((lp, at,), |(lp, at,), k: kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>| kayak_rt::suspend::body(async move {
         let ss = lp.2;
-        Ok(set(ss, (&insert_sleeper)(at, k, get(ss))))
+        Ok(set(ss, insert_sleeper(at, k, get(ss))))
     })))).await?)
 }
 
 // Start a task: it yields at once, so that its first step runs from `run!`.
-pub async fn spawn_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, thunk: &'static dyn Fn() -> kayak_rt::suspend::Body<()>) -> Result<(), Unwind> {
+pub async fn spawn_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, thunk: kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>) -> Result<(), Unwind> {
     Ok({
         let prompt_tag__ = lp.0;
         match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-            kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(yield_x(a__0))))(lp)).await?;
-            Ok(kayak_rt::suspend::body(thunk()).await?)
+            kayak_rt::suspend::body(yield_x(lp)).await?;
+            Ok(kayak_rt::suspend::body(thunk.call()).await?)
         })).await {
             Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |file: &'static dyn Fn() -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
-                Ok(kayak_rt::suspend::body(file()).await?)
-            })))(h_).await?,
+            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((), |(), file: kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>| kayak_rt::suspend::body(async move {
+                Ok(kayak_rt::suspend::body(file.call()).await?)
+            }))).call(h_).await?,
             Err(u_) => return Err(u_),
         }
     })
 }
 
-pub fn wake_due_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, at: i64) -> () {
+pub fn wake_due_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, at: i64) -> () {
     let sleeping = lp.2;
     let ss = get(sleeping);
     if (not(null_p(ss)) && i64_eq(car(ss).0, at)) {
         set(sleeping, cdr(ss));
-        (&enqueue_x)(lp, car(ss).1);
-        (&wake_due_x)(lp, at)
+        enqueue_x(lp, car(ss).1);
+        wake_due_x(lp, at)
     } else {
         ()
     }
@@ -113,16 +113,16 @@ pub fn wake_due_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn 
 
 // The sleepers due at the first one's time, made ready, and the clock moved
 // there.
-pub fn wake_first_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> () {
+pub fn wake_first_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>) -> () {
     let sleeping = lp.2;
     let at = car(get(sleeping)).0;
     set(lp.3, at);
-    (&wake_due_x)(lp, at)
+    wake_due_x(lp, at)
 }
 
 // Run the ready tasks, and those they make ready, until none is ready;
 // the sleepers left asleep, the clock where it is.
-pub async fn run_ready_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Result<(), Unwind> {
+pub async fn run_ready_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>) -> Result<(), Unwind> {
     let q = get(lp.1);
     if null_p(q) {
         Ok(())
@@ -131,47 +131,47 @@ pub async fn run_ready_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'stat
         {
             let prompt_tag__ = lp.0;
             match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-                Ok(kayak_rt::suspend::body((car(q))(())).await?)
+                Ok(kayak_rt::suspend::body((car(q)).call(())).await?)
             })).await {
                 Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-                Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |file: &'static dyn Fn() -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
-                    Ok(kayak_rt::suspend::body(file()).await?)
-                })))(h_).await?,
+                Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((), |(), file: kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>| kayak_rt::suspend::body(async move {
+                    Ok(kayak_rt::suspend::body(file.call()).await?)
+                }))).call(h_).await?,
                 Err(u_) => return Err(u_),
             }
         };
-        Ok(kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_ready_x(a__0))))(lp)).await?)
+        Ok(kayak_rt::suspend::body(run_ready_x(lp)).await?)
     }
 }
 
 // Whether a task sleeps.
 #[inline]
-pub fn sleeping_p(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> bool {
+pub fn sleeping_p(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>) -> bool {
     not(null_p(get(lp.2)))
 }
 
 // Run the ready tasks, and the sleepers as their times come, until none
 // is left.
-pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Result<(), Unwind> {
+pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>) -> Result<(), Unwind> {
     let q = get(lp.1);
     if not(null_p(q)) {
         set(lp.1, cdr(q));
         {
             let prompt_tag__ = lp.0;
             match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-                Ok(kayak_rt::suspend::body((car(q))(())).await?)
+                Ok(kayak_rt::suspend::body((car(q)).call(())).await?)
             })).await {
                 Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-                Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |file: &'static dyn Fn() -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
-                    Ok(kayak_rt::suspend::body(file()).await?)
-                })))(h_).await?,
+                Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((), |(), file: kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>| kayak_rt::suspend::body(async move {
+                    Ok(kayak_rt::suspend::body(file.call()).await?)
+                }))).call(h_).await?,
                 Err(u_) => return Err(u_),
             }
         };
-        Ok(kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_x(a__0))))(lp)).await?)
+        Ok(kayak_rt::suspend::body(run_x(lp)).await?)
     } else if not(null_p(get(lp.2))) {
-        (&wake_first_x)(lp);
-        Ok(kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_x(a__0))))(lp)).await?)
+        wake_first_x(lp);
+        Ok(kayak_rt::suspend::body(run_x(lp)).await?)
     } else {
         Ok(())
     }
@@ -179,47 +179,47 @@ pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn
 
 // An ivar: a cell written once, whose readers wait until it is.
 #[inline]
-pub fn make_ivar<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Ref<kayak_rt::Sum> {
-    kayak_rt::heap_new(the::<kayak_rt::Sum>(kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("empty") }, "empty", nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())))
+pub fn make_ivar<A: Copy + 'static + kayak_rt::Trace>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>) -> Ref<kayak_rt::Sum> {
+    kayak_rt::heap_new(the::<kayak_rt::Sum>(kayak_rt::sum_new::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(const { kayak_rt::tag_hash("empty") }, "empty", nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())))
 }
 
 // Its value, waited for.
-pub async fn ivar_get_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>) -> Result<A, Unwind> {
+pub async fn ivar_get_x<A: Copy + 'static + kayak_rt::Trace>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>) -> Result<A, Unwind> {
     let tagcase_ = get(iv);
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("full") } {
         let v: A = kayak_rt::sum_payload::<A>(tagcase_);
         Ok(v)
     } else if tag_ == const { kayak_rt::tag_hash("empty") } {
-        let ws: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> = kayak_rt::sum_payload::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(tagcase_);
-        kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(suspend_x(a__0, a__1))))(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
-            Ok(set(iv, kayak_rt::sum_new::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(const { kayak_rt::tag_hash("empty") }, "empty", kayak_rt::heap_cons(k, ws))))
+        let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
+        kayak_rt::suspend::body(suspend_x(lp, kayak_rt::closure1((iv, ws,), |(iv, ws,), k: kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>| kayak_rt::suspend::body(async move {
+            Ok(set(iv, kayak_rt::sum_new::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(const { kayak_rt::tag_hash("empty") }, "empty", kayak_rt::heap_cons(k, ws))))
         })))).await?;
-        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(ivar_get_x::<A>(a__0, a__1))))(lp, iv)).await?)
+        Ok(kayak_rt::suspend::body(ivar_get_x::<A>(lp, iv)).await?)
     } else { unreachable!() }
 }
 
-pub fn enqueue_all_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, ks: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>) -> () {
+pub fn enqueue_all_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, ks: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>) -> () {
     if null_p(ks) {
         ()
     } else {
-        (&enqueue_x)(lp, car(ks));
-        (&enqueue_all_x)(lp, cdr(ks))
+        enqueue_x(lp, car(ks));
+        enqueue_all_x(lp, cdr(ks))
     }
 }
 
 // Written, its waiters made ready in the order they came. Written twice
 // is an error.
-pub fn ivar_put_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>, v: A) -> () {
+pub fn ivar_put_x<A: Copy + 'static + kayak_rt::Trace>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, iv: Ref<kayak_rt::Sum>, v: A) -> () {
     let tagcase_ = get(iv);
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("full") } {
         let w: A = kayak_rt::sum_payload::<A>(tagcase_);
         error(str_lit("ivar-put!: written twice"))
     } else if tag_ == const { kayak_rt::tag_hash("empty") } {
-        let ws: List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>> = kayak_rt::sum_payload::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>(tagcase_);
+        let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
         set(iv, kayak_rt::sum_new::<A>(const { kayak_rt::tag_hash("full") }, "full", v));
-        (&enqueue_all_x)(lp, (&reverse_tasks)(ws, nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
+        enqueue_all_x(lp, reverse_tasks(ws, nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
     } else { unreachable!() }
 }
 

@@ -727,6 +727,213 @@
                 ((string=? (car ls) (string-append "%item " s)) "item")
                 (else (local-kind s (cdr ls))))))
 
+      ;; Closures as FX-26's heap grammar has them (C481; kayak-rt's
+      ;; `closure.rs`): its captures a tuple, split by their types into traced
+      ;; fields and plain bytes, and its code a function of them that captures
+      ;; nothing. Each site writes its closure as Rust would capture it,
+      ;; `lambdaN(move |params| body)`, and `closured` makes it a closure of
+      ;; the locals its body names: rustc checks none is missed, since a closure
+      ;; that captures is no `fn`.
+      (define word-length (subr kfx (chars i64) i64)
+        (lambda (cs n)
+          "How many characters of a Rust word begin `cs`."
+          (if (and (not (null? cs)) (or (char-alphabetic? (car cs)) (char-numeric? (car cs)) (char=? (car cs) #\_)))
+              (word-length (cdr cs) (i64+ n 1))
+              n)))
+
+      (define chars-taken (subr kfx (chars i64 chars) chars)
+        (lambda (cs n acc)
+          "The first `n` of `cs`, reversed onto `acc`."
+          (if (or (i64<= n 0) (null? cs)) acc (chars-taken (cdr cs) (i64- n 1) (cons (car cs) acc)))))
+
+      (define chars-dropped (subr kfx (chars i64) chars)
+        (lambda (cs n)
+          (if (or (i64<= n 0) (null? cs)) cs (chars-dropped (cdr cs) (i64- n 1)))))
+
+      (define past-string (subr kfx (chars) chars)
+        (lambda (cs)
+          "After a string's closing quote, its opening one passed."
+          (cond ((null? cs) cs)
+                ((char=? (car cs) #\\) (past-string (chars-dropped cs 2)))
+                ((char=? (car cs) #\") (cdr cs))
+                (else (past-string (cdr cs))))))
+
+      (define past-escape (subr kfx (chars) chars)
+        (lambda (cs)
+          "After a character's escape's closing quote."
+          (cond ((null? cs) cs)
+                ((char=? (car cs) #\') (cdr cs))
+                (else (past-escape (cdr cs))))))
+
+      (define past-quote (subr kfx (chars) chars)
+        (lambda (cs)
+          "After a character literal, or a lifetime, its quote passed."
+          (cond ((null? cs) cs)
+                ((char=? (car cs) #\\) (past-escape (chars-dropped cs 2)))
+                ((and (not (null? (cdr cs))) (char=? (car (cdr cs)) #\')) (chars-dropped cs 2))
+                (else (chars-dropped cs (word-length cs 0))))))
+
+      (define rust-words (subr kfx (chars char strings) strings)
+        (lambda (cs prev out)
+          "The words of Rust text `cs` that may name a local: not in a string
+           or a character, no lifetime, no number's suffix, no path's or
+           field's or method's part after `::` or `.`, no path's first part or
+           macro's name; `prev` the character before, not a space."
+          (cond ((null? cs) out)
+                ((char=? (car cs) #\") (rust-words (past-string (cdr cs)) #\" out))
+                ((char=? (car cs) #\') (rust-words (past-quote (cdr cs)) #\' out))
+                ((char-numeric? (car cs)) (rust-words (chars-dropped cs (word-length cs 0)) #\0 out))
+                ((or (char-alphabetic? (car cs)) (char=? (car cs) #\_))
+                 (let* ((raw (and (char=? (car cs) #\r) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\#)))
+                        (n (if raw (word-length (cdr (cdr cs)) 2) (word-length cs 0)))
+                        (rest (chars-dropped cs n))
+                        (pathed (or (char=? prev #\.) (char=? prev #\:)
+                                    (and (not (null? rest)) (char=? (car rest) #\!))
+                                    ;; A function called: a local, a closure's handle, is
+                                    ;; called by `.call` (C481).
+                                    (and (not (null? rest)) (char=? (car rest) #\())
+                                    (and (not (null? rest)) (char=? (car rest) #\:) (not (null? (cdr rest))) (char=? (car (cdr rest)) #\:)))))
+                   (rust-words rest #\a (if pathed out (cons (list->string (reverse (chars-taken cs n nil))) out)))))
+                ((char-whitespace? (car cs)) (rust-words (cdr cs) prev out))
+                ((and (or (char=? (car cs) #\:) (char=? (car cs) #\.)) (not (null? (cdr cs))) (char=? (car (cdr cs)) (car cs)))
+                 "`::` a path's, before its next part; `..` a range's, before a value."
+                 (rust-words (cdr (cdr cs)) (if (char=? (car cs) #\:) #\: #\;) out))
+                ((char=? (car cs) #\:) (rust-words (cdr cs) #\; out))
+                (else (rust-words (cdr cs) (car cs) out)))))
+
+      (define paren-free? (subr kfx (chars) bool)
+        (lambda (cs)
+          (cond ((null? cs) #t)
+                ((or (char=? (car cs) #\() (char=? (car cs) #\))) #f)
+                (else (paren-free? (cdr cs))))))
+
+      (define as-proc-path (subr kfx (chars) chars)
+        (lambda (h)
+          "Of `kayak_rt::as_proc(PATH)`, a function made a value (C481), its
+           path, if it is one with no parentheses in it; else none."
+          (let ((inner (chars-past h "kayak_rt::as_proc(")))
+            (if (or (i64= (size inner) (size h)) (null? inner))
+                nil
+                (let ((path (reverse (cdr (reverse inner)))))
+                  (if (and (char=? (car (reverse inner)) #\)) (paren-free? path)) path nil))))))
+
+      (define path-length (subr kfx (chars i64) i64)
+        (lambda (cs n)
+          "How many characters before `)`, if none is `(`; else -1."
+          (cond ((null? cs) -1)
+                ((char=? (car cs) #\)) n)
+                ((char=? (car cs) #\() -1)
+                (else (path-length (cdr cs) (i64+ n 1))))))
+
+      (define direct-calls (subr kfx (chars chars) chars)
+        (lambda (cs out)
+          "Rust text `cs`, each `(kayak_rt::as_proc(PATH)).call(` in it, a
+           function made a value and called at once, as `PATH(` (C481)."
+          (cond ((null? cs) (reverse out))
+                ((and (char=? (car cs) #\() (chars-prefix? (string->list "kayak_rt::as_proc(") (cdr cs)))
+                 (let* ((after (chars-dropped (cdr cs) 18))
+                        (k (path-length after 0)))
+                   (if (and (i64> k 0) (chars-prefix? (string->list ")).call(") (chars-dropped after k)))
+                       (direct-calls (chars-dropped after (i64+ k 8)) (cons #\( (chars-taken after k out)))
+                       (direct-calls (cdr cs) (cons (car cs) out)))))
+                (else (direct-calls (cdr cs) (cons (car cs) out))))))
+
+      (define fn-alias (subr kfx (string strings) string)
+        (lambda (s ls)
+          "The path of the function a `let` bound `s` to (C481), innermost
+           binding first; `` if `s` names none so."
+          (cond ((null? ls) "")
+                ((or (string=? (car ls) s) (string=? (car ls) (string-append "%knot " s)) (string=? (car ls) (string-append "%item " s))) "")
+                ((has-prefix? (car ls) (string-append "%fnalias " (string-append s " "))) (after-prefix (car ls) (string-append "%fnalias " (string-append s " "))))
+                (else (fn-alias s (cdr ls))))))
+
+      (define local-rust-name (subr kfx (string) string)
+        (lambda (l)
+          "A local's Rust name, as `put-var` names it; `` for a marker."
+          (cond ((has-prefix? l "%knot ") (string-append (mangle-bare (after-prefix l "%knot ")) "__knot"))
+                ((has-prefix? l "%") "")
+                (else (mangle l)))))
+
+      (define captured (subr kfx (strings strings strings) strings)
+        (lambda (ls words chosen)
+          "Of the locals `ls`, innermost first, those whose Rust names are among
+           `words`, each once, outermost first."
+          (if (null? ls)
+              chosen
+              (let ((r (local-rust-name (car ls))))
+                (captured (cdr ls) words
+                          (if (and (not (string=? r "")) (string-member? r words) (not (string-member? r chosen))) (cons r chosen) chosen))))))
+
+      (define chunks-of (subr kfx (strings i64 strings (listof strings acyclic)) (listof strings acyclic))
+        (lambda (xs k cur out)
+          "`xs` in runs of `k`, in order."
+          (cond ((null? xs) (reverse (if (null? cur) out (cons (reverse cur) out))))
+                ((i64= (size cur) k) (chunks-of xs k nil (cons (reverse cur) out)))
+                (else (chunks-of (cdr xs) k (cons (car xs) cur) out)))))
+
+      (define env-tuple (subr kfx (strings) string)
+        (lambda (xs)
+          "Captures as a tuple, of tuples of at most eight each where more:
+           kayak-rt's `Trace` is of tuples to eight."
+          (cond ((null? xs) "()")
+                ((i64<= (size xs) 8) (string-append "(" (string-append (words-of-sep xs ", ") ",)")))
+                (else (env-tuple (map env-tuple (chunks-of xs 8 nil nil)))))))
+
+      (define chars-past (subr kfx (chars string) chars)
+        (lambda (cs prefix)
+          "`cs` after `prefix`, if it begins so; else `cs`."
+          (chars-past-list cs (string->list prefix) cs)))
+
+      (define chars-past-list (subr kfx (chars chars chars) chars)
+        (lambda (cs ps whole)
+          (cond ((null? ps) cs)
+                ((and (not (null? cs)) (char=? (car cs) (car ps))) (chars-past-list (cdr cs) (cdr ps) whole))
+                (else whole))))
+
+      (define digits-taken (subr kfx (chars chars) chars)
+        (lambda (cs acc)
+          (if (and (not (null? cs)) (char-numeric? (car cs))) (digits-taken (cdr cs) (cons (car cs) acc)) (reverse acc))))
+
+      (define chars-until-bar (subr kfx (chars chars) chars)
+        (lambda (cs acc)
+          "The characters before `|`, reversed onto `acc`."
+          (if (or (null? cs) (char=? (car cs) #\|)) acc (chars-until-bar (cdr cs) (cons (car cs) acc)))))
+
+      (define closured (subr kfx (ctx strings chars chars) chars)
+        (lambda (c extra inner acc)
+          "`inner`, a closure written `lambdaN(move |params| body)` (or
+           `lambdaNs`, `Send + Sync`), as kayak-rt's `closureN(env, |env,
+           params| body)`: `env` the locals of `c` (and `extra`, Rust's names
+           a site knows) its body names."
+          (let* ((cs (chars-past (chars-past (reverse inner) "kayak_rt::") "lambda"))
+                 (digits (digits-taken cs nil))
+                 (cs (chars-dropped cs (size digits)))
+                 (sync (and (not (null? cs)) (char=? (car cs) #\s)))
+                 (cs (chars-past (if sync (cdr cs) cs) "(move |"))
+                 (params (chars-until-bar cs nil))
+                 (body (direct-calls (reverse (cdr (reverse (cdr (chars-dropped cs (size params)))))) nil))
+                 ;; Its parameters' names are its own, not captures.
+                 (own (rust-words (reverse params) #\space nil))
+                 (words (filter (lambda ((w string)) (not (string-member? w own))) (rust-words body #\space nil)))
+                 (caps (captured (ctx-locals c) words (filter (lambda ((x string)) (string-member? x words)) extra)))
+                 (env (env-tuple caps))
+                 ;; `Send + Sync`, made the procedure type wanted: one of an effect
+                 ;; a process may not have where that is wanted (C481).
+                 (acc (if sync (put "kayak_rt::as_proc(" acc) acc))
+                 (acc (put (string-append "kayak_rt::closure" (string-append (list->string digits) (if sync "s(" "("))) acc))
+                 (acc (put (string-append env (string-append ", |" env)) acc))
+                 (acc (if (null? params) acc (rev-onto (reverse params) (put ", " acc)))))
+            (put (if sync "))" ")") (rev-onto body (put "|" acc))))))
+
+      (define unwrapped-sync (subr kfx (chars) chars)
+        (lambda (cs)
+          "`kayak_rt::as_proc(kayak_rt::closureNs(...))` as its closure, the
+           `as_proc` taken off; else `cs`."
+          (let ((inner (chars-past cs "kayak_rt::as_proc(kayak_rt::closure")))
+            (if (i64= (size inner) (size cs))
+                cs
+                (reverse (cdr (reverse (chars-past cs "kayak_rt::as_proc("))))))))
+
       (define item-path (subr kfx (ctx string) string)
         (lambda (c s)
           "A module's value, named in a `with`: `m::x`, called if a constant; a
@@ -797,11 +1004,15 @@
       (define callee (subr kfx (ctx string) string)
         (lambda (c h)
           "A call's operator: a knot's procedure, a constant's value (a
-           procedure a definition made, not a lambda), or a name."
+           procedure a definition made, not a lambda), a local's (each a
+           closure's handle, called by `.call`, C481), or a name."
           (let ((kind (local-kind h (ctx-locals c))))
-            (cond ((string=? kind "knot") (string-append "(" (string-append (mangle-bare h) "__knot.get())")))
+            (cond ((not (string=? (fn-alias h (ctx-locals c)) "")) (fn-alias h (ctx-locals c)))
+                  ((string=? kind "knot") (string-append "(" (string-append (mangle-bare h) "__knot.get()).call")))
                   ((string=? kind "item") (item-path c h))
-                  ((and (string=? kind "") (string-member? h (ctx-constants c))) (string-append (mangle h) "()"))
+                  ((and (string=? kind "") (string-member? h (ctx-constants c))) (string-append (mangle h) "().call"))
+                  ;; A procedure value, a closure's handle (C481).
+                  ((string=? kind "local") (string-append (mangle h) ".call"))
                   ((and (string=? kind "") (or (string=? h "cons") (string=? h "new")) (heap-static? (ctx-locals c)))
                    (string-append "kayak_rt::heap_" h))
                   (else (mangle h))))))
@@ -838,11 +1049,17 @@
           (cond ((string=? s "#t") (put "true" acc))
                 ((string=? s "#f") (put "false" acc))
                 ((string=? s "#u") (put "()" acc))
+                ((not (string=? (fn-alias s (ctx-locals c)) ""))
+                 "A `let`'s name of a function (C481): the function, as a value."
+                 (put ")" (put (fn-alias s (ctx-locals c)) (put "kayak_rt::as_proc(" acc))))
                 ((string=? (local-kind s (ctx-locals c)) "knot") (put ".get()" (put "__knot" (put (mangle-bare s) acc))))
                 ((string=? (local-kind s (ctx-locals c)) "local") (put (mangle s) acc))
                 ((string=? (local-kind s (ctx-locals c)) "item")
                  (let ((m (opener (string-append "%item " s) (ctx-locals c))))
-                   (put (item-path c s) (if (string-member? s (item-constants (module-items c m))) acc (put "&" acc)))))
+                   (if (string-member? s (item-constants (module-items c m)))
+                       (put (item-path c s) acc)
+                       ;; A function as a value: a closure of its code alone (C481).
+                       (put ")" (put (item-path c s) (put "kayak_rt::as_proc(" acc))))))
                 ((or (string=? s "nil") (string-member? s (ctx-constants c)))
                  (put "()" (put (mangle s) acc)))
                 ((any? (lambda ((x string)) (has-prefix? x (string-append "%maker-item " (string-append s " ")))) (ctx-locals c))
@@ -857,12 +1074,14 @@
                         (place (let ((ps (filter (lambda ((x string)) (has-prefix? x "%maker-place ")) (ctx-locals c))))
                                  (if (null? ps) "p" (mangle (after-prefix (car ps) "%maker-place ")))))
                         (call (concat-strings (list (mangle s) "(" place ", maker_st" (if (i64= k 0) "" ", ") args ")"))))
-                   (put (concat-strings (list "kayak_rt::lambda" (i64->string k) "(move |" args "| "
-                                              (cond ((not (async-mode? c)) call)
-                                                    ((string=? (car (cdr ws)) "1") (string-append "kayak_rt::suspend::body(" (string-append call ")")))
-                                                    (else (string-append "kayak_rt::suspend::boxed(" (string-append call ")"))))
-                                              ")"))
-                        acc)))
+                   (closured c (list place "maker_st")
+                     (put (concat-strings (list "kayak_rt::lambda" (i64->string k) "(move |" args "| "
+                                                (cond ((not (async-mode? c)) call)
+                                                      ((string=? (car (cdr ws)) "1") (string-append "kayak_rt::suspend::body(" (string-append call ")")))
+                                                      (else (string-append "kayak_rt::suspend::boxed(" (string-append call ")"))))
+                                                ")"))
+                          nil)
+                     acc)))
                 ((and (async-mode? c) (any? (lambda ((x string)) (has-prefix? x (string-append "%maker-plain " (string-append s " ")))) (ctx-locals c)))
                  "A module maker's plain item given as a value, in the async mode: a
                   closure boxing its future, capturing nothing (C434)."
@@ -870,15 +1089,17 @@
                                                        (string-append "%maker-plain " (string-append s " ")))))
                         (k (digits-number (car ws)))
                         (args (words-of-sep (map (lambda ((i i64)) (string-append "a" (i64->string i))) (counting 0 k)) ", ")))
-                   (put (concat-strings (list "kayak_rt::lambda" (i64->string k) "s(move |" args "| "
-                                              (if (string=? (car (cdr ws)) "1") "kayak_rt::suspend::body(" "kayak_rt::suspend::boxed(")
-                                              (mangle s) "(" args ")))"))
-                        acc)))
+                   (closured c nil
+                     (put (concat-strings (list "kayak_rt::lambda" (i64->string k) "s(move |" args "| "
+                                                (if (string=? (car (cdr ws)) "1") "kayak_rt::suspend::body(" "kayak_rt::suspend::boxed(")
+                                                (mangle s) "(" args ")))"))
+                          nil)
+                     acc)))
                 ((string-member? (string-append "%maker-state " s) (ctx-locals c))
                  "A module maker's ref, its instance's (C433): made when the maker
                   is called, before any item runs."
                  (put ".get().unwrap()" (put (mangle s) (put "maker_st." acc))))
-                (else (put (mangle s) (put "&" acc))))))
+                (else (put ")" (put (mangle s) (put "kayak_rt::as_proc(" acc)))))))
 
       (define put-spaces (subr kfx (i64 chars) chars)
         (lambda (k acc) (if (i64= k 0) acc (put-spaces (i64- k 1) (put "    " acc)))))
@@ -964,6 +1185,12 @@
             "The name a chain of `proj`s instantiates, or none."
             (cond ((head-is? e "proj") (projected-name (second (items e))))
                   (else (tagcase e (sym (n f p) n) (else other "")))))))
+
+      (define-rec
+        (projected-sym (subr kfx (sexp) sexp)
+          (lambda (e)
+            "The name a chain of `proj`s instantiates, as written there."
+            (if (head-is? e "proj") (projected-sym (second (items e))) e))))
 
       (define unprojected (subr kfx (ctx sexp) sexp)
         (lambda (c e)
@@ -1566,12 +1793,12 @@
 
     (define put-generics-of (subr kfx (strings bool chars) chars)
       (lambda (names bounded acc)
-        "`<T, U>`, or with `bounded`, `<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>, U: Copy + 'static + for<'t> kayak_rt::Trace<'t>>`
+        "`<T, U>`, or with `bounded`, `<T: Copy + 'static + kayak_rt::Trace, U: Copy + 'static + kayak_rt::Trace>`
          as every KFX value is; nothing for no names."
         (if (null? names)
             acc
             (put ">" (put-sep (lambda ((n string) (acc chars))
-                                (let ((acc (put (camel n) acc))) (if bounded (put ": Copy + 'static + for<'t> kayak_rt::Trace<'t>" acc) acc)))
+                                (let ((acc (put (camel n) acc))) (if bounded (put ": Copy + 'static + kayak_rt::Trace" acc) acc)))
                               ", " names (put "<" acc))))))
 
     (define collect (subr kfx (sexps ctx) ctx)
@@ -1763,8 +1990,8 @@
                      "A native procedure (C116): as a procedure of KFX's own is."
                      (put-type c (without-conv t) acc))
                     ((sym-is? (car xs) "subr")
-                     "A procedure: a `dyn Fn`, `Send + Sync` if its effect is one a process
-                      may have (C102)."
+                     "A procedure: a closure's handle (C481), `Send + Sync` if its effect
+                      is one a process may have (C102)."
                      (let* ((sync (crossing-effect? c (second xs)))
                             (life (effect-lifetime c (second xs)))
                             ;; In the async mode, its future at the region its effect names (C376).
@@ -1778,19 +2005,23 @@
                             (body (if (string=? named "")
                                       "kayak_rt::suspend::Body<"
                                       (string-append "kayak_rt::suspend::BodyAt<" (string-append named ", "))))
-                            (acc (put (if sync " (dyn Fn(" " dyn Fn(") (put life (put "&" acc))))
-                            (acc (put-types c (items (third xs)) acc))
-                            (acc (put ") -> " acc)))
+                            ;; A closure (C481): a handle to `dyn CallN` (kayak-rt's
+                            ;; `closure.rs`), its parameters' types, then its result's.
+                            (params (items (third xs)))
+                            (acc (put (string-append "kayak_rt::Proc" (string-append (i64->string (size params)) (if sync "s<" "<"))) acc))
+                            (acc (put life acc))
+                            (acc (if (null? params) acc (put-types c params (put ", " acc))))
+                            (acc (put ", " acc)))
+                       (put ">"
                        (cond ((and (suspending-effect? c (second xs)) (async-mode? c) (not (fallible-effect? c (second xs))))
                               "In the async mode, of an effect that cannot abort: a future of its
                                value plainly (C372)."
-                              (put (if sync "> + Send + Sync)" ">") (put-type c (fourth xs) (put fut acc))))
+                              (put ">" (put-type c (fourth xs) (put fut acc))))
                              ((suspending-effect? c (second xs))
-                              (put (if sync "> + Send + Sync)" ">") (put-type c (fourth xs) (put body acc))))
+                              (put ">" (put-type c (fourth xs) (put body acc))))
                              ((fallible-effect? c (second xs))
-                              (put (if sync ", Unwind> + Send + Sync)" ", Unwind>") (put-type c (fourth xs) (put "Result<" acc))))
-                             (sync (put " + Send + Sync)" (put-type c (fourth xs) acc)))
-                             (else (put-type c (fourth xs) acc)))))
+                              (put ", Unwind>" (put-type c (fourth xs) (put "Result<" acc))))
+                             (else (put-type c (fourth xs) acc))))))
                     ((and (sym-is? (car xs) "place") (string-member? (string-append "%placeparam " (unquoted (sym-name (second xs)))) (ctx-locals c)))
                      (let ((p (unquoted (sym-name (second xs)))))
                        (put (string-append "&" (string-append (lifetime p) (string-append " Place_" (camel p)))) acc)))
@@ -2214,28 +2445,28 @@
                           (put-exp lifted e n (value) acc))
                          ((async-mode? c) (put-ok-lift lifted e n lift acc))
                          (else
-                 (let* ((acc (put (i64->string lift) (put "lambda" acc)))
+                 (closured c nil (let* ((acc (put (i64->string lift) (put "lambda" nil)))
                         (acc (put "(move |" acc))
                         (acc (put-arg-names 0 lift acc))
                         (acc (put (if fallible "| kayak_rt::suspend::body(async move { (" "| kayak_rt::suspend::body(async move { Ok((") acc))
-                        (acc (put-exp (with-locals c (list (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc))
-                        (acc (put ")(" acc))
+                        (acc (rev-onto (unwrapped-sync (reverse (put-exp (with-locals c (list (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) nil))) acc))
+                        (acc (put ").call(" acc))
                         (acc (put-arg-names 0 lift acc)))
-                   (put (if fallible ") }))" ")) }))") acc))))))
+                   (put (if fallible ") }))" ")) }))") acc)) acc)))))
                 ((and (or (not (string=? (fact-in fs e "mark-unlift ") "")) (not (string=? (fact-in fs e "mark-unlift-fallible ") "")))
                       (not (string-member? (string-append "%unlifted " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
                  "A mark's procedure, a future's (C106), where one that cannot suspend
                   is wanted: a closure that runs it to its end."
-                 (let* ((fallible (not (string=? (fact-in fs e "mark-unlift-fallible ") "")))
+                 (closured c nil (let* ((fallible (not (string=? (fact-in fs e "mark-unlift-fallible ") "")))
                         (arity (digits-number (if fallible (fact-in fs e "mark-unlift-fallible ") (fact-in fs e "mark-unlift "))))
-                        (acc (put (i64->string arity) (put "lambda" acc)))
+                        (acc (put (i64->string arity) (put "lambda" nil)))
                         (acc (put "(move |" acc))
                         (acc (put-arg-names 0 arity acc))
                         (acc (put "| kayak_rt::suspend::block((" acc))
-                        (acc (put-exp (with-locals c (list (string-append "%unlifted " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc))
-                        (acc (put ")(" acc))
+                        (acc (rev-onto (unwrapped-sync (reverse (put-exp (with-locals c (list (string-append "%unlifted " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) nil))) acc))
+                        (acc (put ").call(" acc))
                         (acc (put-arg-names 0 arity acc)))
-                   (put (if fallible "))" ")).unwrap_or_else(|u| unreachable_unwind(u))") acc)))
+                   (put (if fallible "))" ")).unwrap_or_else(|u| unreachable_unwind(u))") acc)) acc))
                 ((and (not (string=? (fact-in fs e "lift ") ""))
                       (not (string-member? (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
                  "A procedure that cannot abort where one that may is wanted: a
@@ -2243,15 +2474,15 @@
                  (if (async-mode? c)
                      (put-ok-lift (with-locals c (list (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e))))))
                                   e n (digits-number (fact-in fs e "lift ")) acc)
-                 (let* ((lift (digits-number (fact-in fs e "lift ")))
-                        (acc (put (i64->string lift) (put "lambda" acc)))
+                 (closured c nil (let* ((lift (digits-number (fact-in fs e "lift ")))
+                        (acc (put (i64->string lift) (put "lambda" nil)))
                         (acc (put "(move |" acc))
                         (acc (put-arg-names 0 lift acc))
                         (acc (put "| Ok((" acc))
-                        (acc (put-exp (with-locals c (list (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc))
-                        (acc (put ")(" acc))
+                        (acc (rev-onto (unwrapped-sync (reverse (put-exp (with-locals c (list (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) nil))) acc))
+                        (acc (put ").call(" acc))
                         (acc (put-arg-names 0 lift acc)))
-                   (put ")))" acc))))
+                   (put ")))" acc)) acc)))
                 ((not (string=? (fact-in fs e "box none ") ""))
                  (error (string-append "kfx: " (string-append (datum-file e) (string-append ": a union's member KFX cannot give for it yet (C75): " (fact-in fs e "box none "))))))
                 ((not (string=? (fact-in fs e "unbox-none ") ""))
@@ -2261,20 +2492,20 @@
                  "A procedure given where one of a union's parameters or result is
                   wanted (C82): a closure boxing each argument and the result; in
                   the async mode, the result its future's (C376)."
-                 (let* ((hows (map sym-name (read-all (fact-in fs e "wrap ") "" 1)))
+                 (closured c nil (let* ((hows (map sym-name (read-all (fact-in fs e "wrap ") "" 1)))
                         (arity (i64- (size hows) 1))
-                        (acc (put (string-append "lambda" (string-append (i64->string arity) (if (mfact? c e "wrap-sync") "s(move |" "(move |"))) acc))
+                        (acc (put (string-append "lambda" (string-append (i64->string arity) (if (mfact? c e "wrap-sync") "s(move |" "(move |"))) nil))
                         (acc (put-arg-names 0 arity acc))
                         (acc (put "| " acc))
                         (acc (if (async-mode? c) (put "kayak_rt::suspend::boxed(async move { " acc) acc))
                         (acc (put-box-open (last hows) acc))
                         (acc (put "(" acc))
-                        (acc (put-exp (with-locals c (list (string-append "%wrapped " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc))
-                        (acc (put ")(" acc))
+                        (acc (rev-onto (unwrapped-sync (reverse (put-exp (with-locals c (list (string-append "%wrapped " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) nil))) acc))
+                        (acc (put ").call(" acc))
                         (acc (put-boxed-args hows 0 arity acc))
                         (acc (put (if (async-mode? c) ").await" ")") acc))
                         (acc (put-box-close (last hows) acc)))
-                   (put (if (async-mode? c) " }))" ")") acc)))
+                   (put (if (async-mode? c) " }))" ")") acc)) acc))
                 ((or (string=? (fact-in fs e "box ") "nil")
                      (and (string=? (fact-in fs e "box ") "list") (head-is? e "quote") (i64= (size (items e)) 2)
                           (tagcase (second (items e)) (lst (ys f2 l2 p2) (null? ys)) (else other #f))))
@@ -2292,7 +2523,9 @@
                                         ((string=? how "list") "kayak_rt::value::list(")
                                         (else "kayak_rt::value::other("))
                                   acc))
-                        (acc (put-exp (with-locals c (list (string-append "%boxed " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc)))
+                        ;; A closure `Send + Sync` boxed as it is made (C481), as it was
+                        ;; boxed before: no type wanted of it here.
+                        (acc (rev-onto (unwrapped-sync (reverse (put-exp (with-locals c (list (string-append "%boxed " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) nil))) acc)))
                    (put (if (has-prefix? how "other ")
                             (string-append ", kayak_rt::value::Shape::" (string-append (after-prefix how "other ") ")"))
                             ")")
@@ -2330,14 +2563,14 @@
                             "A named procedure that may suspend, as a value: a closure that
                              boxes its future (C46); in the async mode any (C371), a
                              primitive's lifted, its value a ready future."
-                            (let* ((arity (digits-number (fact-in fs e (if (async-mode? c) "proc-value " "async-global "))))
+                            (closured c nil (let* ((arity (digits-number (fact-in fs e (if (async-mode? c) "proc-value " "async-global "))))
                                    (prim (and (async-mode? c) (or (fact-at? c e "prim-ref") (string-member? s prelude-names)
                                                                    (fact-at? c e "leaf-ref")
                                                                    (and (string=? (local-kind s (ctx-locals c)) "item") (item-constructor? c s)))))
                                    (fallible (or (not (async-mode? c)) (fact-at? c e "proc-value-fallible")))
                                    ;; Capturing nothing, `Send + Sync` whatever is wanted
                                    ;; of it, in the async mode (C373).
-                                   (acc (put (string-append "lambda" (string-append (i64->string arity) (if (async-mode? c) "s(move |" "(move |"))) acc))
+                                   (acc (put (string-append "lambda" (string-append (i64->string arity) (if (async-mode? c) "s(move |" "(move |"))) nil))
                                    (acc (put-arg-names 0 arity acc))
                                    (acc (put (cond ((and prim fallible) "| kayak_rt::suspend::body(async move { (")
                                                    (prim "| kayak_rt::suspend::boxed(async move { (")
@@ -2346,16 +2579,22 @@
                                              acc))
                                    ;; Named as `put-var` names it: a module item by its path;
                                    ;; a `proj`'s, its types after it (C409).
-                                   (acc (put-turbofish c e (put (if (string=? (local-kind s (ctx-locals c)) "item") (item-path c s) (mangle s)) acc)))
+                                   ;; A local, a closure's handle, `.call`ed (C481).
+                                   (acc (if (plain-callee? c s) (put-turbofish c e (put (callee c s) acc)) (put (callee c s) acc)))
                                    (acc (put "(" acc))
                                    (acc (put-arg-names 0 arity acc)))
-                              (put (if prim ")) }))" ")))") acc)))
+                              (put (if prim ")) }))" ")))") acc)) acc))
                            ;; A poly procedure a `proj` names, its type binders'
                            ;; arguments after it, as the checker found them: a sum's
                            ;; payloads' types are not in its Rust type, for rustc to
                            ;; infer them from (C409).
                            ((and (plain-callee? c s) (not (string=? (fact-with c e "turbofish ") "")))
-                            (put-turbofish c e (put-var c s acc)))
+                            "A function as a value (C481), its turbofish inside."
+                            (if (and (string=? (local-kind s (ctx-locals c)) "item")
+                                     (string-member? s (item-constants (module-items c (opener (string-append "%item " s) (ctx-locals c))))))
+                                (put-turbofish c e (put-var c s acc))
+                                (put ")" (put-turbofish c e (put (if (string=? (local-kind s (ctx-locals c)) "item") (item-path c s) (mangle s))
+                                                                 (put "kayak_rt::as_proc(" acc))))))
                            (else (put-var c s acc))))
                    (lst (xs src-file src-line src-pos)
                      (cond ((and (fact-in? fs e "void-call") (not (abort? c e))) (put " {}" (put-call c e xs n t (put "match " acc))))
@@ -2369,14 +2608,14 @@
           "In the async mode, a procedure that cannot abort where one that may
            is wanted (C376): each already a future's, so a closure whose future
            awaits the other's and gives its answer `Ok`."
-          (let* ((acc (put (i64->string lift) (put "lambda" acc)))
+          (closured c nil (let* ((acc (put (i64->string lift) (put "lambda" nil)))
                  (acc (put "(move |" acc))
                  (acc (put-arg-names 0 lift acc))
                  (acc (put "| kayak_rt::suspend::body(async move { Ok((" acc))
-                 (acc (put-exp c e n (value) acc))
-                 (acc (put ")(" acc))
+                 (acc (rev-onto (unwrapped-sync (reverse (put-exp c e n (value) nil))) acc))
+                 (acc (put ").call(" acc))
                  (acc (put-arg-names 0 lift acc)))
-            (put ").await) }))" acc))))
+            (put ").await) }))" acc)) acc)))
 
       (call-box (subr kfx (ctx sexp) string)
         (lambda (c e)
@@ -2408,21 +2647,40 @@
                             (acc (put-type c (car (read-all (fact-with c e "head-unbox ") "" 1)) acc))
                             (acc (put ">(" acc))
                             (acc (put-var c h acc))
-                            (acc (put "))(" acc)))
+                            (acc (put ")).call(" acc)))
                        (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc))))))
                     ((not (mfact? c e "suspending-call")) (put-form c e h (cdr xs) n t acc))
                     ((and (async-here? c) (not (boxed-call? c e))) (put-form c e h (cdr xs) n t acc))
                     ((async-here? c) (put-form c e h (cdr xs) n t (put (call-box c e) acc)))
                     (else (put-form c e h (cdr xs) n t (put (call-box c e) (put "kayak_rt::suspend::block(" acc))))))
             (else head
+              (if (and (not (async-mode? c)) (head-is? head "proj") (tagcase (projected-sym head) (sym (pn pf pp) (plain-callee? c pn)) (else other #f)))
+                  ;; A poly function a `proj` instantiates, called (C481): by its
+                  ;; path and turbofish, no closure made of it.
+                  (let* ((ps (projected-sym head))
+                         (pn (sym-name ps))
+                         (acc (cond ((not (mfact? c e "suspending-call")) acc)
+                                    ((and (async-here? c) (not (boxed-call? c e))) acc)
+                                    ((async-here? c) (put (call-box c e) acc))
+                                    (else (put (call-box c e) (put "kayak_rt::suspend::block(" acc)))))
+                         (acc (put-turbofish c ps (put (if (string=? (local-kind pn (ctx-locals c)) "item") (item-path c pn) (mangle pn)) acc)))
+                         (acc (put "(" acc)))
+                    (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc)))))
               (let* ((acc (cond ((not (mfact? c e "suspending-call")) acc)
                                 ((and (async-here? c) (not (boxed-call? c e))) acc)
                                 ((async-here? c) (put (call-box c e) acc))
                                 (else (put (call-box c e) (put "kayak_rt::suspend::block(" acc)))))
-                     (acc (put "(" acc))
-                     (acc (put-exp c head n (value) acc))
-                     (acc (put ")(" acc)))
-                (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc)))))))))
+                     ;; A function the head names (`(with m f)`), as a value
+                     ;; `kayak_rt::as_proc(PATH)`: called by its path, no closure
+                     ;; made of it (C481); else a procedure value, `.call`ed.
+                     ;; A closure called at once: as it is made, no type wanted of
+                     ;; it (C481).
+                     (h (unwrapped-sync (reverse (put-exp c head n (value) nil))))
+                     ;; Not in the async mode, where a procedure value's answer is a
+                     ;; future, a function's not always.
+                     (path (if (async-mode? c) nil (as-proc-path h)))
+                     (acc (if (null? path) (put ").call(" (rev-onto h (put "(" acc))) (put "(" (rev-onto path acc)))))
+                (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc))))))))))
 
       (put-continue (subr kfx (ctx sexps i64 tail chars) chars)
         (lambda (c args n t acc)
@@ -2465,7 +2723,7 @@
                   ((or (head-is? e "let") (head-is? e "let*"))
                    (let* ((xs (cdr (items e)))
                           (names (map binding-name (items (car xs)))))
-                     (put-stmts (with-locals c names) (cdr xs) n (hide t names)
+                     (put-stmts (let-bound c (items (car xs)) n (head-is? e "let*") c) (cdr xs) n (hide t names)
                                 (if (head-is? e "let")
                                     (put-let c (items (car xs)) n acc)
                                     (put-let* c (items (car xs)) n acc)))))
@@ -2533,23 +2791,51 @@
 
       (put-let1 (subr kfx (ctx sexp i64 chars) chars)
         (lambda (c binding n acc)
+          (if (not (null? (alias-of c (second (items binding)) n)))
+              acc
           (let* ((acc (put "let " acc))
                  (acc (put (mangle (sym-name (car (items binding)))) acc))
                  (acc (put " = " acc))
-                 (acc (put-exp c (second (items binding)) n (value) acc)))
-            (put-nl n (put ";" acc)))))
+                 ;; A closure `Send + Sync` bound by a `let`: as it is made, not
+                 ;; through `as_proc`, rustc having no type wanted of it (C481).
+                 (init (reverse (put-exp c (second (items binding)) n (value) nil)))
+                 (acc (rev-onto (unwrapped-sync init) acc)))
+            (put-nl n (put ";" acc))))))
+
+      (alias-of (subr kfx (ctx sexp i64) chars)
+        (lambda (c e n)
+          "The path of a function `e` names (a name, a `with`'s, a `proj`'s),
+           which a `let` binds as an alias of it, no Rust `let` (C481): rustc
+           has no procedure type wanted of it there; or none."
+          (if (or (tagcase e (sym (x f p) #t) (else other #f)) (head-is? e "with") (head-is? e "proj"))
+              (as-proc-path (reverse (put-exp c e n (value) nil)))
+              nil)))
+
+      (let-bound (subr kfx (ctx sexps i64 bool ctx) ctx)
+        (lambda (c bindings n seq out)
+          "`out`, where `bindings` are bound: each a local, or a function's
+           alias (`alias-of`); in turn if `seq` (`let*`), each seeing those
+           before it, else each seeing `c`'s."
+          (if (null? bindings)
+              out
+              (let* ((name (binding-name (car bindings)))
+                     (path (alias-of (if seq out c) (second (items (car bindings))) n))
+                     (out (with-locals out (if (null? path)
+                                               (list name)
+                                               (list (string-append "%fnalias " (string-append name (string-append " " (list->string path)))))))))
+                (let-bound c (cdr bindings) n seq out)))))
 
       (put-let* (subr kfx (ctx sexps i64 chars) chars)
         (lambda (c bindings n acc)
           "Each binding sees those before it."
           (if (null? bindings)
               acc
-              (put-let* (with-locals c (map binding-name (list (car bindings)))) (cdr bindings) n
+              (put-let* (let-bound c (list (car bindings)) n #t c) (cdr bindings) n
                         (put-let1 c (car bindings) n acc)))))
 
       (put-binding-values (subr kfx (ctx sexps i64 chars) chars)
         (lambda (c bindings n acc)
-          (let ((acc (put-exp c (second (items (car bindings))) n (value) acc)))
+          (let ((acc (rev-onto (unwrapped-sync (reverse (put-exp c (second (items (car bindings))) n (value) nil))) acc)))
             (if (null? (cdr bindings))
                 acc
                 (put-binding-values c (cdr bindings) n (put ", " acc))))))
@@ -2563,7 +2849,9 @@
 
       (put-let (subr kfx (ctx sexps i64 chars) chars)
         (lambda (c bindings n acc)
-          "`let` binds in parallel: more than one binding is a tuple."
+          "`let` binds in parallel: more than one binding is a tuple; a
+           function's alias none (C481)."
+          (let ((bindings (filter (lambda ((b sexp)) (null? (alias-of c (second (items b)) n))) bindings)))
           (cond ((null? bindings) acc)
                 ((null? (cdr bindings)) (put-let1 c (car bindings) n acc))
                 (else
@@ -2571,7 +2859,7 @@
                         (acc (put-binding-names bindings acc))
                         (acc (put ") = (" acc))
                         (acc (put-binding-values c bindings n acc)))
-                   (put-nl n (put ");" acc)))))))
+                   (put-nl n (put ");" acc))))))))
 
       (put-case-arms (subr kfx (ctx string sexps i64 tail chars) chars)
         (lambda (c kind arms n t acc)
@@ -2776,9 +3064,10 @@
 
       (put-lambda (subr kfx (ctx sexp sexps sexps i64 chars) chars)
         (lambda (c e params body n acc)
-          "A lambda as a value: a closure, `move`, since what it captures is
-           `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity."
-          (let* ((acc (put "lambda" acc))
+          "A lambda as a value: a closure (C481), kayak-rt's `closureN` of the
+           locals it names and its code, `N` its arity, written first as Rust
+           would capture them (`closured`)."
+          (closured c nil (let* ((acc (put "lambda" nil))
                  (acc (put (i64->string (size params)) acc))
                  (acc (put (if (mfact? c e "sync") "s(move |" "(move |") acc))
                  (acc (put-lambda-params c (lambda-params-typed c e params) acc))
@@ -2796,7 +3085,7 @@
                                    (put (if (charging? c) "kayak_rt::suspend::boxed(async move { if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } " "kayak_rt::suspend::boxed(async move ") acc))))
                   ((mfact? c e "fallible")
                    (put ")" (put-block (with-locals c (cons "%sync" (cons "%fallible" (map param-name params)))) body n (ok-value) acc)))
-                  (else (put ")" (put-block (with-locals c (cons "%sync" (cons "%infallible" (map param-name params)))) body n (value) acc)))))))
+                  (else (put ")" (put-block (with-locals c (cons "%sync" (cons "%infallible" (map param-name params)))) body n (value) acc))))) acc)))
 
       (put-lambda-params (subr kfx (ctx sexps chars) chars)
         (lambda (c params acc)
@@ -2850,14 +3139,14 @@
           "A `letrec`'s procedure that calls itself last: a closure whose body
            is a `loop`, its parameters `mut`, a call of itself an assignment to
            them and a `continue`, as a top-level procedure's."
-          (let* ((xs (items lam))
+          (closured c nil (let* ((xs (items lam))
                  (params (lambda-params-typed c lam (items (second xs))))
                  (names (map param-name params))
                  (fallible (mfact? c lam "fallible"))
                  (suspends (mfact? c lam "suspends"))
                  (t (returns f names #t fallible))
                  (inner (with-locals c (cons (if suspends "%async" "%sync") (cons (if fallible "%fallible" "%infallible") names))))
-                 (acc (put (string-append "lambda" (string-append (i64->string (size params)) (if (mfact? c lam "sync") "s(move |" "(move |"))) acc))
+                 (acc (put (string-append "lambda" (string-append (i64->string (size params)) (if (mfact? c lam "sync") "s(move |" "(move |"))) nil))
                  (acc (put-sep (lambda ((p sexp) acc)
                                  (tagcase p
                                    (lst (pt f2 l2 p2) (put-type c (second pt) (put ": " (put (mangle (sym-name (car pt))) (put "mut " acc)))))
@@ -2868,7 +3157,7 @@
                  (acc (if (and suspends (charging? c))
                           (put-charged-loop (put-stmts inner (cdr (cdr xs)) (i64+ n 2) t nil) (i64+ n 2) acc)
                           (put-stmts inner (cdr (cdr xs)) (i64+ n 2) t acc))))
-            (put (if suspends "}))" "})") (put-nl n (put "}" (put-nl (i64+ n 1) acc)))))))
+            (put (if suspends "}))" "})") (put-nl n (put "}" (put-nl (i64+ n 1) acc))))) acc)))
 
       (put-placed-list (subr kfx (ctx string sexps sexps i64 chars) chars)
         (lambda (c place pair xs n acc)
@@ -3019,8 +3308,14 @@
                    (put (if async ").await" ")") acc)))
                 ((and (string=? h "attempt") (i64= (size xs) 2) (not (async-mode? c)))
                  "`attempt` with a handler that is no `lambda`: a procedure of the
-                  message, called."
-                 (put ")" (put-exp c (second xs) n (value) (put " }, " (put-exp c (car xs) n (value) (put "kayak_rt::attempt(|| { " acc))))))
+                  message, called: a function given as it is, else a closure's
+                  handle called (C481)."
+                 (let* ((h (unwrapped-sync (reverse (put-exp c (second xs) n (value) nil))))
+                        (path (as-proc-path h))
+                        (acc (put " }, " (put-exp c (car xs) n (value) (put "kayak_rt::attempt(|| { " acc)))))
+                   (put ")" (if (null? path)
+                                (put ").call(m_)" (rev-onto h (put "|m_: Str| (" acc)))
+                                (rev-onto path acc)))))
                 ((string=? h "attempt")
                  (begin (error "kfx: an `attempt` whose handler is no `lambda`, in the async mode, which kfx does not write yet (C415)") acc))
                 ((and (string=? h "list") (null? xs)) (put "()" (put-turbofish c e (put "kayak_rt::nil" acc))))
@@ -3048,6 +3343,8 @@
                         (arity (i64->string (i64- (size ts) 1)))
                         (typ (without-conv (expand-aliases c (car xs))))
                         (ready (and (async-mode? c) (head-is? typ "subr")))
+                        ;; `Send + Sync`, made the procedure type wanted (C481).
+                        (acc (put "kayak_rt::as_proc(" acc))
                         (acc (if ready
                                  (put (string-append "kayak_rt::suspend::ready" (string-append arity (if (fallible-effect? c (second (items typ))) "_body(" "(")))
                                       acc)
@@ -3056,7 +3353,7 @@
                         (acc (put-sep (lambda ((p sexp) acc) (if (head-is? p "subr") (put "_" acc) (put-type c p acc))) ", " ts acc))
                         (acc (put ">(" acc))
                         (acc (put-exp c (second (items (second xs))) n (value) acc)))
-                   (put (if ready "))" ")") acc)))
+                   (put (if ready ")))" "))") acc)))
                 ((string=? h "the")
                  "`the::<T>(e)`: the type said to rustc too, which may need it where
                   FX-26's checker did (a tag's payload, a list nothing else types)."
@@ -3159,7 +3456,7 @@
                  (outer (letrena-lifetimes (ctx-locals c)))
                  (tvars (type-params-in (ctx-locals c)))
                  (lives (words-of-sep (onto (cons life outer) tvars) ", "))
-                 (lives-bounded (words-of-sep (onto (cons life outer) (map (lambda ((t string)) (string-append t ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) tvars)) ", "))
+                 (lives-bounded (words-of-sep (onto (cons life outer) (map (lambda ((t string)) (string-append t ": Copy + 'static + kayak_rt::Trace")) tvars)) ", "))
                  (names (split-words (fact-with c e "letrena-names ")))
                  (types (read-all (fact-with c e "letrena-locals ") "" 1))
                  (fallible (mfact? c e "fallible"))
@@ -3180,7 +3477,7 @@
                                  "phantom_: std::marker::PhantomData } } }")))))))))) acc))
                  (acc (put-held-impls held 0 region lives lives-bounded n1 acc))
                  (acc (put-nl n1 acc))
-                 (acc (put (string-append (if async "async fn letrena__" "fn letrena__") (string-append (mangle-bare r) (string-append "<" (string-append (words-of-sep (onto (onto outer (list life)) (map (lambda ((t string)) (string-append t ": Copy + 'static + for<'t> kayak_rt::Trace<'t>")) tvars)) ", ") ">(")))) acc))
+                 (acc (put (string-append (if async "async fn letrena__" "fn letrena__") (string-append (mangle-bare r) (string-append "<" (string-append (words-of-sep (onto (onto outer (list life)) (map (lambda ((t string)) (string-append t ": Copy + 'static + kayak_rt::Trace")) tvars)) ", ") ">(")))) acc))
                  (acc (put (string-append (mangle r) (string-append ": &" (string-append life (string-append " " (string-append region (string-append "<" (string-append lives ">"))))))) acc))
                  ;; In the async mode, as they are outside, where they are from:
                  ;; at none of this region's data, a procedure's future too (C376).
@@ -3462,9 +3759,8 @@
           (let* ((suspends (mfact? c h "suspends"))
                  (fallible (mfact? c h "fallible"))
                  (acc (if (and suspends (not (async-here? c))) (put "kayak_rt::suspend::block(" acc) acc))
-                 (acc (put "(" acc))
-                 (acc (put-exp c h n (value) acc))
-                 (acc (put ")(" acc))
+                 ;; A function the handler is, called by its path (C481).
+                 (acc (rev-onto (direct-calls (string->list (string-append "(" (string-append (list->string (reverse (put-exp c h n (value) nil))) ").call("))) nil) acc))
                  (acc (put payload acc))
                  (acc (put ")" acc))
                  (acc (cond ((not suspends) acc) ((async-here? c) (put ".await" acc)) (else (put ")" acc)))))

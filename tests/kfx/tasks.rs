@@ -7,7 +7,7 @@ use kayak_rt::*;
 // `abort-with-continuation`, giving its rest, resumable once, to the
 // scheduler, which is this program's own: a queue of them.
 
-pub type Task = &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>;
+pub type Task = kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>;
 
 pub type Tasks = List<Task>;
 
@@ -23,7 +23,7 @@ pub fn sched() -> Tag<(), Task> {
 pub fn queue() -> Ref<Tasks> {
     kayak_rt::kept_constant!(ONCE: Ref<Tasks>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())
+        kayak_rt::heap_new(nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())
     })
 }
 
@@ -54,21 +54,21 @@ pub async fn yield_x() -> Result<(), Unwind> {
 
 #[inline]
 pub fn enqueue_x(k: Task) -> () {
-    set(queue(), reverse_tasks(kayak_rt::heap_cons(k, reverse_tasks(get(queue()), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())), nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>()))
+    set(queue(), reverse_tasks(kayak_rt::heap_cons(k, reverse_tasks(get(queue()), nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())), nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
 }
 
 // Start a task: it yields at once, so its first step runs from `run!`.
-pub async fn spawn_x(thunk: &'static dyn Fn() -> kayak_rt::suspend::Body<()>) -> Result<(), Unwind> {
+pub async fn spawn_x(thunk: kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>) -> Result<(), Unwind> {
     Ok({
         let prompt_tag__ = sched();
         match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
             kayak_rt::suspend::body(yield_x()).await?;
-            Ok(kayak_rt::suspend::body(thunk()).await?)
+            Ok(kayak_rt::suspend::body(thunk.call()).await?)
         })).await {
             Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |k: Task| {
+            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((), |(), k: Task| {
                 enqueue_x(k)
-            }))(h_),
+            })).call(h_),
             Err(u_) => return Err(u_),
         }
     })
@@ -84,12 +84,12 @@ pub async fn run_x() -> Result<(), Unwind> {
             {
                 let prompt_tag__ = sched();
                 match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-                    Ok(kayak_rt::suspend::body((car(q))(())).await?)
+                    Ok(kayak_rt::suspend::body((car(q)).call(())).await?)
                 })).await {
                     Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-                    Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |k: Task| {
+                    Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((), |(), k: Task| {
                         enqueue_x(k)
-                    }))(h_),
+                    })).call(h_),
                     Err(u_) => return Err(u_),
                 }
             };
@@ -132,10 +132,10 @@ pub fn reverse_log(mut xs: List<i64>, mut acc: List<i64>) -> List<i64> {
 }
 
 pub async fn main() -> Result<Str, Unwind> {
-    kayak_rt::suspend::body(spawn_x(lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body(spawn_x(kayak_rt::closure0((), |()| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(pinger(100i64, 3i64)).await?)
     })))).await?;
-    kayak_rt::suspend::body(spawn_x(lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body(spawn_x(kayak_rt::closure0((), |()| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(pinger(200i64, 3i64)).await?)
     })))).await?;
     kayak_rt::suspend::body(run_x()).await?;

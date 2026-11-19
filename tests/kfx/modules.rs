@@ -21,9 +21,17 @@ pub fn words(xs: Strings) -> Str {
 pub mod counter {
     use super::*;
 
-    impl<'a> kayak_rt::Trace<'a> for T {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-            kayak_rt::Trace::trace(&self.0, t);
+    impl kayak_rt::Trace for T {
+        type Field = <i64 as kayak_rt::Trace>::Field;
+        type Byte = <i64 as kayak_rt::Trace>::Byte;
+        fn split(self) -> (Self::Field, Self::Byte) {
+            kayak_rt::Trace::split(self.0)
+        }
+        fn join(f: Self::Field, b: Self::Byte) -> Self {
+            T(kayak_rt::Trace::join(f, b))
+        }
+        fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            kayak_rt::Trace::trace(self.0, t);
         }
     }
 
@@ -87,8 +95,8 @@ pub mod stack {
     }
 
     #[inline]
-    pub fn pusher() -> &'static (dyn Fn(i64, Items) -> Items + Send + Sync) {
-        &push
+    pub fn pusher() -> kayak_rt::Proc2s<'static, i64, Items, Items> {
+        kayak_rt::as_proc(push)
     }
 
     pub fn shown(xs: Items) -> Str {
@@ -111,11 +119,11 @@ pub mod geometry {
         Rect(i64, i64),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Shape {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Shape {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Circle(f0) => { kayak_rt::Trace::trace(f0, t); }
-                Self::Rect(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Circle(f0) => { kayak_rt::Trace::trace(*f0, t); }
+                Self::Rect(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -209,8 +217,8 @@ pub mod both {
 pub type Shape = kayak_rt::Handle<'static, geometry::Shape>;
 
 #[inline]
-pub fn rect() -> &'static (dyn Fn(i64, i64) -> kayak_rt::Handle<'static, geometry::Shape> + Send + Sync) {
-    &geometry::rect
+pub fn rect() -> kayak_rt::Proc2s<'static, i64, i64, kayak_rt::Handle<'static, geometry::Shape>> {
+    kayak_rt::as_proc(geometry::rect)
 }
 
 #[inline]
@@ -244,7 +252,7 @@ pub fn count_to(value: i64, n: i64) -> i64 {
 
 pub fn main() -> Str {
     let push = the::<i64>(10i64);
-    words(kayak_rt::heap_cons(i64_to_string(counter::value(twice(counter::zero()))), kayak_rt::heap_cons(i64_to_string(count_to(5i64, 1i64)), kayak_rt::heap_cons(i64_to_string(count_to(5i64, 0i64)), kayak_rt::heap_cons(stack::shown(stack::push(3i64, stack::two())), kayak_rt::heap_cons(i64_to_string(stack::depth((stack::pusher())(4i64, stack::two()))), kayak_rt::heap_cons(i64_to_string(push), kayak_rt::heap_cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), kayak_rt::heap_cons(stack::shown(the::<stack::Items>(kayak_rt::heap_cons(7i64, kayak_rt::heap_cons(8i64, kayak_rt::nil())))), kayak_rt::heap_cons(i64_to_string(geometry::area(geometry::rect(3i64, 4i64))), kayak_rt::heap_cons(if big_p((&geometry::circle)(20i64)) {
+    words(kayak_rt::heap_cons(i64_to_string(counter::value(twice(counter::zero()))), kayak_rt::heap_cons(i64_to_string(count_to(5i64, 1i64)), kayak_rt::heap_cons(i64_to_string(count_to(5i64, 0i64)), kayak_rt::heap_cons(stack::shown(stack::push(3i64, stack::two())), kayak_rt::heap_cons(i64_to_string(stack::depth((stack::pusher()).call(4i64, stack::two()))), kayak_rt::heap_cons(i64_to_string(push), kayak_rt::heap_cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), kayak_rt::heap_cons(stack::shown(the::<stack::Items>(kayak_rt::heap_cons(7i64, kayak_rt::heap_cons(8i64, kayak_rt::nil())))), kayak_rt::heap_cons(i64_to_string(geometry::area(geometry::rect(3i64, 4i64))), kayak_rt::heap_cons(if big_p(geometry::circle(20i64)) {
         str_lit("big")
     } else {
         str_lit("small")
@@ -252,6 +260,6 @@ pub fn main() -> Str {
         let c = the::<Ref<i64>>(kayak_rt::heap_new(40i64));
         bump_twice_x(c);
         i64_to_string(get(c))
-    }, kayak_rt::heap_cons(i64_to_string(i64_plus(both::one(), (&both::shown)())), kayak_rt::nil())))))))))))))
+    }, kayak_rt::heap_cons(i64_to_string(i64_plus(both::one(), both::shown())), kayak_rt::nil())))))))))))))
 }
 

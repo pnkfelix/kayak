@@ -52,7 +52,7 @@ type Make<R, H> = Box<dyn FnOnce(Body<R>) -> H>;
 /// A continuation as KFX has it: a procedure that may suspend, of the
 /// value it is resumed with (`(subr (maxeff D (goto r) (comefrom r) ...)
 /// (V) A)`), resumable once.
-pub type Resume<V, R> = &'static dyn Fn(V) -> Body<R>;
+pub type Resume<V, R> = crate::Proc1<'static, V, Body<R>>;
 
 /// A future, boxed: what a procedure value that may suspend returns, and a
 /// call of a procedure that may suspend awaits (so that an `async fn` may
@@ -113,7 +113,10 @@ where
             body: RefCell::new(Some(body)),
             given,
         });
-        f(crate::leak(move |v| -> Body<R> { Box::pin(k.resume(v)) }))
+        // A closure of the continuation (C481), opaque to a trace for now.
+        f(crate::closure1((k,), |(k,), v| -> Body<R> {
+            Box::pin(k.resume(v))
+        }))
     });
     CAPTURE.with(|c| {
         if c.borrow().is_some() {
@@ -439,34 +442,34 @@ pub(crate) fn task_cx() -> Option<kayak_sched::Cx> {
 /// mode calls procedures (C376): each answer a future ready at once, a
 /// `Body` if `readyN_body`'s.
 macro_rules! ready {
-    ($name:ident, $body:ident, $($a:ident $x:ident),*) => {
+    ($name:ident, $body:ident, $procs:ident, $make:ident, $($a:ident $x:ident),*) => {
         pub fn $name<'a, $($a: 'a,)* R: 'a>(
-            f: &'a (dyn Fn($($a),*) -> R + Send + Sync),
-        ) -> &'a (dyn Fn($($a),*) -> FutAt<'a, R> + Send + Sync) {
-            crate::leak(move |$($x: $a),*| boxed(std::future::ready(f($($x),*))))
+            f: crate::$procs<'a, $($a,)* R>,
+        ) -> crate::$procs<'a, $($a,)* FutAt<'a, R>> {
+            crate::$make((f,), |(f,), $($x: $a),*| boxed(std::future::ready(f.call($($x),*))))
         }
 
         pub fn $body<'a, $($a: 'a,)* R: 'a>(
-            f: &'a (dyn Fn($($a),*) -> R + Send + Sync),
-        ) -> &'a (dyn Fn($($a),*) -> BodyAt<'a, R> + Send + Sync) {
-            crate::leak(move |$($x: $a),*| body(std::future::ready(Ok(f($($x),*)))))
+            f: crate::$procs<'a, $($a,)* R>,
+        ) -> crate::$procs<'a, $($a,)* BodyAt<'a, R>> {
+            crate::$make((f,), |(f,), $($x: $a),*| body(std::future::ready(Ok(f.call($($x),*)))))
         }
     };
 }
 
-ready!(ready0, ready0_body,);
-ready!(ready1, ready1_body, A a);
-ready!(ready2, ready2_body, A a, B b);
-ready!(ready3, ready3_body, A a, B b, C c);
-ready!(ready4, ready4_body, A a, B b, C c, D d);
+ready!(ready0, ready0_body, Proc0s, closure0s,);
+ready!(ready1, ready1_body, Proc1s, closure1s, A a);
+ready!(ready2, ready2_body, Proc2s, closure2s, A a, B b);
+ready!(ready3, ready3_body, Proc3s, closure3s, A a, B b, C c);
+ready!(ready4, ready4_body, Proc4s, closure4s, A a, B b, C c, D d);
 
 /// The other way, a procedure of the async mode where the runtime wants
 /// one that answers at once (`spawn-monitored`'s `on-failure`, C376): each
 /// call run to its end, as `block` runs one.
-pub fn blocking1<A, R>(
-    f: &'static (dyn Fn(A) -> Fut<R> + Send + Sync),
+pub fn blocking1<A: 'static, R: 'static>(
+    f: crate::Proc1s<'static, A, Fut<R>>,
 ) -> impl Fn(A) -> R + Send + Sync + 'static {
-    move |a| block(f(a))
+    move |a| block(f.call(a))
 }
 
 #[cfg(test)]
@@ -538,7 +541,7 @@ mod tests {
             };
             g.queue.set(q.cdr);
             let k = q.car;
-            let body: Body<()> = k(());
+            let body: Body<()> = k.call(());
             if let Prompted::Aborted(k) = prompt(g.sched, body).await? {
                 enqueue(g, k);
             }
@@ -654,7 +657,7 @@ mod tests {
                 return Ok(());
             };
             g.queue.set(q.cdr);
-            let body: Body<()> = (q.car)(());
+            let body: Body<()> = q.car.call(());
             if let Prompted::Aborted(file) = prompt(g.sched, body).await? {
                 file();
             }
@@ -712,8 +715,8 @@ mod tests {
             match prompt(tag, inner).await? {
                 Prompted::Done(v) => Ok(v),
                 Prompted::Aborted(k) => {
-                    let a = k(10).await?;
-                    let b = k(20).await?;
+                    let a = k.call(10).await?;
+                    let b = k.call(20).await?;
                     Ok(a + b)
                 }
             }
@@ -740,7 +743,7 @@ mod tests {
             });
             match prompt(outer, body).await? {
                 Prompted::Done(v) => Ok(v),
-                Prompted::Aborted(k) => Ok(k(()).await? + 1),
+                Prompted::Aborted(k) => Ok(k.call(()).await? + 1),
             }
         });
         let Ok(v) = block(main) else {

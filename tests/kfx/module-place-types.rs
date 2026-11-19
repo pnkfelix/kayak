@@ -11,11 +11,11 @@ pub enum Shape {
     Rect(i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Shape {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Shape {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Sq(f0) => { kayak_rt::Trace::trace(f0, t); }
-            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Sq(f0) => { kayak_rt::Trace::trace(*f0, t); }
+            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -37,6 +37,14 @@ impl<'p, Place_P> Clone for Shapes<'p, Place_P> {
 }
 
 impl<'p, Place_P> Copy for Shapes<'p, Place_P> {}
+
+impl<'p, Place_P> kayak_rt::Trace for Shapes<'p, Place_P> {
+    kayak_rt::trace_whole!();
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
+        kayak_rt::Trace::trace(self.1, t);
+    }
+}
 
 pub mod shapes_in {
     use super::*;

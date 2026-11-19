@@ -7,9 +7,17 @@ use kayak_rt::*;
 // the type's name. At the top level, in a family, and in a module, where
 // they are the module's own (Fixpt's `generative/named-module.fx`).
 
-impl<'a> kayak_rt::Trace<'a> for Meters {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
+impl kayak_rt::Trace for Meters {
+    type Field = <i64 as kayak_rt::Trace>::Field;
+    type Byte = <i64 as kayak_rt::Trace>::Byte;
+    fn split(self) -> (Self::Field, Self::Byte) {
+        kayak_rt::Trace::split(self.0)
+    }
+    fn join(f: Self::Field, b: Self::Byte) -> Self {
+        Meters(kayak_rt::Trace::join(f, b))
+    }
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
     }
 }
 
@@ -24,29 +32,45 @@ pub fn from_meters(x: Meters) -> i64 {
     x.0
 }
 
-impl<'a, T: Copy + 'static + for<'t> kayak_rt::Trace<'t>> kayak_rt::Trace<'a> for Stack<T> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
+impl<T: Copy + 'static + kayak_rt::Trace> kayak_rt::Trace for Stack<T> {
+    type Field = <List<T> as kayak_rt::Trace>::Field;
+    type Byte = <List<T> as kayak_rt::Trace>::Byte;
+    fn split(self) -> (Self::Field, Self::Byte) {
+        kayak_rt::Trace::split(self.0)
+    }
+    fn join(f: Self::Field, b: Self::Byte) -> Self {
+        Stack(kayak_rt::Trace::join(f, b), std::marker::PhantomData)
+    }
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
     }
 }
 
 #[derive(Clone, Copy)]
-pub struct Stack<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(pub List<T>, std::marker::PhantomData<(T, )>);
+pub struct Stack<T: Copy + 'static + kayak_rt::Trace>(pub List<T>, std::marker::PhantomData<(T, )>);
 
-pub fn stacked<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: List<T>) -> Stack<T> {
+pub fn stacked<T: Copy + 'static + kayak_rt::Trace>(x: List<T>) -> Stack<T> {
     Stack(x, std::marker::PhantomData)
 }
 
-pub fn unstack<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: Stack<T>) -> List<T> {
+pub fn unstack<T: Copy + 'static + kayak_rt::Trace>(x: Stack<T>) -> List<T> {
     x.0
 }
 
 pub mod m {
     use super::*;
 
-    impl<'a> kayak_rt::Trace<'a> for Counter {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-            kayak_rt::Trace::trace(&self.0, t);
+    impl kayak_rt::Trace for Counter {
+        type Field = <i64 as kayak_rt::Trace>::Field;
+        type Byte = <i64 as kayak_rt::Trace>::Byte;
+        fn split(self) -> (Self::Field, Self::Byte) {
+            kayak_rt::Trace::split(self.0)
+        }
+        fn join(f: Self::Field, b: Self::Byte) -> Self {
+            Counter(kayak_rt::Trace::join(f, b))
+        }
+        fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            kayak_rt::Trace::trace(self.0, t);
         }
     }
 
@@ -78,12 +102,12 @@ pub mod m {
 }
 
 #[inline]
-pub fn push<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(x: T, s: Stack<T>) -> Stack<T> {
+pub fn push<T: Copy + 'static + kayak_rt::Trace>(x: T, s: Stack<T>) -> Stack<T> {
     stacked(kayak_rt::heap_cons(x, unstack(s)))
 }
 
 pub fn main() -> Str {
     let s = push(the::<i64>(2i64), stacked(the::<List<i64>>(nil::<i64>())));
-    string_append(i64_to_string(from_meters(to_meters(42i64))), string_append(str_lit(" "), string_append(i64_to_string(car(unstack(s))), string_append(str_lit(" "), i64_to_string((&m::value)((&m::inc)(m::zero())))))))
+    string_append(i64_to_string(from_meters(to_meters(42i64))), string_append(str_lit(" "), string_append(i64_to_string(car(unstack(s))), string_append(str_lit(" "), i64_to_string(m::value(m::inc(m::zero())))))))
 }
 

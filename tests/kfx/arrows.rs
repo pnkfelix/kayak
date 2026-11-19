@@ -60,7 +60,7 @@ pub fn count_down(mut n: Int) -> Int {
 }
 
 #[inline]
-pub fn first_of<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<T>, d: T) -> T {
+pub fn first_of<T: Copy + 'static + kayak_rt::Trace>(xs: List<T>, d: T) -> T {
     if null_p(xs) {
         d
     } else {
@@ -69,8 +69,8 @@ pub fn first_of<T: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<T>, d:
 }
 
 #[inline]
-pub fn apply_to(f: &'static (dyn Fn(Int) -> Int + Send + Sync), x: Int) -> Int {
-    f(x)
+pub fn apply_to(f: kayak_rt::Proc1s<'static, Int, Int>, x: Int) -> Int {
+    f.call(x)
 }
 
 pub fn main() -> Str {
@@ -81,6 +81,6 @@ pub fn main() -> Str {
         str_lit("even")
     } else {
         str_lit("odd")
-    }, string_append(str_lit(" "), string_append(int_to_string(count_down(int_lit(7))), string_append(str_lit(" "), string_append(int_to_string(first_of(kayak_rt::heap_cons(int_lit(4), kayak_rt::heap_cons(int_lit(5), kayak_rt::nil())), int_lit(0))), string_append(str_lit(" "), int_to_string(apply_to(&double, int_lit(21)))))))))))))
+    }, string_append(str_lit(" "), string_append(int_to_string(count_down(int_lit(7))), string_append(str_lit(" "), string_append(int_to_string(first_of(kayak_rt::heap_cons(int_lit(4), kayak_rt::heap_cons(int_lit(5), kayak_rt::nil())), int_lit(0))), string_append(str_lit(" "), int_to_string(apply_to(kayak_rt::as_proc(double), int_lit(21)))))))))))))
 }
 

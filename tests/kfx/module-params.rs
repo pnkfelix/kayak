@@ -13,9 +13,17 @@ pub mod counter {
     /// This module, given for a module type (C24).
     pub struct Module;
 
-    impl<'a> kayak_rt::Trace<'a> for T {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-            kayak_rt::Trace::trace(&self.0, t);
+    impl kayak_rt::Trace for T {
+        type Field = <i64 as kayak_rt::Trace>::Field;
+        type Byte = <i64 as kayak_rt::Trace>::Byte;
+        fn split(self) -> (Self::Field, Self::Byte) {
+            kayak_rt::Trace::split(self.0)
+        }
+        fn join(f: Self::Field, b: Self::Byte) -> Self {
+            T(kayak_rt::Trace::join(f, b))
+        }
+        fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            kayak_rt::Trace::trace(self.0, t);
         }
     }
 
@@ -73,14 +81,14 @@ pub mod tens {
 // Its values in another order than the modules give them, and one fewer:
 // a module may give more.
 pub trait Steps {
-    type T: Copy + 'static + for<'t> kayak_rt::Trace<'t>;
+    type T: Copy + 'static + kayak_rt::Trace;
     fn inc(a__0: Self::T) -> Self::T;
     fn zero() -> Self::T;
     fn value(a__0: Self::T) -> i64;
 }
 
 pub trait Starts {
-    type T: Copy + 'static + for<'t> kayak_rt::Trace<'t>;
+    type T: Copy + 'static + kayak_rt::Trace;
     fn zero() -> Self::T;
     fn value(a__0: Self::T) -> i64;
 }

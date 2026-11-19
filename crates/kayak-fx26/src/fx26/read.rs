@@ -22,16 +22,16 @@ pub enum Sexp {
     Real(Str, Str, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Sexp {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Sexp {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Sym(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::Str(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::Num(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::Big(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::Chr(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
-            Self::Lst(f0, f1, f2, f3) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); }
-            Self::Real(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Sym(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::Str(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::Num(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::Big(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::Chr(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
+            Self::Lst(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
+            Self::Real(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -71,10 +71,10 @@ pub enum Here {
     Here(Chars, i64, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Here {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Here {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Here(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Here(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -90,10 +90,10 @@ pub enum Got {
     Got(kayak_rt::Handle<'static, Sexp>, kayak_rt::Handle<'static, Here>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Got {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Got {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Got(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Got(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -106,10 +106,10 @@ pub enum Gots {
     Gots(Sexps, kayak_rt::Handle<'static, Here>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Gots {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Gots {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Gots(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Gots(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -122,10 +122,10 @@ pub enum Tok {
     Tok(Str, Chars, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Tok {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Tok {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Tok(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::Tok(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -468,11 +468,11 @@ pub fn exponent_real_p(cs: Chars) -> bool {
     } else {
         x
     };
-    (not(null_p(ds)) && all_digits_p(ds) && not(null_p(filter(lambda1s(move |c: char| {
+    (not(null_p(ds)) && all_digits_p(ds) && not(null_p(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
         char_numeric_p(c)
-    }), m))) && i64_lt_eq(point_count(m, 0i64), 1i64) && all_digits_p(filter(lambda1s(move |c: char| {
+    })), m))) && i64_lt_eq(point_count(m, 0i64), 1i64) && all_digits_p(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
         not(char_eq_p(c, '.'))
-    }), m)))
+    })), m)))
 }
 
 /// Whether a real is written as KFX writes one: neither its point first nor
@@ -488,9 +488,9 @@ pub fn written_out_real_p(t: Str) -> bool {
 /// each, the reader's most of an edit build's character lists).
 pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
     let r#as = string_chars(allowed);
-    not(any_p(lambda1s(move |c: char| {
+    not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((r#as,), |(r#as,), c: char| {
         not(has_char_p(r#as, c))
-    }), cs))
+    })), cs))
 }
 
 /// Hex digits onto `n`, as `digits-value`'s are, negated; one past an i64
@@ -809,11 +809,11 @@ pub enum Labels {
     LbNode(kayak_rt::Handle<'static, Labels>, i64, kayak_rt::Handle<'static, Sexp>, i64, kayak_rt::Handle<'static, Labels>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Labels {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Labels {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
             Self::LbNone() => { }
-            Self::LbNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::LbNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -830,10 +830,10 @@ pub enum Resolved {
     Resolved(Sexps, kayak_rt::Handle<'static, Labels>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Resolved {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Resolved {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Resolved(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::Resolved(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }

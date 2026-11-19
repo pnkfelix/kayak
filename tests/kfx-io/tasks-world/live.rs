@@ -9,8 +9,8 @@ use super::*;
 // program run under it, recorded (lib/runner.kfx's `recording`), replays under `replaying`
 // with no I/O at all.
 
-pub fn live() -> &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer> {
-    lambda2(move |n: i64, o: Op| kayak_rt::suspend::body(async move {
+pub fn live() -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>> {
+    kayak_rt::closure2((), |(), n: i64, o: Op| kayak_rt::suspend::body(async move {
         let tagcase_ = o;
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("read-line") } {

@@ -14733,3 +14733,75 @@ out of the measure: values in letregion arenas (not the heap's), strings
 held only by the stack (a `Str`'s bytes `leak_string`'s). An edit's
 build 0.27 to 0.28 s, as before.
 - **The full check**: all passed in 398.6 s.
+
+## C481. Closures as FX-26's heap grammar has them (2026-11-18)
+
+The user, after C480's census: "Closure conversion. Hell, everything
+conversion if you can swing it"; before it, on the grammar: "it doesn't
+have to match Fixpt byte for byte, but the *recursive* structure has to
+match the grammar too. If you need bytes (i64, etc), put them into the
+suffix." Closures first, here; the rest of the heap is listed in TODO
+§54 as next.
+
+What changed:
+- **`Trace` split in two** (kayak-rt's `trace.rs`): `Trace` of a value
+  (every KFX value is `Copy`), traced by value, its lifetime the
+  method's, not the trait's; and split by its type into `Field` (what a
+  collector follows) and `Byte` (plain bytes), with `split` and `join`:
+  tuples, products (`trace_product!`) and generative types part by part,
+  `i64`, `f64`, characters, booleans, keys and tags bytes, the rest whole
+  among the fields (`trace_whole!`). And `Visit`, of what a handle points
+  to (a datatype's value, a pair, a cell, a sum's cell, a closure),
+  object-safe. C479's `Trace<'a>` could not trace a closure behind `dyn`:
+  its lifetime the trait's, a `dyn` of it invariant.
+- **kayak-rt's `closure.rs`**: `Closure<E, C>`, `#[repr(C)]`, its
+  captures' fields, then their bytes, then its code, a `fn` of the
+  captures and the parameters; `Visit` its fields. `CallN` (0 to 6), and
+  `ProcN`/`ProcNs` (`Send + Sync`) handles to `dyn CallN`; `closureN(env,
+  code)`. A function as a value: `as_proc(f)`, `FnProc`, no bytes; the
+  procedure type wanted chosen by the context, a `Send + Sync` handle
+  made a plain one there. `with_mark` takes a `Thunk` (a Rust closure or
+  a procedure value); `spawn_monitored`, `blocking1`, `readyN`,
+  `native_procedureN`, `Native` and `Resume` take or give handles.
+- **kfx's emitter**: a procedure type `kayak_rt::ProcN[s]<'r, A..., R>`;
+  a call of a procedure value `.call(...)`. Each of the ten sites that
+  made a closure writes it as before into text of its own, and
+  `closured` makes that `closureN(env, |env, params| body)`, `env` the
+  enclosing locals the body names (its words scanned: no string, number
+  suffix, lifetime, path part or field), but the closure's own
+  parameters; rustc refuses a `fn` that captures, so one missed is an
+  error, not a bug. A `Send + Sync` closure through `as_proc`, but where
+  a `let` binds it or a union boxes it; a `let` of a function no Rust
+  `let`, its name the function's alias (`%fnalias`); a function called
+  where a value is (`(with m f)`, `proj`, a lift's) called by its path.
+- **Bootstrapped** through two generations of the old kfx, its regen at
+  its fixed point.
+- **Tests**: kayak-rt's closure tests (called and traced; bytes kept
+  apart from fields).
+
+Measured: an edit's build of the 1000-procedure bench 0.27 to 0.28 s, as
+before; kc's binary 7.73 MB (C479: 7.06 MB; each closure its own type and
+vtable). The census (C480) reaches each closure by its fields now, no
+opaque block; the stack and reachable bytes as C480 found them.
+- **Found by the full check**: Fixpt's programs needed rustc told which
+  closure's type is wanted where nothing else says it: a poly call whose
+  type binder is solved to a procedure's type now has its turbofish (the
+  checker's `poly-settled`; before, only a binder of the result alone); a
+  closure called at once is called as made; `attempt`'s handler that is no
+  `lambda` is given as a function, or a closure's handle called. The
+  trait method `into_proc` (clippy: an `as_` takes `self` by reference);
+  `lang/items.sexp` gains `as_proc`. Beyond KFX, `native/crossing-
+  overflow.fx` now differs: Fixpt overflows the Rust stack 3,000,000
+  calls deep, as the program means it to, and the engine (its frames
+  smaller under closures) runs it to its end; a resource's limit, not a
+  meaning, so left as it is.- **Found by the async check** (the async mode's kfx and corpus): a
+  function `proj` or `with` names, called, is called by its path in the
+  synchronous mode only (in the async mode a procedure value's answer is
+  a future, a leaf function's or a primitive's not); a lift's closure
+  `Send + Sync` called at once as made; a word Rust calls (`f(`) is no
+  capture, a local being called by `.call`; and a named procedure as a
+  value in the async mode (C371's closure boxing its future) calls a
+  local by `.call`, through `callee`.
+- **The full check**: all passed in 316.1 s, its fifth run (the first
+  four stopped at clippy, lang items, Fixpt's programs and the async
+  check, each above); nextest 5603.

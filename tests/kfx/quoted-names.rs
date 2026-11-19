@@ -51,6 +51,6 @@ pub fn first_name(d: kayak_rt::value::Value) -> Str {
 }
 
 pub fn main() -> Str {
-    string_append(first_name(words()), string_append(str_lit(" "), string_append(first_name(m::table()), string_append(str_lit(" "), string_append(i64_to_string((&m::step)(41i64)), string_append(str_lit(" "), car(both(true, kayak_rt::heap_cons(str_lit("c"), kayak_rt::nil())))))))))
+    string_append(first_name(words()), string_append(str_lit(" "), string_append(first_name(m::table()), string_append(str_lit(" "), string_append(i64_to_string(m::step(41i64)), string_append(str_lit(" "), car(both(true, kayak_rt::heap_cons(str_lit("c"), kayak_rt::nil())))))))))
 }
 

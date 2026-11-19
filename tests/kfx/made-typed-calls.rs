@@ -17,27 +17,27 @@ pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, _plus(at, int_lit(3)), quotient(w, int_lit(16777216)))
 }
 
-pub fn adder() -> &'static (dyn Fn(Int, Int) -> Int + Send + Sync) {
+pub fn adder() -> kayak_rt::Proc2s<'static, Int, Int, Int> {
     let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(8), ()));
     put4(b, int_lit(0), int_lit(2332164128));
     put4(b, int_lit(4), int_lit(3596551104));
-    kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b))
+    kayak_rt::as_proc(kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b)))
 }
 
 #[inline]
 pub fn via() -> Int {
     let g = adder();
-    g(int_lit(20), int_lit(22))
+    g.call(int_lit(20), int_lit(22))
 }
 
 #[inline]
-pub fn via2(g: &'static (dyn Fn(Int, Int) -> Int + Send + Sync)) -> Int {
-    g(int_lit(20), int_lit(22))
+pub fn via2(g: kayak_rt::Proc2s<'static, Int, Int, Int>) -> Int {
+    g.call(int_lit(20), int_lit(22))
 }
 
 #[inline]
-pub fn via3(g: &'static (dyn Fn(Int, Int) -> Int + Send + Sync)) -> Int {
-    _plus(int_lit(1), g(int_lit(20), int_lit(21)))
+pub fn via3(g: kayak_rt::Proc2s<'static, Int, Int, Int>) -> Int {
+    _plus(int_lit(1), g.call(int_lit(20), int_lit(21)))
 }
 
 pub fn main() -> Str {

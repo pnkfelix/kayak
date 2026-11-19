@@ -36,8 +36,8 @@ pub fn longest(mut xs: Ints, mut best: Int) -> Int {
 // A list of `n` squares, counted as it is built; frozen as it leaves.
 pub fn squares(n: Int) -> Ints {
     let made = the::<Ref<Int>>(kayak_rt::heap_new(int_lit(0)));
-    let go__knot = knot::<&'static dyn Fn(Int, List<Int>) -> List<Int>>();
-    let go = lambda2(move |mut k: Int, mut acc: List<Int>| {
+    let go__knot = knot::<kayak_rt::Proc2<'static, Int, List<Int>, List<Int>>>();
+    let go = kayak_rt::closure2((made,), |(made,), mut k: Int, mut acc: List<Int>| {
         loop {
             if _eq(k, int_lit(0)) {
                 return acc;
@@ -49,13 +49,13 @@ pub fn squares(n: Int) -> Ints {
         }
     });
     go__knot.set(go);
-    go(n, nil::<Int>())
+    go.call(n, nil::<Int>())
 }
 
 // Never written: frozen `acyclic`, below `const`.
 pub fn evens(n: Int) -> List<Int> {
-    let go__knot = knot::<&'static dyn Fn(Int, List<Int>) -> List<Int>>();
-    let go = lambda2(move |mut k: Int, mut acc: List<Int>| {
+    let go__knot = knot::<kayak_rt::Proc2<'static, Int, List<Int>, List<Int>>>();
+    let go = kayak_rt::closure2((), |(), mut k: Int, mut acc: List<Int>| {
         loop {
             if _eq(k, int_lit(0)) {
                 return acc;
@@ -66,7 +66,7 @@ pub fn evens(n: Int) -> List<Int> {
         }
     });
     go__knot.set(go);
-    go(n, nil::<Int>())
+    go.call(n, nil::<Int>())
 }
 
 pub fn both(xs: Ints) -> Int {

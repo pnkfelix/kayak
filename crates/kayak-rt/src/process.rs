@@ -474,13 +474,13 @@ pub fn spawn<M: Send + 'static>(body: impl FnOnce(Inbox<M>) + Send + 'static) ->
 /// `on_failure` of what the failure says, once.
 pub fn spawn_monitored<W: Send + 'static, M: Send + 'static>(
     watcher: Addr<W>,
-    on_failure: impl Fn(crate::Str) -> W + Send + Sync + 'static,
+    on_failure: crate::Proc1s<'static, crate::Str, W>,
     body: impl FnOnce(Inbox<M>) + Send + 'static,
 ) -> Addr<M> {
     start(
         Group {
             monitored: true,
-            on_failure: Box::new(move |m| send(watcher, on_failure(crate::leak_string(m)))),
+            on_failure: Box::new(move |m| send(watcher, on_failure.call(crate::leak_string(m)))),
             failed: AtomicBool::new(false),
         },
         body,

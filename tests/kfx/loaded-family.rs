@@ -6,12 +6,7 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_3fst_3snd<A0, A1>(pub A0, pub A1);
 
-impl<'a, A0: kayak_rt::Trace<'a>, A1: kayak_rt::Trace<'a>> kayak_rt::Trace<'a> for Product_3fst_3snd<A0, A1> {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
-        kayak_rt::Trace::trace(&self.0, t);
-        kayak_rt::Trace::trace(&self.1, t);
-    }
-}
+kayak_rt::trace_product!(Product_3fst_3snd, A0 0, A1 1);
 
 // A loaded module's family, named in another by `select` and applied
 // there (C119), as Fixpt's front end names its tables' type.
@@ -31,7 +26,7 @@ pub mod made__load__1__loaded_family {
     }
 
     #[inline]
-    pub fn swap<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>, B: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(p: Product_3fst_3snd<A, B>) -> Product_3fst_3snd<B, A> {
+    pub fn swap<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(p: Product_3fst_3snd<A, B>) -> Product_3fst_3snd<B, A> {
         Product_3fst_3snd(p.1, p.0)
     }
 

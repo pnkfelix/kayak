@@ -18,6 +18,14 @@ impl<'p, Place_P> Clone for Counter<'p, Place_P> {
 
 impl<'p, Place_P> Copy for Counter<'p, Place_P> {}
 
+impl<'p, Place_P> kayak_rt::Trace for Counter<'p, Place_P> {
+    kayak_rt::trace_whole!();
+    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        kayak_rt::Trace::trace(self.0, t);
+        kayak_rt::Trace::trace(self.1, t);
+    }
+}
+
 pub mod counter_in {
     use super::*;
 

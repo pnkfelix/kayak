@@ -44,10 +44,10 @@ pub fn main() -> Str {
         impl<'r> Holds<Bloblet<(std::cell::Cell<i64>,)>> for Region_R<'r> { fn arena(&self) -> &Arena<Bloblet<(std::cell::Cell<i64>,)>> { &self.a2 } }
         fn letrena__r<'r>(r: &'r Region_R<'r>) -> Str {
             let c = counter(r, 10i64);
-            let push = the::<&'r dyn Fn(&'r Region_R<'r>, i64, ListAt<'r, i64>) -> ListAt<'r, i64>>(lambda3(move |h: &'r Region_R<'r>, x: i64, xs: ListAt<'r, i64>| {
+            let push = the::<kayak_rt::Proc3<'r, &'r Region_R<'r>, i64, ListAt<'r, i64>, ListAt<'r, i64>>>(kayak_rt::closure3((), |(), h: &'r Region_R<'r>, x: i64, xs: ListAt<'r, i64>| {
                 rcons(h, x, xs)
             }));
-            let xs = push(r, 1i64, push(r, 2i64, nil::<i64>()));
+            let xs = push.call(r, 1i64, push.call(r, 2i64, nil::<i64>()));
             let b = mk(r, 40i64);
             set(c, i64_plus(get(c), sum2(r)));
             string_append(i64_to_string(total(r, 7i64)), string_append(str_lit(" "), string_append(i64_to_string(get(c)), string_append(str_lit(" "), i64_to_string(i64_plus((b).fields.0.get(), i64_plus(car(xs), car(cdr(xs)))))))))

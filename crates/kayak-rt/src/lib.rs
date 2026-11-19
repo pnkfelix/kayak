@@ -16,6 +16,7 @@ pub mod async_process;
 mod blob;
 #[cfg(feature = "heap-stats")]
 mod census;
+mod closure;
 mod eqtable;
 mod escape;
 mod fixed;
@@ -41,6 +42,7 @@ mod world;
 pub use arena::*;
 pub use array::*;
 pub use blob::*;
+pub use closure::*;
 pub use eqtable::*;
 pub use escape::*;
 pub use fixed::*;
@@ -64,7 +66,7 @@ pub use std::cell::OnceCell;
 pub use sum::*;
 pub use syscall::*;
 pub use text::*;
-pub use trace::{Trace, Tracer, traced};
+pub use trace::{CensusRow, Trace, Tracer, Visit, traced};
 pub use value::{
     array_p, bool_p, bytevector_p, char_p, datum_list_to_vector, f32_p, f64_p, int_p, pair_p,
     procedure_p, product_p, ref_p, string_p, sum_p, symbol_p, vector_p,

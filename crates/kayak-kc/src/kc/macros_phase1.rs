@@ -117,9 +117,9 @@ pub fn phase1_parts(request: Str) -> Product_11_12<Str, Str> {
     } else {
         let fs = phase1_forms_from(request, i64_plus(nl, 1i64), n, nil::<Str>());
         let rest = substring(request, i64_to_int(fs.1), string_length(request));
-        let base = string_append(phase1_prelude(), string_append(str_lit("\n"), string_list_append(map(lambda1s(move |f: Str| {
+        let base = string_append(phase1_prelude(), string_append(str_lit("\n"), string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: Str| {
             string_append(f, str_lit("\n"))
-        }), fs.0))));
+        })), fs.0))));
         if string_eq_p(kind, str_lit("%forms")) {
             Product_11_12(base, str_lit(""))
         } else if string_eq_p(kind, str_lit("%define")) {

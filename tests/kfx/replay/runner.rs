@@ -33,24 +33,24 @@ pub type Answer = kayak_rt::Sum;
 // What a program gives its runner: an operation and its rest.
 // A program: what it does, and its answer.
 // An operation performed: the program suspended, the runner given it.
-pub async fn perform_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, o: Op) -> Result<Answer, Unwind> {
-    Ok(kayak_rt::suspend::abort_with_continuation(rt, move |k: &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>| {
+pub async fn perform_x<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>, o: Op) -> Result<Answer, Unwind> {
+    Ok(kayak_rt::suspend::abort_with_continuation(rt, move |k: kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>| {
         Product_2op_1k(o, k)
     }).await?)
 }
 
 // The operations, as a program writes them.
-pub async fn read_line_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<Answer, Unwind> {
-    Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<A>(a__0, a__1))))(rt, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("read-line") }, "read-line", ()))).await?)
+pub async fn read_line_x<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>) -> Result<Answer, Unwind> {
+    Ok(kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("read-line") }, "read-line", ()))).await?)
 }
 
-pub async fn write_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<A>(a__0, a__1))))(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
+pub async fn write_x<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>, s: Str) -> Result<(), Unwind> {
+    kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
     Ok(())
 }
 
-pub async fn clock_x<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<i64, Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x::<A>(a__0, a__1))))(rt, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("clock") }, "clock", ()))).await?;
+pub async fn clock_x<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>) -> Result<i64, Unwind> {
+    let tagcase_ = kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("clock") }, "clock", ()))).await?;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("time") } {
         let t: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
@@ -71,34 +71,34 @@ pub type Log<'w> = ListAt<'w, Entry>;
 // the step, the operations' count, kept at `steps`. Its prompt does not
 // delimit (what it is given names the runner's region), so it has control
 // on `w`, as Fixpt's examples' loops have.
-pub async fn serve<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, steps: Ref<i64>, req: Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>) -> Result<A, Unwind> {
+pub async fn serve<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>, answer: kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>>, steps: Ref<i64>, req: Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>) -> Result<A, Unwind> {
     let n = get(steps);
     set(steps, i64_plus(n, 1i64));
     Ok({
         let prompt_tag__ = rt;
         match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-            Ok(kayak_rt::suspend::body((req.1)(kayak_rt::suspend::body(answer(n, req.0)).await?)).await?)
+            Ok(kayak_rt::suspend::body((req.1).call(kayak_rt::suspend::body(answer.call(n, req.0)).await?)).await?)
         })).await {
             Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |next: Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>| kayak_rt::suspend::body(async move {
-                Ok(kayak_rt::suspend::body((lambda4(move |a__0, a__1, a__2, a__3| kayak_rt::suspend::body(serve::<A>(a__0, a__1, a__2, a__3))))(rt, answer, steps, next)).await?)
-            })))(h_).await?,
+            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((rt, answer, steps,), |(rt, answer, steps,), next: Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>| kayak_rt::suspend::body(async move {
+                Ok(kayak_rt::suspend::body(serve::<A>(rt, answer, steps, next)).await?)
+            }))).call(h_).await?,
             Err(u_) => return Err(u_),
         }
     })
 }
 
-pub async fn run_under<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, body: &'static dyn Fn(Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
-    let (rt, steps) = (the::<Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>>(make_continuation_prompt_tag()), the::<Ref<i64>>(kayak_rt::heap_new(0i64)));
+pub async fn run_under<A: Copy + 'static + kayak_rt::Trace>(answer: kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>>, body: kayak_rt::Proc1<'static, Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>, kayak_rt::suspend::Body<A>>) -> Result<A, Unwind> {
+    let (rt, steps) = (the::<Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>>(make_continuation_prompt_tag()), the::<Ref<i64>>(kayak_rt::heap_new(0i64)));
     Ok({
         let prompt_tag__ = rt;
         match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-            Ok(kayak_rt::suspend::body(body(rt)).await?)
+            Ok(kayak_rt::suspend::body(body.call(rt)).await?)
         })).await {
             Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
-            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |req: Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>| kayak_rt::suspend::body(async move {
-                Ok(kayak_rt::suspend::body((lambda4(move |a__0, a__1, a__2, a__3| kayak_rt::suspend::body(serve::<A>(a__0, a__1, a__2, a__3))))(rt, answer, steps, req)).await?)
-            })))(h_).await?,
+            Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (kayak_rt::closure1((answer, rt, steps,), |(answer, rt, steps,), req: Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>| kayak_rt::suspend::body(async move {
+                Ok(kayak_rt::suspend::body(serve::<A>(rt, answer, steps, req)).await?)
+            }))).call(h_).await?,
             Err(u_) => return Err(u_),
         }
     })
@@ -107,8 +107,8 @@ pub async fn run_under<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(answer: 
 // The sim: input a script of lines, read in order, then `eof`; writes
 // kept at `out`, the latest first; the clock a tick an operation. It has
 // no files: a read fails, a write is done and kept nowhere.
-pub fn sim(input: Ref<List<Str>>, out: Ref<List<Str>>) -> &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer> {
-    lambda2(move |n: i64, o: Op| kayak_rt::suspend::body(async move {
+pub fn sim(input: Ref<List<Str>>, out: Ref<List<Str>>) -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>> {
+    kayak_rt::closure2((input, out,), |(input, out,), n: i64, o: Op| kayak_rt::suspend::body(async move {
         let tagcase_ = o;
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("read-line") } {
@@ -139,9 +139,9 @@ pub fn sim(input: Ref<List<Str>>, out: Ref<List<Str>>) -> &'static dyn Fn(i64, O
 
 // A runner recorded: `inner`'s answers, each kept at `log` with its step
 // and operation, the latest first.
-pub fn recording(inner: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>, log: Ref<Log<'static>>) -> &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer> {
-    lambda2(move |n: i64, o: Op| kayak_rt::suspend::body(async move {
-        let x = kayak_rt::suspend::body(inner(n, o)).await?;
+pub fn recording(inner: kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>>, log: Ref<Log<'static>>) -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>> {
+    kayak_rt::closure2((inner, log,), |(inner, log,), n: i64, o: Op| kayak_rt::suspend::body(async move {
+        let x = kayak_rt::suspend::body(inner.call(n, o)).await?;
         set(log, kayak_rt::heap_cons(Product_4step_2op_6answer(n, o, x), get(log)));
         Ok(x)
     }))
@@ -232,8 +232,8 @@ pub fn show_op(o: Op) -> Str {
 // A record replayed: its answers, in order, each operation checked against
 // the one recorded at its step. Parting from the log is an error that says
 // where; so is running past its end.
-pub fn replaying(log: Ref<Log<'static>>) -> &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer> {
-    lambda2(move |n: i64, o: Op| kayak_rt::suspend::body(async move {
+pub fn replaying(log: Ref<Log<'static>>) -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answer>> {
+    kayak_rt::closure2((log,), |(log,), n: i64, o: Op| kayak_rt::suspend::body(async move {
         let es = get(log);
         if null_p(es) {
             error(string_append(str_lit("replay: past the log's end, at step "), i64_to_string(n)));
@@ -348,7 +348,7 @@ pub fn log_text<'w>(es: Log<'w>) -> Str {
         str_lit("")
     } else {
         let e = car(es);
-        string_append(i64_to_string(e.0), string_append(str_lit("\t"), string_append(op_text(e.1), string_append(str_lit("\t"), string_append(answer_text(e.2), string_append(str_lit("\n"), (&log_text)(cdr(es))))))))
+        string_append(i64_to_string(e.0), string_append(str_lit("\t"), string_append(op_text(e.1), string_append(str_lit("\t"), string_append(answer_text(e.2), string_append(str_lit("\n"), log_text(cdr(es))))))))
     }
 }
 
@@ -485,8 +485,8 @@ pub fn entry_of(fs: Fields) -> Entry {
 
 // A log from its text: the entries in order.
 pub fn log_of_text<'w>(s: Str) -> Log<'w> {
-    let go__knot = knot::<&'w dyn Fn(Lines, Log<'w>) -> Log<'w>>();
-    let go = lambda2(move |mut ls: Lines, mut acc: Log<'w>| {
+    let go__knot = knot::<kayak_rt::Proc2<'w, Lines, Log<'w>, Log<'w>>>();
+    let go = kayak_rt::closure2((), |(), mut ls: Lines, mut acc: Log<'w>| {
         loop {
             if null_p(ls) {
                 return acc;
@@ -497,6 +497,6 @@ pub fn log_of_text<'w>(s: Str) -> Log<'w> {
         }
     });
     go__knot.set(go);
-    go(fields_of(the::<List<char>>(string_to_list(s)), nil::<char>(), nil::<Str>(), nil::<List<Str>>()), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())
+    go.call(fields_of(the::<List<char>>(string_to_list(s)), nil::<char>(), nil::<Str>(), nil::<List<Str>>()), nil::<Product_4step_2op_6answer<i64, kayak_rt::Sum, kayak_rt::Sum>>())
 }
 

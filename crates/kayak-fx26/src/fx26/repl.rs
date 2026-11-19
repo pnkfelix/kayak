@@ -83,9 +83,9 @@ pub fn drop_comment(mut cs: List<char>) -> List<char> {
 
 pub fn repl_complete_p(text: Str) -> bool {
     let cs = string_chars(text);
-    (any_p(lambda1s(move |c: char| {
+    (any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
         not(char_whitespace_p(c))
-    }), cs) && complete_from(cs, 0i64, false, false))
+    })), cs) && complete_from(cs, 0i64, false, false))
 }
 
 #[inline]
@@ -162,14 +162,14 @@ pub fn entry_modules_x(form: kayak_rt::Handle<'static, Sexp>) -> Strings {
 /// reads it (`with-entries`): a `stage`'s type (C311), a `with`'s module
 /// (C213), a flat's layout (C215). The machine lowers with them.
 pub fn entry_facts(v: kayak_rt::Handle<'static, Cv>, file: Str) -> Strings {
-    with_entries(filter(lambda1s(move |f: kayak_rt::Handle<'static, Fact>| {
+    with_entries(filter(kayak_rt::as_proc(kayak_rt::closure1s((file,), |(file,), f: kayak_rt::Handle<'static, Fact>| {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(fl, pos, what) => {
                 string_eq_p(fl, file)
             }
         }
-    }), cv_facts(v)))
+    })), cv_facts(v)))
 }
 
 /// The checker's environment after `form`, its types and datatypes

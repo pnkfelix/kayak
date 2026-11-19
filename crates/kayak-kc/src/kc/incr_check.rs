@@ -12,10 +12,10 @@ pub enum CheckedMemo {
     CheckedMemo(kayak_rt::Handle<'static, Cv>, Typeds, Memos),
 }
 
-impl<'a> kayak_rt::Trace<'a> for CheckedMemo {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for CheckedMemo {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::CheckedMemo(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+            Self::CheckedMemo(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
         }
     }
 }
@@ -35,10 +35,10 @@ pub enum Reads {
     Reads(kayak_rt::Handle<'static, Fmap>, kayak_rt::Handle<'static, Fmap>, kayak_rt::Handle<'static, Fmap>, Aliases, i64),
 }
 
-impl<'a> kayak_rt::Trace<'a> for Reads {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for Reads {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::Reads(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::Reads(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -54,10 +54,10 @@ pub enum FactRec {
     FactRec(i64, i64, i64, Str, Str),
 }
 
-impl<'a> kayak_rt::Trace<'a> for FactRec {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for FactRec {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::FactRec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); kayak_rt::Trace::trace(f3, t); kayak_rt::Trace::trace(f4, t); }
+            Self::FactRec(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
         }
     }
 }
@@ -73,10 +73,10 @@ pub enum ReadKey {
     ReadKey(i64, kayak_rt::Handle<'static, Reads>),
 }
 
-impl<'a> kayak_rt::Trace<'a> for ReadKey {
-    fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+impl kayak_rt::Visit for ReadKey {
+    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
         match self {
-            Self::ReadKey(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+            Self::ReadKey(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
         }
     }
 }
@@ -162,7 +162,7 @@ pub mod incremental_check {
 
     #[inline]
     pub fn quoted_all(ss: Strings) -> Str {
-        string_append(str_lit("("), string_append(words_of(map(&quoted, ss)), str_lit(")")))
+        string_append(str_lit("("), string_append(words_of(map(kayak_rt::as_proc(quoted), ss)), str_lit(")")))
     }
 
     pub fn ty_code(t: kayak_rt::Handle<'static, Ty>) -> Str {
@@ -234,7 +234,7 @@ pub mod incremental_check {
 
     #[inline]
     pub fn tys_code(ts: Tys) -> Str {
-        string_append(str_lit("("), string_append(words_of(map(&ty_code, ts)), str_lit(")")))
+        string_append(str_lit("("), string_append(words_of(map(kayak_rt::as_proc(ty_code), ts)), str_lit(")")))
     }
 
     #[inline]
@@ -314,12 +314,12 @@ pub mod incremental_check {
 
     #[inline]
     pub fn code_tys(e: kayak_rt::Handle<'static, Sexp>) -> Tys {
-        map(&code_ty, items(e))
+        map(kayak_rt::as_proc(code_ty), items(e))
     }
 
     #[inline]
     pub fn code_strings(e: kayak_rt::Handle<'static, Sexp>) -> Strings {
-        map(&code_text, items(e))
+        map(kayak_rt::as_proc(code_text), items(e))
     }
 
     pub fn bind_code(b: kayak_rt::Handle<'static, Bind>) -> Str {
@@ -525,7 +525,7 @@ pub mod incremental_check {
         typed(code_text(car(xs)), second(xs))
     }
 
-    pub fn leading<A: Copy + 'static + for<'t> kayak_rt::Trace<'t>>(xs: List<A>, n: i64) -> List<A> {
+    pub fn leading<A: Copy + 'static + kayak_rt::Trace>(xs: List<A>, n: i64) -> List<A> {
         if (i64_eq(n, 0i64) || null_p(xs)) {
             nil::<A>()
         } else {
@@ -550,10 +550,10 @@ pub mod incremental_check {
         Change(Str, Str),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Change {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Change {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Change(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::Change(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -570,7 +570,7 @@ pub mod incremental_check {
     /// What of a change no name reaches, `ambient-of`'s, of its new effects
     /// and facts.
     pub fn ambient_text(new_effs: Effdefs, new_facts: Facts) -> Str {
-        string_list_append(kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+        string_list_append(kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), new_effs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
             let tagcase_ = x;
             match *tagcase_ {
                 Fact::Fact(ff, p, w) => {
@@ -581,7 +581,7 @@ pub mod incremental_check {
                     }
                 }
             }
-        }), new_facts))), kayak_rt::nil()))))
+        })), new_facts))), kayak_rt::nil()))))
     }
 
     /// Of a form's change, what a later form may read by no name it
@@ -591,7 +591,7 @@ pub mod incremental_check {
         let tagcase_ = after;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at, ix, mk) => {
-                string_list_append(kayak_rt::heap_cons(words_of(map(&effdef_code, leading(es, i64_minus(size(es), size(cv_effdefs(before)))))), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+                string_list_append(kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), leading(es, i64_minus(size(es), size(cv_effdefs(before)))))), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Fact::Fact(ff, p, w) => {
@@ -602,7 +602,7 @@ pub mod incremental_check {
                             }
                         }
                     }
-                }), leading(fs, i64_minus(size(fs), size(cv_facts(before))))))), kayak_rt::nil()))))
+                })), leading(fs, i64_minus(size(fs), size(cv_facts(before))))))), kayak_rt::nil()))))
             }
         }
     }
@@ -806,27 +806,27 @@ pub mod incremental_check {
                 let tagcase_ = r;
                 match *tagcase_ {
                     Reads::Reads(fm, cm, am, als2, chain) => {
-                        names_walk(kayak_rt::heap_cons(form, kayak_rt::nil()), ix, am, read_key(fnv_strings(map(&bind_code, concat(map(lambda1s(move |k: Str| {
+                        names_walk(kayak_rt::heap_cons(form, kayak_rt::nil()), ix, am, read_key(fnv_strings(map(kayak_rt::as_proc(bind_code), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((mk,), |(mk,), k: Str| {
                             if string_eq_p(k, str_lit("%toplevel")) {
                                 nil::<kayak_rt::Handle<'static, Bind>>()
                             } else {
                                 find_bind(k, mk)
                             }
-                        }), marker_names()))), fnv_string(where_text(here, group, tv), fnv_string(i64_to_string(chain), h))), r))
+                        })), marker_names()))), fnv_string(where_text(here, group, tv), fnv_string(i64_to_string(chain), h))), r))
                     }
                 }
             }
         }
     }
 
-    pub fn change_of(before: kayak_rt::Handle<'static, Cv>, after: kayak_rt::Handle<'static, Cv>, found: Typeds, code: &'static (dyn Fn(kayak_rt::Handle<'static, Fact>) -> Str + Send + Sync)) -> kayak_rt::Handle<'static, Change> {
+    pub fn change_of(before: kayak_rt::Handle<'static, Cv>, after: kayak_rt::Handle<'static, Cv>, found: Typeds, code: kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Fact>, Str>) -> kayak_rt::Handle<'static, Change> {
         let tagcase_ = after;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at, ix, mk) => {
                 let new_binds = leading(bs, i64_minus(size(bs), size(cv_binds(before))));
                 let new_effs = leading(es, i64_minus(size(es), size(cv_effdefs(before))));
                 let new_facts = leading(fs, i64_minus(size(fs), size(cv_facts(before))));
-                change(string_list_append(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&typed_code, found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::heap_cons(string_list_append(map(code, new_facts)), kayak_rt::nil()))))))))))))))))), ambient_text(new_effs, new_facts))
+                change(string_list_append(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(bind_code), new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(effdef_code), new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(kayak_rt::as_proc(typed_code), found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")\n"), kayak_rt::heap_cons(string_list_append(map(code, new_facts)), kayak_rt::nil()))))))))))))))))), ambient_text(new_effs, new_facts))
             }
         }
     }
@@ -836,10 +836,10 @@ pub mod incremental_check {
         Redone(kayak_rt::Handle<'static, Cv>, Typeds, Str),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for Redone {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for Redone {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::Redone(f0, f1, f2) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); kayak_rt::Trace::trace(f2, t); }
+                Self::Redone(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
             }
         }
     }
@@ -848,14 +848,14 @@ pub mod incremental_check {
         kayak_rt::heap_alloc(Redone::Redone(f0, f1, f2))
     }
 
-    pub fn change_applied(v: kayak_rt::Handle<'static, Cv>, text: Str, uncode: &'static (dyn Fn(kayak_rt::Handle<'static, FactRec>) -> kayak_rt::Handle<'static, Fact> + Send + Sync)) -> kayak_rt::Handle<'static, Redone> {
+    pub fn change_applied(v: kayak_rt::Handle<'static, Cv>, text: Str, uncode: kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, FactRec>, kayak_rt::Handle<'static, Fact>>) -> kayak_rt::Handle<'static, Redone> {
         let n = string_length_i64(text);
         let nl = char_from_memo(text, 0i64, n, '\n');
         let parts = items(car(read_all(substring(text, int_lit(0), i64_to_int(nl)), str_lit(""), 1i64)));
-        let new_binds = map(&code_bind, items(car(parts)));
-        let new_effs = map(&code_effdef, items(second(parts)));
+        let new_binds = map(kayak_rt::as_proc(code_bind), items(car(parts)));
+        let new_effs = map(kayak_rt::as_proc(code_effdef), items(second(parts)));
         let new_facts = map(uncode, reverse(fact_records(text, i64_plus(nl, 1i64), n, nil::<kayak_rt::Handle<'static, FactRec>>())));
-        let found = map(&code_typed, items(third(parts)));
+        let found = map(kayak_rt::as_proc(code_typed), items(third(parts)));
         let rest = cdr(cdr(cdr(parts)));
         let here = code_text(car(rest));
         let group = code_strings(second(rest));
@@ -876,28 +876,28 @@ pub mod incremental_check {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(&bind_code, bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1s(move |d: kayak_rt::Handle<'static, Dt>| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(kayak_rt::as_proc(bind_code), bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), d: kayak_rt::Handle<'static, Dt>| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Dt::Dt(n, ps, vs) => {
-                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1s(move |x: kayak_rt::Handle<'static, Variant>| {
+                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Variant>| {
                                 let tagcase_ = x;
                                 match *tagcase_ {
                                     Variant::Variant(t, ts) => {
                                         string_append(quoted(t), tys_code(ts))
                                     }
                                 }
-                            }), vs))))
+                            })), vs))))
                         }
                     }
-                }), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(lambda1s(move |a: kayak_rt::Handle<'static, Alias>| {
+                })), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Alias>| {
                     let tagcase_ = a;
                     match *tagcase_ {
                         Alias::Alias(n, ps, body) => {
                             string_append(quoted(n), string_append(quoted_all(ps), show_sexp(body)))
                         }
                     }
-                }), als)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(&effdef_code, es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))))), fnv_offset())
+                })), als)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(kayak_rt::as_proc(effdef_code), es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))))), fnv_offset())
             }
         }
     }
@@ -912,21 +912,21 @@ pub mod incremental_check {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at, ix, mk) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1s(move |d: kayak_rt::Handle<'static, Dt>| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), d: kayak_rt::Handle<'static, Dt>| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Dt::Dt(n, ps, vs) => {
-                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1s(move |x: kayak_rt::Handle<'static, Variant>| {
+                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Variant>| {
                                 let tagcase_ = x;
                                 match *tagcase_ {
                                     Variant::Variant(t, ts) => {
                                         string_append(quoted(t), tys_code(ts))
                                     }
                                 }
-                            }), vs))))
+                            })), vs))))
                         }
                     }
-                }), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(&effdef_code, es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))), fnv_offset())
+                })), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(kayak_rt::as_proc(effdef_code), es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))), fnv_offset())
             }
         }
     }
@@ -941,10 +941,10 @@ pub mod incremental_check {
         OrderMemo(Sexps, Memos),
     }
 
-    impl<'a> kayak_rt::Trace<'a> for OrderMemo {
-        fn trace(&self, t: &mut kayak_rt::Tracer<'a>) {
+    impl kayak_rt::Visit for OrderMemo {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
             match self {
-                Self::OrderMemo(f0, f1) => { kayak_rt::Trace::trace(f0, t); kayak_rt::Trace::trace(f1, t); }
+                Self::OrderMemo(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
             }
         }
     }
@@ -1050,9 +1050,9 @@ pub mod incremental_check {
             kayak_rt::heap_cons(start, kayak_rt::nil())
         } else {
             let (rest, q) = (starts_of(start, cdr(members), positions), item_start(car(members), positions, -1i64));
-            if (i64_lt(q, 0i64) || any_p(lambda1s(move |r: i64| {
+            if (i64_lt(q, 0i64) || any_p(kayak_rt::as_proc(kayak_rt::closure1s((q,), |(q,), r: i64| {
                 i64_eq(r, q)
-            }), rest)) {
+            })), rest)) {
                 rest
             } else {
                 onto(rest, kayak_rt::heap_cons(q, kayak_rt::nil()))
@@ -1069,13 +1069,13 @@ pub mod incremental_check {
             let it = car(its);
             let file = datum_file(it);
             let start = datum_pos(it);
-            let slice = lambda1s(move |p: i64| {
+            let slice = kayak_rt::closure1s((src, from, positions, end,), |(src, from, positions, end,), p: i64| {
                 text_between(src, from, p, position_after(p, positions, end))
             });
             let placed = (i64_gt_eq(start, from) && i64_lt(start, end));
             let ss = if placed {
                 starts_of(start, if head_is_p(it, str_lit("define-rec")) {
-                    map(&datum_pos, cdr(items(it)))
+                    map(kayak_rt::as_proc(datum_pos), cdr(items(it)))
                 } else {
                     nil::<i64>()
                 }, positions)
@@ -1087,9 +1087,9 @@ pub mod incremental_check {
             } else {
                 show_sexp(it)
             };
-            let es = map(lambda1s(move |q: i64| {
+            let es = map(kayak_rt::as_proc(kayak_rt::closure1s((positions, end,), |(positions, end,), q: i64| {
                 position_after(q, positions, end)
-            }), ss);
+            })), ss);
             let kd = reads_key(v, r, it, fnv_string(str_lit("item"), fnv_offset()));
             let key = fnv_string(own, keyed_key(kd));
             let r = keyed_reads(kd);
@@ -1099,13 +1099,13 @@ pub mod incremental_check {
                 match *tagcase_ {
                     Memo::Memo(h, text) => {
                         let tagcase_ = change_applied(v, text, if placed {
-                            lambda1s(move |e: kayak_rt::Handle<'static, FactRec>| {
+                            kayak_rt::as_proc(kayak_rt::closure1s((file, ss,), |(file, ss,), e: kayak_rt::Handle<'static, FactRec>| {
                                 code_fact_at(file, ss, e)
-                            })
+                            }))
                         } else {
-                            lambda1s(move |e: kayak_rt::Handle<'static, FactRec>| {
+                            kayak_rt::as_proc(kayak_rt::closure1s((file, start,), |(file, start,), e: kayak_rt::Handle<'static, FactRec>| {
                                 code_fact(file, start, e)
-                            })
+                            }))
                         });
                         match *tagcase_ {
                             Redone::Redone(v2, more, ambient) => {
@@ -1119,13 +1119,13 @@ pub mod incremental_check {
                 match *tagcase_ {
                     Elab::Elab(v2, more) => {
                         let tagcase_ = change_of(v, v2, more, if placed {
-                            lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+                            kayak_rt::as_proc(kayak_rt::closure1s((file, ss, es,), |(file, ss, es,), x: kayak_rt::Handle<'static, Fact>| {
                                 fact_code_at(file, ss, es, x)
-                            })
+                            }))
                         } else {
-                            lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+                            kayak_rt::as_proc(kayak_rt::closure1s((file, start,), |(file, start,), x: kayak_rt::Handle<'static, Fact>| {
                                 fact_code(file, start, x)
-                            })
+                            }))
                         });
                         match *tagcase_ {
                             Change::Change(text2, ambient) => {
@@ -1162,14 +1162,14 @@ pub mod incremental_check {
                             let p = module_prep(near(v, src_file, src_line, src_pos), form);
                             let inner = prep_inner(p);
                             let ordering = module_order_memo(inner, prep_forms(p), car(texts), old, made);
-                            let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(lambda1s(move |f: kayak_rt::Handle<'static, Sexp>| {
+                            let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
                                 if null_p(item_value(f)) {
                                     the::<Strings>(kayak_rt::heap_cons(show_sexp(f), kayak_rt::nil()))
                                 } else {
                                     nil::<Str>()
                                 }
-                            }), unhidden(module_written(form))))), fnv_string(str_lit("module"), reads_chain(r)));
-                            let tagcase_ = check_items_memo(inner, prep_name(p), order_memo_forms(ordering), old, reads_anew(r, inner, i64_to_string(scope)), nil::<kayak_rt::Handle<'static, Typed>>(), order_memo_made(ordering), car(texts), start, sorted_positions(map(&datum_pos, unhidden(module_written(form))), nil::<i64>()), if null_p(cdr(texts)) {
+                            })), unhidden(module_written(form))))), fnv_string(str_lit("module"), reads_chain(r)));
+                            let tagcase_ = check_items_memo(inner, prep_name(p), order_memo_forms(ordering), old, reads_anew(r, inner, i64_to_string(scope)), nil::<kayak_rt::Handle<'static, Typed>>(), order_memo_made(ordering), car(texts), start, sorted_positions(map(kayak_rt::as_proc(datum_pos), unhidden(module_written(form))), nil::<i64>()), if null_p(cdr(texts)) {
                                 end_of_file()
                             } else {
                                 i64_plus(start, string_length_i64(car(texts)))
@@ -1196,9 +1196,9 @@ pub mod incremental_check {
                     let tagcase_ = car(hit);
                     match *tagcase_ {
                         Memo::Memo(h, text) => {
-                            let tagcase_ = change_applied(v, text, lambda1s(move |e: kayak_rt::Handle<'static, FactRec>| {
+                            let tagcase_ = change_applied(v, text, kayak_rt::as_proc(kayak_rt::closure1s((file, start,), |(file, start,), e: kayak_rt::Handle<'static, FactRec>| {
                                 code_fact(file, start, e)
-                            }));
+                            })));
                             match *tagcase_ {
                                 Redone::Redone(v2, more, ambient) => {
                                     (v0, forms, texts, r, found, made) = (v2, cdr(forms), cdr(texts), reads_after(keyed_reads(kd), v2, ambient), onto(more, found), kayak_rt::heap_cons(car(hit), made));
@@ -1230,9 +1230,9 @@ pub mod incremental_check {
                     let tagcase_ = done;
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            let tagcase_ = change_of(v, v2, more, lambda1s(move |x: kayak_rt::Handle<'static, Fact>| {
+                            let tagcase_ = change_of(v, v2, more, kayak_rt::as_proc(kayak_rt::closure1s((file, start,), |(file, start,), x: kayak_rt::Handle<'static, Fact>| {
                                 fact_code(file, start, x)
-                            }));
+                            })));
                             match *tagcase_ {
                                 Change::Change(text, ambient) => {
                                     (v0, forms, texts, r, found, made) = (v2, cdr(forms), cdr(texts), reads_after(keyed_reads(kd), v2, ambient), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));
