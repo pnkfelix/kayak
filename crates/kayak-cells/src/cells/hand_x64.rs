@@ -3632,7 +3632,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     yreg_table_x(0i64, n, rbase, rgive, resumes, false, int_lit(-1))
 }
 
-pub fn y_bytes_x(mut b: &'static Bloblet<()>, mut bs: List<Int>, mut at: Int) -> Int {
+pub fn y_bytes_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut bs: List<Int>, mut at: Int) -> Int {
     loop {
         if null_p(bs) {
             return at;
@@ -3645,7 +3645,7 @@ pub fn y_bytes_x(mut b: &'static Bloblet<()>, mut bs: List<Int>, mut at: Int) ->
 }
 
 /// Each item placed, at byte `at` on.
-pub fn y_all_put_x(mut b: &'static Bloblet<()>, mut xs: List<kayak_rt::Handle<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> () {
+pub fn y_all_put_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut xs: List<kayak_rt::Handle<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -3829,7 +3829,7 @@ pub fn hand_code_x64_x() -> kayak_rt::Sum {
         let its = the::<List<kayak_rt::Handle<'static, XItem>>>(kayak_rt::heap_cons(xl(get(l_start())), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), get(l_entry())), append(reverse(get(y_data())), reverse(get(y_items()))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
         let count = y_placed_x(its, int_lit(0), ls);
-        let b = the::<&'static Bloblet<()>>(make_bloblet(count, ()));
+        let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(count, ()));
         let v = y_all_put_x(b, its, int_lit(0), ls);
         let p = kayak_rt::as_proc(kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b)));
         code_named_x(ls, int_lit(1), count, str_lit!("kayak tier 2: the machine"));
@@ -3919,13 +3919,13 @@ pub fn address_code_x() -> kayak_rt::Sum {
         kayak_rt::sum_new::<kayak_rt::Proc1<'static, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made-address") }, "made-address", car(get(address_made())))
     } else if string_eq_p(target, str_lit!("(target x86_64)")) {
         let bs = the::<List<Int>>(append(x86::x86_lea(int_lit(0), y_rdi(), int_lit(-4)), append(x86::x86_shift_imm(s_shl(), int_lit(0), int_lit(3)), x86::x86_ret())));
-        let b = the::<&'static Bloblet<()>>(make_bloblet(y_length(bs, int_lit(0)), ()));
+        let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(y_length(bs, int_lit(0)), ()));
         let u = y_bytes_x(b, bs, int_lit(0));
         let p = kayak_rt::as_proc(kayak_rt::native_procedure1::<FlatArray<i64>, Int>(seal_code(b)));
         set(address_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
         kayak_rt::sum_new::<kayak_rt::Proc1<'static, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made-address") }, "made-address", p)
     } else if string_eq_p(target, str_lit!("(target arm64)")) {
-        let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(12), ()));
+        let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(int_lit(12), ()));
         let u = {
             put4(b, int_lit(0), a64::arm_sub_imm(int_lit(0), int_lit(1), int_lit(4)));
             put4(b, int_lit(4), arm_lsl(int_lit(0), int_lit(0), int_lit(3)));

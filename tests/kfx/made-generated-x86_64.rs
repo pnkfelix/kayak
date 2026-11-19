@@ -1682,7 +1682,7 @@ pub fn code_bytes(c: Convention) -> List<Int> {
     flat(build_code(c, offsets(build_code(c, nil::<Int>()), int_lit(0))))
 }
 
-pub fn put_all(mut b: &'static Bloblet<()>, mut at: Int, mut bs: List<Int>) -> () {
+pub fn put_all(mut b: kayak_rt::BlobletAt<'static, ()>, mut at: Int, mut bs: List<Int>) -> () {
     loop {
         if null_p(bs) {
             return ();
@@ -1700,7 +1700,7 @@ pub type Builder = kayak_rt::Proc2<'static, Int, Summer, Int>;
 
 pub fn build(c: Convention) -> Builder {
     let bs = code_bytes(c);
-    let b = the::<&'static Bloblet<()>>(make_bloblet(list_length(bs), ()));
+    let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(list_length(bs), ()));
     put_all(b, int_lit(0), bs);
     kayak_rt::as_proc(kayak_rt::native_procedure2::<Int, _, Int>(seal_code(b)))
 }

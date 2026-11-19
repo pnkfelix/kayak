@@ -807,7 +807,7 @@ pub mod a64 {
     }
 }
 
-pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
+pub fn put4(b: kayak_rt::BlobletAt<'static, ()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, at, modulo(w, int_lit(256)));
     bloblet_set_byte_x(b, _plus(at, int_lit(1)), modulo(quotient(w, int_lit(256)), int_lit(256)));
     bloblet_set_byte_x(b, _plus(at, int_lit(2)), modulo(quotient(w, int_lit(65536)), int_lit(256)));
@@ -820,7 +820,7 @@ pub type Summer = kayak_rt::Proc1<'static, FlatArray<i64>, Int>;
 // `ldur x2, [x1, #-4]; ldur x3, [x1, #4]; add x2, x2, x3; stur x2, [x1,
 // #12]; add x0, x2, x2; add x0, x0, x0; add x0, x0, x0; ret`.
 pub fn summing() -> Summer {
-    let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(32), ()));
+    let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(int_lit(32), ()));
     put4(b, int_lit(0), a64::arm_ldur(int_lit(2), int_lit(1), int_lit(-4)));
     put4(b, int_lit(4), a64::arm_ldur(int_lit(3), int_lit(1), int_lit(4)));
     put4(b, int_lit(8), a64::arm_add(int_lit(2), int_lit(2), int_lit(3)));

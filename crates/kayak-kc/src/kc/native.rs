@@ -94,7 +94,7 @@ pub mod kc_native {
 
     pub type HeapArray = FlatArray<i64>;
 
-    pub type Code = &'static Bloblet<(std::cell::Cell<HeapArray>,)>;
+    pub type Code = kayak_rt::BlobletAt<'static, (std::cell::Cell<HeapArray>,)>;
 
     pub fn bytes_put_x(mut b: Code, mut at: Int, mut bs: List<i64>) -> () {
         loop {

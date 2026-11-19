@@ -1897,7 +1897,11 @@ over its 1664 definitions, 335 of them refused:
   keeps whether the text is ASCII, which Fixpt's runtime does not, and
   finds again when it needs it), then every bloblet-shaped object the
   same way (the user: "why not just handle all bloblets this way?"):
-  ~~bytevectors~~ (done, C483), bloblets (`Bloblet`, `TBloblet`), arrays and flat arrays
+  ~~bytevectors~~ (done, C483), ~~bloblets~~ (done, C484: `BlobletAt`,
+  its fields typed in its object; a sealed copy's code in a table of the
+  thread's, its suffix frozen by its header's bit), typed-suffix
+  bloblets (`TBloblet`: its suffix a Rust value, an array of it boxed
+  apart, `FlatArr`), arrays and flat arrays
   (their elements the fields, counted at run time); a dynamic value (`Value`, an enum), a product held by
   value in its holder (a heap object of its own in FX-26), an integer
   (`Int`, a bignum's limbs a `Vec`), bloblets and flat arrays (plain

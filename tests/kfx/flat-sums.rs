@@ -32,7 +32,7 @@ impl<A0: Flat, A1: Flat> Flat for Product_1w_1h<A0, A1> {
 // once and gives each arm one; a blobref to another variant, still held,
 // sees the bytes the new one wrote, as in FX-26.
 
-pub type O = &'static Bloblet<()>;
+pub type O = kayak_rt::BlobletAt<'static, ()>;
 
 #[inline]
 pub fn b() -> O {

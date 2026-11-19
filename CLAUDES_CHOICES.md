@@ -14854,3 +14854,31 @@ No change to the Rust kfx writes.
 
 Measured: nextest 5606 (a test of a bytevector written and read).
 - **The full check**: all passed in 433.7 s, its first run.
+
+## C484. A bloblet as Fixpt's object (2026-11-18)
+
+After C483, the user's "Go for it" of bytevectors, bloblets and arrays.
+A bloblet (`(bloblet (fields T …) R)` of an untyped suffix) is one word,
+`BlobletAt<'r, Fs>`, to an object of Fixpt's layout (`obj.rs`): header
+(kind 32; its fields counted as words to the trailer; its suffix frozen
+for a sealed copy), its fields (a tuple of cells, typed, in place),
+trailer, its suffix words of cells, one block. `Bloblet<Fs>` is the
+object owned: a region's arena holds one, freed (its fields dropped)
+with the region; the heap's is kept. A sealed copy's (C116) code, and
+how a field written is written beside it, are in a table of the
+thread's by its object's address (a bloblet is no `Send`), its suffix
+frozen by its header's bit, as Fixpt's is.
+
+The emitter: a bloblet's type `kayak_rt::BlobletAt<'r, (…)>`, not `&'r
+Bloblet<…>`; a field read and written by `.fields()`, which a typed-suffix
+bloblet (`TBloblet`, left as it is) has too. `native_procedureN` takes
+the sealed copy by value (`impl Sealed`). Bootstrapped through two
+generations of C483's kfx.
+
+Left: a typed-suffix bloblet (`TBloblet`), its suffix a Rust value and
+an array in it boxed apart (`FlatArr`); arrays; bloblets opaque to a
+trace (their fields cells of any type).
+
+Measured: nextest 5607 (a bloblet's fields and suffix); the async check
+and Fixpt's programs as before.
+- **The full check**: all passed in 456.1 s, its first run.

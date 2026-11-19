@@ -8,7 +8,7 @@
 //! a fixnum, a boolean, unit, a character. An integer past a fixnum, which
 //! Fixpt passes as a bignum, fails here rather than be made one.
 
-use crate::{Bloblet, Int, fail, i64_to_int};
+use crate::{BlobletAt, Int, fail, i64_to_int};
 
 /// A value that crosses into native code and back, as the same word Fixpt
 /// would pass.
@@ -185,7 +185,7 @@ impl Native for crate::Str {
 /// is KFX's alone from then on. A sealed copy is given as itself.
 macro_rules! crossing_bloblet {
     ($n:expr; $($a:ident $i:tt),*) => {
-        impl<$($a: Native + Copy + 'static),*> Native for &'static Bloblet<($(std::cell::Cell<$a>,)*)> {
+        impl<$($a: Native + Copy + 'static),*> Native for BlobletAt<'static, ($(std::cell::Cell<$a>,)*)> {
             fn word(self) -> u64 {
                 let (bytes, code) = self.native_parts();
                 if let Some(c) = code {
@@ -194,7 +194,7 @@ macro_rules! crossing_bloblet {
                     }
                     return c.reference();
                 }
-                let fields: Vec<u64> = vec![$(self.fields.$i.get().word()),*];
+                let fields: Vec<u64> = vec![$(self.fields().$i.get().word()),*];
                 let suffix: Vec<u64> = bytes
                     .chunks(8)
                     .map(|w| w.iter().enumerate().fold(0, |x, (k, &b)| x | (b as u64) << (8 * k)))
@@ -208,7 +208,7 @@ macro_rules! crossing_bloblet {
                     _ => fail("native code: gave what is not a bloblet of the fields wanted"),
                 };
                 let suffix: Vec<u8> = (0..bytes).map(|i| (kayak_jit::suffix_word(w, i / 8) >> (8 * (i % 8))) as u8).collect();
-                crate::leak(Bloblet::of_native(($(std::cell::Cell::new($a::of_word(kayak_jit::slot_of(w, $i + 2))),)*), &suffix))
+                crate::blob::of_native(($(std::cell::Cell::new($a::of_word(kayak_jit::slot_of(w, $i + 2))),)*), &suffix)
             }
         }
     };
@@ -330,11 +330,13 @@ native_fields!(A 0, B 1, C 2, D 3);
 
 /// `(seal-code b)`: a copy of `b` in the code area, its suffix frozen and
 /// runnable, its fields beside it (KFX's checker sees they cross).
-pub fn seal_code<'a, Fs: NativeFields + Clone + 'a>(b: &Bloblet<Fs>) -> &'a Bloblet<Fs> {
+pub fn seal_code<Fs: NativeFields + Clone + 'static>(
+    b: BlobletAt<'_, Fs>,
+) -> BlobletAt<'static, Fs> {
     if !kayak_jit::native_code() {
         fail("seal-code: this machine runs no native code");
     }
-    crate::leak(b.sealed_copy())
+    b.sealed_copy()
 }
 
 /// A native procedure's call: its answer, or a failure, as Fixpt's machines
@@ -366,9 +368,9 @@ pub trait Sealed {
     fn sealed_code(&self) -> Option<kayak_jit::Code>;
 }
 
-impl<Fs> Sealed for Bloblet<Fs> {
+impl<Fs> Sealed for BlobletAt<'_, Fs> {
     fn sealed_code(&self) -> Option<kayak_jit::Code> {
-        self.code
+        self.code()
     }
 }
 
@@ -391,35 +393,35 @@ fn sealed(c: &dyn Sealed) -> (kayak_jit::Code, u64, usize) {
 /// `(native-procedure c)` at `(subr (conv native) E () R)`: a closure of
 /// the sealed copy's code (C481), `Send + Sync`, which `as_proc` makes the
 /// procedure type wanted.
-pub fn native_procedure0<'a, R: Native + 'a>(c: &dyn Sealed) -> crate::Proc0s<'a, R> {
-    crate::closure0s(sealed(c), |(code, clo, entry)| {
+pub fn native_procedure0<'a, R: Native + 'a>(c: impl Sealed) -> crate::Proc0s<'a, R> {
+    crate::closure0s(sealed(&c), |(code, clo, entry)| {
         R::of_word(run(code, clo, entry, &[]))
     })
 }
 
 /// At `(subr (conv native) E (A) R)`.
 pub fn native_procedure1<'a, A: Native + 'a, R: Native + 'a>(
-    c: &dyn Sealed,
+    c: impl Sealed,
 ) -> crate::Proc1s<'a, A, R> {
-    crate::closure1s(sealed(c), |(code, clo, entry), a: A| {
+    crate::closure1s(sealed(&c), |(code, clo, entry), a: A| {
         R::of_word(run(code, clo, entry, &[a.word()]))
     })
 }
 
 /// At `(subr (conv native) E (A B) R)`.
 pub fn native_procedure2<'a, A: Native + 'a, B: Native + 'a, R: Native + 'a>(
-    c: &dyn Sealed,
+    c: impl Sealed,
 ) -> crate::Proc2s<'a, A, B, R> {
-    crate::closure2s(sealed(c), |(code, clo, entry), a: A, b: B| {
+    crate::closure2s(sealed(&c), |(code, clo, entry), a: A, b: B| {
         R::of_word(run(code, clo, entry, &[a.word(), b.word()]))
     })
 }
 
 /// At `(subr (conv native) E (A B C) R)`.
 pub fn native_procedure3<'a, A: Native + 'a, B: Native + 'a, C: Native + 'a, R: Native + 'a>(
-    c: &dyn Sealed,
+    c: impl Sealed,
 ) -> crate::Proc3s<'a, A, B, C, R> {
-    crate::closure3s(sealed(c), |(code, clo, entry), a: A, b: B, d: C| {
+    crate::closure3s(sealed(&c), |(code, clo, entry), a: A, b: B, d: C| {
         R::of_word(run(code, clo, entry, &[a.word(), b.word(), d.word()]))
     })
 }
@@ -434,9 +436,9 @@ pub fn native_procedure4<
     D: Native + 'a,
     R: Native + 'a,
 >(
-    c: &dyn Sealed,
+    c: impl Sealed,
 ) -> crate::Proc4s<'a, A, B, C, D, R> {
-    crate::closure4s(sealed(c), |(code, clo, entry), a: A, b: B, d: C, e: D| {
+    crate::closure4s(sealed(&c), |(code, clo, entry), a: A, b: B, d: C, e: D| {
         R::of_word(run(
             code,
             clo,

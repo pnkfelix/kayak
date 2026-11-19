@@ -1675,7 +1675,7 @@ pub fn code_bytes(c: Convention) -> List<Int> {
     flat(pack_code(c, offsets(pack_code(c, nil::<Int>()), int_lit(0))))
 }
 
-pub fn put_all(mut b: &'static Bloblet<()>, mut at: Int, mut bs: List<Int>) -> () {
+pub fn put_all(mut b: kayak_rt::BlobletAt<'static, ()>, mut at: Int, mut bs: List<Int>) -> () {
     loop {
         if null_p(bs) {
             return ();
@@ -1687,20 +1687,20 @@ pub fn put_all(mut b: &'static Bloblet<()>, mut at: Int, mut bs: List<Int>) -> (
     }
 }
 
-pub type Packed = &'static Bloblet<(std::cell::Cell<Str>, std::cell::Cell<Int>,)>;
+pub type Packed = kayak_rt::BlobletAt<'static, (std::cell::Cell<Str>, std::cell::Cell<Int>,)>;
 
 pub type Packer = kayak_rt::Proc2s<'static, Str, Int, Packed>;
 
 pub fn pack(c: Convention) -> Packer {
     let bs = code_bytes(c);
-    let b = the::<&'static Bloblet<()>>(make_bloblet(list_length(bs), ()));
+    let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(list_length(bs), ()));
     put_all(b, int_lit(0), bs);
-    kayak_rt::as_proc(kayak_rt::native_procedure2::<Str, Int, &'static Bloblet<(std::cell::Cell<Str>, std::cell::Cell<Int>,)>>(seal_code(b)))
+    kayak_rt::as_proc(kayak_rt::native_procedure2::<Str, Int, kayak_rt::BlobletAt<'static, (std::cell::Cell<Str>, std::cell::Cell<Int>,)>>(seal_code(b)))
 }
 
 #[inline]
 pub fn shown(b: Packed) -> Str {
-    string_append((b).fields.0.get(), string_append(str_lit!(" "), string_append(int_to_string((b).fields.1.get()), string_append(str_lit!(" "), int_to_string(bloblet_bytes(b))))))
+    string_append((b).fields().0.get(), string_append(str_lit!(" "), string_append(int_to_string((b).fields().1.get()), string_append(str_lit!(" "), int_to_string(bloblet_bytes(b))))))
 }
 
 pub fn many(mut pk: Packer, mut i: Int, mut acc: List<Packed>) -> List<Packed> {
@@ -1720,7 +1720,7 @@ pub fn total(mut bs: List<Packed>, mut acc: Int) -> Int {
             return acc;
         } else {
             let b = car(bs);
-            (bs, acc) = (cdr(bs), _plus(_plus(acc, string_length((b).fields.0.get())), _plus((b).fields.1.get(), bloblet_bytes(b))));
+            (bs, acc) = (cdr(bs), _plus(_plus(acc, string_length((b).fields().0.get())), _plus((b).fields().1.get(), bloblet_bytes(b))));
             continue;
         }
     }
@@ -1747,7 +1747,7 @@ pub fn main() -> Str {
     } else {
         str_lit!("made 24 24")
     }, string_append(str_lit!(" "), int_to_string(if native_code_p() {
-        total(many(pack(conv()), int_lit(20000), nil::<&'static Bloblet<(std::cell::Cell<Str>, std::cell::Cell<Int>,)>>()), int_lit(0))
+        total(many(pack(conv()), int_lit(20000), nil::<kayak_rt::BlobletAt<'static, (std::cell::Cell<Str>, std::cell::Cell<Int>,)>>()), int_lit(0))
     } else {
         int_lit(1000000)
     })))

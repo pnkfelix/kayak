@@ -21,12 +21,12 @@ pub mod made__load__1__loaded_bloblet_family {
 
     pub type Score = made__load__0__uses_cell::Score;
 
-    pub type Counts = &'static Bloblet<(std::cell::Cell<Score>,)>;
+    pub type Counts = kayak_rt::BlobletAt<'static, (std::cell::Cell<Score>,)>;
 
     #[inline]
     pub fn bump(c: Counts) -> i64 {
-        { let blob__ = c; blob__.fields.0.set(i64_plus((c).fields.0.get(), 1i64)); kayak_rt::bloblet_written(blob__, 0) };
-        (c).fields.0.get()
+        { let blob__ = c; blob__.fields().0.set(i64_plus((c).fields().0.get(), 1i64)); kayak_rt::bloblet_written(blob__, 0) };
+        (c).fields().0.get()
     }
 
     #[inline]

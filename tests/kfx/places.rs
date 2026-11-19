@@ -31,7 +31,7 @@ pub fn counter<'p, Place_P: Holds<std::cell::Cell<i64>>>(h: &'p Place_P, n: i64)
 }
 
 #[inline]
-pub fn mk<'p, Place_P: Holds<Bloblet<(std::cell::Cell<i64>,)>>>(h: &'p Place_P, n: i64) -> &'p Bloblet<(std::cell::Cell<i64>,)> {
+pub fn mk<'p, Place_P: Holds<Bloblet<(std::cell::Cell<i64>,)>>>(h: &'p Place_P, n: i64) -> kayak_rt::BlobletAt<'p, (std::cell::Cell<i64>,)> {
     rmake_bloblet(h, int_lit(8), (std::cell::Cell::new(n),))
 }
 
@@ -50,7 +50,7 @@ pub fn main() -> Str {
             let xs = push.call(r, 1i64, push.call(r, 2i64, nil::<i64>()));
             let b = mk(r, 40i64);
             set(c, i64_plus(get(c), sum2(r)));
-            string_append(i64_to_string(total(r, 7i64)), string_append(str_lit!(" "), string_append(i64_to_string(get(c)), string_append(str_lit!(" "), i64_to_string(i64_plus((b).fields.0.get(), i64_plus(car(xs), car(cdr(xs)))))))))
+            string_append(i64_to_string(total(r, 7i64)), string_append(str_lit!(" "), string_append(i64_to_string(get(c)), string_append(str_lit!(" "), i64_to_string(i64_plus((b).fields().0.get(), i64_plus(car(xs), car(cdr(xs)))))))))
         }
         let r__arena = Region_R::default();
         letrena__r(&r__arena)

@@ -32,23 +32,23 @@ impl<A0: Flat, A1: Flat, A2: Flat, A3: Flat> Flat for Product_1a_1b_1c_1d<A0, A1
 
 // Fixpt's bloblet/point.fx, at i64: fields read and written.
 #[inline]
-pub fn p() -> &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)> {
-    kayak_rt::kept_constant!(ONCE: &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)>);
+pub fn p() -> kayak_rt::BlobletAt<'static, (std::cell::Cell<i64>, std::cell::Cell<i64>,)> {
+    kayak_rt::kept_constant!(ONCE: kayak_rt::BlobletAt<'static, (std::cell::Cell<i64>, std::cell::Cell<i64>,)>);
     once(&ONCE, || {
         make_bloblet(int_lit(0), (std::cell::Cell::new(3i64), std::cell::Cell::new(4i64),))
     })
 }
 
 #[inline]
-pub fn shift(q: &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)>, dx: i64) -> () {
-    { let blob__ = q; blob__.fields.0.set(i64_plus((q).fields.0.get(), dx)); kayak_rt::bloblet_written(blob__, 0) }
+pub fn shift(q: kayak_rt::BlobletAt<'static, (std::cell::Cell<i64>, std::cell::Cell<i64>,)>, dx: i64) -> () {
+    { let blob__ = q; blob__.fields().0.set(i64_plus((q).fields().0.get(), dx)); kayak_rt::bloblet_written(blob__, 0) }
 }
 
 // Fixpt's bloblet/flat-product.fx: one suffix read as three flats, laid
 // out as C lays them out.
 pub type Pt = Product_1x_1n_1y<f64, i32, f64>;
 
-pub type O = &'static Bloblet<()>;
+pub type O = kayak_rt::BlobletAt<'static, ()>;
 
 #[inline]
 pub fn b() -> O {
@@ -96,7 +96,7 @@ pub fn total(n: i64) -> f64 {
             let add__knot = knot::<kayak_rt::Proc2<'r, i64, f64, f64>>();
             let fill = kayak_rt::closure1((b, xs,), |(b, xs,), mut i: i64| {
                 loop {
-                    if i64_eq(i, (b).fields.0.get()) {
+                    if i64_eq(i, (b).fields().0.get()) {
                         return ();
                     } else {
                         ((xs).at(i64_to_int(i))).set(int_to_f64(i64_to_int(i)));
@@ -107,7 +107,7 @@ pub fn total(n: i64) -> f64 {
             });
             let add = kayak_rt::closure2((b, xs,), |(b, xs,), mut i: i64, mut acc: f64| {
                 loop {
-                    if i64_eq(i, (b).fields.0.get()) {
+                    if i64_eq(i, (b).fields().0.get()) {
                         return acc;
                     } else {
                         (i, acc) = (i64_plus(i, 1i64), f64_plus(acc, ((xs).at(i64_to_int(i))).get()));
@@ -139,6 +139,6 @@ pub fn main() -> Str {
     ((p1()).field(16)).set_f64(2.5f64);
     ((p1()).field(8)).set_i32(7i32);
     (odd()).set_i32(-7i32);
-    string_append(ints(kayak_rt::heap_cons(i64_to_int(i64_plus((p()).fields.0.get(), (p()).fields.1.get())), kayak_rt::heap_cons(blobref_offset((p1()).field(0)), kayak_rt::heap_cons(blobref_offset((p1()).field(8)), kayak_rt::heap_cons(blobref_offset((p1()).field(16)), kayak_rt::heap_cons(i32_to_int((((arr()).index(int_lit(1), 24, 3)).field(8)).get_i32()), kayak_rt::heap_cons(blobref_offset((q0()).field(4)), kayak_rt::heap_cons(blobref_offset((q0()).field(8)), kayak_rt::heap_cons(blobref_offset(((the::<BlobRef<O>>(blobref_at(b(), int_lit(0), 48))).index(int_lit(0), 24, 2)).field(16)), kayak_rt::heap_cons(i32_to_int((odd()).get_i32()), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(41)), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(44)), kayak_rt::heap_cons(bloblet_bytes(b()), kayak_rt::nil()))))))))))))), string_append(f64_to_string(((p1()).field(16)).get_f64()), string_append(str_lit!(" "), f64_to_string(total(100i64)))))
+    string_append(ints(kayak_rt::heap_cons(i64_to_int(i64_plus((p()).fields().0.get(), (p()).fields().1.get())), kayak_rt::heap_cons(blobref_offset((p1()).field(0)), kayak_rt::heap_cons(blobref_offset((p1()).field(8)), kayak_rt::heap_cons(blobref_offset((p1()).field(16)), kayak_rt::heap_cons(i32_to_int((((arr()).index(int_lit(1), 24, 3)).field(8)).get_i32()), kayak_rt::heap_cons(blobref_offset((q0()).field(4)), kayak_rt::heap_cons(blobref_offset((q0()).field(8)), kayak_rt::heap_cons(blobref_offset(((the::<BlobRef<O>>(blobref_at(b(), int_lit(0), 48))).index(int_lit(0), 24, 2)).field(16)), kayak_rt::heap_cons(i32_to_int((odd()).get_i32()), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(41)), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(44)), kayak_rt::heap_cons(bloblet_bytes(b()), kayak_rt::nil()))))))))))))), string_append(f64_to_string(((p1()).field(16)).get_f64()), string_append(str_lit!(" "), f64_to_string(total(100i64)))))
 }
 

@@ -7,7 +7,7 @@ pub fn here_p() -> bool {
     (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit!("(target arm64)")))
 }
 
-pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
+pub fn put4(b: kayak_rt::BlobletAt<'static, ()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, at, modulo(w, int_lit(256)));
     bloblet_set_byte_x(b, _plus(at, int_lit(1)), modulo(quotient(w, int_lit(256)), int_lit(256)));
     bloblet_set_byte_x(b, _plus(at, int_lit(2)), modulo(quotient(w, int_lit(65536)), int_lit(256)));
@@ -15,7 +15,7 @@ pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
 }
 
 pub fn adder() -> kayak_rt::Proc2s<'static, Int, Int, Int> {
-    let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(8), ()));
+    let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(int_lit(8), ()));
     put4(b, int_lit(0), int_lit(2332164128));
     put4(b, int_lit(4), int_lit(3596551104));
     kayak_rt::as_proc(kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b)))

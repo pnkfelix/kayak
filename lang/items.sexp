@@ -996,6 +996,7 @@
 (emitter-call "cons" kayak)
 (emitter-call "datum_list_to_vector" kayak)
 (emitter-call "field" kayak)
+(emitter-call "fields" kayak)
 (emitter-call "get" kayak)
 (emitter-call "heap_alloc" kayak)
 (emitter-call "heap_cons" kayak)

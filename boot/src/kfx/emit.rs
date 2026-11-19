@@ -3826,7 +3826,8 @@ pub mod emitter {
                     } else if (sym_is_p(car(xs), str_lit!("bloblet")) && not(null_p(typed_flat(c, t)))) {
                         return put(str_lit!(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit!(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit!("TBloblet<"), put(str_lit!(" "), put(owner_lifetime(c, third(xs)), put(str_lit!("&"), acc))))))));
                     } else if sym_is_p(car(xs), str_lit!("bloblet")) {
-                        return put(str_lit!(">"), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit!("Bloblet<"), put(str_lit!(" "), put(owner_lifetime(c, third(xs)), put(str_lit!("&"), acc))))));
+                        // A bloblet: one word to its object, Fixpt's layout (C484).
+                        return put(str_lit!(">"), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit!(", "), put(owner_lifetime(c, third(xs)), put(str_lit!("kayak_rt::BlobletAt<"), acc)))));
                     } else if (sym_is_p(car(xs), str_lit!("blobref")) && not(null_p(typed_flat(c, second(xs))))) {
                         return put_flat(c, expand_aliases(c, third(xs)), put(str_lit!(" "), put(owner_lifetime(c, third(items(expand_aliases(c, second(xs))))), put(str_lit!("&"), acc))));
                     } else if sym_is_p(car(xs), str_lit!("blobref")) {
@@ -6124,15 +6125,15 @@ pub mod emitter {
                 })), str_lit!(" "), cdr(rest), acc);
                 return put(str_lit!("))"), acc);
             } else if (string_eq_p(h, str_lit!("bloblet-ref")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {
-                // A field, a cell: `(b).fields.i.get()`.
-                return put(str_lit!(".get()"), put(number_text(second(xs)), put(str_lit!(").fields."), put_exp(c, car(xs), n, value(), put(str_lit!("("), acc)))));
+                // A field, a cell: `(b).fields().i.get()`.
+                return put(str_lit!(".get()"), put(number_text(second(xs)), put(str_lit!(").fields()."), put_exp(c, car(xs), n, value(), put(str_lit!("("), acc)))));
             } else if (string_eq_p(h, str_lit!("bloblet-set!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {
                 // A field, a cell, written: `.set(e)`; then, of a sealed copy, beside
                 // its code too (C116), which `bloblet_written` sees to.
                 let k = number_text(second(xs));
                 let acc = put(str_lit!("{ let blob__ = "), acc);
                 let acc = put_exp(c, car(xs), n, value(), acc);
-                let acc = put(string_append(str_lit!("; blob__.fields."), string_append(k, str_lit!(".set("))), acc);
+                let acc = put(string_append(str_lit!("; blob__.fields()."), string_append(k, str_lit!(".set("))), acc);
                 let acc = put_exp(c, third(xs), n, value(), acc);
                 return put(string_append(str_lit!("); kayak_rt::bloblet_written(blob__, "), string_append(k, str_lit!(") }"))), acc);
             } else if (string_eq_p(h, str_lit!("blobref-variant!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {

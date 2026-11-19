@@ -4370,7 +4370,7 @@ pub fn words_compiled_x(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut 
 
 pub type HandCode = kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>;
 
-pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
+pub fn put4(b: kayak_rt::BlobletAt<'static, ()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, at, modulo(w, int_lit(256)));
     bloblet_set_byte_x(b, _plus(at, int_lit(1)), modulo(quotient(w, int_lit(256)), int_lit(256)));
     bloblet_set_byte_x(b, _plus(at, int_lit(2)), modulo(quotient(w, int_lit(65536)), int_lit(256)));
@@ -4379,7 +4379,7 @@ pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
 
 /// Each item placed, at instruction `at` on; the first that did not
 /// encode, as its place, or -1.
-pub fn all_put_x(mut b: &'static Bloblet<()>, mut xs: List<kayak_rt::Handle<'static, HandItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
+pub fn all_put_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut xs: List<kayak_rt::Handle<'static, HandItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
     loop {
         if null_p(xs) {
             return int_lit(-1);
@@ -4475,7 +4475,7 @@ pub fn hand_code_arm64_x() -> kayak_rt::Sum {
         let its = the::<List<kayak_rt::Handle<'static, HandItem>>>(kayak_rt::heap_cons(label_here(get(l_start())), kayak_rt::heap_cons(jump(j_b(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(label_here(get(l_words())), kayak_rt::heap_cons(ins(_star(int_lit(8), count_of(rts, int_lit(0)))), kayak_rt::heap_cons(ins(int_lit(0)), append(words_table(rts, nil::<kayak_rt::Handle<'static, HandItem>>()), append(reverse(get(hand_data())), reverse(get(hand_items())))))))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
         let count = placed_x(its, int_lit(0), ls);
-        let b = the::<&'static Bloblet<()>>(make_bloblet(_star(int_lit(4), count), ()));
+        let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(_star(int_lit(4), count), ()));
         let bad = all_put_x(b, its, int_lit(0), ls);
         if _gt_eq(bad, int_lit(0)) {
             kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit!("tier 2: instruction "), string_append(int_to_string(bad), str_lit!(" does not encode"))))

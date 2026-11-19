@@ -6,7 +6,7 @@ use kayak_rt::*;
 // forms, which main says (C116, C135): a convention declared, x86_64's,
 // and code made to it. `made-declared` is this on arm64.
 
-pub fn put_all(mut b: &'static Bloblet<()>, mut at: Int, mut bs: List<Int>) -> () {
+pub fn put_all(mut b: kayak_rt::BlobletAt<'static, ()>, mut at: Int, mut bs: List<Int>) -> () {
     loop {
         if null_p(bs) {
             return ();
@@ -19,7 +19,7 @@ pub fn put_all(mut b: &'static Bloblet<()>, mut at: Int, mut bs: List<Int>) -> (
 }
 
 pub fn subtracter() -> kayak_rt::Proc2s<'static, Int, Int, Int> {
-    let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(7), ()));
+    let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(int_lit(7), ()));
     put_all(b, int_lit(0), kayak_rt::heap_cons(int_lit(72), kayak_rt::heap_cons(int_lit(137), kayak_rt::heap_cons(int_lit(248), kayak_rt::heap_cons(int_lit(72), kayak_rt::heap_cons(int_lit(41), kayak_rt::heap_cons(int_lit(240), kayak_rt::heap_cons(int_lit(195), kayak_rt::nil()))))))));
     kayak_rt::as_proc(kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b)))
 }

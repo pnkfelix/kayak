@@ -2037,8 +2037,9 @@
                                         (put ", " (put-fields-tuple c (cdr (items (second xs)))
                                                                     (put "TBloblet<" (put " " (put (owner-lifetime c (third xs)) (put "&" acc)))))))))
                     ((sym-is? (car xs) "bloblet")
+                     "A bloblet: one word to its object, Fixpt's layout (C484)."
                      (put ">" (put-fields-tuple c (cdr (items (second xs)))
-                                                (put "Bloblet<" (put " " (put (owner-lifetime c (third xs)) (put "&" acc)))))))
+                                                (put ", " (put (owner-lifetime c (third xs)) (put "kayak_rt::BlobletAt<" acc))))))
                     ((and (sym-is? (car xs) "blobref") (not (null? (typed-flat c (second xs)))))
                      (put-flat c (expand-aliases c (third xs))
                                (put " " (put (owner-lifetime c (third (items (expand-aliases c (second xs))))) (put "&" acc)))))
@@ -3376,15 +3377,15 @@
                         (acc (put-sep (lambda ((x sexp) acc) (put ")," (put-exp c x n (value) (put "std::cell::Cell::new(" acc)))) " " (cdr rest) acc)))
                    (put "))" acc)))
                 ((and (string=? h "bloblet-ref") (string=? (local-kind h (ctx-locals c)) ""))
-                 "A field, a cell: `(b).fields.i.get()`."
-                 (put ".get()" (put (number-text (second xs)) (put ").fields." (put-exp c (car xs) n (value) (put "(" acc))))))
+                 "A field, a cell: `(b).fields().i.get()`."
+                 (put ".get()" (put (number-text (second xs)) (put ").fields()." (put-exp c (car xs) n (value) (put "(" acc))))))
                 ((and (string=? h "bloblet-set!") (string=? (local-kind h (ctx-locals c)) ""))
                  "A field, a cell, written: `.set(e)`; then, of a sealed copy, beside
                   its code too (C116), which `bloblet_written` sees to."
                  (let* ((k (number-text (second xs)))
                         (acc (put "{ let blob__ = " acc))
                         (acc (put-exp c (car xs) n (value) acc))
-                        (acc (put (string-append "; blob__.fields." (string-append k ".set(")) acc))
+                        (acc (put (string-append "; blob__.fields()." (string-append k ".set(")) acc))
                         (acc (put-exp c (third xs) n (value) acc)))
                    (put (string-append "); kayak_rt::bloblet_written(blob__, " (string-append k ") }")) acc)))
                 ((and (string=? h "blobref-variant!") (string=? (local-kind h (ctx-locals c)) ""))

@@ -11,18 +11,13 @@
 use crate::{Holds, Int, fail, i64_to_int, int_to_i64};
 use std::cell::Cell;
 
-/// `(bloblet (fields T …) R)`: `fields` a tuple of cells, one a field.
-pub struct Bloblet<Fs> {
-    pub fields: Fs,
-    suffix: Box<[Cell<u64>]>,
-    bytes: usize,
-    /// Its copy in the code area, if it is one `seal-code` gave (C116): its
-    /// suffix frozen, its code runnable.
-    pub(crate) code: Option<kayak_jit::Code>,
-    /// For a sealed copy, how a field written is written beside its code
-    /// too, as Fixpt's code bloblet's fields are its code's (C116).
-    resync: Option<fn(&Bloblet<Fs>, usize)>,
-}
+/// `(bloblet (fields T …) R)`: one word to an object of Fixpt's layout
+/// (C484, `obj.rs`), `fields` a tuple of cells, one a field, and its
+/// suffix words of cells. `Bloblet` is the object, owned: a region's arena
+/// holds one so; `BlobletAt` the value.
+pub use crate::obj::{Bloblet, BlobletAt};
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 /// An `int` as a size or an index: one past an `i64` is never small
 /// (`Int`'s results are made small whenever they fit), so it is too big.
@@ -33,27 +28,25 @@ fn index_of(n: Int, what: &str) -> usize {
     }
 }
 
-impl<Fs> Bloblet<Fs> {
-    fn new(bytes: Int, fields: Fs) -> Self {
-        let bytes = index_of(bytes, "make-bloblet: a negative size");
-        Bloblet {
-            fields,
-            suffix: (0..bytes.div_ceil(8)).map(|_| Cell::new(0)).collect(),
-            bytes,
-            code: None,
-            resync: None,
-        }
+type Resync = Box<dyn Fn(usize)>;
+
+thread_local! {
+    /// The sealed copies this thread made (C116), by their objects'
+    /// addresses: each one's code, and how a field written is written
+    /// beside it too. A bloblet is no `Send`, so none leaves its thread.
+    static SEALED: RefCell<HashMap<usize, (kayak_jit::Code, Resync)>> = RefCell::new(HashMap::new());
+}
+
+impl<'r, Fs> BlobletAt<'r, Fs> {
+    fn byte(self, i: usize) -> u64 {
+        (self.suffix()[i / 8].get() >> ((i % 8) * 8)) & 0xff
     }
 
-    fn byte(&self, i: usize) -> u64 {
-        (self.suffix[i / 8].get() >> ((i % 8) * 8)) & 0xff
-    }
-
-    fn set_byte(&self, i: usize, v: u64) {
-        if self.code.is_some() {
+    fn set_byte(self, i: usize, v: u64) {
+        if self.suffix_frozen() {
             fail("the bloblet's suffix is frozen");
         }
-        let w = &self.suffix[i / 8];
+        let w = &self.suffix()[i / 8];
         let sh = (i % 8) * 8;
         w.set((w.get() & !(0xff << sh)) | ((v & 0xff) << sh));
     }
@@ -61,31 +54,33 @@ impl<Fs> Bloblet<Fs> {
     /// `n` bytes at `at`, as the low bytes of a word: in its word if
     /// aligned to `n`, else byte by byte; within the suffix, or an error.
     #[inline]
-    fn read(&self, at: usize, n: usize) -> u64 {
-        if at.checked_add(n).is_none_or(|end| end > self.bytes) {
+    fn read(self, at: usize, n: usize) -> u64 {
+        if at.checked_add(n).is_none_or(|end| end > self.bytes()) {
             fail("blobref-get: past the suffix");
         }
+        let suffix = self.suffix();
         if n == 8 && at.is_multiple_of(8) {
-            self.suffix[at / 8].get()
+            suffix[at / 8].get()
         } else if at.is_multiple_of(n) {
-            (self.suffix[at / 8].get() >> ((at % 8) * 8)) & (u64::MAX >> (64 - n * 8))
+            (suffix[at / 8].get() >> ((at % 8) * 8)) & (u64::MAX >> (64 - n * 8))
         } else {
             (0..n).fold(0, |v, i| v | (self.byte(at + i) << (i * 8)))
         }
     }
 
     #[inline]
-    fn write(&self, at: usize, n: usize, v: u64) {
-        if at.checked_add(n).is_none_or(|end| end > self.bytes) {
+    fn write(self, at: usize, n: usize, v: u64) {
+        if at.checked_add(n).is_none_or(|end| end > self.bytes()) {
             fail("blobref-set!: past the suffix");
         }
-        if self.code.is_some() {
+        if self.suffix_frozen() {
             fail("the bloblet's suffix is frozen");
         }
+        let suffix = self.suffix();
         if n == 8 && at.is_multiple_of(8) {
-            self.suffix[at / 8].set(v)
+            suffix[at / 8].set(v)
         } else if at.is_multiple_of(n) {
-            let w = &self.suffix[at / 8];
+            let w = &suffix[at / 8];
             let sh = (at % 8) * 8;
             let mask = (u64::MAX >> (64 - n * 8)) << sh;
             w.set((w.get() & !mask) | ((v << sh) & mask))
@@ -93,56 +88,62 @@ impl<Fs> Bloblet<Fs> {
             (0..n).for_each(|i| self.set_byte(at + i, v >> (i * 8)))
         }
     }
-}
 
-impl<Fs> Bloblet<Fs> {
-    /// One of fields `fields` and suffix `bytes`, as native code made it
-    /// (C116), copied.
-    pub(crate) fn of_native(fields: Fs, bytes: &[u8]) -> Self {
-        let b = Bloblet::new(i64_to_int(bytes.len() as i64), fields);
-        for (i, &x) in bytes.iter().enumerate() {
-            b.set_byte(i, x as u64);
+    /// Its code, if it is a sealed copy.
+    pub(crate) fn code(self) -> Option<kayak_jit::Code> {
+        if !self.suffix_frozen() {
+            return None;
         }
-        b
+        SEALED.with(|m| m.borrow().get(&self.addr()).map(|e| e.0))
     }
 
     /// Its suffix's bytes; and its code, if it is a sealed copy.
-    pub(crate) fn native_parts(&self) -> (Vec<u8>, Option<kayak_jit::Code>) {
+    pub(crate) fn native_parts(self) -> (Vec<u8>, Option<kayak_jit::Code>) {
         (
-            (0..self.bytes).map(|i| self.byte(i) as u8).collect(),
-            self.code,
+            (0..self.bytes()).map(|i| self.byte(i) as u8).collect(),
+            self.code(),
         )
     }
 }
 
-impl<Fs: crate::NativeFields + Clone> Bloblet<Fs> {
+/// One of fields `fields` and suffix `bytes`, as native code made it
+/// (C116), copied, kept for the run.
+pub(crate) fn of_native<'a, Fs: 'a>(fields: Fs, bytes: &[u8]) -> BlobletAt<'a, Fs> {
+    let b = Bloblet::new(fields, bytes.len(), false).kept();
+    for (i, &x) in bytes.iter().enumerate() {
+        b.set_byte(i, x as u64);
+    }
+    b
+}
+
+impl<Fs: crate::NativeFields + Clone + 'static> BlobletAt<'_, Fs> {
     /// Its copy sealed into the code area (`seal-code`, C116): its suffix
-    /// the code, frozen; its fields beside it, after a trailer if it has
-    /// any, as Fixpt's; a field written later written there too.
-    pub(crate) fn sealed_copy(&self) -> Self {
-        let bytes: Vec<u8> = (0..self.bytes).map(|i| self.byte(i) as u8).collect();
-        let fields = self.fields.field_words();
+    /// the code, frozen (its header's bit); its fields beside it, after a
+    /// trailer if it has any, as Fixpt's; a field written later written
+    /// there too.
+    pub(crate) fn sealed_copy(self) -> BlobletAt<'static, Fs> {
+        let bytes: Vec<u8> = (0..self.bytes()).map(|i| self.byte(i) as u8).collect();
+        let fields = self.fields().field_words();
         let mut slots = Vec::new();
         if !fields.is_empty() {
             slots.push(kayak_jit::layout::trailer(fields.len() + 1));
             slots.extend(fields);
         }
         let code = kayak_jit::seal(kayak_jit::layout::KIND_BLOBLET, &slots, false, &bytes);
-        Bloblet {
-            fields: self.fields.clone(),
-            suffix: self.suffix.clone(),
-            bytes: self.bytes,
-            code: Some(code),
-            resync: Some(|b, k| {
-                // Its code freed (C456), its block perhaps another's: KFX's
-                // own copy alone written.
-                if let Some(c) = b.code
-                    && kayak_jit::live(c)
-                {
-                    c.set_slot(k + 2, b.fields.field_word(k))
-                }
-            }),
+        let b: BlobletAt<'static, Fs> =
+            Bloblet::new(self.fields().clone(), self.bytes(), true).kept();
+        for (to, from) in b.suffix().iter().zip(self.suffix()) {
+            to.set(from.get());
         }
+        let resync: Resync = Box::new(move |k| {
+            // Its code freed (C456), its block perhaps another's: KFX's
+            // own copy alone written.
+            if kayak_jit::live(code) {
+                code.set_slot(k + 2, b.fields().field_word(k))
+            }
+        });
+        SEALED.with(|m| m.borrow_mut().insert(b.addr(), (code, resync)));
+        b
     }
 }
 
@@ -152,11 +153,15 @@ pub trait Written {
     fn written(self, k: usize);
 }
 
-impl<Fs> Written for &Bloblet<Fs> {
+impl<Fs> Written for BlobletAt<'_, Fs> {
     #[inline]
     fn written(self, k: usize) {
-        if let Some(f) = self.resync {
-            f(self, k)
+        if self.suffix_frozen() {
+            SEALED.with(|m| {
+                if let Some((_, f)) = m.borrow().get(&self.addr()) {
+                    f(k)
+                }
+            })
         }
     }
 }
@@ -171,37 +176,54 @@ pub fn bloblet_written<W: Written>(b: W, k: usize) {
 }
 
 /// `(make-bloblet bytes e …)`: in the heap, never freed.
-pub fn make_bloblet<'a, Fs: 'a>(bytes: Int, fields: Fs) -> &'a Bloblet<Fs> {
-    crate::leak(Bloblet::new(bytes, fields))
+pub fn make_bloblet<'a, Fs: 'a>(bytes: Int, fields: Fs) -> BlobletAt<'a, Fs> {
+    Bloblet::new(
+        fields,
+        index_of(bytes, "make-bloblet: a negative size"),
+        false,
+    )
+    .kept()
 }
 
-/// `(rmake-bloblet r bytes e …)`: in the region `r`.
-pub fn rmake_bloblet<Fs, R: Holds<Bloblet<Fs>>>(r: &R, bytes: Int, fields: Fs) -> &Bloblet<Fs> {
-    r.arena().alloc(Bloblet::new(bytes, fields)).to_ref()
+/// `(rmake-bloblet r bytes e …)`: in the region `r`, its object the
+/// region's arena's.
+pub fn rmake_bloblet<Fs, R: Holds<Bloblet<Fs>>>(
+    r: &R,
+    bytes: Int,
+    fields: Fs,
+) -> BlobletAt<'_, Fs> {
+    r.arena()
+        .alloc(Bloblet::new(
+            fields,
+            index_of(bytes, "make-bloblet: a negative size"),
+            false,
+        ))
+        .to_ref()
+        .at()
 }
 
-pub fn bloblet_bytes<Fs>(b: &Bloblet<Fs>) -> Int {
-    i64_to_int(b.bytes as i64)
+pub fn bloblet_bytes<Fs>(b: BlobletAt<'_, Fs>) -> Int {
+    i64_to_int(b.bytes() as i64)
 }
 
-pub fn bloblet_byte<Fs>(b: &Bloblet<Fs>, i: Int) -> Int {
+pub fn bloblet_byte<Fs>(b: BlobletAt<'_, Fs>, i: Int) -> Int {
     let i = index_of(i, "bloblet-byte: no such byte");
-    if i >= b.bytes {
+    if i >= b.bytes() {
         fail("bloblet-byte: no such byte");
     }
     i64_to_int(b.byte(i) as i64)
 }
 
-pub fn bloblet_set_byte_x<Fs>(b: &Bloblet<Fs>, i: Int, v: Int) {
+pub fn bloblet_set_byte_x<Fs>(b: BlobletAt<'_, Fs>, i: Int, v: Int) {
     let i = index_of(i, "bloblet-set-byte!: no such byte");
-    if i >= b.bytes {
+    if i >= b.bytes() {
         fail("bloblet-set-byte!: no such byte");
     }
     b.set_byte(i, int_to_i64(v) as u64)
 }
 
-/// What a blobref points into: a bloblet, as a reference of any lifetime
-/// (the heap's, or a `letrena`'s), whose suffix is read and written.
+/// What a blobref points into: a bloblet, of any lifetime (the heap's, or
+/// a `letrena`'s), whose suffix is read and written.
 pub trait Owner: Copy {
     /// The suffix's length, in bytes.
     fn bytes(self) -> usize;
@@ -209,20 +231,31 @@ pub trait Owner: Copy {
     fn write(self, at: usize, n: usize, v: u64);
 }
 
-impl<Fs> Owner for &Bloblet<Fs> {
+impl<Fs> Owner for BlobletAt<'_, Fs> {
     #[inline]
     fn bytes(self) -> usize {
-        self.bytes
+        BlobletAt::bytes(self)
     }
 
     #[inline]
     fn read(self, at: usize, n: usize) -> u64 {
-        Bloblet::read(self, at, n)
+        BlobletAt::read(self, at, n)
     }
 
     #[inline]
     fn write(self, at: usize, n: usize, v: u64) {
-        Bloblet::write(self, at, n, v)
+        BlobletAt::write(self, at, n, v)
+    }
+}
+
+/// A bloblet: opaque to a trace for now, its fields cells of any type.
+impl<Fs> crate::Trace for BlobletAt<'_, Fs> {
+    crate::trace_whole!();
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.opaque(self.addr());
     }
 }
 
@@ -457,9 +490,15 @@ impl<Fs, S> TBloblet<Fs, S> {
     pub fn byte_size(&self) -> usize {
         self.bytes
     }
+
+    /// Its fields, as a bloblet's are read (C484).
+    #[inline]
+    pub fn fields(&self) -> &Fs {
+        &self.fields
+    }
 }
 
-impl<Fs> crate::Show for Bloblet<Fs> {
+impl<Fs> crate::Show for BlobletAt<'_, Fs> {
     fn show(&self, out: &mut String) {
         out.push_str("#<bloblet>");
     }

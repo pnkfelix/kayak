@@ -6,7 +6,7 @@ use kayak_rt::*;
 // in FX-26 (`(f64->f32 0.1)`, `(int->f32 3)`); an int rounded to one once,
 // not through a double; and one in a bloblet's suffix beside an i32.
 
-pub type O = &'static Bloblet<()>;
+pub type O = kayak_rt::BlobletAt<'static, ()>;
 
 #[inline]
 pub fn b() -> O {
