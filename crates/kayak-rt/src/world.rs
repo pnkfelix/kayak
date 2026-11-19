@@ -243,10 +243,10 @@ static BYTES: [SumOf<u8>; 256] = {
 /// How many counts of `read-bytes` are made once.
 const COUNTS_KEPT: usize = 4096;
 static COUNTS: [SumOf<Int>; COUNTS_KEPT + 1] = {
-    let mut a = [const { SumOf::new("count", Int::Small(0)) }; COUNTS_KEPT + 1];
+    let mut a = [const { SumOf::new("count", Int::fixnum(0)) }; COUNTS_KEPT + 1];
     let mut i = 0;
     while i <= COUNTS_KEPT {
-        a[i] = SumOf::new("count", Int::Small(i as i64));
+        a[i] = SumOf::new("count", Int::fixnum(i as i64));
         i += 1;
     }
     a

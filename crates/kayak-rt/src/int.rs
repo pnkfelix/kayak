@@ -12,21 +12,12 @@
 use crate::{Str, leak_string};
 use std::cmp::Ordering;
 
-#[derive(Clone, Copy)]
-pub enum Int {
-    Small(i64),
-    Big(&'static Big),
-}
-
-pub struct Big {
-    negative: bool,
-    magnitude: Vec<u32>,
-}
+pub use crate::obj::{BigAt, FIXNUM_MAX, FIXNUM_MIN, Int, IntView};
 
 /// A literal: KFX's literals are those of an `i64`.
 #[inline]
 pub fn int_lit(n: i64) -> Int {
-    Int::Small(n)
+    Int::of_i64(n)
 }
 
 /// A signed magnitude, the form arithmetic past an `i64` is done in.
@@ -36,8 +27,8 @@ struct Wide {
 }
 
 fn wide(n: Int) -> Wide {
-    match n {
-        Int::Small(v) => {
+    match n.view() {
+        IntView::Small(v) => {
             let m = v.unsigned_abs();
             let mut magnitude = vec![m as u32, (m >> 32) as u32];
             trim(&mut magnitude);
@@ -46,9 +37,9 @@ fn wide(n: Int) -> Wide {
                 magnitude,
             }
         }
-        Int::Big(b) => Wide {
-            negative: b.negative,
-            magnitude: b.magnitude.clone(),
+        IntView::Big(b) => Wide {
+            negative: b.negative(),
+            magnitude: b.magnitude(),
         },
     }
 }
@@ -59,7 +50,8 @@ fn trim(m: &mut Vec<u32>) {
     }
 }
 
-/// A signed magnitude as an `Int`: small if it fits an `i64`.
+/// A signed magnitude as an `Int`: a fixnum if it fits 61 bits (by
+/// `of_i64`), else a bignum.
 fn int(w: Wide) -> Int {
     let mut magnitude = w.magnitude;
     trim(&mut magnitude);
@@ -67,18 +59,18 @@ fn int(w: Wide) -> Int {
         let m = magnitude.first().copied().unwrap_or(0) as u64
             | (magnitude.get(1).copied().unwrap_or(0) as u64) << 32;
         if !w.negative && m <= i64::MAX as u64 {
-            return Int::Small(m as i64);
+            return Int::of_i64(m as i64);
         }
         if w.negative && m <= 1u64 << 63 {
-            return Int::Small((m as i64).wrapping_neg());
+            return Int::of_i64((m as i64).wrapping_neg());
         }
     }
     let negative = w.negative && !magnitude.is_empty();
-    crate::stats::note::<Big>(std::mem::size_of::<Big>() + 8 * magnitude.len());
-    Int::Big(Box::leak(Box::new(Big {
-        negative,
-        magnitude,
-    })))
+    let limbs: Vec<u64> = magnitude
+        .chunks(2)
+        .map(|c| c[0] as u64 | (c.get(1).copied().unwrap_or(0) as u64) << 32)
+        .collect();
+    Int::bignum(negative, &limbs)
 }
 
 fn compare_magnitudes(a: &[u32], b: &[u32]) -> Ordering {
@@ -237,30 +229,30 @@ fn negate(w: Wide) -> Wide {
 
 #[inline]
 pub fn _plus(a: Int, b: Int) -> Int {
-    if let (Int::Small(x), Int::Small(y)) = (a, b)
+    if let (Some(x), Some(y)) = (a.small(), b.small())
         && let Some(s) = x.checked_add(y)
     {
-        return Int::Small(s);
+        return Int::of_i64(s);
     }
     add(wide(a), wide(b))
 }
 
 #[inline]
 pub fn _minus(a: Int, b: Int) -> Int {
-    if let (Int::Small(x), Int::Small(y)) = (a, b)
+    if let (Some(x), Some(y)) = (a.small(), b.small())
         && let Some(s) = x.checked_sub(y)
     {
-        return Int::Small(s);
+        return Int::of_i64(s);
     }
     add(wide(a), negate(wide(b)))
 }
 
 #[inline]
 pub fn _star(a: Int, b: Int) -> Int {
-    if let (Int::Small(x), Int::Small(y)) = (a, b)
+    if let (Some(x), Some(y)) = (a.small(), b.small())
         && let Some(s) = x.checked_mul(y)
     {
-        return Int::Small(s);
+        return Int::of_i64(s);
     }
     let (a, b) = (wide(a), wide(b));
     int(Wide {
@@ -273,12 +265,12 @@ pub fn _star(a: Int, b: Int) -> Int {
 /// A divisor of zero fails in Fixpt's words, `division by zero` (C403;
 /// `name` was said before them).
 fn divide(a: Int, b: Int, _name: &str) -> (Int, Int) {
-    if let (Int::Small(x), Int::Small(y)) = (a, b) {
+    if let (Some(x), Some(y)) = (a.small(), b.small()) {
         if y == 0 {
             crate::error(leak_string("division by zero".to_string()));
         }
         if let (Some(q), Some(r)) = (x.checked_div(y), x.checked_rem(y)) {
-            return (Int::Small(q), Int::Small(r));
+            return (Int::of_i64(q), Int::of_i64(r));
         }
     }
     let (a, b) = (wide(a), wide(b));
@@ -320,10 +312,10 @@ pub fn modulo(a: Int, b: Int) -> Int {
 }
 
 fn sign(n: Int) -> i32 {
-    match n {
-        Int::Small(v) => v.signum() as i32,
-        Int::Big(b) => {
-            if b.negative {
+    match n.view() {
+        IntView::Small(v) => v.signum() as i32,
+        IntView::Big(b) => {
+            if b.negative() {
                 -1
             } else {
                 1
@@ -333,7 +325,7 @@ fn sign(n: Int) -> i32 {
 }
 
 fn compare(a: Int, b: Int) -> Ordering {
-    if let (Int::Small(x), Int::Small(y)) = (a, b) {
+    if let (Some(x), Some(y)) = (a.small(), b.small()) {
         return x.cmp(&y);
     }
     let (a, b) = (wide(a), wide(b));
@@ -371,11 +363,11 @@ pub fn _gt_eq(a: Int, b: Int) -> bool {
 }
 
 pub fn int_to_string(n: Int) -> Str {
-    match n {
-        Int::Small(v) => leak_string(v.to_string()),
-        Int::Big(b) => {
+    match n.view() {
+        IntView::Small(v) => leak_string(v.to_string()),
+        IntView::Big(b) => {
             // Nine decimal digits at a time, least significant first.
-            let mut m = b.magnitude.clone();
+            let mut m = b.magnitude();
             let mut chunks = Vec::new();
             while !m.is_empty() {
                 let (q, r) = divide_magnitudes(&m, &[1_000_000_000]);
@@ -383,7 +375,7 @@ pub fn int_to_string(n: Int) -> Str {
                 m = q;
             }
             let mut s = String::new();
-            if b.negative {
+            if b.negative() {
                 s.push('-');
             }
             s.push_str(&chunks.last().copied().unwrap_or(0).to_string());
@@ -397,12 +389,11 @@ pub fn int_to_string(n: Int) -> Str {
 
 /// The low 64 bits, two's complement, as FX-26's `int->i64` wraps.
 pub fn int_to_i64(n: Int) -> i64 {
-    match n {
-        Int::Small(v) => v,
-        Int::Big(b) => {
-            let low = b.magnitude.first().copied().unwrap_or(0) as u64
-                | (b.magnitude.get(1).copied().unwrap_or(0) as u64) << 32;
-            if b.negative {
+    match n.view() {
+        IntView::Small(v) => v,
+        IntView::Big(b) => {
+            let low = b.limbs().first().copied().unwrap_or(0);
+            if b.negative() {
                 low.wrapping_neg() as i64
             } else {
                 low as i64
@@ -413,12 +404,12 @@ pub fn int_to_i64(n: Int) -> i64 {
 
 #[inline]
 pub fn i64_to_int(n: i64) -> Int {
-    Int::Small(n)
+    Int::of_i64(n)
 }
 
 #[inline]
 pub fn zero_p(n: Int) -> bool {
-    matches!(n, Int::Small(0))
+    n.small() == Some(0)
 }
 
 #[inline]
@@ -493,10 +484,38 @@ mod tests {
     }
 
     #[test]
+    fn a_fixnum_to_61_bits_and_one_word() {
+        assert_eq!(std::mem::size_of::<Int>(), 8);
+        assert_eq!(int_lit(FIXNUM_MAX).small(), Some(FIXNUM_MAX));
+        assert_eq!(int_lit(FIXNUM_MIN).small(), Some(FIXNUM_MIN));
+        assert_eq!(int_lit(-5).word(), (-5i64 << 3) as usize);
+        // Past 61 bits a bignum, and back a fixnum: one representation each.
+        let past = _plus(int_lit(FIXNUM_MAX), int_lit(1));
+        assert_eq!(past.small(), None);
+        assert_eq!(past.word() & 0b111, 0b100);
+        assert_eq!(show(past), "1152921504606846976");
+        assert_eq!(_minus(past, int_lit(1)).small(), Some(FIXNUM_MAX));
+        assert!(_eq(past, _plus(int_lit(FIXNUM_MAX), int_lit(1))));
+        let below = _minus(int_lit(FIXNUM_MIN), int_lit(1));
+        assert_eq!(below.small(), None);
+        assert_eq!(int_to_i64(below), FIXNUM_MIN - 1);
+        assert_eq!(int_lit(i64::MIN).small(), None);
+        assert_eq!(show(int_lit(i64::MIN)), "-9223372036854775808");
+        // Its object Fixpt's: kind 6, its suffix [negative?, count, limbs].
+        if let IntView::Big(b) = below.view() {
+            assert!(b.negative());
+            assert_eq!(b.limbs(), &[(FIXNUM_MIN - 1).unsigned_abs()]);
+        } else {
+            panic!("a bignum");
+        }
+    }
+
+    #[test]
     fn grows_past_an_i64_and_back() {
         let big = _plus(int_lit(i64::MAX), int_lit(1));
         assert_eq!(show(big), "9223372036854775808");
-        assert!(matches!(_minus(big, int_lit(1)), Int::Small(i64::MAX)));
+        assert_eq!(int_to_i64(_minus(big, int_lit(1))), i64::MAX);
+        assert_eq!(_minus(big, int_lit(1)).small(), None);
         assert_eq!(
             show(_minus(int_lit(i64::MIN), int_lit(1))),
             "-9223372036854775809"
@@ -566,8 +585,8 @@ fn from_twos(mut m: Vec<u32>) -> Int {
 }
 
 fn bitwise(a: Int, b: Int, f: impl Fn(u32, u32) -> u32) -> Int {
-    if let (Int::Small(x), Int::Small(y)) = (a, b) {
-        return Int::Small(
+    if let (Some(x), Some(y)) = (a.small(), b.small()) {
+        return Int::of_i64(
             f(x as u32, y as u32) as i64 & 0xffff_ffff
                 | ((f((x >> 32) as u32, (y >> 32) as u32) as i64) << 32),
         );
@@ -630,11 +649,13 @@ fn shifted_right(m: &[u32], k: usize) -> Vec<u32> {
 /// right, leaves the sign alone.
 pub fn arithmetic_shift(a: Int, k: Int) -> Int {
     let zero = sign(a) == 0;
-    let k = match k {
-        Int::Small(k) => k,
-        Int::Big(b) if b.negative => return if sign(a) < 0 { int_lit(-1) } else { int_lit(0) },
-        Int::Big(_) if zero => return int_lit(0),
-        Int::Big(_) => crate::fail("arithmetic-shift: the count is too large"),
+    let k = match k.view() {
+        IntView::Small(k) => k,
+        IntView::Big(b) if b.negative() => {
+            return if sign(a) < 0 { int_lit(-1) } else { int_lit(0) };
+        }
+        IntView::Big(_) if zero => return int_lit(0),
+        IntView::Big(_) => crate::fail("arithmetic-shift: the count is too large"),
     };
     if zero {
         return int_lit(0);

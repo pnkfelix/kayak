@@ -38,9 +38,9 @@ fn of_fixnum(w: u64) -> i64 {
 
 impl Native for Int {
     fn word(self) -> u64 {
-        match self {
-            Int::Small(n) => fixnum(n),
-            Int::Big(_) => fixnum(i64::MAX),
+        match self.small() {
+            Some(n) => fixnum(n),
+            None => fixnum(i64::MAX),
         }
     }
     fn of_word(w: u64) -> Self {

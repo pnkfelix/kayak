@@ -18,11 +18,11 @@ pub use crate::obj::{Bloblet, BlobletAt, Flat, FlatArr, TBloblet, TBlobletAt};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-/// An `int` as a size or an index: one past an `i64` is never small
-/// (`Int`'s results are made small whenever they fit), so it is too big.
+/// An `int` as a size or an index: one past a fixnum is never small
+/// (`Int`'s results are fixnums whenever they fit, C488), so it is too big.
 fn index_of(n: Int, what: &str) -> usize {
-    match n {
-        Int::Small(i) if i >= 0 => i as usize,
+    match n.small() {
+        Some(i) if i >= 0 => i as usize,
         _ => fail(what),
     }
 }

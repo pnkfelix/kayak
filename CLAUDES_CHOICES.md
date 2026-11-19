@@ -14983,3 +14983,39 @@ Measured: nextest 5611; the corpus re-blessed (each flat product's
 `Flat` impl alone changed); the async check and Fixpt's programs as
 before.
 - **The full check**: all passed in 307.0 s, its second run (the first stopped at lang-items, ~35 s in).
+
+## C488. An integer one word, Fixpt's fixnum or bignum (2026-11-19)
+
+The user, after C487: "Keep going". Of §54's list, `Int` next: two words
+(a Rust enum, `Small(i64)` or `Big(&'static Big)`), a bignum's limbs a
+`Vec` of their own, where FX-26's integer is one tagged word. Taken
+before products held by value (which want a choice of when a product is
+boxed, and the emitter's work), as kayak-rt's alone: the emitter never
+looks inside an `Int`.
+
+What changed:
+- **`Int` one word** (`obj.rs`): Fixpt's fixnum, tag 000, 61 bits, its
+  value the word shifted right three; or a bignum, tag 100, the address
+  of its object's suffix (as Fixpt's bloblet tag says), its provenance the
+  object's (`map_addr`; a fixnum's word has none, `without_provenance`).
+  The object: a header (kind 6, bignum, no fields, both frozen) and a
+  suffix of `[negative?, limb count, limbs…]`, limbs of 64 bits, least
+  significant first, as Fixpt's runtime writes one (`num.rs`'s
+  `write_bignum`); made in the bump chunks strings are made in.
+- **One representation each**: a value is a fixnum whenever it fits 61
+  bits (`Int::of_i64`, and `int.rs`'s `int`), else a bignum; so values
+  between 2^60 and 2^63 are bignums now, where they were small. `int.rs`'s
+  arithmetic computes as before (`Wide`, base 2^32), reading a bignum by
+  `view()` (`IntView::Small` or `IntView::Big`) and writing one by
+  `Int::bignum`; the fast paths (`small()`) are the fixnums'.
+  `Int::fixnum` is `const`, for statics (`world.rs`'s counts).
+- **Traced**: a bignum's object reached once (`reach_value`), nothing in
+  it traced (Fixpt's kind 6 is untraced); a census notes it as an object.
+  `Big` and its `Visit` are gone.
+- **Tests**: the 61-bit bounds, a bignum past each, back to a fixnum,
+  its object's words; the old ones as they were (one now asks for the
+  low 64 bits, as `i64::MAX` is a bignum).
+
+Measured: an edit's build 0.28 s (0.26 to 0.27 at C486), a cold one
+0.64 s (0.63); nothing kfx writes changed.
+- **The full check**: all passed in 458.4 s, its first run (a clippy lint, `manual_range_contains`, fixed before it).

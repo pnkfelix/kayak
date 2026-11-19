@@ -192,9 +192,9 @@ pub fn f64_to_string(x: f64) -> Str {
 /// Correctly rounded, through the decimal digits, as Rust reads them.
 #[inline]
 pub fn int_to_f64(n: Int) -> f64 {
-    match n {
-        Int::Small(v) => v as f64,
-        Int::Big(_) => int_to_string(n).as_str().parse().unwrap_or(f64::NAN),
+    match n.small() {
+        Some(v) => v as f64,
+        None => int_to_string(n).as_str().parse().unwrap_or(f64::NAN),
     }
 }
 
@@ -334,9 +334,9 @@ pub fn f32_to_string(x: f32) -> Str {
 /// bignum through its decimal digits, as Rust reads them.
 #[inline]
 pub fn int_to_f32(n: Int) -> f32 {
-    match n {
-        Int::Small(v) => v as f32,
-        Int::Big(_) => int_to_string(n).as_str().parse().unwrap_or(f32::NAN),
+    match n.small() {
+        Some(v) => v as f32,
+        None => int_to_string(n).as_str().parse().unwrap_or(f32::NAN),
     }
 }
 

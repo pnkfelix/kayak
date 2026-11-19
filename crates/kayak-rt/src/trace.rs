@@ -20,7 +20,7 @@
 //! list is traced in a loop, not a recursion as deep as the list.
 
 use crate::value::Value;
-use crate::{Array, Big, Cons, Handle, Int, Str, Symbol, Void};
+use crate::{Array, BigAt, Cons, Handle, Int, Str, Symbol, Void};
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 
@@ -328,18 +328,26 @@ impl Trace for Symbol {
     }
 }
 
-/// An integer: a bignum's limbs are a `Vec` of its own, opaque.
+/// An integer (C488): a fixnum, nothing; a bignum, its object reached,
+/// nothing in it traced.
 impl Trace for Int {
     trace_whole!();
-    fn trace<'a>(self, _: &mut Tracer<'a>)
+    #[inline]
+    fn trace<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a,
     {
+        if let crate::IntView::Big(b) = self.view() {
+            t.reach_value(self.word() & !0b111, b);
+        }
     }
 }
 
-impl Visit for Big {
+impl Visit for BigAt {
     fn visit<'a>(&'a self, _: &mut Tracer<'a>) {}
+    fn visit_size(&self) -> usize {
+        self.object_bytes()
+    }
 }
 
 impl<'r, T: Visit + 'r> Trace for Handle<'r, T> {
@@ -465,7 +473,7 @@ mod tests {
             crate::heap_cons(None, crate::heap_cons(p, None)),
         ));
         let b = crate::make_bloblet(
-            crate::Int::Small(12),
+            crate::int_lit(12),
             (Cell::new(a), Cell::new(a), Cell::new(crate::str_lit("q"))),
         );
         let t = traced((b, b, a));

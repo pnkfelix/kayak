@@ -191,6 +191,143 @@ pub(crate) fn string_made(n: usize, fill: impl FnOnce(&mut [u8])) -> Option<Str>
     Some(Str(NonNull::from(ws).cast()))
 }
 
+/// `int` (C488): one word, as Fixpt's: a fixnum (tag 000, 61 bits, its
+/// value the word shifted right three), or a bignum (tag 100, the address
+/// of its object's suffix, as Fixpt's bloblet tag says): its object kind 6,
+/// bignum, untraced, its suffix the words `[negative?, limb count, limbs…]`,
+/// limbs of 64 bits, least significant first, as Fixpt's runtime writes
+/// one. A value is a fixnum whenever it fits 61 bits: one representation
+/// each.
+#[derive(Clone, Copy)]
+pub struct Int(*const u64);
+
+// SAFETY: a fixnum is a number; a bignum's object is never written after
+// it is made, and kept for the run.
+unsafe impl Send for Int {}
+unsafe impl Sync for Int {}
+
+/// An `Int` as it is: a fixnum's value, or a bignum.
+pub enum IntView {
+    Small(i64),
+    Big(BigAt),
+}
+
+/// A bignum's suffix: `[negative?, limb count, limbs…]`.
+#[derive(Clone, Copy)]
+pub struct BigAt(&'static [u64]);
+
+impl BigAt {
+    #[inline]
+    pub fn negative(self) -> bool {
+        self.0[0] != 0
+    }
+
+    /// Its limbs, 64 bits each, least significant first.
+    #[inline]
+    pub fn limbs(self) -> &'static [u64] {
+        &self.0[2..]
+    }
+
+    /// Its magnitude, base 2^32, least significant first, as `int.rs`
+    /// computes in.
+    pub fn magnitude(self) -> Vec<u32> {
+        let mut m: Vec<u32> = self
+            .limbs()
+            .iter()
+            .flat_map(|l| [*l as u32, (*l >> 32) as u32])
+            .collect();
+        while m.last() == Some(&0) {
+            m.pop();
+        }
+        m
+    }
+
+    /// Its object's bytes: its header and its suffix.
+    pub fn object_bytes(self) -> usize {
+        8 * (1 + self.0.len())
+    }
+}
+
+/// A fixnum's bounds: 61 bits.
+pub const FIXNUM_MIN: i64 = -(1 << 60);
+pub const FIXNUM_MAX: i64 = (1 << 60) - 1;
+const BIGNUM_TAG: usize = 0b100;
+
+impl Int {
+    /// The fixnum `n`, which fits 61 bits (a constant's).
+    #[inline]
+    pub const fn fixnum(n: i64) -> Int {
+        assert!(FIXNUM_MIN <= n && n <= FIXNUM_MAX, "a fixnum past 61 bits");
+        Int(std::ptr::without_provenance((n << 3) as usize))
+    }
+
+    /// `n`: a fixnum if it fits, else a bignum.
+    #[inline]
+    pub fn of_i64(n: i64) -> Int {
+        if (FIXNUM_MIN..=FIXNUM_MAX).contains(&n) {
+            Int(std::ptr::without_provenance((n << 3) as usize))
+        } else {
+            let m = n.unsigned_abs();
+            Int::bignum(n < 0, &[m])
+        }
+    }
+
+    /// A bignum of sign `negative` and limbs `limbs` (64 bits, least
+    /// significant first, no zero at the top, its value past 61 bits).
+    pub(crate) fn bignum(negative: bool, limbs: &[u64]) -> Int {
+        let n = limbs.len();
+        let ws = words(3 + n);
+        ws[0] = layout::header(KIND_BIGNUM, 0, 8 * (2 + n), true, true);
+        ws[1] = negative as u64;
+        ws[2] = n as u64;
+        ws[3..].copy_from_slice(limbs);
+        crate::stats::note::<BigAt>(8 * (3 + n));
+        #[cfg(feature = "heap-stats")]
+        crate::census::object(ws.as_ptr() as usize, 8 * (3 + n), trace_nothing);
+        // Its suffix's address, tagged: its provenance the object's.
+        Int(ws[1..].as_ptr().map_addr(|a| a | BIGNUM_TAG))
+    }
+
+    /// It, as a fixnum or a bignum.
+    #[inline]
+    pub fn view(self) -> IntView {
+        let w = self.0.addr();
+        if w & 0b111 == 0 {
+            IntView::Small((w as i64) >> 3)
+        } else {
+            let p = self.0.map_addr(|a| a & !0b111);
+            // SAFETY: a bignum's suffix, made by `bignum` (its count the
+            // second word), kept for the run and never written again.
+            IntView::Big(BigAt(unsafe {
+                std::slice::from_raw_parts(p, 2 + *p.add(1) as usize)
+            }))
+        }
+    }
+
+    /// Its value, if a fixnum.
+    #[inline]
+    pub fn small(self) -> Option<i64> {
+        let w = self.0.addr();
+        if w & 0b111 == 0 {
+            Some((w as i64) >> 3)
+        } else {
+            None
+        }
+    }
+
+    /// Its word, as Fixpt's: a fixnum's own, or a bignum's tagged address.
+    #[inline]
+    pub fn word(self) -> usize {
+        self.0.addr()
+    }
+}
+
+const KIND_BIGNUM: u8 = 6;
+
+/// An object a census notes and nothing in it to trace (a bignum's).
+#[cfg(feature = "heap-stats")]
+unsafe fn trace_nothing(_: usize, _: &mut crate::Tracer<'static>) {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -524,8 +661,8 @@ impl<T, const N: usize> FlatArr<T, N> {
     /// `(blobref-index r i)`.
     #[inline]
     pub fn at(&self, i: crate::Int) -> &T {
-        match i {
-            crate::Int::Small(i) if (0..N as i64).contains(&i) => &self.0[i as usize],
+        match i.small() {
+            Some(i) if (0..N as i64).contains(&i) => &self.0[i as usize],
             _ => crate::fail("blobref-index: out of range"),
         }
     }

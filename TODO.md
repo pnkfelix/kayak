@@ -1912,8 +1912,9 @@ over its 1664 definitions, 335 of them refused:
   (done, C486: each object reached once, its fields visited; a census
   traces them precisely) and flat arrays still (plain references; their elements the fields, counted at run
   time); a dynamic value (`Value`, an enum), a product held by
-  value in its holder (a heap object of its own in FX-26), an integer
-  (`Int`, a bignum's limbs a `Vec`), bloblets and flat arrays (plain
+  value in its holder (a heap object of its own in FX-26), ~~an integer
+  (`Int`, a bignum's limbs a `Vec`)~~ (done, C488: one word, Fixpt's
+  61-bit fixnum or a bignum object, kind 6, its limbs in its suffix), bloblets and flat arrays (plain
   references); then a
   collector, the Rust stack conservative and the heap
   precise (Bartlett's mostly-copying), its stress mode at every
