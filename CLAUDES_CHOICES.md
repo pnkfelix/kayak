@@ -15274,3 +15274,61 @@ MB (its size classes'). An edit's build 0.27 to 0.28 s, a cold one 0.64
 s, as before: fewer allocations, no less time.
 kc's binary 9.23 to 9.27 MB (a type per closure site).
 - **The full check**: all passed in 509.9 s, its first run; nextest 5617.
+
+## C495. Fixpt words in the heap: scalars, integers, strings (2026-11-20)
+
+The user, after C494's next step (Fixpt's header on every object, pairs
+first): "Go ahead". Reviewed first, Fixpt's `fixpt-heap` (`layout.rs`,
+`value.rs`): a pair has no header, a two-word car/cdr cell whose words
+are values, a walk telling it from an object by its first word, never a
+header's tag. So the step was not a header but the words: said so, with
+three ways (types by page, a big bag of pages; Fixpt words everywhere;
+headers on all but pairs). The user asked what boxing the second meant
+(only an `f64` always, an `i64` or `u64` past 60 bits, the rest a tag's
+shift), and whether it behaves as Fixpt's native code does: it does,
+`docs/performance.md`'s "`i64` and `u64` raw in native registers" (raw
+in registers, boxed wherever a value leaves one: "nothing raw is stored
+in a frame, passed, returned or kept in the heap"), kayak boxing less
+(raw across calls and returns too, Rust's types static). The user: "Yes
+I think Fixpt words everywhere is a better foundation."
+
+So every value a heap object holds is to be a Fixpt word; this step the
+values that have Fixpt's words now, the rest held as they are until
+their objects are Fixpt's.
+
+What changed (kayak-rt):
+- **`HeapWord`** (`obj.rs`): a Fixpt word, a pointer so that one to an
+  object keeps its provenance (as `Int`): a fixnum; an immediate
+  (`#f`, `#t`, unit, a character, an `f32` its bits in the upper half,
+  Fixpt's subtags); a tagged pointer, kayak's an address where Fixpt's an
+  index, the tag the same three bits: a bignum's and a string's (tag
+  `100`, its suffix's start: a string's text), a flonum's (kind 5,
+  Fixpt's boxed `f64`, made in the words' chunk as a bignum is). An
+  `i64` or `u64` the integer it stands for, a bignum past 60 bits.
+  Named so beside a program's own `Word` (kayak-cells has a datatype of
+  the name, its glob import meeting kayak-rt's).
+- **`Trace::Stored`**, `store`, `load`: how a heap object holds a value;
+  a scalar, an `Int`, a `Str` a `HeapWord`; a product its object, one
+  word (C490); a tuple its parts'; the rest, as yet no object of Fixpt's
+  layout, itself (`trace_whole!`; `trace_whole_fields!` for a word's).
+  **`Held<T>`** holds `T::Stored`: so a pair's element, a cell's value
+  (a ref's, an array's), a sum's payload are Fixpt words where the value
+  has one. A `static`'s held byte, integer, unit by `const`s.
+- kfx's emitter: a generative type's `Stored` its field's (`put-
+  generative`). Nothing else it writes changed.
+- **A test**: each scalar's word, Fixpt's bits (a fixnum shifted, `#t`
+  `#f` unit Fixpt's immediates, a character's subtag), a flonum's and a
+  string's tag, a bignum past 60 bits.
+
+Left (TODO §54): what is held as itself (a handle's datatype value, a
+sum, a ref, a list, an array, a bloblet, a procedure, a `Value`) until its
+object is Fixpt's, a word then; a closure's captures and a product's
+object, laid out by `split` (fields and bytes apart), to be words too; a
+bloblet's fields (`Cell`s).
+
+Measured: kc's build makes no bignum nor flonum (its `i64`s all
+fixnums: none of the 64-bit hashes feared); the census
+of a fresh build as before, 16.73 million allocations, 354.3 MB. An
+edit's build 0.27 to 0.28 s, a cold one 0.64 to 0.65 s; peak memory
+171 to 176 MB at an edit's, 417 to 443 MB cold, not yet explained.
+- **The full check**: all passed in 484.0 s, its first run; nextest 5618.

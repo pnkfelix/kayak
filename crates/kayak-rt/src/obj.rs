@@ -1289,3 +1289,247 @@ mod product_tests {
         assert_eq!(crate::sum_payload::<P2<P2<i64, Str>, char>>(su).1, 'c');
     }
 }
+
+/// A Fixpt word as a heap object holds a value (C495): a fixnum, an
+/// immediate, or a tagged pointer, as Fixpt's heap holds every value
+/// (`fixpt-heap`'s `value.rs`); kayak's an address where Fixpt's is an
+/// index, its tag in the same three bits. A pointer, not a `u64`, so that
+/// a word to an object keeps the object's provenance (as `Int` does).
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct HeapWord(*const u64);
+
+// SAFETY: a word is a value's, and what it points to is never written
+// through it (a flonum's, a bignum's, a string's object are frozen).
+unsafe impl Send for HeapWord {}
+// SAFETY: as above.
+unsafe impl Sync for HeapWord {}
+
+const TAG_MASK: usize = 0b111;
+const TAG_IMMEDIATE: usize = 0b011;
+const TAG_OBJECT: usize = 0b100;
+const IMM_FALSE: usize = 0;
+const IMM_TRUE: usize = 1;
+const IMM_UNIT: usize = 3;
+const IMM_CHAR: usize = 8;
+const IMM_F32: usize = 9;
+const KIND_FLONUM: u8 = 5;
+
+impl HeapWord {
+    /// Bits that are no pointer: a fixnum's, an immediate's.
+    #[inline(always)]
+    const fn bits(b: usize) -> HeapWord {
+        HeapWord(std::ptr::without_provenance(b))
+    }
+
+    /// Its bits.
+    #[inline(always)]
+    pub fn raw(self) -> usize {
+        self.0.addr()
+    }
+
+    /// The fixnum `n`, which fits 61 bits.
+    #[inline(always)]
+    pub const fn fixnum(n: i64) -> HeapWord {
+        HeapWord::bits((n << 3) as usize)
+    }
+
+    /// Its fixnum, if it is one.
+    #[inline(always)]
+    pub fn small(self) -> Option<i64> {
+        (self.raw() & TAG_MASK == 0).then(|| (self.raw() as i64) >> 3)
+    }
+
+    #[inline(always)]
+    const fn imm(subtag: usize, payload: usize) -> HeapWord {
+        HeapWord::bits(payload << 8 | subtag << 3 | TAG_IMMEDIATE)
+    }
+
+    pub const UNIT: HeapWord = HeapWord::imm(IMM_UNIT, 0);
+
+    #[inline(always)]
+    pub const fn boolean(b: bool) -> HeapWord {
+        HeapWord::imm(if b { IMM_TRUE } else { IMM_FALSE }, 0)
+    }
+
+    #[inline(always)]
+    pub fn of_char(c: char) -> HeapWord {
+        HeapWord::imm(IMM_CHAR, c as usize)
+    }
+
+    #[inline(always)]
+    pub fn of_f32(x: f32) -> HeapWord {
+        // Its bits in the upper half, as Fixpt's (`Value::f32`).
+        HeapWord::bits((x.to_bits() as usize) << 32 | IMM_F32 << 3 | TAG_IMMEDIATE)
+    }
+
+    #[inline(always)]
+    fn payload(self, subtag: usize, what: &str) -> usize {
+        if self.raw() & 0xff != subtag << 3 | TAG_IMMEDIATE {
+            crate::fail(&format!("a heap's word read as {what}, which it is not"));
+        }
+        self.raw() >> 8
+    }
+
+    #[inline(always)]
+    pub fn to_bool(self) -> bool {
+        match self.raw() >> 3 {
+            IMM_TRUE => true,
+            IMM_FALSE => false,
+            _ => crate::fail("a heap's word read as a boolean, which it is not"),
+        }
+    }
+
+    #[inline(always)]
+    pub fn to_char(self) -> char {
+        match char::from_u32(self.payload(IMM_CHAR, "a character") as u32) {
+            Some(c) => c,
+            None => crate::fail("a heap's word read as a character, which it is not"),
+        }
+    }
+
+    #[inline(always)]
+    pub fn to_f32(self) -> f32 {
+        f32::from_bits((self.payload(IMM_F32, "an f32") >> 24) as u32)
+    }
+
+    /// An `f64`: a flonum, Fixpt's boxed float (kind 5), its bits its
+    /// suffix; the word its suffix's address, tagged.
+    pub fn flonum(x: f64) -> HeapWord {
+        let ws = words(2);
+        ws[0] = layout::header(KIND_FLONUM, 0, 8, true, true);
+        ws[1] = x.to_bits();
+        crate::stats::note::<f64>(16);
+        #[cfg(feature = "heap-stats")]
+        crate::census::object(ws.as_ptr() as usize, 16, trace_nothing);
+        HeapWord(ws[1..].as_ptr().map_addr(|a| a | TAG_OBJECT))
+    }
+
+    /// A flonum's `f64`.
+    #[inline(always)]
+    pub fn to_f64(self) -> f64 {
+        if self.raw() & TAG_MASK != TAG_OBJECT {
+            crate::fail("a heap's word read as an f64, which it is not");
+        }
+        // SAFETY: a flonum's word, made by `flonum`: its suffix's one word,
+        // kept for the run, never written again.
+        f64::from_bits(unsafe { *self.0.map_addr(|a| a & !TAG_MASK) })
+    }
+
+    /// An integer's word: a fixnum's own, a bignum's tagged address.
+    #[inline(always)]
+    pub fn of_int(n: Int) -> HeapWord {
+        HeapWord(n.0)
+    }
+
+    /// `of_int`, for a `const`.
+    #[inline(always)]
+    pub const fn const_of_int(n: Int) -> HeapWord {
+        HeapWord(n.0)
+    }
+
+    /// The integer a word is.
+    #[inline(always)]
+    pub fn to_int(self) -> Int {
+        Int(self.0)
+    }
+
+    /// An `i64`: the integer it stands for, a fixnum or (past 60 bits) a
+    /// bignum, as Fixpt holds one.
+    #[inline(always)]
+    pub fn of_i64(n: i64) -> HeapWord {
+        HeapWord::of_int(Int::of_i64(n))
+    }
+
+    /// The `i64` a word is: an integer of its range.
+    #[inline(always)]
+    pub fn to_i64(self) -> i64 {
+        match self.to_int().view() {
+            IntView::Small(n) => n,
+            IntView::Big(b) if b.limbs().len() == 1 => {
+                let m = b.limbs()[0];
+                if b.negative() {
+                    0u64.wrapping_sub(m) as i64
+                } else {
+                    m as i64
+                }
+            }
+            IntView::Big(_) => crate::fail("a heap's word read as an i64, past its range"),
+        }
+    }
+
+    /// A `u64`: the integer it stands for, as Fixpt holds one.
+    #[inline(always)]
+    pub fn of_u64(n: u64) -> HeapWord {
+        if n <= FIXNUM_MAX as u64 {
+            HeapWord::fixnum(n as i64)
+        } else {
+            HeapWord::of_int(Int::bignum(false, &[n]))
+        }
+    }
+
+    /// The `u64` a word is.
+    #[inline(always)]
+    pub fn to_u64(self) -> u64 {
+        match self.to_int().view() {
+            IntView::Small(n) if n >= 0 => n as u64,
+            IntView::Big(b) if !b.negative() && b.limbs().len() == 1 => b.limbs()[0],
+            _ => crate::fail("a heap's word read as a u64, past its range"),
+        }
+    }
+
+    /// A string's word: its text's address (its suffix's), tagged.
+    #[inline(always)]
+    pub fn of_str(s: Str) -> HeapWord {
+        HeapWord(
+            s.0.as_ptr()
+                .cast_const()
+                .wrapping_add(2)
+                .map_addr(|a| a | TAG_OBJECT),
+        )
+    }
+
+    /// The string a word is.
+    #[inline(always)]
+    pub fn to_str(self) -> Str {
+        let p = self.0.map_addr(|a| a & !TAG_MASK).wrapping_sub(2);
+        match NonNull::new(p.cast_mut()) {
+            Some(p) => Str(p),
+            None => crate::fail("a heap's word read as a string, which it is not"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod word_tests {
+    use super::*;
+
+    #[test]
+    fn values_as_fixpt_words() {
+        assert_eq!(HeapWord::fixnum(-3).small(), Some(-3));
+        assert_eq!(HeapWord::fixnum(5).raw(), 40);
+        assert_eq!(
+            HeapWord::boolean(true).raw(),
+            kayak_jit::layout::TRUE as usize
+        );
+        assert_eq!(
+            HeapWord::boolean(false).raw(),
+            kayak_jit::layout::FALSE as usize
+        );
+        assert_eq!(HeapWord::UNIT.raw(), kayak_jit::layout::UNIT as usize);
+        assert!(HeapWord::boolean(true).to_bool() && !HeapWord::boolean(false).to_bool());
+        let c = HeapWord::of_char('λ');
+        assert_eq!(c.raw() & 0xff, (8 << 3) | 3);
+        assert_eq!(c.to_char(), 'λ');
+        assert_eq!(HeapWord::of_f32(1.5).to_f32(), 1.5);
+        let f = HeapWord::flonum(2.25);
+        assert_eq!(f.raw() & 7, 4);
+        assert_eq!(f.to_f64(), 2.25);
+        let s: Str = crate::str_lit("abc");
+        assert_eq!(HeapWord::of_str(s).raw() & 7, 4);
+        assert_eq!(HeapWord::of_str(s).to_str().as_str(), "abc");
+        let big = Int::of_i64(i64::MAX);
+        assert_eq!(HeapWord::of_int(big).to_int().small(), None);
+        assert_eq!(HeapWord::of_int(Int::of_i64(7)).raw(), 56);
+    }
+}

@@ -609,6 +609,12 @@
                  (acc (put " as kayak_rt::Trace>::Byte;\n    fn split(self) -> (Self::Field, Self::Byte) {\n        kayak_rt::Trace::split(self.0)\n    }\n    fn join(f: Self::Field, b: Self::Byte) -> Self {\n        " acc))
                  (acc (put (camel t) acc))
                  (acc (put (if (null? params) "(kayak_rt::Trace::join(f, b))\n    }\n" "(kayak_rt::Trace::join(f, b), std::marker::PhantomData)\n    }\n") acc))
+                 ;; Held as its field is (C495): a Fixpt word where that is one.
+                 (acc (put "    type Stored = <" acc))
+                 (acc (put-type c (second xs) acc))
+                 (acc (put " as kayak_rt::Trace>::Stored;\n    fn store(self) -> Self::Stored {\n        kayak_rt::Trace::store(self.0)\n    }\n    fn load(s: Self::Stored) -> Self {\n        " acc))
+                 (acc (put (camel t) acc))
+                 (acc (put (if (null? params) "(kayak_rt::Trace::load(s))\n    }\n" "(kayak_rt::Trace::load(s), std::marker::PhantomData)\n    }\n") acc))
                  (acc (put "    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {\n        kayak_rt::Trace::trace(self.0, t);\n    }\n}\n\n" acc))
                  (acc (put "#[derive(Clone, Copy)]\npub struct " acc))
                  (acc (put (camel t) acc))

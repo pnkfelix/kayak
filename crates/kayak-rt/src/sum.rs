@@ -92,7 +92,7 @@ impl<T: crate::Trace> crate::Visit for SumOf<T> {
 }
 
 impl<T: crate::Trace + 'static> SumOf<T> {
-    /// A cell, for a `static`: `SumOf::new("eof", Held::bytes(()))`, then
+    /// A cell, for a `static`: `SumOf::new("eof", Held::UNIT)`, then
     /// [`SumOf::sum`].
     pub const fn new(name: &'static str, payload: crate::Held<T>) -> Self {
         SumOf {
@@ -421,7 +421,7 @@ mod tests {
         assert_eq!(sum_tag(s), tag_hash("circle"));
         assert_eq!(sum_payload::<i64>(s), 3);
         assert_eq!(sum_name(s), "circle");
-        static EOF: SumOf<()> = SumOf::new("eof", crate::Held::bytes(()));
+        static EOF: SumOf<()> = SumOf::new("eof", crate::Held::UNIT);
         assert_eq!(sum_tag(EOF.sum()), tag_hash("eof"));
     }
 

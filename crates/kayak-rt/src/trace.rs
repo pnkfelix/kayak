@@ -36,6 +36,12 @@ pub trait Trace: Copy {
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a;
+    /// How a heap object holds it (C495): a Fixpt word (`Word`: a fixnum,
+    /// an immediate, a tagged pointer), as Fixpt's heap holds every value;
+    /// what has no object of Fixpt's layout yet, itself.
+    type Stored: Copy;
+    fn store(self) -> Self::Stored;
+    fn load(s: Self::Stored) -> Self;
 }
 
 /// What a handle points to: visited by reference, once.
@@ -162,6 +168,33 @@ macro_rules! trace_bytes {
             fn join(_: (), b: Self) -> Self { b }
             #[inline(always)]
             fn trace<'a>(self, _: &mut $crate::Tracer<'a>) where Self: 'a {}
+            type Stored = Self;
+            #[inline(always)]
+            fn store(self) -> Self { self }
+            #[inline(always)]
+            fn load(s: Self) -> Self { s }
+        })*
+    };
+}
+
+/// A scalar, held as a Fixpt word (C495): its bytes on the stack, its
+/// word in the heap.
+macro_rules! trace_word {
+    ($($t:ty, $store:expr, $load:expr;)*) => {
+        $(impl Trace for $t {
+            type Field = ();
+            type Byte = Self;
+            #[inline(always)]
+            fn split(self) -> ((), Self) { ((), self) }
+            #[inline(always)]
+            fn join(_: (), b: Self) -> Self { b }
+            #[inline(always)]
+            fn trace<'a>(self, _: &mut Tracer<'a>) where Self: 'a {}
+            type Stored = crate::HeapWord;
+            #[inline(always)]
+            fn store(self) -> crate::HeapWord { ($store)(self) }
+            #[inline(always)]
+            fn load(w: crate::HeapWord) -> Self { ($load)(w) }
         })*
     };
 }
@@ -170,6 +203,33 @@ macro_rules! trace_bytes {
 /// in an impl of `Trace`, before its `trace`.
 #[macro_export]
 macro_rules! trace_whole {
+    () => {
+        type Field = Self;
+        type Byte = ();
+        #[inline(always)]
+        fn split(self) -> (Self, ()) {
+            (self, ())
+        }
+        #[inline(always)]
+        fn join(f: Self, _: ()) -> Self {
+            f
+        }
+        // Held as it is, for now (C495): no object of Fixpt's layout yet.
+        type Stored = Self;
+        #[inline(always)]
+        fn store(self) -> Self {
+            self
+        }
+        #[inline(always)]
+        fn load(s: Self) -> Self {
+            s
+        }
+    };
+}
+
+/// `trace_whole!`'s fields alone, for a value held as a Fixpt word.
+#[macro_export]
+macro_rules! trace_whole_fields {
     () => {
         type Field = Self;
         type Byte = ();
@@ -205,6 +265,16 @@ macro_rules! trace_product {
             #[inline]
             fn trace<'a>(self, t: &mut $crate::Tracer<'a>) where Self: 'a {
                 $(self.$i.trace(t);)*
+            }
+            // Held boxed, one word to its object (C490).
+            type Stored = $crate::Prod<Self>;
+            #[inline]
+            fn store(self) -> Self::Stored {
+                $crate::Prod::new(self)
+            }
+            #[inline(always)]
+            fn load(p: Self::Stored) -> Self {
+                p.get()
             }
         }
         impl<$($a: $crate::Trace),*> $crate::Product for $name<$($a),*> {
@@ -245,10 +315,10 @@ pub trait Product: Trace {
     fn together(f: Self::Fields, b: Self::Bytes) -> Self;
 }
 
-/// A value as a heap object holds it (C490): its traced part and its plain
-/// bytes, its type's `split` (a product boxed, one word). A pair's
-/// element, a sum's payload.
-pub struct Held<T: Trace>(T::Field, T::Byte);
+/// A value as a heap object holds it (C490, C495): its type's `Stored`, a
+/// Fixpt word (a product boxed, one word to its object). A pair's
+/// element, a sum's payload, a cell's value.
+pub struct Held<T: Trace>(T::Stored);
 
 impl<T: Trace> Clone for Held<T> {
     #[inline(always)]
@@ -262,40 +332,57 @@ impl<T: Trace> Copy for Held<T> {}
 impl<T: Trace> Held<T> {
     #[inline(always)]
     pub fn new(v: T) -> Self {
-        let (f, b) = v.split();
-        Held(f, b)
+        Held(v.store())
     }
     #[inline(always)]
     pub fn get(self) -> T {
-        T::join(self.0, self.1)
+        T::load(self.0)
     }
-    /// What it reaches: its traced part's.
+    /// What it reaches: its value's.
     #[inline]
     pub fn reach<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a,
     {
-        self.0.trace(t);
+        self.get().trace(t);
     }
 }
 
-impl<T: Trace<Field = (), Byte = T>> Held<T> {
-    /// Plain bytes, held as they are: for a `static`'s (a `const`).
-    pub const fn bytes(v: T) -> Self {
-        Held((), v)
+/// For a `static`'s (a `const`): a byte, an integer and unit, held as
+/// their words.
+impl Held<u8> {
+    pub const fn byte(b: u8) -> Self {
+        Held(crate::HeapWord::fixnum(b as i64))
     }
 }
 
-impl<T: Trace<Field = T, Byte = ()>> Held<T> {
-    /// A value kept whole, held as it is: for a `static`'s (a `const`).
-    pub const fn whole(v: T) -> Self {
-        Held(v, ())
+impl Held<Int> {
+    pub const fn int(n: Int) -> Self {
+        Held(crate::HeapWord::const_of_int(n))
     }
 }
 
-trace_bytes!(
-    i8, i16, i32, i64, u8, u16, u32, u64, usize, f32, f64, bool, char, Void
-);
+impl Held<()> {
+    pub const UNIT: Self = Held(crate::HeapWord::UNIT);
+}
+
+trace_word! {
+    i8, |x: i8| crate::HeapWord::fixnum(x as i64), |w: crate::HeapWord| crate::HeapWord::to_i64(w) as i8;
+    i16, |x: i16| crate::HeapWord::fixnum(x as i64), |w: crate::HeapWord| crate::HeapWord::to_i64(w) as i16;
+    i32, |x: i32| crate::HeapWord::fixnum(x as i64), |w: crate::HeapWord| crate::HeapWord::to_i64(w) as i32;
+    u8, |x: u8| crate::HeapWord::fixnum(x as i64), |w: crate::HeapWord| crate::HeapWord::to_i64(w) as u8;
+    u16, |x: u16| crate::HeapWord::fixnum(x as i64), |w: crate::HeapWord| crate::HeapWord::to_i64(w) as u16;
+    u32, |x: u32| crate::HeapWord::fixnum(x as i64), |w: crate::HeapWord| crate::HeapWord::to_i64(w) as u32;
+    i64, crate::HeapWord::of_i64, crate::HeapWord::to_i64;
+    u64, crate::HeapWord::of_u64, crate::HeapWord::to_u64;
+    usize, |x: usize| crate::HeapWord::of_u64(x as u64), |w: crate::HeapWord| crate::HeapWord::to_u64(w) as usize;
+    f32, crate::HeapWord::of_f32, crate::HeapWord::to_f32;
+    f64, crate::HeapWord::flonum, crate::HeapWord::to_f64;
+    bool, crate::HeapWord::boolean, crate::HeapWord::to_bool;
+    char, crate::HeapWord::of_char, crate::HeapWord::to_char;
+}
+
+trace_bytes!(Void);
 
 /// Nothing: neither traced nor bytes.
 impl Trace for () {
@@ -313,6 +400,13 @@ impl Trace for () {
         Self: 'a,
     {
     }
+    type Stored = crate::HeapWord;
+    #[inline(always)]
+    fn store(self) -> crate::HeapWord {
+        crate::HeapWord::UNIT
+    }
+    #[inline(always)]
+    fn load(_: crate::HeapWord) {}
 }
 
 /// Tuples: each part's split apart, the fields together and the bytes
@@ -334,6 +428,15 @@ macro_rules! trace_tuples {
             #[inline]
             fn trace<'a>(self, t: &mut Tracer<'a>) where Self: 'a {
                 $(self.$i.trace(t);)+
+            }
+            type Stored = ($($a::Stored,)+);
+            #[inline(always)]
+            fn store(self) -> Self::Stored {
+                ($(self.$i.store(),)+)
+            }
+            #[inline(always)]
+            fn load(s: Self::Stored) -> Self {
+                ($($a::load(s.$i),)+)
             }
         })*
     };
@@ -394,7 +497,16 @@ impl Trace for crate::BytesAt<'_> {
 }
 
 impl Trace for Str {
-    trace_whole!();
+    trace_whole_fields!();
+    type Stored = crate::HeapWord;
+    #[inline(always)]
+    fn store(self) -> crate::HeapWord {
+        crate::HeapWord::of_str(self)
+    }
+    #[inline(always)]
+    fn load(w: crate::HeapWord) -> Self {
+        w.to_str()
+    }
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a,
@@ -416,7 +528,16 @@ impl Trace for Symbol {
 /// An integer (C488): a fixnum, nothing; a bignum, its object reached,
 /// nothing in it traced.
 impl Trace for Int {
-    trace_whole!();
+    trace_whole_fields!();
+    type Stored = crate::HeapWord;
+    #[inline(always)]
+    fn store(self) -> crate::HeapWord {
+        crate::HeapWord::of_int(self)
+    }
+    #[inline(always)]
+    fn load(w: crate::HeapWord) -> Self {
+        w.to_int()
+    }
     #[inline]
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where

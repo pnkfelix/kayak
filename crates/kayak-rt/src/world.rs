@@ -231,10 +231,10 @@ pub fn utf8_to_string(b: BytesAt<'_>) -> Sum {
 
 /// The 256 results `read-byte` gives of a byte.
 static BYTES: [SumOf<u8>; 256] = {
-    let mut a = [const { SumOf::new("byte", crate::Held::bytes(0u8)) }; 256];
+    let mut a = [const { SumOf::new("byte", crate::Held::byte(0u8)) }; 256];
     let mut i = 0;
     while i < 256 {
-        a[i] = SumOf::new("byte", crate::Held::bytes(i as u8));
+        a[i] = SumOf::new("byte", crate::Held::byte(i as u8));
         i += 1;
     }
     a
@@ -243,11 +243,10 @@ static BYTES: [SumOf<u8>; 256] = {
 /// How many counts of `read-bytes` are made once.
 const COUNTS_KEPT: usize = 4096;
 static COUNTS: [SumOf<Int>; COUNTS_KEPT + 1] = {
-    let mut a =
-        [const { SumOf::new("count", crate::Held::whole(Int::fixnum(0))) }; COUNTS_KEPT + 1];
+    let mut a = [const { SumOf::new("count", crate::Held::int(Int::fixnum(0))) }; COUNTS_KEPT + 1];
     let mut i = 0;
     while i <= COUNTS_KEPT {
-        a[i] = SumOf::new("count", crate::Held::whole(Int::fixnum(i as i64)));
+        a[i] = SumOf::new("count", crate::Held::int(Int::fixnum(i as i64)));
         i += 1;
     }
     a
@@ -264,7 +263,7 @@ pub(crate) fn counted(k: usize) -> Sum {
 pub(crate) fn written(r: std::io::Result<()>) -> Sum {
     match r {
         Ok(()) => {
-            static C: SumOf<()> = SumOf::new("done", crate::Held::bytes(()));
+            static C: SumOf<()> = SumOf::new("done", crate::Held::UNIT);
             C.sum()
         }
         Err(e) => sum_of("failed", io_error(&e)),
@@ -452,7 +451,7 @@ pub fn read_line() -> Sum {
 pub(crate) fn line_answer(r: std::io::Result<Option<Vec<u8>>>) -> Sum {
     match r {
         Ok(None) => {
-            static C: SumOf<()> = SumOf::new("eof", crate::Held::bytes(()));
+            static C: SumOf<()> = SumOf::new("eof", crate::Held::UNIT);
             C.sum()
         }
         Ok(Some(line)) => match String::from_utf8(line) {
@@ -756,7 +755,7 @@ pub fn read_byte() -> Sum {
         None => match i.error.take() {
             Some(e) => sum_of("failed", io_error(&e)),
             None => {
-                static C: SumOf<()> = SumOf::new("eof", crate::Held::bytes(()));
+                static C: SumOf<()> = SumOf::new("eof", crate::Held::UNIT);
                 C.sum()
             }
         },
@@ -776,7 +775,7 @@ pub fn read_bytes(bv: BytesAt<'_>, start: Int, end: Int) -> Sum {
         return match i.error.take() {
             Some(e) => sum_of("failed", io_error(&e)),
             None => {
-                static C: SumOf<()> = SumOf::new("eof", crate::Held::bytes(()));
+                static C: SumOf<()> = SumOf::new("eof", crate::Held::UNIT);
                 C.sum()
             }
         };
@@ -826,11 +825,11 @@ pub(crate) fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
 pub(crate) fn moded(r: Option<std::io::Result<String>>) -> Sum {
     match r {
         None => {
-            static C: SumOf<()> = SumOf::new("not-a-terminal", crate::Held::bytes(()));
+            static C: SumOf<()> = SumOf::new("not-a-terminal", crate::Held::UNIT);
             C.sum()
         }
         Some(Ok(_)) => {
-            static C: SumOf<()> = SumOf::new("done", crate::Held::bytes(()));
+            static C: SumOf<()> = SumOf::new("done", crate::Held::UNIT);
             C.sum()
         }
         Some(Err(e)) => sum_of("failed", io_error(&e)),

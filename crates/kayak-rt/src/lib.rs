@@ -94,7 +94,7 @@ impl std::fmt::Debug for Str {
 pub type RefAt<'r, T> = Handle<'r, Slot<T>>;
 pub type Ref<T> = RefAt<'static, T>;
 
-pub use obj::{FlatArray, Prod, ProdObj};
+pub use obj::{FlatArray, HeapWord, Prod, ProdObj};
 
 /// A pair: its element held (C490: a product boxed, one word, as FX-26's
 /// heap grammar has a pair's car), and the rest of the list.

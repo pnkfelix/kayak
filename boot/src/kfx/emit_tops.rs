@@ -1146,6 +1146,15 @@ pub mod writing {
         } else {
             str_lit!("(kayak_rt::Trace::join(f, b), std::marker::PhantomData)\n    }\n")
         }, acc);
+        let acc = put(str_lit!("    type Stored = <"), acc);
+        let acc = put_type(c, second(xs), acc);
+        let acc = put(str_lit!(" as kayak_rt::Trace>::Stored;\n    fn store(self) -> Self::Stored {\n        kayak_rt::Trace::store(self.0)\n    }\n    fn load(s: Self::Stored) -> Self {\n        "), acc);
+        let acc = put(camel(t), acc);
+        let acc = put(if null_p(params) {
+            str_lit!("(kayak_rt::Trace::load(s))\n    }\n")
+        } else {
+            str_lit!("(kayak_rt::Trace::load(s), std::marker::PhantomData)\n    }\n")
+        }, acc);
         let acc = put(str_lit!("    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {\n        kayak_rt::Trace::trace(self.0, t);\n    }\n}\n\n"), acc);
         let acc = put(str_lit!("#[derive(Clone, Copy)]\npub struct "), acc);
         let acc = put(camel(t), acc);

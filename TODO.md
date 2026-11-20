@@ -1915,7 +1915,16 @@ over its 1664 definitions, 335 of them refused:
   arrays (`FlatArray`, Fixpt's header already in its first cells, a
   plain reference to them)~~ (done, C489: one word, traced); ~~bloblets and arrays opaque to a trace~~
   (done, C486: each object reached once, its fields visited; a census
-  traces them precisely); ~~a dynamic value (`Value`, an enum)~~ (done in
+  traces them precisely); **Fixpt words in the heap** (the user's choice,
+  2026-11-20, over types by page and headers but pairs: every value a heap
+  object holds a Fixpt word, raw only off the heap, as Fixpt's native
+  code; done in part, C495: `HeapWord`, `Trace::Stored`, a pair's, a
+  cell's, a sum's scalars, integers and strings words. Left: each kind
+  held as itself a word once its object is Fixpt's, a pair a headerless
+  two-word cell (tag `001`), a ref a box (kind 10), a sum (36), a
+  datatype's value, a closure; a closure's captures and a product's
+  object as words, not `split`'s fields and bytes; a bloblet's fields;
+  peak memory up 3 to 6% at C495, not explained); ~~a dynamic value (`Value`, an enum)~~ (done in
   part, C491: traced, its pair and its members' objects reached
   precisely, a member its own object, no box, but what has none yet; a
   sum precise, its head its cell's type. Left: one word, not three,

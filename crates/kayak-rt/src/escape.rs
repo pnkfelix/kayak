@@ -29,6 +29,14 @@ impl<A, H> crate::Trace for Tag<A, H> {
         Self: 'a,
     {
     }
+    // Its number, held as it is (C495).
+    type Stored = Self;
+    fn store(self) -> Self {
+        self
+    }
+    fn load(s: Self) -> Self {
+        s
+    }
 }
 
 impl<A, H> Clone for Tag<A, H> {

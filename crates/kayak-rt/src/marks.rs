@@ -42,6 +42,14 @@ impl<T> crate::Trace for MarkKey<T> {
         Self: 'a,
     {
     }
+    // Its number, held as it is (C495).
+    type Stored = Self;
+    fn store(self) -> Self {
+        self
+    }
+    fn load(s: Self) -> Self {
+        s
+    }
 }
 
 impl<T> Clone for MarkKey<T> {

@@ -22,6 +22,13 @@ pub mod counter {
         fn join(f: Self::Field, b: Self::Byte) -> Self {
             T(kayak_rt::Trace::join(f, b))
         }
+        type Stored = <i64 as kayak_rt::Trace>::Stored;
+        fn store(self) -> Self::Stored {
+            kayak_rt::Trace::store(self.0)
+        }
+        fn load(s: Self::Stored) -> Self {
+            T(kayak_rt::Trace::load(s))
+        }
         fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
             kayak_rt::Trace::trace(self.0, t);
         }

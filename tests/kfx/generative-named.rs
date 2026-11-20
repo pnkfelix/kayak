@@ -16,6 +16,13 @@ impl kayak_rt::Trace for Meters {
     fn join(f: Self::Field, b: Self::Byte) -> Self {
         Meters(kayak_rt::Trace::join(f, b))
     }
+    type Stored = <i64 as kayak_rt::Trace>::Stored;
+    fn store(self) -> Self::Stored {
+        kayak_rt::Trace::store(self.0)
+    }
+    fn load(s: Self::Stored) -> Self {
+        Meters(kayak_rt::Trace::load(s))
+    }
     fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         kayak_rt::Trace::trace(self.0, t);
     }
@@ -40,6 +47,13 @@ impl<T: Copy + 'static + kayak_rt::Trace> kayak_rt::Trace for Stack<T> {
     }
     fn join(f: Self::Field, b: Self::Byte) -> Self {
         Stack(kayak_rt::Trace::join(f, b), std::marker::PhantomData)
+    }
+    type Stored = <List<T> as kayak_rt::Trace>::Stored;
+    fn store(self) -> Self::Stored {
+        kayak_rt::Trace::store(self.0)
+    }
+    fn load(s: Self::Stored) -> Self {
+        Stack(kayak_rt::Trace::load(s), std::marker::PhantomData)
     }
     fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         kayak_rt::Trace::trace(self.0, t);
@@ -68,6 +82,13 @@ pub mod m {
         }
         fn join(f: Self::Field, b: Self::Byte) -> Self {
             Counter(kayak_rt::Trace::join(f, b))
+        }
+        type Stored = <i64 as kayak_rt::Trace>::Stored;
+        fn store(self) -> Self::Stored {
+            kayak_rt::Trace::store(self.0)
+        }
+        fn load(s: Self::Stored) -> Self {
+            Counter(kayak_rt::Trace::load(s))
         }
         fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
             kayak_rt::Trace::trace(self.0, t);
