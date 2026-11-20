@@ -220,6 +220,19 @@ macro_rules! trace_product {
                 $name($($crate::Trace::join(f.$i, b.$i)),*)
             }
         }
+        /// A union's member (C491): its object, kind 37.
+        impl<$($a: $crate::Trace + 'static),*> $crate::value::Member for $name<$($a),*> {
+            #[inline]
+            fn object(self) -> &'static dyn $crate::value::Obj {
+                $crate::Prod::new(self).object()
+            }
+            #[inline]
+            fn of_object(o: &'static dyn $crate::value::Obj) -> Option<Self> {
+                (o as &dyn std::any::Any)
+                    .downcast_ref::<$crate::ProdObj<Self>>()
+                    .map(|p| p.get())
+            }
+        }
     };
 }
 
@@ -530,16 +543,21 @@ impl<T: Trace> Visit for Array<T> {
     }
 }
 
-/// A dynamic value: its pair or its other member is kayak-rt's own,
-/// leaked, opaque for now.
+/// A dynamic value (C491): what it holds reached, precisely: a pair, a
+/// member's object, a string, a bignum.
 impl Trace for Value {
     trace_whole!();
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a,
     {
-        if let Value::Str(s) = self {
-            s.trace(t);
+        match self {
+            Value::Str(s) => s.trace(t),
+            Value::Symbol(s) => s.trace(t),
+            Value::Int(n) => n.trace(t),
+            Value::Pair(p) => t.reach(p),
+            Value::Other(o, _) => t.reach(o),
+            _ => {}
         }
     }
 }

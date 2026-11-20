@@ -1910,7 +1910,16 @@ over its 1664 definitions, 335 of them refused:
   arrays (`FlatArray`, Fixpt's header already in its first cells, a
   plain reference to them)~~ (done, C489: one word, traced); ~~bloblets and arrays opaque to a trace~~
   (done, C486: each object reached once, its fields visited; a census
-  traces them precisely); a dynamic value (`Value`, an enum), ~~a product held by
+  traces them precisely); ~~a dynamic value (`Value`, an enum)~~ (done in
+  part, C491: traced, its pair and its members' objects reached
+  precisely, a member its own object, no box, but what has none yet; a
+  sum precise, its head its cell's type. Left: one word, not three,
+  which needs every object it may point at to say its shape and type as
+  Fixpt's headers do: a pair's, a datatype's value's, a sum's, a ref's,
+  a closure's), what is still traced as a plain reference, opaque (a
+  place, a module's state, an I-cell, a mailbox, a knot, a
+  continuation, a blobref to a typed suffix's array: the `&T`
+  fallback), ~~a product held by
   value in its holder~~ (done, C490: boxed where a heap object holds it,
   `Prod`, one word to Fixpt's product object, kind 37, by its `split`: a
   pair's element, a sum's payload, a ref's and an array's cell, a

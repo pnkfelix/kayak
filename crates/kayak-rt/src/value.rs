@@ -29,7 +29,99 @@ pub enum Value {
     Unit,
     Nil,
     Pair(&'static dyn PairLike),
-    Other(&'static dyn Any, Shape),
+    Other(&'static dyn Obj, Shape),
+}
+
+/// What a union holds of a member of another shape (C491): the member's
+/// own object, as FX-26's union holds it (a word to it): a datatype's
+/// value's, a sum's cell, a product's (kind 37), a ref's cell; what has
+/// none of its own yet (a procedure, an array) a box of it. Visited, so a
+/// trace follows it; found again by its type.
+pub trait Obj: Any + crate::Visit {}
+
+impl<T: Any + crate::Visit> Obj for T {}
+
+/// A member of another shape: its object, and the member again from it.
+pub trait Member: Copy + 'static {
+    fn object(self) -> &'static dyn Obj;
+    fn of_object(o: &'static dyn Obj) -> Option<Self>;
+}
+
+/// A handle's value (a datatype's, a ref): its object.
+impl<D: crate::Visit + 'static> Member for crate::Handle<'static, D> {
+    #[inline]
+    fn object(self) -> &'static dyn Obj {
+        self.to_ref()
+    }
+    #[inline]
+    fn of_object(o: &'static dyn Obj) -> Option<Self> {
+        (o as &dyn Any).downcast_ref::<D>().map(crate::Handle::made)
+    }
+}
+
+/// A sum: its cell, by its head.
+impl Member for crate::Sum {
+    #[inline]
+    fn object(self) -> &'static dyn Obj {
+        self.head()
+    }
+    #[inline]
+    fn of_object(o: &'static dyn Obj) -> Option<Self> {
+        (o as &dyn Any)
+            .downcast_ref::<crate::SumHead>()
+            .map(crate::Sum::of_head)
+    }
+}
+
+/// A member with no object of its own yet, boxed: the box traces it.
+pub struct Boxed<T>(T);
+
+impl<T: crate::Trace> crate::Visit for Boxed<T> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        self.0.trace(t);
+    }
+}
+
+/// `x` boxed, in the heap, as a member.
+pub fn boxed_object<T: crate::Trace + 'static>(x: T) -> &'static dyn Obj {
+    crate::heap_alloc(Boxed(x)).to_ref()
+}
+
+/// The member a box holds.
+pub fn of_boxed<T: Copy + 'static>(o: &'static dyn Obj) -> Option<T> {
+    (o as &dyn Any).downcast_ref::<Boxed<T>>().map(|b| b.0)
+}
+
+/// Members of no object of their own, boxed.
+#[macro_export]
+macro_rules! boxed_member {
+    ($(<$($p:ident $(: $b:path)?),*> $t:ty;)*) => {$(
+        impl<$($p: 'static $(+ $b)?),*> $crate::value::Member for $t {
+            #[inline]
+            fn object(self) -> &'static dyn $crate::value::Obj {
+                $crate::value::boxed_object(self)
+            }
+            #[inline]
+            fn of_object(o: &'static dyn $crate::value::Obj) -> Option<Self> {
+                $crate::value::of_boxed(o)
+            }
+        }
+    )*};
+}
+
+boxed_member! {
+    <T: crate::Trace> crate::Array<T>;
+    <> Vector;
+    <> f32;
+    <> i32;
+    <> u32;
+    <> u64;
+    <> u8;
+    <A, R> &'static dyn Fn(A) -> R;
+    <R> &'static dyn Fn() -> R;
+    <A, B, R> &'static dyn Fn(A, B) -> R;
+    <A, B, C, R> &'static dyn Fn(A, B, C) -> R;
+    <A, B, C, D, R> &'static dyn Fn(A, B, C, D) -> R;
 }
 
 /// A value's shape at run time, which a test tells apart (FX-26's).
@@ -54,7 +146,7 @@ pub enum Shape {
 }
 
 /// A pair, as a union holds one: its head and tail as `Value`s.
-pub trait PairLike {
+pub trait PairLike: crate::Visit {
     fn car(&self) -> Value;
     fn cdr(&self) -> Value;
     fn as_any(&self) -> &dyn Any;
@@ -62,6 +154,13 @@ pub trait PairLike {
 
 /// A pair of a union's, `cons`ed where one is wanted.
 struct ValuePair(Value, Value);
+
+impl crate::Visit for ValuePair {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        crate::Trace::trace(self.0, t);
+        crate::Trace::trace(self.1, t);
+    }
+}
 
 impl PairLike for ValuePair {
     fn car(&self) -> Value {
@@ -195,22 +294,22 @@ procedure_value!(A, B, C, D);
 
 impl<T: crate::Trace + 'static> ToValue for &'static crate::Slot<T> {
     fn to_value(self) -> Value {
-        other(self, Shape::Box)
+        other(crate::Handle::made(self), Shape::Box)
     }
 }
 
 /// A ref, a handle of a cell (C478), as its cell's reference.
 impl<T: crate::Trace + 'static> ToValue for crate::Handle<'static, crate::Slot<T>> {
     fn to_value(self) -> Value {
-        other(self.to_ref(), Shape::Box)
+        other(self, Shape::Box)
     }
 }
 
 /// A member of another shape (a datatype's value, a sum, a product, a
 /// reference, a procedure, an array) given for its union: behind `Any`,
 /// its shape kept beside it.
-pub fn other<T: Any + Copy>(x: T, shape: Shape) -> Value {
-    Value::Other(crate::leak(x), shape)
+pub fn other<T: Member>(x: T, shape: Shape) -> Value {
+    Value::Other(x.object(), shape)
 }
 
 /// A list given for its union: `nil`, or its pair, seen as a union's.
@@ -238,7 +337,7 @@ pub fn boxed_list<T: ToValue + crate::Trace>(xs: List<T>) -> List<Value> {
 
 /// `cons` where a pair of a union is wanted, its parts boxed.
 pub fn cons<A: ToValue, B: ToValue>(a: A, b: B) -> Value {
-    Value::Pair(crate::leak(ValuePair(a.to_value(), b.to_value())))
+    Value::Pair(crate::heap_alloc(ValuePair(a.to_value(), b.to_value())).to_ref())
 }
 
 /// A quasiquote's `,@xs`: the list's elements, boxed, before `rest`.
@@ -273,10 +372,10 @@ pub fn unbox<T: FromValue>(v: Value) -> T {
 }
 
 /// A union narrowed to a member of another shape: found again by its type.
-pub fn unbox_other<T: Any + Copy>(v: Value) -> T {
+pub fn unbox_other<T: Member>(v: Value) -> T {
     match v {
-        Value::Other(x, _) => match x.downcast_ref::<T>() {
-            Some(t) => *t,
+        Value::Other(x, _) => match T::of_object(x) {
+            Some(t) => t,
             None => not_held(),
         },
         _ => not_held(),
@@ -432,7 +531,7 @@ impl Show for Value {
             }
             Value::Other(x, Shape::Vector) => {
                 out.push_str("#(");
-                if let Some(v) = x.downcast_ref::<Vector>() {
+                if let Some(v) = of_boxed::<Vector>(*x) {
                     for (i, e) in v.iter().enumerate() {
                         if i > 0 {
                             out.push(' ');
@@ -479,5 +578,40 @@ mod tests {
         let mut out = String::new();
         cons(1i64, 2i64).show(&mut out);
         assert_eq!(out, "(1 . 2)");
+    }
+
+    #[test]
+    fn a_member_its_own_object_and_traced() {
+        // A sum given for a union: the union holds its cell, no box.
+        let s = crate::sum_of("pair", 7i64);
+        let v = other(s, Shape::Sum);
+        match v {
+            Value::Other(o, Shape::Sum) => {
+                assert_eq!(std::ptr::from_ref(o).cast::<()>() as usize, s.addr())
+            }
+            _ => panic!("not a sum's"),
+        }
+        assert_eq!(unbox_other::<crate::Sum>(v).addr(), s.addr());
+        // A ref: its cell.
+        let r: crate::Ref<i64> = crate::heap_new(5);
+        assert!(unbox_other::<crate::Ref<i64>>(r.to_value()).same(r));
+        // A datum of a string, the sum and the ref: each reached once,
+        // precisely, nothing opaque.
+        let d = cons(str_lit("a"), cons(v, cons(r.to_value(), Value::Nil)));
+        let mut t = crate::traced(d);
+        assert!(t.take_opaque().is_empty());
+        let (rows, strings) = t.census();
+        let of = |name: &str| {
+            rows.iter()
+                .filter(|r| r.0.contains(name))
+                .map(|r| r.1)
+                .sum::<u64>()
+        };
+        assert_eq!(of("ValuePair"), 3);
+        assert_eq!(of("SumOf<i64>"), 1);
+        assert_eq!(of("Slot<i64>"), 1);
+        assert_eq!(strings.0, 1);
+        // Three words, not Fixpt's one (`TODO.md` §54).
+        assert_eq!(std::mem::size_of::<Value>(), 24);
     }
 }

@@ -1165,6 +1165,24 @@ impl<P: crate::Product> Prod<P> {
     pub fn header(self) -> u64 {
         self.obj().header
     }
+
+    /// Its object, kept for the run: what a union holds (C491).
+    #[inline]
+    pub fn object(self) -> &'static ProdObj<P>
+    where
+        P: 'static,
+    {
+        // SAFETY: made only by `new`, of a block never freed.
+        unsafe { self.0.as_ref() }
+    }
+}
+
+impl<P: crate::Product> ProdObj<P> {
+    /// The product it is, its parts joined again.
+    #[inline]
+    pub fn get(&self) -> P {
+        P::together(self.fields, self.suffix)
+    }
 }
 
 /// A product's object: its fields visited, its suffix plain bytes.

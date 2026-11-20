@@ -15112,3 +15112,52 @@ object.
   the emitter's `Trace::trace(` as a call of a kayak-rt function.
 - **The full check**: all passed in 462.0 s, its third run (the first two
   stopped at rustfmt and at the lang items, above); nextest 5614.
+
+## C491. A dynamic value traced, its members their own objects (2026-11-20)
+
+The user, after C490: "Go ahead" (TODO §54's next: a dynamic value,
+`Value`). A `Value` held a pair as a plain reference and any other
+member (a datatype's value, a sum, a product, a ref, a procedure, an
+array) as a leaked copy of it behind `Any`, a box FX-26's grammar has
+not, neither traced; a bignum in it not traced either. And a sum
+(`Sum`, a reference to its cell's head) was traced as a plain
+reference, opaque: its head did not say its payload's type.
+
+What changed (kayak-rt):
+- **A sum precise**: its head keeps its cell's type, as a function to the
+  whole cell (`cell`: what a header's kind tells a collector); the head
+  visited visits its cell. `Sum` a type of its own (a reference to the
+  head, `Deref` to it), so that it is traced so and not by the plain
+  references' fallback.
+- **A union's other member its own object** (`value.rs`): `Value::Other`
+  holds `&'static dyn Obj` (`Any` and `Visit`), the member's object, as
+  FX-26's union holds a word to it: a handle's (a datatype's value, a
+  ref's cell), a sum's cell, a product's object (kind 37, C490). A
+  `Member` trait gives the object and finds the member again by its
+  type. What has no object of its own yet is boxed, the box traced: a
+  procedure (its closure behind `dyn CallN`, which is no `Any`), an
+  array, a vector, a `lambdaN` procedure, an `f32` or a fixed-width
+  integer (as Fixpt boxes a flonum).
+- **A union's pair traced**: `PairLike` is `Visit`; a pair `cons`ed for
+  a union (`ValuePair`) made in the heap's arena, not leaked.
+- **`Value` traced**: its string, symbol, bignum, pair and member.
+- Nothing kfx writes changed: the emitter's `other` and `unbox_other`
+  ask `Member` of what they are given.
+
+- **A test**: a sum given for a union is held as its cell, a ref as its
+  cell, each found again; a datum of a string, the sum and the ref
+  traced, each reached once, nothing opaque.
+
+Found, not taken (recorded in TODO §54): what KFX's Rust still traces as
+a plain reference, opaque, the fallback for `&T`: a place and a module's
+state (`&Place_P`, `&...FaceState`), an I-cell, a mailbox, a knot, a
+continuation, a blobref to a typed suffix's array (`&FlatArr`). And a
+`Value` is three words, not Fixpt's one: one word needs every object it
+may point at to say its own shape and type, as Fixpt's headers do (a
+pair, a datatype's value, a sum, a ref, a closure have no header yet).
+
+Measured: an edit's build 0.26 to 0.27 s, as before; its census the same
+(the benchmark's build makes no datum's pair nor sum).
+- **Found by Fixpt's programs**: an `f32` given for a union as another
+  shape's member, `Member` now, boxed.
+- **The full check**: all passed in 499.5 s, its first run; nextest 5615.

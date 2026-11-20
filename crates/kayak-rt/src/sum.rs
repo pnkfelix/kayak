@@ -34,6 +34,46 @@ pub struct SumHead {
     tag: u64,
     name: &'static str,
     payload_type: fn() -> TypeId,
+    /// Its whole cell, to trace (C491): what a header's kind tells a
+    /// collector, here the cell's type.
+    cell: for<'s> unsafe fn(&'s SumHead) -> &'s (dyn crate::Visit + 's),
+}
+
+/// A head's cell, a `SumOf<T>`.
+///
+/// # Safety
+/// `h` is the head of a `SumOf<T>`.
+unsafe fn cell_of<'s, T: crate::Trace + 'static>(h: &'s SumHead) -> &'s (dyn crate::Visit + 's) {
+    // SAFETY: the caller's; the head is the cell's first field (`repr(C)`).
+    unsafe { &*(h as *const SumHead as *const SumOf<T>) }
+}
+
+/// A sum's head: its cell visited (C491), as its cell's type has it.
+impl crate::Visit for SumHead {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        // SAFETY: a head is made only in its cell, `cell` of the cell's type.
+        unsafe { (self.cell)(self) }.visit(t);
+    }
+    fn visit_size(&self) -> usize {
+        // SAFETY: as above.
+        unsafe { (self.cell)(self) }.visit_size()
+    }
+    fn visit_name(&self) -> &'static str {
+        // SAFETY: as above.
+        unsafe { (self.cell)(self) }.visit_name()
+    }
+}
+
+/// A sum: its cell reached, precisely (C491; before, a plain reference).
+impl crate::Trace for Sum {
+    crate::trace_whole!();
+    #[inline]
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.reach(self.0);
+    }
 }
 
 /// A sum's cell: its head, then its payload.
@@ -60,6 +100,7 @@ impl<T: crate::Trace + 'static> SumOf<T> {
                 tag: tag_hash(name),
                 name,
                 payload_type: TypeId::of::<T>,
+                cell: cell_of::<T>,
             },
             payload,
         }
@@ -67,12 +108,39 @@ impl<T: crate::Trace + 'static> SumOf<T> {
 
     /// The sum a cell is.
     pub const fn sum(&'static self) -> Sum {
-        &self.head
+        Sum(&self.head)
     }
 }
 
 /// A sum: a reference to its cell, whatever its payload's type.
-pub type Sum = &'static SumHead;
+#[derive(Clone, Copy)]
+pub struct Sum(&'static SumHead);
+
+impl std::ops::Deref for Sum {
+    type Target = SumHead;
+    #[inline(always)]
+    fn deref(&self) -> &SumHead {
+        self.0
+    }
+}
+
+impl Sum {
+    /// Its head, its cell's first field: what a union holds (C491).
+    #[inline]
+    pub fn head(self) -> &'static SumHead {
+        self.0
+    }
+    /// The sum whose head `h` is: made only in a cell, so a sum's.
+    #[inline]
+    pub fn of_head(h: &'static SumHead) -> Sum {
+        Sum(h)
+    }
+    /// Where its cell is: its identity.
+    #[inline]
+    pub fn addr(self) -> usize {
+        std::ptr::from_ref(self.0) as usize
+    }
+}
 
 /// The key of the tags' hash: fixed, so that one tag has one discriminant in
 /// every program and every build.
@@ -245,11 +313,12 @@ pub fn sum_new<T: 'static + crate::Trace>(tag: u64, name: &'static str, payload:
             tag,
             name,
             payload_type: TypeId::of::<T>,
+            cell: cell_of::<T>,
         },
         payload: crate::Held::new(payload),
     })
     .to_ref();
-    &cell.head
+    Sum(&cell.head)
 }
 
 /// The same, its discriminant found from its name: for kayak-rt's own sums.
@@ -284,7 +353,7 @@ pub fn sum_payload<T: crate::Trace + 'static>(s: Sum) -> T {
     // SAFETY: `s` is the head of a `SumOf<T'>` (`sum_new`, `SumOf::new`),
     // and `T'` is `T`: its head says so, just checked. The head is the
     // cell's first field (`repr(C)`), so the cell's address is the head's.
-    unsafe { (*(s as *const SumHead as *const SumOf<T>)).payload.get() }
+    unsafe { (*(s.0 as *const SumHead as *const SumOf<T>)).payload.get() }
 }
 
 /// A sum as Fixpt writes one: `#<sum TAG>`.

@@ -83,6 +83,30 @@ macro_rules! arities {
         /// One of an effect a process may have (C102): `Send + Sync`.
         pub type $procs<'r, $($a,)* R> = Handle<'r, dyn $call<$($a,)* R> + Send + Sync + 'r>;
 
+        // A procedure value as a union's member (C491): boxed, its closure
+        // behind `dyn`, not `Any`.
+        impl<$($a: 'static,)* R: 'static> crate::value::Member for $proc<'static, $($a,)* R> {
+            #[inline]
+            fn object(self) -> &'static dyn crate::value::Obj {
+                crate::value::boxed_object(self)
+            }
+            #[inline]
+            fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
+                crate::value::of_boxed(o)
+            }
+        }
+
+        impl<$($a: 'static,)* R: 'static> crate::value::Member for $procs<'static, $($a,)* R> {
+            #[inline]
+            fn object(self) -> &'static dyn crate::value::Obj {
+                crate::value::boxed_object(self)
+            }
+            #[inline]
+            fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
+                crate::value::of_boxed(o)
+            }
+        }
+
         impl<'r, $($a,)* R> Trace for $proc<'r, $($a,)* R> {
             crate::trace_whole!();
             #[inline]
