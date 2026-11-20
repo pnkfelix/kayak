@@ -184,28 +184,100 @@ macro_rules! trace_whole {
     };
 }
 
-/// A product (a tuple struct): each field split apart, as a tuple's.
+/// A product (a tuple struct, C490): held boxed, one word to its object
+/// (`Prod`, kind 37), where a heap object holds it, as FX-26's heap grammar
+/// has it; its object its parts' fields and bytes apart (`Product`). On
+/// the stack, its parts traced each.
 #[macro_export]
 macro_rules! trace_product {
     ($name:ident, $($a:ident $i:tt),*) => {
         impl<$($a: $crate::Trace),*> $crate::Trace for $name<$($a),*> {
-            type Field = $name<$($a::Field),*>;
-            type Byte = $name<$($a::Byte),*>;
-            #[inline(always)]
-            fn split(self) -> (Self::Field, Self::Byte) {
-                $(#[allow(non_snake_case)] let $a = self.$i.split();)*
-                ($name($($a.0),*), $name($($a.1),*))
+            type Field = $crate::Prod<Self>;
+            type Byte = ();
+            #[inline]
+            fn split(self) -> (Self::Field, ()) {
+                ($crate::Prod::new(self), ())
             }
             #[inline(always)]
-            fn join(f: Self::Field, b: Self::Byte) -> Self {
-                $name($($a::join(f.$i, b.$i)),*)
+            fn join(f: Self::Field, _: ()) -> Self {
+                f.get()
             }
             #[inline]
             fn trace<'a>(self, t: &mut $crate::Tracer<'a>) where Self: 'a {
                 $(self.$i.trace(t);)*
             }
         }
+        impl<$($a: $crate::Trace),*> $crate::Product for $name<$($a),*> {
+            type Fields = $name<$($a::Field),*>;
+            type Bytes = $name<$($a::Byte),*>;
+            #[inline(always)]
+            fn apart(self) -> (Self::Fields, Self::Bytes) {
+                $(#[allow(non_snake_case)] let $a = $crate::Trace::split(self.$i);)*
+                ($name($($a.0),*), $name($($a.1),*))
+            }
+            #[inline(always)]
+            fn together(f: Self::Fields, b: Self::Bytes) -> Self {
+                $name($($crate::Trace::join(f.$i, b.$i)),*)
+            }
+        }
     };
+}
+
+/// A product's parts, apart (C490): what its object (`Prod`) keeps, its
+/// traced fields and its plain bytes, each part's split.
+pub trait Product: Trace {
+    type Fields: Trace;
+    type Bytes: Copy;
+    fn apart(self) -> (Self::Fields, Self::Bytes);
+    fn together(f: Self::Fields, b: Self::Bytes) -> Self;
+}
+
+/// A value as a heap object holds it (C490): its traced part and its plain
+/// bytes, its type's `split` (a product boxed, one word). A pair's
+/// element, a sum's payload.
+pub struct Held<T: Trace>(T::Field, T::Byte);
+
+impl<T: Trace> Clone for Held<T> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: Trace> Copy for Held<T> {}
+
+impl<T: Trace> Held<T> {
+    #[inline(always)]
+    pub fn new(v: T) -> Self {
+        let (f, b) = v.split();
+        Held(f, b)
+    }
+    #[inline(always)]
+    pub fn get(self) -> T {
+        T::join(self.0, self.1)
+    }
+    /// What it reaches: its traced part's.
+    #[inline]
+    pub fn reach<'a>(self, t: &mut Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        self.0.trace(t);
+    }
+}
+
+impl<T: Trace<Field = (), Byte = T>> Held<T> {
+    /// Plain bytes, held as they are: for a `static`'s (a `const`).
+    pub const fn bytes(v: T) -> Self {
+        Held((), v)
+    }
+}
+
+impl<T: Trace<Field = T, Byte = ()>> Held<T> {
+    /// A value kept whole, held as it is: for a `static`'s (a `const`).
+    pub const fn whole(v: T) -> Self {
+        Held(v, ())
+    }
 }
 
 trace_bytes!(
@@ -396,7 +468,7 @@ impl<T: Trace> Trace for Option<T> {
 
 impl<T: Trace> Visit for Cons<'_, T> {
     fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
-        self.car.trace(t);
+        self.car_held().reach(t);
         self.cdr.trace(t);
     }
 }
@@ -404,6 +476,31 @@ impl<T: Trace> Visit for Cons<'_, T> {
 impl<T: Trace> Visit for Cell<T> {
     fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
         self.get().trace(t);
+    }
+}
+
+/// A cell of KFX's (C490): a reference's, its value held (a product boxed,
+/// one word, as FX-26's box holds one). Read and written as a `Cell` is.
+pub struct Slot<T: Trace>(Cell<Held<T>>);
+
+impl<T: Trace> Slot<T> {
+    #[inline(always)]
+    pub fn new(v: T) -> Self {
+        Slot(Cell::new(Held::new(v)))
+    }
+    #[inline(always)]
+    pub fn get(&self) -> T {
+        self.0.get().get()
+    }
+    #[inline(always)]
+    pub fn set(&self, v: T) {
+        self.0.set(Held::new(v))
+    }
+}
+
+impl<T: Trace> Visit for Slot<T> {
+    fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
+        self.0.get().reach(t);
     }
 }
 

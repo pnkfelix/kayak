@@ -55,10 +55,10 @@ pub type RepOperand = Sum;
 /// operands.
 pub type RepNode = Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<RepOperand>>;
 
-fn items<T: Copy>(mut l: crate::ListAt<'_, T>) -> Vec<T> {
+fn items<T: crate::Trace>(mut l: crate::ListAt<'_, T>) -> Vec<T> {
     let mut out = Vec::new();
     while let Some(c) = l {
-        out.push(c.car);
+        out.push(c.car());
         l = c.cdr;
     }
     out

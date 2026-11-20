@@ -1910,8 +1910,14 @@ over its 1664 definitions, 335 of them refused:
   arrays (`FlatArray`, Fixpt's header already in its first cells, a
   plain reference to them)~~ (done, C489: one word, traced); ~~bloblets and arrays opaque to a trace~~
   (done, C486: each object reached once, its fields visited; a census
-  traces them precisely); a dynamic value (`Value`, an enum), a product held by
-  value in its holder (a heap object of its own in FX-26), ~~an integer
+  traces them precisely); a dynamic value (`Value`, an enum), ~~a product held by
+  value in its holder~~ (done, C490: boxed where a heap object holds it,
+  `Prod`, one word to Fixpt's product object, kind 37, by its `split`: a
+  pair's element, a sum's payload, a ref's and an array's cell, a
+  closure's capture; on the stack its parts; the user: no unboxed
+  products holding references. Left in line: a bloblet's field, an
+  `Option`, a datatype's field of a product type (none in kc), a
+  message, an I-cell's value, a continuation's and a knot's), ~~an integer
   (`Int`, a bignum's limbs a `Vec`)~~ (done, C488: one word, Fixpt's
   61-bit fixnum or a bignum object, kind 6, its limbs in its suffix); then a
   collector, the Rust stack conservative and the heap

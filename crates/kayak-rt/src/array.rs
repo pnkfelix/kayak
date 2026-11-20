@@ -2,19 +2,18 @@
 //! aliased and written through any alias (`CLAUDES_CHOICES.md` C56).
 
 use crate::{Int, List, Show, fail, heap_cons, i64_to_int, int_to_i64, nil};
-use std::cell::Cell;
 
 /// One word to an object of Fixpt's layout (C485, `obj.rs`).
 pub use crate::obj::Array;
 
 /// As Fixpt writes one: a bloblet of a header word and a field each.
-impl<T> Show for Array<T> {
+impl<T: crate::Trace> Show for Array<T> {
     fn show(&self, out: &mut String) {
         out.push_str(&format!("#<bloblet {} fields 0 bytes>", self.len() + 1));
     }
 }
 
-fn cell<T>(a: Array<T>, i: Int) -> &'static Cell<T> {
+fn cell<T: crate::Trace>(a: Array<T>, i: Int) -> &'static crate::Slot<T> {
     match usize::try_from(int_to_i64(i))
         .ok()
         .and_then(|i| a.cells().get(i))
@@ -32,17 +31,17 @@ pub fn make_array<T: crate::Trace + 'static>(n: Int, v: T) -> Array<T> {
 }
 
 #[inline]
-pub fn array_ref<T: Copy>(a: Array<T>, i: Int) -> T {
+pub fn array_ref<T: crate::Trace>(a: Array<T>, i: Int) -> T {
     cell(a, i).get()
 }
 
 #[inline]
-pub fn array_set_x<T: Copy>(a: Array<T>, i: Int, v: T) {
+pub fn array_set_x<T: crate::Trace>(a: Array<T>, i: Int, v: T) {
     cell(a, i).set(v)
 }
 
 #[inline]
-pub fn array_length<T>(a: Array<T>) -> Int {
+pub fn array_length<T: crate::Trace>(a: Array<T>) -> Int {
     i64_to_int(a.len() as i64)
 }
 
@@ -57,7 +56,7 @@ pub fn list_to_array<T: crate::Trace + 'static>(xs: List<T>) -> Array<T> {
     let mut v = Vec::new();
     let mut at = xs;
     while let Some(c) = at {
-        v.push(c.car);
+        v.push(c.car());
         at = c.cdr;
     }
     crate::obj::array_made(v.into_iter())

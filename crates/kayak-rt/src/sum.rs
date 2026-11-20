@@ -38,21 +38,23 @@ pub struct SumHead {
 
 /// A sum's cell: its head, then its payload.
 #[repr(C)]
-pub struct SumOf<T> {
+pub struct SumOf<T: crate::Trace> {
     head: SumHead,
-    payload: T,
+    /// Held (C490): a product boxed, one word, as FX-26's sum holds one.
+    payload: crate::Held<T>,
 }
 
 /// A sum's payload traced (C480): its head is kayak-rt's, holding none.
 impl<T: crate::Trace> crate::Visit for SumOf<T> {
     fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
-        self.payload.trace(t);
+        self.payload.reach(t);
     }
 }
 
-impl<T: 'static> SumOf<T> {
-    /// A cell, for a `static`: `SumOf::new("eof", ())`, then [`SumOf::sum`].
-    pub const fn new(name: &'static str, payload: T) -> Self {
+impl<T: crate::Trace + 'static> SumOf<T> {
+    /// A cell, for a `static`: `SumOf::new("eof", Held::bytes(()))`, then
+    /// [`SumOf::sum`].
+    pub const fn new(name: &'static str, payload: crate::Held<T>) -> Self {
         SumOf {
             head: SumHead {
                 tag: tag_hash(name),
@@ -244,7 +246,7 @@ pub fn sum_new<T: 'static + crate::Trace>(tag: u64, name: &'static str, payload:
             name,
             payload_type: TypeId::of::<T>,
         },
-        payload,
+        payload: crate::Held::new(payload),
     })
     .to_ref();
     &cell.head
@@ -271,7 +273,7 @@ pub fn sum_name(s: Sum) -> &'static str {
 /// writes it from the type the checker found for the arm's tag, and a
 /// sum's tag has one payload type in a checked program.
 #[inline]
-pub fn sum_payload<T: Copy + 'static>(s: Sum) -> T {
+pub fn sum_payload<T: crate::Trace + 'static>(s: Sum) -> T {
     if (s.payload_type)() != TypeId::of::<T>() {
         crate::fail(&format!(
             "a sum's payload read at a type not its own: {}'s, as {}",
@@ -282,7 +284,7 @@ pub fn sum_payload<T: Copy + 'static>(s: Sum) -> T {
     // SAFETY: `s` is the head of a `SumOf<T'>` (`sum_new`, `SumOf::new`),
     // and `T'` is `T`: its head says so, just checked. The head is the
     // cell's first field (`repr(C)`), so the cell's address is the head's.
-    unsafe { (*(s as *const SumHead as *const SumOf<T>)).payload }
+    unsafe { (*(s as *const SumHead as *const SumOf<T>)).payload.get() }
 }
 
 /// A sum as Fixpt writes one: `#<sum TAG>`.
@@ -350,7 +352,7 @@ mod tests {
         assert_eq!(sum_tag(s), tag_hash("circle"));
         assert_eq!(sum_payload::<i64>(s), 3);
         assert_eq!(sum_name(s), "circle");
-        static EOF: SumOf<()> = SumOf::new("eof", ());
+        static EOF: SumOf<()> = SumOf::new("eof", crate::Held::bytes(()));
         assert_eq!(sum_tag(EOF.sum()), tag_hash("eof"));
     }
 

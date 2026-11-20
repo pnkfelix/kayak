@@ -15045,3 +15045,70 @@ What changed:
 
 Measured: an edit's build 0.27 s.
 - **The full check**: all passed in 457.6 s, its first run.
+
+## C490. A product held boxed, one word to Fixpt's product object (2026-11-19)
+
+The user, asked how a product is held in kc's heap (boxed at each, boxed
+where a heap object holds it, or its parts in line in the holder): "I
+thought FX26 had support for flat data that needn't be separately heap
+allocated; isn't that the appropriate analogy?" Reviewed first, Fixpt's
+`docs/fx26.md`: a flat product is laid out in line only where a flat is
+wanted (a bloblet's typed suffix, a flat array), of flats alone, and
+reached by a blobref, nothing more than a word coming out as a value;
+"Whether products and sums of flat data may be flattened too (unboxed
+data types, as Rust has them) is a question for later" (and PLAN.md's
+Q6). Said so: kayak's typed suffixes already hold flat products in line
+(C487); kc's products hold references. The user: "I don't think I want
+unboxed products holding references. I think that complicates the object
+model too much." So a product is boxed where a heap object holds it, as
+FX-26's heap grammar has it (kind 37, its own object); on the stack, its
+parts, by value (kc's calling convention), which Fixpt's grammar does not
+see.
+
+What changed (kayak-rt):
+- **`Prod<P>`** (`obj.rs`): one word, to a product's object: Fixpt's
+  header (kind 37, its fields and its suffix both frozen), its parts'
+  traced fields, a trailer, their plain bytes the suffix; a part that is
+  itself a product held so too. Made by a product's `Trace::split`, so
+  what lays out a value in a heap object (C481's split) boxes a product
+  there and nowhere else: `trace_product!` gives a product `Field =
+  Prod<Self>`, no bytes, and a `Product` impl (`Fields`, `Bytes`: what
+  the object keeps). A closure's captures, laid out by `split`, hold a
+  product so with no change of their own.
+- **`Held<T>`** (`trace.rs`): a value as a heap object holds it, its
+  `split`; `new`, `get`, and `const` makers for a `static`'s plain bytes
+  or whole value. A pair's element (`Cons`, its `car` private, read by
+  `car()`), a sum's payload (`SumOf`), and **`Slot<T>`**, a cell of
+  KFX's, holding its value held, read and written as a `Cell`: a ref's
+  cell (`RefAt` a handle of one) and an array's element.
+- Bounds: what reads a list, a ref or an array asks `T: Trace` (every
+  KFX value is), not `Copy`.
+
+kfx's emitter: a region's arena of a ref's cells, and a place's bound,
+`kayak_rt::Slot<T>`, not `std::cell::Cell<T>` (`held-rust`, `held-type`);
+nothing else, since generated code reaches pairs, sums, refs and arrays
+only by kayak-rt's functions and a cell's `get`/`set`. kc's Rust
+unchanged; kayak-cells' and kayak-fx26's (their listings' regions) and
+the corpus's region programs blessed again. The engine's REPL front
+(`rust_repl.rs`) asks `Trace` of a list it walks.
+
+Left of a product in line in its holder: a datatype's field of a
+product type (none in kc; a generic datatype at a product, none), a
+bloblet's field (its fields `Cell`s, `put-fields-tuple`), an `Option`
+(kept whole), a process's message and an I-cell's value, a
+continuation's and a knot's. Recorded in TODO §54.
+
+- **A test**: a product of a product and a character held one word, its
+  object kind 37 of one field and four bytes, frozen; in a pair, a ref,
+  an array, a sum, each one word, read back.
+
+Measured: an edit's build 0.26 to 0.27 s, as before: the benchmark's
+build holds no product in a list (kc's lists of products are its
+expander's, which it does not run), and its census has no product's
+object.
+- **Found by the checks**: Fixpt's programs show a typed suffix's flat
+  cell through `Cell`'s `Show`, kept beside `Slot`'s; `Held`'s own
+  tracing named `reach`, not `trace`, so that the lang items do not read
+  the emitter's `Trace::trace(` as a call of a kayak-rt function.
+- **The full check**: all passed in 462.0 s, its third run (the first two
+  stopped at rustfmt and at the lang items, above); nextest 5614.

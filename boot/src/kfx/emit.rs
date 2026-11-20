@@ -6577,7 +6577,7 @@ pub mod emitter {
             let inner = after_prefix(r, string_append(str_lit!("kayak_rt::Handle<"), string_append(life, str_lit!(", "))));
             substring(inner, int_lit(0), _minus(string_length(inner), int_lit(1)))
         } else if string_eq_p(kind, str_lit!("ref")) {
-            string_append(str_lit!("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit!(">")))
+            string_append(str_lit!("kayak_rt::Slot<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit!(">")))
         } else if not(null_p(typed_flat(c, t))) {
             string_append(str_lit!("TBloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), string_append(str_lit!(", "), string_append(rev_to_string(put_flat(c, car(typed_flat(c, t)), nil::<char>())), str_lit!(">")))))
         } else {
@@ -6586,7 +6586,7 @@ pub mod emitter {
     }
 
     /// What an allocation in region `r` makes, as Rust's type: a pair,
-    /// `Cons<'r, T>`, or a reference's cell, `Cell<T>`.
+    /// `Cons<'r, T>`, or a reference's cell, `Slot<T>` (C490).
     pub fn held_type(c: kayak_rt::Handle<'static, Ctx>, r: Str, call: kayak_rt::Handle<'static, Sexp>) -> Str {
         let t = car(read_all(fact_with(c, call, str_lit!("rheld ")), str_lit!(""), 1i64));
         if head_is_p(call, str_lit!("rcons")) {
@@ -6596,7 +6596,7 @@ pub mod emitter {
         } else if head_is_p(call, str_lit!("rmake-bloblet")) {
             string_append(str_lit!("Bloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), str_lit!(">")))
         } else {
-            string_append(str_lit!("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit!(">")))
+            string_append(str_lit!("kayak_rt::Slot<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit!(">")))
         }
     }
 

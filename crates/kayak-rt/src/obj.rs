@@ -919,16 +919,19 @@ impl<T> FlatArray<T> {
 /// and, past what the header's 18 bits count, Fixpt's second header word
 /// (`large`, kind 255, the count above it); its elements, each a cell;
 /// its trailer. In the heap, kept.
-pub struct Array<T: 'static>(NonNull<u64>, std::marker::PhantomData<&'static [Cell<T>]>);
+pub struct Array<T: crate::Trace + 'static>(
+    NonNull<u64>,
+    std::marker::PhantomData<&'static [crate::Slot<T>]>,
+);
 
-impl<T> Clone for Array<T> {
+impl<T: crate::Trace> Clone for Array<T> {
     #[inline]
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T> Copy for Array<T> {}
+impl<T: crate::Trace> Copy for Array<T> {}
 
 /// The header's field count, 18 bits; and its `large` bit.
 const FIELDS_MAX: usize = (1 << 18) - 1;
@@ -940,7 +943,7 @@ const fn elements_at(n: usize) -> usize {
     if n > FIELDS_MAX { 2 } else { 1 }
 }
 
-impl<T> Array<T> {
+impl<T: crate::Trace> Array<T> {
     /// Its elements, how many.
     #[inline]
     pub fn len(self) -> usize {
@@ -961,14 +964,17 @@ impl<T> Array<T> {
         self.len() == 0
     }
 
-    /// Its elements, each a cell.
+    /// Its elements, each a cell, its value held (C490: a product boxed).
     #[inline]
-    pub fn cells(self) -> &'static [Cell<T>] {
+    pub fn cells(self) -> &'static [crate::Slot<T>] {
         let n = self.len();
         // SAFETY: its elements follow its header words, `n` of them, in the
         // block it was made in (whose pointer it keeps), kept for the run.
         unsafe {
-            std::slice::from_raw_parts(self.0.as_ptr().add(elements_at(n)).cast::<Cell<T>>(), n)
+            std::slice::from_raw_parts(
+                self.0.as_ptr().add(elements_at(n)).cast::<crate::Slot<T>>(),
+                n,
+            )
         }
     }
 
@@ -981,7 +987,7 @@ impl<T> Array<T> {
     /// Its object's bytes: its header words, its elements, its trailer.
     pub fn object_bytes(self) -> usize {
         let n = self.len();
-        (elements_at(n) * 8 + n * std::mem::size_of::<T>()).next_multiple_of(8) + 8
+        (elements_at(n) * 8 + n * std::mem::size_of::<crate::Slot<T>>()).next_multiple_of(8) + 8
     }
 }
 
@@ -1005,13 +1011,13 @@ pub(crate) fn array_made<T: crate::Trace + 'static>(
 ) -> Array<T> {
     const {
         assert!(
-            std::mem::align_of::<T>() <= 8,
+            std::mem::align_of::<crate::Slot<T>>() <= 8,
             "an array's element aligned past a word"
         )
     };
     let n = items.len();
     let at = elements_at(n) * 8;
-    let trailer_at = (at + n * std::mem::size_of::<T>()).next_multiple_of(8);
+    let trailer_at = (at + n * std::mem::size_of::<crate::Slot<T>>()).next_multiple_of(8);
     let layout = std::alloc::Layout::from_size_align(trailer_at + 8, 8).expect("an array's size");
     crate::stats::note::<Array<T>>(layout.size());
     // SAFETY: a layout of nonzero size, aligned to a word; each word of
@@ -1028,10 +1034,10 @@ pub(crate) fn array_made<T: crate::Trace + 'static>(
         } else {
             p.write(layout::header(3, n, 0, false, false));
         }
-        let cells = p.cast::<u8>().add(at).cast::<Cell<T>>();
+        let cells = p.cast::<u8>().add(at).cast::<crate::Slot<T>>();
         let mut k = 0;
         for x in items.take(n) {
-            cells.add(k).write(Cell::new(x));
+            cells.add(k).write(crate::Slot::new(x));
             k += 1;
         }
         assert!(k == n, "an array's items fewer than it said");
@@ -1073,7 +1079,7 @@ mod array_tests {
         assert_eq!(a.len(), 3);
         a.cells()[1].set(20);
         assert_eq!(
-            a.cells().iter().map(Cell::get).collect::<Vec<_>>(),
+            a.cells().iter().map(crate::Slot::get).collect::<Vec<_>>(),
             vec![1, 20, 3]
         );
         let big = array_made((0..300_000).map(|k| k as u8));
@@ -1082,5 +1088,153 @@ mod array_tests {
         let units = array_made(std::iter::repeat_n((), 5));
         assert_eq!(units.len(), 5);
         assert_eq!(std::mem::size_of::<Array<i64>>(), 8);
+    }
+}
+
+/// A product's kind (Fixpt's `product`, 37): its fields traced, never set.
+const KIND_PRODUCT: u8 = 37;
+
+/// A product's object (C490), as FX-26's heap grammar has one where a heap
+/// object holds it: its parts' traced fields, its trailer, then their plain
+/// bytes, its suffix; both frozen (a product is never written).
+#[repr(C)]
+pub struct ProdObj<P: crate::Product> {
+    header: u64,
+    fields: P::Fields,
+    trailer: u64,
+    suffix: P::Bytes,
+}
+
+/// A product as a heap object holds it (C490): one word, to its object.
+/// On the stack a product is its parts (kc's calling convention); boxed
+/// where a pair, a sum, a closure holds one, by its `Trace::split`.
+pub struct Prod<P: crate::Product>(NonNull<ProdObj<P>>, std::marker::PhantomData<P>);
+
+impl<P: crate::Product> Clone for Prod<P> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<P: crate::Product> Copy for Prod<P> {}
+
+// SAFETY: its object is never written after it is made, and holds what `P`
+// does: shared or sent as `P` may be.
+unsafe impl<P: crate::Product + Send> Send for Prod<P> {}
+// SAFETY: as above.
+unsafe impl<P: crate::Product + Sync> Sync for Prod<P> {}
+
+impl<P: crate::Product> Prod<P> {
+    /// `p`'s object, kept for the run (kayak-rt has no collector yet).
+    pub fn new(p: P) -> Self {
+        let (fields, suffix) = p.apart();
+        let to_trailer = std::mem::offset_of!(ProdObj<P>, trailer) / 8;
+        let o: &ProdObj<P> = Box::leak(Box::new(ProdObj {
+            header: layout::header(
+                KIND_PRODUCT,
+                to_trailer - 1,
+                std::mem::size_of::<P::Bytes>(),
+                true,
+                true,
+            ),
+            fields,
+            trailer: layout::trailer(to_trailer),
+            suffix,
+        }));
+        crate::stats::note::<ProdObj<P>>(std::mem::size_of::<ProdObj<P>>());
+        #[cfg(feature = "heap-stats")]
+        crate::census::one(o);
+        Prod(NonNull::from(o), std::marker::PhantomData)
+    }
+
+    #[inline]
+    fn obj<'a>(self) -> &'a ProdObj<P> {
+        // SAFETY: made only by `new`, of a block never freed.
+        unsafe { self.0.as_ref() }
+    }
+
+    /// The product, its parts joined again.
+    #[inline]
+    pub fn get(self) -> P {
+        let o = self.obj();
+        P::together(o.fields, o.suffix)
+    }
+
+    /// Its object's header word.
+    pub fn header(self) -> u64 {
+        self.obj().header
+    }
+}
+
+/// A product's object: its fields visited, its suffix plain bytes.
+impl<P: crate::Product> crate::Visit for ProdObj<P> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        crate::Trace::trace(self.fields, t);
+    }
+    fn visit_name(&self) -> &'static str {
+        std::any::type_name::<Prod<P>>()
+    }
+}
+
+/// A held product: its object reached.
+impl<P: crate::Product> crate::Trace for Prod<P> {
+    crate::trace_whole!();
+    #[inline]
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.reach(self.obj());
+    }
+}
+
+#[cfg(test)]
+mod product_tests {
+    use crate::{Cons, Held, Str, Trace};
+
+    #[derive(Clone, Copy)]
+    struct P2<A0, A1>(A0, A1);
+    crate::trace_product!(P2, A0 0, A1 1);
+
+    #[test]
+    fn a_product_held_one_word_its_object_kind_37() {
+        let s: Str = str_lit!("x");
+        let inner = P2(3i64, s);
+        let p = P2(inner, 'c');
+        let h = Held::new(p);
+        assert_eq!(std::mem::size_of::<Held<P2<P2<i64, Str>, char>>>(), 8);
+        let back = h.get();
+        assert_eq!((back.0.0, back.0.1.as_str(), back.1), (3, "x", 'c'));
+        let (f, ()) = p.split();
+        // Kind 37, one field (the inner product's word), four bytes (`'c'`).
+        let w = f.header();
+        assert_eq!(
+            (w & 7, (w >> 3) & 0xff, (w >> 14) & 0x3ffff, w >> 32),
+            (6, 37, 1, 4)
+        );
+        assert_eq!(w & (3 << 12), 3 << 12);
+        // A pair of products: its element one word, as its tail is.
+        assert_eq!(
+            std::mem::size_of::<Cons<'static, P2<P2<i64, Str>, char>>>(),
+            16
+        );
+        let xs = crate::heap_cons(p, None);
+        assert_eq!(crate::car(xs).0.0, 3);
+        // A ref's cell and an array's element: one word each.
+        assert_eq!(
+            std::mem::size_of::<crate::Slot<P2<P2<i64, Str>, char>>>(),
+            8
+        );
+        let r = crate::heap_new(p);
+        r.set(P2(P2(4, s), 'd'));
+        assert_eq!((r.get().0.0, r.get().1), (4, 'd'));
+        let a = crate::make_array(crate::int_lit(3), p);
+        crate::array_set_x(a, crate::int_lit(1), P2(P2(5, s), 'e'));
+        assert_eq!(crate::array_ref(a, crate::int_lit(1)).0.0, 5);
+        assert_eq!(a.object_bytes(), 8 * 5);
+        // A sum's payload, held.
+        let su = crate::sum_of("pair", p);
+        assert_eq!(crate::sum_payload::<P2<P2<i64, Str>, char>>(su).1, 'c');
     }
 }

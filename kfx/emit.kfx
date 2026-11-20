@@ -3666,7 +3666,7 @@
                  (let* ((r (rev->string (put-type c t nil)))
                         (inner (after-prefix r (string-append "kayak_rt::Handle<" (string-append life ", ")))))
                    (substring inner 0 (- (string-length inner) 1))))
-                ((string=? kind "ref") (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">")))
+                ((string=? kind "ref") (string-append "kayak_rt::Slot<" (string-append (rev->string (put-type c t nil)) ">")))
                 ((not (null? (typed-flat c t)))
                  (string-append "TBloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil))
                    (string-append ", " (string-append (rev->string (put-flat c (car (typed-flat c t)) nil)) ">")))))
@@ -3675,7 +3675,7 @@
       (held-type (subr kfx (ctx string sexp) string)
         (lambda (c r call)
           "What an allocation in region `r` makes, as Rust's type: a pair,
-           `Cons<'r, T>`, or a reference's cell, `Cell<T>`."
+           `Cons<'r, T>`, or a reference's cell, `Slot<T>` (C490)."
           (let ((t (car (read-all (fact-with c call "rheld ") "" 1))))
             (cond ((head-is? call "rcons")
                    (string-append "Cons<" (string-append (lifetime r) (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
@@ -3684,7 +3684,7 @@
                      (string-append ", " (string-append (rev->string (put-flat c (car (typed-flat c t)) nil)) ">")))))
                   ((head-is? call "rmake-bloblet")
                    (string-append "Bloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil)) ">")))
-                  (else (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">")))))))
+                  (else (string-append "kayak_rt::Slot<" (string-append (rev->string (put-type c t nil)) ">")))))))
 
       (put-prompt (subr kfx (ctx sexp sexps i64 chars) chars)
         (lambda (c e xs n acc)

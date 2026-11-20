@@ -480,11 +480,11 @@ mod tests {
     use crate::List;
     use crate::escape::make_continuation_prompt_tag;
 
-    fn reverse<T: Copy + 'static>(xs: List<T>) -> List<T> {
+    fn reverse<T: crate::Trace + 'static>(xs: List<T>) -> List<T> {
         let mut acc = None;
         let mut xs = xs;
         while let Some(c) = xs {
-            acc = crate::cons(c.car, acc);
+            acc = crate::cons(c.car(), acc);
             xs = c.cdr;
         }
         acc
@@ -494,7 +494,7 @@ mod tests {
         let mut v = vec![];
         let mut xs = xs;
         while let Some(c) = xs {
-            v.push(c.car);
+            v.push(c.car());
             xs = c.cdr;
         }
         v
@@ -540,7 +540,7 @@ mod tests {
                 return Ok(());
             };
             g.queue.set(q.cdr);
-            let k = q.car;
+            let k = q.car();
             let body: Body<()> = k.call(());
             if let Prompted::Aborted(k) = prompt(g.sched, body).await? {
                 enqueue(g, k);
@@ -630,7 +630,7 @@ mod tests {
             g.fut.set(Promise::Resolved(v));
             let mut ks = reverse(ws);
             while let Some(c) = ks {
-                enqueue2(g, c.car);
+                enqueue2(g, c.car());
                 ks = c.cdr;
             }
         }
@@ -657,7 +657,7 @@ mod tests {
                 return Ok(());
             };
             g.queue.set(q.cdr);
-            let body: Body<()> = q.car.call(());
+            let body: Body<()> = q.car().call(());
             if let Prompted::Aborted(file) = prompt(g.sched, body).await? {
                 file();
             }

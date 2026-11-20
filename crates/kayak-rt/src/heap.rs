@@ -89,13 +89,13 @@ pub fn heap_alloc<T: 'static + crate::Visit>(v: T) -> crate::Handle<'static, T> 
 /// `cons`, in the heap's arena of pairs.
 #[inline]
 pub fn heap_cons<T: 'static + crate::Trace>(car: T, cdr: List<T>) -> List<T> {
-    Some(heap_alloc(Cons { car, cdr }))
+    Some(heap_alloc(Cons::new(car, cdr)))
 }
 
 /// `new`, in the heap's arena of cells.
 #[inline]
 pub fn heap_new<T: Copy + 'static + crate::Trace>(v: T) -> Ref<T> {
-    heap_alloc(Cell::new(v))
+    heap_alloc(crate::Slot::new(v))
 }
 
 #[cfg(test)]
@@ -109,8 +109,8 @@ mod tests {
         let s = heap_new(true);
         let ys = heap_cons("a", None);
         r.set(8);
-        assert_eq!(xs.unwrap().car + xs.unwrap().cdr.unwrap().car, 3);
-        assert_eq!((r.get(), s.get(), ys.unwrap().car), (8, true, "a"));
+        assert_eq!(xs.unwrap().car() + xs.unwrap().cdr.unwrap().car(), 3);
+        assert_eq!((r.get(), s.get(), ys.unwrap().car()), (8, true, "a"));
         let many: Vec<Ref<i64>> = (0..1000).map(heap_new).collect();
         assert!(many.iter().enumerate().all(|(i, v)| v.get() == i as i64));
     }

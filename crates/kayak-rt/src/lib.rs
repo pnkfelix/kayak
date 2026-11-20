@@ -67,7 +67,7 @@ pub use std::cell::OnceCell;
 pub use sum::*;
 pub use syscall::*;
 pub use text::*;
-pub use trace::{CensusRow, Trace, Tracer, Visit, traced};
+pub use trace::{CensusRow, Held, Product, Slot, Trace, Tracer, Visit, traced};
 pub use value::{
     array_p, bool_p, bytevector_p, char_p, datum_list_to_vector, f32_p, f64_p, int_p, pair_p,
     procedure_p, product_p, ref_p, string_p, sum_p, symbol_p, vector_p,
@@ -91,14 +91,36 @@ impl std::fmt::Debug for Str {
 /// `(ref T R)`: a cell, which any alias may read and write, as FX-26's may;
 /// in a `letrena`'s region, `RefAt<'r, T>`, borrowed from its arena, and
 /// in the heap, which is never freed, `Ref<T>`.
-pub type RefAt<'r, T> = Handle<'r, Cell<T>>;
+pub type RefAt<'r, T> = Handle<'r, Slot<T>>;
 pub type Ref<T> = RefAt<'static, T>;
 
-pub use obj::FlatArray;
+pub use obj::{FlatArray, Prod, ProdObj};
 
-pub struct Cons<'r, T> {
-    pub car: T,
+/// A pair: its element held (C490: a product boxed, one word, as FX-26's
+/// heap grammar has a pair's car), and the rest of the list.
+pub struct Cons<'r, T: Trace> {
+    car: Held<T>,
     pub cdr: ListAt<'r, T>,
+}
+
+impl<'r, T: Trace> Cons<'r, T> {
+    #[inline(always)]
+    pub fn new(car: T, cdr: ListAt<'r, T>) -> Self {
+        Cons {
+            car: Held::new(car),
+            cdr,
+        }
+    }
+    /// Its element.
+    #[inline(always)]
+    pub fn car(&self) -> T {
+        self.car.get()
+    }
+    /// Its element as it holds it.
+    #[inline(always)]
+    pub fn car_held(&self) -> Held<T> {
+        self.car
+    }
 }
 
 /// `(listof T R)`: `nil`, or a pair whose tail is the list again; in a
@@ -364,25 +386,25 @@ pub fn knot<'a, T: Copy + 'a>() -> &'a Knot<T> {
 // Lists.
 
 #[inline]
-pub fn nil<'r, T>() -> ListAt<'r, T> {
+pub fn nil<'r, T: Trace>() -> ListAt<'r, T> {
     None
 }
 
 #[inline]
-pub fn cons<'r, T>(car: T, cdr: ListAt<'r, T>) -> ListAt<'r, T> {
-    Some(alloc(Cons { car, cdr }))
+pub fn cons<'r, T: Trace>(car: T, cdr: ListAt<'r, T>) -> ListAt<'r, T> {
+    Some(alloc(Cons::new(car, cdr)))
 }
 
 #[inline]
-pub fn car<T: Copy>(xs: ListAt<'_, T>) -> T {
+pub fn car<T: Trace>(xs: ListAt<'_, T>) -> T {
     match xs {
-        Some(p) => p.car,
+        Some(p) => p.car(),
         None => fail("car or cdr of a non-pair"),
     }
 }
 
 #[inline]
-pub fn cdr<'r, T>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
+pub fn cdr<'r, T: Trace>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
     match xs {
         Some(p) => p.cdr,
         None => fail("car or cdr of a non-pair"),
@@ -390,7 +412,7 @@ pub fn cdr<'r, T>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
 }
 
 #[inline]
-pub fn null_p<T>(xs: ListAt<'_, T>) -> bool {
+pub fn null_p<T: Trace>(xs: ListAt<'_, T>) -> bool {
     xs.is_none()
 }
 
@@ -605,17 +627,17 @@ pub fn i64_to_string(n: i64) -> Str {
 // one's place is the heap, so every reference `'static`); effects too.
 
 #[inline]
-pub fn new<'r, T: Copy>(v: T) -> RefAt<'r, T> {
-    alloc(Cell::new(v))
+pub fn new<'r, T: Trace>(v: T) -> RefAt<'r, T> {
+    alloc(Slot::new(v))
 }
 
 #[inline]
-pub fn get<T: Copy>(r: RefAt<'_, T>) -> T {
+pub fn get<T: Trace>(r: RefAt<'_, T>) -> T {
     r.get()
 }
 
 #[inline]
-pub fn set<T: Copy>(r: RefAt<'_, T>, v: T) {
+pub fn set<T: Trace>(r: RefAt<'_, T>, v: T) {
     r.set(v)
 }
 
@@ -734,7 +756,7 @@ pub fn strings_joined(xs: List<Str>) -> Str {
     let mut parts: Vec<&str> = Vec::new();
     let mut at = xs;
     while let Some(c) = at {
-        parts.push(c.car.as_str());
+        parts.push(c.car().as_str());
         at = c.cdr;
     }
     match parts.len() {
@@ -746,7 +768,7 @@ pub fn strings_joined(xs: List<Str>) -> Str {
 
 /// The one string of a list of one, itself, as the KFX gives it.
 fn at_one(xs: List<Str>) -> Str {
-    xs.expect("a list of one").car
+    xs.expect("a list of one").car()
 }
 
 /// `nat`s, which are `Int`s: a string's length in characters, a list's.
@@ -765,12 +787,12 @@ pub fn string_ref(s: Str, i: Int) -> char {
 }
 
 #[inline]
-pub fn length<T>(xs: ListAt<'_, T>) -> Int {
+pub fn length<T: Trace>(xs: ListAt<'_, T>) -> Int {
     list_length(xs)
 }
 
 #[inline]
-pub fn list_length<T>(mut xs: ListAt<'_, T>) -> Int {
+pub fn list_length<T: Trace>(mut xs: ListAt<'_, T>) -> Int {
     let mut n = 0i64;
     while let Some(p) = xs {
         n += 1;
@@ -780,21 +802,21 @@ pub fn list_length<T>(mut xs: ListAt<'_, T>) -> Int {
 }
 
 #[inline]
-pub fn reverse<'b, T: Copy + 'b>(mut xs: ListAt<'_, T>) -> ListAt<'b, T> {
+pub fn reverse<'b, T: Trace + 'b>(mut xs: ListAt<'_, T>) -> ListAt<'b, T> {
     let mut out = nil();
     while let Some(p) = xs {
-        out = cons(p.car, out);
+        out = cons(p.car(), out);
         xs = p.cdr;
     }
     out
 }
 
 #[inline]
-pub fn append<'b, T: Copy + 'b>(xs: ListAt<'_, T>, ys: ListAt<'b, T>) -> ListAt<'b, T> {
+pub fn append<'b, T: Trace + 'b>(xs: ListAt<'_, T>, ys: ListAt<'b, T>) -> ListAt<'b, T> {
     let mut items = Vec::new();
     let mut p = xs;
     while let Some(c) = p {
-        items.push(c.car);
+        items.push(c.car());
         p = c.cdr;
     }
     items.into_iter().rev().fold(ys, |rest, x| cons(x, rest))
@@ -822,13 +844,13 @@ pub fn list_to_string(cs: List<char>) -> Str {
     let mut n = 0;
     let mut at = cs;
     while let Some(p) = at {
-        n += p.car.len_utf8();
+        n += p.car().len_utf8();
         at = p.cdr;
     }
     str_made(n, |bytes| {
         let (mut i, mut at) = (0, cs);
         while let Some(p) = at {
-            i += p.car.encode_utf8(&mut bytes[i..]).len();
+            i += p.car().encode_utf8(&mut bytes[i..]).len();
             at = p.cdr;
         }
     })

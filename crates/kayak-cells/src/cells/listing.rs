@@ -475,11 +475,11 @@ pub fn w_word_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
 // string.
 pub fn word_written(name: Str, xs: Citems) -> Str {
     {
-        struct Region_R<'r> { a0: Arena<std::cell::Cell<BytesAt<'r>>>, a1: Arena<BytesCells>, a2: Arena<std::cell::Cell<i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        struct Region_R<'r> { a0: Arena<kayak_rt::Slot<BytesAt<'r>>>, a1: Arena<BytesCells>, a2: Arena<kayak_rt::Slot<i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), a1: Arena::default(), a2: Arena::default(), phantom_: std::marker::PhantomData } } }
-        impl<'r> Holds<std::cell::Cell<BytesAt<'r>>> for Region_R<'r> { fn arena(&self) -> &Arena<std::cell::Cell<BytesAt<'r>>> { &self.a0 } }
+        impl<'r> Holds<kayak_rt::Slot<BytesAt<'r>>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::Slot<BytesAt<'r>>> { &self.a0 } }
         impl<'r> Holds<BytesCells> for Region_R<'r> { fn arena(&self) -> &Arena<BytesCells> { &self.a1 } }
-        impl<'r> Holds<std::cell::Cell<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<std::cell::Cell<i64>> { &self.a2 } }
+        impl<'r> Holds<kayak_rt::Slot<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::Slot<i64>> { &self.a2 } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, name: Str, xs: List<kayak_rt::Handle<'static, Item>>) -> Str {
             let (b, n) = (the::<RefAt<'r, BytesAt<'r>>>(rnew(r, the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4096), 0u8)))), the::<RefAt<'r, i64>>(rnew(r, 0i64)));
             w_word_x(r, b, n, name, xs);

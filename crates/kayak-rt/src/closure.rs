@@ -175,7 +175,7 @@ mod tests {
         let s = crate::str_lit("hello");
         let xs = crate::heap_cons(1i64, None);
         let f: Proc1<'static, i64, i64> = closure1((s, 40i64, xs), |(s, k, xs), n| {
-            s.as_str().len() as i64 + k + n + xs.unwrap().car
+            s.as_str().len() as i64 + k + n + xs.unwrap().car()
         });
         assert_eq!(f.call(1), 5 + 40 + 1 + 1);
         let t = crate::traced(f);

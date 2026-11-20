@@ -100,13 +100,17 @@ pub trait Holds<T> {
 }
 
 /// `(rcons r x xs)`: a pair made in the region `r`.
-pub fn rcons<'r, T, R: Holds<Cons<'r, T>>>(r: &'r R, car: T, cdr: ListAt<'r, T>) -> ListAt<'r, T> {
-    Some(r.arena().alloc(Cons { car, cdr }))
+pub fn rcons<'r, T: crate::Trace, R: Holds<Cons<'r, T>>>(
+    r: &'r R,
+    car: T,
+    cdr: ListAt<'r, T>,
+) -> ListAt<'r, T> {
+    Some(r.arena().alloc(Cons::new(car, cdr)))
 }
 
 /// `(rnew r v)`: a reference made in the region `r`.
-pub fn rnew<'r, T: Copy, R: Holds<Cell<T>>>(r: &'r R, v: T) -> RefAt<'r, T> {
-    r.arena().alloc(Cell::new(v))
+pub fn rnew<'r, T: crate::Trace, R: Holds<crate::Slot<T>>>(r: &'r R, v: T) -> RefAt<'r, T> {
+    r.arena().alloc(crate::Slot::new(v))
 }
 
 #[cfg(test)]
@@ -117,7 +121,7 @@ mod tests {
     #[derive(Default)]
     struct Region<'r> {
         pairs: Arena<Cons<'r, i64>>,
-        cells: Arena<Cell<i64>>,
+        cells: Arena<crate::Slot<i64>>,
     }
 
     impl<'r> Holds<Cons<'r, i64>> for Region<'r> {
@@ -126,8 +130,8 @@ mod tests {
         }
     }
 
-    impl Holds<Cell<i64>> for Region<'_> {
-        fn arena(&self) -> &Arena<Cell<i64>> {
+    impl Holds<crate::Slot<i64>> for Region<'_> {
+        fn arena(&self) -> &Arena<crate::Slot<i64>> {
             &self.cells
         }
     }

@@ -121,7 +121,7 @@ fn slices(now: &mut dyn FnMut() -> i64, more: &mut dyn FnMut(i64) -> bool) {
 }
 
 /// Each of a KFX list's items, in order.
-fn each<T: Copy>(mut xs: List<T>, mut f: impl FnMut(T)) {
+fn each<T: kayak_rt::Trace>(mut xs: List<T>, mut f: impl FnMut(T)) {
     while !null_p(xs) {
         f(car(xs));
         xs = cdr(xs);

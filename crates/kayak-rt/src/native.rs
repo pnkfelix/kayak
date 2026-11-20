@@ -126,7 +126,7 @@ impl<T: Native + Clone + 'static + crate::Trace> Native for crate::List<T> {
         let mut items = Vec::new();
         let mut at = self;
         while let Some(c) = at {
-            items.push(c.car);
+            items.push(c.car());
             at = c.cdr;
         }
         items

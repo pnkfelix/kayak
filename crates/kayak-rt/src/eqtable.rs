@@ -30,13 +30,20 @@ impl<T> Identity for &Cell<T> {
 }
 
 /// A ref, a handle of a cell (C478): its cell's address.
-impl<T> Identity for crate::Handle<'_, Cell<T>> {
+impl<T: crate::Trace> Identity for &crate::Slot<T> {
+    fn address(self) -> usize {
+        std::ptr::from_ref(self) as usize
+    }
+}
+
+/// A ref, a handle of its cell (C478, C490): its cell's address.
+impl<T: crate::Trace> Identity for crate::Handle<'_, crate::Slot<T>> {
     fn address(self) -> usize {
         std::ptr::from_ref(self.to_ref()) as usize
     }
 }
 
-impl<T: Copy> Identity for Array<T> {
+impl<T: crate::Trace> Identity for Array<T> {
     fn address(self) -> usize {
         self.addr()
     }
@@ -61,12 +68,12 @@ impl<K> Clone for IdentityOf<K> {
 impl<K> Copy for IdentityOf<K> {}
 
 /// `ref-identity`.
-pub fn ref_identity<'a, T>() -> IdentityOf<crate::Handle<'a, Cell<T>>> {
+pub fn ref_identity<'a, T: crate::Trace>() -> IdentityOf<crate::Handle<'a, crate::Slot<T>>> {
     IdentityOf(PhantomData)
 }
 
 /// `array-identity`.
-pub fn array_identity<T: Copy>() -> IdentityOf<Array<T>> {
+pub fn array_identity<T: crate::Trace>() -> IdentityOf<Array<T>> {
     IdentityOf(PhantomData)
 }
 
@@ -147,7 +154,7 @@ mod tests {
     fn by_address() {
         let a = crate::heap_new(1i64);
         let b = crate::heap_new(1i64);
-        let t: EqTable<crate::Handle<'_, Cell<i64>>, i64> = make_eqtable(ref_identity());
+        let t: EqTable<crate::Handle<'_, crate::Slot<i64>>, i64> = make_eqtable(ref_identity());
         eqtable_set_x(t, a, 10);
         eqtable_set_x(t, b, 20);
         eqtable_set_x(t, a, 30);

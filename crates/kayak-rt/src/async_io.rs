@@ -145,7 +145,7 @@ fn written(a: Answer) -> Sum {
     match a {
         Answer::Err(m) => sum_of("failed", failed_with(m)),
         _ => {
-            static C: SumOf<()> = SumOf::new("done", ());
+            static C: SumOf<()> = SumOf::new("done", crate::Held::bytes(()));
             C.sum()
         }
     }
@@ -182,7 +182,7 @@ pub(crate) fn write_now(fd: u32, s: Str) -> Sum {
         cx.abandon(token);
     }
     {
-        static C: SumOf<()> = SumOf::new("done", ());
+        static C: SumOf<()> = SumOf::new("done", crate::Held::bytes(()));
         C.sum()
     }
 }

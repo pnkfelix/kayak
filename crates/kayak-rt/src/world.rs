@@ -231,10 +231,10 @@ pub fn utf8_to_string(b: BytesAt<'_>) -> Sum {
 
 /// The 256 results `read-byte` gives of a byte.
 static BYTES: [SumOf<u8>; 256] = {
-    let mut a = [const { SumOf::new("byte", 0u8) }; 256];
+    let mut a = [const { SumOf::new("byte", crate::Held::bytes(0u8)) }; 256];
     let mut i = 0;
     while i < 256 {
-        a[i] = SumOf::new("byte", i as u8);
+        a[i] = SumOf::new("byte", crate::Held::bytes(i as u8));
         i += 1;
     }
     a
@@ -243,10 +243,11 @@ static BYTES: [SumOf<u8>; 256] = {
 /// How many counts of `read-bytes` are made once.
 const COUNTS_KEPT: usize = 4096;
 static COUNTS: [SumOf<Int>; COUNTS_KEPT + 1] = {
-    let mut a = [const { SumOf::new("count", Int::fixnum(0)) }; COUNTS_KEPT + 1];
+    let mut a =
+        [const { SumOf::new("count", crate::Held::whole(Int::fixnum(0))) }; COUNTS_KEPT + 1];
     let mut i = 0;
     while i <= COUNTS_KEPT {
-        a[i] = SumOf::new("count", Int::fixnum(i as i64));
+        a[i] = SumOf::new("count", crate::Held::whole(Int::fixnum(i as i64)));
         i += 1;
     }
     a
@@ -263,7 +264,7 @@ pub(crate) fn counted(k: usize) -> Sum {
 pub(crate) fn written(r: std::io::Result<()>) -> Sum {
     match r {
         Ok(()) => {
-            static C: SumOf<()> = SumOf::new("done", ());
+            static C: SumOf<()> = SumOf::new("done", crate::Held::bytes(()));
             C.sum()
         }
         Err(e) => sum_of("failed", io_error(&e)),
@@ -451,7 +452,7 @@ pub fn read_line() -> Sum {
 pub(crate) fn line_answer(r: std::io::Result<Option<Vec<u8>>>) -> Sum {
     match r {
         Ok(None) => {
-            static C: SumOf<()> = SumOf::new("eof", ());
+            static C: SumOf<()> = SumOf::new("eof", crate::Held::bytes(()));
             C.sum()
         }
         Ok(Some(line)) => match String::from_utf8(line) {
@@ -755,7 +756,7 @@ pub fn read_byte() -> Sum {
         None => match i.error.take() {
             Some(e) => sum_of("failed", io_error(&e)),
             None => {
-                static C: SumOf<()> = SumOf::new("eof", ());
+                static C: SumOf<()> = SumOf::new("eof", crate::Held::bytes(()));
                 C.sum()
             }
         },
@@ -775,7 +776,7 @@ pub fn read_bytes(bv: BytesAt<'_>, start: Int, end: Int) -> Sum {
         return match i.error.take() {
             Some(e) => sum_of("failed", io_error(&e)),
             None => {
-                static C: SumOf<()> = SumOf::new("eof", ());
+                static C: SumOf<()> = SumOf::new("eof", crate::Held::bytes(()));
                 C.sum()
             }
         };
@@ -825,11 +826,11 @@ pub(crate) fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
 pub(crate) fn moded(r: Option<std::io::Result<String>>) -> Sum {
     match r {
         None => {
-            static C: SumOf<()> = SumOf::new("not-a-terminal", ());
+            static C: SumOf<()> = SumOf::new("not-a-terminal", crate::Held::bytes(()));
             C.sum()
         }
         Some(Ok(_)) => {
-            static C: SumOf<()> = SumOf::new("done", ());
+            static C: SumOf<()> = SumOf::new("done", crate::Held::bytes(()));
             C.sum()
         }
         Some(Err(e)) => sum_of("failed", io_error(&e)),
@@ -1148,7 +1149,7 @@ pub fn process_start(argv: crate::ListAt<'_, Str>, dir: Str) -> Sum {
     let mut words = Vec::new();
     let mut l = argv;
     while let Some(c) = l {
-        words.push(c.car.as_str().to_string());
+        words.push(c.car().as_str().to_string());
         l = c.cdr;
     }
     let started = (|| {
@@ -1486,7 +1487,7 @@ mod tests {
         let r = list_dir(leak_string(dir.to_string_lossy().into_owned()));
         assert_eq!(sum_name(r), "names");
         assert_eq!(
-            sum_payload::<List<Str>>(r).map(|c| c.car.as_str()),
+            sum_payload::<List<Str>>(r).map(|c| c.car().as_str()),
             Some("a.txt")
         );
         let none = leak_string(dir.join("none").to_string_lossy().into_owned());

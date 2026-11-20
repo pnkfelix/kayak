@@ -76,9 +76,9 @@ impl PairLike for ValuePair {
 }
 
 /// A typed list's pair, seen as a union's: its elements boxed as read.
-impl<T: ToValue + Copy + 'static> PairLike for Cons<'static, T> {
+impl<T: ToValue + crate::Trace + 'static> PairLike for Cons<'static, T> {
     fn car(&self) -> Value {
-        self.car.to_value()
+        self.car().to_value()
     }
     fn cdr(&self) -> Value {
         list(self.cdr)
@@ -161,7 +161,7 @@ impl ToValue for Void {
     }
 }
 
-impl<T: ToValue + Copy + 'static> ToValue for List<T> {
+impl<T: ToValue + crate::Trace + 'static> ToValue for List<T> {
     fn to_value(self) -> Value {
         list(self)
     }
@@ -193,14 +193,14 @@ procedure_value!(A, B);
 procedure_value!(A, B, C);
 procedure_value!(A, B, C, D);
 
-impl<T: Copy + 'static> ToValue for &'static std::cell::Cell<T> {
+impl<T: crate::Trace + 'static> ToValue for &'static crate::Slot<T> {
     fn to_value(self) -> Value {
         other(self, Shape::Box)
     }
 }
 
 /// A ref, a handle of a cell (C478), as its cell's reference.
-impl<T: Copy + 'static> ToValue for crate::Handle<'static, std::cell::Cell<T>> {
+impl<T: crate::Trace + 'static> ToValue for crate::Handle<'static, crate::Slot<T>> {
     fn to_value(self) -> Value {
         other(self.to_ref(), Shape::Box)
     }
@@ -214,7 +214,7 @@ pub fn other<T: Any + Copy>(x: T, shape: Shape) -> Value {
 }
 
 /// A list given for its union: `nil`, or its pair, seen as a union's.
-pub fn list<T: ToValue + Copy + 'static>(xs: List<T>) -> Value {
+pub fn list<T: ToValue + crate::Trace + 'static>(xs: List<T>) -> Value {
     match xs {
         None => Value::Nil,
         Some(p) => Value::Pair(p.to_ref()),
@@ -223,11 +223,11 @@ pub fn list<T: ToValue + Copy + 'static>(xs: List<T>) -> Value {
 
 /// A list at `acyclic` given as a list of a union: copied, its elements
 /// boxed (C78). Frozen, it is the same list as far as a program can tell.
-pub fn boxed_list<T: ToValue + Copy>(xs: List<T>) -> List<Value> {
+pub fn boxed_list<T: ToValue + crate::Trace>(xs: List<T>) -> List<Value> {
     let mut items = Vec::new();
     let mut p = xs;
     while let Some(c) = p {
-        items.push(c.car.to_value());
+        items.push(c.car().to_value());
         p = c.cdr;
     }
     items
@@ -242,11 +242,11 @@ pub fn cons<A: ToValue, B: ToValue>(a: A, b: B) -> Value {
 }
 
 /// A quasiquote's `,@xs`: the list's elements, boxed, before `rest`.
-pub fn spliced<T: ToValue + Copy>(xs: List<T>, rest: Value) -> Value {
+pub fn spliced<T: ToValue + crate::Trace>(xs: List<T>, rest: Value) -> Value {
     let mut items = Vec::new();
     let mut p = xs;
     while let Some(c) = p {
-        items.push(c.car.to_value());
+        items.push(c.car().to_value());
         p = c.cdr;
     }
     items.into_iter().rev().fold(rest, |tail, x| cons(x, tail))
@@ -285,7 +285,7 @@ pub fn unbox_other<T: Any + Copy>(v: Value) -> T {
 
 /// A union narrowed to a list member: `nil`, or the list whose pair it
 /// holds.
-pub fn unbox_list<T: 'static>(v: Value) -> List<T> {
+pub fn unbox_list<T: crate::Trace + 'static>(v: Value) -> List<T> {
     match v {
         Value::Nil => None,
         Value::Pair(p) => match p.as_any().downcast_ref::<Cons<'static, T>>() {
@@ -342,7 +342,7 @@ impl Shaped for Void {
     }
 }
 
-impl<T> Shaped for ListAt<'_, T> {
+impl<T: crate::Trace> Shaped for ListAt<'_, T> {
     fn shape(&self) -> Shape {
         if self.is_none() {
             Shape::Nil
@@ -352,13 +352,13 @@ impl<T> Shaped for ListAt<'_, T> {
     }
 }
 
-impl<T> Shaped for &std::cell::Cell<T> {
+impl<T: crate::Trace> Shaped for &crate::Slot<T> {
     fn shape(&self) -> Shape {
         Shape::Box
     }
 }
 
-impl<T> Shaped for crate::Handle<'_, std::cell::Cell<T>> {
+impl<T: crate::Trace> Shaped for crate::Handle<'_, crate::Slot<T>> {
     fn shape(&self) -> Shape {
         Shape::Box
     }

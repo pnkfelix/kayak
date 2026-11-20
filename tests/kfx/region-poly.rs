@@ -107,10 +107,10 @@ pub fn counted(n: i64) -> i64 {
 
 pub fn main() -> Str {
     {
-        struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, a1: Arena<std::cell::Cell<i64>>, a2: Arena<Cons<'r, Product_1k<i64>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, a1: Arena<kayak_rt::Slot<i64>>, a2: Arena<Cons<'r, Product_1k<i64>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), a1: Arena::default(), a2: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a0 } }
-        impl<'r> Holds<std::cell::Cell<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<std::cell::Cell<i64>> { &self.a1 } }
+        impl<'r> Holds<kayak_rt::Slot<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::Slot<i64>> { &self.a1 } }
         impl<'r> Holds<Cons<'r, Product_1k<i64>>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, Product_1k<i64>>> { &self.a2 } }
         fn letrena__r<'r>(r: &'r Region_R<'r>) -> Str {
             let xs = the::<ListAt<'r, i64>>(rcons(r, 1i64, rcons(r, 2i64, rcons(r, 3i64, nil::<i64>()))));

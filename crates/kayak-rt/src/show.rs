@@ -111,7 +111,7 @@ impl Show for Str {
 }
 
 /// A list, `(1 2 3)`; `nil`, `()`.
-impl<T: Show> Show for Option<crate::Handle<'_, Cons<'_, T>>> {
+impl<T: Show + crate::Trace> Show for Option<crate::Handle<'_, Cons<'_, T>>> {
     fn show(&self, out: &mut String) {
         out.push('(');
         let mut xs = *self;
@@ -121,7 +121,7 @@ impl<T: Show> Show for Option<crate::Handle<'_, Cons<'_, T>>> {
                 out.push(' ');
             }
             first = false;
-            p.car.show(out);
+            p.car().show(out);
             xs = p.cdr;
         }
         out.push(')');
@@ -142,6 +142,15 @@ impl<T: Show + ?Sized> Show for crate::Handle<'_, T> {
 }
 
 /// A reference, as Fixpt writes one: `#<box 5>`.
+impl<T: Show + crate::Trace> Show for crate::Slot<T> {
+    fn show(&self, out: &mut String) {
+        out.push_str("#<box ");
+        self.get().show(out);
+        out.push('>');
+    }
+}
+
+/// A cell of a typed suffix (a flat's, C32), as a reference is written.
 impl<T: Show + Copy> Show for Cell<T> {
     fn show(&self, out: &mut String) {
         out.push_str("#<box ");
