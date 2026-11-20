@@ -29,26 +29,21 @@ pub struct MarkKey<T> {
 
 /// A key: its number alone, holding nothing of the heap (C480).
 impl<T> crate::Trace for MarkKey<T> {
-    type Field = ();
-    type Byte = Self;
-    fn split(self) -> ((), Self) {
-        ((), self)
-    }
-    fn join(_: (), b: Self) -> Self {
-        b
-    }
     fn trace<'a>(self, _: &mut crate::Tracer<'a>)
     where
         Self: 'a,
     {
     }
-    // Its number, held as it is (C495).
-    type Stored = Self;
-    fn store(self) -> Self {
-        self
+    // Its number, held as a Fixpt word (C496).
+    type Stored = crate::HeapWord;
+    fn store(self) -> crate::HeapWord {
+        crate::HeapWord::of_u64(self.id)
     }
-    fn load(s: Self) -> Self {
-        s
+    fn load(w: crate::HeapWord) -> Self {
+        MarkKey {
+            id: w.to_u64(),
+            kinds: PhantomData,
+        }
     }
 }
 

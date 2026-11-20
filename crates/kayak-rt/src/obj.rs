@@ -1127,20 +1127,19 @@ mod array_tests {
 /// A product's kind (Fixpt's `product`, 37): its fields traced, never set.
 const KIND_PRODUCT: u8 = 37;
 
-/// A product's object (C490), as FX-26's heap grammar has one where a heap
-/// object holds it: its parts' traced fields, its trailer, then their plain
-/// bytes, its suffix; both frozen (a product is never written).
+/// A product's object (C490, C496), as Fixpt's product (kind 37) is: its
+/// parts' words its fields, its trailer, no suffix; frozen (a product is
+/// never written).
 #[repr(C)]
 pub struct ProdObj<P: crate::Product> {
     header: u64,
-    fields: P::Fields,
+    words: P::Words,
     trailer: u64,
-    suffix: P::Bytes,
 }
 
 /// A product as a heap object holds it (C490): one word, to its object.
 /// On the stack a product is its parts (kc's calling convention); boxed
-/// where a pair, a sum, a closure holds one, by its `Trace::split`.
+/// where a pair, a sum, a closure holds one, its `Trace::Stored`.
 pub struct Prod<P: crate::Product>(NonNull<ProdObj<P>>, std::marker::PhantomData<P>);
 
 impl<P: crate::Product> Clone for Prod<P> {
@@ -1161,19 +1160,12 @@ unsafe impl<P: crate::Product + Sync> Sync for Prod<P> {}
 impl<P: crate::Product> Prod<P> {
     /// `p`'s object, kept for the run (kayak-rt has no collector yet).
     pub fn new(p: P) -> Self {
-        let (fields, suffix) = p.apart();
+        let words = p.words();
         let to_trailer = std::mem::offset_of!(ProdObj<P>, trailer) / 8;
         let o: &ProdObj<P> = Box::leak(Box::new(ProdObj {
-            header: layout::header(
-                KIND_PRODUCT,
-                to_trailer - 1,
-                std::mem::size_of::<P::Bytes>(),
-                true,
-                true,
-            ),
-            fields,
+            header: layout::header(KIND_PRODUCT, to_trailer - 1, 0, true, true),
+            words,
             trailer: layout::trailer(to_trailer),
-            suffix,
         }));
         crate::stats::note::<ProdObj<P>>(std::mem::size_of::<ProdObj<P>>());
         #[cfg(feature = "heap-stats")]
@@ -1190,8 +1182,7 @@ impl<P: crate::Product> Prod<P> {
     /// The product, its parts joined again.
     #[inline]
     pub fn get(self) -> P {
-        let o = self.obj();
-        P::together(o.fields, o.suffix)
+        P::of_words(self.obj().words)
     }
 
     /// Its object's header word.
@@ -1214,14 +1205,14 @@ impl<P: crate::Product> ProdObj<P> {
     /// The product it is, its parts joined again.
     #[inline]
     pub fn get(&self) -> P {
-        P::together(self.fields, self.suffix)
+        P::of_words(self.words)
     }
 }
 
-/// A product's object: its fields visited, its suffix plain bytes.
+/// A product's object: its words visited, each its part's.
 impl<P: crate::Product> crate::Visit for ProdObj<P> {
     fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
-        crate::Trace::trace(self.fields, t);
+        crate::Trace::trace(P::of_words(self.words), t);
     }
     fn visit_name(&self) -> &'static str {
         std::any::type_name::<Prod<P>>()
@@ -1242,7 +1233,7 @@ impl<P: crate::Product> crate::Trace for Prod<P> {
 
 #[cfg(test)]
 mod product_tests {
-    use crate::{Cons, Held, Str, Trace};
+    use crate::{Cons, Held, Str};
 
     #[derive(Clone, Copy)]
     struct P2<A0, A1>(A0, A1);
@@ -1257,12 +1248,12 @@ mod product_tests {
         assert_eq!(std::mem::size_of::<Held<P2<P2<i64, Str>, char>>>(), 8);
         let back = h.get();
         assert_eq!((back.0.0, back.0.1.as_str(), back.1), (3, "x", 'c'));
-        let (f, ()) = p.split();
-        // Kind 37, one field (the inner product's word), four bytes (`'c'`).
-        let w = f.header();
+        // Kind 37, two fields (the inner product's word, `'c'`'s), no
+        // suffix (C496).
+        let w = crate::Prod::new(p).header();
         assert_eq!(
             (w & 7, (w >> 3) & 0xff, (w >> 14) & 0x3ffff, w >> 32),
-            (6, 37, 1, 4)
+            (6, 37, 2, 0)
         );
         assert_eq!(w & (3 << 12), 3 << 12);
         // A pair of products: its element one word, as its tail is.

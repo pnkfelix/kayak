@@ -22,14 +22,6 @@ pub mod counter {
     use super::*;
 
     impl kayak_rt::Trace for T {
-        type Field = <i64 as kayak_rt::Trace>::Field;
-        type Byte = <i64 as kayak_rt::Trace>::Byte;
-        fn split(self) -> (Self::Field, Self::Byte) {
-            kayak_rt::Trace::split(self.0)
-        }
-        fn join(f: Self::Field, b: Self::Byte) -> Self {
-            T(kayak_rt::Trace::join(f, b))
-        }
         type Stored = <i64 as kayak_rt::Trace>::Stored;
         fn store(self) -> Self::Stored {
             kayak_rt::Trace::store(self.0)

@@ -1135,18 +1135,7 @@ pub mod writing {
         } else {
             put(string_append(str_lit!("<"), string_append(words_of_sep(map(kayak_rt::as_proc(camel), params), str_lit!(", ")), str_lit!(">"))), acc)
         };
-        let acc = put(str_lit!(" {\n    type Field = <"), acc);
-        let acc = put_type(c, second(xs), acc);
-        let acc = put(str_lit!(" as kayak_rt::Trace>::Field;\n    type Byte = <"), acc);
-        let acc = put_type(c, second(xs), acc);
-        let acc = put(str_lit!(" as kayak_rt::Trace>::Byte;\n    fn split(self) -> (Self::Field, Self::Byte) {\n        kayak_rt::Trace::split(self.0)\n    }\n    fn join(f: Self::Field, b: Self::Byte) -> Self {\n        "), acc);
-        let acc = put(camel(t), acc);
-        let acc = put(if null_p(params) {
-            str_lit!("(kayak_rt::Trace::join(f, b))\n    }\n")
-        } else {
-            str_lit!("(kayak_rt::Trace::join(f, b), std::marker::PhantomData)\n    }\n")
-        }, acc);
-        let acc = put(str_lit!("    type Stored = <"), acc);
+        let acc = put(str_lit!(" {\n    type Stored = <"), acc);
         let acc = put_type(c, second(xs), acc);
         let acc = put(str_lit!(" as kayak_rt::Trace>::Stored;\n    fn store(self) -> Self::Stored {\n        kayak_rt::Trace::store(self.0)\n    }\n    fn load(s: Self::Stored) -> Self {\n        "), acc);
         let acc = put(camel(t), acc);

@@ -598,19 +598,12 @@
           (let* ((t (type-head-name (car xs)))
                  (params (head-type-params (car xs)))
                  (inside (not (string=? (module-here c) "")))
-                 ;; Its `Trace` (C480, C481): its one field's, split as it is.
+                 ;; Its `Trace` (C480, C481): its one field's.
                  (acc (put (string-append "impl" (if (null? params) "" (string-append "<" (string-append (words-of-sep (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + kayak_rt::Trace")) params) ", ") ">")))) acc))
                  (acc (put (string-append " kayak_rt::Trace for " (camel t)) acc))
                  (acc (if (null? params) acc (put (string-append "<" (string-append (words-of-sep (map camel params) ", ") ">")) acc)))
-                 (acc (put " {\n    type Field = <" acc))
-                 (acc (put-type c (second xs) acc))
-                 (acc (put " as kayak_rt::Trace>::Field;\n    type Byte = <" acc))
-                 (acc (put-type c (second xs) acc))
-                 (acc (put " as kayak_rt::Trace>::Byte;\n    fn split(self) -> (Self::Field, Self::Byte) {\n        kayak_rt::Trace::split(self.0)\n    }\n    fn join(f: Self::Field, b: Self::Byte) -> Self {\n        " acc))
-                 (acc (put (camel t) acc))
-                 (acc (put (if (null? params) "(kayak_rt::Trace::join(f, b))\n    }\n" "(kayak_rt::Trace::join(f, b), std::marker::PhantomData)\n    }\n") acc))
                  ;; Held as its field is (C495): a Fixpt word where that is one.
-                 (acc (put "    type Stored = <" acc))
+                 (acc (put " {\n    type Stored = <" acc))
                  (acc (put-type c (second xs) acc))
                  (acc (put " as kayak_rt::Trace>::Stored;\n    fn store(self) -> Self::Stored {\n        kayak_rt::Trace::store(self.0)\n    }\n    fn load(s: Self::Stored) -> Self {\n        " acc))
                  (acc (put (camel t) acc))

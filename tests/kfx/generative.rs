@@ -6,14 +6,6 @@ use kayak_rt::*;
 // conversions both ways. In Rust, a newtype.
 
 impl kayak_rt::Trace for Meters {
-    type Field = <i64 as kayak_rt::Trace>::Field;
-    type Byte = <i64 as kayak_rt::Trace>::Byte;
-    fn split(self) -> (Self::Field, Self::Byte) {
-        kayak_rt::Trace::split(self.0)
-    }
-    fn join(f: Self::Field, b: Self::Byte) -> Self {
-        Meters(kayak_rt::Trace::join(f, b))
-    }
     type Stored = <i64 as kayak_rt::Trace>::Stored;
     fn store(self) -> Self::Stored {
         kayak_rt::Trace::store(self.0)
@@ -38,14 +30,6 @@ pub fn down_meters(x: Meters) -> i64 {
 }
 
 impl kayak_rt::Trace for Feet {
-    type Field = <i64 as kayak_rt::Trace>::Field;
-    type Byte = <i64 as kayak_rt::Trace>::Byte;
-    fn split(self) -> (Self::Field, Self::Byte) {
-        kayak_rt::Trace::split(self.0)
-    }
-    fn join(f: Self::Field, b: Self::Byte) -> Self {
-        Feet(kayak_rt::Trace::join(f, b))
-    }
     type Stored = <i64 as kayak_rt::Trace>::Stored;
     fn store(self) -> Self::Stored {
         kayak_rt::Trace::store(self.0)
@@ -70,14 +54,6 @@ pub fn down_feet(x: Feet) -> i64 {
 }
 
 impl<T: Copy + 'static + kayak_rt::Trace> kayak_rt::Trace for Stack<T> {
-    type Field = <List<T> as kayak_rt::Trace>::Field;
-    type Byte = <List<T> as kayak_rt::Trace>::Byte;
-    fn split(self) -> (Self::Field, Self::Byte) {
-        kayak_rt::Trace::split(self.0)
-    }
-    fn join(f: Self::Field, b: Self::Byte) -> Self {
-        Stack(kayak_rt::Trace::join(f, b), std::marker::PhantomData)
-    }
     type Stored = <List<T> as kayak_rt::Trace>::Stored;
     fn store(self) -> Self::Stored {
         kayak_rt::Trace::store(self.0)

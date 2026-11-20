@@ -15332,3 +15332,45 @@ of a fresh build as before, 16.73 million allocations, 354.3 MB. An
 edit's build 0.27 to 0.28 s, a cold one 0.64 to 0.65 s; peak memory
 171 to 176 MB at an edit's, 417 to 443 MB cold, not yet explained.
 - **The full check**: all passed in 484.0 s, its first run; nextest 5618.
+
+## C496. A closure's captures and a product's object Fixpt words (2026-11-20)
+
+The user, after C495's next steps (a closure's captures and a product's
+object as words first, or the memory rise first): "Step 1 next".
+Reviewed first, Fixpt's `fixpt-heap` (`layout.rs`, `heap.rs`): a
+product (kind 37) is `make_frozen`'s bloblet, its fields the values'
+words in order, no suffix; a native closure's free values a word each
+(`CLOSURE_FREE0 + i`).
+
+What changed (kayak-rt):
+- **A product's object** (`ProdObj`): its header, its parts' words (each
+  its type's `Stored`), its trailer, no suffix, as Fixpt's: `Product`'s
+  `words` and `of_words`, not `apart` and `together`.
+- **A closure**: its captures' words, then its code (its type's, no
+  word, C494). Its captures by `Captures`, a tuple's parts' words; none,
+  no words, not unit's word: a closure of no captures still no bytes
+  (the first build of this said 8, unit's word, which the test caught).
+  No header yet, as before.
+- **`split`, `join`, `Field`, `Byte` gone** from `Trace`: nothing lays
+  out fields apart from bytes now, every value a heap object holds its
+  `Stored`. kfx's emitter writes them no more for a generative type
+  (`put-generative`); boot/'s own Rust has none, so no bootstrap of two
+  generations.
+- An escape's tag and a mark's key, a `u64` each, Fixpt words (fixnums)
+  now, not held as themselves.
+- **Tests**: a product's header two fields and no suffix; a closure of an
+  `i64`, a string, an `f64` three words; a tuple stored as words and
+  loaded again.
+
+Measured (the 1000-procedure bench):
+- **The census**, a fresh database, kc's object cache warm: 16.73
+  million allocations, 354.3 MB, each type's count as C495's.
+- **A correction to C495**: its "no bignum" was of a build with kc's
+  object cache (`exe.o.d`) warm. With it empty, a cold build makes
+  36.0 million allocations, 81,686 of them bignums at C495 (2.6 MB, its
+  64-bit integers past 60 bits in pairs), 82,546 now (860 more, from a
+  closure's or a product's words); each other type's count the same.
+  Where those integers are made is not yet traced (TODO §54).
+- An edit's build 0.28 to 0.29 s, a cold one 0.65 to 0.66 s; peak memory
+  174 to 175 MB and 443 MB, as C495's.
+- **The full check**: all passed in 494.3 s, its second run (the first stopped at 106 s, an unused import in a test); nextest 5618.

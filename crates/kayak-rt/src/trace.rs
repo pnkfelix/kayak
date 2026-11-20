@@ -4,11 +4,10 @@
 //!
 //! Two traits, as FX-26's heap grammar has two things (C481):
 //! - **`Trace`**, of a value (every KFX value is `Copy`): traced by value,
-//!   so a cell's copy traces what it reaches; and split, by its type, into
-//!   its traced part (`Field`: handles, strings, what a collector follows)
-//!   and its plain bytes (`Byte`: an `i64`, an `f64`, a character), as a
-//!   bloblet keeps its traced fields apart from its untraced suffix. A
-//!   closure's captures are laid out by it (`closure.rs`).
+//!   so a cell's copy traces what it reaches; and held in the heap as its
+//!   type's `Stored`, a Fixpt word (C495, C496), as Fixpt's heap holds
+//!   every value: a closure's captures, a product's parts, a pair's
+//!   element, each a word.
 //! - **`Visit`**, of what a handle points to (a datatype's value, a pair, a
 //!   cell, a sum's cell, a closure): visited by reference, once, and
 //!   object-safe, so a closure behind `dyn` is visited too.
@@ -24,15 +23,9 @@ use crate::{Array, BigAt, Cons, Handle, Int, Str, Symbol, Void};
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 
-/// A value: what of the heap it reaches, told to the tracer; and its
-/// traced part and its plain bytes, apart (a bloblet's fields and suffix).
+/// A value: what of the heap it reaches, told to the tracer; and how a
+/// heap object holds it.
 pub trait Trace: Copy {
-    /// Its part a collector follows.
-    type Field: Trace;
-    /// Its plain bytes.
-    type Byte: Copy;
-    fn split(self) -> (Self::Field, Self::Byte);
-    fn join(f: Self::Field, b: Self::Byte) -> Self;
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a;
@@ -160,12 +153,6 @@ pub fn traced<'a, T: Trace + 'a>(root: T) -> Tracer<'a> {
 macro_rules! trace_bytes {
     ($($t:ty),*) => {
         $(impl $crate::Trace for $t {
-            type Field = ();
-            type Byte = Self;
-            #[inline(always)]
-            fn split(self) -> ((), Self) { ((), self) }
-            #[inline(always)]
-            fn join(_: (), b: Self) -> Self { b }
             #[inline(always)]
             fn trace<'a>(self, _: &mut $crate::Tracer<'a>) where Self: 'a {}
             type Stored = Self;
@@ -182,12 +169,6 @@ macro_rules! trace_bytes {
 macro_rules! trace_word {
     ($($t:ty, $store:expr, $load:expr;)*) => {
         $(impl Trace for $t {
-            type Field = ();
-            type Byte = Self;
-            #[inline(always)]
-            fn split(self) -> ((), Self) { ((), self) }
-            #[inline(always)]
-            fn join(_: (), b: Self) -> Self { b }
             #[inline(always)]
             fn trace<'a>(self, _: &mut Tracer<'a>) where Self: 'a {}
             type Stored = crate::HeapWord;
@@ -199,21 +180,11 @@ macro_rules! trace_word {
     };
 }
 
-/// A value kept whole among the traced fields (`Field` itself, no bytes):
-/// in an impl of `Trace`, before its `trace`.
+/// A value held as itself (no object of Fixpt's layout yet, C495): in an
+/// impl of `Trace`, before its `trace`.
 #[macro_export]
 macro_rules! trace_whole {
     () => {
-        type Field = Self;
-        type Byte = ();
-        #[inline(always)]
-        fn split(self) -> (Self, ()) {
-            (self, ())
-        }
-        #[inline(always)]
-        fn join(f: Self, _: ()) -> Self {
-            f
-        }
         // Held as it is, for now (C495): no object of Fixpt's layout yet.
         type Stored = Self;
         #[inline(always)]
@@ -227,41 +198,14 @@ macro_rules! trace_whole {
     };
 }
 
-/// `trace_whole!`'s fields alone, for a value held as a Fixpt word.
-#[macro_export]
-macro_rules! trace_whole_fields {
-    () => {
-        type Field = Self;
-        type Byte = ();
-        #[inline(always)]
-        fn split(self) -> (Self, ()) {
-            (self, ())
-        }
-        #[inline(always)]
-        fn join(f: Self, _: ()) -> Self {
-            f
-        }
-    };
-}
-
 /// A product (a tuple struct, C490): held boxed, one word to its object
 /// (`Prod`, kind 37), where a heap object holds it, as FX-26's heap grammar
-/// has it; its object its parts' fields and bytes apart (`Product`). On
-/// the stack, its parts traced each.
+/// has it; its object its parts' words (`Product`, C496), as Fixpt's
+/// product's fields. On the stack, its parts traced each.
 #[macro_export]
 macro_rules! trace_product {
     ($name:ident, $($a:ident $i:tt),*) => {
         impl<$($a: $crate::Trace),*> $crate::Trace for $name<$($a),*> {
-            type Field = $crate::Prod<Self>;
-            type Byte = ();
-            #[inline]
-            fn split(self) -> (Self::Field, ()) {
-                ($crate::Prod::new(self), ())
-            }
-            #[inline(always)]
-            fn join(f: Self::Field, _: ()) -> Self {
-                f.get()
-            }
             #[inline]
             fn trace<'a>(self, t: &mut $crate::Tracer<'a>) where Self: 'a {
                 $(self.$i.trace(t);)*
@@ -278,16 +222,14 @@ macro_rules! trace_product {
             }
         }
         impl<$($a: $crate::Trace),*> $crate::Product for $name<$($a),*> {
-            type Fields = $name<$($a::Field),*>;
-            type Bytes = $name<$($a::Byte),*>;
+            type Words = $name<$($a::Stored),*>;
             #[inline(always)]
-            fn apart(self) -> (Self::Fields, Self::Bytes) {
-                $(#[allow(non_snake_case)] let $a = $crate::Trace::split(self.$i);)*
-                ($name($($a.0),*), $name($($a.1),*))
+            fn words(self) -> Self::Words {
+                $name($($crate::Trace::store(self.$i)),*)
             }
             #[inline(always)]
-            fn together(f: Self::Fields, b: Self::Bytes) -> Self {
-                $name($($crate::Trace::join(f.$i, b.$i)),*)
+            fn of_words(w: Self::Words) -> Self {
+                $name($($a::load(w.$i)),*)
             }
         }
         /// A union's member (C491): its object, kind 37.
@@ -306,13 +248,12 @@ macro_rules! trace_product {
     };
 }
 
-/// A product's parts, apart (C490): what its object (`Prod`) keeps, its
-/// traced fields and its plain bytes, each part's split.
+/// A product's parts as its object (`Prod`) keeps them (C496): each a
+/// Fixpt word, its `Stored`.
 pub trait Product: Trace {
-    type Fields: Trace;
-    type Bytes: Copy;
-    fn apart(self) -> (Self::Fields, Self::Bytes);
-    fn together(f: Self::Fields, b: Self::Bytes) -> Self;
+    type Words: Copy;
+    fn words(self) -> Self::Words;
+    fn of_words(w: Self::Words) -> Self;
 }
 
 /// A value as a heap object holds it (C490, C495): its type's `Stored`, a
@@ -384,16 +325,8 @@ trace_word! {
 
 trace_bytes!(Void);
 
-/// Nothing: neither traced nor bytes.
+/// Nothing: not traced, held as Fixpt's unit.
 impl Trace for () {
-    type Field = ();
-    type Byte = ();
-    #[inline(always)]
-    fn split(self) -> ((), ()) {
-        ((), ())
-    }
-    #[inline(always)]
-    fn join(_: (), _: ()) {}
     #[inline(always)]
     fn trace<'a>(self, _: &mut Tracer<'a>)
     where
@@ -409,22 +342,28 @@ impl Trace for () {
     fn load(_: crate::HeapWord) {}
 }
 
-/// Tuples: each part's split apart, the fields together and the bytes
-/// together (a closure's captures, `closure.rs`).
+/// A closure's captures (`closure.rs`, C496): a tuple, its parts' words;
+/// none, no words (not unit's word: a closure of no captures no bytes,
+/// C494), as Fixpt's closure of no free values has none.
+pub trait Captures: Trace {
+    type Words: Copy;
+    fn words(self) -> Self::Words;
+    fn of_words(w: Self::Words) -> Self;
+}
+
+impl Captures for () {
+    type Words = ();
+    #[inline(always)]
+    fn words(self) {}
+    #[inline(always)]
+    fn of_words(_: ()) {}
+}
+
+/// Tuples: each part traced, and held, as itself (a closure's captures
+/// each a word).
 macro_rules! trace_tuples {
     ($(($($a:ident $i:tt),+)),*) => {
         $(impl<$($a: Trace),+> Trace for ($($a,)+) {
-            type Field = ($($a::Field,)+);
-            type Byte = ($($a::Byte,)+);
-            #[inline(always)]
-            fn split(self) -> (Self::Field, Self::Byte) {
-                $(#[allow(non_snake_case)] let $a = self.$i.split();)+
-                (($($a.0,)+), ($($a.1,)+))
-            }
-            #[inline(always)]
-            fn join(f: Self::Field, b: Self::Byte) -> Self {
-                ($($a::join(f.$i, b.$i),)+)
-            }
             #[inline]
             fn trace<'a>(self, t: &mut Tracer<'a>) where Self: 'a {
                 $(self.$i.trace(t);)+
@@ -437,6 +376,17 @@ macro_rules! trace_tuples {
             #[inline(always)]
             fn load(s: Self::Stored) -> Self {
                 ($($a::load(s.$i),)+)
+            }
+        }
+        impl<$($a: Trace),+> Captures for ($($a,)+) {
+            type Words = ($($a::Stored,)+);
+            #[inline(always)]
+            fn words(self) -> Self::Words {
+                self.store()
+            }
+            #[inline(always)]
+            fn of_words(w: Self::Words) -> Self {
+                Self::load(w)
             }
         })*
     };
@@ -497,7 +447,6 @@ impl Trace for crate::BytesAt<'_> {
 }
 
 impl Trace for Str {
-    trace_whole_fields!();
     type Stored = crate::HeapWord;
     #[inline(always)]
     fn store(self) -> crate::HeapWord {
@@ -528,7 +477,6 @@ impl Trace for Symbol {
 /// An integer (C488): a fixnum, nothing; a bignum, its object reached,
 /// nothing in it traced.
 impl Trace for Int {
-    trace_whole_fields!();
     type Stored = crate::HeapWord;
     #[inline(always)]
     fn store(self) -> crate::HeapWord {
@@ -856,12 +804,12 @@ mod tests {
     }
 
     #[test]
-    fn a_tuple_split_into_fields_and_bytes() {
+    fn a_tuple_held_as_words() {
         let s = crate::str_lit("s");
-        let ((f0, f1, f2), (b0, b1, b2)) = (3i64, s, 2.5f64).split();
-        let _: ((), Str, ()) = (f0, f1, f2);
-        let _: (i64, (), f64) = (b0, b1, b2);
-        let back = <(i64, Str, f64)>::join((f0, f1, f2), (b0, b1, b2));
-        assert_eq!((back.0, back.2), (3, 2.5));
+        let w = (3i64, s, 2.5f64).store();
+        let _: (crate::HeapWord, crate::HeapWord, crate::HeapWord) = w;
+        assert_eq!(w.0.raw(), 3 << 3);
+        let back = <(i64, Str, f64)>::load(w);
+        assert_eq!((back.0, back.1.as_str(), back.2), (3, "s", 2.5));
     }
 }

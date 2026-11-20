@@ -1,33 +1,30 @@
-//! Closures as FX-26's heap grammar has them (C481): a closure is a heap
-//! object of its traced fields, then its untraced suffix, then its code,
-//! as Fixpt's closure (kind 8) is a bloblet of its captures and code. Not
-//! Fixpt's bytes, but its structure: what a collector follows is the
-//! fields, apart from the plain bytes (an `i64`, an `f64`, a character)
-//! and the code pointer.
+//! Closures as FX-26's heap grammar has them (C481, C496): a closure is a
+//! heap object of its captures, each a Fixpt word (its type's
+//! `Trace::Stored`, `Captures`), as Fixpt's closure is a bloblet of its free values,
+//! each a word. Its code is its type's (C494), no word of it: so one of no
+//! captures is no bytes. No header yet (TODO §54).
 //!
 //! kfx writes a closure as its captures, a tuple, and its code, a
-//! function of them and its parameters that captures nothing (rustc
-//! checks that: a closure that captures is no `fn`). The tuple is split by
-//! its types' `Trace` (`trace.rs`) into fields and bytes, kept so, and
-//! joined again at each call.
+//! function of them and its parameters that captures nothing (checked
+//! when built). The tuple is stored as its words, and loaded again at
+//! each call.
 //!
 //! A procedure value is a handle to `dyn CallN`, called by `.call(...)`:
 //! stable Rust lets no type of ours be called as `f(x)`.
 
 use crate::Handle;
-use crate::trace::{Trace, Tracer, Visit};
+use crate::trace::{Captures, Trace, Tracer, Visit};
 
-/// A closure: its captures' traced fields, their plain bytes, its code.
+/// A closure: its captures' words, its code.
 #[repr(C)]
-pub struct Closure<E: Trace, C> {
-    fields: E::Field,
-    suffix: E::Byte,
+pub struct Closure<E: Captures, C> {
+    words: E::Words,
     code: C,
 }
 
-impl<E: Trace, C> Visit for Closure<E, C> {
+impl<E: Captures, C> Visit for Closure<E, C> {
     fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
-        self.fields.trace(t);
+        E::of_words(self.words).trace(t);
     }
 }
 
@@ -74,10 +71,10 @@ macro_rules! arities {
         }
 
         #[allow(non_snake_case)]
-        impl<E: Trace, Code: Fn(E, $($a),*) -> R, $($a,)* R> $call<$($a,)* R> for Closure<E, Code> {
+        impl<E: Captures, Code: Fn(E, $($a),*) -> R, $($a,)* R> $call<$($a,)* R> for Closure<E, Code> {
             #[inline]
             fn call(&self, $($a: $a),*) -> R {
-                (self.code)(E::join(self.fields, self.suffix), $($a),*)
+                (self.code)(E::of_words(self.words), $($a),*)
             }
         }
 
@@ -168,22 +165,19 @@ macro_rules! arities {
         /// was), so that one of no captures is no bytes at all, made at no
         /// cost (a box of nothing allocates nothing).
         #[inline]
-        pub fn $make<'r, E: Trace + 'r, Code: Fn(E, $($a),*) -> R + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $proc<'r, $($a,)* R> {
+        pub fn $make<'r, E: Captures + 'r, Code: Fn(E, $($a),*) -> R + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $proc<'r, $($a,)* R> {
             const { assert!(std::mem::size_of::<Code>() == 0, "a closure's code captures") };
-            let (fields, suffix) = env.split();
-            Handle::made(kept(Closure::<E, Code> { fields, suffix, code }))
+            Handle::made(kept(Closure::<E, Code> { words: env.words(), code }))
         }
 
         /// A closure of captures `env`, all `Send + Sync`, and code `code`.
         #[inline]
-        pub fn $makes<'r, E: Trace + Send + Sync + 'r, Code: Fn(E, $($a),*) -> R + Send + Sync + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $procs<'r, $($a,)* R>
+        pub fn $makes<'r, E: Captures + Send + Sync + 'r, Code: Fn(E, $($a),*) -> R + Send + Sync + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $procs<'r, $($a,)* R>
         where
-            E::Field: Send + Sync,
-            E::Byte: Send + Sync,
+            E::Words: Send + Sync,
         {
             const { assert!(std::mem::size_of::<Code>() == 0, "a closure's code captures") };
-            let (fields, suffix) = env.split();
-            Handle::made(kept(Closure::<E, Code> { fields, suffix, code }))
+            Handle::made(kept(Closure::<E, Code> { words: env.words(), code }))
         }
     )*};
 }
@@ -224,26 +218,19 @@ mod tests {
         assert_eq!(f.call(1), 5 + 40 + 1 + 1);
         let t = crate::traced(f);
         let (rows, strings) = t.census();
-        // The closure, and the pair its fields hold; the string.
+        // The closure, and the pair its captures hold; the string.
         assert_eq!(rows.iter().map(|r| r.1).sum::<u64>(), 2);
         assert_eq!(strings.0, 1);
     }
 
     #[test]
-    fn its_bytes_kept_apart() {
-        type E = (i64, crate::Str, f64);
-        let c = Closure::<E, fn(E) -> i64> {
-            fields: ((), crate::str_lit("x"), ()),
-            suffix: (7, (), 1.5),
-            code: |(k, _, _)| k,
-        };
-        let f: Proc0<'_, i64> = Handle::made(&c);
-        assert_eq!(f.call(), 7);
-        // The fields one string's size; the bytes two words.
-        assert_eq!(
-            std::mem::size_of::<<E as Trace>::Field>(),
-            std::mem::size_of::<crate::Str>()
-        );
-        assert_eq!(std::mem::size_of::<<E as Trace>::Byte>(), 16);
+    fn its_captures_words() {
+        // Each capture a Fixpt word (C496): an `i64` a fixnum, a string
+        // its tagged pointer, an `f64` a flonum's.
+        let f: Proc0<'static, f64> = closure0((7i64, crate::str_lit("x"), 1.5f64), |(k, s, x)| {
+            k as f64 + s.as_str().len() as f64 + x
+        });
+        assert_eq!(std::mem::size_of_val(f.to_ref()), 24);
+        assert_eq!(f.call(), 9.5);
     }
 }
