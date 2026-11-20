@@ -142,7 +142,7 @@ impl<T: Show + ?Sized> Show for crate::Handle<'_, T> {
 }
 
 /// A reference, as Fixpt writes one: `#<box 5>`.
-impl<T: Show + crate::Trace> Show for crate::Slot<T> {
+impl<T: Show + crate::Trace> Show for crate::RefAt<'_, T> {
     fn show(&self, out: &mut String) {
         out.push_str("#<box ");
         self.get().show(out);

@@ -7,7 +7,7 @@ use kayak_rt::*;
 // needs: evens makes pairs, odds references, and each calls the other.
 
 #[inline]
-pub fn evens<'p, Place_P: kayak_rt::Visit + Holds<kayak_rt::Slot<i64>> + Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64, acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
+pub fn evens<'p, Place_P: kayak_rt::Visit + Holds<kayak_rt::RefObj<i64>> + Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64, acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
     if i64_lt(n, 1i64) {
         acc
     } else {
@@ -15,7 +15,7 @@ pub fn evens<'p, Place_P: kayak_rt::Visit + Holds<kayak_rt::Slot<i64>> + Holds<C
     }
 }
 
-pub fn odds<'p, Place_P: kayak_rt::Visit + Holds<kayak_rt::Slot<i64>> + Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64, acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
+pub fn odds<'p, Place_P: kayak_rt::Visit + Holds<kayak_rt::RefObj<i64>> + Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64, acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
     let c = the::<RefAt<'p, i64>>(rnew(h, n));
     if i64_lt(n, 1i64) {
         acc
@@ -26,10 +26,10 @@ pub fn odds<'p, Place_P: kayak_rt::Visit + Holds<kayak_rt::Slot<i64>> + Holds<Co
 
 pub fn total(n: i64) -> i64 {
     {
-        struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, a1: Arena<kayak_rt::Slot<i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, a1: Arena<kayak_rt::RefObj<i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), a1: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a0 } }
-        impl<'r> Holds<kayak_rt::Slot<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::Slot<i64>> { &self.a1 } }
+        impl<'r> Holds<kayak_rt::RefObj<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::RefObj<i64>> { &self.a1 } }
         impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); kayak_rt::Visit::visit(&self.a1, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
             let xs = evens(r, n, nil::<i64>());

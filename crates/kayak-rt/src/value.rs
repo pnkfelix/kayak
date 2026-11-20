@@ -274,7 +274,7 @@ impl<T: crate::Trace + 'static> ToValue for &'static crate::Slot<T> {
 }
 
 /// A ref, a handle of a cell (C478), as its cell's reference.
-impl<T: crate::Trace + 'static> ToValue for crate::Handle<'static, crate::Slot<T>> {
+impl<T: crate::Trace + 'static> ToValue for crate::Ref<T> {
     fn to_value(self) -> Value {
         other(self, Shape::Box)
     }
@@ -432,7 +432,7 @@ impl<T: crate::Trace> Shaped for &crate::Slot<T> {
     }
 }
 
-impl<T: crate::Trace> Shaped for crate::Handle<'_, crate::Slot<T>> {
+impl<T: crate::Trace> Shaped for crate::RefAt<'_, T> {
     fn shape(&self) -> Shape {
         Shape::Box
     }
@@ -567,7 +567,7 @@ mod tests {
             _ => panic!("not a sum's"),
         }
         assert_eq!(unbox_other::<crate::Sum>(v).addr(), s.addr());
-        // A ref: its cell.
+        // A ref: its box.
         let r: crate::Ref<i64> = crate::heap_new(5);
         assert!(unbox_other::<crate::Ref<i64>>(r.to_value()).same(r));
         // A datum of a string, the sum and the ref: each reached once,
@@ -584,7 +584,7 @@ mod tests {
         };
         assert_eq!(of("ValuePair"), 3);
         assert_eq!(of("SumOf<i64>"), 1);
-        assert_eq!(of("Slot<i64>"), 1);
+        assert_eq!(of("RefObj<i64>"), 1);
         assert_eq!(strings.0, 1);
         // Three words, not Fixpt's one (`TODO.md` §54).
         assert_eq!(std::mem::size_of::<Value>(), 24);

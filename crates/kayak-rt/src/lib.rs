@@ -88,13 +88,10 @@ impl std::fmt::Debug for Str {
     }
 }
 
-/// `(ref T R)`: a cell, which any alias may read and write, as FX-26's may;
-/// in a `letrena`'s region, `RefAt<'r, T>`, borrowed from its arena, and
-/// in the heap, which is never freed, `Ref<T>`.
-pub type RefAt<'r, T> = Handle<'r, Slot<T>>;
+/// `(ref T R)` in the heap (`RefAt`, `obj.rs`: one Fixpt word, to a box).
 pub type Ref<T> = RefAt<'static, T>;
 
-pub use obj::{FlatArray, HeapWord, ListAt, Prod, ProdObj};
+pub use obj::{FlatArray, HeapWord, ListAt, Prod, ProdObj, RefAt, RefObj};
 
 /// A pair (C497): Fixpt's headerless two-word cell, its element's word
 /// (its car, held: C490, C495) and the rest of the list's (its cdr).
@@ -554,7 +551,7 @@ pub fn i64_to_string(n: i64) -> Str {
 
 #[inline]
 pub fn new<'r, T: Trace>(v: T) -> RefAt<'r, T> {
-    alloc(Slot::new(v))
+    RefAt::of_obj(alloc(RefObj::new(v)))
 }
 
 #[inline]

@@ -15414,3 +15414,46 @@ million allocations, 354.3 MB; an edit's build 0.28 s, a cold one 0.64
 to 0.65 s; peak memory 175 to 176 MB and 442 MB, as before. kc's binary
 9.39 to 9.46 MB (each walk's test of a tag).
 - **The full check**: all passed in 582.2 s, its first run; nextest 5619.
+
+## C498. A ref one Fixpt word, to Fixpt's box; headers count the trailer (2026-11-20)
+
+The user, after C497 (refs next): "Okay let's just go on to refs as
+Fixpt boxes".
+
+Reviewed first, Fixpt's `fixpt-heap` (`heap.rs`'s `alloc`, `make_box`,
+`put_header`, `read_head`; `value.rs`'s tags): a box (kind 10) is an
+object of one field, settable: its header, its field, its trailer; a
+word to it tagged `100`, at its suffix's start (past its trailer), its
+field two words back. And two things kayak-rt had not as Fixpt has
+them, found reading `put_header`:
+- **The header's count of fields counts the trailer** (`fields + 1`;
+  `bloblet_len` and `obj_len` take it off again), as kayak-jit's
+  objects count it (`object_with`, "the trailer counted"). kayak-rt's
+  own did not: a bloblet's (C484), a typed-suffix bloblet's (C485), a
+  product's (C490), an array's (its elements, not its words). Now each
+  counts as Fixpt's: its fields' words and its trailer.
+- **A large object's extension word comes before its main header**
+  (`read_head` finds the count at `at - 1`). kayak-rt's large array had
+  them the other way; now Fixpt's order, its length read from whichever
+  its first word is (the extension's kind, 255).
+
+What changed (kayak-rt):
+- **`RefObj<T>`** (`obj.rs`): Fixpt's box, its header (kind 10, two
+  fields: its value's cell and its trailer; neither frozen), its cell
+  (a `Slot`, one word), its trailer. In the heap's arena and a region's.
+- **`RefAt`**: one Fixpt word, its box's suffix's address tagged
+  `100`, made only of a box (`of_obj`), so that the word it reads a box
+  of is one it made. `get`, `set`, `same` (`eq?`: its word), its
+  `Stored` its word; a union's member its box; an eqtable's identity its
+  word.
+- `Slot` stays, the one-word cell: a box's, an array's element.
+- kfx's emitter: a region's arena of references `RefObj<T>`, not
+  `Slot<T>` (`held-type`); the corpus's Rust of regions blessed again.
+- **Tests**: a ref one word, tagged `100`, its header kind 10 and two
+  fields; a product's header three fields for two words.
+
+Measured (the 1000-procedure bench): the census as C497's (kc's build
+reaches few references), 16.73 million allocations, 354.3 MB; an
+edit's build 0.28 to 0.29 s, a cold one 0.65 to 0.66 s; peak memory 176
+MB and 443 MB, as before. kc's binary 9.46 to 9.43 MB.
+- **The full check**: all passed in 552.7 s, its first run (the machine loaded besides); nextest 5620.

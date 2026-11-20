@@ -131,8 +131,8 @@ pub fn rcons<'r, T: crate::Trace, R: Holds<Cons<'r, T>>>(
 }
 
 /// `(rnew r v)`: a reference made in the region `r`.
-pub fn rnew<'r, T: crate::Trace, R: Holds<crate::Slot<T>>>(r: &'r R, v: T) -> RefAt<'r, T> {
-    r.arena().alloc(crate::Slot::new(v))
+pub fn rnew<'r, T: crate::Trace, R: Holds<crate::RefObj<T>>>(r: &'r R, v: T) -> RefAt<'r, T> {
+    RefAt::of_obj(r.arena().alloc(crate::RefObj::new(v)))
 }
 
 #[cfg(test)]
@@ -143,7 +143,7 @@ mod tests {
     #[derive(Default)]
     struct Region<'r> {
         pairs: Arena<Cons<'r, i64>>,
-        cells: Arena<crate::Slot<i64>>,
+        cells: Arena<crate::RefObj<i64>>,
     }
 
     impl<'r> Holds<Cons<'r, i64>> for Region<'r> {
@@ -152,8 +152,8 @@ mod tests {
         }
     }
 
-    impl Holds<crate::Slot<i64>> for Region<'_> {
-        fn arena(&self) -> &Arena<crate::Slot<i64>> {
+    impl Holds<crate::RefObj<i64>> for Region<'_> {
+        fn arena(&self) -> &Arena<crate::RefObj<i64>> {
             &self.cells
         }
     }

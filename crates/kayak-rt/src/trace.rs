@@ -561,8 +561,9 @@ impl<T: Trace> Visit for Cell<T> {
     }
 }
 
-/// A cell of KFX's (C490): a reference's, its value held (a product boxed,
-/// one word, as FX-26's box holds one). Read and written as a `Cell` is.
+/// A cell of KFX's (C490): a box's (a reference's, `RefObj`, C498) or an
+/// array's element, its value held (a Fixpt word, as Fixpt's box holds
+/// one). Read and written as a `Cell` is.
 pub struct Slot<T: Trace>(Cell<Held<T>>);
 
 impl<T: Trace> Slot<T> {

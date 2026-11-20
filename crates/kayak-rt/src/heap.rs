@@ -95,7 +95,7 @@ pub fn heap_cons<T: 'static + crate::Trace>(car: T, cdr: List<T>) -> List<T> {
 /// `new`, in the heap's arena of cells.
 #[inline]
 pub fn heap_new<T: Copy + 'static + crate::Trace>(v: T) -> Ref<T> {
-    heap_alloc(crate::Slot::new(v))
+    crate::RefAt::of_obj(heap_alloc(crate::RefObj::new(v)))
 }
 
 #[cfg(test)]

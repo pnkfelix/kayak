@@ -567,7 +567,7 @@ impl<Fs> Bloblet<Fs> {
                 std::alloc::handle_alloc_error(layout)
             };
             at.as_ptr().write(BlobHead {
-                header: layout::header(layout::KIND_BLOBLET, to_trailer - 1, bytes, false, frozen),
+                header: layout::header(layout::KIND_BLOBLET, to_trailer, bytes, false, frozen),
                 fields,
                 trailer: layout::trailer(to_trailer),
             });
@@ -769,7 +769,7 @@ impl<Fs, S: Flat> TBloblet<Fs, S> {
             };
             std::ptr::addr_of_mut!((*p).header).write(layout::header(
                 layout::KIND_BLOBLET,
-                to_trailer - 1,
+                to_trailer,
                 bytes,
                 false,
                 false,
@@ -948,10 +948,11 @@ impl<T> FlatArray<T> {
 }
 
 /// `(arrayof T R)` (C485): one word, to an object of Fixpt's layout: its
-/// header (kind 3, vector; its elements the fields, as many as it has),
-/// and, past what the header's 18 bits count, Fixpt's second header word
-/// (`large`, kind 255, the count above it); its elements, each a cell;
-/// its trailer. In the heap, kept.
+/// header (kind 3, vector; its fields its elements' words and its trailer,
+/// as Fixpt counts them, C498), and, past what the header's 18 bits count,
+/// Fixpt's extension word before it (kind 255, the count above it, the
+/// main header `large`); its elements, each a cell; its trailer. In the
+/// heap, kept.
 pub struct Array<T: crate::Trace + 'static>(
     NonNull<u64>,
     std::marker::PhantomData<&'static [crate::Slot<T>]>,
@@ -970,26 +971,44 @@ impl<T: crate::Trace> Copy for Array<T> {}
 const FIELDS_MAX: usize = (1 << 18) - 1;
 const LARGE: u64 = 1 << 11;
 
+/// Fixpt's kind of an extension word.
+const KIND_EXTENSION: u64 = 255;
+
+/// An array of `n` `T`s's fields, as Fixpt counts them: its elements'
+/// words and its trailer.
+const fn field_words<T: crate::Trace>(n: usize) -> usize {
+    (n * std::mem::size_of::<crate::Slot<T>>()).div_ceil(8) + 1
+}
+
 /// Where an array's elements begin, in words: after one header word, or
 /// two for a large one.
-const fn elements_at(n: usize) -> usize {
-    if n > FIELDS_MAX { 2 } else { 1 }
+const fn elements_at<T: crate::Trace>(n: usize) -> usize {
+    if field_words::<T>(n) > FIELDS_MAX {
+        2
+    } else {
+        1
+    }
 }
 
 impl<T: crate::Trace> Array<T> {
     /// Its elements, how many.
     #[inline]
     pub fn len(self) -> usize {
+        let size = std::mem::size_of::<crate::Slot<T>>();
+        if size == 0 {
+            return 0;
+        }
         // SAFETY: an `Array` is made only by `array_made`, of a block whose
-        // first word is its header and, if large, its second the count.
-        unsafe {
+        // first word is its header, or, if large, the extension word.
+        let fields = unsafe {
             let h = *self.0.as_ptr();
-            if h & LARGE != 0 {
-                (*self.0.as_ptr().add(1) >> 11) as usize
+            if (h >> 3) & 0xff == KIND_EXTENSION {
+                (h >> 11) as usize
             } else {
                 ((h >> 14) & FIELDS_MAX as u64) as usize
             }
-        }
+        };
+        (fields - 1) * 8 / size
     }
 
     #[inline]
@@ -1005,7 +1024,10 @@ impl<T: crate::Trace> Array<T> {
         // block it was made in (whose pointer it keeps), kept for the run.
         unsafe {
             std::slice::from_raw_parts(
-                self.0.as_ptr().add(elements_at(n)).cast::<crate::Slot<T>>(),
+                self.0
+                    .as_ptr()
+                    .add(elements_at::<T>(n))
+                    .cast::<crate::Slot<T>>(),
                 n,
             )
         }
@@ -1020,7 +1042,8 @@ impl<T: crate::Trace> Array<T> {
     /// Its object's bytes: its header words, its elements, its trailer.
     pub fn object_bytes(self) -> usize {
         let n = self.len();
-        (elements_at(n) * 8 + n * std::mem::size_of::<crate::Slot<T>>()).next_multiple_of(8) + 8
+        (elements_at::<T>(n) * 8 + n * std::mem::size_of::<crate::Slot<T>>()).next_multiple_of(8)
+            + 8
     }
 }
 
@@ -1046,10 +1069,14 @@ pub(crate) fn array_made<T: crate::Trace + 'static>(
         assert!(
             std::mem::align_of::<crate::Slot<T>>() <= 8,
             "an array's element aligned past a word"
+        );
+        assert!(
+            std::mem::size_of::<crate::Slot<T>>().is_multiple_of(8),
+            "an array's element not whole words"
         )
     };
     let n = items.len();
-    let at = elements_at(n) * 8;
+    let at = elements_at::<T>(n) * 8;
     let trailer_at = (at + n * std::mem::size_of::<crate::Slot<T>>()).next_multiple_of(8);
     let layout = std::alloc::Layout::from_size_align(trailer_at + 8, 8).expect("an array's size");
     crate::stats::note::<Array<T>>(layout.size());
@@ -1060,12 +1087,14 @@ pub(crate) fn array_made<T: crate::Trace + 'static>(
         let Some(base) = NonNull::new(p) else {
             std::alloc::handle_alloc_error(layout)
         };
-        if n > FIELDS_MAX {
-            p.write(layout::header(3, 0, 0, false, false) | LARGE);
+        let fields = field_words::<T>(n);
+        if fields > FIELDS_MAX {
+            // Fixpt's: the extension word, then the main header, `large`.
+            p.write(layout::TAG_HEADER | KIND_EXTENSION << 3 | (fields as u64) << 11);
             p.add(1)
-                .write(layout::TAG_HEADER | 255 << 3 | (n as u64) << 11);
+                .write(layout::header(3, 0, 0, false, false) | LARGE);
         } else {
-            p.write(layout::header(3, n, 0, false, false));
+            p.write(layout::header(3, fields, 0, false, false));
         }
         let cells = p.cast::<u8>().add(at).cast::<crate::Slot<T>>();
         let mut k = 0;
@@ -1163,7 +1192,7 @@ impl<P: crate::Product> Prod<P> {
         let words = p.words();
         let to_trailer = std::mem::offset_of!(ProdObj<P>, trailer) / 8;
         let o: &ProdObj<P> = Box::leak(Box::new(ProdObj {
-            header: layout::header(KIND_PRODUCT, to_trailer - 1, 0, true, true),
+            header: layout::header(KIND_PRODUCT, to_trailer, 0, true, true),
             words,
             trailer: layout::trailer(to_trailer),
         }));
@@ -1248,12 +1277,12 @@ mod product_tests {
         assert_eq!(std::mem::size_of::<Held<P2<P2<i64, Str>, char>>>(), 8);
         let back = h.get();
         assert_eq!((back.0.0, back.0.1.as_str(), back.1), (3, "x", 'c'));
-        // Kind 37, two fields (the inner product's word, `'c'`'s), no
-        // suffix (C496).
+        // Kind 37, two words (the inner product's, `'c'`'s) and its
+        // trailer, Fixpt's count (C498), no suffix (C496).
         let w = crate::Prod::new(p).header();
         assert_eq!(
             (w & 7, (w >> 3) & 0xff, (w >> 14) & 0x3ffff, w >> 32),
-            (6, 37, 2, 0)
+            (6, 37, 3, 0)
         );
         assert_eq!(w & (3 << 12), 3 << 12);
         // A pair of products: its element one word, as its tail is.
@@ -1640,5 +1669,175 @@ mod list_tests {
         // Held as its word, as a pair's cdr is.
         let w: HeapWord = xs.store();
         assert_eq!(crate::car(List::<i64>::load(w)), 5);
+    }
+}
+
+/// A box's kind (Fixpt's `box`, 10): its one field traced and settable.
+const KIND_BOX: u8 = 10;
+
+/// A reference's object (C498), Fixpt's box: its header, its value's cell
+/// (one word, but what is held as itself as yet), its trailer, no suffix.
+#[repr(C)]
+pub struct RefObj<T: crate::Trace> {
+    header: u64,
+    cell: crate::Slot<T>,
+    trailer: u64,
+}
+
+impl<T: crate::Trace> RefObj<T> {
+    /// Its fields as Fixpt counts them: its cell's words and its trailer.
+    const TO_TRAILER: usize = std::mem::offset_of!(RefObj<T>, trailer) / 8;
+    /// From its start to its suffix's, where its word points.
+    const TO_SUFFIX: usize = std::mem::offset_of!(RefObj<T>, trailer) + 8;
+
+    /// A box holding `v`.
+    #[inline]
+    pub fn new(v: T) -> Self {
+        RefObj {
+            header: layout::header(KIND_BOX, Self::TO_TRAILER, 0, false, false),
+            cell: crate::Slot::new(v),
+            trailer: layout::trailer(Self::TO_TRAILER),
+        }
+    }
+
+    /// Its header word.
+    pub fn header(&self) -> u64 {
+        self.header
+    }
+}
+
+/// A box: its value visited.
+impl<T: crate::Trace> crate::Visit for RefObj<T> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        crate::Visit::visit(&self.cell, t);
+    }
+}
+
+/// `(ref T R)` (C498): one Fixpt word, to a box (`RefObj`), tagged `100`
+/// at its suffix's start, as Fixpt's word to an object is; which any
+/// alias may read and write, as FX-26's may. In a `letrena`'s region
+/// `RefAt<'r, T>`, borrowed from its arena; in the heap, never freed,
+/// `Ref<T>`. Its word made only here, of a box's reference.
+#[repr(transparent)]
+pub struct RefAt<'r, T: crate::Trace>(HeapWord, std::marker::PhantomData<&'r RefObj<T>>);
+
+impl<T: crate::Trace> Clone for RefAt<'_, T> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: crate::Trace> Copy for RefAt<'_, T> {}
+
+impl<'r, T: crate::Trace> RefAt<'r, T> {
+    /// The reference to box `o`.
+    #[inline(always)]
+    pub fn of_obj(o: crate::Handle<'r, RefObj<T>>) -> Self {
+        let a = std::ptr::from_ref(o.to_ref()).cast::<u8>();
+        // SAFETY: its suffix's start, one past its trailer, the box's end.
+        let at = unsafe { a.add(RefObj::<T>::TO_SUFFIX) }.cast::<u64>();
+        RefAt(
+            HeapWord(at.map_addr(|x| x | TAG_OBJECT)),
+            std::marker::PhantomData,
+        )
+    }
+
+    /// Its box.
+    #[inline(always)]
+    pub fn obj(self) -> &'r RefObj<T> {
+        let at = self.0.0.map_addr(|x| x & !TAG_MASK).cast::<u8>();
+        // SAFETY: its word is made only by `of_obj`, of a box good for `'r`,
+        // `TO_SUFFIX` bytes before where it points.
+        unsafe { &*at.sub(RefObj::<T>::TO_SUFFIX).cast::<RefObj<T>>() }
+    }
+
+    #[inline(always)]
+    pub fn get(self) -> T {
+        self.obj().cell.get()
+    }
+
+    #[inline(always)]
+    pub fn set(self, v: T) {
+        self.obj().cell.set(v)
+    }
+
+    /// Whether it is the same reference as `other` (`eq?`).
+    #[inline(always)]
+    pub fn same(self, other: Self) -> bool {
+        self.0.raw() == other.0.raw()
+    }
+
+    /// Its word.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        self.0
+    }
+}
+
+/// A reference: its box reached; held as its word.
+impl<T: crate::Trace> crate::Trace for RefAt<'_, T> {
+    #[inline]
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.reach(self.obj());
+    }
+    type Stored = HeapWord;
+    #[inline(always)]
+    fn store(self) -> HeapWord {
+        self.0
+    }
+    #[inline(always)]
+    fn load(w: HeapWord) -> Self {
+        RefAt(w, std::marker::PhantomData)
+    }
+}
+
+/// A reference as a union's member (C491): its box.
+impl<T: crate::Trace + 'static> crate::value::Member for RefAt<'static, T> {
+    #[inline]
+    fn object(self) -> &'static dyn crate::value::Obj {
+        self.obj()
+    }
+    #[inline]
+    fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
+        (o as &dyn std::any::Any)
+            .downcast_ref::<RefObj<T>>()
+            .map(|b| RefAt::of_obj(crate::Handle::made(b)))
+    }
+}
+
+#[cfg(test)]
+mod ref_tests {
+    use crate::{HeapWord, Ref, Trace};
+
+    #[test]
+    fn a_ref_one_word_to_fixpt_box() {
+        let r: Ref<i64> = crate::heap_new(5);
+        assert_eq!(std::mem::size_of::<Ref<i64>>(), 8);
+        // Tagged `100`, at its box's suffix: its header three words back,
+        // kind 10, two fields (its value's, its trailer), not frozen.
+        assert_eq!(r.word().raw() & 7, 0b100);
+        let h = r.obj().header();
+        assert_eq!(
+            (
+                h & 7,
+                (h >> 3) & 0xff,
+                (h >> 12) & 3,
+                (h >> 14) & 0x3ffff,
+                h >> 32
+            ),
+            (6, 10, 0, 2, 0)
+        );
+        r.set(6);
+        assert_eq!(crate::get(r), 6);
+        let w: HeapWord = r.store();
+        let s = Ref::<i64>::load(w);
+        assert!(s.same(r) && !s.same(crate::heap_new(6)));
+        // In a pair, as its car: its word.
+        let xs = crate::heap_cons(r, crate::nil());
+        assert_eq!(crate::car(xs).get(), 6);
     }
 }

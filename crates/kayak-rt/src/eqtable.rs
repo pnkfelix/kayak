@@ -36,10 +36,10 @@ impl<T: crate::Trace> Identity for &crate::Slot<T> {
     }
 }
 
-/// A ref, a handle of its cell (C478, C490): its cell's address.
-impl<T: crate::Trace> Identity for crate::Handle<'_, crate::Slot<T>> {
+/// A ref (C498): its word, its box's address tagged.
+impl<T: crate::Trace> Identity for crate::RefAt<'_, T> {
     fn address(self) -> usize {
-        std::ptr::from_ref(self.to_ref()) as usize
+        self.word().raw()
     }
 }
 
@@ -68,7 +68,7 @@ impl<K> Clone for IdentityOf<K> {
 impl<K> Copy for IdentityOf<K> {}
 
 /// `ref-identity`.
-pub fn ref_identity<'a, T: crate::Trace>() -> IdentityOf<crate::Handle<'a, crate::Slot<T>>> {
+pub fn ref_identity<'a, T: crate::Trace>() -> IdentityOf<crate::RefAt<'a, T>> {
     IdentityOf(PhantomData)
 }
 
@@ -154,7 +154,7 @@ mod tests {
     fn by_address() {
         let a = crate::heap_new(1i64);
         let b = crate::heap_new(1i64);
-        let t: EqTable<crate::Handle<'_, crate::Slot<i64>>, i64> = make_eqtable(ref_identity());
+        let t: EqTable<crate::Ref<i64>, i64> = make_eqtable(ref_identity());
         eqtable_set_x(t, a, 10);
         eqtable_set_x(t, b, 20);
         eqtable_set_x(t, a, 30);
