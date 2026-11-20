@@ -94,6 +94,28 @@ impl<T> Arena<T> {
     }
 }
 
+/// An arena: each value it holds reached (C492), as a region's, which is
+/// a place a closure or a module's state may hold.
+impl<T: crate::Visit> crate::Visit for Arena<T> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        for chunk in self.chunks.iter().filter_map(OnceCell::get) {
+            for block in chunk.iter().filter_map(OnceCell::get) {
+                for v in block.iter().filter_map(OnceCell::get) {
+                    t.reach(v);
+                }
+            }
+        }
+    }
+}
+
+/// A bytevector's words in a region (`BytesCells`): plain bytes.
+impl crate::Visit for Box<[Cell<u64>]> {
+    fn visit<'a>(&'a self, _: &mut crate::Tracer<'a>) {}
+    fn visit_size(&self) -> usize {
+        self.len() * 8
+    }
+}
+
 /// A region that holds values of type `T`: its arena for them.
 pub trait Holds<T> {
     fn arena(&self) -> &Arena<T>;

@@ -107,10 +107,13 @@ mod tests {
         let xs = heap_cons(1i64, heap_cons(2i64, None));
         let r = heap_new(7i64);
         let s = heap_new(true);
-        let ys = heap_cons("a", None);
+        let ys = heap_cons(crate::str_lit("a"), None);
         r.set(8);
         assert_eq!(xs.unwrap().car() + xs.unwrap().cdr.unwrap().car(), 3);
-        assert_eq!((r.get(), s.get(), ys.unwrap().car()), (8, true, "a"));
+        assert_eq!(
+            (r.get(), s.get(), ys.unwrap().car().as_str()),
+            (8, true, "a")
+        );
         let many: Vec<Ref<i64>> = (0..1000).map(heap_new).collect();
         assert!(many.iter().enumerate().all(|(i, v)| v.get() == i as i64));
     }

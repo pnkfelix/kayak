@@ -97,7 +97,7 @@ pub mod r#impl {
 }
 
 #[inline]
-pub fn build<'r#yield, Place_Yield: Holds<Cons<'r#yield, i64>>>(r#async: &'r#yield Place_Yield, n: i64) -> ListAt<'r#yield, i64> {
+pub fn build<'r#yield, Place_Yield: kayak_rt::Visit + Holds<Cons<'r#yield, i64>>>(r#async: &'r#yield Place_Yield, n: i64) -> ListAt<'r#yield, i64> {
     rcons(r#async, n, nil::<i64>())
 }
 
@@ -108,7 +108,7 @@ pub fn keep<In: Copy + 'static + kayak_rt::Trace>(x: In) -> In {
 }
 
 #[inline]
-pub fn total<'static_, Place_Static: Holds<Cons<'static_, i64>>>(h: &'static_ Place_Static, n: i64) -> i64 {
+pub fn total<'static_, Place_Static: kayak_rt::Visit + Holds<Cons<'static_, i64>>>(h: &'static_ Place_Static, n: i64) -> i64 {
     car(the::<ListAt<'static_, i64>>(rcons(h, n, nil::<i64>())))
 }
 
@@ -118,6 +118,7 @@ pub fn first() -> i64 {
         struct Region_Static<'static_> { a0: Arena<Cons<'static_, i64>>, phantom_: std::marker::PhantomData<(&'static_ (),)> }
         impl<'static_> Default for Region_Static<'static_> { fn default() -> Self { Region_Static { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'static_> Holds<Cons<'static_, i64>> for Region_Static<'static_> { fn arena(&self) -> &Arena<Cons<'static_, i64>> { &self.a0 } }
+        impl<'static_> kayak_rt::Visit for Region_Static<'static_> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__static<'static_>(r#static: &'static_ Region_Static<'static_>) -> i64 {
             i64_plus(keep(1i64), total(r#static, 4i64))
         }
@@ -145,6 +146,7 @@ pub fn main() -> Str {
         struct Region_Box<'r#box> { a0: Arena<Cons<'r#box, i64>>, phantom_: std::marker::PhantomData<(&'r#box (),)> }
         impl<'r#box> Default for Region_Box<'r#box> { fn default() -> Self { Region_Box { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r#box> Holds<Cons<'r#box, i64>> for Region_Box<'r#box> { fn arena(&self) -> &Arena<Cons<'r#box, i64>> { &self.a0 } }
+        impl<'r#box> kayak_rt::Visit for Region_Box<'r#box> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__box<'r#box>(r#box: &'r#box Region_Box<'r#box>, r#for: i64, r#while: kayak_rt::Proc2s<'r#box, i64, i64, i64>) -> Str {
             let r#pub = build(r#box, r#where(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("where") }, "where", 4i64)));
             i64_to_string(i64_plus(r#loop(3i64, r#mod()), i64_plus(i64_star(10i64, r#for), i64_plus(i64_star(100i64, r#while.call(2i64, 0i64)), i64_plus(i64_star(1000i64, r#const(r#struct(5i64))), i64_plus(r#impl::r#return(0i64), i64_plus(i64_star(10000i64, car(r#pub)), i64_star(1000000i64, first()))))))))

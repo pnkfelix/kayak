@@ -76,6 +76,7 @@ pub fn start_keyed(out: ICell<Int>) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, r#box: Inbox<Int>, out: ICell<Int>) -> () {
                 {
                     let sel_0__ = &kayak_rt::process::Stdin;

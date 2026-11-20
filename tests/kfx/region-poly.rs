@@ -53,6 +53,7 @@ pub fn both<'r, 's>(xs: ListAt<'r, i64>, ys: ListAt<'s, i64>) -> i64 {
         struct Region_T<'t, 'r, 's> { a0: Arena<Cons<'t, i64>>, phantom_: std::marker::PhantomData<(&'t (), &'r (), &'s (),)> }
         impl<'t, 'r, 's> Default for Region_T<'t, 'r, 's> { fn default() -> Self { Region_T { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'t, 'r, 's> Holds<Cons<'t, i64>> for Region_T<'t, 'r, 's> { fn arena(&self) -> &Arena<Cons<'t, i64>> { &self.a0 } }
+        impl<'t, 'r, 's> kayak_rt::Visit for Region_T<'t, 'r, 's> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__t<'r, 's, 't>(t: &'t Region_T<'t, 'r, 's>, xs: ListAt<'r, i64>, ys: ListAt<'s, i64>) -> i64 {
             let zs = the::<ListAt<'t, i64>>(rcons(t, add_up(xs, 0i64), rcons(t, add_up(ys, 0i64), nil::<i64>())));
             add_up(zs, 0i64)
@@ -64,12 +65,12 @@ pub fn both<'r, 's>(xs: ListAt<'r, i64>, ys: ListAt<'s, i64>) -> i64 {
 
 // A place's procedure that gives a region-poly one its data.
 #[inline]
-pub fn made<'p, Place_P: Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64) -> i64 {
+pub fn made<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64) -> i64 {
     add_up(the::<ListAt<'p, i64>>(rcons(h, n, rcons(h, n, nil::<i64>()))), 0i64)
 }
 
 // A define*'s place, its needs kept as a define's, and a define*'s region.
-pub fn iota<'p, Place_P: Holds<Cons<'p, i64>>>(mut h: &'p Place_P, mut n: i64, mut acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
+pub fn iota<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>>(mut h: &'p Place_P, mut n: i64, mut acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
     loop {
         if i64_eq(n, 0i64) {
             return acc;
@@ -97,6 +98,7 @@ pub fn counted(n: i64) -> i64 {
         struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a0 } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
             total(iota(r, n, nil::<i64>()), 0i64)
         }
@@ -112,6 +114,7 @@ pub fn main() -> Str {
         impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a0 } }
         impl<'r> Holds<kayak_rt::Slot<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::Slot<i64>> { &self.a1 } }
         impl<'r> Holds<Cons<'r, Product_1k<i64>>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, Product_1k<i64>>> { &self.a2 } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); kayak_rt::Visit::visit(&self.a1, t); kayak_rt::Visit::visit(&self.a2, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>) -> Str {
             let xs = the::<ListAt<'r, i64>>(rcons(r, 1i64, rcons(r, 2i64, rcons(r, 3i64, nil::<i64>()))));
             let c = the::<RefAt<'r, i64>>(rnew(r, 10i64));
@@ -121,6 +124,7 @@ pub fn main() -> Str {
                 struct Region_S<'s, 'r> { a0: Arena<Cons<'s, i64>>, phantom_: std::marker::PhantomData<(&'s (), &'r (),)> }
                 impl<'s, 'r> Default for Region_S<'s, 'r> { fn default() -> Self { Region_S { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
                 impl<'s, 'r> Holds<Cons<'s, i64>> for Region_S<'s, 'r> { fn arena(&self) -> &Arena<Cons<'s, i64>> { &self.a0 } }
+                impl<'s, 'r> kayak_rt::Visit for Region_S<'s, 'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
                 fn letrena__s<'r, 's>(s: &'s Region_S<'s, 'r>, c: RefAt<'r, i64>, ps: ListAt<'r, Product_1k<i64>>, xs: ListAt<'r, i64>, r: &'r Region_R<'r>) -> Str {
                     let ys = the::<ListAt<'s, i64>>(rcons(s, 100i64, nil::<i64>()));
                     i64_to_string(i64_plus(add_up(xs, 0i64), i64_plus(i64_star(10i64, car(rest_of(xs))), i64_plus(i64_star(100i64, get(c)), i64_plus(i64_star(10000i64, fold(kayak_rt::closure2((), |(), p: Product_1k<i64>, acc: i64| {

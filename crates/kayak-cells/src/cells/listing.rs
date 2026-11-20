@@ -15,7 +15,7 @@ use super::*;
 // Room for `k` more bytes in the buffer `b`, `n` of them used: a buffer
 // twice as large, in the place, the bytes so far copied in, where there is
 // not.
-pub fn w_room_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
+pub fn w_room_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
     let (have, at) = (int_to_i64(bytevector_length(get(b))), get(n));
     if i64_lt_eq(i64_plus(at, k), have) {
         ()
@@ -27,14 +27,14 @@ pub fn w_room_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
 }
 
 // The byte `k`.
-pub fn w_byte_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
+pub fn w_byte_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
     w_room_x(p, b, n, 1i64);
     bytevector_u8_set_x(get(b), i64_to_int(get(n)), int_to_u8(i64_to_int(k)));
     set(n, i64_plus(get(n), 1i64))
 }
 
 // The string `s`'s bytes, by way of the place.
-pub fn w_str_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, s: Str) -> () {
+pub fn w_str_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, s: Str) -> () {
     let bs = the::<BytesAt<'p>>(string_to_utf8_in(p, s));
     let k = int_to_i64(bytevector_length(bs));
     w_room_x(p, b, n, k);
@@ -53,7 +53,7 @@ pub fn digit_byte(d: i64) -> i64 {
 }
 
 // `k`, not negative, in `base`.
-pub fn w_digits_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64, base: i64) -> () {
+pub fn w_digits_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64, base: i64) -> () {
     if i64_gt_eq(k, base) {
         w_digits_x(p, b, n, i64_quotient(k, base), base)
     } else {
@@ -63,7 +63,7 @@ pub fn w_digits_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, B
 }
 
 // `k` in decimal.
-pub fn w_i64_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
+pub fn w_i64_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64) -> () {
     if i64_lt(k, 0i64) {
         w_byte_x(p, b, n, 45i64);
         w_digits_x(p, b, n, i64_minus(0i64, k), 10i64)
@@ -83,7 +83,7 @@ pub fn digit_count(k: i64) -> i64 {
 }
 
 // Spaces before `k` to make it `width` wide (`padded`, `rpadded`).
-pub fn w_spaces_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut k: i64) -> () {
+pub fn w_spaces_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut k: i64) -> () {
     loop {
         if i64_lt_eq(k, 0i64) {
             return ();
@@ -95,7 +95,7 @@ pub fn w_spaces_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: Ref
     }
 }
 
-pub fn w_padded_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64, width: i64) -> () {
+pub fn w_padded_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, k: i64, width: i64) -> () {
     w_spaces_x(p, b, n, i64_minus(width, if i64_lt(k, 0i64) {
         i64_plus(1i64, digit_count(i64_minus(0i64, k)))
     } else {
@@ -107,7 +107,7 @@ pub fn w_padded_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, B
 // A word's name as the listing names it (`shown-name`): to its tab, if it
 // has one.
 #[inline]
-pub fn w_name_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, w: Str) -> () {
+pub fn w_name_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, w: Str) -> () {
     w_str_x(p, b, n, if i64_lt(int_to_i64(string_search(w, str_lit!("\t"), int_lit(0))), 0i64) {
         w
     } else {
@@ -117,7 +117,7 @@ pub fn w_name_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
 
 // A string's characters, each not printable ASCII (and `quote` and `\`)
 // by its code, `\xHH;` (`lit-escaped`).
-pub fn w_escaped_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut s: Str, mut quote: i64, mut i: i64, mut len: i64) -> () {
+pub fn w_escaped_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut s: Str, mut quote: i64, mut i: i64, mut len: i64) -> () {
     loop {
         if i64_gt_eq(i, len) {
             return ();
@@ -138,7 +138,7 @@ pub fn w_escaped_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: Re
 
 // A literal as `lit-text` writes it; a quoted node as its label says
 // (`q-written!`, the reaches counted first).
-pub fn w_lit_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, l: kayak_rt::Handle<'static, Lit>) -> () {
+pub fn w_lit_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, l: kayak_rt::Handle<'static, Lit>) -> () {
     let tagcase_ = l;
     match *tagcase_ {
         Lit::LInt(k) => {
@@ -200,7 +200,7 @@ pub fn w_lit_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byte
     }
 }
 
-pub fn w_lits_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut ls: List<kayak_rt::Handle<'static, Lit>>) -> () {
+pub fn w_lits_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut ls: List<kayak_rt::Handle<'static, Lit>>) -> () {
     loop {
         if null_p(ls) {
             return ();
@@ -215,7 +215,7 @@ pub fn w_lits_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt
 
 // An operand as the stack code's lines write it (`opnd-text`), and as
 // register code's do (`ropnd-text`: a word as its cell is shown).
-pub fn w_opnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::Handle<'static, Opnd>) -> () {
+pub fn w_opnd_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::Handle<'static, Opnd>) -> () {
     let tagcase_ = o;
     match *tagcase_ {
         Opnd::OInt(k) => {
@@ -237,7 +237,7 @@ pub fn w_opnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byt
     }
 }
 
-pub fn w_ropnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::Handle<'static, Opnd>) -> () {
+pub fn w_ropnd_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::Handle<'static, Opnd>) -> () {
     let tagcase_ = o;
     match *tagcase_ {
         Opnd::OLit(l) => {
@@ -262,7 +262,7 @@ pub fn w_ropnd_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, By
 }
 
 // Operands, a space before each.
-pub fn w_opnds_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut os: List<kayak_rt::Handle<'static, Opnd>>, mut regs: bool) -> () {
+pub fn w_opnds_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut os: List<kayak_rt::Handle<'static, Opnd>>, mut regs: bool) -> () {
     loop {
         if null_p(os) {
             return ();
@@ -280,7 +280,7 @@ pub fn w_opnds_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefA
 }
 
 // An instruction's text (`ins-text`; register code's, `rop-text`, `regs`).
-pub fn w_ins_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, r: Str, os: List<kayak_rt::Handle<'static, Opnd>>, regs: bool) -> () {
+pub fn w_ins_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, r: Str, os: List<kayak_rt::Handle<'static, Opnd>>, regs: bool) -> () {
     if string_eq_p(r, if regs {
         str_lit!("lambda")
     } else {
@@ -299,14 +299,14 @@ pub fn w_ins_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, Byte
 
 // A line's start: two spaces, where it is, `width` wide, a colon.
 #[inline]
-pub fn w_at_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, at: i64, width: i64) -> () {
+pub fn w_at_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, at: i64, width: i64) -> () {
     w_str_x(p, b, n, str_lit!("  "));
     w_padded_x(p, b, n, at, width);
     w_str_x(p, b, n, str_lit!(": "))
 }
 
 // A word's lines (`lines-of-items`), each then a newline.
-pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>) -> () {
+pub fn w_lines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -348,7 +348,7 @@ pub fn w_lines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefA
 }
 
 // Register code's lines (`rlines-of`), each then a newline.
-pub fn w_rlines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>, mut frame: i64) -> () {
+pub fn w_rlines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>, mut frame: i64) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -402,7 +402,7 @@ pub fn w_rlines_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: Ref
 }
 
 // A line table's entries, `CELL:POS`, apart by spaces, the oldest first.
-pub fn w_entries_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut es: List<kayak_rt::Handle<'static, Tentry>>, mut first: bool) -> () {
+pub fn w_entries_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut es: List<kayak_rt::Handle<'static, Tentry>>, mut first: bool) -> () {
     loop {
         if null_p(es) {
             return ();
@@ -430,7 +430,7 @@ pub fn w_entries_x<'p, Place_P: Holds<BytesCells>>(mut p: &'p Place_P, mut b: Re
 
 // A line table (`line-table`, `rcode-line-table`): `HEAD FILE ENTRIES`
 // and a newline; none if no entries, or no file.
-pub fn w_table_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, head: Str, es: List<kayak_rt::Handle<'static, Tentry>>) -> () {
+pub fn w_table_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, head: Str, es: List<kayak_rt::Handle<'static, Tentry>>) -> () {
     if (null_p(es) || string_eq_p(get(cg_source()), str_lit!(""))) {
         ()
     } else {
@@ -444,7 +444,7 @@ pub fn w_table_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, By
 
 // A word, as the listing writes it: its head, its lines, its register code
 // and its line table after them, then its line table.
-pub fn w_word_x<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, name: Str, xs: Citems) -> () {
+pub fn w_word_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, name: Str, xs: Citems) -> () {
     w_str_x(p, b, n, str_lit!("\nword "));
     w_name_x(p, b, n, name);
     w_str_x(p, b, n, str_lit!(" ("));
@@ -480,6 +480,7 @@ pub fn word_written(name: Str, xs: Citems) -> Str {
         impl<'r> Holds<kayak_rt::Slot<BytesAt<'r>>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::Slot<BytesAt<'r>>> { &self.a0 } }
         impl<'r> Holds<BytesCells> for Region_R<'r> { fn arena(&self) -> &Arena<BytesCells> { &self.a1 } }
         impl<'r> Holds<kayak_rt::Slot<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::Slot<i64>> { &self.a2 } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); kayak_rt::Visit::visit(&self.a1, t); kayak_rt::Visit::visit(&self.a2, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, name: Str, xs: List<kayak_rt::Handle<'static, Item>>) -> Str {
             let (b, n) = (the::<RefAt<'r, BytesAt<'r>>>(rnew(r, the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4096), 0u8)))), the::<RefAt<'r, i64>>(rnew(r, 0i64)));
             w_word_x(r, b, n, name, xs);

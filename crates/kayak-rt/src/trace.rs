@@ -543,6 +543,55 @@ impl<T: Trace> Visit for Array<T> {
     }
 }
 
+/// A datum's vector (C492): its elements, each traced, its block reached
+/// once.
+struct VectorAt(&'static [Value]);
+
+impl Visit for VectorAt {
+    fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
+        self.visit_owned(t);
+    }
+    fn visit_owned(&self, t: &mut Tracer<'_>) {
+        for v in self.0 {
+            v.trace(t);
+        }
+    }
+    fn visit_size(&self) -> usize {
+        std::mem::size_of_val(self.0)
+    }
+    fn visit_name(&self) -> &'static str {
+        "kayak_rt::value::Vector"
+    }
+}
+
+impl Trace for &'static [Value] {
+    trace_whole!();
+    #[inline]
+    fn trace<'a>(self, t: &mut Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.reach_value(self.as_ptr() as usize, VectorAt(self));
+    }
+}
+
+/// A procedure of `lambdaN`'s (kc's `rust.kfx` still has them): a Rust
+/// closure, its captures Rust's, opaque (`TODO.md` §54).
+macro_rules! opaque_fn {
+    ($(($($a:ident),*))*) => {$(
+        impl<$($a,)* R> Trace for &'static dyn Fn($($a),*) -> R {
+            trace_whole!();
+            fn trace<'a>(self, t: &mut Tracer<'a>)
+            where
+                Self: 'a,
+            {
+                t.opaque(std::ptr::from_ref(self).cast::<()>() as usize);
+            }
+        }
+    )*};
+}
+opaque_fn!(()(A)(A, B)(A, B, C)(A, B, C, D));
+
 /// A dynamic value (C491): what it holds reached, precisely: a pair, a
 /// member's object, a string, a bignum.
 impl Trace for Value {
@@ -562,16 +611,18 @@ impl Trace for Value {
     }
 }
 
-/// A plain reference, what KFX's Rust has that is no handle yet: a dynamic
-/// sum, a bloblet, a flat array; opaque for now (a collector scans such a
-/// block as a whole).
-impl<T: ?Sized> Trace for &'_ T {
+/// A plain reference, what KFX's Rust has that is no handle (C492): what
+/// it points to visited, precisely: an I-cell, a mailbox, a knot, a
+/// place, a module's state. (A continuation, a `lambdaN` procedure and a
+/// blobref into a suffix are opaque, each by its own impl.)
+impl<'r, T: Visit + 'r> Trace for &'r T {
     trace_whole!();
+    #[inline]
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
         Self: 'a,
     {
-        t.opaque(std::ptr::from_ref::<T>(self).cast::<()>() as usize);
+        t.reach(self);
     }
 }
 
@@ -640,6 +691,44 @@ mod tests {
         {
             self.0.trace(t);
         }
+    }
+
+    #[test]
+    fn plain_references_visited_precisely() {
+        // An I-cell, a mailbox and a knot, each holding a string; and a
+        // region's arena of pairs, reached through a reference to it.
+        let c: crate::ICell<Str> = crate::leak(crate::process::ICellBox {
+            value: std::sync::Mutex::new(Some(crate::str_lit("i"))),
+        });
+        let m: crate::Addr<Str> = crate::leak(crate::process::MailboxBox {
+            queue: std::sync::Mutex::new([crate::str_lit("m")].into_iter().collect()),
+        });
+        let k: &'static crate::Knot<Str> = crate::leak(crate::Knot(std::sync::OnceLock::new()));
+        let _ = k.0.set(crate::str_lit("k"));
+        let arena: crate::Arena<Cons<'_, Str>> = crate::Arena::default();
+        let xs = Some(arena.alloc(Cons::new(crate::str_lit("r"), None)));
+        let ys = Some(arena.alloc(Cons::new(crate::str_lit("s"), xs)));
+        let mut t = traced((c, m, k, &arena, ys));
+        assert!(t.take_opaque().is_empty());
+        let (rows, strings) = t.census();
+        let of = |name: &str| {
+            rows.iter()
+                .filter(|r| r.0.contains(name))
+                .map(|r| r.1)
+                .sum::<u64>()
+        };
+        assert_eq!(of("ICellBox"), 1);
+        assert_eq!(of("MailboxBox"), 1);
+        assert_eq!(of("Knot"), 1);
+        assert_eq!(of("Arena"), 1);
+        // The arena's two pairs, each once, though `ys` reaches them too.
+        let pairs = rows
+            .iter()
+            .filter(|r| r.0.starts_with("kayak_rt::Cons<"))
+            .map(|r| r.1)
+            .sum::<u64>();
+        assert_eq!(pairs, 2);
+        assert_eq!(strings.0, 5);
     }
 
     #[test]

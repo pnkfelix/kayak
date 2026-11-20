@@ -12,12 +12,14 @@ pub fn f(n: i64) -> i64 {
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), a1: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<kayak_rt::Slot<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::Slot<i64>> { &self.a0 } }
         impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a1 } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); kayak_rt::Visit::visit(&self.a1, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
             let outer = the::<RefAt<'r, i64>>(rnew(r, n));
             {
                 struct Region_S<'s, 'r> { a0: Arena<Cons<'s, ListAt<'r, i64>>>, phantom_: std::marker::PhantomData<(&'s (), &'r (),)> }
                 impl<'s, 'r> Default for Region_S<'s, 'r> { fn default() -> Self { Region_S { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
                 impl<'s, 'r> Holds<Cons<'s, ListAt<'r, i64>>> for Region_S<'s, 'r> { fn arena(&self) -> &Arena<Cons<'s, ListAt<'r, i64>>> { &self.a0 } }
+                impl<'s, 'r> kayak_rt::Visit for Region_S<'s, 'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
                 fn letrena__s<'r, 's>(s: &'s Region_S<'s, 'r>, r: &'r Region_R<'r>, outer: RefAt<'r, i64>) -> i64 {
                     let xs = the::<ListAt<'r, i64>>(rcons(r, get(outer), nil::<i64>()));
                     let ys = the::<ListAt<'s, ListAt<'r, i64>>>(rcons(s, xs, nil::<ListAt<'r, i64>>()));

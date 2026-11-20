@@ -18,7 +18,7 @@ impl<'p, Place_P> Clone for Counter<'p, Place_P> {
 
 impl<'p, Place_P> Copy for Counter<'p, Place_P> {}
 
-impl<'p, Place_P> kayak_rt::Trace for Counter<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> kayak_rt::Trace for Counter<'p, Place_P> {
     kayak_rt::trace_whole!();
     fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         kayak_rt::Trace::trace(self.0, t);
@@ -38,26 +38,40 @@ pub mod counter_in {
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
     }
 
+    impl<'p, Place_P> kayak_rt::Visit for CounterState<'p, Place_P> {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
+            if let Some(v) = self.base.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.n.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.bumps.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+        }
+    }
+
     #[inline]
     pub fn start() -> i64 {
         10i64
     }
 
     #[inline]
-    pub fn bump<'p, Place_P>(p: &'p Place_P, maker_st: &'p CounterState<'p, Place_P>) -> i64 {
+    pub fn bump<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p CounterState<'p, Place_P>) -> i64 {
         set(maker_st.n.get().unwrap(), i64_plus(get(maker_st.n.get().unwrap()), 1i64));
         set(maker_st.bumps.get().unwrap(), i64_plus(get(maker_st.bumps.get().unwrap()), 1i64));
         get(maker_st.n.get().unwrap())
     }
 
     #[inline]
-    pub fn total<'p, Place_P>(p: &'p Place_P, maker_st: &'p CounterState<'p, Place_P>) -> i64 {
+    pub fn total<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p CounterState<'p, Place_P>) -> i64 {
         i64_plus(get(maker_st.n.get().unwrap()), i64_star(100i64, get(maker_st.bumps.get().unwrap())))
     }
 
 
 
-    pub fn maker_state<'p, Place_P>(p: &'p Place_P) -> &'p CounterState<'p, Place_P> {
+    pub fn maker_state<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> &'p CounterState<'p, Place_P> {
         let maker_st: &'p CounterState<'p, Place_P> = kayak_rt::alloc(CounterState {
             base: std::cell::Cell::new(None),
             n: std::cell::Cell::new(None),
@@ -71,7 +85,7 @@ pub mod counter_in {
     }
 }
 
-impl<'p, Place_P> Counter<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> Counter<'p, Place_P> {
     pub fn bump(self) -> i64 {
         counter_in::bump(self.0, self.1)
     }
@@ -81,7 +95,7 @@ impl<'p, Place_P> Counter<'p, Place_P> {
     }
 }
 
-pub fn counter_in<'p, Place_P>(p: &'p Place_P) -> Counter<'p, Place_P> {
+pub fn counter_in<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> Counter<'p, Place_P> {
     Counter(p, counter_in::maker_state(p))
 }
 
@@ -89,10 +103,12 @@ pub fn main() -> Str {
     {
         struct Region_A<'a> { phantom_: std::marker::PhantomData<(&'a (),)> }
         impl<'a> Default for Region_A<'a> { fn default() -> Self { Region_A { phantom_: std::marker::PhantomData } } }
+        impl<'a> kayak_rt::Visit for Region_A<'a> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
         fn letrena__a<'a>(a: &'a Region_A<'a>) -> Str {
             {
                 struct Region_B<'b, 'a> { phantom_: std::marker::PhantomData<(&'b (), &'a (),)> }
                 impl<'b, 'a> Default for Region_B<'b, 'a> { fn default() -> Self { Region_B { phantom_: std::marker::PhantomData } } }
+                impl<'b, 'a> kayak_rt::Visit for Region_B<'b, 'a> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
                 fn letrena__b<'a, 'b>(b: &'b Region_B<'b, 'a>, a: &'a Region_A<'a>) -> Str {
                     let (x, y) = (counter_in(a), counter_in(b));
                     x.bump();

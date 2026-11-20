@@ -50,7 +50,7 @@ pub fn node_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: Holds<Rose<'r, T
 // `p` (named as its region, so that what is made at it is made in it).
 
 // (Its `cons` and `list` made in the place too, C271.)
-pub fn build<'p, Place_P: Holds<Cons<'p, kayak_rt::Handle<'p, Rose<'p, i64>>>> + Holds<Rose<'p, i64>>>(mut p: &'p Place_P, mut k: i64, mut n: i64, mut acc: ListAt<'p, kayak_rt::Handle<'p, Rose<'p, i64>>>) -> kayak_rt::Handle<'p, Rose<'p, i64>> {
+pub fn build<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, kayak_rt::Handle<'p, Rose<'p, i64>>>> + Holds<Rose<'p, i64>>>(mut p: &'p Place_P, mut k: i64, mut n: i64, mut acc: ListAt<'p, kayak_rt::Handle<'p, Rose<'p, i64>>>) -> kayak_rt::Handle<'p, Rose<'p, i64>> {
     loop {
         if i64_eq(n, 0i64) {
             return the::<kayak_rt::Handle<'p, Rose<'p, i64>>>(node_in(p, acc));
@@ -91,6 +91,7 @@ pub fn one_tree(k: i64) -> i64 {
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), a1: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<Rose<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Rose<'r, i64>> { &self.a0 } }
         impl<'r> Holds<Cons<'r, kayak_rt::Handle<'r, Rose<'r, i64>>>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, kayak_rt::Handle<'r, Rose<'r, i64>>>> { &self.a1 } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); kayak_rt::Visit::visit(&self.a1, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, k: i64) -> i64 {
             total(build(r, k, 100i64, nil::<kayak_rt::Handle<'r, Rose<'r, i64>>>()))
         }

@@ -245,6 +245,16 @@ pub struct ICellBox<T> {
 
 pub type ICell<T> = &'static ICellBox<T>;
 
+/// An I-cell: its value, once written, traced (C492).
+impl<T: crate::Trace> crate::Visit for ICellBox<T> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        let v = *held(&self.value);
+        if let Some(v) = v {
+            v.trace(t);
+        }
+    }
+}
+
 /// `(make-icell)`: in the heap, wherever it was asked for, as FX-26's is.
 pub fn make_icell<T>() -> ICell<T> {
     crate::leak(ICellBox {
@@ -283,6 +293,16 @@ pub fn icell_get<T: Copy>(c: ICell<T>) -> T {
 /// r)` the right to take from it, its process's alone.
 pub struct MailboxBox<M> {
     pub(crate) queue: Mutex<VecDeque<M>>,
+}
+
+/// A mailbox: the messages it holds, traced (C492).
+impl<M: crate::Trace> crate::Visit for MailboxBox<M> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        let ms: Vec<M> = held(&self.queue).iter().copied().collect();
+        for m in ms {
+            m.trace(t);
+        }
+    }
 }
 
 pub type Addr<M> = &'static MailboxBox<M>;

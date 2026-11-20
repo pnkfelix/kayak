@@ -34,6 +34,7 @@ pub fn start_doubler() -> Addr<Req> {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+            impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<Product_1n_5reply<Int, ICell<Int>>>) -> () {
                 let serve__knot = knot::<kayak_rt::Proc0<'p, ()>>();
                 let serve = kayak_rt::closure0((r#box,), |(r#box,)| {
@@ -67,6 +68,7 @@ pub fn start_worker() -> Addr<Job> {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+            impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<Product_1f_1x_3out<kayak_rt::Proc1s<'static, Int, Int>, Int, ICell<Int>>>) -> () {
                 let go__knot = knot::<kayak_rt::Proc0<'p, ()>>();
                 let go = kayak_rt::closure0((r#box,), |(r#box,)| {
@@ -96,6 +98,7 @@ pub fn start_summer(cells: Summing) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, r#box: Inbox<Int>, cells: Product_4stop_5total<ICell<()>, ICell<Int>>) -> () {
                 let loop__knot = knot::<kayak_rt::Proc1<'r, Int, ()>>();
                 let r#loop = kayak_rt::closure1((r#box, cells, loop__knot,), |(r#box, cells, loop__knot,), n: Int| {

@@ -1916,10 +1916,11 @@ over its 1664 definitions, 335 of them refused:
   sum precise, its head its cell's type. Left: one word, not three,
   which needs every object it may point at to say its shape and type as
   Fixpt's headers do: a pair's, a datatype's value's, a sum's, a ref's,
-  a closure's), what is still traced as a plain reference, opaque (a
-  place, a module's state, an I-cell, a mailbox, a knot, a
-  continuation, a blobref to a typed suffix's array: the `&T`
-  fallback), ~~a product held by
+  a closure's), ~~what is still traced as a plain reference, opaque~~
+  (done in part, C492: a reference to what is `Visit` visited, a place,
+  a module's state, an I-cell, a mailbox, a knot, a region's arena.
+  Left opaque, each by an impl of its own: a continuation, a `lambdaN`
+  procedure, a blobref into a typed suffix, an interior pointer), ~~a product held by
   value in its holder~~ (done, C490: boxed where a heap object holds it,
   `Prod`, one word to Fixpt's product object, kind 37, by its `split`: a
   pair's element, a sum's payload, a ref's and an array's cell, a

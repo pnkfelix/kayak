@@ -11,6 +11,7 @@ pub fn second_of<A: Copy + 'static + kayak_rt::Trace>(x: A, y: A) -> A {
         struct Region_R<'r, A: Copy + 'static + kayak_rt::Trace> { a0: Arena<Cons<'r, A>>, phantom_: std::marker::PhantomData<(&'r (), A,)> }
         impl<'r, A: Copy + 'static + kayak_rt::Trace> Default for Region_R<'r, A> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r, A: Copy + 'static + kayak_rt::Trace> Holds<Cons<'r, A>> for Region_R<'r, A> { fn arena(&self) -> &Arena<Cons<'r, A>> { &self.a0 } }
+        impl<'r, A: Copy + 'static + kayak_rt::Trace> kayak_rt::Visit for Region_R<'r, A> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__r<'r, A: Copy + 'static + kayak_rt::Trace>(r: &'r Region_R<'r, A>, x: A, y: A) -> A {
             let xs = the::<ListAt<'r, A>>(rcons(r, x, rcons(r, y, nil::<A>())));
             car(cdr(xs))

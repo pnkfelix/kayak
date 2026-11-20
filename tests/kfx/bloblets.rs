@@ -87,6 +87,7 @@ pub fn total(n: i64) -> f64 {
         struct Region_R<'r> { a0: Arena<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> for Region_R<'r> { fn arena(&self) -> &Arena<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> { &self.a0 } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> f64 {
             let b = the::<kayak_rt::TBlobletAt<'r, (std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>(rmake_tbloblet::<_, FlatArr<std::cell::Cell<f64>, 100>, _>(r, int_lit(800), (std::cell::Cell::new(n),)));
             let xs = the::<&'r FlatArr<std::cell::Cell<f64>, 100>>((b).suffix());

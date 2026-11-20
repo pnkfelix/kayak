@@ -17,7 +17,7 @@ impl<'p, Place_P> Clone for MadeLoad0ProcessLoadPlaceFace<'p, Place_P> {
 
 impl<'p, Place_P> Copy for MadeLoad0ProcessLoadPlaceFace<'p, Place_P> {}
 
-impl<'p, Place_P> kayak_rt::Trace for MadeLoad0ProcessLoadPlaceFace<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> kayak_rt::Trace for MadeLoad0ProcessLoadPlaceFace<'p, Place_P> {
     kayak_rt::trace_whole!();
     fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         kayak_rt::Trace::trace(self.0, t);
@@ -35,15 +35,23 @@ pub mod made__load__0__process_load_place {
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
     }
 
+    impl<'p, Place_P> kayak_rt::Visit for MadeLoad0ProcessLoadPlaceFaceState<'p, Place_P> {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
+            if let Some(v) = self.n.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+        }
+    }
+
     #[inline]
-    pub fn bump<'p, Place_P>(p: &'p Place_P, maker_st: &'p MadeLoad0ProcessLoadPlaceFaceState<'p, Place_P>, k: i64) -> i64 {
+    pub fn bump<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p MadeLoad0ProcessLoadPlaceFaceState<'p, Place_P>, k: i64) -> i64 {
         set(maker_st.n.get().unwrap(), i64_plus(k, get(maker_st.n.get().unwrap())));
         get(maker_st.n.get().unwrap())
     }
 
 
 
-    pub fn maker_state<'p, Place_P>(p: &'p Place_P) -> &'p MadeLoad0ProcessLoadPlaceFaceState<'p, Place_P> {
+    pub fn maker_state<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> &'p MadeLoad0ProcessLoadPlaceFaceState<'p, Place_P> {
         let maker_st: &'p MadeLoad0ProcessLoadPlaceFaceState<'p, Place_P> = kayak_rt::alloc(MadeLoad0ProcessLoadPlaceFaceState {
             n: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
@@ -53,13 +61,13 @@ pub mod made__load__0__process_load_place {
     }
 }
 
-impl<'p, Place_P> MadeLoad0ProcessLoadPlaceFace<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> MadeLoad0ProcessLoadPlaceFace<'p, Place_P> {
     pub fn bump(self, k: i64) -> i64 {
         made__load__0__process_load_place::bump(self.0, self.1, k)
     }
 }
 
-pub fn made__load__0__process_load_place<'p, Place_P>(p: &'p Place_P) -> MadeLoad0ProcessLoadPlaceFace<'p, Place_P> {
+pub fn made__load__0__process_load_place<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> MadeLoad0ProcessLoadPlaceFace<'p, Place_P> {
     MadeLoad0ProcessLoadPlaceFace(p, made__load__0__process_load_place::maker_state(p))
 }
 
@@ -68,6 +76,7 @@ pub fn start(out: ICell<i64>) -> Addr<()> {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+            impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__p<'p>(p: &'p Region_P<'p>, out: ICell<i64>) -> () {
                 let x = made__load__0__process_load_place(p);
                 x.bump(3i64);

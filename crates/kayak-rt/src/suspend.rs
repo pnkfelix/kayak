@@ -133,6 +133,18 @@ where
     }
 }
 
+/// A continuation: opaque for now (`TODO.md` §54: its `Resume`'s values
+/// are a Rust closure's captures).
+impl<V: 'static, R: 'static> crate::Trace for &'static Cont<V, R> {
+    crate::trace_whole!();
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.opaque(std::ptr::from_ref(self) as usize);
+    }
+}
+
 impl<V: 'static, R: 'static> Cont<V, R> {
     /// `(k v)`: the body, resumed with `v`, run until it ends or suspends
     /// again (to the prompt around the resume, which the `.await` reaches).

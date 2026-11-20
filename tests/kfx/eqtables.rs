@@ -34,6 +34,7 @@ pub fn in_arena(n: Int) -> Int {
         struct Region_P<'p> { a0: Arena<kayak_rt::Slot<Int>>, phantom_: std::marker::PhantomData<(&'p (),)> }
         impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'p> Holds<kayak_rt::Slot<Int>> for Region_P<'p> { fn arena(&self) -> &Arena<kayak_rt::Slot<Int>> { &self.a0 } }
+        impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__p<'p>(p: &'p Region_P<'p>, n: Int) -> Int {
             let (t, a, b) = (the::<EqTableAt<'p, RefAt<'p, Int>, Int>>(make_eqtable(ref_identity())), the::<RefAt<'p, Int>>(rnew(p, n)), the::<RefAt<'p, Int>>(rnew(p, n)));
             eqtable_set_x(t, a, int_lit(1));

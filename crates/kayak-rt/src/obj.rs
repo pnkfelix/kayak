@@ -600,6 +600,16 @@ impl<Fs> Bloblet<Fs> {
     }
 }
 
+/// A bloblet a region's arena owns (C492): its object reached.
+impl<Fs: crate::Visit> crate::Visit for Bloblet<Fs> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        t.reach(self.at().head());
+    }
+    fn visit_size(&self) -> usize {
+        0
+    }
+}
+
 impl<Fs> Drop for Bloblet<Fs> {
     fn drop(&mut self) {
         // SAFETY: its block, made by `new` with `layout`, its head written
@@ -656,6 +666,19 @@ pub struct FlatArr<T, const N: usize>([T; N]);
 
 // SAFETY: an array of flats, each zero valid and needing no drop.
 unsafe impl<T: Flat, const N: usize> Flat for FlatArr<T, N> {}
+
+/// A blobref to an array in a typed suffix (C492): a pointer into its
+/// owner's suffix, which a collector finds by the owner's trailer
+/// (Bartlett's interior pointer); opaque to a trace, holding no reference.
+impl<T, const N: usize> crate::Trace for &'_ FlatArr<T, N> {
+    crate::trace_whole!();
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.opaque(std::ptr::from_ref(self) as usize);
+    }
+}
 
 impl<T, const N: usize> FlatArr<T, N> {
     /// `(blobref-index r i)`.
@@ -797,6 +820,16 @@ impl<Fs, S> Drop for TBloblet<Fs, S> {
 
 /// A typed-suffix bloblet's head: its fields visited, its suffix plain
 /// bytes (C487).
+/// A typed-suffix bloblet a region's arena owns (C492): its object reached.
+impl<Fs: crate::Visit, S> crate::Visit for TBloblet<Fs, S> {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        t.reach(self.at().head());
+    }
+    fn visit_size(&self) -> usize {
+        0
+    }
+}
+
 impl<Fs: crate::Visit, S> crate::Visit for TBlobHead<Fs, S> {
     fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
         self.fields.visit(t);

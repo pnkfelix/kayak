@@ -6288,6 +6288,14 @@ pub mod emitter {
         })), counting(0i64, size(held)))), str_lit!("phantom_: std::marker::PhantomData } } }"))))))))))), acc);
         let acc = put_held_impls(held, 0i64, region, lives, lives_bounded, n1, acc);
         let acc = put_nl(n1, acc);
+        let acc = put(string_append(str_lit!("impl<"), string_append(lives_bounded, string_append(str_lit!("> kayak_rt::Visit for "), string_append(region, string_append(str_lit!("<"), string_append(lives, string_append(if null_p(held) {
+            str_lit!("> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { ")
+        } else {
+            str_lit!("> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { ")
+        }, string_append(run_together_strings(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), i: i64| {
+            string_append(str_lit!("kayak_rt::Visit::visit(&self.a"), string_append(i64_to_string(i), str_lit!(", t); ")))
+        })), counting(0i64, size(held)))), str_lit!("} }"))))))))), acc);
+        let acc = put_nl(n1, acc);
         let acc = put(string_append(if r#async {
             str_lit!("async fn letrena__")
         } else {

@@ -15161,3 +15161,42 @@ Measured: an edit's build 0.26 to 0.27 s, as before; its census the same
 - **Found by Fixpt's programs**: an `f32` given for a union as another
   shape's member, `Member` now, boxed.
 - **The full check**: all passed in 499.5 s, its first run; nextest 5615.
+
+## C492. Plain references traced precisely: places, states, I-cells, mailboxes, knots (2026-11-20)
+
+The user, after C491: "Okay keep going". C491 found what KFX's Rust
+still traced as a plain reference, opaque (kayak-rt's fallback `Trace`
+for any `&T`): a place and a module's state (which closures capture),
+an I-cell, a mailbox, a knot, a continuation, a `lambdaN` procedure, a
+datum's vector, a blobref to a typed suffix's array. Surveyed by turning
+the fallback off: in kc, its expander's place (`&Place_Mxp`, 82 sites)
+and its makers' states (84); in the engine and the corpus, the rest.
+
+What changed:
+- **The fallback precise** (`trace.rs`): a reference to what is `Visit`
+  is reached, its object visited, as a handle's is; nothing else is
+  traced through `&T`. What stays opaque says so by an impl of its own:
+  a continuation (`&Cont`, its `Resume`'s values a Rust closure's
+  captures), a `lambdaN` procedure (`&dyn Fn`, kc's `rust.kfx`), a
+  blobref to a typed suffix's array (`&FlatArr`, a pointer into its
+  owner's suffix, which a collector finds by the owner's trailer).
+- **kayak-rt's `Visit`**: an I-cell (its value once written), a mailbox
+  (its messages), a knot (its value once tied), an arena (each value it
+  holds), a region's bytevector words (none), a bloblet and a
+  typed-suffix bloblet a region owns (their objects); a datum's vector
+  traced, each element, its block reached once.
+- **kfx's emitter**: a `letrena`'s region struct `Visit`, each arena's
+  values (`put-letrena`); a module maker's state `Visit`, each value it
+  holds once made, and its face's `Trace` asks its place be `Visit`; a
+  place's type parameter bound `kayak_rt::Visit` beside its `Holds`
+  (`put-place-generics`). kc's `expand.rs` and the engine's `main.rs`
+  changed so; the corpus blessed again.
+- **Tests**: an I-cell, a mailbox, a knot and a region's arena, each
+  reached once, precisely, nothing opaque; the heap's test's list of
+  `&str` (no KFX value, and no longer `Trace`) a list of strings.
+
+Left opaque (TODO §54): a continuation, a `lambdaN` procedure, a
+blobref into a suffix (an interior pointer); and a `Value` one word.
+
+Measured: an edit's build 0.27 s, as before; its census the same.
+- **The full check**: all passed in 494.1 s, its first run; nextest 5616.

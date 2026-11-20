@@ -363,6 +363,15 @@ pub fn lambda5s<'a, A, B, C, D, E, R>(
 /// when the procedure is (C102), so a closure holding it may cross.
 pub struct Knot<T>(std::sync::OnceLock<T>);
 
+/// A knot: its value, once tied, traced (C492).
+impl<T: Trace> Visit for Knot<T> {
+    fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
+        if let Some(&v) = self.0.get() {
+            v.trace(t);
+        }
+    }
+}
+
 impl<T: Copy> Knot<T> {
     pub fn get(&self) -> T {
         *self

@@ -46,6 +46,7 @@ pub fn start_collector(count: Int, out: ICell<Int>) -> Addr<Report> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, count: Int, out: ICell<Int>, r#box: Inbox<kayak_rt::Sum>) -> () {
                 let go__knot = knot::<kayak_rt::Proc2<'r, Int, Int, ()>>();
                 let go = kayak_rt::closure2((count, out, r#box,), |(count, out, r#box,), mut n: Int, mut total: Int| {
@@ -97,6 +98,7 @@ pub fn start_worker(collector: Addr<Report>) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, collector: Addr<kayak_rt::Sum>, r#box: Inbox<Int>) -> () {
                 kayak_rt::process::send(collector, kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("ok") }, "ok", work(kayak_rt::process::receive(r#box))))
             }
@@ -113,6 +115,7 @@ pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, r#box: Inbox<Int>, both: bool, collector: Addr<kayak_rt::Sum>) -> () {
                 let n = kayak_rt::process::receive(r#box);
                 {
@@ -142,6 +145,7 @@ pub fn start_divider(collector: Addr<Report>) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, collector: Addr<kayak_rt::Sum>, r#box: Inbox<Int>) -> () {
                 kayak_rt::process::send(collector, kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("ok") }, "ok", quotient(int_lit(7), kayak_rt::process::receive(r#box))))
             }
@@ -191,6 +195,7 @@ pub fn start_counter(out: ICell<Int>) -> Addr<Int> {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, out: ICell<Int>, r#box: Inbox<Int>) -> () {
                 let go__knot = knot::<kayak_rt::Proc1<'r, Int, ()>>();
                 let go = kayak_rt::closure1((out, r#box,), |(out, r#box,), mut steps: Int| {

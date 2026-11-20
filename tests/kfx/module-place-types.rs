@@ -38,7 +38,7 @@ impl<'p, Place_P> Clone for Shapes<'p, Place_P> {
 
 impl<'p, Place_P> Copy for Shapes<'p, Place_P> {}
 
-impl<'p, Place_P> kayak_rt::Trace for Shapes<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> kayak_rt::Trace for Shapes<'p, Place_P> {
     kayak_rt::trace_whole!();
     fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         kayak_rt::Trace::trace(self.0, t);
@@ -54,6 +54,14 @@ pub mod shapes_in {
     pub struct ShapesState<'p, Place_P> {
         pub kept: std::cell::Cell<Option<RefAt<'p, List<kayak_rt::Handle<'static, Shape>>>>>,
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
+    }
+
+    impl<'p, Place_P> kayak_rt::Visit for ShapesState<'p, Place_P> {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
+            if let Some(v) = self.kept.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+        }
     }
 
     #[inline]
@@ -75,7 +83,7 @@ pub mod shapes_in {
     }
 
     #[inline]
-    pub fn add<'p, Place_P>(p: &'p Place_P, maker_st: &'p ShapesState<'p, Place_P>, w: i64, h: i64) -> () {
+    pub fn add<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p ShapesState<'p, Place_P>, w: i64, h: i64) -> () {
         set(maker_st.kept.get().unwrap(), cons(if i64_eq(w, h) {
             square(w)
         } else {
@@ -93,13 +101,13 @@ pub mod shapes_in {
     }
 
     #[inline]
-    pub fn area<'p, Place_P>(p: &'p Place_P, maker_st: &'p ShapesState<'p, Place_P>) -> i64 {
+    pub fn area<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p ShapesState<'p, Place_P>) -> i64 {
         total_of(get(maker_st.kept.get().unwrap()))
     }
 
 
 
-    pub fn maker_state<'p, Place_P>(p: &'p Place_P) -> &'p ShapesState<'p, Place_P> {
+    pub fn maker_state<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> &'p ShapesState<'p, Place_P> {
         let maker_st: &'p ShapesState<'p, Place_P> = kayak_rt::alloc(ShapesState {
             kept: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
@@ -109,7 +117,7 @@ pub mod shapes_in {
     }
 }
 
-impl<'p, Place_P> Shapes<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> Shapes<'p, Place_P> {
     pub fn add(self, w: i64, h: i64) -> () {
         shapes_in::add(self.0, self.1, w, h)
     }
@@ -119,7 +127,7 @@ impl<'p, Place_P> Shapes<'p, Place_P> {
     }
 }
 
-pub fn shapes_in<'p, Place_P>(p: &'p Place_P) -> Shapes<'p, Place_P> {
+pub fn shapes_in<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> Shapes<'p, Place_P> {
     Shapes(p, shapes_in::maker_state(p))
 }
 
@@ -127,6 +135,7 @@ pub fn main() -> Str {
     {
         struct Region_A<'a> { phantom_: std::marker::PhantomData<(&'a (),)> }
         impl<'a> Default for Region_A<'a> { fn default() -> Self { Region_A { phantom_: std::marker::PhantomData } } }
+        impl<'a> kayak_rt::Visit for Region_A<'a> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
         fn letrena__a<'a>(a: &'a Region_A<'a>) -> Str {
             let x = shapes_in(a);
             x.add(3i64, 3i64);

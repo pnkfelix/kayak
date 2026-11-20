@@ -44,7 +44,7 @@ impl<'p, Place_P> Clone for Tally<'p, Place_P> {
 
 impl<'p, Place_P> Copy for Tally<'p, Place_P> {}
 
-impl<'p, Place_P> kayak_rt::Trace for Tally<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> kayak_rt::Trace for Tally<'p, Place_P> {
     kayak_rt::trace_whole!();
     fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         kayak_rt::Trace::trace(self.0, t);
@@ -64,6 +64,20 @@ pub mod tally_in {
         pub bonus: std::cell::Cell<Option<RefAt<'p, i64>>>,
         pub words: std::cell::Cell<Option<kayak_rt::value::Value>>,
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
+    }
+
+    impl<'p, Place_P> kayak_rt::Visit for TallyState<'p, Place_P> {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
+            if let Some(v) = self.kept.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.bonus.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.words.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+        }
     }
 
     #[inline]
@@ -89,12 +103,12 @@ pub mod tally_in {
     }
 
     #[inline]
-    pub fn with_bonus<'p, Place_P>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, n: i64) -> i64 {
+    pub fn with_bonus<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, n: i64) -> i64 {
         i64_plus(n, get(maker_st.bonus.get().unwrap()))
     }
 
     #[inline]
-    pub fn applied<'p, Place_P>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, f: kayak_rt::Proc1<'p, i64, i64>, n: i64) -> i64 {
+    pub fn applied<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, f: kayak_rt::Proc1<'p, i64, i64>, n: i64) -> i64 {
         f.call(n)
     }
 
@@ -103,7 +117,7 @@ pub mod tally_in {
         f.call(f.call(x))
     }
 
-    pub fn add<'p, Place_P>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, w: i64, h: i64) -> () {
+    pub fn add<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>, w: i64, h: i64) -> () {
         set(maker_st.bonus.get().unwrap(), twice(kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: i64| {
             i64_plus(k, 1i64)
         })), get(maker_st.bonus.get().unwrap())));
@@ -115,7 +129,7 @@ pub mod tally_in {
     }
 
     #[inline]
-    pub fn total<'p, Place_P>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>) -> i64 {
+    pub fn total<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p TallyState<'p, Place_P>) -> i64 {
         applied(p, maker_st, kayak_rt::closure1((p, maker_st,), |(p, maker_st,), n: i64| {
             with_bonus(p, maker_st, n)
         }), total_of(get(maker_st.kept.get().unwrap())))
@@ -123,7 +137,7 @@ pub mod tally_in {
 
 
 
-    pub fn maker_state<'p, Place_P>(p: &'p Place_P) -> &'p TallyState<'p, Place_P> {
+    pub fn maker_state<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> &'p TallyState<'p, Place_P> {
         let maker_st: &'p TallyState<'p, Place_P> = kayak_rt::alloc(TallyState {
             kept: std::cell::Cell::new(None),
             bonus: std::cell::Cell::new(None),
@@ -137,7 +151,7 @@ pub mod tally_in {
     }
 }
 
-impl<'p, Place_P> Tally<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> Tally<'p, Place_P> {
     pub fn add(self, w: i64, h: i64) -> () {
         tally_in::add(self.0, self.1, w, h)
     }
@@ -147,7 +161,7 @@ impl<'p, Place_P> Tally<'p, Place_P> {
     }
 }
 
-pub fn tally_in<'p, Place_P>(p: &'p Place_P) -> Tally<'p, Place_P> {
+pub fn tally_in<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> Tally<'p, Place_P> {
     Tally(p, tally_in::maker_state(p))
 }
 
@@ -155,6 +169,7 @@ pub fn main() -> Str {
     {
         struct Region_A<'a> { phantom_: std::marker::PhantomData<(&'a (),)> }
         impl<'a> Default for Region_A<'a> { fn default() -> Self { Region_A { phantom_: std::marker::PhantomData } } }
+        impl<'a> kayak_rt::Visit for Region_A<'a> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
         fn letrena__a<'a>(a: &'a Region_A<'a>) -> Str {
             let x = tally_in(a);
             x.add(3i64, 3i64);

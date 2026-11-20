@@ -11,7 +11,7 @@ use kayak_rt::*;
 // (doubled, in the place) if they do not fit: the buffer they are in. (The
 // place given is named as its region is, so that what is made at the region
 // is made in it.)
-pub fn put_bytes<'p, Place_P: Holds<BytesCells>>(p: &'p Place_P, buf: BytesAt<'p>, at: Int, s: Str) -> BytesAt<'p> {
+pub fn put_bytes<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, buf: BytesAt<'p>, at: Int, s: Str) -> BytesAt<'p> {
     let bs = the::<BytesAt<'p>>(string_to_utf8_in(p, s));
     let n = bytevector_length(bs);
     let big = if _lt_eq(_plus(at, n), bytevector_length(buf)) {
@@ -31,6 +31,7 @@ pub fn joined(ws: List<Str>) -> Str {
         struct Region_R<'r> { a0: Arena<BytesCells>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<BytesCells> for Region_R<'r> { fn arena(&self) -> &Arena<BytesCells> { &self.a0 } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, ws: List<Str>) -> Str {
             let go__knot = knot::<kayak_rt::Proc3<'r, BytesAt<'r>, Int, List<Str>, Str>>();
             let go = kayak_rt::closure3((r,), |(r,), mut buf: BytesAt<'r>, mut at: Int, mut xs: List<Str>| {

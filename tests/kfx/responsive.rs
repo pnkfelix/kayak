@@ -23,6 +23,7 @@ pub fn start_worker() -> Addr<Req> {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+            impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<Product_1n_5reply<Int, ICell<Int>>>) -> () {
                 let serve__knot = knot::<kayak_rt::Proc0<'p, ()>>();
                 let serve = kayak_rt::closure0((r#box,), |(r#box,)| {

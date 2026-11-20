@@ -17,7 +17,7 @@ impl<'p, Place_P> Clone for Parser<'p, Place_P> {
 
 impl<'p, Place_P> Copy for Parser<'p, Place_P> {}
 
-impl<'p, Place_P> kayak_rt::Trace for Parser<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> kayak_rt::Trace for Parser<'p, Place_P> {
     kayak_rt::trace_whole!();
     fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         kayak_rt::Trace::trace(self.0, t);
@@ -36,8 +36,19 @@ pub mod parser_in {
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
     }
 
+    impl<'p, Place_P> kayak_rt::Visit for ParserState<'p, Place_P> {
+        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
+            if let Some(v) = self.tag.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+            if let Some(v) = self.tries.get() {
+                kayak_rt::Trace::trace(v, t);
+            }
+        }
+    }
+
     #[inline]
-    pub fn refuse<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, why: Str) -> Result<i64, Unwind> {
+    pub fn refuse<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, why: Str) -> Result<i64, Unwind> {
         (return Err(unwind(maker_st.tag.get().unwrap(), why)))
     }
 
@@ -52,17 +63,17 @@ pub mod parser_in {
     }
 
     #[inline]
-    pub fn bumped<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, n: i64) -> i64 {
+    pub fn bumped<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, n: i64) -> i64 {
         set(maker_st.tries.get().unwrap(), i64_plus(get(maker_st.tries.get().unwrap()), 10i64));
         i64_plus(n, get(maker_st.tries.get().unwrap()))
     }
 
     #[inline]
-    pub fn applied<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, f: kayak_rt::Proc1<'p, i64, i64>, x: i64) -> i64 {
+    pub fn applied<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, f: kayak_rt::Proc1<'p, i64, i64>, x: i64) -> i64 {
         f.call(x)
     }
 
-    pub fn checked<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, n: i64) -> Result<i64, Unwind> {
+    pub fn checked<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, n: i64) -> Result<i64, Unwind> {
         set(maker_st.tries.get().unwrap(), i64_plus(get(maker_st.tries.get().unwrap()), 1i64));
         if i64_lt(n, 0i64) {
             Ok(refuse(p, maker_st, str_lit!("negative"))?)
@@ -71,7 +82,7 @@ pub mod parser_in {
         }
     }
 
-    pub fn parse<'p, Place_P>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, n: i64) -> Result<Str, Unwind> {
+    pub fn parse<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P, maker_st: &'p ParserState<'p, Place_P>, n: i64) -> Result<Str, Unwind> {
         Ok({
             let prompt_tag__ = maker_st.tag.get().unwrap();
             match (move || -> Result<_, Unwind> {
@@ -88,7 +99,7 @@ pub mod parser_in {
 
 
 
-    pub fn maker_state<'p, Place_P>(p: &'p Place_P) -> &'p ParserState<'p, Place_P> {
+    pub fn maker_state<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> &'p ParserState<'p, Place_P> {
         let maker_st: &'p ParserState<'p, Place_P> = kayak_rt::alloc(ParserState {
             tag: std::cell::Cell::new(None),
             tries: std::cell::Cell::new(None),
@@ -100,13 +111,13 @@ pub mod parser_in {
     }
 }
 
-impl<'p, Place_P> Parser<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> Parser<'p, Place_P> {
     pub fn parse(self, n: i64) -> Result<Str, Unwind> {
         parser_in::parse(self.0, self.1, n)
     }
 }
 
-pub fn parser_in<'p, Place_P>(p: &'p Place_P) -> Parser<'p, Place_P> {
+pub fn parser_in<'p, Place_P: kayak_rt::Visit>(p: &'p Place_P) -> Parser<'p, Place_P> {
     Parser(p, parser_in::maker_state(p))
 }
 
@@ -114,6 +125,7 @@ pub fn main() -> Str {
     {
         struct Region_A<'a> { phantom_: std::marker::PhantomData<(&'a (),)> }
         impl<'a> Default for Region_A<'a> { fn default() -> Self { Region_A { phantom_: std::marker::PhantomData } } }
+        impl<'a> kayak_rt::Visit for Region_A<'a> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
         fn letrena__a<'a>(a: &'a Region_A<'a>) -> Result<Str, Unwind> {
             let x = parser_in(a);
             Ok(string_append(x.parse(5i64)?, string_append(str_lit!("; "), x.parse(-1i64)?)))

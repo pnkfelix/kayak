@@ -11,6 +11,7 @@ pub fn total(n: i64) -> i64 {
         struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a0 } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
             let build__knot = knot::<kayak_rt::Proc2<'r, i64, ListAt<'r, i64>, ListAt<'r, i64>>>();
             let add_up__knot = knot::<kayak_rt::Proc2<'r, ListAt<'r, i64>, i64, i64>>();

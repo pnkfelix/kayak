@@ -11,7 +11,7 @@ use kayak_rt::*;
 pub type Builder<'r, 'p, Place_P> = kayak_rt::Proc2<'r, &'p Place_P, i64, ListAt<'r, i64>>;
 
 #[inline]
-pub fn build<'p, Place_P: Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64) -> ListAt<'p, i64> {
+pub fn build<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>>(h: &'p Place_P, n: i64) -> ListAt<'p, i64> {
     rcons(h, n, rcons(h, i64_plus(n, 1i64), nil::<i64>()))
 }
 
@@ -20,6 +20,7 @@ pub fn total(n: i64) -> i64 {
         struct Region_A<'a> { a0: Arena<Cons<'a, i64>>, phantom_: std::marker::PhantomData<(&'a (),)> }
         impl<'a> Default for Region_A<'a> { fn default() -> Self { Region_A { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'a> Holds<Cons<'a, i64>> for Region_A<'a> { fn arena(&self) -> &Arena<Cons<'a, i64>> { &self.a0 } }
+        impl<'a> kayak_rt::Visit for Region_A<'a> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__a<'a>(a: &'a Region_A<'a>, n: i64) -> i64 {
             let xs = build(a, n);
             i64_plus(car(xs), car(cdr(xs)))

@@ -218,7 +218,8 @@
                                (onto (map (lambda ((t string)) (string-append t ": Copy + 'static + kayak_rt::Trace")) types)
                                      (map (lambda ((p string))
                                             (let ((bs (bounds p)))
-                                              (string-append "Place_" (string-append (camel p) (if (null? bs) "" (string-append ": " (words-of-sep bs " + ")))))))
+                                              ;; Traced (C492): a closure or a module's state may hold it.
+                                              (string-append "Place_" (string-append (camel p) (string-append ": " (words-of-sep (cons "kayak_rt::Visit" bs) " + "))))))
                                           places)))))
             (put (string-append "<" (string-append (words-of-sep params ", ") ">")) acc))))
 
@@ -1330,12 +1331,21 @@
                                   (put ">>,\n" (put-type cp (second (items d)) (put (concat-strings (list "    pub " (mangle (sym-name (car (items d)))) ": std::cell::Cell<Option<")) acc))))
                                 "" states head))
                  (head (put (concat-strings (list "    pub phantom_: std::marker::PhantomData<&" (lifetime p) " " pt ">,\n}\n\n")) head))
+                 ;; Its `Visit` (C492): each value it holds, once made.
+                 (head (put "    }\n}\n\n"
+                            (put-sep (lambda ((d sexp) (acc chars))
+                                       (put (concat-strings (list "        if let Some(v) = self." (mangle (sym-name (car (items d)))) ".get() {\n            kayak_rt::Trace::trace(v, t);\n        }\n")) acc))
+                                     "" states
+                                     (put (concat-strings (list "impl<" (lifetime p) ", " pt "> kayak_rt::Visit for " state-named " {\n"
+                                                                (if (null? states) "    fn visit<'a>(&'a self, _: &mut kayak_rt::Tracer<'a>) {\n" "    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {\n")))
+                                          head))))
                  (body (onto body head))
                  (acc (put (concat-strings (list "pub struct " named "(pub &" (lifetime p) " " pt ", pub &" (lifetime p) " " state-path ");\n\n"
                                                  "impl<" (lifetime p) ", " pt "> Clone for " named " {\n    fn clone(&self) -> Self {\n        *self\n    }\n}\n\n"
                                                  "impl<" (lifetime p) ", " pt "> Copy for " named " {}\n\n"
-                                                 ;; Its `Trace` (C481): two references, opaque for now.
-                                                 "impl<" (lifetime p) ", " pt "> kayak_rt::Trace for " named " {\n    kayak_rt::trace_whole!();\n"
+                                                 ;; Its `Trace` (C481): two references, the place and the
+                                                 ;; state, each visited (C492).
+                                                 "impl<" (lifetime p) ", " pt ": kayak_rt::Visit> kayak_rt::Trace for " named " {\n    kayak_rt::trace_whole!();\n"
                                                  "    fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {\n"
                                                  "        kayak_rt::Trace::trace(self.0, t);\n        kayak_rt::Trace::trace(self.1, t);\n    }\n}\n\n"))
                            acc))

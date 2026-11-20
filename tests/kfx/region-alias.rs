@@ -12,6 +12,7 @@ pub fn adders(n: i64) -> i64 {
     {
         struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+        impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
             let make__knot = knot::<kayak_rt::Proc2<'r, i64, Closures<'r, 'r>, Closures<'r, 'r>>>();
             let apply_all__knot = knot::<kayak_rt::Proc2<'r, Closures<'r, 'r>, i64, i64>>();

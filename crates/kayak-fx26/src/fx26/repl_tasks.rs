@@ -1330,6 +1330,7 @@ pub mod tasks {
             let _ = {
                 struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
                 impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+                impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
                 fn letrena__r<'r>(r: &'r Region_R<'r>, out: ICell<kayak_rt::Handle<'static, tasks::Done>>, r#box: Inbox<kayak_rt::Handle<'static, tasks::Done>>) -> () {
                     kayak_rt::process::icell_put_x(out, kayak_rt::process::receive(r#box))
                 }
@@ -1341,6 +1342,7 @@ pub mod tasks {
             let _ = {
                 struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
                 impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+                impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
                 fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<kayak_rt::Handle<'static, tasks::Done>>, j: kayak_rt::Handle<'static, tasks::Job>) -> () {
                     kayak_rt::process::send(relay, job_done(j))
                 }
@@ -2190,6 +2192,7 @@ pub mod tasks {
             let _ = {
                 struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                 impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+                impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
                 fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<kayak_rt::Handle<'static, tasks::Relayed>>) -> () {
                     let relaying__knot = knot::<kayak_rt::Proc2<'p, List<kayak_rt::Handle<'static, Asked>>, List<ICell<List<kayak_rt::Handle<'static, Asked>>>>, ()>>();
                     let relaying = kayak_rt::closure2((r#box,), |(r#box,), mut kept: List<kayak_rt::Handle<'static, Asked>>, mut waiting: List<ICell<List<kayak_rt::Handle<'static, Asked>>>>| {
@@ -3915,6 +3918,7 @@ pub mod tasks {
             let _ = {
                 struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                 impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+                impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
                 fn letrena__p<'p>(p: &'p Region_P<'p>, height: i64, width: i64, path: Str, r#box: Inbox<kayak_rt::Handle<'static, tasks::Told>>, live: bool, relay: Addr<kayak_rt::Handle<'static, tasks::Relayed>>) -> Result<(), Unwind> {
                     let x = made__load__3__main(p);
                     let f = the::<Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, List<i64>>, RefAt<'p, bool>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, ListAt<'p, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Str>, bool, RefAt<'p, i64>, RefAt<'p, i64>>>>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Chars>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'p, kayak_rt::Handle<'static, Cv>>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'p, Int>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'p, Int, Result<bool, Unwind>>>>(f_new(relay, kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
@@ -4094,6 +4098,7 @@ pub mod tasks {
                 let _ = {
                     struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                     impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
+                    impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
                     fn letrena__p<'p>(p: &'p Region_P<'p>, relay: Addr<kayak_rt::Handle<'static, tasks::Relayed>>, arrivals: List<kayak_rt::Handle<'static, tasks::Arrival>>) -> Result<(), Unwind> {
                         let x = made__load__3__main(p);
                         let f = the::<Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, List<i64>>, RefAt<'p, bool>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, ListAt<'p, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Str>, bool, RefAt<'p, i64>, RefAt<'p, i64>>>>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Chars>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'p, kayak_rt::Handle<'static, Cv>>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'p, Int>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'p, Int, Result<bool, Unwind>>>>(f_new(relay, kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {

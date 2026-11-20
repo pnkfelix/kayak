@@ -434,6 +434,7 @@ pub fn stage_worked(prog: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, out: ICell<Str>, r#box: Inbox<Str>) -> () {
                 kayak_rt::process::icell_put_x(out, kayak_rt::process::receive(r#box))
             }
@@ -445,6 +446,7 @@ pub fn stage_worked(prog: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<Str>, prog: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>) -> () {
                 kayak_rt::process::send(relay, stage_verdict(prog, t))
             }
@@ -1439,6 +1441,7 @@ pub fn session_worked(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, out: ICell<Str>, r#box: Inbox<Str>) -> () {
                 kayak_rt::process::icell_put_x(out, kayak_rt::process::receive(r#box))
             }
@@ -1450,6 +1453,7 @@ pub fn session_worked(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
+            impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<Str>, v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, t: kayak_rt::Handle<'static, Ty>, kind: i64) -> () {
                 kayak_rt::process::send(relay, session_verdict(v, form, t, kind))
             }

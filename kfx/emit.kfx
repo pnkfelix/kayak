@@ -3477,6 +3477,12 @@
                                (string-append (run-together-strings (map (lambda ((i i64)) (string-append "a" (string-append (i64->string i) ": Arena::default(), "))) (counting 0 (size held))))
                                  "phantom_: std::marker::PhantomData } } }")))))))))) acc))
                  (acc (put-held-impls held 0 region lives lives-bounded n1 acc))
+                 ;; Its `Visit` (C492): each arena's values, a place a closure may hold.
+                 (acc (put-nl n1 acc))
+                 (acc (put (string-append "impl<" (string-append lives-bounded (string-append "> kayak_rt::Visit for " (string-append region (string-append "<" (string-append lives
+                             (string-append (if (null? held) "> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { " "> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { ")
+                               (string-append (run-together-strings (map (lambda ((i i64)) (string-append "kayak_rt::Visit::visit(&self.a" (string-append (i64->string i) ", t); "))) (counting 0 (size held))))
+                                 "} }")))))))) acc))
                  (acc (put-nl n1 acc))
                  (acc (put (string-append (if async "async fn letrena__" "fn letrena__") (string-append (mangle-bare r) (string-append "<" (string-append (words-of-sep (onto (onto outer (list life)) (map (lambda ((t string)) (string-append t ": Copy + 'static + kayak_rt::Trace")) tvars)) ", ") ">(")))) acc))
                  (acc (put (string-append (mangle r) (string-append ": &" (string-append life (string-append " " (string-append region (string-append "<" (string-append lives ">"))))))) acc))

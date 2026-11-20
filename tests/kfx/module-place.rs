@@ -16,7 +16,7 @@ impl<'p, Place_P> Clone for Builder<'p, Place_P> {
 
 impl<'p, Place_P> Copy for Builder<'p, Place_P> {}
 
-impl<'p, Place_P> kayak_rt::Trace for Builder<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit> kayak_rt::Trace for Builder<'p, Place_P> {
     kayak_rt::trace_whole!();
     fn trace<'a>(self, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         kayak_rt::Trace::trace(self.0, t);
@@ -33,7 +33,12 @@ pub mod builder_in {
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
     }
 
-    pub fn count_from<'p, Place_P: Holds<Cons<'p, i64>>>(mut p: &'p Place_P, mut maker_st: &'p BuilderState<'p, Place_P>, mut k: i64, mut n: i64, mut acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
+    impl<'p, Place_P> kayak_rt::Visit for BuilderState<'p, Place_P> {
+        fn visit<'a>(&'a self, _: &mut kayak_rt::Tracer<'a>) {
+        }
+    }
+
+    pub fn count_from<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>>(mut p: &'p Place_P, mut maker_st: &'p BuilderState<'p, Place_P>, mut k: i64, mut n: i64, mut acc: ListAt<'p, i64>) -> ListAt<'p, i64> {
         loop {
             if i64_gt(k, n) {
                 return acc;
@@ -45,12 +50,12 @@ pub mod builder_in {
     }
 
     #[inline]
-    pub fn count_to<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P, maker_st: &'p BuilderState<'p, Place_P>, n: i64) -> ListAt<'p, i64> {
+    pub fn count_to<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>>(p: &'p Place_P, maker_st: &'p BuilderState<'p, Place_P>, n: i64) -> ListAt<'p, i64> {
         count_from(p, maker_st, 1i64, n, nil::<i64>())
     }
 
     #[inline]
-    pub fn total<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P, maker_st: &'p BuilderState<'p, Place_P>, xs: ListAt<'p, i64>) -> i64 {
+    pub fn total<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>>(p: &'p Place_P, maker_st: &'p BuilderState<'p, Place_P>, xs: ListAt<'p, i64>) -> i64 {
         if null_p(xs) {
             0i64
         } else {
@@ -60,7 +65,7 @@ pub mod builder_in {
 
 
 
-    pub fn maker_state<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P) -> &'p BuilderState<'p, Place_P> {
+    pub fn maker_state<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>>(p: &'p Place_P) -> &'p BuilderState<'p, Place_P> {
         let maker_st: &'p BuilderState<'p, Place_P> = kayak_rt::alloc(BuilderState {
             phantom_: std::marker::PhantomData,
         }).to_ref();
@@ -68,7 +73,7 @@ pub mod builder_in {
     }
 }
 
-impl<'p, Place_P: Holds<Cons<'p, i64>>> Builder<'p, Place_P> {
+impl<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>> Builder<'p, Place_P> {
     pub fn count_to(self, n: i64) -> ListAt<'p, i64> {
         builder_in::count_to(self.0, self.1, n)
     }
@@ -78,7 +83,7 @@ impl<'p, Place_P: Holds<Cons<'p, i64>>> Builder<'p, Place_P> {
     }
 }
 
-pub fn builder_in<'p, Place_P: Holds<Cons<'p, i64>>>(p: &'p Place_P) -> Builder<'p, Place_P> {
+pub fn builder_in<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, i64>>>(p: &'p Place_P) -> Builder<'p, Place_P> {
     Builder(p, builder_in::maker_state(p))
 }
 
@@ -91,6 +96,7 @@ pub fn again(mut k: i64, mut acc: i64) -> i64 {
                 struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
                 impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
                 impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a0 } }
+                impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
                 fn letrena__r<'r>(r: &'r Region_R<'r>) -> i64 {
                     let m = builder_in(r);
                     m.total(m.count_to(100i64))
