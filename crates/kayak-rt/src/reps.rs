@@ -57,7 +57,7 @@ pub type RepNode = Product_11_12_13_14_15<Int, Symbol, bool, List<Symbol>, List<
 
 fn items<T: crate::Trace>(mut l: crate::ListAt<'_, T>) -> Vec<T> {
     let mut out = Vec::new();
-    while let Some(c) = l {
+    while let Some(c) = l.pair() {
         out.push(c.car());
         l = c.cdr;
     }

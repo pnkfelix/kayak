@@ -289,7 +289,7 @@ pub fn other<T: Member>(x: T, shape: Shape) -> Value {
 
 /// A list given for its union: `nil`, or its pair, seen as a union's.
 pub fn list<T: ToValue + crate::Trace + 'static>(xs: List<T>) -> Value {
-    match xs {
+    match xs.pair() {
         None => Value::Nil,
         Some(p) => Value::Pair(p.to_ref()),
     }
@@ -300,14 +300,14 @@ pub fn list<T: ToValue + crate::Trace + 'static>(xs: List<T>) -> Value {
 pub fn boxed_list<T: ToValue + crate::Trace>(xs: List<T>) -> List<Value> {
     let mut items = Vec::new();
     let mut p = xs;
-    while let Some(c) = p {
+    while let Some(c) = p.pair() {
         items.push(c.car().to_value());
         p = c.cdr;
     }
     items
         .into_iter()
         .rev()
-        .fold(None, |tail, x| crate::heap_cons(x, tail))
+        .fold(crate::ListAt::NIL, |tail, x| crate::heap_cons(x, tail))
 }
 
 /// `cons` where a pair of a union is wanted, its parts boxed.
@@ -319,7 +319,7 @@ pub fn cons<A: ToValue, B: ToValue>(a: A, b: B) -> Value {
 pub fn spliced<T: ToValue + crate::Trace>(xs: List<T>, rest: Value) -> Value {
     let mut items = Vec::new();
     let mut p = xs;
-    while let Some(c) = p {
+    while let Some(c) = p.pair() {
         items.push(c.car().to_value());
         p = c.cdr;
     }
@@ -361,9 +361,9 @@ pub fn unbox_other<T: Member>(v: Value) -> T {
 /// holds.
 pub fn unbox_list<T: crate::Trace + 'static>(v: Value) -> List<T> {
     match v {
-        Value::Nil => None,
+        Value::Nil => crate::ListAt::NIL,
         Value::Pair(p) => match p.as_any().downcast_ref::<Cons<'static, T>>() {
-            Some(c) => Some(crate::Handle::made(c)),
+            Some(c) => crate::ListAt::of_pair(crate::Handle::made(c)),
             None => not_held(),
         },
         _ => not_held(),
@@ -418,7 +418,7 @@ impl Shaped for Void {
 
 impl<T: crate::Trace> Shaped for ListAt<'_, T> {
     fn shape(&self) -> Shape {
-        if self.is_none() {
+        if self.is_nil() {
             Shape::Nil
         } else {
             Shape::Pair
@@ -535,13 +535,13 @@ mod tests {
         let s = str_lit("x").to_value();
         assert!(string_p(s));
         assert!(int_p(7i64) && !int_p(str_lit("y")));
-        let xs: List<i64> = crate::cons(1, None);
+        let xs: List<i64> = crate::cons(1, crate::nil());
         let l = list(xs);
         assert!(pair_p(l) && !null_p(l) && pair_p(xs));
         assert_eq!(crate::car(unbox_list::<i64>(l)), 1);
         assert_eq!(i64::from_value(car(l)), 1);
         assert!(null_p(cdr(l)));
-        assert!(null_p(list::<i64>(None)));
+        assert!(null_p(list::<i64>(crate::nil())));
         let f: crate::Proc1<'static, i64, i64> = crate::closure1((), |(), x| x + 1);
         let p = other(f, Shape::Procedure);
         assert!(procedure_p(p));

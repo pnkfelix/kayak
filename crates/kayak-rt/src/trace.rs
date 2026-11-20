@@ -684,10 +684,10 @@ mod tests {
 
     #[test]
     fn a_list_reached_once_each() {
-        let shared = crate::heap_cons(crate::str_lit("x"), None);
+        let shared = crate::heap_cons(crate::str_lit("x"), crate::nil());
         let xs = crate::heap_cons(crate::str_lit("y"), shared);
         let ys = crate::heap_cons(crate::str_lit("z"), shared);
-        let both = crate::heap_cons(xs, crate::heap_cons(ys, None));
+        let both = crate::heap_cons(xs, crate::heap_cons(ys, crate::nil()));
         let t = traced(both);
         let (rows, strings) = t.census();
         let pairs = |name: &str| {
@@ -705,10 +705,10 @@ mod tests {
     fn arrays_and_bloblets_reached_once_each() {
         // An array of a string twice and a pair; a bloblet holding the
         // array twice and another string.
-        let p = crate::heap_cons(crate::str_lit("p"), None);
+        let p = crate::heap_cons(crate::str_lit("p"), crate::nil());
         let a = crate::list_to_array(crate::heap_cons(
             p,
-            crate::heap_cons(None, crate::heap_cons(p, None)),
+            crate::heap_cons(crate::nil(), crate::heap_cons(p, crate::nil())),
         ));
         let b = crate::make_bloblet(
             crate::int_lit(12),
@@ -758,8 +758,8 @@ mod tests {
         let k: &'static crate::Knot<Str> = crate::leak(crate::Knot(std::sync::OnceLock::new()));
         let _ = k.0.set(crate::str_lit("k"));
         let arena: crate::Arena<Cons<'_, Str>> = crate::Arena::default();
-        let xs = Some(arena.alloc(Cons::new(crate::str_lit("r"), None)));
-        let ys = Some(arena.alloc(Cons::new(crate::str_lit("s"), xs)));
+        let xs = crate::ListAt::of_pair(arena.alloc(Cons::new(crate::str_lit("r"), crate::nil())));
+        let ys = crate::ListAt::of_pair(arena.alloc(Cons::new(crate::str_lit("s"), xs)));
         let mut t = traced((c, m, k, &arena, ys));
         assert!(t.take_opaque().is_empty());
         let (rows, strings) = t.census();
@@ -785,9 +785,9 @@ mod tests {
 
     #[test]
     fn a_long_chain_of_arrays_in_a_loop() {
-        let mut a = crate::list_to_array(crate::heap_cons(Link(None), None));
+        let mut a = crate::list_to_array(crate::heap_cons(Link(None), crate::nil()));
         for _ in 0..200_000 {
-            a = crate::list_to_array(crate::heap_cons(Link(Some(a)), None));
+            a = crate::list_to_array(crate::heap_cons(Link(Some(a)), crate::nil()));
         }
         let (rows, _) = traced(a).census();
         assert_eq!(rows.iter().map(|r| r.1).sum::<u64>(), 200_001);
@@ -795,7 +795,7 @@ mod tests {
 
     #[test]
     fn a_long_list_in_a_loop() {
-        let mut xs: crate::List<i64> = None;
+        let mut xs: crate::List<i64> = crate::nil();
         for k in 0..1_000_000 {
             xs = crate::heap_cons(k, xs);
         }

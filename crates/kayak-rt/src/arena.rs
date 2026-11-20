@@ -127,7 +127,7 @@ pub fn rcons<'r, T: crate::Trace, R: Holds<Cons<'r, T>>>(
     car: T,
     cdr: ListAt<'r, T>,
 ) -> ListAt<'r, T> {
-    Some(r.arena().alloc(Cons::new(car, cdr)))
+    ListAt::of_pair(r.arena().alloc(Cons::new(car, cdr)))
 }
 
 /// `(rnew r v)`: a reference made in the region `r`.

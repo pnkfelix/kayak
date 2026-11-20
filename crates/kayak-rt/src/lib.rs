@@ -94,10 +94,10 @@ impl std::fmt::Debug for Str {
 pub type RefAt<'r, T> = Handle<'r, Slot<T>>;
 pub type Ref<T> = RefAt<'static, T>;
 
-pub use obj::{FlatArray, HeapWord, Prod, ProdObj};
+pub use obj::{FlatArray, HeapWord, ListAt, Prod, ProdObj};
 
-/// A pair: its element held (C490: a product boxed, one word, as FX-26's
-/// heap grammar has a pair's car), and the rest of the list.
+/// A pair (C497): Fixpt's headerless two-word cell, its element's word
+/// (its car, held: C490, C495) and the rest of the list's (its cdr).
 pub struct Cons<'r, T: Trace> {
     car: Held<T>,
     pub cdr: ListAt<'r, T>,
@@ -123,9 +123,7 @@ impl<'r, T: Trace> Cons<'r, T> {
     }
 }
 
-/// `(listof T R)`: `nil`, or a pair whose tail is the list again; in a
-/// `letrena`'s region, `ListAt<'r, T>`, and in the heap, `List<T>`.
-pub type ListAt<'r, T> = Option<Handle<'r, Cons<'r, T>>>;
+/// `(listof T R)` in the heap (`ListAt`, `obj.rs`: one Fixpt word).
 pub type List<T> = ListAt<'static, T>;
 
 /// Allocation: the heap is never freed, so what it holds lives as long as
@@ -315,17 +313,17 @@ pub fn knot<'a, T: Copy + 'a>() -> &'a Knot<T> {
 
 #[inline]
 pub fn nil<'r, T: Trace>() -> ListAt<'r, T> {
-    None
+    ListAt::NIL
 }
 
 #[inline]
 pub fn cons<'r, T: Trace>(car: T, cdr: ListAt<'r, T>) -> ListAt<'r, T> {
-    Some(alloc(Cons::new(car, cdr)))
+    ListAt::of_pair(alloc(Cons::new(car, cdr)))
 }
 
 #[inline]
 pub fn car<T: Trace>(xs: ListAt<'_, T>) -> T {
-    match xs {
+    match xs.pair() {
         Some(p) => p.car(),
         None => fail("car or cdr of a non-pair"),
     }
@@ -333,7 +331,7 @@ pub fn car<T: Trace>(xs: ListAt<'_, T>) -> T {
 
 #[inline]
 pub fn cdr<'r, T: Trace>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
-    match xs {
+    match xs.pair() {
         Some(p) => p.cdr,
         None => fail("car or cdr of a non-pair"),
     }
@@ -341,7 +339,7 @@ pub fn cdr<'r, T: Trace>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
 
 #[inline]
 pub fn null_p<T: Trace>(xs: ListAt<'_, T>) -> bool {
-    xs.is_none()
+    xs.is_nil()
 }
 
 // Booleans.
@@ -683,7 +681,7 @@ pub fn string_append(a: Str, b: Str) -> Str {
 pub fn strings_joined(xs: List<Str>) -> Str {
     let mut parts: Vec<&str> = Vec::new();
     let mut at = xs;
-    while let Some(c) = at {
+    while let Some(c) = at.pair() {
         parts.push(c.car().as_str());
         at = c.cdr;
     }
@@ -696,7 +694,7 @@ pub fn strings_joined(xs: List<Str>) -> Str {
 
 /// The one string of a list of one, itself, as the KFX gives it.
 fn at_one(xs: List<Str>) -> Str {
-    xs.expect("a list of one").car()
+    xs.pair().expect("a list of one").car()
 }
 
 /// `nat`s, which are `Int`s: a string's length in characters, a list's.
@@ -722,7 +720,7 @@ pub fn length<T: Trace>(xs: ListAt<'_, T>) -> Int {
 #[inline]
 pub fn list_length<T: Trace>(mut xs: ListAt<'_, T>) -> Int {
     let mut n = 0i64;
-    while let Some(p) = xs {
+    while let Some(p) = xs.pair() {
         n += 1;
         xs = p.cdr;
     }
@@ -732,7 +730,7 @@ pub fn list_length<T: Trace>(mut xs: ListAt<'_, T>) -> Int {
 #[inline]
 pub fn reverse<'b, T: Trace + 'b>(mut xs: ListAt<'_, T>) -> ListAt<'b, T> {
     let mut out = nil();
-    while let Some(p) = xs {
+    while let Some(p) = xs.pair() {
         out = cons(p.car(), out);
         xs = p.cdr;
     }
@@ -743,7 +741,7 @@ pub fn reverse<'b, T: Trace + 'b>(mut xs: ListAt<'_, T>) -> ListAt<'b, T> {
 pub fn append<'b, T: Trace + 'b>(xs: ListAt<'_, T>, ys: ListAt<'b, T>) -> ListAt<'b, T> {
     let mut items = Vec::new();
     let mut p = xs;
-    while let Some(c) = p {
+    while let Some(c) = p.pair() {
         items.push(c.car());
         p = c.cdr;
     }
@@ -771,13 +769,13 @@ pub fn list_to_string(cs: List<char>) -> Str {
     // at a time was a `malloc` and `realloc`s.
     let mut n = 0;
     let mut at = cs;
-    while let Some(p) = at {
+    while let Some(p) = at.pair() {
         n += p.car().len_utf8();
         at = p.cdr;
     }
     str_made(n, |bytes| {
         let (mut i, mut at) = (0, cs);
-        while let Some(p) = at {
+        while let Some(p) = at.pair() {
             i += p.car().encode_utf8(&mut bytes[i..]).len();
             at = p.cdr;
         }

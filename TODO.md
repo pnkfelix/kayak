@@ -1920,10 +1920,11 @@ over its 1664 definitions, 335 of them refused:
   object holds a Fixpt word, raw only off the heap, as Fixpt's native
   code; done in part, C495: `HeapWord`, `Trace::Stored`, a pair's, a
   cell's, a sum's scalars, integers and strings words; C496: a closure's
-  captures and a product's object words too, `split` gone. Left: each
-  kind held as itself a word once its object is Fixpt's, a pair a
-  headerless two-word cell (tag `001`), a ref a box (kind 10), a sum
-  (36), a datatype's value, a closure (a header too); a bloblet's
+  captures and a product's object words too, `split` gone; C497: a list
+  one word (Fixpt's empty list, or its pair's address tagged `001`), a
+  pair Fixpt's headerless two-word cell. Left: each kind held as itself
+  a word once its object is Fixpt's, a ref a box (kind 10), a sum (36),
+  a datatype's value, a closure (a header too); a bloblet's
   fields; peak memory up 3 to 6% at C495, not explained; a cold build's
   bignums, 82,546 (2.6 MB, of 36.0 million allocations) with kc's object
   cache empty, not yet traced to where its 64-bit integers are made);

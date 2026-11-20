@@ -499,9 +499,9 @@ mod tests {
     use crate::escape::make_continuation_prompt_tag;
 
     fn reverse<T: crate::Trace + 'static>(xs: List<T>) -> List<T> {
-        let mut acc = None;
+        let mut acc = crate::nil();
         let mut xs = xs;
-        while let Some(c) = xs {
+        while let Some(c) = xs.pair() {
             acc = crate::cons(c.car(), acc);
             xs = c.cdr;
         }
@@ -511,7 +511,7 @@ mod tests {
     fn list_of(xs: List<i64>) -> Vec<i64> {
         let mut v = vec![];
         let mut xs = xs;
-        while let Some(c) = xs {
+        while let Some(c) = xs.pair() {
             v.push(c.car());
             xs = c.cdr;
         }
@@ -554,7 +554,7 @@ mod tests {
     async fn run_(g: &'static PingPong) -> Result<(), Unwind> {
         // A tail call, a loop.
         loop {
-            let Some(q) = g.queue.get() else {
+            let Some(q) = g.queue.get().pair() else {
                 return Ok(());
             };
             g.queue.set(q.cdr);
@@ -582,8 +582,8 @@ mod tests {
     fn ping_pong() {
         let g: &'static PingPong = crate::leak(PingPong {
             sched: make_continuation_prompt_tag(),
-            queue: Cell::new(None),
-            log: Cell::new(None),
+            queue: Cell::new(crate::nil()),
+            log: Cell::new(crate::nil()),
         });
         let main: Body<List<i64>> = Box::pin(async move {
             spawn(g, Box::pin(pinger(g, 100, 3))).await?;
@@ -647,7 +647,7 @@ mod tests {
         if let Promise::Pending(ws) = g.fut.get() {
             g.fut.set(Promise::Resolved(v));
             let mut ks = reverse(ws);
-            while let Some(c) = ks {
+            while let Some(c) = ks.pair() {
                 enqueue2(g, c.car());
                 ks = c.cdr;
             }
@@ -671,7 +671,7 @@ mod tests {
 
     async fn run2(g: &'static Promises) -> Result<(), Unwind> {
         loop {
-            let Some(q) = g.queue.get() else {
+            let Some(q) = g.queue.get().pair() else {
                 return Ok(());
             };
             g.queue.set(q.cdr);
@@ -686,9 +686,9 @@ mod tests {
     fn promise() {
         let g: &'static Promises = crate::leak(Promises {
             sched: make_continuation_prompt_tag(),
-            queue: Cell::new(None),
-            log: Cell::new(None),
-            fut: Cell::new(Promise::Pending(None)),
+            queue: Cell::new(crate::nil()),
+            log: Cell::new(crate::nil()),
+            fut: Cell::new(Promise::Pending(crate::nil())),
         });
         let main: Body<List<i64>> = Box::pin(async move {
             spawn2(

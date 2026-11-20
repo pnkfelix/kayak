@@ -89,7 +89,7 @@ pub fn heap_alloc<T: 'static + crate::Visit>(v: T) -> crate::Handle<'static, T> 
 /// `cons`, in the heap's arena of pairs.
 #[inline]
 pub fn heap_cons<T: 'static + crate::Trace>(car: T, cdr: List<T>) -> List<T> {
-    Some(heap_alloc(Cons::new(car, cdr)))
+    crate::ListAt::of_pair(heap_alloc(Cons::new(car, cdr)))
 }
 
 /// `new`, in the heap's arena of cells.
@@ -104,14 +104,17 @@ mod tests {
 
     #[test]
     fn types_apart() {
-        let xs = heap_cons(1i64, heap_cons(2i64, None));
+        let xs = heap_cons(1i64, heap_cons(2i64, crate::nil()));
         let r = heap_new(7i64);
         let s = heap_new(true);
-        let ys = heap_cons(crate::str_lit("a"), None);
+        let ys = heap_cons(crate::str_lit("a"), crate::nil());
         r.set(8);
-        assert_eq!(xs.unwrap().car() + xs.unwrap().cdr.unwrap().car(), 3);
         assert_eq!(
-            (r.get(), s.get(), ys.unwrap().car().as_str()),
+            xs.pair().unwrap().car() + xs.pair().unwrap().cdr.pair().unwrap().car(),
+            3
+        );
+        assert_eq!(
+            (r.get(), s.get(), ys.pair().unwrap().car().as_str()),
             (8, true, "a")
         );
         let many: Vec<Ref<i64>> = (0..1000).map(heap_new).collect();

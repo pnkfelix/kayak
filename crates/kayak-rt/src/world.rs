@@ -1147,7 +1147,7 @@ pub fn process_start(argv: crate::ListAt<'_, Str>, dir: Str) -> Sum {
     use std::os::unix::process::CommandExt as _;
     let mut words = Vec::new();
     let mut l = argv;
-    while let Some(c) = l {
+    while let Some(c) = l.pair() {
         words.push(c.car().as_str().to_string());
         l = c.cdr;
     }
@@ -1486,7 +1486,7 @@ mod tests {
         let r = list_dir(leak_string(dir.to_string_lossy().into_owned()));
         assert_eq!(sum_name(r), "names");
         assert_eq!(
-            sum_payload::<List<Str>>(r).map(|c| c.car().as_str()),
+            sum_payload::<List<Str>>(r).pair().map(|c| c.car().as_str()),
             Some("a.txt")
         );
         let none = leak_string(dir.join("none").to_string_lossy().into_owned());

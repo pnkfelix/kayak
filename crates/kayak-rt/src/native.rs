@@ -125,7 +125,7 @@ impl<T: Native + Clone + 'static + crate::Trace> Native for crate::List<T> {
     fn word(self) -> u64 {
         let mut items = Vec::new();
         let mut at = self;
-        while let Some(c) = at {
+        while let Some(c) = at.pair() {
             items.push(c.car());
             at = c.cdr;
         }

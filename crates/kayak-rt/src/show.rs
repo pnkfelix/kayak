@@ -2,7 +2,7 @@
 //! program's top-level expressions, run as Rust, can be compared with
 //! Fixpt's answers (`scripts/run-fixpt-programs.py`).
 
-use crate::{Cons, Int, Str, int_to_string, leak_string};
+use crate::{Int, Str, int_to_string, leak_string};
 use std::cell::Cell;
 
 pub trait Show {
@@ -111,12 +111,12 @@ impl Show for Str {
 }
 
 /// A list, `(1 2 3)`; `nil`, `()`.
-impl<T: Show + crate::Trace> Show for Option<crate::Handle<'_, Cons<'_, T>>> {
+impl<T: Show + crate::Trace> Show for crate::ListAt<'_, T> {
     fn show(&self, out: &mut String) {
         out.push('(');
         let mut xs = *self;
         let mut first = true;
-        while let Some(p) = xs {
+        while let Some(p) = xs.pair() {
             if !first {
                 out.push(' ');
             }

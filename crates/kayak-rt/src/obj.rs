@@ -1261,7 +1261,7 @@ mod product_tests {
             std::mem::size_of::<Cons<'static, P2<P2<i64, Str>, char>>>(),
             16
         );
-        let xs = crate::heap_cons(p, None);
+        let xs = crate::heap_cons(p, crate::nil());
         assert_eq!(crate::car(xs).0.0, 3);
         // A ref's cell and an array's element: one word each.
         assert_eq!(
@@ -1299,6 +1299,8 @@ unsafe impl Sync for HeapWord {}
 const TAG_MASK: usize = 0b111;
 const TAG_IMMEDIATE: usize = 0b011;
 const TAG_OBJECT: usize = 0b100;
+const TAG_PAIR: usize = 0b001;
+const IMM_NULL: usize = 2;
 const IMM_FALSE: usize = 0;
 const IMM_TRUE: usize = 1;
 const IMM_UNIT: usize = 3;
@@ -1337,6 +1339,8 @@ impl HeapWord {
     }
 
     pub const UNIT: HeapWord = HeapWord::imm(IMM_UNIT, 0);
+    /// Fixpt's empty list (C497).
+    pub const NULL: HeapWord = HeapWord::imm(IMM_NULL, 0);
 
     #[inline(always)]
     pub const fn boolean(b: bool) -> HeapWord {
@@ -1522,5 +1526,119 @@ mod word_tests {
         let big = Int::of_i64(i64::MAX);
         assert_eq!(HeapWord::of_int(big).to_int().small(), None);
         assert_eq!(HeapWord::of_int(Int::of_i64(7)).raw(), 56);
+    }
+}
+
+/// `(listof T R)` (C497): one Fixpt word, on the stack as in the heap:
+/// Fixpt's empty list (an immediate), or a pair's address tagged `001`, its
+/// pair Fixpt's headerless two-word cell (`Cons`: its car's word, its cdr's).
+/// In a `letrena`'s region `ListAt<'r, T>`, in the heap `List<T>`. Its word
+/// made only here, of a pair's handle or the empty list.
+#[repr(transparent)]
+pub struct ListAt<'r, T: crate::Trace>(
+    HeapWord,
+    std::marker::PhantomData<crate::Handle<'r, crate::Cons<'r, T>>>,
+);
+
+impl<T: crate::Trace> Clone for ListAt<'_, T> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: crate::Trace> Copy for ListAt<'_, T> {}
+
+impl<'r, T: crate::Trace> ListAt<'r, T> {
+    /// The empty list.
+    pub const NIL: Self = ListAt(HeapWord::NULL, std::marker::PhantomData);
+
+    /// The list whose first pair is `p`.
+    #[inline(always)]
+    pub fn of_pair(p: crate::Handle<'r, crate::Cons<'r, T>>) -> Self {
+        // A pair is word-aligned (its cdr a word), so its tag's bits free.
+        let a = std::ptr::from_ref(p.to_ref()).cast::<u64>();
+        ListAt(
+            HeapWord(a.map_addr(|x| x | TAG_PAIR)),
+            std::marker::PhantomData,
+        )
+    }
+
+    /// The empty list, or the list whose first pair is `p`.
+    #[inline(always)]
+    pub fn of(p: Option<crate::Handle<'r, crate::Cons<'r, T>>>) -> Self {
+        p.map_or(Self::NIL, Self::of_pair)
+    }
+
+    /// Its first pair, if it is not empty.
+    #[inline(always)]
+    pub fn pair(self) -> Option<crate::Handle<'r, crate::Cons<'r, T>>> {
+        if self.0.raw() & TAG_MASK == TAG_PAIR {
+            let a = self.0.0.map_addr(|x| x & !TAG_MASK);
+            // SAFETY: a word tagged a pair is made only by `of_pair`, of a
+            // pair's handle good for `'r`.
+            Some(crate::Handle::made(unsafe {
+                &*a.cast::<crate::Cons<'r, T>>()
+            }))
+        } else {
+            None
+        }
+    }
+
+    /// Whether it is empty.
+    #[inline(always)]
+    pub fn is_nil(self) -> bool {
+        self.0.raw() == HeapWord::NULL.raw()
+    }
+
+    /// Its word.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        self.0
+    }
+}
+
+/// A list: its first pair reached; held as its word.
+impl<T: crate::Trace> crate::Trace for ListAt<'_, T> {
+    #[inline]
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        if let Some(p) = self.pair() {
+            t.reach(p.to_ref());
+        }
+    }
+    type Stored = HeapWord;
+    #[inline(always)]
+    fn store(self) -> HeapWord {
+        self.0
+    }
+    #[inline(always)]
+    fn load(w: HeapWord) -> Self {
+        ListAt(w, std::marker::PhantomData)
+    }
+}
+
+#[cfg(test)]
+mod list_tests {
+    use crate::{Cons, HeapWord, List, Trace};
+
+    #[test]
+    fn a_list_one_fixpt_word() {
+        // The empty list Fixpt's immediate (subtag 2); a pair's word its
+        // address tagged `001`; the pair two words, its car's and cdr's.
+        let nil: List<i64> = crate::nil();
+        assert_eq!(nil.word().raw(), 2 << 3 | 0b011);
+        assert!(crate::null_p(nil) && nil.pair().is_none());
+        let xs = crate::heap_cons(5i64, crate::heap_cons(6i64, nil));
+        assert_eq!(xs.word().raw() & 7, 0b001);
+        assert_eq!(std::mem::size_of::<List<i64>>(), 8);
+        assert_eq!(std::mem::size_of::<Cons<'static, i64>>(), 16);
+        assert_eq!((crate::car(xs), crate::car(crate::cdr(xs))), (5, 6));
+        assert!(crate::null_p(crate::cdr(crate::cdr(xs))));
+        // Held as its word, as a pair's cdr is.
+        let w: HeapWord = xs.store();
+        assert_eq!(crate::car(List::<i64>::load(w)), 5);
     }
 }

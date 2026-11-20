@@ -15374,3 +15374,43 @@ Measured (the 1000-procedure bench):
 - An edit's build 0.28 to 0.29 s, a cold one 0.65 to 0.66 s; peak memory
   174 to 175 MB and 443 MB, as C495's.
 - **The full check**: all passed in 494.3 s, its second run (the first stopped at 106 s, an unused import in a test); nextest 5618.
+
+## C497. A list one Fixpt word, a pair Fixpt's headerless cell (2026-11-20)
+
+The user, after C496's next steps (pairs next, or first where the cold
+build's bignums are made): "Go with direction of one word migration.
+Don't worry about the bignums".
+
+Reviewed first, Fixpt's `fixpt-heap` (`value.rs`, `layout.rs`): a
+pair has no header, a two-word cell of its car's and cdr's words, a
+word to it tagged `001`; the empty list an immediate (subtag 2).
+
+Considered: a list kept `Option<Handle<Cons>>`, its word only where a
+heap object holds it. Not taken: `Option` and `Handle` are `Trace`
+generically, so a pair's tag (a handle to a pair is `001`, to an object
+another) would need a trait of the pointee's for every type a handle
+points to, and a way through `Option`. Taken: kfx's emitter reaches a
+list only by kayak-rt's functions (`nil`, `heap_cons`, `car`, `cdr`,
+`null_p`), never as an `Option`, so the list's type itself is a word.
+
+What changed (kayak-rt):
+- **`ListAt`** (`obj.rs`): one Fixpt word, on the stack as in the heap:
+  `HeapWord::NULL`, or its first pair's address tagged `001`; made only
+  of a pair's handle or the empty list (`of_pair`, `NIL`), so the word
+  it reads a pair of (`pair`) is one it made. Its `Stored` its word.
+- **A pair** (`Cons`): its car's word and its cdr's, Fixpt's
+  headerless two-word cell, as it was in size; its cdr a word now, not
+  an `Option`'s pointer, `0` no longer the empty list.
+- kayak-rt's walks of a list by `pair()`; nothing outside kayak-rt
+  treated a list as an `Option`, and the emitter's text is the same. A
+  list crossing to native code is still copied, each way (C116).
+- No list is `Flat` (a zero word no list now): only scalars' cells and
+  products of flats are.
+- **A test**: the empty list's word Fixpt's immediate, a list's tagged
+  `001`, a pair two words, a list held as its word.
+
+Measured (the 1000-procedure bench): the census as C496's, 16.73
+million allocations, 354.3 MB; an edit's build 0.28 s, a cold one 0.64
+to 0.65 s; peak memory 175 to 176 MB and 442 MB, as before. kc's binary
+9.39 to 9.46 MB (each walk's test of a tag).
+- **The full check**: all passed in 582.2 s, its first run; nextest 5619.
