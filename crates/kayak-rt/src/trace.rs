@@ -575,23 +575,6 @@ impl Trace for &'static [Value] {
     }
 }
 
-/// A procedure of `lambdaN`'s (kc's `rust.kfx` still has them): a Rust
-/// closure, its captures Rust's, opaque (`TODO.md` §54).
-macro_rules! opaque_fn {
-    ($(($($a:ident),*))*) => {$(
-        impl<$($a,)* R> Trace for &'static dyn Fn($($a),*) -> R {
-            trace_whole!();
-            fn trace<'a>(self, t: &mut Tracer<'a>)
-            where
-                Self: 'a,
-            {
-                t.opaque(std::ptr::from_ref(self).cast::<()>() as usize);
-            }
-        }
-    )*};
-}
-opaque_fn!(()(A)(A, B)(A, B, C)(A, B, C, D));
-
 /// A dynamic value (C491): what it holds reached, precisely: a pair, a
 /// member's object, a string, a bignum.
 impl Trace for Value {
@@ -613,8 +596,8 @@ impl Trace for Value {
 
 /// A plain reference, what KFX's Rust has that is no handle (C492): what
 /// it points to visited, precisely: an I-cell, a mailbox, a knot, a
-/// place, a module's state. (A continuation, a `lambdaN` procedure and a
-/// blobref into a suffix are opaque, each by its own impl.)
+/// place, a module's state. (A continuation and a blobref into a suffix
+/// are opaque, each by its own impl.)
 impl<'r, T: Visit + 'r> Trace for &'r T {
     trace_whole!();
     #[inline]

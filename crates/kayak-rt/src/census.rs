@@ -2,7 +2,7 @@
 //! `heap-stats` feature: the mark of a collector (`TODO.md` §54), as a
 //! measure, nothing freed. Each heap arena's block is noted as it is made,
 //! with how a cell of its type is traced; each block kayak-rt leaks for
-//! itself (a closure, `lambdaN`) noted opaque, its size alone; each
+//! itself (a continuation) noted opaque, its size alone; each
 //! constant noted as it is first made. A mark, every `KAYAK_HEAP_MARK`th
 //! allocation: the run's stack read word by word, from here to its top
 //! (Bartlett's: conservative), each word in a noted block its cell's

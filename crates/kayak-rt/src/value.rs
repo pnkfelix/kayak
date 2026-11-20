@@ -117,11 +117,6 @@ boxed_member! {
     <> u32;
     <> u64;
     <> u8;
-    <A, R> &'static dyn Fn(A) -> R;
-    <R> &'static dyn Fn() -> R;
-    <A, B, R> &'static dyn Fn(A, B) -> R;
-    <A, B, C, R> &'static dyn Fn(A, B, C) -> R;
-    <A, B, C, D, R> &'static dyn Fn(A, B, C, D) -> R;
 }
 
 /// A value's shape at run time, which a test tells apart (FX-26's).
@@ -271,26 +266,6 @@ impl ToValue for Vector {
         other(self, Shape::Vector)
     }
 }
-
-macro_rules! procedure_value {
-    ($($a:ident),*) => {
-        impl<$($a: 'static,)* R: 'static> ToValue for &'static dyn Fn($($a),*) -> R {
-            fn to_value(self) -> Value {
-                other(self, Shape::Procedure)
-            }
-        }
-        impl<$($a,)* R> Shaped for &dyn Fn($($a),*) -> R {
-            fn shape(&self) -> Shape {
-                Shape::Procedure
-            }
-        }
-    };
-}
-procedure_value!();
-procedure_value!(A);
-procedure_value!(A, B);
-procedure_value!(A, B, C);
-procedure_value!(A, B, C, D);
 
 impl<T: crate::Trace + 'static> ToValue for &'static crate::Slot<T> {
     fn to_value(self) -> Value {
@@ -567,10 +542,10 @@ mod tests {
         assert_eq!(i64::from_value(car(l)), 1);
         assert!(null_p(cdr(l)));
         assert!(null_p(list::<i64>(None)));
-        let f: &'static dyn Fn(i64) -> i64 = &|x| x + 1;
-        let p = f.to_value();
+        let f: crate::Proc1<'static, i64, i64> = crate::closure1((), |(), x| x + 1);
+        let p = other(f, Shape::Procedure);
         assert!(procedure_p(p));
-        assert_eq!(unbox_other::<&'static dyn Fn(i64) -> i64>(p)(4), 5);
+        assert_eq!(unbox_other::<crate::Proc1<'static, i64, i64>>(p).call(4), 5);
         let d = cons(1i64, cons(str_lit("a"), Value::Nil));
         let mut out = String::new();
         d.show(&mut out);

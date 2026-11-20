@@ -113,7 +113,8 @@ where
             body: RefCell::new(Some(body)),
             given,
         });
-        // A closure of the continuation (C481), opaque to a trace for now.
+        // A closure of the continuation (C481): its capture, `k`, scanned as
+        // a stack is (C493).
         f(crate::closure1((k,), |(k,), v| -> Body<R> {
             Box::pin(k.resume(v))
         }))
@@ -133,8 +134,13 @@ where
     }
 }
 
-/// A continuation: opaque for now (`TODO.md` §54: its `Resume`'s values
-/// are a Rust closure's captures).
+/// A continuation: conservative, as the Rust stack is (C493). Its body is
+/// a suspended Rust future, an `async fn`'s frames that rustc lays out, as
+/// it lays out the stack's: what it holds no trait of ours can name, so a
+/// collector scans it as it scans a stack (Bartlett's mostly-copying),
+/// pinning what it may point to. Not yet: the future's own block, which
+/// `Box::pin` allocates, is no block a census or collector knows
+/// (`TODO.md` §54); a scan of this one finds only its pointer.
 impl<V: 'static, R: 'static> crate::Trace for &'static Cont<V, R> {
     crate::trace_whole!();
     fn trace<'a>(self, t: &mut crate::Tracer<'a>)

@@ -8,7 +8,9 @@
  value definition a thread's cell, `KCG_NAME`, set as `main` comes to it
  (so that it is made where Fixpt makes it, and fails there), read through
  `kcg_NAME()`; an expression a statement of `main`. A lambda (C412) is kayak-rt's
- `lambdaN` of a Rust closure, a procedure's type `&'static dyn Fn`."
+ closure (C481, C493): `closureN` of its free variables, a tuple, and a
+ `fn` of them and its parameters; a procedure's type `ProcN`, called by
+ `.call`."
 
 "A primitive's kayak-rt function: its name as kfx spells it in Rust
  (`names.kfx`'s `mangle`: `char->integer` is `char_to_integer`, `+` is
@@ -18,7 +20,7 @@
   (module
     (hide
       (import kc-front kc-hex kc-datum kc-items-of kc-keys kc-type (type qbody))
-      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args let-bindings let-body if-parts seq-terms prim-name prim-args term-number term-text lambda-params app-fn app-args gproc-arity))
+      (import kc-l0 not-yet l0-item term-head item-kind item-name item-params item-body call-name call-args let-bindings let-body if-parts seq-terms prim-name prim-args term-number term-text lambda-params lambda-free app-fn app-args gproc-arity))
 
     (hide
       (define rust-primitive (subr kfx (string) string) (lambda (n) (mangle n)))
@@ -88,9 +90,10 @@
                 ((and (sym-is? (car xs) "ref") (i64= (size xs) 3)) (string-append "Ref<" (string-append (rust-type path (second xs)) ">")))
                 ;; An array at a region, kayak-rt's `Array` (C422).
                 ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3)) (string-append "Array<" (string-append (rust-type path (second xs)) ">")))
-                ;; A procedure as a value: kayak-rt's, a `dyn Fn` on its heap (C412).
+                ;; A procedure as a value: kayak-rt's closure, a handle (C481, C493).
                 ((and (sym-is? (car xs) "subr") (i64= (size xs) 4))
-                 (string-list-append (list "&'static dyn Fn(" (words-of-commas (rust-param-types path (items (third xs)))) ") -> " (rust-type path (fourth xs)))))
+                 (string-list-append (list "kayak_rt::Proc" (i64->string (size (items (third xs)))) "<'static, "
+                                           (words-of-commas (append (rust-param-types path (items (third xs))) (list (rust-type path (fourth xs))))) ">")))
                       (else (not-yet path (string-append "a Rust type of " (kc-datum t))))))
               (else other (not-yet path "a Rust type of this")))))
         (rust-param-types (subr kfx (string sexps) (listof string acyclic))
@@ -130,19 +133,28 @@
                    (string-list-append (list "(" (rust-of (car (prim-args t))) " == " (rust-of (second (prim-args t))) ")")))
                   ((string=? h "prim")
                    (string-list-append (list (rust-primitive (prim-name t)) "(" (rust-args (prim-args t)) ")")))
-                  ;; A lambda, kayak-rt's `lambdaN` of a Rust closure, `move`, what it
-            ;; captures `Copy`; its parameters typed where written (C412).
+                  ;; A lambda, kayak-rt's closure (C481, C493): its free variables
+            ;; a tuple, given again to its code, a `fn` that captures nothing
+            ;; (rustc refuses one that does); its parameters typed where
+            ;; written (C412). What it captures traced, as FX-26's closure's.
             ((string=? h "lambda")
-             (let ((ps (lambda-params t)))
+             (let* ((ps (lambda-params t))
+                    (env (string-list-append (list "(" (string-list-append (map (lambda ((v sexp)) (string-append (rust-variable v) ", ")) (lambda-free t))) ")"))))
                (string-list-append
-                 (list "lambda" (i64->string (size ps)) "(move |"
-                       (words-of-commas (map (lambda ((q sexp)) (if (i64= (size (items q)) 3)
-                                                                    (string-append (rust-variable q) (string-append ": " (rust-type "" (third (items q)))))
-                                                                    (rust-variable q)))
-                                             ps))
+                 (list "kayak_rt::closure" (i64->string (size ps)) "(" env ", |" env
+                       (string-list-append (map (lambda ((q sexp)) (string-append ", " (if (i64= (size (items q)) 3)
+                                                                                    (string-append (rust-variable q) (string-append ": " (rust-type "" (third (items q)))))
+                                                                                    (rust-variable q))))
+                                                ps))
                        "| " (rust-of (item-body t)) ")"))))
-            ((string=? h "app") (string-list-append (list "(" (rust-of (app-fn t)) ")(" (rust-args (app-args t)) ")")))
-            ((string=? h "gproc") (string-list-append (list "lambda" (i64->string (gproc-arity t)) "(" (rust-proc-name (item-name t)) ")")))
+            ((string=? h "app") (string-list-append (list "(" (rust-of (app-fn t)) ").call(" (rust-args (app-args t)) ")")))
+            ;; A procedure of the program's as a value: a closure of nothing
+            ;; that calls it (C493).
+            ((string=? h "gproc")
+             (let ((xs (rust-arg-names 0 (gproc-arity t))))
+               (string-list-append (list "kayak_rt::closure" (i64->string (gproc-arity t)) "((), |()"
+                                         (string-list-append (map (lambda ((x string)) (string-append ", " x)) xs))
+                                         "| " (rust-proc-name (item-name t)) "(" (words-of-commas xs) "))"))))
             ;; A string, kayak-rt's `str_lit` of a Rust literal; a symbol, its
             ;; `symbol_lit` of its name's (C421).
             ((string=? h "string") (string-append "str_lit!(" (string-append (rust-string (term-text t)) ")")))
@@ -153,6 +165,10 @@
                   ((string=? h "unit") "()")
                   ((string=? h "nil") "nil()")
                   (else (begin (error (string-append "kc: the Rust back end has no term " h)) ""))))))
+       (rust-arg-names (subr kfx (i64 i64) strings)
+        (lambda (i n)
+          "Arguments' names, `a0`, `a1`, ... below `n`, from `i`."
+          (if (i64>= i n) nil (cons (string-append "a" (i64->string i)) (rust-arg-names (i64+ i 1) n)))))
        (rust-args (subr kfx (sexps) string)
         (lambda (ts)
           (cond ((null? ts) "")

@@ -159,23 +159,6 @@ impl<T: Show + Copy> Show for Cell<T> {
     }
 }
 
-/// A procedure: Fixpt writes how its machine made it, which a comparison
-/// takes as any procedure.
-macro_rules! show_procedure {
-    ($($a:ident),*) => {
-        impl<$($a,)* R> Show for dyn Fn($($a),*) -> R {
-            fn show(&self, out: &mut String) {
-                out.push_str("#<procedure>");
-            }
-        }
-    };
-}
-show_procedure!();
-show_procedure!(A);
-show_procedure!(A, B);
-show_procedure!(A, B, C);
-show_procedure!(A, B, C, D);
-
 /// A top-level expression's value, on a line of its own.
 pub fn show_line<T: Show>(out: &mut String, v: T) {
     v.show(out);

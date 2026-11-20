@@ -13,7 +13,9 @@ use super::*;
 // value definition a thread's cell, `KCG_NAME`, set as `main` comes to it
 // (so that it is made where Fixpt makes it, and fails there), read through
 // `kcg_NAME()`; an expression a statement of `main`. A lambda (C412) is kayak-rt's
-// `lambdaN` of a Rust closure, a procedure's type `&'static dyn Fn`.
+// closure (C481, C493): `closureN` of its free variables, a tuple, and a
+// `fn` of them and its parameters; a procedure's type `ProcN`, called by
+// `.call`.
 
 // A primitive's kayak-rt function: its name as kfx spells it in Rust
 // (`names.kfx`'s `mangle`: `char->integer` is `char_to_integer`, `+` is
@@ -136,6 +138,11 @@ pub mod kc_rust {
     #[inline]
     pub fn lambda_params() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::lambda_params)
+    }
+
+    #[inline]
+    pub fn lambda_free() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+        kayak_rt::as_proc(kc_l0::lambda_free)
     }
 
     #[inline]
@@ -297,7 +304,7 @@ pub mod kc_rust {
                 } else if (sym_is_p(car(xs), str_lit!("arrayof")) && i64_eq(size(xs), 3i64)) {
                     string_append(str_lit!("Array<"), string_append(rust_type(path, second(xs)), str_lit!(">")))
                 } else if (sym_is_p(car(xs), str_lit!("subr")) && i64_eq(size(xs), 4i64)) {
-                    string_list_append(kayak_rt::heap_cons(str_lit!("&'static dyn Fn("), kayak_rt::heap_cons(words_of_commas(rust_param_types(path, items(third(xs)))), kayak_rt::heap_cons(str_lit!(") -> "), kayak_rt::heap_cons(rust_type(path, fourth(xs)), kayak_rt::nil())))))
+                    string_list_append(kayak_rt::heap_cons(str_lit!("kayak_rt::Proc"), kayak_rt::heap_cons(i64_to_string(size(items(third(xs)))), kayak_rt::heap_cons(str_lit!("<'static, "), kayak_rt::heap_cons(words_of_commas(append(rust_param_types(path, items(third(xs))), kayak_rt::heap_cons(rust_type(path, fourth(xs)), kayak_rt::nil()))), kayak_rt::heap_cons(str_lit!(">"), kayak_rt::nil()))))))
                 } else {
                     not_yet().call(path, string_append(str_lit!("a Rust type of "), kc_datum().call(t)))
                 }
@@ -348,17 +355,23 @@ pub mod kc_rust {
             string_list_append(kayak_rt::heap_cons(rust_primitive(prim_name().call(t)), kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(rust_args(prim_args().call(t)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))
         } else if string_eq_p(h, str_lit!("lambda")) {
             let ps = lambda_params().call(t);
-            string_list_append(kayak_rt::heap_cons(str_lit!("lambda"), kayak_rt::heap_cons(i64_to_string(size(ps)), kayak_rt::heap_cons(str_lit!("(move |"), kayak_rt::heap_cons(words_of_commas(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), q: kayak_rt::Handle<'static, Sexp>| {
-                if i64_eq(size(items(q)), 3i64) {
+            let env = string_list_append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), v: kayak_rt::Handle<'static, Sexp>| {
+                string_append(rust_variable(v), str_lit!(", "))
+            })), lambda_free().call(t))), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))));
+            string_list_append(kayak_rt::heap_cons(str_lit!("kayak_rt::closure"), kayak_rt::heap_cons(i64_to_string(size(ps)), kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(env, kayak_rt::heap_cons(str_lit!(", |"), kayak_rt::heap_cons(env, kayak_rt::heap_cons(string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), q: kayak_rt::Handle<'static, Sexp>| {
+                string_append(str_lit!(", "), if i64_eq(size(items(q)), 3i64) {
                     string_append(rust_variable(q), string_append(str_lit!(": "), rust_type(str_lit!(""), third(items(q)))))
                 } else {
                     rust_variable(q)
-                }
-            })), ps)), kayak_rt::heap_cons(str_lit!("| "), kayak_rt::heap_cons(rust_of(item_body().call(t)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))))
+                })
+            })), ps)), kayak_rt::heap_cons(str_lit!("| "), kayak_rt::heap_cons(rust_of(item_body().call(t)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))))))))
         } else if string_eq_p(h, str_lit!("app")) {
-            string_list_append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(rust_of(app_fn().call(t)), kayak_rt::heap_cons(str_lit!(")("), kayak_rt::heap_cons(rust_args(app_args().call(t)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))
+            string_list_append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(rust_of(app_fn().call(t)), kayak_rt::heap_cons(str_lit!(").call("), kayak_rt::heap_cons(rust_args(app_args().call(t)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))
         } else if string_eq_p(h, str_lit!("gproc")) {
-            string_list_append(kayak_rt::heap_cons(str_lit!("lambda"), kayak_rt::heap_cons(i64_to_string(gproc_arity().call(t)), kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(rust_proc_name(item_name().call(t)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))
+            let xs = rust_arg_names(0i64, gproc_arity().call(t));
+            string_list_append(kayak_rt::heap_cons(str_lit!("kayak_rt::closure"), kayak_rt::heap_cons(i64_to_string(gproc_arity().call(t)), kayak_rt::heap_cons(str_lit!("((), |()"), kayak_rt::heap_cons(string_list_append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: Str| {
+                string_append(str_lit!(", "), x)
+            })), xs)), kayak_rt::heap_cons(str_lit!("| "), kayak_rt::heap_cons(rust_proc_name(item_name().call(t)), kayak_rt::heap_cons(str_lit!("("), kayak_rt::heap_cons(words_of_commas(xs), kayak_rt::heap_cons(str_lit!("))"), kayak_rt::nil()))))))))))
         } else if string_eq_p(h, str_lit!("string")) {
             string_append(str_lit!("str_lit!("), string_append(rust_string(term_text().call(t)), str_lit!(")")))
         } else if string_eq_p(h, str_lit!("symbol")) {
@@ -380,6 +393,16 @@ pub mod kc_rust {
         } else {
             error(string_append(str_lit!("kc: the Rust back end has no term "), h));
             str_lit!("")
+        }
+    }
+
+    /// Arguments' names, `a0`, `a1`, ... below `n`, from `i`.
+    #[inline]
+    pub fn rust_arg_names(i: i64, n: i64) -> Strings {
+        if i64_gt_eq(i, n) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(string_append(str_lit!("a"), i64_to_string(i)), rust_arg_names(i64_plus(i, 1i64), n))
         }
     }
 

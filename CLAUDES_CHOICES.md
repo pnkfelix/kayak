@@ -15200,3 +15200,44 @@ blobref into a suffix (an interior pointer); and a `Value` one word.
 
 Measured: an edit's build 0.27 s, as before; its census the same.
 - **The full check**: all passed in 494.1 s, its first run; nextest 5616.
+
+## C493. kc's Rust back end of closures, `lambdaN` gone; a continuation conservative (2026-11-20)
+
+The user, after C492's list of what is left before a collector: "Go
+ahead" (its first item: a continuation and a `lambdaN` procedure, the
+last references traced as opaque, but a blobref into a suffix).
+
+Reviewed first: who makes a `lambdaN` procedure. kfx's emitter none
+since C481; kc's generated crates none; kc's Rust back end (`rust.kfx`,
+C412) each lambda it compiles (`lambdaN(move |...| ...)`), a procedure's
+type `&'static dyn Fn`, a call `(f)(...)`, a top-level procedure as a
+value `lambdaN(kcp_f)`; and the corpus's programs of another machine
+(`made-*.rs`, written by an older emitter, blessed again there).
+
+What changed:
+- **kc's Rust back end** (`kc/rust.kfx`): a lambda kayak-rt's closure,
+  as kfx's emitter's are (C481): `closureN((free, ...), |(free, ...),
+  params| body)`, its free variables the ones kc's L0 found (C412,
+  `lambda-free`), so its captures traced; a procedure's type `ProcN<
+  'static, ...>`; a call `.call(...)`; a top-level procedure as a value
+  a closure of nothing that calls it. kc's 77 KFX programs, built by
+  `kc --rust` and run, each its stated answer.
+- **`lambdaN` gone from kayak-rt**: its makers (`lambda0` to
+  `lambda5s`), and what a `&'static dyn Fn` had (its opaque `Trace`, its
+  box as a union's member, its `ToValue`, `Shaped` and `Show`); the
+  union test's procedure a closure. The checkers' reserved names keep
+  `lambda0` to `lambda4` (harmless; a regen of kfx's own to drop).
+- **A continuation conservative** (`suspend.rs`), decided, not left: its
+  body a suspended Rust future, an `async fn`'s frames rustc lays out as
+  it lays out the stack's, which no trait of ours can name; so a
+  collector scans it as it scans a stack (Bartlett's mostly-copying),
+  pinning what it may point to, and a trace marks it opaque. Found: the
+  future's own block (`Box::pin`'s) is no block a census or collector
+  knows, so a scan of the continuation finds only a pointer to it; to do
+  with the collector (TODO §54).
+
+So opaque to a trace now: a continuation (conservative, as a stack is)
+and a blobref into a typed suffix (an interior pointer, its owner found
+by its trailer). Nothing else.
+- **The full check**: all passed in 516.4 s, its first run; nextest 5616;
+  kc-steps' Rust pass 77 programs.

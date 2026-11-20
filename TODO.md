@@ -377,8 +377,9 @@ Escapes are done (`DONE.md`, C18). Left:
 - **`proj`** (C40) is checked, its arguments given in its binders' order;
   in Rust, inference finds the generics (a turbofish where it cannot,
   C29). Not yet of a primitive (`abort-current-continuation`, above).
-- **A `lambda` of more than four parameters** has no `lambdaN` in
-  `kayak-rt`.
+- ~~**A `lambda` of more than four parameters** has no `lambdaN` in
+  `kayak-rt`.~~ (C493: `lambdaN` gone; a closure has six, `closure0` to
+  `closure6`.)
 - **Warnings in generated code** are all allowed. Unused bindings (a
   `tagcase` arm ignoring fields) are the common ones; whether the emitter
   should avoid them is open.
@@ -429,9 +430,10 @@ or a trait.
   closure is still a `Box` each (its type is no `'static` one to find an
   arena by), and so is the heap's data inside a `letrena` or a procedure
   over a region or place.
-- **A closure that does not escape is leaked all the same**: `lambdaN` for
-  every lambda, one each round in `closures`. One the checker finds stays
-  within its scope could be a local, borrowed as `&dyn Fn`.
+- **A closure that does not escape is leaked all the same**: a closure
+  object for every lambda (C481; `lambdaN` before), one each round in
+  `closures`. One the checker finds stays within its scope could be a
+  local, borrowed as `&dyn CallN`.
 - **`rlambda`'s closure is the heap's**, not its region's: a `Box<dyn Fn>`
   in the region's arena would be freed with it.
 - **The arena's cells are `OnceCell`s**: a flag tested and set at each
@@ -1884,10 +1886,12 @@ over its 1664 definitions, 335 of them refused:
   as FX-26's heap grammar has them~~ (done, C481: a closure is its
   captures' traced fields, their plain bytes, its code; a procedure value
   a handle to `dyn CallN`, called by `.call`; `Trace` split from `Visit`).
-  Left of closures: kc's own Rust back end (`kc/rust.kfx`) still writes
-  `lambdaN` and `&'static dyn Fn`, which kayak-rt keeps for it; a
-  continuation's closure (`Resume`) and a `letrec`'s knot reach their
-  values through plain references (opaque); a closure of no captures is
+  Left of closures: ~~kc's own Rust back end (`kc/rust.kfx`) still writes
+  `lambdaN` and `&'static dyn Fn`~~ (done, C493: its closures kayak-rt's,
+  `lambdaN` gone); ~~a continuation's closure (`Resume`) and a `letrec`'s
+  knot reach their values through plain references~~ (C492: a knot
+  visited; C493: a continuation conservative, as the stack is, its
+  future's own block, `Box::pin`'s, to be made one a collector knows); a closure of no captures is
   made at each evaluation (9000 of them at an edit's build), where one
   made once would do; and the corpus's programs of another machine
   (`made-*.rs` but x86_64's) are to be blessed again on it. Then the rest
@@ -1919,8 +1923,9 @@ over its 1664 definitions, 335 of them refused:
   a closure's), ~~what is still traced as a plain reference, opaque~~
   (done in part, C492: a reference to what is `Visit` visited, a place,
   a module's state, an I-cell, a mailbox, a knot, a region's arena.
-  Left opaque, each by an impl of its own: a continuation, a `lambdaN`
-  procedure, a blobref into a typed suffix, an interior pointer), ~~a product held by
+  Left opaque, each by an impl of its own: a continuation, scanned as a
+  stack is (C493), and a blobref into a typed suffix, an interior
+  pointer; `lambdaN` gone, C493), ~~a product held by
   value in its holder~~ (done, C490: boxed where a heap object holds it,
   `Prod`, one word to Fixpt's product object, kind 37, by its `split`: a
   pair's element, a sum's payload, a ref's and an array's cell, a
