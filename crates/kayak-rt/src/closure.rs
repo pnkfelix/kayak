@@ -34,7 +34,10 @@ impl<E: Trace, C> Visit for Closure<E, C> {
 /// A closure in a block of its own, never freed (kayak-rt has no
 /// collector yet), noted for a census (C480).
 fn kept<'r, T: Visit + 'r>(v: T) -> &'r T {
-    crate::stats::note::<T>(std::mem::size_of::<T>());
+    // One of no bytes (no captures, C493) allocates nothing: not noted.
+    if std::mem::size_of::<T>() > 0 {
+        crate::stats::note::<T>(std::mem::size_of::<T>());
+    }
     let r: &'r T = Box::leak(Box::new(v));
     #[cfg(feature = "heap-stats")]
     if std::mem::size_of::<T>() > 0 {
@@ -71,7 +74,7 @@ macro_rules! arities {
         }
 
         #[allow(non_snake_case)]
-        impl<E: Trace, $($a,)* R> $call<$($a,)* R> for Closure<E, fn(E, $($a),*) -> R> {
+        impl<E: Trace, Code: Fn(E, $($a),*) -> R, $($a,)* R> $call<$($a,)* R> for Closure<E, Code> {
             #[inline]
             fn call(&self, $($a: $a),*) -> R {
                 (self.code)(E::join(self.fields, self.suffix), $($a),*)
@@ -160,22 +163,27 @@ macro_rules! arities {
             }
         }
 
-        /// A closure of captures `env` and code `code`.
+        /// A closure of captures `env` and code `code`: a Rust closure that
+        /// captures nothing (C493: zero bytes, checked when built, as a `fn`
+        /// was), so that one of no captures is no bytes at all, made at no
+        /// cost (a box of nothing allocates nothing).
         #[inline]
-        pub fn $make<'r, E: Trace + 'r, $($a: 'r,)* R: 'r>(env: E, code: fn(E, $($a),*) -> R) -> $proc<'r, $($a,)* R> {
+        pub fn $make<'r, E: Trace + 'r, Code: Fn(E, $($a),*) -> R + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $proc<'r, $($a,)* R> {
+            const { assert!(std::mem::size_of::<Code>() == 0, "a closure's code captures") };
             let (fields, suffix) = env.split();
-            Handle::made(kept(Closure::<E, fn(E, $($a),*) -> R> { fields, suffix, code }))
+            Handle::made(kept(Closure::<E, Code> { fields, suffix, code }))
         }
 
         /// A closure of captures `env`, all `Send + Sync`, and code `code`.
         #[inline]
-        pub fn $makes<'r, E: Trace + Send + Sync + 'r, $($a: 'r,)* R: 'r>(env: E, code: fn(E, $($a),*) -> R) -> $procs<'r, $($a,)* R>
+        pub fn $makes<'r, E: Trace + Send + Sync + 'r, Code: Fn(E, $($a),*) -> R + Send + Sync + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $procs<'r, $($a,)* R>
         where
             E::Field: Send + Sync,
             E::Byte: Send + Sync,
         {
+            const { assert!(std::mem::size_of::<Code>() == 0, "a closure's code captures") };
             let (fields, suffix) = env.split();
-            Handle::made(kept(Closure::<E, fn(E, $($a),*) -> R> { fields, suffix, code }))
+            Handle::made(kept(Closure::<E, Code> { fields, suffix, code }))
         }
     )*};
 }
@@ -193,6 +201,18 @@ arities! {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_closure_of_no_captures_no_bytes() {
+        // Its code no pointer (C493): of no captures, nothing; of one
+        // `i64`, that word alone.
+        let f: Proc1<'static, i64, i64> = closure1((), |(), x| x + 1);
+        assert_eq!(std::mem::size_of_val(f.to_ref()), 0);
+        assert_eq!(f.call(1), 2);
+        let g: Proc1<'static, i64, i64> = closure1((40i64,), |(k,), x| x + k);
+        assert_eq!(std::mem::size_of_val(g.to_ref()), 8);
+        assert_eq!(g.call(2), 42);
+    }
 
     #[test]
     fn a_closure_called_and_traced() {

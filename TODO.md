@@ -1891,9 +1891,10 @@ over its 1664 definitions, 335 of them refused:
   `lambdaN` gone); ~~a continuation's closure (`Resume`) and a `letrec`'s
   knot reach their values through plain references~~ (C492: a knot
   visited; C493: a continuation conservative, as the stack is, its
-  future's own block, `Box::pin`'s, to be made one a collector knows); a closure of no captures is
+  future's own block, `Box::pin`'s, to be made one a collector knows); ~~a closure of no captures is
   made at each evaluation (9000 of them at an edit's build), where one
-  made once would do; and the corpus's programs of another machine
+  made once would do~~ (done, C494: a closure's code its own type, no
+  pointer, so one of no captures no bytes, allocating nothing); and the corpus's programs of another machine
   (`made-*.rs` but x86_64's) are to be blessed again on it. Then the rest
   of the heap to the same grammar (the user: "everything conversion if
   you can swing it"): ~~a string~~ (done, C482: one word to an object of

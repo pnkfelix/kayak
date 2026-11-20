@@ -15241,3 +15241,36 @@ and a blobref into a typed suffix (an interior pointer, its owner found
 by its trailer). Nothing else.
 - **The full check**: all passed in 516.4 s, its first run; nextest 5616;
   kc-steps' Rust pass 77 programs.
+
+## C494. A closure's code no pointer: one of no captures no bytes (2026-11-20)
+
+The user, after C493's list (a closure of no captures made at each
+evaluation, about 9000 at an edit's build, where one made once would
+do): "Go ahead".
+
+Taken in kayak-rt, not the emitter: a closure's code is its own Rust
+closure's type now, generic (`Code: Fn(E, ...) -> R`), not a `fn`
+pointer. One that captures nothing is zero bytes, so a closure of no
+captures is zero bytes whole, and a box of nothing allocates nothing:
+made once or made at each evaluation, it costs no allocation. One of
+captures is its captures alone, a word less. The emitter's text is the
+same (`closureN(env, |env, params| body)`); rustc's check that the code
+captures nothing (a `fn`'s, C481) is kept as a check when built: its
+size zero, asserted in a `const` block. Considered, not taken: a static
+per site, which a generic procedure's closure (its types its own) cannot
+have.
+
+- **Identity**: closures of no bytes share an address. KFX's Rust never
+  asks a procedure's identity (`eq?` of immediates alone, the checker
+  telling no pair apart); and a handle's `same` compares a `dyn`'s
+  vtable too, so closures of two codes are never one. FX-26's `eq?` of
+  procedures says `#t` only of equal ones, `#f` saying nothing.
+- **A test**: a closure of no captures zero bytes, of an `i64` eight.
+- A closure of no bytes is not noted among the heap's allocations.
+
+Measured (a fresh build of the 1000-procedure bench, heap-stats): 18.22
+million allocations to 16.73 million, the census's 377.1 MB to 354.2
+MB (its size classes'). An edit's build 0.27 to 0.28 s, a cold one 0.64
+s, as before: fewer allocations, no less time.
+kc's binary 9.23 to 9.27 MB (a type per closure site).
+- **The full check**: all passed in 509.9 s, its first run; nextest 5617.
