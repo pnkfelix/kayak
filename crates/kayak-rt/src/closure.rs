@@ -1,55 +1,18 @@
-//! Closures as FX-26's heap grammar has them (C481, C496): a closure is a
-//! heap object of its captures, each a Fixpt word (its type's
-//! `Trace::Stored`, `Captures`), as Fixpt's closure is a bloblet of its free values,
-//! each a word. Its code is its type's (C494), no word of it: so one of no
-//! captures is no bytes. No header yet (TODO §54).
+//! Closures as FX-26's heap grammar has them (C481, C496, C501): a
+//! procedure value is one Fixpt word, to Fixpt's native closure (kind 41),
+//! its free values each a Fixpt word (`Free`), then a word to its code's
+//! object (`obj.rs`'s `procs`, where what reads a closure again by its
+//! code is). Its Rust code is its type's (C494), no bytes of it.
 //!
 //! kfx writes a closure as its captures, a tuple, and its code, a
 //! function of them and its parameters that captures nothing (checked
 //! when built). The tuple is stored as its words, and loaded again at
 //! each call.
 //!
-//! A procedure value is a handle to `dyn CallN`, called by `.call(...)`:
-//! stable Rust lets no type of ours be called as `f(x)`.
+//! A procedure value is called by `.call(...)`: stable Rust lets no type
+//! of ours be called as `f(x)`.
 
-use crate::Handle;
-use crate::trace::{Captures, Trace, Tracer, Visit};
-
-/// A closure: its captures' words, its code.
-#[repr(C)]
-pub struct Closure<E: Captures, C> {
-    words: E::Words,
-    code: C,
-}
-
-impl<E: Captures, C> Visit for Closure<E, C> {
-    fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
-        E::of_words(self.words).trace(t);
-    }
-}
-
-/// A closure in a block of its own, never freed (kayak-rt has no
-/// collector yet), noted for a census (C480).
-fn kept<'r, T: Visit + 'r>(v: T) -> &'r T {
-    // One of no bytes (no captures, C493) allocates nothing: not noted.
-    if std::mem::size_of::<T>() > 0 {
-        crate::stats::note::<T>(std::mem::size_of::<T>());
-    }
-    let r: &'r T = Box::leak(Box::new(v));
-    #[cfg(feature = "heap-stats")]
-    if std::mem::size_of::<T>() > 0 {
-        crate::census::one(r);
-    }
-    r
-}
-
-/// A function as a procedure value: its code alone, nothing captured, no
-/// bytes (a top-level procedure's static closure, as Fixpt's).
-pub struct FnProc<F>(F);
-
-impl<F> Visit for FnProc<F> {
-    fn visit<'a>(&'a self, _: &mut Tracer<'a>) {}
-}
+pub use crate::obj::procs::*;
 
 /// What may be a procedure value `P`: a function, of `P`'s arity.
 pub trait AsProc<P> {
@@ -62,86 +25,23 @@ pub fn as_proc<P, F: AsProc<P>>(f: F) -> P {
     f.into_proc()
 }
 
-macro_rules! arities {
-    ($($call:ident $proc:ident $procs:ident $make:ident $makes:ident ($($a:ident)*);)*) => {$(
-        /// A procedure of this arity, as a value.
-        pub trait $call<$($a,)* R>: Visit {
-            #[allow(clippy::too_many_arguments, non_snake_case)]
-            fn call(&self, $($a: $a),*) -> R;
-        }
-
+macro_rules! as_procs {
+    ($($proc:ident $procs:ident $make:ident $makes:ident ($($a:ident)*);)*) => {$(
+        /// A function as a procedure value: a closure of nothing, its code
+        /// the function (a top-level procedure's, as Fixpt's).
         #[allow(non_snake_case)]
-        impl<E: Captures, Code: Fn(E, $($a),*) -> R, $($a,)* R> $call<$($a,)* R> for Closure<E, Code> {
-            #[inline]
-            fn call(&self, $($a: $a),*) -> R {
-                (self.code)(E::of_words(self.words), $($a),*)
-            }
-        }
-
-        /// A procedure value of this arity.
-        pub type $proc<'r, $($a,)* R> = Handle<'r, dyn $call<$($a,)* R> + 'r>;
-        /// One of an effect a process may have (C102): `Send + Sync`.
-        pub type $procs<'r, $($a,)* R> = Handle<'r, dyn $call<$($a,)* R> + Send + Sync + 'r>;
-
-        // A procedure value as a union's member (C491): boxed, its closure
-        // behind `dyn`, not `Any`.
-        impl<$($a: 'static,)* R: 'static> crate::value::Member for $proc<'static, $($a,)* R> {
-            #[inline]
-            fn object(self) -> &'static dyn crate::value::Obj {
-                crate::value::boxed_object(self)
-            }
-            #[inline]
-            fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
-                crate::value::of_boxed(o)
-            }
-        }
-
-        impl<$($a: 'static,)* R: 'static> crate::value::Member for $procs<'static, $($a,)* R> {
-            #[inline]
-            fn object(self) -> &'static dyn crate::value::Obj {
-                crate::value::boxed_object(self)
-            }
-            #[inline]
-            fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
-                crate::value::of_boxed(o)
-            }
-        }
-
-        impl<'r, $($a,)* R> Trace for $proc<'r, $($a,)* R> {
-            crate::trace_whole!();
-            #[inline]
-            fn trace<'a>(self, t: &mut Tracer<'a>) where Self: 'a {
-                t.reach(self.to_ref());
-            }
-        }
-
-        impl<'r, $($a,)* R> Trace for $procs<'r, $($a,)* R> {
-            crate::trace_whole!();
-            #[inline]
-            fn trace<'a>(self, t: &mut Tracer<'a>) where Self: 'a {
-                t.reach(self.to_ref());
-            }
-        }
-
-        #[allow(non_snake_case)]
-        impl<Fun: Fn($($a),*) -> R, $($a,)* R> $call<$($a,)* R> for FnProc<Fun> {
-            #[inline]
-            fn call(&self, $($a: $a),*) -> R {
-                (self.0)($($a),*)
-            }
-        }
-
-        impl<'r, Fun: Fn($($a),*) -> R + 'r, $($a: 'r,)* R: 'r> AsProc<$proc<'r, $($a,)* R>> for Fun {
+        impl<'r, Fun: Fn($($a),*) -> R + Copy + 'r, $($a: 'r,)* R: 'r> AsProc<$proc<'r, $($a,)* R>> for Fun {
             #[inline]
             fn into_proc(self) -> $proc<'r, $($a,)* R> {
-                Handle::made(kept(FnProc(self)))
+                $make((), move |(), $($a: $a),*| self($($a),*))
             }
         }
 
-        impl<'r, Fun: Fn($($a),*) -> R + Send + Sync + 'r, $($a: 'r,)* R: 'r> AsProc<$procs<'r, $($a,)* R>> for Fun {
+        #[allow(non_snake_case)]
+        impl<'r, Fun: Fn($($a),*) -> R + Copy + Send + Sync + 'r, $($a: 'r,)* R: 'r> AsProc<$procs<'r, $($a,)* R>> for Fun {
             #[inline]
             fn into_proc(self) -> $procs<'r, $($a,)* R> {
-                Handle::made(kept(FnProc(self)))
+                $makes((), move |(), $($a: $a),*| self($($a),*))
             }
         }
 
@@ -149,7 +49,7 @@ macro_rules! arities {
         impl<'r, $($a: 'r,)* R: 'r> AsProc<$proc<'r, $($a,)* R>> for $procs<'r, $($a,)* R> {
             #[inline]
             fn into_proc(self) -> $proc<'r, $($a,)* R> {
-                Handle::made(self.to_ref() as &(dyn $call<$($a,)* R> + 'r))
+                self.unsent()
             }
         }
 
@@ -159,53 +59,55 @@ macro_rules! arities {
                 self
             }
         }
-
-        /// A closure of captures `env` and code `code`: a Rust closure that
-        /// captures nothing (C493: zero bytes, checked when built, as a `fn`
-        /// was), so that one of no captures is no bytes at all, made at no
-        /// cost (a box of nothing allocates nothing).
-        #[inline]
-        pub fn $make<'r, E: Captures + 'r, Code: Fn(E, $($a),*) -> R + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $proc<'r, $($a,)* R> {
-            const { assert!(std::mem::size_of::<Code>() == 0, "a closure's code captures") };
-            Handle::made(kept(Closure::<E, Code> { words: env.words(), code }))
-        }
-
-        /// A closure of captures `env`, all `Send + Sync`, and code `code`.
-        #[inline]
-        pub fn $makes<'r, E: Captures + Send + Sync + 'r, Code: Fn(E, $($a),*) -> R + Send + Sync + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $procs<'r, $($a,)* R>
-        where
-            E::Words: Send + Sync,
-        {
-            const { assert!(std::mem::size_of::<Code>() == 0, "a closure's code captures") };
-            Handle::made(kept(Closure::<E, Code> { words: env.words(), code }))
-        }
     )*};
 }
 
-arities! {
-    Call0 Proc0 Proc0s closure0 closure0s ();
-    Call1 Proc1 Proc1s closure1 closure1s (A);
-    Call2 Proc2 Proc2s closure2 closure2s (A B);
-    Call3 Proc3 Proc3s closure3 closure3s (A B C);
-    Call4 Proc4 Proc4s closure4 closure4s (A B C D);
-    Call5 Proc5 Proc5s closure5 closure5s (A B C D F);
-    Call6 Proc6 Proc6s closure6 closure6s (A B C D F G);
+as_procs! {
+    Proc0 Proc0s closure0 closure0s ();
+    Proc1 Proc1s closure1 closure1s (A);
+    Proc2 Proc2s closure2 closure2s (A B);
+    Proc3 Proc3s closure3 closure3s (A B C);
+    Proc4 Proc4s closure4 closure4s (A B C D);
+    Proc5 Proc5s closure5 closure5s (A B C D F);
+    Proc6 Proc6s closure6 closure6s (A B C D F G);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Trace;
+
+    /// A word's object's `i`th word back from its suffix.
+    fn back(w: crate::HeapWord, i: usize) -> u64 {
+        // A test's reading of what it made: through the word's own
+        // provenance, as a pair's or a box's test does (`obj.rs`).
+        let words: &[u64] = crate::obj::words_before(w, i);
+        words[0]
+    }
 
     #[test]
-    fn a_closure_of_no_captures_no_bytes() {
-        // Its code no pointer (C493): of no captures, nothing; of one
-        // `i64`, that word alone.
+    fn a_closure_one_word_to_fixpt_native_closure() {
+        // One word; its object Fixpt's native closure (kind 41, frozen),
+        // `[free…][code][trailer]`: of no free values, its code and
+        // trailer, two fields.
         let f: Proc1<'static, i64, i64> = closure1((), |(), x| x + 1);
-        assert_eq!(std::mem::size_of_val(f.to_ref()), 0);
+        assert_eq!(std::mem::size_of::<Proc1<'static, i64, i64>>(), 8);
         assert_eq!(f.call(1), 2);
-        let g: Proc1<'static, i64, i64> = closure1((40i64,), |(k,), x| x + k);
-        assert_eq!(std::mem::size_of_val(g.to_ref()), 8);
-        assert_eq!(g.call(2), 42);
+        let w = f.store();
+        assert_eq!(w.raw() & 7, 0b100);
+        let h = back(w, 3);
+        assert_eq!(
+            (h & 7, (h >> 3) & 0xff, (h >> 12) & 3, (h >> 14) & 0x3ffff),
+            (0b110, 41, 0b11, 2)
+        );
+        assert_eq!(back(w, 2) & 7, 0b100);
+        // Of two: free value 0 nearest its code (slot 3), 1 before it.
+        let g: Proc1<'static, i64, i64> = closure1((40i64, 2i64), |(k, j), x| x + k - j);
+        assert_eq!(g.call(4), 42);
+        let w = g.store();
+        assert_eq!(back(w, 3), crate::HeapWord::fixnum(40).raw() as u64);
+        assert_eq!(back(w, 4), crate::HeapWord::fixnum(2).raw() as u64);
+        assert_eq!((back(w, 5) >> 14) & 0x3ffff, 4);
     }
 
     #[test]
@@ -224,13 +126,14 @@ mod tests {
     }
 
     #[test]
-    fn its_captures_words() {
-        // Each capture a Fixpt word (C496): an `i64` a fixnum, a string
-        // its tagged pointer, an `f64` a flonum's.
-        let f: Proc0<'static, f64> = closure0((7i64, crate::str_lit("x"), 1.5f64), |(k, s, x)| {
-            k as f64 + s.as_str().len() as f64 + x
-        });
-        assert_eq!(std::mem::size_of_val(f.to_ref()), 24);
-        assert_eq!(f.call(), 9.5);
+    fn a_function_as_a_procedure() {
+        fn twice(x: i64) -> i64 {
+            2 * x
+        }
+        let f: Proc1<'static, i64, i64> = as_proc(twice);
+        assert_eq!(f.call(21), 42);
+        let g: Proc1s<'static, i64, i64> = as_proc(twice);
+        let h: Proc1<'static, i64, i64> = as_proc(g);
+        assert_eq!(h.call(4), 8);
     }
 }

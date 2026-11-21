@@ -410,6 +410,739 @@ trace_tuples!(
     (A 0, B 1, C 2, D 3, E 4, F 5, G 6, H 7, I 8, J 9, K 10, L 11, M 12, N 13, O 14, P 15)
 );
 
+/// A closure's free values (C501), as Fixpt's native closure holds them:
+/// each a word, free value 0 nearest its code (Fixpt's `CLOSURE_FREE0`,
+/// its slots counted back from the trailer), so in memory the last first.
+pub trait Free: Trace {
+    type Words: Copy;
+    fn words(self) -> Self::Words;
+    fn of_words(w: Self::Words) -> Self;
+}
+
+impl Free for () {
+    type Words = ();
+    #[inline(always)]
+    fn words(self) {}
+    #[inline(always)]
+    fn of_words(_: ()) {}
+}
+
+impl<A: Trace> Free for (A,) {
+    type Words = (A::Stored,);
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (self.0.store(),)
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (A::load(w.0),)
+    }
+}
+
+impl<A: Trace, B: Trace> Free for (A, B) {
+    type Words = (B::Stored, A::Stored);
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (self.1.store(), self.0.store())
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (A::load(w.1), B::load(w.0))
+    }
+}
+
+impl<A: Trace, B: Trace, C: Trace> Free for (A, B, C) {
+    type Words = (C::Stored, B::Stored, A::Stored);
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (self.2.store(), self.1.store(), self.0.store())
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (A::load(w.2), B::load(w.1), C::load(w.0))
+    }
+}
+
+impl<A: Trace, B: Trace, C: Trace, D: Trace> Free for (A, B, C, D) {
+    type Words = (D::Stored, C::Stored, B::Stored, A::Stored);
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (A::load(w.3), B::load(w.2), C::load(w.1), D::load(w.0))
+    }
+}
+
+impl<A: Trace, B: Trace, C: Trace, D: Trace, E: Trace> Free for (A, B, C, D, E) {
+    type Words = (E::Stored, D::Stored, C::Stored, B::Stored, A::Stored);
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.4),
+            B::load(w.3),
+            C::load(w.2),
+            D::load(w.1),
+            E::load(w.0),
+        )
+    }
+}
+
+impl<A: Trace, B: Trace, C: Trace, D: Trace, E: Trace, F: Trace> Free for (A, B, C, D, E, F) {
+    type Words = (
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.5),
+            B::load(w.4),
+            C::load(w.3),
+            D::load(w.2),
+            E::load(w.1),
+            F::load(w.0),
+        )
+    }
+}
+
+impl<A: Trace, B: Trace, C: Trace, D: Trace, E: Trace, F: Trace, G: Trace> Free
+    for (A, B, C, D, E, F, G)
+{
+    type Words = (
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.6),
+            B::load(w.5),
+            C::load(w.4),
+            D::load(w.3),
+            E::load(w.2),
+            F::load(w.1),
+            G::load(w.0),
+        )
+    }
+}
+
+impl<A: Trace, B: Trace, C: Trace, D: Trace, E: Trace, F: Trace, G: Trace, H: Trace> Free
+    for (A, B, C, D, E, F, G, H)
+{
+    type Words = (
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.7),
+            B::load(w.6),
+            C::load(w.5),
+            D::load(w.4),
+            E::load(w.3),
+            F::load(w.2),
+            G::load(w.1),
+            H::load(w.0),
+        )
+    }
+}
+
+impl<A: Trace, B: Trace, C: Trace, D: Trace, E: Trace, F: Trace, G: Trace, H: Trace, I: Trace> Free
+    for (A, B, C, D, E, F, G, H, I)
+{
+    type Words = (
+        I::Stored,
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.8.store(),
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.8),
+            B::load(w.7),
+            C::load(w.6),
+            D::load(w.5),
+            E::load(w.4),
+            F::load(w.3),
+            G::load(w.2),
+            H::load(w.1),
+            I::load(w.0),
+        )
+    }
+}
+
+impl<
+    A: Trace,
+    B: Trace,
+    C: Trace,
+    D: Trace,
+    E: Trace,
+    F: Trace,
+    G: Trace,
+    H: Trace,
+    I: Trace,
+    J: Trace,
+> Free for (A, B, C, D, E, F, G, H, I, J)
+{
+    type Words = (
+        J::Stored,
+        I::Stored,
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.9.store(),
+            self.8.store(),
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.9),
+            B::load(w.8),
+            C::load(w.7),
+            D::load(w.6),
+            E::load(w.5),
+            F::load(w.4),
+            G::load(w.3),
+            H::load(w.2),
+            I::load(w.1),
+            J::load(w.0),
+        )
+    }
+}
+
+impl<
+    A: Trace,
+    B: Trace,
+    C: Trace,
+    D: Trace,
+    E: Trace,
+    F: Trace,
+    G: Trace,
+    H: Trace,
+    I: Trace,
+    J: Trace,
+    K: Trace,
+> Free for (A, B, C, D, E, F, G, H, I, J, K)
+{
+    type Words = (
+        K::Stored,
+        J::Stored,
+        I::Stored,
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.10.store(),
+            self.9.store(),
+            self.8.store(),
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.10),
+            B::load(w.9),
+            C::load(w.8),
+            D::load(w.7),
+            E::load(w.6),
+            F::load(w.5),
+            G::load(w.4),
+            H::load(w.3),
+            I::load(w.2),
+            J::load(w.1),
+            K::load(w.0),
+        )
+    }
+}
+
+impl<
+    A: Trace,
+    B: Trace,
+    C: Trace,
+    D: Trace,
+    E: Trace,
+    F: Trace,
+    G: Trace,
+    H: Trace,
+    I: Trace,
+    J: Trace,
+    K: Trace,
+    L: Trace,
+> Free for (A, B, C, D, E, F, G, H, I, J, K, L)
+{
+    type Words = (
+        L::Stored,
+        K::Stored,
+        J::Stored,
+        I::Stored,
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.11.store(),
+            self.10.store(),
+            self.9.store(),
+            self.8.store(),
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.11),
+            B::load(w.10),
+            C::load(w.9),
+            D::load(w.8),
+            E::load(w.7),
+            F::load(w.6),
+            G::load(w.5),
+            H::load(w.4),
+            I::load(w.3),
+            J::load(w.2),
+            K::load(w.1),
+            L::load(w.0),
+        )
+    }
+}
+
+impl<
+    A: Trace,
+    B: Trace,
+    C: Trace,
+    D: Trace,
+    E: Trace,
+    F: Trace,
+    G: Trace,
+    H: Trace,
+    I: Trace,
+    J: Trace,
+    K: Trace,
+    L: Trace,
+    M: Trace,
+> Free for (A, B, C, D, E, F, G, H, I, J, K, L, M)
+{
+    type Words = (
+        M::Stored,
+        L::Stored,
+        K::Stored,
+        J::Stored,
+        I::Stored,
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.12.store(),
+            self.11.store(),
+            self.10.store(),
+            self.9.store(),
+            self.8.store(),
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.12),
+            B::load(w.11),
+            C::load(w.10),
+            D::load(w.9),
+            E::load(w.8),
+            F::load(w.7),
+            G::load(w.6),
+            H::load(w.5),
+            I::load(w.4),
+            J::load(w.3),
+            K::load(w.2),
+            L::load(w.1),
+            M::load(w.0),
+        )
+    }
+}
+
+impl<
+    A: Trace,
+    B: Trace,
+    C: Trace,
+    D: Trace,
+    E: Trace,
+    F: Trace,
+    G: Trace,
+    H: Trace,
+    I: Trace,
+    J: Trace,
+    K: Trace,
+    L: Trace,
+    M: Trace,
+    N: Trace,
+> Free for (A, B, C, D, E, F, G, H, I, J, K, L, M, N)
+{
+    type Words = (
+        N::Stored,
+        M::Stored,
+        L::Stored,
+        K::Stored,
+        J::Stored,
+        I::Stored,
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.13.store(),
+            self.12.store(),
+            self.11.store(),
+            self.10.store(),
+            self.9.store(),
+            self.8.store(),
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.13),
+            B::load(w.12),
+            C::load(w.11),
+            D::load(w.10),
+            E::load(w.9),
+            F::load(w.8),
+            G::load(w.7),
+            H::load(w.6),
+            I::load(w.5),
+            J::load(w.4),
+            K::load(w.3),
+            L::load(w.2),
+            M::load(w.1),
+            N::load(w.0),
+        )
+    }
+}
+
+impl<
+    A: Trace,
+    B: Trace,
+    C: Trace,
+    D: Trace,
+    E: Trace,
+    F: Trace,
+    G: Trace,
+    H: Trace,
+    I: Trace,
+    J: Trace,
+    K: Trace,
+    L: Trace,
+    M: Trace,
+    N: Trace,
+    O: Trace,
+> Free for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)
+{
+    type Words = (
+        O::Stored,
+        N::Stored,
+        M::Stored,
+        L::Stored,
+        K::Stored,
+        J::Stored,
+        I::Stored,
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.14.store(),
+            self.13.store(),
+            self.12.store(),
+            self.11.store(),
+            self.10.store(),
+            self.9.store(),
+            self.8.store(),
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.14),
+            B::load(w.13),
+            C::load(w.12),
+            D::load(w.11),
+            E::load(w.10),
+            F::load(w.9),
+            G::load(w.8),
+            H::load(w.7),
+            I::load(w.6),
+            J::load(w.5),
+            K::load(w.4),
+            L::load(w.3),
+            M::load(w.2),
+            N::load(w.1),
+            O::load(w.0),
+        )
+    }
+}
+
+impl<
+    A: Trace,
+    B: Trace,
+    C: Trace,
+    D: Trace,
+    E: Trace,
+    F: Trace,
+    G: Trace,
+    H: Trace,
+    I: Trace,
+    J: Trace,
+    K: Trace,
+    L: Trace,
+    M: Trace,
+    N: Trace,
+    O: Trace,
+    P: Trace,
+> Free for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)
+{
+    type Words = (
+        P::Stored,
+        O::Stored,
+        N::Stored,
+        M::Stored,
+        L::Stored,
+        K::Stored,
+        J::Stored,
+        I::Stored,
+        H::Stored,
+        G::Stored,
+        F::Stored,
+        E::Stored,
+        D::Stored,
+        C::Stored,
+        B::Stored,
+        A::Stored,
+    );
+    #[inline(always)]
+    fn words(self) -> Self::Words {
+        (
+            self.15.store(),
+            self.14.store(),
+            self.13.store(),
+            self.12.store(),
+            self.11.store(),
+            self.10.store(),
+            self.9.store(),
+            self.8.store(),
+            self.7.store(),
+            self.6.store(),
+            self.5.store(),
+            self.4.store(),
+            self.3.store(),
+            self.2.store(),
+            self.1.store(),
+            self.0.store(),
+        )
+    }
+    #[inline(always)]
+    fn of_words(w: Self::Words) -> Self {
+        (
+            A::load(w.15),
+            B::load(w.14),
+            C::load(w.13),
+            D::load(w.12),
+            E::load(w.11),
+            F::load(w.10),
+            G::load(w.9),
+            H::load(w.8),
+            I::load(w.7),
+            J::load(w.6),
+            K::load(w.5),
+            L::load(w.4),
+            M::load(w.3),
+            N::load(w.2),
+            O::load(w.1),
+            P::load(w.0),
+        )
+    }
+}
+
 /// A bloblet's fields, each a cell (C486): each visited.
 macro_rules! visit_tuples {
     ($(($($a:ident $i:tt),+)),*) => {

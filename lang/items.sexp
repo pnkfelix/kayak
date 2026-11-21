@@ -993,6 +993,7 @@
 (emitter-call "body" kayak)
 (emitter-call "boxed" kayak)
 (emitter-call "boxed_list" kayak)
+(emitter-call "call" kayak)
 (emitter-call "cons" kayak)
 (emitter-call "datum_list_to_vector" kayak)
 (emitter-call "field" kayak)

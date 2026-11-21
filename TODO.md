@@ -1945,9 +1945,15 @@ over its 1664 definitions, 335 of them refused:
   470.4 MB at the 1000-procedure bench), an edit's build +20%, a cold
   one +11%. Left of a datatype: its fields' words those of the types
   not yet one word (a closure, an array, a union) as they are; a place's
-  values boxed one by one (`DataBox`), not bumped. Left: each kind held
-  as itself a word once its object is Fixpt's, a closure (a header
-  too), an array (one word already, tagged not); a bloblet's
+  values boxed one by one (`DataBox`), not bumped; C501: a procedure
+  value one word, to Fixpt's native closure (kind 41, frozen,
+  `[free…][code][trailer]`, free value 0 nearest its code), its code a
+  word to a frozen bloblet of its type's call and trace (where Fixpt's is
+  a code bloblet of machine code); a closure of no free values an object
+  too (24 bytes; 254,000 made in a cold build), where it was none. Left
+  of a closure: kept in a box of its own (`Box::leak`), not the heap's
+  arenas; a union holds it boxed. Left: each kind held as itself a word
+  once its object is Fixpt's, an array (one word already, tagged not); a bloblet's
   fields; peak memory up 3 to 6% at C495, not explained; a cold build's
   bignums, 82,546 (2.6 MB, of 36.0 million allocations) with kc's object
   cache empty, not yet traced to where its 64-bit integers are made);

@@ -15592,3 +15592,59 @@ Measured (the 1000-procedure bench), against C499:
   +50%, its cycles +15%: the cost is the memory.
 - **kc's binary** 9.56 to 10.47 MB (each variant's impls).
 - **The full check**: all passed in 499.2 s, its third run (the first stopped at ~20 s, `rust_repl.rs`; the second at `run-fixpt-programs.py`, a datatype's `Show`); nextest 5623.
+
+## C501. A procedure value one Fixpt word, to Fixpt's native closure (2026-11-20)
+
+The user, after C500 (closures next): "Keep going".
+
+Reviewed first, Fixpt: a closure of native code is kind 41
+(`native-closure`, `layout.rs`), `[free…][code][trailer]`, its fields
+numbered as slots back from the trailer (slot 1): its code at
+`CLOSURE_WORD` (2), a word to its code bloblet, free value `i` at
+`CLOSURE_FREE0 + i` (3 + i); made by `fixpt-native`'s `native_closure`.
+kayak's was a handle to `dyn CallN`, two words (its object and Rust's
+vtable), its object its captures' words alone (C496), none for a closure
+of no captures (C494).
+
+Measured before choosing how a closure of no captures is made (a
+counter, put in and taken out again): at the 1000-procedure bench's cold
+build, 253,575 made (59,426 at an edit's), against 202,392 of some. So
+each is made as any other, an object of its own (24 bytes, +1.5%
+allocations), rather than one of each type kept: a type of closure may
+have lifetimes, so no `TypeId` to keep it by.
+
+What changed (kayak-rt):
+- **`obj.rs`'s `procs`** (where `unsafe` may be: a closure read again by
+  its code's type):
+  - `ClosureObj<E, C>`: Fixpt's native closure, its header (kind 41,
+    frozen), its free values' words (`Free`: free value 0 last in memory,
+    nearest its code, as Fixpt's slots count), its code's word, its
+    trailer; its Rust code, of no bytes, after.
+  - `ProcCode`: a closure type's code, a frozen bloblet, its suffix its
+    call (erased, of its arity, given its type back by the procedure's
+    type, the only reader) and its trace; one of each type, an
+    associated `const`.
+  - `ProcN`, `ProcNs`: one word, tagged `100`, called by its code's call
+    (one load more than a vtable's); `Send + Sync` the second, as before;
+    its `Stored` its word, where it was the handle.
+- `trace.rs`'s `Free`: a tuple's words reversed, to 16 parts.
+- `closure.rs`: what is safe of it, `as_proc` (a function a closure of
+  nothing, its code the function, where it was `FnProc`).
+- kfx's emitter unchanged: it names `ProcN`, `closureN`, `as_proc`,
+  `.call`, all kept; nothing regenerated changed.
+- `lang/items.sexp`: the emitter's `.call(` now a function of kayak-rt's
+  own (the procedure's), where it was a trait's method, so listed (found
+  at the first full check, which stopped at `lang-items.py --check`).
+- **Tests**: a procedure one word, its object kind 41, frozen, two
+  fields (its code, its trailer); of two free values, free value 0 at
+  slot 3; a function as a procedure, and a `Send` one as one not.
+
+Measured (the 1000-procedure bench), against C500: allocations 16.75 to
+17.00 million, the heap 470.4 to 481.3 MB (closures 198,386, 5.8 MB);
+an edit's build 0.33–0.35 s (0.33–0.34), peak 259 MB (255); a cold one
+0.72–0.73 s (0.70–0.71), 570 MB (558). kc's binary 10.47 to 11.49 MB:
+its loaded part ~500 KB (the call of each type a trampoline where it was
+a vtable's entry, the same size; each type's code object beside its
+`Visit` vtable, ~80 bytes and their relocations; 284 more type names),
+the rest symbols' names.
+- **The full check**: all passed in 377.4 s, its second run (the first stopped at ~40 s, `lang-items.py --check`); nextest 5623.

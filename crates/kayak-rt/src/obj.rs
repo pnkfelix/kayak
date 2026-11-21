@@ -1863,3 +1863,313 @@ mod ref_tests {
         assert_eq!(crate::car(xs).get(), 6);
     }
 }
+
+/// The `n` words before where `w` points (its object's, back from its
+/// suffix), first the farthest: for a test to read what it made.
+#[cfg(test)]
+pub(crate) fn words_before(w: HeapWord, n: usize) -> &'static [u64] {
+    // SAFETY: a test's word, to an object kept for the run, of at least
+    // `n` words before its suffix; read through the word's provenance.
+    unsafe { std::slice::from_raw_parts(w.object_ptr().sub(n), n) }
+}
+
+/// Procedure values (C501): each one Fixpt word, to Fixpt's native
+/// closure (kind 41, frozen): `[free…][code][trailer]`, free value `i` at
+/// slot `CLOSURE_FREE0 + i` (counted back from the trailer, which is slot
+/// 1), its code at `CLOSURE_WORD`, a word to its code's object. Fixpt's
+/// is a code bloblet of machine code; kayak's, a frozen bloblet of its
+/// own, one of each closure's type, made as rustc builds, its suffix the
+/// type's functions: its call and its trace ([`ProcCode`]). Its Rust
+/// closure, of no bytes (it captures nothing, checked when built), its
+/// type's.
+pub mod procs {
+    use super::{HeapWord, layout};
+    use crate::trace::{Free, Trace, Tracer, Visit};
+
+    /// Fixpt's native closure's kind.
+    const KIND_CLOSURE: u8 = layout::KIND_NATIVE_CLOSURE;
+
+    /// A closure's type's code (C501): a frozen bloblet, no fields, its
+    /// suffix two functions, raw: its call, of its arity (erased, given
+    /// its type again by the procedure's type, `ProcN`, the only reader),
+    /// and what it reaches.
+    #[repr(C)]
+    pub struct ProcCode {
+        header: u64,
+        trailer: u64,
+        call: *const (),
+        reach: unsafe fn(*const u64) -> *const (dyn Visit + 'static),
+    }
+
+    impl ProcCode {
+        const fn new(
+            call: *const (),
+            reach: unsafe fn(*const u64) -> *const (dyn Visit + 'static),
+        ) -> ProcCode {
+            ProcCode {
+                header: layout::header(layout::KIND_BLOBLET, 1, 16, true, true),
+                trailer: layout::trailer(1),
+                call,
+                reach,
+            }
+        }
+    }
+
+    /// A closure's object: Fixpt's native closure.
+    #[repr(C)]
+    pub struct ClosureObj<E: Free, C> {
+        header: u64,
+        words: E::Words,
+        code: HeapWord,
+        trailer: u64,
+        /// Its code, of no bytes, its type the object's.
+        run: C,
+    }
+
+    impl<E: Free, C> ClosureObj<E, C> {
+        /// Its fields as Fixpt counts them, its trailer one.
+        const TO_TRAILER: usize = std::mem::offset_of!(ClosureObj<E, C>, trailer) / 8;
+        /// From its start to its suffix's, where its word points.
+        const TO_SUFFIX: usize = std::mem::offset_of!(ClosureObj<E, C>, trailer) + 8;
+
+        /// The closure whose suffix starts at `p`.
+        ///
+        /// # Safety
+        /// `p` is a word to a `ClosureObj<E, C>` (its code is this type's,
+        /// which only this type's objects are made with), alive for `'r`.
+        #[inline(always)]
+        unsafe fn at<'r>(p: *const u64) -> &'r Self {
+            // SAFETY: the caller's.
+            unsafe { &*p.cast::<u8>().sub(Self::TO_SUFFIX).cast::<Self>() }
+        }
+    }
+
+    /// A closure: its free values traced.
+    impl<E: Free, C> Visit for ClosureObj<E, C> {
+        fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
+            E::of_words(self.words).trace(t);
+        }
+    }
+
+    /// What a closure of type `ClosureObj<E, C>` reaches: it, as a
+    /// `Visit`, its lifetime the caller's to know.
+    ///
+    /// # Safety
+    /// `p` is a word to a `ClosureObj<E, C>`.
+    unsafe fn reach_of<'r, E: Free + 'r, C: 'r>(p: *const u64) -> *const (dyn Visit + 'static) {
+        // SAFETY: the caller's.
+        let o: &'r (dyn Visit + 'r) = unsafe { ClosureObj::<E, C>::at(p) };
+        // SAFETY: only the bound of its lifetime changed; the procedure
+        // that reads it (`trace`) is of `'r`, and gives it a tracer's.
+        unsafe { std::mem::transmute::<*const (dyn Visit + 'r), *const (dyn Visit + 'static)>(o) }
+    }
+
+    /// A closure of no bytes of its own (it captures nothing, so any one of
+    /// its type is any other), kept for the run, noted for a census.
+    fn kept<'r, T: Visit + 'r>(v: T) -> &'r T {
+        crate::stats::note::<T>(std::mem::size_of::<T>());
+        let r: &'r T = Box::leak(Box::new(v));
+        #[cfg(feature = "heap-stats")]
+        crate::census::one(r);
+        r
+    }
+
+    /// The word to a closure just made, of free values `env`, its code
+    /// `run` and its type's `code`.
+    #[inline]
+    fn made<'r, E: Free + 'r, C: 'r>(env: E, run: C, code: &'static ProcCode) -> HeapWord {
+        const { assert!(std::mem::size_of::<C>() == 0, "a closure's code captures") };
+        let o: &'r ClosureObj<E, C> = kept(ClosureObj {
+            header: layout::header(KIND_CLOSURE, ClosureObj::<E, C>::TO_TRAILER, 0, true, true),
+            words: env.words(),
+            code: HeapWord::object_at(std::ptr::from_ref(code).cast::<u64>().wrapping_add(2)),
+            trailer: layout::trailer(ClosureObj::<E, C>::TO_TRAILER),
+            run,
+        });
+        HeapWord::object_at(
+            std::ptr::from_ref(o)
+                .cast::<u8>()
+                .wrapping_add(ClosureObj::<E, C>::TO_SUFFIX)
+                .cast(),
+        )
+    }
+
+    macro_rules! arities {
+        ($($proc:ident $procs:ident $make:ident $makes:ident $code:ident $run:ident ($($a:ident)*);)*) => {$(
+            /// The call of a closure of type `ClosureObj<E, Code>`, of this
+            /// arity.
+            ///
+            /// # Safety
+            /// `p` is a word to a `ClosureObj<E, Code>`.
+            #[allow(non_snake_case, clippy::too_many_arguments)]
+            unsafe fn $run<E: Free, Code: Fn(E, $($a),*) -> R, $($a,)* R>(p: *const u64, $($a: $a),*) -> R {
+                // SAFETY: the caller's.
+                let o = unsafe { ClosureObj::<E, Code>::at(p) };
+                (o.run)(E::of_words(o.words), $($a),*)
+            }
+
+            /// A closure's type's code, of this arity.
+            trait $code<$($a,)* R> {
+                const CODE: &'static ProcCode;
+            }
+
+            impl<E: Free, Code: Fn(E, $($a),*) -> R, $($a,)* R> $code<$($a,)* R> for ClosureObj<E, Code> {
+                const CODE: &'static ProcCode = &ProcCode::new(
+                    $run::<E, Code, $($a,)* R> as *const (),
+                    reach_of::<E, Code>,
+                );
+            }
+
+            /// A procedure value of this arity: one Fixpt word, to its
+            /// closure, tagged `100` at its suffix.
+            #[repr(transparent)]
+            pub struct $proc<'r, $($a,)* R>(HeapWord, std::marker::PhantomData<(&'r (), fn($($a),*) -> R, *const ())>);
+
+            /// One of an effect a process may have (C102): `Send + Sync`,
+            /// its free values all.
+            #[repr(transparent)]
+            pub struct $procs<'r, $($a,)* R>(HeapWord, std::marker::PhantomData<(&'r (), fn($($a),*) -> R)>);
+
+            impl<$($a,)* R> Clone for $proc<'_, $($a,)* R> {
+                #[inline(always)]
+                fn clone(&self) -> Self {
+                    *self
+                }
+            }
+            impl<$($a,)* R> Copy for $proc<'_, $($a,)* R> {}
+            impl<$($a,)* R> Clone for $procs<'_, $($a,)* R> {
+                #[inline(always)]
+                fn clone(&self) -> Self {
+                    *self
+                }
+            }
+            impl<$($a,)* R> Copy for $procs<'_, $($a,)* R> {}
+
+            impl<'r, $($a,)* R> $proc<'r, $($a,)* R> {
+                /// Called: its code's call, given its closure.
+                #[allow(non_snake_case, clippy::too_many_arguments)]
+                #[inline]
+                pub fn call(&self, $($a: $a),*) -> R {
+                    let p = self.0.object_ptr();
+                    // SAFETY: its word is made only of a closure (`$make`,
+                    // `$makes`), its code at slot 2, a word to its type's
+                    // `ProcCode`, whose call is `$run` of that type, of
+                    // this arity and these arguments' types (the
+                    // procedure's own, `$make`'s), erased to be kept.
+                    unsafe {
+                        let code = *p.sub(2).cast::<HeapWord>();
+                        let call = *code.object_ptr().cast::<*const ()>();
+                        let call: unsafe fn(*const u64, $($a),*) -> R = std::mem::transmute(call);
+                        call(p, $($a),*)
+                    }
+                }
+            }
+
+            impl<'r, $($a,)* R> $procs<'r, $($a,)* R> {
+                /// Called.
+                #[allow(non_snake_case, clippy::too_many_arguments)]
+                #[inline]
+                pub fn call(&self, $($a: $a),*) -> R {
+                    self.unsent().call($($a),*)
+                }
+
+                /// The same procedure, as one that may not be `Send`.
+                #[inline(always)]
+                pub fn unsent(self) -> $proc<'r, $($a,)* R> {
+                    $proc(self.0, std::marker::PhantomData)
+                }
+            }
+
+            /// A procedure: its closure reached.
+            impl<'r, $($a,)* R> Trace for $proc<'r, $($a,)* R> {
+                type Stored = HeapWord;
+                #[inline(always)]
+                fn store(self) -> HeapWord {
+                    self.0
+                }
+                #[inline(always)]
+                fn load(w: HeapWord) -> Self {
+                    $proc(w, std::marker::PhantomData)
+                }
+                #[inline]
+                fn trace<'a>(self, t: &mut Tracer<'a>) where Self: 'a {
+                    let p = self.0.object_ptr();
+                    // SAFETY: as `call`: its code's `reach` is its type's,
+                    // of its closure, which lives for `'r`, past `'a`.
+                    let o: &'a (dyn Visit + 'a) = unsafe {
+                        let code = *p.sub(2).cast::<HeapWord>();
+                        let reach = *code
+                            .object_ptr()
+                            .add(1)
+                            .cast::<unsafe fn(*const u64) -> *const (dyn Visit + 'static)>();
+                        &*reach(p)
+                    };
+                    t.reach(o);
+                }
+            }
+
+            impl<'r, $($a,)* R> Trace for $procs<'r, $($a,)* R> {
+                type Stored = HeapWord;
+                #[inline(always)]
+                fn store(self) -> HeapWord {
+                    self.0
+                }
+                #[inline(always)]
+                fn load(w: HeapWord) -> Self {
+                    $procs(w, std::marker::PhantomData)
+                }
+                #[inline]
+                fn trace<'a>(self, t: &mut Tracer<'a>) where Self: 'a {
+                    self.unsent().trace(t);
+                }
+            }
+
+            // A procedure value as a union's member (C491): boxed.
+            impl<$($a: 'static,)* R: 'static> crate::value::Member for $proc<'static, $($a,)* R> {
+                #[inline]
+                fn object(self) -> &'static dyn crate::value::Obj {
+                    crate::value::boxed_object(self)
+                }
+                #[inline]
+                fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
+                    crate::value::of_boxed(o)
+                }
+            }
+
+            impl<$($a: 'static,)* R: 'static> crate::value::Member for $procs<'static, $($a,)* R> {
+                #[inline]
+                fn object(self) -> &'static dyn crate::value::Obj {
+                    crate::value::boxed_object(self)
+                }
+                #[inline]
+                fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
+                    crate::value::of_boxed(o)
+                }
+            }
+
+            /// A closure of free values `env` and code `code`: a Rust
+            /// closure that captures nothing (C493, checked when built).
+            #[inline]
+            pub fn $make<'r, E: Free + 'r, Code: Fn(E, $($a),*) -> R + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $proc<'r, $($a,)* R> {
+                $proc(made(env, code, <ClosureObj<E, Code> as $code<$($a,)* R>>::CODE), std::marker::PhantomData)
+            }
+
+            /// A closure of free values `env`, all `Send + Sync`, and code
+            /// `code`.
+            #[inline]
+            pub fn $makes<'r, E: Free + Send + Sync + 'r, Code: Fn(E, $($a),*) -> R + Send + Sync + 'r, $($a: 'r,)* R: 'r>(env: E, code: Code) -> $procs<'r, $($a,)* R> {
+                $procs(made(env, code, <ClosureObj<E, Code> as $code<$($a,)* R>>::CODE), std::marker::PhantomData)
+            }
+        )*};
+    }
+
+    arities! {
+        Proc0 Proc0s closure0 closure0s Coded0 run0 ();
+        Proc1 Proc1s closure1 closure1s Coded1 run1 (A);
+        Proc2 Proc2s closure2 closure2s Coded2 run2 (A B);
+        Proc3 Proc3s closure3 closure3s Coded3 run3 (A B C);
+        Proc4 Proc4s closure4 closure4s Coded4 run4 (A B C D);
+        Proc5 Proc5s closure5 closure5s Coded5 run5 (A B C D F);
+        Proc6 Proc6s closure6 closure6s Coded6 run6 (A B C D F G);
+    }
+}
