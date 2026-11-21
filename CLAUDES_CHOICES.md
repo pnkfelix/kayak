@@ -15785,3 +15785,86 @@ shape `vector`, written `#(1 "a")`.
 Measured (the 1000-procedure bench's edit build, against C501's kc):
 instructions 1,493.46 to 1,493.42 million, page faults the same.
 - **The full check**: all passed in 507.2 s, its first run; nextest 5624.
+
+## C506. A dynamic value one Fixpt word (2026-11-21)
+
+The last of `Value`'s three steps (C504, C505); the user: "Go ahead".
+`Value` was an enum of three words (a tag; a scalar, a pair's or a
+member's trait object; a shape), a member boxed where it had no object
+of its own, found again by its `TypeId`.
+
+Reviewed first, Fixpt: a value is one word, its shape its tag's (fixnum,
+pair, immediate, object) or its object's header's kind; a header found
+from a word by the word before it (a header itself, for an object of no
+fields, a flonum; else a trailer's distance back). `make-array` makes a
+plain bloblet (kind 32, its elements its fields, no suffix:
+`%make-bloblet-filled`), not a vector; `array?` asks for kind 32.
+
+What changed (kayak-rt):
+- **`value.rs`, rewritten**: `Value(HeapWord)`, `!Send + !Sync` as before
+  (a word to a box another alias writes); `Value::Nil` an associated
+  constant, so that kfx's `kayak_rt::value::Value::Nil` stands. Its shape
+  read from its word (`Shaped`); a scalar given as its word and read back
+  where its tag or kind says it is one (`FromValue`, else "a union
+  narrowed to a member it does not hold"). `PairLike`, `ValuePair`,
+  `Boxed` gone: `cons` makes Fixpt's pair cell of two values' words (a
+  `Cons<Value>`, its tail any value's word, `obj.rs`'s `value_cons`).
+- **`Trace::VALUE_WORD`**: whether a type's stored word is Fixpt's own for
+  it, which a value holds as it is (scalars, strings, integers, symbols,
+  lists of such, arrays, refs, sums, datatypes' values, products,
+  procedures, bloblets). `list` of such a list is its word, no copy (it
+  was a view, each element boxed as read); `unbox_list` the same word,
+  where it was a downcast of the pair's type; `boxed_list` the list
+  itself. Of any other, `list` copies, giving each element.
+- **`Member`** (a union's member of another shape): `into_value`, its word;
+  `of_value`, its kind checked (`word_member!`): a sum's (kind 36, four
+  fields), a datatype's value's (kind 36, three fields, its tag one of its
+  variants', `Datatype::has`, which the emitter writes in place of
+  `object` and `of_object`), a ref's (10), a procedure's (41), a
+  product's (37), an array's (32, or 3 for a datum's vector); an `f32`
+  its immediate, a fixed-width integer its fixnum. So a member is found
+  again by its kind, not its type (to-discuss 17).
+- **An array Fixpt's plain bloblet** (kind 32), where it was a vector
+  (kind 3, C485): so `array?` and `vector?` tell an array and a datum's
+  vector apart by kind alone. A datum's vector stays kind 3
+  (`array_made_of`).
+- **A product held as its word** (`Prod::word`, tagged `100`, one past its
+  trailer), where it was its object's untagged address.
+- **`HeapWord`**: its tag, its immediate's subtag, its object's header and
+  kind; a pair's words; `header_ptr` Fixpt's way (a header just before,
+  or a trailer's distance, its bits above 61 not of it: a string's ASCII
+  bit, C482). `Cons` `#[repr(C)]`, its head first, as Fixpt's pair.
+- **Traced** (a value's own): a pair's parts, as values; a string's text;
+  a symbol, a bignum, a `sumof` (its payload's type kept) and a closure
+  (`reach_closure`, by its code's `reach`, whatever its type) precisely;
+  an object whose fields' types only its type knows (an array, a box, a
+  product, a bloblet, a datatype's value) told the tracer as opaque, by
+  its header's address, which a census resolves to its block and traces
+  as its type has it.
+- **The emitter** (`emit-tops.kfx`): a datatype's `has`, its variants'
+  tags tested, for `object` and `of_object`. kfx's bootstrap through a
+  worktree of C505, as C478's (boot/'s Rust named the old methods):
+  generation 1 by C505's kfx, generation 2 by it, then `regen.sh --all`,
+  at the fixed point at once. Everything regenerated; the corpus's 107
+  and io-programs' 9 blessed again.
+- **Tests**: a value one word; a symbol, unit, a character, `#f`, an `f64`,
+  a bignum each of its shape; a typed list's word the value's; a value's
+  list narrowed to a list of `i64`s; an array of shape bloblet, not
+  vector; a ref; a datum traced: its three pairs and its sum precisely,
+  its box opaque.
+
+Found on the way: `cargo build --workspace --all-targets` fails to link
+kayak-kcrt's lib test (two `main`s), at C505 too; the check builds no such
+target. In TODO.
+
+Measured, against C505's kc (a worktree): the 1000-procedure bench makes
+no value (no datum, no union on its path): its allocations the same to
+the one (17,001,005, 481.3 MB); instructions −0.13% at a cold build,
++0.13% at an edit's; page faults and times the same. kc on
+`tests/kc/step15/procedural-many.fx` (its 18 transformers, the expander
+run): instructions +1.2–1.5% (19.68–19.75 to 19.99 billion), time +1%
+(2.98–2.99 to 3.02 s), page faults the same; its heap 2,309.6 to 2,308.1
+MB, allocations +0.02%: a value's pairs 46,932 of 48 bytes (2.3 MB) to
+59,710 of 16 (1.0 MB). The instructions: a value's shape read from its
+object's header, through its trailer, where the enum's tag was in hand.
+- **The full check**: all passed in 520.3 s, its first run; nextest 5625.

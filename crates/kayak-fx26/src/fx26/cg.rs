@@ -2184,64 +2184,35 @@ impl kayak_rt::data::Datatype for Cx {
         if w.is::<1>() { return t.reach(w.obj::<1>()); }
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<25>() { return (w.obj::<25>()); }
-        if w.is::<24>() { return (w.obj::<24>()); }
-        if w.is::<23>() { return (w.obj::<23>()); }
-        if w.is::<22>() { return (w.obj::<22>()); }
-        if w.is::<21>() { return (w.obj::<21>()); }
-        if w.is::<20>() { return (w.obj::<20>()); }
-        if w.is::<19>() { return (w.obj::<19>()); }
-        if w.is::<18>() { return (w.obj::<18>()); }
-        if w.is::<17>() { return (w.obj::<17>()); }
-        if w.is::<16>() { return (w.obj::<16>()); }
-        if w.is::<15>() { return (w.obj::<15>()); }
-        if w.is::<14>() { return (w.obj::<14>()); }
-        if w.is::<13>() { return (w.obj::<13>()); }
-        if w.is::<12>() { return (w.obj::<12>()); }
-        if w.is::<11>() { return (w.obj::<11>()); }
-        if w.is::<10>() { return (w.obj::<10>()); }
-        if w.is::<9>() { return (w.obj::<9>()); }
-        if w.is::<8>() { return (w.obj::<8>()); }
-        if w.is::<7>() { return (w.obj::<7>()); }
-        if w.is::<6>() { return (w.obj::<6>()); }
-        if w.is::<5>() { return (w.obj::<5>()); }
-        if w.is::<4>() { return (w.obj::<4>()); }
-        if w.is::<3>() { return (w.obj::<3>()); }
-        if w.is::<2>() { return (w.obj::<2>()); }
-        if w.is::<1>() { return (w.obj::<1>()); }
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<25>() { return true; }
+        if w.is::<24>() { return true; }
+        if w.is::<23>() { return true; }
+        if w.is::<22>() { return true; }
+        if w.is::<21>() { return true; }
+        if w.is::<20>() { return true; }
+        if w.is::<19>() { return true; }
+        if w.is::<18>() { return true; }
+        if w.is::<17>() { return true; }
+        if w.is::<16>() { return true; }
+        if w.is::<15>() { return true; }
+        if w.is::<14>() { return true; }
+        if w.is::<13>() { return true; }
+        if w.is::<12>() { return true; }
+        if w.is::<11>() { return true; }
+        if w.is::<10>() { return true; }
+        if w.is::<9>() { return true; }
+        if w.is::<8>() { return true; }
+        if w.is::<7>() { return true; }
+        if w.is::<6>() { return true; }
+        if w.is::<5>() { return true; }
+        if w.is::<4>() { return true; }
+        if w.is::<3>() { return true; }
+        if w.is::<2>() { return true; }
+        if w.is::<1>() { return true; }
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 25>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 24>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 23>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 22>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 21>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 20>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 19>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 18>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 17>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 16>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 15>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 14>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 13>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 12>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 11>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 10>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 9>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 8>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 7>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 6>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 5>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -2392,14 +2363,10 @@ impl kayak_rt::data::Datatype for Cmem {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -2478,14 +2445,10 @@ impl kayak_rt::data::Datatype for Cbind {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -2533,14 +2496,10 @@ impl kayak_rt::data::Datatype for Carm {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -2667,20 +2626,13 @@ impl kayak_rt::data::Datatype for Ctop {
         if w.is::<1>() { return t.reach(w.obj::<1>()); }
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<3>() { return (w.obj::<3>()); }
-        if w.is::<2>() { return (w.obj::<2>()); }
-        if w.is::<1>() { return (w.obj::<1>()); }
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<3>() { return true; }
+        if w.is::<2>() { return true; }
+        if w.is::<1>() { return true; }
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -2823,14 +2775,10 @@ impl kayak_rt::data::Datatype for Lparts {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -2921,14 +2869,10 @@ impl kayak_rt::data::Datatype for Dpos {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -3409,14 +3353,10 @@ impl kayak_rt::data::Datatype for Clayout {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -3463,14 +3403,10 @@ impl kayak_rt::data::Datatype for Cinc {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -3519,14 +3455,10 @@ impl kayak_rt::data::Datatype for Cmade {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -3901,14 +3833,10 @@ impl kayak_rt::data::Datatype for Ckey {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -4626,14 +4554,10 @@ impl kayak_rt::data::Datatype for Gfirst {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -6379,36 +6303,21 @@ impl kayak_rt::data::Datatype for Lit {
         if w.is::<1>() { return t.reach(w.obj::<1>()); }
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<11>() { return (w.obj::<11>()); }
-        if w.is::<10>() { return (w.obj::<10>()); }
-        if w.is::<9>() { return (w.obj::<9>()); }
-        if w.is::<8>() { return (w.obj::<8>()); }
-        if w.is::<7>() { return (w.obj::<7>()); }
-        if w.is::<6>() { return (w.obj::<6>()); }
-        if w.is::<5>() { return (w.obj::<5>()); }
-        if w.is::<4>() { return (w.obj::<4>()); }
-        if w.is::<3>() { return (w.obj::<3>()); }
-        if w.is::<2>() { return (w.obj::<2>()); }
-        if w.is::<1>() { return (w.obj::<1>()); }
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<11>() { return true; }
+        if w.is::<10>() { return true; }
+        if w.is::<9>() { return true; }
+        if w.is::<8>() { return true; }
+        if w.is::<7>() { return true; }
+        if w.is::<6>() { return true; }
+        if w.is::<5>() { return true; }
+        if w.is::<4>() { return true; }
+        if w.is::<3>() { return true; }
+        if w.is::<2>() { return true; }
+        if w.is::<1>() { return true; }
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 11>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 10>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 9>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 8>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 7>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 6>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 5>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -6600,22 +6509,14 @@ impl kayak_rt::data::Datatype for Opnd {
         if w.is::<1>() { return t.reach(w.obj::<1>()); }
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<4>() { return (w.obj::<4>()); }
-        if w.is::<3>() { return (w.obj::<3>()); }
-        if w.is::<2>() { return (w.obj::<2>()); }
-        if w.is::<1>() { return (w.obj::<1>()); }
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<4>() { return true; }
+        if w.is::<3>() { return true; }
+        if w.is::<2>() { return true; }
+        if w.is::<1>() { return true; }
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -6779,22 +6680,14 @@ impl kayak_rt::data::Datatype for Item {
         if w.is::<1>() { return t.reach(w.obj::<1>()); }
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<4>() { return (w.obj::<4>()); }
-        if w.is::<3>() { return (w.obj::<3>()); }
-        if w.is::<2>() { return (w.obj::<2>()); }
-        if w.is::<1>() { return (w.obj::<1>()); }
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<4>() { return true; }
+        if w.is::<3>() { return true; }
+        if w.is::<2>() { return true; }
+        if w.is::<1>() { return true; }
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -6861,14 +6754,10 @@ impl kayak_rt::data::Datatype for Word {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -7133,14 +7022,10 @@ impl kayak_rt::data::Datatype for Qnode {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -7267,14 +7152,10 @@ impl kayak_rt::data::Datatype for LabelAt {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -7459,14 +7340,10 @@ impl kayak_rt::data::Datatype for Wsaid {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -7726,22 +7603,14 @@ impl kayak_rt::data::Datatype for Loc {
         if w.is::<1>() { return t.reach(w.obj::<1>()); }
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<4>() { return (w.obj::<4>()); }
-        if w.is::<3>() { return (w.obj::<3>()); }
-        if w.is::<2>() { return (w.obj::<2>()); }
-        if w.is::<1>() { return (w.obj::<1>()); }
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<4>() { return true; }
+        if w.is::<3>() { return true; }
+        if w.is::<2>() { return true; }
+        if w.is::<1>() { return true; }
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -7803,14 +7672,10 @@ impl kayak_rt::data::Datatype for Centry {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -8211,14 +8076,10 @@ impl kayak_rt::data::Datatype for This {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -8410,14 +8271,10 @@ impl kayak_rt::data::Datatype for Twin {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -8475,14 +8332,10 @@ impl kayak_rt::data::Datatype for Lword {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -8540,14 +8393,10 @@ impl kayak_rt::data::Datatype for Stwin {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -9173,14 +9022,10 @@ impl kayak_rt::data::Datatype for Patch {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -9229,14 +9074,10 @@ impl kayak_rt::data::Datatype for Cclosing {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -9474,14 +9315,10 @@ impl kayak_rt::data::Datatype for Wait {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -10304,14 +10141,10 @@ impl kayak_rt::data::Datatype for Ftops {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -10371,14 +10204,10 @@ impl kayak_rt::data::Datatype for Tentry {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 

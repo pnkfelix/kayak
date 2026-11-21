@@ -192,3 +192,20 @@ where it was seen and what it would take.
     collector there later, kept incremental), so no design here assumes
     it does not. kc's collector today sees one thread's stack and one
     heap. Both decide what kc's heap is, so one design for both.
+
+17. **A union's member narrowed by its kind, not its Rust type (C506).**
+    With `Value` one Fixpt word, a union narrowed to a member (`unbox_other`,
+    `unbox_list`) checks the word's shape (its tag, its object's kind; a
+    datatype's value its tag among its variants'), not the member's Rust
+    type, which a word does not carry: an `(arrayof int)` and an `(arrayof
+    string)` are one kind, as are a list of `int` and one of `string`.
+    Before, a box's `TypeId` was checked, and a mismatch failed loudly;
+    now KFX's checker is what keeps them apart (a union's members of
+    distinct shapes, C62), as Fixpt's native code trusts its checker. A
+    value narrowed wrongly reads its elements at the wrong type, and that
+    is not memory-safe: a fixnum's word read as a string's is taken for an
+    address. So the checker is now part of kayak-rt's soundness, where a
+    wrong narrowing was a loud failure. Keep it so, check each element's
+    word where it is read (its tag and kind, a load and a compare), or
+    carry a type in debug builds (a side table by address, as the census
+    has)?

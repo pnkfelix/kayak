@@ -1971,10 +1971,19 @@ over its 1664 definitions, 335 of them refused:
   part, C491: traced, its pair and its members' objects reached
   precisely, a member its own object, no box, but what has none yet; a
   sum precise, its head its cell's type (C499: its object, as its
-  payload's type has it, found again by `Visit::sum_cell`). Left: one word, not three,
+  payload's type has it, found again by `Visit::sum_cell`). ~~Left: one word, not three,
   which needs every object it may point at to say its shape and type as
   Fixpt's headers do: a pair's, a datatype's value's, a sum's, a ref's,
-  a closure's), ~~what is still traced as a plain reference, opaque~~
+  a closure's~~ (done, C506: one Fixpt word, its shape its tag's or its
+  object's kind's; a typed list a list of values as it is; an array
+  Fixpt's plain bloblet, kind 32, as Fixpt's `make-array`'s; a product
+  held as its word. Left: a member narrowed by its kind, not its type,
+  its element types the checker's to keep, as Fixpt's native code's,
+  to-discuss 17; a member whose stored word is not Fixpt's own, as yet
+  `&Slot`'s, copied where given, not narrowed again; a census reaches an
+  array's, a box's, a product's, a bloblet's and a datatype's value's
+  object from a value by its block, so a trace without one counts them
+  opaque) ~~what is still traced as a plain reference, opaque~~
   (done in part, C492: a reference to what is `Visit` visited, a place,
   a module's state, an I-cell, a mailbox, a knot, a region's arena.
   Left opaque, each by an impl of its own: a continuation, scanned as a
@@ -2022,6 +2031,12 @@ over its 1664 definitions, 335 of them refused:
   Again at C504's check (2026-11-21), the machine at a load average of
   ~450 from elsewhere: under cells, timed out at 600 s (a hang, not a
   lost line); 30 runs alone after, each right in under a second.
+
+- **`cargo build --workspace --all-targets` fails to link kayak-kcrt's
+  lib test** (found at C506, 2026-11-21; so at C505 too): its `#[no_mangle]
+  main` and the test harness's are two `main`s. The check builds no such
+  target (clippy checks it, unlinked). To mend: `#[cfg(not(test))]` on it,
+  or `test = false` for the lib.
 
 ## 55. Debts against K8: what works against parallelism (the user, 2026-11-18)
 

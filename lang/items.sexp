@@ -1010,7 +1010,6 @@
 (emitter-call "nil" kayak)
 (emitter-call "no_flat_tag" kayak)
 (emitter-call "no_variant" kayak)
-(emitter-call "object" kayak)
 (emitter-call "once" kayak)
 (emitter-call "other" kayak)
 (emitter-call "own_address" kayak)

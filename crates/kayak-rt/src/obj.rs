@@ -542,6 +542,7 @@ impl<Fs: crate::Visit> crate::Visit for BlobHead<Fs> {
 /// A bloblet: its object reached (C486); held as its word (C503).
 impl<Fs: crate::Visit> crate::Trace for BlobletAt<'_, Fs> {
     type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> HeapWord {
         self.word()
@@ -920,6 +921,7 @@ impl<Fs: crate::Visit, S> crate::Visit for TBlobHead<Fs, S> {
 /// (C503).
 impl<Fs: crate::Visit, S> crate::Trace for TBlobletAt<'_, Fs, S> {
     type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> HeapWord {
         self.word()
@@ -1197,8 +1199,19 @@ unsafe fn trace_array<T: crate::Trace + 'static>(addr: usize, t: &mut crate::Tra
     crate::Trace::trace(a, t);
 }
 
-/// An array of `items`, kept for the run.
+/// An array of `items`, kept for the run: Fixpt's plain bloblet (kind 32,
+/// its elements its fields, no suffix), as Fixpt's `make-array` makes one
+/// (`%make-bloblet-filled`; C506, where it was a vector).
 pub(crate) fn array_made<T: crate::Trace + 'static>(
+    items: impl ExactSizeIterator<Item = T>,
+) -> Array<T> {
+    array_made_of(layout::KIND_BLOBLET, items)
+}
+
+/// An array of `items` whose object is of kind `kind`: a plain bloblet's
+/// (32), or a vector's (3, a datum's, C505).
+pub(crate) fn array_made_of<T: crate::Trace + 'static>(
+    kind: u8,
     items: impl ExactSizeIterator<Item = T>,
 ) -> Array<T> {
     const {
@@ -1228,9 +1241,9 @@ pub(crate) fn array_made<T: crate::Trace + 'static>(
             // Fixpt's: the extension word, then the main header, `large`.
             p.write(layout::TAG_HEADER | KIND_EXTENSION << 3 | (fields as u64) << 11);
             p.add(1)
-                .write(layout::header(3, 0, 0, false, false) | LARGE);
+                .write(layout::header(kind, 0, 0, false, false) | LARGE);
         } else {
-            p.write(layout::header(3, fields, 0, false, false));
+            p.write(layout::header(kind, fields, 0, false, false));
         }
         let cells = p.cast::<u8>().add(at).cast::<crate::Slot<T>>();
         let mut k = 0;
@@ -1373,14 +1386,30 @@ impl<P: crate::Product> Prod<P> {
         self.obj().header
     }
 
-    /// Its object, kept for the run: what a union holds (C491).
-    #[inline]
-    pub fn object(self) -> &'static ProdObj<P>
-    where
-        P: 'static,
-    {
-        // SAFETY: made only by `new`, of a block never freed.
-        unsafe { self.0.as_ref() }
+    /// Its word (C506): Fixpt's, tagged `100`, one past its trailer (a
+    /// product has no suffix).
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        HeapWord::object_at(
+            self.0
+                .as_ptr()
+                .cast::<u8>()
+                .wrapping_add(std::mem::size_of::<ProdObj<P>>())
+                .cast(),
+        )
+    }
+
+    /// The product a word is to.
+    #[inline(always)]
+    pub fn of_word(w: HeapWord) -> Self {
+        // SAFETY: a product's word is made only by `word`, of its object,
+        // kept for the run, its trailer just before where the word points.
+        let h = unsafe { w.header_ptr() };
+        // SAFETY: as above, its object's start.
+        Prod(
+            unsafe { NonNull::new_unchecked(h.cast::<ProdObj<P>>().cast_mut()) },
+            std::marker::PhantomData,
+        )
     }
 }
 
@@ -1402,9 +1431,18 @@ impl<P: crate::Product> crate::Visit for ProdObj<P> {
     }
 }
 
-/// A held product: its object reached.
+/// A held product: its object reached; held as its word (C506).
 impl<P: crate::Product> crate::Trace for Prod<P> {
-    crate::trace_whole!();
+    type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
+    #[inline(always)]
+    fn store(self) -> HeapWord {
+        self.word()
+    }
+    #[inline(always)]
+    fn load(w: HeapWord) -> Self {
+        Prod::of_word(w)
+    }
     #[inline]
     fn trace<'a>(self, t: &mut crate::Tracer<'a>)
     where
@@ -1487,8 +1525,8 @@ const IMM_NULL: usize = 2;
 const IMM_FALSE: usize = 0;
 const IMM_TRUE: usize = 1;
 const IMM_UNIT: usize = 3;
-const IMM_CHAR: usize = 8;
-const IMM_F32: usize = 9;
+pub(crate) const IMM_CHAR: usize = 8;
+pub(crate) const IMM_F32: usize = 9;
 const KIND_FLONUM: u8 = 5;
 
 impl HeapWord {
@@ -1682,21 +1720,88 @@ impl HeapWord {
         HeapWord(at.wrapping_byte_add(TAG_OBJECT))
     }
 
-    /// The header of the object a word points to (C503), as the trailer
-    /// just before where it points says how far back it is (Fixpt's
-    /// distance, in words).
+    /// The header of the object a word points to (C503), as Fixpt finds
+    /// it: the word just before where it points, if a header (an object of
+    /// no fields: a flonum); else its trailer, which says how far back it is
+    /// (Fixpt's distance, in words; a string's trailer's bit 62, whether
+    /// its text is ASCII, not of it, C482).
     ///
     /// # Safety
-    /// `self` is a word to an object of a trailer, made of a reference to it
+    /// `self` is a word to an object kayak-rt made, of a reference to it
     /// whose provenance covers its header, alive as long as what is read.
     #[inline(always)]
     pub(crate) unsafe fn header_ptr(self) -> *const u64 {
         let at = self.object_ptr();
         // SAFETY: the caller's.
         unsafe {
-            let back = (*at.sub(1) >> 3) as usize;
+            let before = *at.sub(1);
+            if before & TAG_MASK as u64 == layout::TAG_HEADER {
+                return at.sub(1);
+            }
+            let back = ((before >> 3) & ((1 << 59) - 1)) as usize;
             at.sub(1 + back)
         }
+    }
+
+    /// Its tag, Fixpt's three bits (C506).
+    #[inline(always)]
+    pub(crate) fn tag(self) -> usize {
+        self.raw() & TAG_MASK
+    }
+
+    /// Whether it is a pair's word.
+    #[inline(always)]
+    pub(crate) fn is_pair(self) -> bool {
+        self.tag() == TAG_PAIR
+    }
+
+    /// Whether it is an object's word.
+    #[inline(always)]
+    pub(crate) fn is_object(self) -> bool {
+        self.tag() == TAG_OBJECT
+    }
+
+    /// An immediate's subtag (C506), if it is one.
+    #[inline(always)]
+    pub(crate) fn immediate(self) -> Option<usize> {
+        (self.tag() == TAG_IMMEDIATE).then_some((self.raw() >> 3) & 0x1f)
+    }
+
+    /// The header of the object a word is to (C506), if it is to one: a
+    /// dynamic value's (`Value`), each of whose object words kayak-rt made.
+    #[inline(always)]
+    pub(crate) fn object_header(self) -> Option<u64> {
+        if !self.is_object() {
+            return None;
+        }
+        // SAFETY: an object's word, kayak-rt's (a `Value` holds no other),
+        // its object kept for the run.
+        Some(unsafe { *self.header_ptr() })
+    }
+
+    /// Its object's kind (Fixpt's, its header's bits 3 to 10), if it is an
+    /// object's word.
+    #[inline(always)]
+    pub(crate) fn kind(self) -> Option<u8> {
+        self.object_header().map(|h| ((h >> 3) & 0xff) as u8)
+    }
+
+    /// The address of the header of the object it is to: a census's key.
+    #[inline(always)]
+    pub(crate) fn header_addr(self) -> usize {
+        // SAFETY: as `object_header`'s.
+        unsafe { self.header_ptr() as usize }
+    }
+
+    /// A pair's head and tail words (C506).
+    #[inline(always)]
+    pub(crate) fn pair_words(self) -> (HeapWord, HeapWord) {
+        debug_assert!(self.is_pair());
+        let p = self.0.map_addr(|a| a & !TAG_MASK).cast::<HeapWord>();
+        // SAFETY: a pair's word, made only of a heap's pair cell (`ListAt`'s
+        // `of_pair`, `value_cons`), two words, kept for the run; its head
+        // written only by `set-car!`'s cell, read as its word.
+        unsafe { (*p, *p.add(1)) }
     }
 
     /// Where the suffix of the object a word points to starts: its tag
@@ -1761,6 +1866,13 @@ pub struct ListAt<'r, T: crate::Trace>(
     HeapWord,
     std::marker::PhantomData<crate::Handle<'r, crate::Cons<'r, T>>>,
 );
+
+/// A pair of a dynamic value (C506), its head `car`'s word, its tail any
+/// value's word (a list's, or not: `(1 . 2)`): Fixpt's pair cell, as a
+/// typed list's is, in the heap's arena of them.
+pub(crate) fn value_cons(car: crate::value::Value, cdr: HeapWord) -> HeapWord {
+    crate::heap_cons(car, ListAt(cdr, std::marker::PhantomData)).0
+}
 
 impl<T: crate::Trace> Clone for ListAt<'_, T> {
     #[inline(always)]
@@ -1832,6 +1944,7 @@ impl<T: crate::Trace> crate::Trace for ListAt<'_, T> {
         }
     }
     type Stored = HeapWord;
+    const VALUE_WORD: bool = T::VALUE_WORD;
     #[inline(always)]
     fn store(self) -> HeapWord {
         self.0
@@ -1978,6 +2091,7 @@ impl<T: crate::Trace> crate::Trace for RefAt<'_, T> {
         t.reach(self.obj());
     }
     type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> HeapWord {
         self.0
@@ -1988,19 +2102,8 @@ impl<T: crate::Trace> crate::Trace for RefAt<'_, T> {
     }
 }
 
-/// A reference as a union's member (C491): its box.
-impl<T: crate::Trace + 'static> crate::value::Member for RefAt<'static, T> {
-    #[inline]
-    fn object(self) -> &'static dyn crate::value::Obj {
-        self.obj()
-    }
-    #[inline]
-    fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
-        (o as &dyn std::any::Any)
-            .downcast_ref::<RefObj<T>>()
-            .map(|b| RefAt::of_obj(crate::Handle::made(b)))
-    }
-}
+// A reference as a union's member (C491): its box's word, kind 10 (C506).
+crate::word_member!([T: crate::Trace + 'static] RefAt<'static, T>; 10);
 
 #[cfg(test)]
 mod ref_tests {
@@ -2135,6 +2238,25 @@ pub mod procs {
         unsafe { std::mem::transmute::<*const (dyn Visit + 'r), *const (dyn Visit + 'static)>(o) }
     }
 
+    /// What the closure a word is to reaches (C506), by its code's `reach`,
+    /// whatever its type: a procedure's, or a dynamic value's.
+    #[inline]
+    pub(crate) fn reach_closure<'a>(w: HeapWord, t: &mut Tracer<'a>) {
+        let p = w.object_ptr();
+        // SAFETY: a closure's word (`made`'s), its code at slot 2, a word to
+        // its type's `ProcCode`, whose `reach` is its type's, of a closure
+        // kept for the run.
+        let o: &'a (dyn Visit + 'a) = unsafe {
+            let code = *p.sub(2).cast::<HeapWord>();
+            let reach = *code
+                .object_ptr()
+                .add(1)
+                .cast::<unsafe fn(*const u64) -> *const (dyn Visit + 'static)>();
+            &*reach(p)
+        };
+        t.reach(o);
+    }
+
     /// A closure of no bytes of its own (it captures nothing, so any one of
     /// its type is any other), kept for the run, noted for a census.
     fn kept<'r, T: Visit + 'r>(v: T) -> &'r T {
@@ -2254,6 +2376,7 @@ pub mod procs {
             /// A procedure: its closure reached.
             impl<'r, $($a,)* R> Trace for $proc<'r, $($a,)* R> {
                 type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
                 #[inline(always)]
                 fn store(self) -> HeapWord {
                     self.0
@@ -2264,23 +2387,13 @@ pub mod procs {
                 }
                 #[inline]
                 fn trace<'a>(self, t: &mut Tracer<'a>) where Self: 'a {
-                    let p = self.0.object_ptr();
-                    // SAFETY: as `call`: its code's `reach` is its type's,
-                    // of its closure, which lives for `'r`, past `'a`.
-                    let o: &'a (dyn Visit + 'a) = unsafe {
-                        let code = *p.sub(2).cast::<HeapWord>();
-                        let reach = *code
-                            .object_ptr()
-                            .add(1)
-                            .cast::<unsafe fn(*const u64) -> *const (dyn Visit + 'static)>();
-                        &*reach(p)
-                    };
-                    t.reach(o);
+                    reach_closure(self.0, t);
                 }
             }
 
             impl<'r, $($a,)* R> Trace for $procs<'r, $($a,)* R> {
                 type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
                 #[inline(always)]
                 fn store(self) -> HeapWord {
                     self.0
@@ -2295,28 +2408,10 @@ pub mod procs {
                 }
             }
 
-            // A procedure value as a union's member (C491): boxed.
-            impl<$($a: 'static,)* R: 'static> crate::value::Member for $proc<'static, $($a,)* R> {
-                #[inline]
-                fn object(self) -> &'static dyn crate::value::Obj {
-                    crate::value::boxed_object(self)
-                }
-                #[inline]
-                fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
-                    crate::value::of_boxed(o)
-                }
-            }
-
-            impl<$($a: 'static,)* R: 'static> crate::value::Member for $procs<'static, $($a,)* R> {
-                #[inline]
-                fn object(self) -> &'static dyn crate::value::Obj {
-                    crate::value::boxed_object(self)
-                }
-                #[inline]
-                fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
-                    crate::value::of_boxed(o)
-                }
-            }
+            // A procedure value as a union's member (C491): its closure's
+            // word, kind 41 (C506).
+            crate::word_member!([$($a: 'static,)* R: 'static] $proc<'static, $($a,)* R>; 41);
+            crate::word_member!([$($a: 'static,)* R: 'static] $procs<'static, $($a,)* R>; 41);
 
             /// A closure of free values `env` and code `code`: a Rust
             /// closure that captures nothing (C493, checked when built).

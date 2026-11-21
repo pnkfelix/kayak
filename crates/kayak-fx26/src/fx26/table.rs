@@ -398,42 +398,24 @@ impl kayak_rt::data::Datatype for Node {
         if w.is::<1>() { return t.reach(w.obj::<1>()); }
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<14>() { return (w.obj::<14>()); }
-        if w.is::<13>() { return (w.obj::<13>()); }
-        if w.is::<12>() { return (w.obj::<12>()); }
-        if w.is::<11>() { return (w.obj::<11>()); }
-        if w.is::<10>() { return (w.obj::<10>()); }
-        if w.is::<9>() { return (w.obj::<9>()); }
-        if w.is::<8>() { return (w.obj::<8>()); }
-        if w.is::<7>() { return (w.obj::<7>()); }
-        if w.is::<6>() { return (w.obj::<6>()); }
-        if w.is::<5>() { return (w.obj::<5>()); }
-        if w.is::<4>() { return (w.obj::<4>()); }
-        if w.is::<3>() { return (w.obj::<3>()); }
-        if w.is::<2>() { return (w.obj::<2>()); }
-        if w.is::<1>() { return (w.obj::<1>()); }
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<14>() { return true; }
+        if w.is::<13>() { return true; }
+        if w.is::<12>() { return true; }
+        if w.is::<11>() { return true; }
+        if w.is::<10>() { return true; }
+        if w.is::<9>() { return true; }
+        if w.is::<8>() { return true; }
+        if w.is::<7>() { return true; }
+        if w.is::<6>() { return true; }
+        if w.is::<5>() { return true; }
+        if w.is::<4>() { return true; }
+        if w.is::<3>() { return true; }
+        if w.is::<2>() { return true; }
+        if w.is::<1>() { return true; }
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 14>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 13>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 12>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 11>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 10>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 9>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 8>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 7>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 6>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 5>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -537,14 +519,10 @@ impl kayak_rt::data::Datatype for Armx {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -982,14 +960,10 @@ impl kayak_rt::data::Datatype for Quoted {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 

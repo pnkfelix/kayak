@@ -44,14 +44,10 @@ impl kayak_rt::data::Datatype for Mparts {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -99,14 +95,10 @@ impl kayak_rt::data::Datatype for Calling {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -156,14 +148,10 @@ impl kayak_rt::data::Datatype for Visited {
     fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 
@@ -1226,7 +1214,7 @@ pub mod writing {
         }
     }
 
-    /// `reach`'s and `object`'s arms: the variant's object, by its tag.
+    /// `reach`'s arms: the variant's object, by its tag.
     pub fn put_data_objects(mut variants: Sexps, mut what: Str, mut acc: Chars) -> Chars {
         loop {
             if null_p(variants) {
@@ -1239,14 +1227,14 @@ pub mod writing {
         }
     }
 
-    /// `of_object`'s: the object, if a variant's of the datatype's.
-    pub fn put_data_of_objects(mut variants: Sexps, mut acc: Chars) -> Chars {
+    /// `has`'s (C506): whether a sum's tag is a variant's of the datatype's.
+    pub fn put_data_has(mut variants: Sexps, mut acc: Chars) -> Chars {
         loop {
             if null_p(variants) {
                 return acc;
             } else {
                 let i = i64_to_string(i64_minus(size(variants), 1i64));
-                (variants, acc) = (cdr(variants), put(string_append(str_lit!("        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, "), string_append(i, str_lit!(">(o) { return ::core::option::Option::Some(x); }\n"))), acc));
+                (variants, acc) = (cdr(variants), put(string_append(str_lit!("        if w.is::<"), string_append(i, str_lit!(">() { return true; }\n"))), acc));
                 continue;
             }
         }
@@ -1271,17 +1259,9 @@ pub mod writing {
             acc
         };
         let acc = put_data_objects(variants, str_lit!("return t.reach"), acc);
-        let acc = put(str_lit!("    }\n    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {\n"), acc);
-        let acc = put_data_objects(variants, str_lit!("return "), acc);
-        let acc = put(str_lit!("        let _ = w;\n        kayak_rt::data::no_variant()\n    }\n"), acc);
-        let acc = put(str_lit!("    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {\n"), acc);
-        let acc = if null_p(variants) {
-            put(str_lit!("        let _ = o;\n"), acc)
-        } else {
-            acc
-        };
-        let acc = put_data_of_objects(variants, acc);
-        put(str_lit!("        ::core::option::Option::None\n    }\n}\n\n"), acc)
+        let acc = put(str_lit!("    }\n    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {\n"), acc);
+        let acc = put_data_has(variants, acc);
+        put(str_lit!("        let _ = w;\n        false\n    }\n}\n\n"), acc)
     }
 
     /// Type parameters, each as Rust names it, each followed by `,`.

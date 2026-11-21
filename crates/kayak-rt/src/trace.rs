@@ -18,7 +18,6 @@
 //! A tracer keeps its own list of what is still to visit, so that a long
 //! list is traced in a loop, not a recursion as deep as the list.
 
-use crate::value::Value;
 use crate::{Array, BigAt, Cons, Handle, Int, Str, Void};
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
@@ -35,6 +34,10 @@ pub trait Trace: Copy {
     type Stored: Copy;
     fn store(self) -> Self::Stored;
     fn load(s: Self::Stored) -> Self;
+    /// Whether its stored word is one a dynamic value (`Value`, C506) holds
+    /// as it is: Fixpt's own word for it, its shape its tag's or its
+    /// object's kind's. So a list of it is a list of values as it is.
+    const VALUE_WORD: bool = false;
 }
 
 /// What a handle points to: visited by reference, once.
@@ -172,6 +175,7 @@ macro_rules! trace_word {
             #[inline(always)]
             fn trace<'a>(self, _: &mut Tracer<'a>) where Self: 'a {}
             type Stored = crate::HeapWord;
+            const VALUE_WORD: bool = true;
             #[inline(always)]
             fn store(self) -> crate::HeapWord { ($store)(self) }
             #[inline(always)]
@@ -210,15 +214,16 @@ macro_rules! trace_product {
             fn trace<'a>(self, t: &mut $crate::Tracer<'a>) where Self: 'a {
                 $(self.$i.trace(t);)*
             }
-            // Held boxed, one word to its object (C490).
-            type Stored = $crate::Prod<Self>;
+            // Held boxed, one word to its object (C490), Fixpt's (C506).
+            type Stored = $crate::HeapWord;
+            const VALUE_WORD: bool = true;
             #[inline]
-            fn store(self) -> Self::Stored {
-                $crate::Prod::new(self)
+            fn store(self) -> $crate::HeapWord {
+                $crate::Prod::new(self).word()
             }
             #[inline(always)]
-            fn load(p: Self::Stored) -> Self {
-                p.get()
+            fn load(w: $crate::HeapWord) -> Self {
+                $crate::Prod::<Self>::of_word(w).get()
             }
         }
         impl<$($a: $crate::Trace),*> $crate::Product for $name<$($a),*> {
@@ -232,19 +237,8 @@ macro_rules! trace_product {
                 $name($($a::load(w.$i)),*)
             }
         }
-        /// A union's member (C491): its object, kind 37.
-        impl<$($a: $crate::Trace + 'static),*> $crate::value::Member for $name<$($a),*> {
-            #[inline]
-            fn object(self) -> &'static dyn $crate::value::Obj {
-                $crate::Prod::new(self).object()
-            }
-            #[inline]
-            fn of_object(o: &'static dyn $crate::value::Obj) -> Option<Self> {
-                (o as &dyn std::any::Any)
-                    .downcast_ref::<$crate::ProdObj<Self>>()
-                    .map(|p| p.get())
-            }
-        }
+        // A union's member (C491): its object's word, kind 37 (C506).
+        $crate::word_member!([$($a: $crate::Trace + 'static),*] $name<$($a),*>; 37);
     };
 }
 
@@ -334,6 +328,7 @@ impl Trace for () {
     {
     }
     type Stored = crate::HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> crate::HeapWord {
         crate::HeapWord::UNIT
@@ -1189,6 +1184,7 @@ impl Trace for crate::BytesAt<'_> {
 
 impl Trace for Str {
     type Stored = crate::HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> crate::HeapWord {
         crate::HeapWord::of_str(self)
@@ -1209,6 +1205,7 @@ impl Trace for Str {
 /// nothing in it traced.
 impl Trace for Int {
     type Stored = crate::HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> crate::HeapWord {
         crate::HeapWord::of_int(self)
@@ -1232,6 +1229,7 @@ impl Trace for Int {
 /// nothing traced.
 impl<T: 'static> Trace for crate::FlatArray<T> {
     type Stored = crate::HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> crate::HeapWord {
         self.word()
@@ -1339,6 +1337,7 @@ impl<T: Trace> Visit for Slot<T> {
 /// held as its word (C502).
 impl<T: Trace> Trace for Array<T> {
     type Stored = crate::HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> crate::HeapWord {
         self.word()
@@ -1367,26 +1366,6 @@ impl<T: Trace> Visit for Array<T> {
     }
     fn visit_size(&self) -> usize {
         self.object_bytes()
-    }
-}
-
-/// A dynamic value (C491): what it holds reached, precisely: a pair, a
-/// member's object, a string, a bignum.
-impl Trace for Value {
-    trace_whole!();
-    fn trace<'a>(self, t: &mut Tracer<'a>)
-    where
-        Self: 'a,
-    {
-        match self {
-            Value::Str(s) => s.trace(t),
-            Value::Symbol(s) => s.trace(t),
-            Value::Int(n) => n.trace(t),
-            Value::Pair(p) => t.reach(p),
-            Value::Sum(s) => s.trace(t),
-            Value::Other(o, _) => t.reach(o),
-            _ => {}
-        }
     }
 }
 

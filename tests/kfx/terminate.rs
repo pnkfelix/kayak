@@ -71,16 +71,11 @@ impl kayak_rt::data::Datatype for Tree {
         if w.is::<1>() { return t.reach(w.obj::<1>()); }
         if w.is::<0>() { return t.reach(w.obj::<0>()); }
     }
-    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
-        if w.is::<1>() { return (w.obj::<1>()); }
-        if w.is::<0>() { return (w.obj::<0>()); }
+    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        if w.is::<1>() { return true; }
+        if w.is::<0>() { return true; }
         let _ = w;
-        kayak_rt::data::no_variant()
-    }
-    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
-        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
-        ::core::option::Option::None
+        false
     }
 }
 

@@ -94,7 +94,9 @@ pub type Ref<T> = RefAt<'static, T>;
 pub use obj::{FlatArray, HeapWord, ListAt, Prod, ProdObj, RefAt, RefObj};
 
 /// A pair (C497): Fixpt's headerless two-word cell, its element's word
-/// (its car, held: C490, C495) and the rest of the list's (its cdr).
+/// (its car, held: C490, C495) and the rest of the list's (its cdr), in
+/// that order (C506: a dynamic value reads them by its word).
+#[repr(C)]
 pub struct Cons<'r, T: Trace> {
     car: Held<T>,
     pub cdr: ListAt<'r, T>,

@@ -177,6 +177,7 @@ impl Eq for Symbol {}
 /// word.
 impl crate::Trace for Symbol {
     type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> HeapWord {
         self.word()
@@ -375,6 +376,7 @@ impl Sum {
 /// A sum: its object reached, precisely (C491); held as its word (C499).
 impl crate::Trace for Sum {
     type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
     #[inline(always)]
     fn store(self) -> HeapWord {
         self.word()
@@ -614,15 +616,10 @@ pub mod data {
         fn reach<'a>(w: DataAt<'a, Self>, t: &mut crate::Tracer<'a>)
         where
             Self: 'a;
-        /// Its variant's object, as a union holds it.
-        fn object(w: DataAt<'static, Self>) -> &'static dyn crate::value::Obj
-        where
-            Self: 'static;
-        /// The value whose variant's object `o` is, if it is one of this
-        /// datatype's.
-        fn of_object(o: &'static dyn crate::value::Obj) -> Option<DataAt<'static, Self>>
-        where
-            Self: 'static;
+        /// Whether a sum of a datatype's value's is one of this datatype's
+        /// (C506): its tag one of its variants' symbols, as a union
+        /// narrowed to it asks.
+        fn has(w: DataAt<'_, Self>) -> bool;
     }
 
     /// A datatype's value's objects (C500), as Fixpt's `define-datatype`
@@ -810,6 +807,7 @@ pub mod data {
     /// A datatype's value: its object reached; held as its word.
     impl<'r, D: Datatype + 'r> crate::Trace for DataAt<'r, D> {
         type Stored = HeapWord;
+        const VALUE_WORD: bool = true;
         #[inline(always)]
         fn store(self) -> HeapWord {
             self.0
@@ -827,38 +825,22 @@ pub mod data {
         }
     }
 
-    /// A datatype's value as a union's member: its variant's object.
+    /// A datatype's value as a union's member (C506): its word, to Fixpt's
+    /// sum of three fields (its tag, its payload, its trailer; a `sumof`'s
+    /// has four, its payload's type kept), its tag one of `D`'s variants'.
     impl<D: Datatype + 'static> crate::value::Member for DataAt<'static, D> {
         #[inline]
-        fn object(self) -> &'static dyn crate::value::Obj {
-            D::object(self)
+        fn into_value(self, _: crate::value::Shape) -> crate::value::Value {
+            crate::value::Value::of_word(self.0)
         }
         #[inline]
-        fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
-            D::of_object(o)
+        fn of_value(v: crate::value::Value) -> Option<Self> {
+            let w = v.word();
+            let h = w.object_header()?;
+            let is_data = (h >> 3) & 0xff == KIND_SUM as u64 && (h >> 14) & 0x3ffff == 3;
+            let d = DataAt::<D>(w, std::marker::PhantomData);
+            (is_data && D::has(d)).then_some(d)
         }
-    }
-
-    /// `o` as variant `I`'s object of `D`, if it is one: its type that
-    /// variant's, its tag that variant's symbol (two datatypes' variants may
-    /// have one type of fields).
-    pub fn data_of_object<D: Variant<I> + 'static, const I: usize>(
-        o: &'static dyn crate::value::Obj,
-    ) -> Option<DataAt<'static, D>>
-    where
-        <D as Variant<I>>::Fields: 'static,
-    {
-        let x = (o as &dyn std::any::Any).downcast_ref::<DataObj<<D as Variant<I>>::Fields>>()?;
-        let w = DataAt::<D>(
-            HeapWord::object_at(
-                std::ptr::from_ref(x)
-                    .cast::<u8>()
-                    .wrapping_add(DataObj::<<D as Variant<I>>::Fields>::TO_END)
-                    .cast(),
-            ),
-            std::marker::PhantomData,
-        );
-        w.is::<I>().then_some(w)
     }
 
     /// Variant `I` of `D`, of `fields`, in the heap.
@@ -1043,15 +1025,8 @@ mod tests {
                 t.reach(w.obj::<1>())
             }
         }
-        fn object(w: DataAt<'static, Self>) -> &'static dyn crate::value::Obj {
-            if w.is::<0>() {
-                w.obj::<0>()
-            } else {
-                w.obj::<1>()
-            }
-        }
-        fn of_object(o: &'static dyn crate::value::Obj) -> Option<DataAt<'static, Self>> {
-            data_of_object::<Self, 0>(o).or_else(|| data_of_object::<Self, 1>(o))
+        fn has(w: DataAt<'_, Self>) -> bool {
+            w.is::<0>() || w.is::<1>()
         }
     }
 

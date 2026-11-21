@@ -623,7 +623,7 @@
       (define-rec
         (put-data-objects (subr kfx (sexps string chars) chars)
           (lambda (variants what acc)
-            "`reach`'s and `object`'s arms: the variant's object, by its tag."
+            "`reach`'s arms: the variant's object, by its tag."
             (if (null? variants)
                 acc
                 (let ((i (i64->string (i64- (size variants) 1))))
@@ -632,14 +632,14 @@
                          acc)))))))
 
       (define-rec
-        (put-data-of-objects (subr kfx (sexps chars) chars)
+        (put-data-has (subr kfx (sexps chars) chars)
           (lambda (variants acc)
-            "`of_object`'s: the object, if a variant's of the datatype's."
+            "`has`'s (C506): whether a sum's tag is a variant's of the datatype's."
             (if (null? variants)
                 acc
                 (let ((i (i64->string (i64- (size variants) 1))))
-                  (put-data-of-objects (cdr variants)
-                    (put (string-append "        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, " (string-append i ">(o) { return ::core::option::Option::Some(x); }\n"))
+                  (put-data-has (cdr variants)
+                    (put (string-append "        if w.is::<" (string-append i ">() { return true; }\n"))
                          acc)))))))
 
       (define put-data-impl (subr kfx (string strings strings sexps chars) chars)
@@ -654,13 +654,9 @@
                  (acc (put "    }\n    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {\n" acc))
                  (acc (if (null? variants) (put "        let _ = (w, t);\n" acc) acc))
                  (acc (put-data-objects variants "return t.reach" acc))
-                 (acc (put "    }\n    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {\n" acc))
-                 (acc (put-data-objects variants "return " acc))
-                 (acc (put "        let _ = w;\n        kayak_rt::data::no_variant()\n    }\n" acc))
-                 (acc (put "    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {\n" acc))
-                 (acc (if (null? variants) (put "        let _ = o;\n" acc) acc))
-                 (acc (put-data-of-objects variants acc)))
-            (put "        ::core::option::Option::None\n    }\n}\n\n" acc))))
+                 (acc (put "    }\n    fn has(w: kayak_rt::data::DataAt<'_, Self>) -> bool {\n" acc))
+                 (acc (put-data-has variants acc)))
+            (put "        let _ = w;\n        false\n    }\n}\n\n" acc))))
 
       (define put-generics-list (subr kfx (strings chars) chars)
         (lambda (ps acc)
