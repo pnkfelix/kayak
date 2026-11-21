@@ -144,13 +144,12 @@ pub async fn unit_loads_read(mut rt: Drt, mut dir: Str, mut todo: Strings, mut d
     loop {
         if null_p(todo) {
             return Ok(done);
-        } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), s: kayak_rt::Handle<'static, Filed>| {
+        } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), s: kayak_rt::data::DataAt<'static, Filed>| {
             let tagcase_ = s;
-            match *tagcase_ {
-                Filed::Filed(n, t) => {
-                    string_eq_p(n, car(todo))
-                }
-            }
+            if Filed::__is_Filed(tagcase_) {
+                let (n, t,) = Filed::__Filed(tagcase_);
+                string_eq_p(n, car(todo))
+            } else { kayak_rt::data::no_variant() }
         })), done) {
             todo = cdr(todo);
             continue;
@@ -170,7 +169,7 @@ pub async fn unit_loads_read(mut rt: Drt, mut dir: Str, mut todo: Strings, mut d
 pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result<Sources, Unwind> {
     loop {
         if null_p(lines) {
-            return Ok(nil::<kayak_rt::Handle<'static, Source>>());
+            return Ok(nil::<kayak_rt::data::DataAt<'static, Source>>());
         } else {
             let line = line_trimmed(car(lines));
             if (string_eq_p(line, str_lit!("")) || has_prefix_p(line, str_lit!(";")) || string_eq_p(line, str_lit!("--syscalls"))) {
@@ -179,14 +178,13 @@ pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result
             } else {
                 let path = path_joined(dir, line);
                 let text = kayak_rt::suspend::body(read_text(rt, path)).await?;
-                return Ok(kayak_rt::heap_cons(source(stem(path), text), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Filed>| {
+                return Ok(kayak_rt::heap_cons(source(stem(path), text), onto(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Filed>| {
                     let tagcase_ = x;
-                    match *tagcase_ {
-                        Filed::Filed(n, t) => {
-                            source(string_append(str_lit!("%load:"), n), t)
-                        }
-                    }
-                })), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit!("")), nil::<kayak_rt::Handle<'static, Filed>>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
+                    if Filed::__is_Filed(tagcase_) {
+                        let (n, t,) = Filed::__Filed(tagcase_);
+                        source(string_append(str_lit!("%load:"), n), t)
+                    } else { kayak_rt::data::no_variant() }
+                })), kayak_rt::suspend::body(unit_loads_read(rt, dir, load_paths_all(read_all(text, stem(path), 1i64), str_lit!("")), nil::<kayak_rt::data::DataAt<'static, Filed>>())).await?), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?)));
             }
         }
     }
@@ -198,13 +196,12 @@ pub async fn write_outputs(mut rt: Drt, mut dir: Str, mut os: Outputs) -> Result
             return Ok(());
         } else {
             let tagcase_ = car(os);
-            match *tagcase_ {
-                Output::Output(name, text) => {
-                    kayak_rt::suspend::body(write_text(rt, path_joined(dir, name), text)).await?;
-                    os = cdr(os);
-                    continue;
-                }
-            }
+            if Output::__is_Output(tagcase_) {
+                let (name, text,) = Output::__Output(tagcase_);
+                kayak_rt::suspend::body(write_text(rt, path_joined(dir, name), text)).await?;
+                os = cdr(os);
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -221,13 +218,12 @@ pub async fn loads_read(mut rt: Drt, mut todo: Strings, mut done: Fileds) -> Res
     loop {
         if null_p(todo) {
             return Ok(done);
-        } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), s: kayak_rt::Handle<'static, Filed>| {
+        } else if any_p(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), s: kayak_rt::data::DataAt<'static, Filed>| {
             let tagcase_ = s;
-            match *tagcase_ {
-                Filed::Filed(n, t) => {
-                    string_eq_p(n, car(todo))
-                }
-            }
+            if Filed::__is_Filed(tagcase_) {
+                let (n, t,) = Filed::__Filed(tagcase_);
+                string_eq_p(n, car(todo))
+            } else { kayak_rt::data::no_variant() }
         })), done) {
             todo = cdr(todo);
             continue;
@@ -240,7 +236,7 @@ pub async fn loads_read(mut rt: Drt, mut todo: Strings, mut done: Fileds) -> Res
 }
 
 pub async fn loaded_for(rt: Drt, file: Str, text: Str) -> Result<Fileds, Unwind> {
-    Ok(kayak_rt::suspend::body(loads_read(rt, load_paths_all(read_all(text, file, 1i64), directory_of(file)), nil::<kayak_rt::Handle<'static, Filed>>())).await?)
+    Ok(kayak_rt::suspend::body(loads_read(rt, load_paths_all(read_all(text, file, 1i64), directory_of(file)), nil::<kayak_rt::data::DataAt<'static, Filed>>())).await?)
 }
 
 // Whether a manifest says its program is a runtime's own, which may
@@ -288,17 +284,16 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
                 queries::memos_of_text(t, compiler_identity())
             } else {
                 let other = tagcase_;
-                nil::<kayak_rt::Handle<'static, Memo>>()
+                nil::<kayak_rt::data::DataAt<'static, Memo>>()
             }
         };
         let tagcase_ = compile_units_memo(program, old, runtime_unit_p(text));
-        match *tagcase_ {
-            Compiled::Compiled(outs, made) => {
-                kayak_rt::suspend::body(write_outputs(rt, car(cdr(cdr(cdr(r#as)))), outs)).await?;
-                kayak_rt::suspend::body(write_text(rt, cache, queries::memos_text(made, compiler_identity()))).await?;
-                Ok(int_lit(0))
-            }
-        }
+        if Compiled::__is_Compiled(tagcase_) {
+            let (outs, made,) = Compiled::__Compiled(tagcase_);
+            kayak_rt::suspend::body(write_outputs(rt, car(cdr(cdr(cdr(r#as)))), outs)).await?;
+            kayak_rt::suspend::body(write_text(rt, cache, queries::memos_text(made, compiler_identity()))).await?;
+            Ok(int_lit(0))
+        } else { kayak_rt::data::no_variant() }
     } else {
         match fail_with(str_lit!("usage: kfx [--record LOG | --replay LOG] ([--async] FILE.kfx | [--cache FILE | --async] PROGRAM.unit DIR | --toplevel FILE.kfx)"), int_lit(2)) {};
         Ok(int_lit(2))

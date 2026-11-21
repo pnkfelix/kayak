@@ -21,26 +21,88 @@ pub fn r#mod() -> i64 {
 
 pub type Match = Product_2fn_2in<i64, i64>;
 
+#[derive(Clone, Copy)]
 pub enum Enum {
     Struct(i64),
     Unsafe(),
 }
 
-impl kayak_rt::Visit for Enum {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Struct(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Unsafe() => { }
-        }
+impl kayak_rt::data::Variant<1> for Enum {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("struct")
     }
 }
 
-pub fn r#struct(f0: i64) -> kayak_rt::Handle<'static, Enum> {
-    kayak_rt::heap_alloc(Enum::Struct(f0))
+#[allow(non_snake_case)]
+impl Enum {
+    #[inline(always)]
+    pub fn __is_Struct(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Struct(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn r#unsafe() -> kayak_rt::Handle<'static, Enum> {
-    kayak_rt::heap_alloc(Enum::Unsafe())
+impl kayak_rt::data::Variant<0> for Enum {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("unsafe")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Enum {
+    #[inline(always)]
+    pub fn __is_Unsafe(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Unsafe(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Enum {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::Struct(f0)
+        } else if w.is::<0>() {
+            let () = w.fields::<0>();
+            Self::Unsafe()
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn r#struct(f0: i64) -> kayak_rt::data::DataAt<'static, Enum> {
+    kayak_rt::data::data_heap::<Enum, 1>((f0,))
+}
+
+pub fn r#unsafe() -> kayak_rt::data::DataAt<'static, Enum> {
+    kayak_rt::data::data_heap::<Enum, 0>(())
 }
 
 pub type As = kayak_rt::Sum;
@@ -70,16 +132,14 @@ pub fn r#where(s: As) -> i64 {
 }
 
 #[inline]
-pub fn r#const(e: kayak_rt::Handle<'static, Enum>) -> i64 {
+pub fn r#const(e: kayak_rt::data::DataAt<'static, Enum>) -> i64 {
     let tagcase_ = e;
-    match *tagcase_ {
-        Enum::Struct(r#static) => {
-            r#static
-        }
-        Enum::Unsafe() => {
-            0i64
-        }
-    }
+    if Enum::__is_Struct(tagcase_) {
+        let (r#static,) = Enum::__Struct(tagcase_);
+        r#static
+    } else if Enum::__is_Unsafe(tagcase_) {
+        0i64
+    } else { kayak_rt::data::no_variant() }
 }
 
 pub mod r#impl {

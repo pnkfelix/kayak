@@ -63,46 +63,106 @@ pub fn collatz(mut n: i64, mut steps: i64) -> i64 {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum Step {
     More(i64),
     Done(),
 }
 
-impl kayak_rt::Visit for Step {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::More(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Done() => { }
-        }
+impl kayak_rt::data::Variant<1> for Step {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("more")
     }
 }
 
-pub fn more(f0: i64) -> kayak_rt::Handle<'static, Step> {
-    kayak_rt::heap_alloc(Step::More(f0))
+#[allow(non_snake_case)]
+impl Step {
+    #[inline(always)]
+    pub fn __is_More(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __More(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn done() -> kayak_rt::Handle<'static, Step> {
-    kayak_rt::heap_alloc(Step::Done())
+impl kayak_rt::data::Variant<0> for Step {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("done")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Step {
+    #[inline(always)]
+    pub fn __is_Done(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Done(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Step {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::More(f0)
+        } else if w.is::<0>() {
+            let () = w.fields::<0>();
+            Self::Done()
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn more(f0: i64) -> kayak_rt::data::DataAt<'static, Step> {
+    kayak_rt::data::data_heap::<Step, 1>((f0,))
+}
+
+pub fn done() -> kayak_rt::data::DataAt<'static, Step> {
+    kayak_rt::data::data_heap::<Step, 0>(())
 }
 
 /// A tail call in a tagcase arm.
-pub fn drain(mut s: kayak_rt::Handle<'static, Step>, mut total: i64) -> i64 {
+pub fn drain(mut s: kayak_rt::data::DataAt<'static, Step>, mut total: i64) -> i64 {
     loop {
         let tagcase_ = s;
-        match *tagcase_ {
-            Step::More(k) => {
-                if i64_eq(k, 0i64) {
-                    s = done();
-                    continue;
-                } else {
-                    (s, total) = (more(i64_minus(k, 1i64)), i64_plus(total, 1i64));
-                    continue;
-                }
+        if Step::__is_More(tagcase_) {
+            let (k,) = Step::__More(tagcase_);
+            if i64_eq(k, 0i64) {
+                s = done();
+                continue;
+            } else {
+                (s, total) = (more(i64_minus(k, 1i64)), i64_plus(total, 1i64));
+                continue;
             }
-            Step::Done() => {
-                return total;
-            }
-        }
+        } else if Step::__is_Done(tagcase_) {
+            return total;
+        } else { kayak_rt::data::no_variant() }
     }
 }
 

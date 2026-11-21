@@ -5,102 +5,245 @@ use kayak_rt::*;
 // Datatypes: a recursive tree, a variant with no fields, and tagcase with
 // and without else.
 
+#[derive(Clone, Copy)]
 pub enum Tree {
     Leaf(),
-    Node(kayak_rt::Handle<'static, Tree>, i64, kayak_rt::Handle<'static, Tree>),
+    Node(kayak_rt::data::DataAt<'static, Tree>, i64, kayak_rt::data::DataAt<'static, Tree>),
 }
 
-impl kayak_rt::Visit for Tree {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Leaf() => { }
-            Self::Node(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-        }
+impl kayak_rt::data::Variant<1> for Tree {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("leaf")
     }
 }
 
-pub fn leaf() -> kayak_rt::Handle<'static, Tree> {
-    kayak_rt::heap_alloc(Tree::Leaf())
+#[allow(non_snake_case)]
+impl Tree {
+    #[inline(always)]
+    pub fn __is_Leaf(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Leaf(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn node(f0: kayak_rt::Handle<'static, Tree>, f1: i64, f2: kayak_rt::Handle<'static, Tree>) -> kayak_rt::Handle<'static, Tree> {
-    kayak_rt::heap_alloc(Tree::Node(f0, f1, f2))
+impl kayak_rt::data::Variant<0> for Tree {
+    type Fields = (kayak_rt::data::DataAt<'static, Tree>, i64, kayak_rt::data::DataAt<'static, Tree>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("node")
+    }
 }
 
+#[allow(non_snake_case)]
+impl Tree {
+    #[inline(always)]
+    pub fn __is_Node(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Node(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Tree {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let () = w.fields::<1>();
+            Self::Leaf()
+        } else if w.is::<0>() {
+            let (f0, f1, f2,) = w.fields::<0>();
+            Self::Node(f0, f1, f2)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn leaf() -> kayak_rt::data::DataAt<'static, Tree> {
+    kayak_rt::data::data_heap::<Tree, 1>(())
+}
+
+pub fn node(f0: kayak_rt::data::DataAt<'static, Tree>, f1: i64, f2: kayak_rt::data::DataAt<'static, Tree>) -> kayak_rt::data::DataAt<'static, Tree> {
+    kayak_rt::data::data_heap::<Tree, 0>((f0, f1, f2,))
+}
+
+#[derive(Clone, Copy)]
 pub enum Shape {
     Circle(i64),
     Rect(i64, i64),
     Dot(),
 }
 
-impl kayak_rt::Visit for Shape {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Circle(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            Self::Dot() => { }
-        }
+impl kayak_rt::data::Variant<2> for Shape {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("circle")
     }
 }
 
-pub fn circle(f0: i64) -> kayak_rt::Handle<'static, Shape> {
-    kayak_rt::heap_alloc(Shape::Circle(f0))
+#[allow(non_snake_case)]
+impl Shape {
+    #[inline(always)]
+    pub fn __is_Circle(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<2>()
+    }
+    #[inline(always)]
+    pub fn __Circle(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+        w.fields::<2>()
+    }
 }
 
-pub fn rect(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Shape> {
-    kayak_rt::heap_alloc(Shape::Rect(f0, f1))
+impl kayak_rt::data::Variant<1> for Shape {
+    type Fields = (i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("rect")
+    }
 }
 
-pub fn dot() -> kayak_rt::Handle<'static, Shape> {
-    kayak_rt::heap_alloc(Shape::Dot())
+#[allow(non_snake_case)]
+impl Shape {
+    #[inline(always)]
+    pub fn __is_Rect(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Rect(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn insert(k: i64, t: kayak_rt::Handle<'static, Tree>) -> kayak_rt::Handle<'static, Tree> {
+impl kayak_rt::data::Variant<0> for Shape {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("dot")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Shape {
+    #[inline(always)]
+    pub fn __is_Dot(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Dot(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Shape {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<2>() {
+            let (f0,) = w.fields::<2>();
+            Self::Circle(f0)
+        } else if w.is::<1>() {
+            let (f0, f1,) = w.fields::<1>();
+            Self::Rect(f0, f1)
+        } else if w.is::<0>() {
+            let () = w.fields::<0>();
+            Self::Dot()
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<2>() { return t.reach(w.obj::<2>()); }
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<2>() { return (w.obj::<2>()); }
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn circle(f0: i64) -> kayak_rt::data::DataAt<'static, Shape> {
+    kayak_rt::data::data_heap::<Shape, 2>((f0,))
+}
+
+pub fn rect(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, Shape> {
+    kayak_rt::data::data_heap::<Shape, 1>((f0, f1,))
+}
+
+pub fn dot() -> kayak_rt::data::DataAt<'static, Shape> {
+    kayak_rt::data::data_heap::<Shape, 0>(())
+}
+
+pub fn insert(k: i64, t: kayak_rt::data::DataAt<'static, Tree>) -> kayak_rt::data::DataAt<'static, Tree> {
     let tagcase_ = t;
-    match *tagcase_ {
-        Tree::Leaf() => {
-            node(leaf(), k, leaf())
+    if Tree::__is_Leaf(tagcase_) {
+        node(leaf(), k, leaf())
+    } else if Tree::__is_Node(tagcase_) {
+        let (l, v, r,) = Tree::__Node(tagcase_);
+        if i64_lt(k, v) {
+            node(insert(k, l), v, r)
+        } else if i64_lt(v, k) {
+            node(l, v, insert(k, r))
+        } else {
+            t
         }
-        Tree::Node(l, v, r) => {
-            if i64_lt(k, v) {
-                node(insert(k, l), v, r)
-            } else if i64_lt(v, k) {
-                node(l, v, insert(k, r))
-            } else {
-                t
-            }
-        }
-    }
+    } else { kayak_rt::data::no_variant() }
 }
 
-pub fn in_order(mut t: kayak_rt::Handle<'static, Tree>, mut rest: Str) -> Str {
+pub fn in_order(mut t: kayak_rt::data::DataAt<'static, Tree>, mut rest: Str) -> Str {
     loop {
         let tagcase_ = t;
-        match *tagcase_ {
-            Tree::Leaf() => {
-                return rest;
-            }
-            Tree::Node(l, v, r) => {
-                (t, rest) = (l, string_append(i64_to_string(v), string_append(str_lit!(" "), in_order(r, rest))));
-                continue;
-            }
-        }
+        if Tree::__is_Leaf(tagcase_) {
+            return rest;
+        } else if Tree::__is_Node(tagcase_) {
+            let (l, v, r,) = Tree::__Node(tagcase_);
+            (t, rest) = (l, string_append(i64_to_string(v), string_append(str_lit!(" "), in_order(r, rest))));
+            continue;
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
-pub fn area(s: kayak_rt::Handle<'static, Shape>) -> i64 {
+pub fn area(s: kayak_rt::data::DataAt<'static, Shape>) -> i64 {
     let tagcase_ = s;
-    match *tagcase_ {
-        Shape::Circle(r) => {
-            i64_star(3i64, i64_star(r, r))
-        }
-        Shape::Rect(w, h) => {
-            i64_star(w, h)
-        }
-        _ => {
-            let other = tagcase_;
-            0i64
-        }
+    if Shape::__is_Circle(tagcase_) {
+        let (r,) = Shape::__Circle(tagcase_);
+        i64_star(3i64, i64_star(r, r))
+    } else if Shape::__is_Rect(tagcase_) {
+        let (w, h,) = Shape::__Rect(tagcase_);
+        i64_star(w, h)
+    } else {
+        let other = tagcase_;
+        0i64
     }
 }
 

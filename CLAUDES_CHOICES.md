@@ -15520,3 +15520,75 @@ binary 9.43 to 9.56 MB: of what is loaded, 61 KB (tag strings and
 symbols, their relocations, the `desc`s, 12 KB of code); the rest
 symbols' names.
 - **The full check**: all passed in 479.3 s, its first run; nextest 5621.
+
+## C500. A datatype's value one Fixpt word, to Fixpt's sum of a product (2026-11-20)
+
+The user, after C499 (datatypes next): "Go ahead"; then, asked whether a
+datatype's value should be Fixpt's two objects (estimated: allocations
++15%, the heap +27%) or one sum of its fields in line (+11%, a format
+Fixpt's code could not read): "Fixpt's exactly".
+
+Reviewed first, Fixpt: `define-datatype` is expanded as it is read
+(`fixpt-fx26`'s `top.rs`, `expand_datatype`) into a `sumof` of
+`productof`s, each variant's members labelled from 1, its constructor
+`(sum tag (product (1 x1) ...))`: a value is Fixpt's sum (kind 36, its
+tag and a word to its payload) of Fixpt's product (kind 37, its fields).
+kayak's was a Rust enum in the heap's arena of its type (C478's
+`Handle`): Rust's discriminant, its fields raw.
+
+What changed:
+- **kayak-rt's `data` module** (`sum.rs`, a module so that a program's
+  glob of kayak-rt meets none of its own names, a datatype `variant`):
+  - `DataObj<E>`: the two objects in one allocation of kayak's, Fixpt's
+    product of the fields' words (`E`, a tuple, its `Captures` words),
+    then Fixpt's sum, its tag the variant's symbol, its payload a word
+    to the product (written once the object is where it stays). Its
+    first word a `NonZeroU64`, so an arena's `OnceCell` of one needs no
+    word of its own.
+  - `DataAt<'r, D>`: one word, to the sum's suffix, tagged `100`.
+  - `Variant<I>`, one impl per variant: its fields' tuple and its tag, a
+    symbol of the impl's own (`tag_lit!`). A read of a variant's fields
+    checks that the object's tag is that symbol: so an object is read
+    only as the variant that made it, which is what makes the read
+    sound (its fields' types the impl's).
+  - `Datatype`: what kfx writes for each datatype, its value read, what
+    it reaches, its object as a union's member, found again.
+  - In the heap `data_heap`; at a lifetime, for the run, `data_alloc`; in
+    a place, `data_in`, each value boxed (`DataBox`, of no lifetime, so
+    that a place's arenas need not outlive the place under Rust's drop
+    check; freeing one runs no code, asserted as it is built).
+  - Tuples' `Trace` and `Captures` to 16 parts (a variant of fx26's has
+    13 fields).
+- **kfx's emitter**: a datatype's value `kayak_rt::data::DataAt`, not a
+  handle; each variant's `Variant`, and `__is_V`/`__V` to read it; its
+  `Datatype` where its `Visit` was; its constructors `data_heap::<D,
+  I>((fields,))`; a `tagcase` on one an `if` per arm, its variant's
+  tag compared, only that variant's fields read (first tried: the enum
+  read whole and matched, `match w.get()`: kc's user-mode instructions
+  +23% over C498's at an edit's build, the reads not inlined; now +2.8%).
+  The enum stays, `Clone, Copy`, as the value taken apart.
+- **The heap's arena cache** (`heap.rs`): 64 entries by the type's hash,
+  where it kept the last type's: a datatype's values are of their
+  variants' types now, so allocations go from arena to arena more (a
+  HashMap's look-up each, 5% of the instructions, with one entry).
+- The corpus's trace test counts a datatype's objects by their census
+  name, their variant's fields' (`DataObj<...>`).
+- kayak-fx26's `rust_repl.rs` (hand-written, its `rust-repl` feature):
+  its requests and news `DataAt`s, not handles (found at the first full
+  check, which stopped at `repl-sessions.py`, the engine not building).
+- **`Show` for a datatype's value**, its value taken apart and written as
+  its enum's (kfx's) `Show` writes it, where a handle's deref did (found
+  at the second full check, at `run-fixpt-programs.py`: Fixpt's p159
+  shows a list of a datatype's values).
+
+Measured (the 1000-procedure bench), against C499:
+- **The census**: 16.73 to 16.75 million allocations; the heap 354.3 to
+  470.4 MB (+33%): 48 bytes more a value, of 2.48 million (the
+  product's header and trailer, the sum's four words), as Fixpt's format
+  has it.
+- **An edit's build** 0.27–0.29 to 0.33–0.34 s (+20%), peak memory 176
+  to 255 MB; **a cold build** 0.62–0.64 to 0.70–0.71 s (+11%), 443 to
+  558 MB. Its instructions (user mode) +2.8% over C498's; its page faults
+  +50%, its cycles +15%: the cost is the memory.
+- **kc's binary** 9.56 to 10.47 MB (each variant's impls).
+- **The full check**: all passed in 499.2 s, its third run (the first stopped at ~20 s, `rust_repl.rs`; the second at `run-fixpt-programs.py`, a datatype's `Show`); nextest 5623.

@@ -13,10 +13,10 @@ use super::*;
 // many forms; the globals' names are the machine's (`machine-globals`,
 // vstage.kfx), which a session's add to too (C311).
 #[inline]
-pub fn repl_cv() -> Ref<kayak_rt::Handle<'static, Cv>> {
-    kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Handle<'static, Cv>>);
+pub fn repl_cv() -> Ref<kayak_rt::data::DataAt<'static, Cv>> {
+    kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::data::DataAt<'static, Cv>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>()))
+        kayak_rt::heap_new(cv(nil::<kayak_rt::data::DataAt<'static, Bind>>(), nil::<kayak_rt::data::DataAt<'static, Dt>>(), nil::<kayak_rt::data::DataAt<'static, Alias>>(), nil::<kayak_rt::data::DataAt<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::data::DataAt<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::data::DataAt<'static, Bind>>()))
     })
 }
 
@@ -136,7 +136,7 @@ pub fn new_names(mut names: Strings, mut known: Strings) -> Strings {
 }
 
 pub fn repl_start_x() -> () {
-    let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
+    let empty = cv(nil::<kayak_rt::data::DataAt<'static, Bind>>(), nil::<kayak_rt::data::DataAt<'static, Dt>>(), nil::<kayak_rt::data::DataAt<'static, Alias>>(), nil::<kayak_rt::data::DataAt<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::data::DataAt<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::data::DataAt<'static, Bind>>());
     load_x(nil::<Str>());
     set(repl_cv(), with_binds(empty, prim_binds(empty)))
 }
@@ -153,7 +153,7 @@ pub fn machine_modules() -> Ref<Strings> {
 
 /// The modules' entries, `form`'s too, if it defines one.
 #[inline]
-pub fn entry_modules_x(form: kayak_rt::Handle<'static, Sexp>) -> Strings {
+pub fn entry_modules_x(form: kayak_rt::data::DataAt<'static, Sexp>) -> Strings {
     set(machine_modules(), onto(get(machine_modules()), module_words(kayak_rt::heap_cons(form, kayak_rt::nil()), get(machine_modules()))));
     get(machine_modules())
 }
@@ -161,83 +161,73 @@ pub fn entry_modules_x(form: kayak_rt::Handle<'static, Sexp>) -> Strings {
 /// What the checker noted of the forms read from `file`, as the lowering
 /// reads it (`with-entries`): a `stage`'s type (C311), a `with`'s module
 /// (C213), a flat's layout (C215). The machine lowers with them.
-pub fn entry_facts(v: kayak_rt::Handle<'static, Cv>, file: Str) -> Strings {
-    with_entries(filter(kayak_rt::as_proc(kayak_rt::closure1s((file,), |(file,), f: kayak_rt::Handle<'static, Fact>| {
+pub fn entry_facts(v: kayak_rt::data::DataAt<'static, Cv>, file: Str) -> Strings {
+    with_entries(filter(kayak_rt::as_proc(kayak_rt::closure1s((file,), |(file,), f: kayak_rt::data::DataAt<'static, Fact>| {
         let tagcase_ = f;
-        match *tagcase_ {
-            Fact::Fact(fl, pos, what) => {
-                string_eq_p(fl, file)
-            }
-        }
+        if Fact::__is_Fact(tagcase_) {
+            let (fl, pos, what,) = Fact::__Fact(tagcase_);
+            string_eq_p(fl, file)
+        } else { kayak_rt::data::no_variant() }
     })), cv_facts(v)))
 }
 
 /// The checker's environment after `form`, its types and datatypes
 /// declared first, as `check-program` declares a program's.
-pub fn checked_form(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Cv> {
+pub fn checked_form(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::data::DataAt<'static, Sexp>) -> kayak_rt::data::DataAt<'static, Cv> {
     let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, pos, ix, mk) => {
-            let als2 = declare_types(v, kayak_rt::heap_cons(form, kayak_rt::nil()), als);
-            let v1 = cv(bs, ds, als2, es, here, group, file, line, fs, tv, pos, ix, mk);
-            let named = {
-                let tagcase_ = v1;
-                match *tagcase_ {
-                    Cv::Cv(bs1, ds1, a1, e1, h1, g1, f1, l1, fs1, t1, at1, ix1, mk1) => {
-                        cv(bs1, datatype_names(v1, kayak_rt::heap_cons(form, kayak_rt::nil()), ds1), a1, e1, h1, g1, f1, l1, fs1, t1, at1, ix1, mk1)
-                    }
-                }
-            };
-            let typed = {
-                let tagcase_ = named;
-                match *tagcase_ {
-                    Cv::Cv(bs2, ds2, a2, e2, h2, g2, f2, l2, fs2, t2, at2, ix2, mk2) => {
-                        cv(bs2, declare_datatypes(named, kayak_rt::heap_cons(form, kayak_rt::nil()), ds), a2, e2, h2, g2, f2, l2, fs2, t2, at2, ix2, mk2)
-                    }
-                }
-            };
-            if untyped_p(form) {
-                let tagcase_ = form;
-                match *tagcase_ {
-                    Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                        let tagcase_ = check_untyped(near(typed, src_file, src_line, src_pos), form);
-                        match *tagcase_ {
-                            Elab::Elab(v2, more) => {
-                                at(v2, str_lit!(""), nil::<Str>())
-                            }
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        typed
-                    }
-                }
-            } else if module_def_p(form) {
-                let tagcase_ = form;
-                match *tagcase_ {
-                    Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                        let tagcase_ = check_module(near(typed, src_file, src_line, src_pos), form);
-                        match *tagcase_ {
-                            Elab::Elab(v2, more) => {
-                                at(v2, str_lit!(""), nil::<Str>())
-                            }
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        typed
-                    }
-                }
+    if Cv::__is_Cv(tagcase_) {
+        let (bs, ds, als, es, here, group, file, line, fs, tv, pos, ix, mk,) = Cv::__Cv(tagcase_);
+        let als2 = declare_types(v, kayak_rt::heap_cons(form, kayak_rt::nil()), als);
+        let v1 = cv(bs, ds, als2, es, here, group, file, line, fs, tv, pos, ix, mk);
+        let named = {
+            let tagcase_ = v1;
+            if Cv::__is_Cv(tagcase_) {
+                let (bs1, ds1, a1, e1, h1, g1, f1, l1, fs1, t1, at1, ix1, mk1,) = Cv::__Cv(tagcase_);
+                cv(bs1, datatype_names(v1, kayak_rt::heap_cons(form, kayak_rt::nil()), ds1), a1, e1, h1, g1, f1, l1, fs1, t1, at1, ix1, mk1)
+            } else { kayak_rt::data::no_variant() }
+        };
+        let typed = {
+            let tagcase_ = named;
+            if Cv::__is_Cv(tagcase_) {
+                let (bs2, ds2, a2, e2, h2, g2, f2, l2, fs2, t2, at2, ix2, mk2,) = Cv::__Cv(tagcase_);
+                cv(bs2, declare_datatypes(named, kayak_rt::heap_cons(form, kayak_rt::nil()), ds), a2, e2, h2, g2, f2, l2, fs2, t2, at2, ix2, mk2)
+            } else { kayak_rt::data::no_variant() }
+        };
+        if untyped_p(form) {
+            let tagcase_ = form;
+            if Sexp::__is_Lst(tagcase_) {
+                let (xs, src_file, src_line, src_pos,) = Sexp::__Lst(tagcase_);
+                let tagcase_ = check_untyped(near(typed, src_file, src_line, src_pos), form);
+                if Elab::__is_Elab(tagcase_) {
+                    let (v2, more,) = Elab::__Elab(tagcase_);
+                    at(v2, str_lit!(""), nil::<Str>())
+                } else { kayak_rt::data::no_variant() }
             } else {
-                check_top(typed, form)
+                let other = tagcase_;
+                typed
             }
+        } else if module_def_p(form) {
+            let tagcase_ = form;
+            if Sexp::__is_Lst(tagcase_) {
+                let (xs, src_file, src_line, src_pos,) = Sexp::__Lst(tagcase_);
+                let tagcase_ = check_module(near(typed, src_file, src_line, src_pos), form);
+                if Elab::__is_Elab(tagcase_) {
+                    let (v2, more,) = Elab::__Elab(tagcase_);
+                    at(v2, str_lit!(""), nil::<Str>())
+                } else { kayak_rt::data::no_variant() }
+            } else {
+                let other = tagcase_;
+                typed
+            }
+        } else {
+            check_top(typed, form)
         }
-    }
+    } else { kayak_rt::data::no_variant() }
 }
 
 /// What the REPL writes of a form: an expression's type and effect, a
 /// definition's name and type.
-pub fn form_type(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Str {
+pub fn form_type(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
     if (head_is_p(form, str_lit!("define")) || head_is_p(form, str_lit!("define*"))) {
         let n = binder_name(second(items(form)));
         let found = scope_bind(n, v);
@@ -245,26 +235,23 @@ pub fn form_type(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'stati
             n
         } else {
             let tagcase_ = car(found);
-            match *tagcase_ {
-                Bind::Bind(n2, sc, w) => {
-                    let tagcase_ = sc;
-                    match *tagcase_ {
-                        Scheme::Scheme(tvars, t) => {
-                            string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), str_lit!(" ! pure"))))
-                        }
-                    }
-                }
-            }
+            if Bind::__is_Bind(tagcase_) {
+                let (n2, sc, w,) = Bind::__Bind(tagcase_);
+                let tagcase_ = sc;
+                if Scheme::__is_Scheme(tagcase_) {
+                    let (tvars, t,) = Scheme::__Scheme(tagcase_);
+                    string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), str_lit!(" ! pure"))))
+                } else { kayak_rt::data::no_variant() }
+            } else { kayak_rt::data::no_variant() }
         }
     } else if (head_is_p(form, str_lit!("define-type")) || head_is_p(form, str_lit!("define-effect")) || head_is_p(form, str_lit!("define-datatype")) || head_is_p(form, str_lit!("define-generative")) || head_is_p(form, str_lit!("define-rec"))) {
         str_lit!("")
     } else {
         let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
-        match *tagcase_ {
-            Res::Res(t, es, s) => {
-                string_append(str_lit!(" : "), string_append(show_ty(s, t), string_append(str_lit!(" ! "), show_effs(es))))
-            }
-        }
+        if Res::__is_Res(tagcase_) {
+            let (t, es, s,) = Res::__Res(tagcase_);
+            string_append(str_lit!(" : "), string_append(show_ty(s, t), string_append(str_lit!(" ! "), show_effs(es))))
+        } else { kayak_rt::data::no_variant() }
     }
 }
 

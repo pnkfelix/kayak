@@ -14,16 +14,15 @@ pub fn total(ss: Shapes) -> i64 {
     }
 }
 
-pub fn describe(s: kayak_rt::Handle<'static, Shape>) -> Str {
+pub fn describe(s: kayak_rt::data::DataAt<'static, Shape>) -> Str {
     let tagcase_ = s;
-    match *tagcase_ {
-        Shape::Circle(r) => {
-            string_append(str_lit!("circle "), i64_to_string(r))
-        }
-        Shape::Rect(w, h) => {
-            string_append(str_lit!("rect "), string_append(i64_to_string(w), string_append(str_lit!("x"), i64_to_string(h))))
-        }
-    }
+    if Shape::__is_Circle(tagcase_) {
+        let (r,) = Shape::__Circle(tagcase_);
+        string_append(str_lit!("circle "), i64_to_string(r))
+    } else if Shape::__is_Rect(tagcase_) {
+        let (w, h,) = Shape::__Rect(tagcase_);
+        string_append(str_lit!("rect "), string_append(i64_to_string(w), string_append(str_lit!("x"), i64_to_string(h))))
+    } else { kayak_rt::data::no_variant() }
 }
 
 pub fn main() -> Str {

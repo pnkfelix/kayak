@@ -1935,8 +1935,18 @@ over its 1664 definitions, 335 of them refused:
   payload), until its payload's word says its type itself; a tag
   symbol's name a string's word, where Fixpt's is its heap's text, and no
   global's place (−1); kayak's `symbol` values not yet Fixpt's symbols,
-  nor one of each name. Left: each kind held as itself a word once its
-  object is Fixpt's, a datatype's value, a closure (a header
+  nor one of each name; C500: a datatype's value one word, to Fixpt's
+  sum (36) whose payload is a word to Fixpt's product (37) of its
+  variant's fields, as Fixpt's `define-datatype` expands (the user's
+  choice over one sum of the fields in line, 2026-11-20): the two
+  objects one allocation of kayak's; each variant's tag a symbol of its
+  own, which a read of its fields checks; a `tagcase` an `if` per arm,
+  only its variant's fields read. Its cost: the heap +33% (354.3 to
+  470.4 MB at the 1000-procedure bench), an edit's build +20%, a cold
+  one +11%. Left of a datatype: its fields' words those of the types
+  not yet one word (a closure, an array, a union) as they are; a place's
+  values boxed one by one (`DataBox`), not bumped. Left: each kind held
+  as itself a word once its object is Fixpt's, a closure (a header
   too), an array (one word already, tagged not); a bloblet's
   fields; peak memory up 3 to 6% at C495, not explained; a cold build's
   bignums, 82,546 (2.6 MB, of 36.0 million allocations) with kc's object

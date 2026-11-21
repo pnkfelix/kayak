@@ -141,6 +141,14 @@ impl<T: Show + ?Sized> Show for crate::Handle<'_, T> {
     }
 }
 
+/// A datatype's value (C500): its value taken apart, as its enum's
+/// `Show` writes it (kfx's).
+impl<D: Show + crate::data::Datatype> Show for crate::data::DataAt<'_, D> {
+    fn show(&self, out: &mut String) {
+        self.get().show(out);
+    }
+}
+
 /// A reference, as Fixpt writes one: `#<box 5>`.
 impl<T: Show + crate::Trace> Show for crate::RefAt<'_, T> {
     fn show(&self, out: &mut String) {

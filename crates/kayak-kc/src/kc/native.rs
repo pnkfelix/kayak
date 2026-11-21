@@ -128,48 +128,83 @@ pub mod kc_native {
     // of that size given it again from its start, what the run before left
     // there dropped whole (its region; the collector's own spaces dropped by
     // the code, `kc_gc_reset`).
+    #[derive(Clone, Copy)]
     pub enum Sized {
         Sized(i64, HeapArray),
     }
 
-    impl kayak_rt::Visit for Sized {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::Sized(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<0> for Sized {
+        type Fields = (i64, HeapArray,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("sized")
         }
     }
 
-    pub fn sized(f0: i64, f1: HeapArray) -> kayak_rt::Handle<'static, Sized> {
-        kayak_rt::heap_alloc(Sized::Sized(f0, f1))
+    #[allow(non_snake_case)]
+    impl Sized {
+        #[inline(always)]
+        pub fn __is_Sized(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Sized(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Sized {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::Sized(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn sized(f0: i64, f1: HeapArray) -> kayak_rt::data::DataAt<'static, Sized> {
+        kayak_rt::data::data_heap::<Sized, 0>((f0, f1,))
     }
 
     #[inline]
-    pub fn heaps() -> Ref<List<kayak_rt::Handle<'static, Sized>>> {
-        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Sized>>>);
+    pub fn heaps() -> Ref<List<kayak_rt::data::DataAt<'static, Sized>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Sized>>>);
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, kc_native::Sized>>())
+            kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, kc_native::Sized>>())
         })
     }
 
-    pub fn heap_in(mut hs: List<kayak_rt::Handle<'static, Sized>>, mut words: i64) -> List<HeapArray> {
+    pub fn heap_in(mut hs: List<kayak_rt::data::DataAt<'static, Sized>>, mut words: i64) -> List<HeapArray> {
         loop {
             if null_p(hs) {
                 return nil::<FlatArray<i64>>();
             } else if {
                 let tagcase_ = car(hs);
-                match *tagcase_ {
-                    Sized::Sized(w, h) => {
-                        i64_eq(w, words)
-                    }
-                }
+                if Sized::__is_Sized(tagcase_) {
+                    let (w, h,) = Sized::__Sized(tagcase_);
+                    i64_eq(w, words)
+                } else { kayak_rt::data::no_variant() }
             } {
                 let tagcase_ = car(hs);
-                match *tagcase_ {
-                    Sized::Sized(w, h) => {
-                        return kayak_rt::heap_cons(h, kayak_rt::nil());
-                    }
-                }
+                if Sized::__is_Sized(tagcase_) {
+                    let (w, h,) = Sized::__Sized(tagcase_);
+                    return kayak_rt::heap_cons(h, kayak_rt::nil());
+                } else { kayak_rt::data::no_variant() }
             } else {
                 hs = cdr(hs);
                 continue;
@@ -193,23 +228,60 @@ pub mod kc_native {
     // `words` words: a native procedure to call as often as wanted (C454),
     // until it is freed (C456, `native-freed`); and where its code runs
     // (`kayak:last-sealed/1` after its `seal-code`), which names it to free.
+    #[derive(Clone, Copy)]
     pub enum RunImage {
         RunImage(kayak_rt::Proc1<'static, HeapArray, i64>, HeapArray, Int),
     }
 
-    impl kayak_rt::Visit for RunImage {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::RunImage(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-            }
+    impl kayak_rt::data::Variant<0> for RunImage {
+        type Fields = (kayak_rt::Proc1<'static, HeapArray, i64>, HeapArray, Int,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("run-image")
         }
     }
 
-    pub fn run_image(f0: kayak_rt::Proc1<'static, HeapArray, i64>, f1: HeapArray, f2: Int) -> kayak_rt::Handle<'static, RunImage> {
-        kayak_rt::heap_alloc(RunImage::RunImage(f0, f1, f2))
+    #[allow(non_snake_case)]
+    impl RunImage {
+        #[inline(always)]
+        pub fn __is_RunImage(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __RunImage(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
     }
 
-    pub fn native_sealed(image: List<i64>, words: i64) -> kayak_rt::Handle<'static, RunImage> {
+    impl kayak_rt::data::Datatype for RunImage {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<0>() {
+                let (f0, f1, f2,) = w.fields::<0>();
+                Self::RunImage(f0, f1, f2)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn run_image(f0: kayak_rt::Proc1<'static, HeapArray, i64>, f1: HeapArray, f2: Int) -> kayak_rt::data::DataAt<'static, RunImage> {
+        kayak_rt::data::data_heap::<RunImage, 0>((f0, f1, f2,))
+    }
+
+    pub fn native_sealed(image: List<i64>, words: i64) -> kayak_rt::data::DataAt<'static, RunImage> {
         let h = heap_of(words);
         let b = the::<Code>(make_bloblet(i64_to_int(size(image)), (std::cell::Cell::new(h),)));
         bytes_put_x(b, int_lit(0), image);
@@ -223,13 +295,12 @@ pub mod kc_native {
     // nothing reaches; kayak-rt collects nothing, so kc says when. Called
     // after, it fails, never runs.
     #[inline]
-    pub fn native_freed(s: kayak_rt::Handle<'static, RunImage>) -> () {
+    pub fn native_freed(s: kayak_rt::data::DataAt<'static, RunImage>) -> () {
         let tagcase_ = s;
-        match *tagcase_ {
-            RunImage::RunImage(f, h, at) => {
-                unseal(at)
-            }
-        }
+        if RunImage::__is_RunImage(tagcase_) {
+            let (f, h, at,) = RunImage::__RunImage(tagcase_);
+            unseal(at)
+        } else { kayak_rt::data::no_variant() }
     }
 
     // `native-call S APPLY INPUT` (C451, C454): the sealed image run, its
@@ -237,27 +308,26 @@ pub mod kc_native {
     // transformer called on `INPUT` (its expansion's tag, a line, and the
     // use), as a built one's `--apply`. ``, or the words of the failure it
     // ended in. What it wrote, `native-output`.
-    pub fn native_call(s: kayak_rt::Handle<'static, RunImage>, apply: bool, input: Str) -> Str {
+    pub fn native_call(s: kayak_rt::data::DataAt<'static, RunImage>, apply: bool, input: Str) -> Str {
         let tagcase_ = s;
-        match *tagcase_ {
-            RunImage::RunImage(f, h, at) => {
-                flatarray_set_i64_x(h, 5i64, if apply {
-                    1i64
-                } else {
-                    0i64
-                });
-                if apply {
-                    kc_give(input)
-                } else {
-                    ()
-                };
-                if i64_eq(f.call(h), 0i64) {
-                    str_lit!("")
-                } else {
-                    kc_failure()
-                }
+        if RunImage::__is_RunImage(tagcase_) {
+            let (f, h, at,) = RunImage::__RunImage(tagcase_);
+            flatarray_set_i64_x(h, 5i64, if apply {
+                1i64
+            } else {
+                0i64
+            });
+            if apply {
+                kc_give(input)
+            } else {
+                ()
+            };
+            if i64_eq(f.call(h), 0i64) {
+                str_lit!("")
+            } else {
+                kc_failure()
             }
-        }
+        } else { kayak_rt::data::no_variant() }
     }
 
     // What the code wrote, each value's line, taken.

@@ -60,30 +60,66 @@ pub fn twice<A: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A
     f.call(f.call(x))
 }
 
+#[derive(Clone, Copy)]
 pub enum Op {
     Op(Str, kayak_rt::Proc2s<'static, i64, i64, i64>),
 }
 
-impl kayak_rt::Visit for Op {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Op(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Op {
+    type Fields = (Str, kayak_rt::Proc2s<'static, i64, i64, i64>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("op")
     }
 }
 
-pub fn op(f0: Str, f1: kayak_rt::Proc2s<'static, i64, i64, i64>) -> kayak_rt::Handle<'static, Op> {
-    kayak_rt::heap_alloc(Op::Op(f0, f1))
+#[allow(non_snake_case)]
+impl Op {
+    #[inline(always)]
+    pub fn __is_Op(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Op(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Op {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Op(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn op(f0: Str, f1: kayak_rt::Proc2s<'static, i64, i64, i64>) -> kayak_rt::data::DataAt<'static, Op> {
+    kayak_rt::data::data_heap::<Op, 0>((f0, f1,))
 }
 
 #[inline]
-pub fn apply_op(o: kayak_rt::Handle<'static, Op>, a: i64, b: i64) -> Str {
+pub fn apply_op(o: kayak_rt::data::DataAt<'static, Op>, a: i64, b: i64) -> Str {
     let tagcase_ = o;
-    match *tagcase_ {
-        Op::Op(name, f) => {
-            string_append(name, string_append(str_lit!("="), i64_to_string(f.call(a, b))))
-        }
-    }
+    if Op::__is_Op(tagcase_) {
+        let (name, f,) = Op::__Op(tagcase_);
+        string_append(name, string_append(str_lit!("="), i64_to_string(f.call(a, b))))
+    } else { kayak_rt::data::no_variant() }
 }
 
 #[inline]

@@ -113,39 +113,100 @@ pub mod stack {
 pub mod geometry {
     use super::*;
 
+    #[derive(Clone, Copy)]
     pub enum Shape {
         Circle(i64),
         Rect(i64, i64),
     }
 
-    impl kayak_rt::Visit for Shape {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::Circle(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::Rect(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<1> for Shape {
+        type Fields = (i64,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("circle")
         }
     }
 
-    pub fn circle(f0: i64) -> kayak_rt::Handle<'static, Shape> {
-        kayak_rt::heap_alloc(Shape::Circle(f0))
+    #[allow(non_snake_case)]
+    impl Shape {
+        #[inline(always)]
+        pub fn __is_Circle(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __Circle(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn rect(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Shape> {
-        kayak_rt::heap_alloc(Shape::Rect(f0, f1))
+    impl kayak_rt::data::Variant<0> for Shape {
+        type Fields = (i64, i64,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("rect")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Shape {
+        #[inline(always)]
+        pub fn __is_Rect(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Rect(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Shape {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let (f0,) = w.fields::<1>();
+                Self::Circle(f0)
+            } else if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::Rect(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn circle(f0: i64) -> kayak_rt::data::DataAt<'static, Shape> {
+        kayak_rt::data::data_heap::<Shape, 1>((f0,))
+    }
+
+    pub fn rect(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, Shape> {
+        kayak_rt::data::data_heap::<Shape, 0>((f0, f1,))
     }
 
     #[inline]
-    pub fn area(s: kayak_rt::Handle<'static, Shape>) -> i64 {
+    pub fn area(s: kayak_rt::data::DataAt<'static, Shape>) -> i64 {
         let tagcase_ = s;
-        match *tagcase_ {
-            Shape::Circle(r) => {
-                i64_star(3i64, i64_star(r, r))
-            }
-            Shape::Rect(w, h) => {
-                i64_star(w, h)
-            }
-        }
+        if Shape::__is_Circle(tagcase_) {
+            let (r,) = Shape::__Circle(tagcase_);
+            i64_star(3i64, i64_star(r, r))
+        } else if Shape::__is_Rect(tagcase_) {
+            let (w, h,) = Shape::__Rect(tagcase_);
+            i64_star(w, h)
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
@@ -213,24 +274,23 @@ pub mod both {
     }
 }
 
-pub type Shape = kayak_rt::Handle<'static, geometry::Shape>;
+pub type Shape = kayak_rt::data::DataAt<'static, geometry::Shape>;
 
 #[inline]
-pub fn rect() -> kayak_rt::Proc2s<'static, i64, i64, kayak_rt::Handle<'static, geometry::Shape>> {
+pub fn rect() -> kayak_rt::Proc2s<'static, i64, i64, kayak_rt::data::DataAt<'static, geometry::Shape>> {
     kayak_rt::as_proc(geometry::rect)
 }
 
 #[inline]
 pub fn big_p(s: Shape) -> bool {
     let tagcase_ = s;
-    match *tagcase_ {
-        geometry::Shape::Circle(r) => {
-            i64_gt(r, 10i64)
-        }
-        geometry::Shape::Rect(w, h) => {
-            i64_gt(i64_star(w, h), 100i64)
-        }
-    }
+    if geometry::Shape::__is_Circle(tagcase_) {
+        let (r,) = geometry::Shape::__Circle(tagcase_);
+        i64_gt(r, 10i64)
+    } else if geometry::Shape::__is_Rect(tagcase_) {
+        let (w, h,) = geometry::Shape::__Rect(tagcase_);
+        i64_gt(i64_star(w, h), 100i64)
+    } else { kayak_rt::data::no_variant() }
 }
 
 #[inline]

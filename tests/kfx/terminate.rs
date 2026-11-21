@@ -8,26 +8,88 @@ use kayak_rt::*;
 
 pub type Ints = List<i64>;
 
+#[derive(Clone, Copy)]
 pub enum Tree {
     Leaf(Int),
-    Node(kayak_rt::Handle<'static, Tree>, kayak_rt::Handle<'static, Tree>),
+    Node(kayak_rt::data::DataAt<'static, Tree>, kayak_rt::data::DataAt<'static, Tree>),
 }
 
-impl kayak_rt::Visit for Tree {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Leaf(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Node(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<1> for Tree {
+    type Fields = (Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("leaf")
     }
 }
 
-pub fn leaf(f0: Int) -> kayak_rt::Handle<'static, Tree> {
-    kayak_rt::heap_alloc(Tree::Leaf(f0))
+#[allow(non_snake_case)]
+impl Tree {
+    #[inline(always)]
+    pub fn __is_Leaf(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Leaf(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn node(f0: kayak_rt::Handle<'static, Tree>, f1: kayak_rt::Handle<'static, Tree>) -> kayak_rt::Handle<'static, Tree> {
-    kayak_rt::heap_alloc(Tree::Node(f0, f1))
+impl kayak_rt::data::Variant<0> for Tree {
+    type Fields = (kayak_rt::data::DataAt<'static, Tree>, kayak_rt::data::DataAt<'static, Tree>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("node")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Tree {
+    #[inline(always)]
+    pub fn __is_Node(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Node(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Tree {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::Leaf(f0)
+        } else if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Node(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn leaf(f0: Int) -> kayak_rt::data::DataAt<'static, Tree> {
+    kayak_rt::data::data_heap::<Tree, 1>((f0,))
+}
+
+pub fn node(f0: kayak_rt::data::DataAt<'static, Tree>, f1: kayak_rt::data::DataAt<'static, Tree>) -> kayak_rt::data::DataAt<'static, Tree> {
+    kayak_rt::data::data_heap::<Tree, 0>((f0, f1,))
 }
 
 // Over a list at `acyclic`: its `cdr` is smaller.
@@ -78,18 +140,17 @@ pub fn sum_to(top: Int) -> Int {
 }
 
 // A tree, by its arms' fields; and Ackermann's function, by two measures.
-pub fn total(t: kayak_rt::Handle<'static, Tree>) -> Int {
-    let walk__knot = knot::<kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Tree>, Int>>();
-    let walk = kayak_rt::as_proc(kayak_rt::closure1s((walk__knot,), |(walk__knot,), t: kayak_rt::Handle<'static, Tree>| {
+pub fn total(t: kayak_rt::data::DataAt<'static, Tree>) -> Int {
+    let walk__knot = knot::<kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Tree>, Int>>();
+    let walk = kayak_rt::as_proc(kayak_rt::closure1s((walk__knot,), |(walk__knot,), t: kayak_rt::data::DataAt<'static, Tree>| {
         let tagcase_ = t;
-        match *tagcase_ {
-            Tree::Leaf(n) => {
-                n
-            }
-            Tree::Node(a, b) => {
-                _plus((walk__knot.get()).call(a), (walk__knot.get()).call(b))
-            }
-        }
+        if Tree::__is_Leaf(tagcase_) {
+            let (n,) = Tree::__Leaf(tagcase_);
+            n
+        } else if Tree::__is_Node(tagcase_) {
+            let (a, b,) = Tree::__Node(tagcase_);
+            _plus((walk__knot.get()).call(a), (walk__knot.get()).call(b))
+        } else { kayak_rt::data::no_variant() }
     }));
     walk__knot.set(walk);
     walk.call(t)

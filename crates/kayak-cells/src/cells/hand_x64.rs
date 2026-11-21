@@ -923,6 +923,7 @@ pub fn st_link() -> Int {
 // 32-bit, placed when every label is; data, a label's offset from the
 // code's start (8 bytes); and no-ops to the next 8-byte place, where a
 // point that is returned to starts (a link in a frame reads as a fixnum).
+#[derive(Clone, Copy)]
 pub enum XItem {
     Xb(List<Int>),
     Xj(Int, Int, Int),
@@ -931,36 +932,172 @@ pub enum XItem {
     Xa(Int),
 }
 
-impl kayak_rt::Visit for XItem {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Xb(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Xj(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-            Self::Xl(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Xo(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Xa(f0) => { kayak_rt::Trace::trace(*f0, t); }
-        }
+impl kayak_rt::data::Variant<4> for XItem {
+    type Fields = (List<Int>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("xb")
     }
 }
 
-pub fn xb(f0: List<Int>) -> kayak_rt::Handle<'static, XItem> {
-    kayak_rt::heap_alloc(XItem::Xb(f0))
+#[allow(non_snake_case)]
+impl XItem {
+    #[inline(always)]
+    pub fn __is_Xb(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<4>()
+    }
+    #[inline(always)]
+    pub fn __Xb(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
+        w.fields::<4>()
+    }
 }
 
-pub fn xj(f0: Int, f1: Int, f2: Int) -> kayak_rt::Handle<'static, XItem> {
-    kayak_rt::heap_alloc(XItem::Xj(f0, f1, f2))
+impl kayak_rt::data::Variant<3> for XItem {
+    type Fields = (Int, Int, Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("xj")
+    }
 }
 
-pub fn xl(f0: Int) -> kayak_rt::Handle<'static, XItem> {
-    kayak_rt::heap_alloc(XItem::Xl(f0))
+#[allow(non_snake_case)]
+impl XItem {
+    #[inline(always)]
+    pub fn __is_Xj(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<3>()
+    }
+    #[inline(always)]
+    pub fn __Xj(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+        w.fields::<3>()
+    }
 }
 
-pub fn xo(f0: Int) -> kayak_rt::Handle<'static, XItem> {
-    kayak_rt::heap_alloc(XItem::Xo(f0))
+impl kayak_rt::data::Variant<2> for XItem {
+    type Fields = (Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("xl")
+    }
 }
 
-pub fn xa(f0: Int) -> kayak_rt::Handle<'static, XItem> {
-    kayak_rt::heap_alloc(XItem::Xa(f0))
+#[allow(non_snake_case)]
+impl XItem {
+    #[inline(always)]
+    pub fn __is_Xl(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<2>()
+    }
+    #[inline(always)]
+    pub fn __Xl(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+        w.fields::<2>()
+    }
+}
+
+impl kayak_rt::data::Variant<1> for XItem {
+    type Fields = (Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("xo")
+    }
+}
+
+#[allow(non_snake_case)]
+impl XItem {
+    #[inline(always)]
+    pub fn __is_Xo(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Xo(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
+}
+
+impl kayak_rt::data::Variant<0> for XItem {
+    type Fields = (Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("xa")
+    }
+}
+
+#[allow(non_snake_case)]
+impl XItem {
+    #[inline(always)]
+    pub fn __is_Xa(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Xa(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for XItem {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<4>() {
+            let (f0,) = w.fields::<4>();
+            Self::Xb(f0)
+        } else if w.is::<3>() {
+            let (f0, f1, f2,) = w.fields::<3>();
+            Self::Xj(f0, f1, f2)
+        } else if w.is::<2>() {
+            let (f0,) = w.fields::<2>();
+            Self::Xl(f0)
+        } else if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::Xo(f0)
+        } else if w.is::<0>() {
+            let (f0,) = w.fields::<0>();
+            Self::Xa(f0)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<4>() { return t.reach(w.obj::<4>()); }
+        if w.is::<3>() { return t.reach(w.obj::<3>()); }
+        if w.is::<2>() { return t.reach(w.obj::<2>()); }
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<4>() { return (w.obj::<4>()); }
+        if w.is::<3>() { return (w.obj::<3>()); }
+        if w.is::<2>() { return (w.obj::<2>()); }
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn xb(f0: List<Int>) -> kayak_rt::data::DataAt<'static, XItem> {
+    kayak_rt::data::data_heap::<XItem, 4>((f0,))
+}
+
+pub fn xj(f0: Int, f1: Int, f2: Int) -> kayak_rt::data::DataAt<'static, XItem> {
+    kayak_rt::data::data_heap::<XItem, 3>((f0, f1, f2,))
+}
+
+pub fn xl(f0: Int) -> kayak_rt::data::DataAt<'static, XItem> {
+    kayak_rt::data::data_heap::<XItem, 2>((f0,))
+}
+
+pub fn xo(f0: Int) -> kayak_rt::data::DataAt<'static, XItem> {
+    kayak_rt::data::data_heap::<XItem, 1>((f0,))
+}
+
+pub fn xa(f0: Int) -> kayak_rt::data::DataAt<'static, XItem> {
+    kayak_rt::data::data_heap::<XItem, 0>((f0,))
 }
 
 #[inline]
@@ -984,10 +1121,10 @@ pub fn y_call() -> Int {
 }
 
 #[inline]
-pub fn y_items() -> Ref<List<kayak_rt::Handle<'static, XItem>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, XItem>>>);
+pub fn y_items() -> Ref<List<kayak_rt::data::DataAt<'static, XItem>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, XItem>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, XItem>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, XItem>>())
     })
 }
 
@@ -1023,27 +1160,64 @@ pub fn y_exports() -> Ref<List<Int>> {
     })
 }
 
+#[derive(Clone, Copy)]
 pub enum Ystub {
     Ystub(Int, Int),
 }
 
-impl kayak_rt::Visit for Ystub {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Ystub(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Ystub {
+    type Fields = (Int, Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ystub")
     }
 }
 
-pub fn ystub(f0: Int, f1: Int) -> kayak_rt::Handle<'static, Ystub> {
-    kayak_rt::heap_alloc(Ystub::Ystub(f0, f1))
+#[allow(non_snake_case)]
+impl Ystub {
+    #[inline(always)]
+    pub fn __is_Ystub(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Ystub(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Ystub {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Ystub(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn ystub(f0: Int, f1: Int) -> kayak_rt::data::DataAt<'static, Ystub> {
+    kayak_rt::data::data_heap::<Ystub, 0>((f0, f1,))
 }
 
 #[inline]
-pub fn y_stubs() -> Ref<List<kayak_rt::Handle<'static, Ystub>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Ystub>>>);
+pub fn y_stubs() -> Ref<List<kayak_rt::data::DataAt<'static, Ystub>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Ystub>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Ystub>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Ystub>>())
     })
 }
 
@@ -1102,20 +1276,19 @@ pub fn yadr_x(r: Int, l: Int) -> () {
 }
 
 /// Each stub a word's conditional jumps to the machine took: its far jump.
-pub fn y_stubs_flushed_x(mut ss: List<kayak_rt::Handle<'static, Ystub>>) -> () {
+pub fn y_stubs_flushed_x(mut ss: List<kayak_rt::data::DataAt<'static, Ystub>>) -> () {
     loop {
         if null_p(ss) {
             return ();
         } else {
             let tagcase_ = car(ss);
-            match *tagcase_ {
-                Ystub::Ystub(s, l) => {
-                    ybind_x(s);
-                    yb_x(l);
-                    ss = cdr(ss);
-                    continue;
-                }
-            }
+            if Ystub::__is_Ystub(tagcase_) {
+                let (s, l,) = Ystub::__Ystub(tagcase_);
+                ybind_x(s);
+                yb_x(l);
+                ss = cdr(ss);
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -1123,7 +1296,7 @@ pub fn y_stubs_flushed_x(mut ss: List<kayak_rt::Handle<'static, Ystub>>) -> () {
 #[inline]
 pub fn y_stubs_done_x() -> () {
     let ss = get(y_stubs());
-    set(y_stubs(), nil::<kayak_rt::Handle<'static, Ystub>>());
+    set(y_stubs(), nil::<kayak_rt::data::DataAt<'static, Ystub>>());
     y_stubs_flushed_x(ss)
 }
 
@@ -1143,10 +1316,10 @@ pub fn ycall_x(l: Int) -> () {
 
 // Data, 8 bytes an entry: the machine's before its code, a word's after its own (C343).
 #[inline]
-pub fn y_data() -> Ref<List<kayak_rt::Handle<'static, XItem>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, XItem>>>);
+pub fn y_data() -> Ref<List<kayak_rt::data::DataAt<'static, XItem>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, XItem>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, XItem>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, XItem>>())
     })
 }
 
@@ -1176,85 +1349,81 @@ pub fn y_length(mut bs: List<Int>, mut n: Int) -> Int {
     }
 }
 
-pub fn y_size(x: kayak_rt::Handle<'static, XItem>, at: Int) -> Int {
+pub fn y_size(x: kayak_rt::data::DataAt<'static, XItem>, at: Int) -> Int {
     let tagcase_ = x;
-    match *tagcase_ {
-        XItem::Xb(bs) => {
-            y_length(bs, int_lit(0))
+    if XItem::__is_Xb(tagcase_) {
+        let (bs,) = XItem::__Xb(tagcase_);
+        y_length(bs, int_lit(0))
+    } else if XItem::__is_Xj(tagcase_) {
+        let (k, a, l,) = XItem::__Xj(tagcase_);
+        if (_eq(k, y_jmp()) || _eq(k, y_call())) {
+            int_lit(5)
+        } else if _eq(k, y_jcc()) {
+            int_lit(6)
+        } else {
+            int_lit(7)
         }
-        XItem::Xj(k, a, l) => {
-            if (_eq(k, y_jmp()) || _eq(k, y_call())) {
-                int_lit(5)
-            } else if _eq(k, y_jcc()) {
-                int_lit(6)
-            } else {
-                int_lit(7)
-            }
-        }
-        XItem::Xo(l) => {
-            int_lit(8)
-        }
-        XItem::Xa(z) => {
-            modulo(_minus(int_lit(8), modulo(_plus(at, z), int_lit(8))), int_lit(8))
-        }
-        XItem::Xl(l) => {
-            int_lit(0)
-        }
-    }
+    } else if XItem::__is_Xo(tagcase_) {
+        let (l,) = XItem::__Xo(tagcase_);
+        int_lit(8)
+    } else if XItem::__is_Xa(tagcase_) {
+        let (z,) = XItem::__Xa(tagcase_);
+        modulo(_minus(int_lit(8), modulo(_plus(at, z), int_lit(8))), int_lit(8))
+    } else if XItem::__is_Xl(tagcase_) {
+        let (l,) = XItem::__Xl(tagcase_);
+        int_lit(0)
+    } else { kayak_rt::data::no_variant() }
 }
 
 /// Each label's place, in bytes, in `ls`; how many bytes there are.
-pub fn y_placed_x(mut xs: List<kayak_rt::Handle<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
+pub fn y_placed_x(mut xs: List<kayak_rt::data::DataAt<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
     loop {
         if null_p(xs) {
             return at;
         } else {
             let tagcase_ = car(xs);
-            match *tagcase_ {
-                XItem::Xl(l) => {
-                    flatarray_set_i64_x(ls, int_to_i64(l), int_to_i64(at));
-                    xs = cdr(xs);
-                    continue;
-                }
-                _ => {
-                    let x = tagcase_;
-                    (xs, at) = (cdr(xs), _plus(at, y_size(x, at)));
-                    continue;
-                }
+            if XItem::__is_Xl(tagcase_) {
+                let (l,) = XItem::__Xl(tagcase_);
+                flatarray_set_i64_x(ls, int_to_i64(l), int_to_i64(at));
+                xs = cdr(xs);
+                continue;
+            } else {
+                let x = tagcase_;
+                (xs, at) = (cdr(xs), _plus(at, y_size(x, at)));
+                continue;
             }
         }
     }
 }
 
 /// Item `x`, at byte `at`: a jump by its label's distance from its end.
-pub fn y_encoded(x: kayak_rt::Handle<'static, XItem>, at: Int, ls: FlatArray<i64>) -> List<Int> {
+pub fn y_encoded(x: kayak_rt::data::DataAt<'static, XItem>, at: Int, ls: FlatArray<i64>) -> List<Int> {
     let tagcase_ = x;
-    match *tagcase_ {
-        XItem::Xb(bs) => {
-            bs
+    if XItem::__is_Xb(tagcase_) {
+        let (bs,) = XItem::__Xb(tagcase_);
+        bs
+    } else if XItem::__is_Xj(tagcase_) {
+        let (k, a, l,) = XItem::__Xj(tagcase_);
+        let d = _minus(r#where(ls, l), _plus(at, y_size(x, at)));
+        if _eq(k, y_jmp()) {
+            x86::x86_jmp(d)
+        } else if _eq(k, y_jcc()) {
+            x86::x86_jcc(a, d)
+        } else if _eq(k, y_call()) {
+            x86::x86_call(d)
+        } else {
+            x86::x86_lea_rip(a, d)
         }
-        XItem::Xj(k, a, l) => {
-            let d = _minus(r#where(ls, l), _plus(at, y_size(x, at)));
-            if _eq(k, y_jmp()) {
-                x86::x86_jmp(d)
-            } else if _eq(k, y_jcc()) {
-                x86::x86_jcc(a, d)
-            } else if _eq(k, y_call()) {
-                x86::x86_call(d)
-            } else {
-                x86::x86_lea_rip(a, d)
-            }
-        }
-        XItem::Xo(l) => {
-            x86::x86_le8(r#where(ls, l))
-        }
-        XItem::Xa(z) => {
-            x86::x86_nops(y_size(x, at))
-        }
-        XItem::Xl(l) => {
-            nil::<Int>()
-        }
-    }
+    } else if XItem::__is_Xo(tagcase_) {
+        let (l,) = XItem::__Xo(tagcase_);
+        x86::x86_le8(r#where(ls, l))
+    } else if XItem::__is_Xa(tagcase_) {
+        let (z,) = XItem::__Xa(tagcase_);
+        x86::x86_nops(y_size(x, at))
+    } else if XItem::__is_Xl(tagcase_) {
+        let (l,) = XItem::__Xl(tagcase_);
+        nil::<Int>()
+    } else { kayak_rt::data::no_variant() }
 }
 
 // Instructions, by `x86_64.fx`'s encoders.
@@ -3645,7 +3814,7 @@ pub fn y_bytes_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut bs: List<Int>, mut
 }
 
 /// Each item placed, at byte `at` on.
-pub fn y_all_put_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut xs: List<kayak_rt::Handle<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> () {
+pub fn y_all_put_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut xs: List<kayak_rt::data::DataAt<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -3687,7 +3856,7 @@ pub fn y_word_bytes_x(mut ws: FlatArray<i64>, mut bs: List<Int>, mut at: Int) ->
     }
 }
 
-pub fn y_word_put_x(mut ws: FlatArray<i64>, mut xs: List<kayak_rt::Handle<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> () {
+pub fn y_word_put_x(mut ws: FlatArray<i64>, mut xs: List<kayak_rt::data::DataAt<'static, XItem>>, mut at: Int, mut ls: FlatArray<i64>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -3713,16 +3882,16 @@ pub fn code_words_set_x(mut j: i64, mut ws: FlatArray<i64>, mut i: i64, mut n: i
 /// Word `w`'s code, just emitted (`rt` its table's label), a code
 /// bloblet, and `w`'s entry: whether the code area had room for it.
 pub fn word_code_x(w: i64, rt: Int) -> bool {
-    let its = the::<List<kayak_rt::Handle<'static, XItem>>>(kayak_rt::heap_cons(xb(x86::x86_le8(int_lit(0))), append(reverse(get(y_items())), kayak_rt::heap_cons(xa(int_lit(0)), reverse(get(y_data()))))));
+    let its = the::<List<kayak_rt::data::DataAt<'static, XItem>>>(kayak_rt::heap_cons(xb(x86::x86_le8(int_lit(0))), append(reverse(get(y_items())), kayak_rt::heap_cons(xa(int_lit(0)), reverse(get(y_data()))))));
     let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
     let nw = i64_quotient(i64_plus(int_to_i64(y_placed_x(its, int_lit(0), ls)), 7i64), 8i64);
     let ws = the::<FlatArray<i64>>(make_flatarray_i64(nw, 0i64));
     let u = y_word_put_x(ws, its, int_lit(0), ls);
     let j = code_alloc_x(i64_plus(nw, 1i64));
-    set(y_items(), nil::<kayak_rt::Handle<'static, XItem>>());
-    set(y_data(), nil::<kayak_rt::Handle<'static, XItem>>());
+    set(y_items(), nil::<kayak_rt::data::DataAt<'static, XItem>>());
+    set(y_data(), nil::<kayak_rt::data::DataAt<'static, XItem>>());
     if i64_lt(j, 0i64) {
-        set(word_spans(), nil::<kayak_rt::Handle<'static, Span>>());
+        set(word_spans(), nil::<kayak_rt::data::DataAt<'static, Span>>());
         false
     } else {
         flatarray_set_i64_x(ws, 0i64, i64_minus(int_to_i64(r#where(ls, rt)), 8i64));
@@ -3730,7 +3899,7 @@ pub fn word_code_x(w: i64, rt: Int) -> bool {
         code_words_set_x(i64_plus(j, 1i64), ws, 0i64, nw);
         code_flush(get(code_space()), i64_to_int(i64_plus(j, 1i64)), i64_to_int(nw));
         spans_noted_x(i64_to_int(i64_plus(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(j, 1i64))), get(code_distance()))), ls, int_lit(1), get(word_spans()));
-        set(word_spans(), nil::<kayak_rt::Handle<'static, Span>>());
+        set(word_spans(), nil::<kayak_rt::data::DataAt<'static, Span>>());
         slot_set_x(w, f_entry(), i64_or(i64_plus(get(code_vbase()), i64_star(8i64, i64_plus(j, 2i64))), t_bloblet()));
         true
     }
@@ -3740,9 +3909,9 @@ pub fn word_code_x(w: i64, rt: Int) -> bool {
 /// `--direct`), if `regs`, else its cells'.
 pub fn yword_made_x(w: i64, regs: bool) -> bool {
     set(hand_labels(), get(y_machine_labels()));
-    set(y_items(), nil::<kayak_rt::Handle<'static, XItem>>());
-    set(y_data(), nil::<kayak_rt::Handle<'static, XItem>>());
-    set(word_spans(), nil::<kayak_rt::Handle<'static, Span>>());
+    set(y_items(), nil::<kayak_rt::data::DataAt<'static, XItem>>());
+    set(y_data(), nil::<kayak_rt::data::DataAt<'static, XItem>>());
+    set(word_spans(), nil::<kayak_rt::data::DataAt<'static, Span>>());
     let rt = label_x();
     if regs {
         yregister_compiled_x(w, i64_to_int(cells_in(w, f_cell0())), rt)
@@ -3754,7 +3923,7 @@ pub fn yword_made_x(w: i64, regs: bool) -> bool {
 }
 
 /// hand.kfx's `registers-compiled!`, each by `yword-made!`: how many.
-pub fn yregisters_compiled_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: Int) -> Int {
+pub fn yregisters_compiled_x(mut rs: List<kayak_rt::data::DataAt<'static, NamedSlot>>, mut k: Int) -> Int {
     loop {
         if null_p(rs) {
             return k;
@@ -3776,7 +3945,7 @@ pub fn yregisters_compiled_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>,
 }
 
 /// hand.kfx's `words-compiled!`, each by `yword-made!`: how many.
-pub fn ywords_compiled_x(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: Int) -> Int {
+pub fn ywords_compiled_x(mut ws: List<kayak_rt::data::DataAt<'static, NamedSlot>>, mut k: Int) -> Int {
     loop {
         if null_p(ws) {
             return k;
@@ -3805,8 +3974,8 @@ pub fn hand_code_x64_x() -> kayak_rt::Sum {
     if not(null_p(get(hand_made()))) {
         kayak_rt::sum_tagged::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(kayak_rt::tag_lit!("made"), car(get(hand_made())))
     } else {
-        set(y_items(), nil::<kayak_rt::Handle<'static, XItem>>());
-        set(y_data(), nil::<kayak_rt::Handle<'static, XItem>>());
+        set(y_items(), nil::<kayak_rt::data::DataAt<'static, XItem>>());
+        set(y_data(), nil::<kayak_rt::data::DataAt<'static, XItem>>());
         set(hand_labels(), int_lit(0));
         set(l_start(), label_x());
         set(l_entry(), label_x());
@@ -3826,7 +3995,7 @@ pub fn hand_code_x64_x() -> kayak_rt::Sum {
         ybind_x(get(l_exports()));
         y_exports_written_x(get(y_exports()), int_lit(0));
         yresume_x();
-        let its = the::<List<kayak_rt::Handle<'static, XItem>>>(kayak_rt::heap_cons(xl(get(l_start())), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), get(l_entry())), append(reverse(get(y_data())), reverse(get(y_items()))))));
+        let its = the::<List<kayak_rt::data::DataAt<'static, XItem>>>(kayak_rt::heap_cons(xl(get(l_start())), kayak_rt::heap_cons(xj(y_jmp(), int_lit(0), get(l_entry())), append(reverse(get(y_data())), reverse(get(y_items()))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
         let count = y_placed_x(its, int_lit(0), ls);
         let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(count, ()));
@@ -3851,7 +4020,7 @@ pub fn hand_code_x64_x() -> kayak_rt::Sum {
 // listing's were, each to its own code, where the machine is x86_64's and
 // made, with `--compiled`: they are the first of the lists of words, past
 // the counts they had.
-pub fn words_counted(mut ns: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: i64) -> i64 {
+pub fn words_counted(mut ns: List<kayak_rt::data::DataAt<'static, NamedSlot>>, mut k: i64) -> i64 {
     loop {
         if null_p(ns) {
             return k;
@@ -3862,7 +4031,7 @@ pub fn words_counted(mut ns: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: 
     }
 }
 
-pub fn named_first(mut ns: List<kayak_rt::Handle<'static, NamedSlot>>, mut k: i64, mut acc: List<kayak_rt::Handle<'static, NamedSlot>>) -> List<kayak_rt::Handle<'static, NamedSlot>> {
+pub fn named_first(mut ns: List<kayak_rt::data::DataAt<'static, NamedSlot>>, mut k: i64, mut acc: List<kayak_rt::data::DataAt<'static, NamedSlot>>) -> List<kayak_rt::data::DataAt<'static, NamedSlot>> {
     loop {
         if (i64_lt_eq(k, 0i64) || null_p(ns)) {
             return acc;
@@ -3877,8 +4046,8 @@ pub fn words_read_compiled_x(had_words: i64, had_regs: i64) -> () {
     if (get(hand_compiled()) && get(code_on()) && _gt(get(y_machine_labels()), int_lit(0))) {
         let ws = get(words());
         let rs = get(register_words());
-        let k = ywords_compiled_x(named_first(ws, i64_minus(words_counted(ws, 0i64), had_words), nil::<kayak_rt::Handle<'static, NamedSlot>>()), get(words_compiled()));
-        set(words_compiled(), yregisters_compiled_x(named_first(rs, i64_minus(words_counted(rs, 0i64), had_regs), nil::<kayak_rt::Handle<'static, NamedSlot>>()), k))
+        let k = ywords_compiled_x(named_first(ws, i64_minus(words_counted(ws, 0i64), had_words), nil::<kayak_rt::data::DataAt<'static, NamedSlot>>()), get(words_compiled()));
+        set(words_compiled(), yregisters_compiled_x(named_first(rs, i64_minus(words_counted(rs, 0i64), had_regs), nil::<kayak_rt::data::DataAt<'static, NamedSlot>>()), k))
     } else {
         ()
     }

@@ -7,83 +7,203 @@ use kayak_rt::*;
 // had found a datatype by its tag, so refused it (C19, `kfx-stricter`); it
 // finds a `tagcase`'s enum by the datatype the checker found (C408).
 
+#[derive(Clone, Copy)]
 pub enum Point {
     Pt(i64, i64),
     Origin(),
 }
 
-impl kayak_rt::Visit for Point {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Pt(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            Self::Origin() => { }
-        }
+impl kayak_rt::data::Variant<1> for Point {
+    type Fields = (i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("pt")
     }
 }
 
-pub fn pt(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Point> {
-    kayak_rt::heap_alloc(Point::Pt(f0, f1))
+#[allow(non_snake_case)]
+impl Point {
+    #[inline(always)]
+    pub fn __is_Pt(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Pt(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn origin() -> kayak_rt::Handle<'static, Point> {
-    kayak_rt::heap_alloc(Point::Origin())
+impl kayak_rt::data::Variant<0> for Point {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("origin")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Point {
+    #[inline(always)]
+    pub fn __is_Origin(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Origin(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Point {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0, f1,) = w.fields::<1>();
+            Self::Pt(f0, f1)
+        } else if w.is::<0>() {
+            let () = w.fields::<0>();
+            Self::Origin()
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn pt(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, Point> {
+    kayak_rt::data::data_heap::<Point, 1>((f0, f1,))
+}
+
+pub fn origin() -> kayak_rt::data::DataAt<'static, Point> {
+    kayak_rt::data::data_heap::<Point, 0>(())
 }
 
 pub mod m {
     use super::*;
 
+    #[derive(Clone, Copy)]
     pub enum Place {
         Pt(i64),
         Nowhere(),
     }
 
-    impl kayak_rt::Visit for Place {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::Pt(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::Nowhere() => { }
-            }
+    impl kayak_rt::data::Variant<1> for Place {
+        type Fields = (i64,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("pt")
         }
     }
 
-    pub fn pt(f0: i64) -> kayak_rt::Handle<'static, Place> {
-        kayak_rt::heap_alloc(Place::Pt(f0))
+    #[allow(non_snake_case)]
+    impl Place {
+        #[inline(always)]
+        pub fn __is_Pt(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __Pt(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn nowhere() -> kayak_rt::Handle<'static, Place> {
-        kayak_rt::heap_alloc(Place::Nowhere())
+    impl kayak_rt::data::Variant<0> for Place {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("nowhere")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Place {
+        #[inline(always)]
+        pub fn __is_Nowhere(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Nowhere(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Place {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let (f0,) = w.fields::<1>();
+                Self::Pt(f0)
+            } else if w.is::<0>() {
+                let () = w.fields::<0>();
+                Self::Nowhere()
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn pt(f0: i64) -> kayak_rt::data::DataAt<'static, Place> {
+        kayak_rt::data::data_heap::<Place, 1>((f0,))
+    }
+
+    pub fn nowhere() -> kayak_rt::data::DataAt<'static, Place> {
+        kayak_rt::data::data_heap::<Place, 0>(())
     }
 
     #[inline]
-    pub fn r#where(p: kayak_rt::Handle<'static, Place>) -> i64 {
+    pub fn r#where(p: kayak_rt::data::DataAt<'static, Place>) -> i64 {
         let tagcase_ = p;
-        match *tagcase_ {
-            Place::Pt(k) => {
-                k
-            }
-            Place::Nowhere() => {
-                -1i64
-            }
-        }
+        if Place::__is_Pt(tagcase_) {
+            let (k,) = Place::__Pt(tagcase_);
+            k
+        } else if Place::__is_Nowhere(tagcase_) {
+            -1i64
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
-    pub fn here(k: i64) -> kayak_rt::Handle<'static, Place> {
+    pub fn here(k: i64) -> kayak_rt::data::DataAt<'static, Place> {
         pt(k)
     }
 }
 
 #[inline]
-pub fn across(p: kayak_rt::Handle<'static, Point>) -> i64 {
+pub fn across(p: kayak_rt::data::DataAt<'static, Point>) -> i64 {
     let tagcase_ = p;
-    match *tagcase_ {
-        Point::Pt(x, y) => {
-            i64_plus(x, y)
-        }
-        Point::Origin() => {
-            0i64
-        }
-    }
+    if Point::__is_Pt(tagcase_) {
+        let (x, y,) = Point::__Pt(tagcase_);
+        i64_plus(x, y)
+    } else if Point::__is_Origin(tagcase_) {
+        0i64
+    } else { kayak_rt::data::no_variant() }
 }
 
 pub fn main() -> Str {

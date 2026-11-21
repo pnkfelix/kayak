@@ -1125,6 +1125,7 @@ pub fn misaligned() -> i64 {
 }
 
 // Code: instructions, and jumps to labels, placed when every label is.
+#[derive(Clone, Copy)]
 pub enum HandItem {
     Ins(Int),
     Jump(Int, Int, Int),
@@ -1133,36 +1134,172 @@ pub enum HandItem {
     AlignOdd(Int),
 }
 
-impl kayak_rt::Visit for HandItem {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Ins(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Jump(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-            Self::LabelHere(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::OffsetOf(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::AlignOdd(f0) => { kayak_rt::Trace::trace(*f0, t); }
-        }
+impl kayak_rt::data::Variant<4> for HandItem {
+    type Fields = (Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ins")
     }
 }
 
-pub fn ins(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
-    kayak_rt::heap_alloc(HandItem::Ins(f0))
+#[allow(non_snake_case)]
+impl HandItem {
+    #[inline(always)]
+    pub fn __is_Ins(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<4>()
+    }
+    #[inline(always)]
+    pub fn __Ins(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
+        w.fields::<4>()
+    }
 }
 
-pub fn jump(f0: Int, f1: Int, f2: Int) -> kayak_rt::Handle<'static, HandItem> {
-    kayak_rt::heap_alloc(HandItem::Jump(f0, f1, f2))
+impl kayak_rt::data::Variant<3> for HandItem {
+    type Fields = (Int, Int, Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("jump")
+    }
 }
 
-pub fn label_here(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
-    kayak_rt::heap_alloc(HandItem::LabelHere(f0))
+#[allow(non_snake_case)]
+impl HandItem {
+    #[inline(always)]
+    pub fn __is_Jump(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<3>()
+    }
+    #[inline(always)]
+    pub fn __Jump(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+        w.fields::<3>()
+    }
 }
 
-pub fn offset_of(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
-    kayak_rt::heap_alloc(HandItem::OffsetOf(f0))
+impl kayak_rt::data::Variant<2> for HandItem {
+    type Fields = (Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("label-here")
+    }
 }
 
-pub fn align_odd(f0: Int) -> kayak_rt::Handle<'static, HandItem> {
-    kayak_rt::heap_alloc(HandItem::AlignOdd(f0))
+#[allow(non_snake_case)]
+impl HandItem {
+    #[inline(always)]
+    pub fn __is_LabelHere(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<2>()
+    }
+    #[inline(always)]
+    pub fn __LabelHere(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+        w.fields::<2>()
+    }
+}
+
+impl kayak_rt::data::Variant<1> for HandItem {
+    type Fields = (Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("offset-of")
+    }
+}
+
+#[allow(non_snake_case)]
+impl HandItem {
+    #[inline(always)]
+    pub fn __is_OffsetOf(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __OffsetOf(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
+}
+
+impl kayak_rt::data::Variant<0> for HandItem {
+    type Fields = (Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("align-odd")
+    }
+}
+
+#[allow(non_snake_case)]
+impl HandItem {
+    #[inline(always)]
+    pub fn __is_AlignOdd(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __AlignOdd(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for HandItem {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<4>() {
+            let (f0,) = w.fields::<4>();
+            Self::Ins(f0)
+        } else if w.is::<3>() {
+            let (f0, f1, f2,) = w.fields::<3>();
+            Self::Jump(f0, f1, f2)
+        } else if w.is::<2>() {
+            let (f0,) = w.fields::<2>();
+            Self::LabelHere(f0)
+        } else if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::OffsetOf(f0)
+        } else if w.is::<0>() {
+            let (f0,) = w.fields::<0>();
+            Self::AlignOdd(f0)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<4>() { return t.reach(w.obj::<4>()); }
+        if w.is::<3>() { return t.reach(w.obj::<3>()); }
+        if w.is::<2>() { return t.reach(w.obj::<2>()); }
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<4>() { return (w.obj::<4>()); }
+        if w.is::<3>() { return (w.obj::<3>()); }
+        if w.is::<2>() { return (w.obj::<2>()); }
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn ins(f0: Int) -> kayak_rt::data::DataAt<'static, HandItem> {
+    kayak_rt::data::data_heap::<HandItem, 4>((f0,))
+}
+
+pub fn jump(f0: Int, f1: Int, f2: Int) -> kayak_rt::data::DataAt<'static, HandItem> {
+    kayak_rt::data::data_heap::<HandItem, 3>((f0, f1, f2,))
+}
+
+pub fn label_here(f0: Int) -> kayak_rt::data::DataAt<'static, HandItem> {
+    kayak_rt::data::data_heap::<HandItem, 2>((f0,))
+}
+
+pub fn offset_of(f0: Int) -> kayak_rt::data::DataAt<'static, HandItem> {
+    kayak_rt::data::data_heap::<HandItem, 1>((f0,))
+}
+
+pub fn align_odd(f0: Int) -> kayak_rt::data::DataAt<'static, HandItem> {
+    kayak_rt::data::data_heap::<HandItem, 0>((f0,))
 }
 
 #[inline]
@@ -1203,19 +1340,19 @@ pub fn arm_nop() -> Int {
 }
 
 #[inline]
-pub fn hand_items() -> Ref<List<kayak_rt::Handle<'static, HandItem>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, HandItem>>>);
+pub fn hand_items() -> Ref<List<kayak_rt::data::DataAt<'static, HandItem>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, HandItem>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, HandItem>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, HandItem>>())
     })
 }
 
 // Data, placed before the code: 8 bytes an entry.
 #[inline]
-pub fn hand_data() -> Ref<List<kayak_rt::Handle<'static, HandItem>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, HandItem>>>);
+pub fn hand_data() -> Ref<List<kayak_rt::data::DataAt<'static, HandItem>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, HandItem>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, HandItem>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, HandItem>>())
     })
 }
 
@@ -1275,7 +1412,7 @@ pub fn align_odd_x() -> () {
 }
 
 #[inline]
-pub fn d_x(i: kayak_rt::Handle<'static, HandItem>) -> () {
+pub fn d_x(i: kayak_rt::data::DataAt<'static, HandItem>) -> () {
     set(hand_data(), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(i, get(hand_data()))))
 }
 
@@ -1291,39 +1428,38 @@ pub fn arm_adr(d: Int, bytes: Int) -> Int {
 }
 
 /// Each label's place, in instructions, in `ls`; how many there are.
-pub fn placed_x(mut xs: List<kayak_rt::Handle<'static, HandItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
+pub fn placed_x(mut xs: List<kayak_rt::data::DataAt<'static, HandItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
     loop {
         if null_p(xs) {
             return at;
         } else {
             let tagcase_ = car(xs);
-            match *tagcase_ {
-                HandItem::Ins(w) => {
-                    (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
-                    continue;
-                }
-                HandItem::Jump(k, a, l) => {
-                    (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
-                    continue;
-                }
-                HandItem::OffsetOf(l) => {
-                    (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
-                    continue;
-                }
-                HandItem::AlignOdd(z) => {
-                    (xs, at) = (cdr(xs), if _eq(modulo(at, int_lit(2)), int_lit(0)) {
-                        _plus(at, int_lit(1))
-                    } else {
-                        at
-                    });
-                    continue;
-                }
-                HandItem::LabelHere(l) => {
-                    flatarray_set_i64_x(ls, int_to_i64(l), int_to_i64(at));
-                    xs = cdr(xs);
-                    continue;
-                }
-            }
+            if HandItem::__is_Ins(tagcase_) {
+                let (w,) = HandItem::__Ins(tagcase_);
+                (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
+                continue;
+            } else if HandItem::__is_Jump(tagcase_) {
+                let (k, a, l,) = HandItem::__Jump(tagcase_);
+                (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
+                continue;
+            } else if HandItem::__is_OffsetOf(tagcase_) {
+                let (l,) = HandItem::__OffsetOf(tagcase_);
+                (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
+                continue;
+            } else if HandItem::__is_AlignOdd(tagcase_) {
+                let (z,) = HandItem::__AlignOdd(tagcase_);
+                (xs, at) = (cdr(xs), if _eq(modulo(at, int_lit(2)), int_lit(0)) {
+                    _plus(at, int_lit(1))
+                } else {
+                    at
+                });
+                continue;
+            } else if HandItem::__is_LabelHere(tagcase_) {
+                let (l,) = HandItem::__LabelHere(tagcase_);
+                flatarray_set_i64_x(ls, int_to_i64(l), int_to_i64(at));
+                xs = cdr(xs);
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -1335,38 +1471,37 @@ pub fn r#where(ls: FlatArray<i64>, l: Int) -> Int {
 
 /// Item `x`, at `at`, encoded; a jump to where its label is, an offset
 /// its label's in bytes.
-pub fn encoded(x: kayak_rt::Handle<'static, HandItem>, at: Int, ls: FlatArray<i64>) -> Int {
+pub fn encoded(x: kayak_rt::data::DataAt<'static, HandItem>, at: Int, ls: FlatArray<i64>) -> Int {
     let tagcase_ = x;
-    match *tagcase_ {
-        HandItem::Ins(w) => {
-            w
+    if HandItem::__is_Ins(tagcase_) {
+        let (w,) = HandItem::__Ins(tagcase_);
+        w
+    } else if HandItem::__is_Jump(tagcase_) {
+        let (k, a, l,) = HandItem::__Jump(tagcase_);
+        let d = _minus(r#where(ls, l), at);
+        if _eq(k, j_b()) {
+            a64::arm_b(d)
+        } else if _eq(k, j_cond()) {
+            a64::arm_b_cond(a, d)
+        } else if _eq(k, j_cbz()) {
+            a64::arm_cbz(a, d)
+        } else if _eq(k, j_cbnz()) {
+            a64::arm_cbnz(a, d)
+        } else if _eq(k, j_bl()) {
+            a64::arm_bl(d)
+        } else {
+            arm_adr(a, _star(int_lit(4), d))
         }
-        HandItem::Jump(k, a, l) => {
-            let d = _minus(r#where(ls, l), at);
-            if _eq(k, j_b()) {
-                a64::arm_b(d)
-            } else if _eq(k, j_cond()) {
-                a64::arm_b_cond(a, d)
-            } else if _eq(k, j_cbz()) {
-                a64::arm_cbz(a, d)
-            } else if _eq(k, j_cbnz()) {
-                a64::arm_cbnz(a, d)
-            } else if _eq(k, j_bl()) {
-                a64::arm_bl(d)
-            } else {
-                arm_adr(a, _star(int_lit(4), d))
-            }
-        }
-        HandItem::OffsetOf(l) => {
-            _star(int_lit(4), r#where(ls, l))
-        }
-        HandItem::AlignOdd(z) => {
-            arm_nop()
-        }
-        HandItem::LabelHere(l) => {
-            int_lit(0)
-        }
-    }
+    } else if HandItem::__is_OffsetOf(tagcase_) {
+        let (l,) = HandItem::__OffsetOf(tagcase_);
+        _star(int_lit(4), r#where(ls, l))
+    } else if HandItem::__is_AlignOdd(tagcase_) {
+        let (z,) = HandItem::__AlignOdd(tagcase_);
+        arm_nop()
+    } else if HandItem::__is_LabelHere(tagcase_) {
+        let (l,) = HandItem::__LabelHere(tagcase_);
+        int_lit(0)
+    } else { kayak_rt::data::no_variant() }
 }
 
 // Instructions, by `arm64.fx`'s encoders.
@@ -2694,27 +2829,64 @@ pub fn zeros_x(mut k: i64) -> () {
 // machine's own before the first word's, given kayak-rt once the code is
 // sealed, at the place it runs (`last-sealed`), to write a perf map
 // (`KAYAK_PERF_MAP`).
+#[derive(Clone, Copy)]
 pub enum Span {
     Span(Str, Int, Int, i64, bool, Int),
 }
 
-impl kayak_rt::Visit for Span {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Span(f0, f1, f2, f3, f4, f5) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); }
-        }
+impl kayak_rt::data::Variant<0> for Span {
+    type Fields = (Str, Int, Int, i64, bool, Int,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("span")
     }
 }
 
-pub fn span(f0: Str, f1: Int, f2: Int, f3: i64, f4: bool, f5: Int) -> kayak_rt::Handle<'static, Span> {
-    kayak_rt::heap_alloc(Span::Span(f0, f1, f2, f3, f4, f5))
+#[allow(non_snake_case)]
+impl Span {
+    #[inline(always)]
+    pub fn __is_Span(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Span(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Span {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1, f2, f3, f4, f5,) = w.fields::<0>();
+            Self::Span(f0, f1, f2, f3, f4, f5)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn span(f0: Str, f1: Int, f2: Int, f3: i64, f4: bool, f5: Int) -> kayak_rt::data::DataAt<'static, Span> {
+    kayak_rt::data::data_heap::<Span, 0>((f0, f1, f2, f3, f4, f5,))
 }
 
 #[inline]
-pub fn word_spans() -> Ref<List<kayak_rt::Handle<'static, Span>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Span>>>);
+pub fn word_spans() -> Ref<List<kayak_rt::data::DataAt<'static, Span>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Span>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Span>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Span>>())
     })
 }
 
@@ -2775,36 +2947,35 @@ pub fn register_name(rw: i64, tier: Str) -> Str {
     string_append(twin_name(rw), tier)
 }
 
-pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<kayak_rt::Handle<'static, Span>>) -> () {
+pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<kayak_rt::data::DataAt<'static, Span>>) -> () {
     loop {
         if null_p(ss) {
             return ();
         } else {
             let tagcase_ = car(ss);
-            match *tagcase_ {
-                Span::Span(name, lo, hi, w, regs, base) => {
-                    let from = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo))));
-                    let to = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(hi))));
-                    let table = if i64_eq(w, 0i64) {
-                        str_lit!("")
-                    } else if regs {
-                        table_named(get(reg_line_tables()), twin_name(w), str_lit!(""))
-                    } else {
-                        table_named(get(line_tables()), name, str_lit!(""))
-                    };
-                    if string_eq_p(table, str_lit!("")) {
-                        note_code(_plus(at, from), _minus(to, from), string_append(str_lit!("fx26 "), name))
-                    } else {
-                        let cs = string_chars(table);
-                        let es = cposes(after_char(cs, ' '), nil::<kayak_rt::Handle<'static, Cpos>>());
-                        let pairs = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, i64_plus(1i64, size(es))), 0i64));
-                        let n = lines_paired_x(es, pairs, at, ls, scale, base, from, to, 0i64);
-                        note_code_lines(_plus(at, from), _minus(to, from), string_append(str_lit!("fx26 "), name), list_to_string(chars_before_char(cs, ' ')), pairs, i64_to_int(n))
-                    };
-                    ss = cdr(ss);
-                    continue;
-                }
-            }
+            if Span::__is_Span(tagcase_) {
+                let (name, lo, hi, w, regs, base,) = Span::__Span(tagcase_);
+                let from = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo))));
+                let to = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(hi))));
+                let table = if i64_eq(w, 0i64) {
+                    str_lit!("")
+                } else if regs {
+                    table_named(get(reg_line_tables()), twin_name(w), str_lit!(""))
+                } else {
+                    table_named(get(line_tables()), name, str_lit!(""))
+                };
+                if string_eq_p(table, str_lit!("")) {
+                    note_code(_plus(at, from), _minus(to, from), string_append(str_lit!("fx26 "), name))
+                } else {
+                    let cs = string_chars(table);
+                    let es = cposes(after_char(cs, ' '), nil::<kayak_rt::data::DataAt<'static, Cpos>>());
+                    let pairs = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, i64_plus(1i64, size(es))), 0i64));
+                    let n = lines_paired_x(es, pairs, at, ls, scale, base, from, to, 0i64);
+                    note_code_lines(_plus(at, from), _minus(to, from), string_append(str_lit!("fx26 "), name), list_to_string(chars_before_char(cs, ' ')), pairs, i64_to_int(n))
+                };
+                ss = cdr(ss);
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -2813,52 +2984,50 @@ pub fn spans_noted_x(mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut ss
 /// code is in the span, `from` to `to`, its address and its position,
 /// into `pairs`: how many. Tier 6's span starts past `args`, and an
 /// instruction fused into the one before has no code of its own.
-pub fn lines_paired_x(mut es: List<kayak_rt::Handle<'static, Cpos>>, mut pairs: FlatArray<i64>, mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut base: Int, mut from: Int, mut to: Int, mut n: i64) -> i64 {
+pub fn lines_paired_x(mut es: List<kayak_rt::data::DataAt<'static, Cpos>>, mut pairs: FlatArray<i64>, mut at: Int, mut ls: FlatArray<i64>, mut scale: Int, mut base: Int, mut from: Int, mut to: Int, mut n: i64) -> i64 {
     loop {
         if (null_p(es) || i64_gt(i64_star(2i64, i64_plus(n, 1i64)), flatarray_length_i64(pairs))) {
             return n;
         } else {
             let tagcase_ = car(es);
-            match *tagcase_ {
-                Cpos::Cpos(c, p) => {
-                    let k = i64_plus(int_to_i64(base), c);
-                    let off = if i64_lt(k, flatarray_length_i64(ls)) {
-                        _star(scale, i64_to_int(flatarray_ref_i64(ls, k)))
-                    } else {
-                        int_lit(-1)
-                    };
-                    if (_lt(off, from) || _gt(off, to)) {
-                        es = cdr(es);
-                        continue;
-                    } else {
-                        flatarray_set_i64_x(pairs, i64_star(2i64, n), int_to_i64(_plus(at, off)));
-                        flatarray_set_i64_x(pairs, i64_plus(1i64, i64_star(2i64, n)), p);
-                        (es, n) = (cdr(es), i64_plus(n, 1i64));
-                        continue;
-                    }
+            if Cpos::__is_Cpos(tagcase_) {
+                let (c, p,) = Cpos::__Cpos(tagcase_);
+                let k = i64_plus(int_to_i64(base), c);
+                let off = if i64_lt(k, flatarray_length_i64(ls)) {
+                    _star(scale, i64_to_int(flatarray_ref_i64(ls, k)))
+                } else {
+                    int_lit(-1)
+                };
+                if (_lt(off, from) || _gt(off, to)) {
+                    es = cdr(es);
+                    continue;
+                } else {
+                    flatarray_set_i64_x(pairs, i64_star(2i64, n), int_to_i64(_plus(at, off)));
+                    flatarray_set_i64_x(pairs, i64_plus(1i64, i64_star(2i64, n)), p);
+                    (es, n) = (cdr(es), i64_plus(n, 1i64));
+                    continue;
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
-pub fn spans_first(mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<kayak_rt::Handle<'static, Span>>, mut least: Int) -> Int {
+pub fn spans_first(mut ls: FlatArray<i64>, mut scale: Int, mut ss: List<kayak_rt::data::DataAt<'static, Span>>, mut least: Int) -> Int {
     loop {
         if null_p(ss) {
             return least;
         } else {
             let tagcase_ = car(ss);
-            match *tagcase_ {
-                Span::Span(name, lo, hi, w, regs, base) => {
-                    let from = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo))));
-                    (ss, least) = (cdr(ss), if _lt(from, least) {
-                        from
-                    } else {
-                        least
-                    });
-                    continue;
-                }
-            }
+            if Span::__is_Span(tagcase_) {
+                let (name, lo, hi, w, regs, base,) = Span::__Span(tagcase_);
+                let from = _star(scale, i64_to_int(flatarray_ref_i64(ls, int_to_i64(lo))));
+                (ss, least) = (cdr(ss), if _lt(from, least) {
+                    from
+                } else {
+                    least
+                });
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -2870,7 +3039,7 @@ pub fn code_named_x(ls: FlatArray<i64>, scale: Int, bytes: Int, what: Str) -> ()
     let (at, ss) = (last_sealed(), get(word_spans()));
     note_code(at, spans_first(ls, scale, ss, bytes), what);
     spans_noted_x(at, ls, scale, ss);
-    set(word_spans(), nil::<kayak_rt::Handle<'static, Span>>())
+    set(word_spans(), nil::<kayak_rt::data::DataAt<'static, Span>>())
 }
 
 /// Word `w` compiled; `rt` the label of its table of where to resume.
@@ -4325,7 +4494,7 @@ pub fn register_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
 
 /// Each register word that is its word's twin, compiled, word `s` on;
 /// its entry made `r-count + s`. Their tables' labels, the last first.
-pub fn registers_compiled_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+pub fn registers_compiled_x(mut rs: List<kayak_rt::data::DataAt<'static, NamedSlot>>, mut s: Int, mut rts: List<Int>) -> List<Int> {
     loop {
         if null_p(rs) {
             return rts;
@@ -4348,7 +4517,7 @@ pub fn registers_compiled_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>, 
 /// Each of the listing's words whose entry is `docol`, compiled, word
 /// `s` on; its entry made `r-count + s`. Their tables' labels, the last
 /// first.
-pub fn words_compiled_x(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut s: Int, mut rts: List<Int>) -> List<Int> {
+pub fn words_compiled_x(mut ws: List<kayak_rt::data::DataAt<'static, NamedSlot>>, mut s: Int, mut rts: List<Int>) -> List<Int> {
     loop {
         if null_p(ws) {
             return rts;
@@ -4379,37 +4548,35 @@ pub fn put4(b: kayak_rt::BlobletAt<'static, ()>, at: Int, w: Int) -> () {
 
 /// Each item placed, at instruction `at` on; the first that did not
 /// encode, as its place, or -1.
-pub fn all_put_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut xs: List<kayak_rt::Handle<'static, HandItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
+pub fn all_put_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut xs: List<kayak_rt::data::DataAt<'static, HandItem>>, mut at: Int, mut ls: FlatArray<i64>) -> Int {
     loop {
         if null_p(xs) {
             return int_lit(-1);
         } else {
             let tagcase_ = car(xs);
-            match *tagcase_ {
-                HandItem::LabelHere(l) => {
+            if HandItem::__is_LabelHere(tagcase_) {
+                let (l,) = HandItem::__LabelHere(tagcase_);
+                xs = cdr(xs);
+                continue;
+            } else if HandItem::__is_AlignOdd(tagcase_) {
+                let (z,) = HandItem::__AlignOdd(tagcase_);
+                if _eq(modulo(at, int_lit(2)), int_lit(0)) {
+                    put4(b, _star(int_lit(4), at), arm_nop());
+                    (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
+                    continue;
+                } else {
                     xs = cdr(xs);
                     continue;
                 }
-                HandItem::AlignOdd(z) => {
-                    if _eq(modulo(at, int_lit(2)), int_lit(0)) {
-                        put4(b, _star(int_lit(4), at), arm_nop());
-                        (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
-                        continue;
-                    } else {
-                        xs = cdr(xs);
-                        continue;
-                    }
-                }
-                _ => {
-                    let x = tagcase_;
-                    let w = encoded(x, at, ls);
-                    if _lt(w, int_lit(0)) {
-                        return at;
-                    } else {
-                        put4(b, _star(int_lit(4), at), w);
-                        (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
-                        continue;
-                    }
+            } else {
+                let x = tagcase_;
+                let w = encoded(x, at, ls);
+                if _lt(w, int_lit(0)) {
+                    return at;
+                } else {
+                    put4(b, _star(int_lit(4), at), w);
+                    (xs, at) = (cdr(xs), _plus(at, int_lit(1)));
+                    continue;
                 }
             }
         }
@@ -4417,7 +4584,7 @@ pub fn all_put_x(mut b: kayak_rt::BlobletAt<'static, ()>, mut xs: List<kayak_rt:
 }
 
 /// The table of the words' tables, word 0's first (`rts` the last first).
-pub fn words_table(mut rts: List<Int>, mut acc: List<kayak_rt::Handle<'static, HandItem>>) -> List<kayak_rt::Handle<'static, HandItem>> {
+pub fn words_table(mut rts: List<Int>, mut acc: List<kayak_rt::data::DataAt<'static, HandItem>>) -> List<kayak_rt::data::DataAt<'static, HandItem>> {
     loop {
         if null_p(rts) {
             return acc;
@@ -4459,8 +4626,8 @@ pub fn hand_code_arm64_x() -> kayak_rt::Sum {
     if not(null_p(get(hand_made()))) {
         kayak_rt::sum_tagged::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(kayak_rt::tag_lit!("made"), car(get(hand_made())))
     } else {
-        set(hand_items(), nil::<kayak_rt::Handle<'static, HandItem>>());
-        set(hand_data(), nil::<kayak_rt::Handle<'static, HandItem>>());
+        set(hand_items(), nil::<kayak_rt::data::DataAt<'static, HandItem>>());
+        set(hand_data(), nil::<kayak_rt::data::DataAt<'static, HandItem>>());
         set(hand_labels(), int_lit(0));
         set(l_start(), label_x());
         set(l_entry(), label_x());
@@ -4472,7 +4639,7 @@ pub fn hand_code_arm64_x() -> kayak_rt::Sum {
         materialize_x(get(l_materialize()));
         let rts = the::<List<Int>>(nil::<Int>());
         let u = set(words_compiled(), count_of(rts, int_lit(0)));
-        let its = the::<List<kayak_rt::Handle<'static, HandItem>>>(kayak_rt::heap_cons(label_here(get(l_start())), kayak_rt::heap_cons(jump(j_b(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(label_here(get(l_words())), kayak_rt::heap_cons(ins(_star(int_lit(8), count_of(rts, int_lit(0)))), kayak_rt::heap_cons(ins(int_lit(0)), append(words_table(rts, nil::<kayak_rt::Handle<'static, HandItem>>()), append(reverse(get(hand_data())), reverse(get(hand_items())))))))))));
+        let its = the::<List<kayak_rt::data::DataAt<'static, HandItem>>>(kayak_rt::heap_cons(label_here(get(l_start())), kayak_rt::heap_cons(jump(j_b(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(label_here(get(l_words())), kayak_rt::heap_cons(ins(_star(int_lit(8), count_of(rts, int_lit(0)))), kayak_rt::heap_cons(ins(int_lit(0)), append(words_table(rts, nil::<kayak_rt::data::DataAt<'static, HandItem>>()), append(reverse(get(hand_data())), reverse(get(hand_items())))))))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
         let count = placed_x(its, int_lit(0), ls);
         let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(_star(int_lit(4), count), ()));

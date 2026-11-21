@@ -132,5 +132,8 @@ C499 a sum became Fixpt's own object (kind 36: its tag, a word to
 Fixpt's symbol, and its payload, a word), and a tag's discriminant its
 symbol's hash, Fixpt's (FNV-1a, `symbol_hash_of`), not SipHash: one
 representation for both back ends, a collision still a build's failure
-(`tags_apart_from_runtime`).
+(`tags_apart_from_runtime`). At C500 a datatype's value became Fixpt's too: a
+sum whose payload is a product of its variant's fields, as Fixpt's
+`define-datatype` expands one; its Rust enum stays, as the value taken
+apart.
 

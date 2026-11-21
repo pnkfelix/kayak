@@ -256,77 +256,67 @@ pub fn prim_arity(n: Str) -> i64 {
 // Values taken apart, a wrong shape an error: the checker has seen to it
 // that none is, but a primitive is not to trust that.
 #[inline]
-pub fn val_int(v: kayak_rt::Handle<'static, Val>) -> Int {
+pub fn val_int(v: kayak_rt::data::DataAt<'static, Val>) -> Int {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VInt(n) => {
-            n
-        }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: an integer is expected"));
-            int_lit(0)
-        }
+    if Val::__is_VInt(tagcase_) {
+        let (n,) = Val::__VInt(tagcase_);
+        n
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: an integer is expected"));
+        int_lit(0)
     }
 }
 
 #[inline]
-pub fn string_of(v: kayak_rt::Handle<'static, Val>) -> Str {
+pub fn string_of(v: kayak_rt::data::DataAt<'static, Val>) -> Str {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VString(s) => {
-            s
-        }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: a string is expected"));
-            str_lit!("")
-        }
+    if Val::__is_VString(tagcase_) {
+        let (s,) = Val::__VString(tagcase_);
+        s
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: a string is expected"));
+        str_lit!("")
     }
 }
 
 #[inline]
-pub fn char_of(v: kayak_rt::Handle<'static, Val>) -> char {
+pub fn char_of(v: kayak_rt::data::DataAt<'static, Val>) -> char {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VChar(c) => {
-            c
-        }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: a character is expected"));
-            ' '
-        }
+    if Val::__is_VChar(tagcase_) {
+        let (c,) = Val::__VChar(tagcase_);
+        c
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: a character is expected"));
+        ' '
     }
 }
 
 #[inline]
-pub fn bool_of(v: kayak_rt::Handle<'static, Val>) -> bool {
+pub fn bool_of(v: kayak_rt::data::DataAt<'static, Val>) -> bool {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VBool(b) => {
-            b
-        }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: a boolean is expected"));
-            false
-        }
+    if Val::__is_VBool(tagcase_) {
+        let (b,) = Val::__VBool(tagcase_);
+        b
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: a boolean is expected"));
+        false
     }
 }
 
 #[inline]
-pub fn symbol_of(v: kayak_rt::Handle<'static, Val>) -> Symbol {
+pub fn symbol_of(v: kayak_rt::data::DataAt<'static, Val>) -> Symbol {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VSymbol(s) => {
-            s
-        }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: a symbol is expected"));
-            string_to_symbol(str_lit!(""))
-        }
+    if Val::__is_VSymbol(tagcase_) {
+        let (s,) = Val::__VSymbol(tagcase_);
+        s
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: a symbol is expected"));
+        string_to_symbol(str_lit!(""))
     }
 }
 
@@ -337,32 +327,30 @@ pub fn w64(n: Int) -> Int {
 }
 
 #[inline]
-pub fn i64_of(v: kayak_rt::Handle<'static, Val>) -> i64 {
+pub fn i64_of(v: kayak_rt::data::DataAt<'static, Val>) -> i64 {
     int_to_i64(val_int(v))
 }
 
 #[inline]
-pub fn v_i64(n: i64) -> kayak_rt::Handle<'static, Val> {
+pub fn v_i64(n: i64) -> kayak_rt::data::DataAt<'static, Val> {
     v_int(i64_to_int(n))
 }
 
 /// A list's elements, in order.
 #[inline]
-pub fn list_of(v: kayak_rt::Handle<'static, Val>) -> Vals {
+pub fn list_of(v: kayak_rt::data::DataAt<'static, Val>) -> Vals {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VPair(a, d) => {
-            kayak_rt::heap_cons(get(a), list_of(get(d)))
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<kayak_rt::Handle<'static, Val>>()
-        }
+    if Val::__is_VPair(tagcase_) {
+        let (a, d,) = Val::__VPair(tagcase_);
+        kayak_rt::heap_cons(get(a), list_of(get(d)))
+    } else {
+        let other = tagcase_;
+        nil::<kayak_rt::data::DataAt<'static, Val>>()
     }
 }
 
 #[inline]
-pub fn list_val(xs: Vals) -> kayak_rt::Handle<'static, Val> {
+pub fn list_val(xs: Vals) -> kayak_rt::data::DataAt<'static, Val> {
     if null_p(xs) {
         v_nil()
     } else {
@@ -371,7 +359,7 @@ pub fn list_val(xs: Vals) -> kayak_rt::Handle<'static, Val> {
 }
 
 #[inline]
-pub fn chars_val(cs: List<char>) -> kayak_rt::Handle<'static, Val> {
+pub fn chars_val(cs: List<char>) -> kayak_rt::data::DataAt<'static, Val> {
     if null_p(cs) {
         v_nil()
     } else {
@@ -380,26 +368,24 @@ pub fn chars_val(cs: List<char>) -> kayak_rt::Handle<'static, Val> {
 }
 
 #[inline]
-pub fn chars_of(v: kayak_rt::Handle<'static, Val>) -> List<char> {
+pub fn chars_of(v: kayak_rt::data::DataAt<'static, Val>) -> List<char> {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VPair(a, d) => {
-            kayak_rt::heap_cons(char_of(get(a)), chars_of(get(d)))
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<char>()
-        }
+    if Val::__is_VPair(tagcase_) {
+        let (a, d,) = Val::__VPair(tagcase_);
+        kayak_rt::heap_cons(char_of(get(a)), chars_of(get(d)))
+    } else {
+        let other = tagcase_;
+        nil::<char>()
     }
 }
 
-pub fn vals_array(xs: Vals) -> Array<kayak_rt::Handle<'static, Val>> {
-    let a = the::<Array<kayak_rt::Handle<'static, Val>>>(make_array(i64_to_int(size(xs)), v_unit()));
+pub fn vals_array(xs: Vals) -> Array<kayak_rt::data::DataAt<'static, Val>> {
+    let a = the::<Array<kayak_rt::data::DataAt<'static, Val>>>(make_array(i64_to_int(size(xs)), v_unit()));
     fill_array(a, 0i64, xs);
     a
 }
 
-pub fn fill_array(mut a: Array<kayak_rt::Handle<'static, Val>>, mut i: i64, mut xs: Vals) -> () {
+pub fn fill_array(mut a: Array<kayak_rt::data::DataAt<'static, Val>>, mut i: i64, mut xs: Vals) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -411,37 +397,35 @@ pub fn fill_array(mut a: Array<kayak_rt::Handle<'static, Val>>, mut i: i64, mut 
     }
 }
 
-pub fn array_vals(a: Array<kayak_rt::Handle<'static, Val>>, i: i64) -> Vals {
+pub fn array_vals(a: Array<kayak_rt::data::DataAt<'static, Val>>, i: i64) -> Vals {
     if _gt_eq(i64_to_int(i), array_length(a)) {
-        nil::<kayak_rt::Handle<'static, Val>>()
+        nil::<kayak_rt::data::DataAt<'static, Val>>()
     } else {
         kayak_rt::heap_cons(array_ref(a, i64_to_int(i)), array_vals(a, i64_plus(i, 1i64)))
     }
 }
 
 #[inline]
-pub fn flag(b: bool) -> kayak_rt::Handle<'static, Val> {
+pub fn flag(b: bool) -> kayak_rt::data::DataAt<'static, Val> {
     v_bool(b)
 }
 
 #[inline]
-pub fn bytes_of(v: kayak_rt::Handle<'static, Val>) -> Bytes {
+pub fn bytes_of(v: kayak_rt::data::DataAt<'static, Val>) -> Bytes {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VBytes(b) => {
-            b
-        }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: a bytevector is expected"));
-            make_bytevector(int_lit(0), int_to_u8(int_lit(0)))
-        }
+    if Val::__is_VBytes(tagcase_) {
+        let (b,) = Val::__VBytes(tagcase_);
+        b
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: a bytevector is expected"));
+        make_bytevector(int_lit(0), int_to_u8(int_lit(0)))
     }
 }
 
 // An I/O error as FX-26 has it: a product of its kind, a sum, and the
 // system's words.
-pub fn io_error_val(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> kayak_rt::Handle<'static, Val> {
+pub fn io_error_val(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> kayak_rt::data::DataAt<'static, Val> {
     let kind = {
         let tagcase_ = e.0;
         let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -474,7 +458,7 @@ pub fn io_error_val(e: Product_4kind_6detail<kayak_rt::Sum, Str>) -> kayak_rt::H
     v_product(kayak_rt::heap_cons(str_lit!("kind"), kayak_rt::heap_cons(str_lit!("detail"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_sum(kind, v_unit()), kayak_rt::heap_cons(v_string(e.1), kayak_rt::nil()))))
 }
 
-pub fn terminal_val(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
+pub fn terminal_val(r: kayak_rt::Sum) -> kayak_rt::data::DataAt<'static, Val> {
     let tagcase_ = r;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
@@ -490,7 +474,7 @@ pub fn terminal_val(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
 }
 
 #[inline]
-pub fn write_outcome(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
+pub fn write_outcome(r: kayak_rt::Sum) -> kayak_rt::data::DataAt<'static, Val> {
     let tagcase_ = r;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
@@ -505,7 +489,7 @@ pub fn write_outcome(r: kayak_rt::Sum) -> kayak_rt::Handle<'static, Val> {
 #[inline]
 pub fn strings_vals(ss: Strings) -> Vals {
     if null_p(ss) {
-        nil::<kayak_rt::Handle<'static, Val>>()
+        nil::<kayak_rt::data::DataAt<'static, Val>>()
     } else {
         kayak_rt::heap_cons(v_string(car(ss)), strings_vals(cdr(ss)))
     }
@@ -532,92 +516,78 @@ pub fn reverse_vals(mut xs: Vals, mut acc: Vals) -> Vals {
 }
 
 #[inline]
-pub fn real_of(v: kayak_rt::Handle<'static, Val>) -> f64 {
+pub fn real_of(v: kayak_rt::data::DataAt<'static, Val>) -> f64 {
     let tagcase_ = v;
-    match *tagcase_ {
-        Val::VReal(x) => {
-            x
-        }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: an f64 is expected"));
-            0.0f64
-        }
+    if Val::__is_VReal(tagcase_) {
+        let (x,) = Val::__VReal(tagcase_);
+        x
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: an f64 is expected"));
+        0.0f64
     }
 }
 
 /// `case`'s comparison: two atoms of one kind, by that kind's equality.
-pub fn same_atom_p(a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'static, Val>) -> bool {
+pub fn same_atom_p(a: kayak_rt::data::DataAt<'static, Val>, b: kayak_rt::data::DataAt<'static, Val>) -> bool {
     let tagcase_ = a;
-    match *tagcase_ {
-        Val::VInt(x) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Val::VInt(y) => {
-                    _eq(x, y)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Val::VChar(x) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Val::VChar(y) => {
-                    char_eq_p(x, y)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Val::VString(x) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Val::VString(y) => {
-                    string_eq_p(x, y)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Val::VBool(x) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Val::VBool(y) => {
-                    bool_eq_p(x, y)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        Val::VSymbol(x) => {
-            let tagcase_ = b;
-            match *tagcase_ {
-                Val::VSymbol(y) => {
-                    symbol_eq_p(x, y)
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }
-        _ => {
+    if Val::__is_VInt(tagcase_) {
+        let (x,) = Val::__VInt(tagcase_);
+        let tagcase_ = b;
+        if Val::__is_VInt(tagcase_) {
+            let (y,) = Val::__VInt(tagcase_);
+            _eq(x, y)
+        } else {
             let other = tagcase_;
             false
         }
+    } else if Val::__is_VChar(tagcase_) {
+        let (x,) = Val::__VChar(tagcase_);
+        let tagcase_ = b;
+        if Val::__is_VChar(tagcase_) {
+            let (y,) = Val::__VChar(tagcase_);
+            char_eq_p(x, y)
+        } else {
+            let other = tagcase_;
+            false
+        }
+    } else if Val::__is_VString(tagcase_) {
+        let (x,) = Val::__VString(tagcase_);
+        let tagcase_ = b;
+        if Val::__is_VString(tagcase_) {
+            let (y,) = Val::__VString(tagcase_);
+            string_eq_p(x, y)
+        } else {
+            let other = tagcase_;
+            false
+        }
+    } else if Val::__is_VBool(tagcase_) {
+        let (x,) = Val::__VBool(tagcase_);
+        let tagcase_ = b;
+        if Val::__is_VBool(tagcase_) {
+            let (y,) = Val::__VBool(tagcase_);
+            bool_eq_p(x, y)
+        } else {
+            let other = tagcase_;
+            false
+        }
+    } else if Val::__is_VSymbol(tagcase_) {
+        let (x,) = Val::__VSymbol(tagcase_);
+        let tagcase_ = b;
+        if Val::__is_VSymbol(tagcase_) {
+            let (y,) = Val::__VSymbol(tagcase_);
+            symbol_eq_p(x, y)
+        } else {
+            let other = tagcase_;
+            false
+        }
+    } else {
+        let other = tagcase_;
+        false
     }
 }
 
-pub fn fixed_prim(t: Str, op: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Val> {
+pub fn fixed_prim(t: Str, op: Str, a: kayak_rt::data::DataAt<'static, Val>, b: kayak_rt::data::DataAt<'static, Val>) -> kayak_rt::data::DataAt<'static, Val> {
     let x = val_int(a);
     if string_eq_p(op, str_lit!("from-int")) {
         v_int(wrapped(t, x))
@@ -666,7 +636,7 @@ pub fn fixed_prim(t: Str, op: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_r
     }
 }
 
-pub fn f64_prim(n: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'static, Val>) -> kayak_rt::Handle<'static, Val> {
+pub fn f64_prim(n: Str, a: kayak_rt::data::DataAt<'static, Val>, b: kayak_rt::data::DataAt<'static, Val>) -> kayak_rt::data::DataAt<'static, Val> {
     let x = real_of(a);
     if string_eq_p(n, str_lit!("f64->string")) {
         v_string(f64_to_string(x))
@@ -744,7 +714,7 @@ pub fn f64_prim(n: Str, a: kayak_rt::Handle<'static, Val>, b: kayak_rt::Handle<'
 }
 
 /// Primitive `n` of the values `xs`.
-pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
+pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::data::DataAt<'static, Val> {
     let (a, b) = (if null_p(xs) {
         v_unit()
     } else {
@@ -890,127 +860,106 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
         v_pair(kayak_rt::heap_new(a), kayak_rt::heap_new(b))
     } else if string_eq_p(n, str_lit!("car")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VPair(h, t) => {
-                get(h)
-            }
-            _ => {
-                let other = tagcase_;
-                failed_with_x(str_lit!("car of nil"));
-                v_unit()
-            }
+        if Val::__is_VPair(tagcase_) {
+            let (h, t,) = Val::__VPair(tagcase_);
+            get(h)
+        } else {
+            let other = tagcase_;
+            failed_with_x(str_lit!("car of nil"));
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("cdr")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VPair(h, t) => {
-                get(t)
-            }
-            _ => {
-                let other = tagcase_;
-                failed_with_x(str_lit!("cdr of nil"));
-                v_unit()
-            }
+        if Val::__is_VPair(tagcase_) {
+            let (h, t,) = Val::__VPair(tagcase_);
+            get(t)
+        } else {
+            let other = tagcase_;
+            failed_with_x(str_lit!("cdr of nil"));
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("null?")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VNil() => {
-                flag(true)
-            }
-            _ => {
-                let other = tagcase_;
-                flag(false)
-            }
+        if Val::__is_VNil(tagcase_) {
+            flag(true)
+        } else {
+            let other = tagcase_;
+            flag(false)
         }
     } else if string_eq_p(n, str_lit!("pair?")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VPair(h, t) => {
-                flag(true)
-            }
-            _ => {
-                let other = tagcase_;
-                flag(false)
-            }
+        if Val::__is_VPair(tagcase_) {
+            let (h, t,) = Val::__VPair(tagcase_);
+            flag(true)
+        } else {
+            let other = tagcase_;
+            flag(false)
         }
     } else if (string_eq_p(n, str_lit!("length")) || string_eq_p(n, str_lit!("list-length"))) {
         v_int(i64_to_int(size(list_of(a))))
     } else if string_eq_p(n, str_lit!("reverse")) {
-        list_val(reverse_vals(list_of(a), nil::<kayak_rt::Handle<'static, Val>>()))
+        list_val(reverse_vals(list_of(a), nil::<kayak_rt::data::DataAt<'static, Val>>()))
     } else if string_eq_p(n, str_lit!("new")) {
         v_ref(kayak_rt::heap_new(a))
     } else if string_eq_p(n, str_lit!("get")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VRef(r) => {
-                get(r)
-            }
-            _ => {
-                let other = tagcase_;
-                failed_with_x(str_lit!("the engine: a reference is expected"));
-                v_unit()
-            }
+        if Val::__is_VRef(tagcase_) {
+            let (r,) = Val::__VRef(tagcase_);
+            get(r)
+        } else {
+            let other = tagcase_;
+            failed_with_x(str_lit!("the engine: a reference is expected"));
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("set")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VRef(r) => {
-                set(r, b);
-                v_unit()
-            }
-            _ => {
-                let other = tagcase_;
-                failed_with_x(str_lit!("the engine: a reference is expected"));
-                v_unit()
-            }
+        if Val::__is_VRef(tagcase_) {
+            let (r,) = Val::__VRef(tagcase_);
+            set(r, b);
+            v_unit()
+        } else {
+            let other = tagcase_;
+            failed_with_x(str_lit!("the engine: a reference is expected"));
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("make-array")) {
         v_array(make_array(val_int(a), b))
     } else if string_eq_p(n, str_lit!("array-ref")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VArray(arr) => {
-                array_ref(arr, val_int(b))
-            }
-            _ => {
-                let other = tagcase_;
-                v_unit()
-            }
+        if Val::__is_VArray(tagcase_) {
+            let (arr,) = Val::__VArray(tagcase_);
+            array_ref(arr, val_int(b))
+        } else {
+            let other = tagcase_;
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("array-set!")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VArray(arr) => {
-                array_set_x(arr, val_int(b), car(cdr(cdr(xs))));
-                v_unit()
-            }
-            _ => {
-                let other = tagcase_;
-                v_unit()
-            }
+        if Val::__is_VArray(tagcase_) {
+            let (arr,) = Val::__VArray(tagcase_);
+            array_set_x(arr, val_int(b), car(cdr(cdr(xs))));
+            v_unit()
+        } else {
+            let other = tagcase_;
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("array-length")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VArray(arr) => {
-                v_int(array_length(arr))
-            }
-            _ => {
-                let other = tagcase_;
-                v_unit()
-            }
+        if Val::__is_VArray(tagcase_) {
+            let (arr,) = Val::__VArray(tagcase_);
+            v_int(array_length(arr))
+        } else {
+            let other = tagcase_;
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("array->list")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VArray(arr) => {
-                list_val(array_vals(arr, 0i64))
-            }
-            _ => {
-                let other = tagcase_;
-                v_unit()
-            }
+        if Val::__is_VArray(tagcase_) {
+            let (arr,) = Val::__VArray(tagcase_);
+            list_val(array_vals(arr, 0i64))
+        } else {
+            let other = tagcase_;
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("list->array")) {
         v_array(vals_array(list_of(a)))
@@ -1022,175 +971,150 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
     } else if string_eq_p(n, str_lit!("int?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VInt(x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VInt(tagcase_) {
+                let (x,) = Val::__VInt(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("string?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VString(x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VString(tagcase_) {
+                let (x,) = Val::__VString(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("bool?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VBool(x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VBool(tagcase_) {
+                let (x,) = Val::__VBool(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("char?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VChar(x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VChar(tagcase_) {
+                let (x,) = Val::__VChar(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("symbol?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VSymbol(x) => {
-                    true
-                }
-                Val::VUnit() => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VSymbol(tagcase_) {
+                let (x,) = Val::__VSymbol(tagcase_);
+                true
+            } else if Val::__is_VUnit(tagcase_) {
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("array?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VArray(x) => {
-                    true
-                }
-                Val::VFlat(x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VArray(tagcase_) {
+                let (x,) = Val::__VArray(tagcase_);
+                true
+            } else if Val::__is_VFlat(tagcase_) {
+                let (x,) = Val::__VFlat(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("procedure?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VProc(n2, b, e) => {
-                    true
-                }
-                Val::VPrim(n2, k) => {
-                    true
-                }
-                Val::VCtor(n2, k) => {
-                    true
-                }
-                Val::VCont(fs, u, o) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VProc(tagcase_) {
+                let (n2, b, e,) = Val::__VProc(tagcase_);
+                true
+            } else if Val::__is_VPrim(tagcase_) {
+                let (n2, k,) = Val::__VPrim(tagcase_);
+                true
+            } else if Val::__is_VCtor(tagcase_) {
+                let (n2, k,) = Val::__VCtor(tagcase_);
+                true
+            } else if Val::__is_VCont(tagcase_) {
+                let (fs, u, o,) = Val::__VCont(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("f64?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VReal(x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VReal(tagcase_) {
+                let (x,) = Val::__VReal(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("ref?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VRef(x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VRef(tagcase_) {
+                let (x,) = Val::__VRef(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("sum?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VSum(t, x) => {
-                    true
-                }
-                Val::VData(t, x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VSum(tagcase_) {
+                let (t, x,) = Val::__VSum(tagcase_);
+                true
+            } else if Val::__is_VData(tagcase_) {
+                let (t, x,) = Val::__VData(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("product?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VProduct(l, x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VProduct(tagcase_) {
+                let (l, x,) = Val::__VProduct(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("bytevector?")) {
         flag({
             let tagcase_ = a;
-            match *tagcase_ {
-                Val::VBytes(x) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
+            if Val::__is_VBytes(tagcase_) {
+                let (x,) = Val::__VBytes(tagcase_);
+                true
+            } else {
+                let other = tagcase_;
+                false
             }
         })
     } else if string_eq_p(n, str_lit!("i64-shl")) {
@@ -1326,37 +1250,31 @@ pub fn apply_prim(n: Str, xs: Vals) -> kayak_rt::Handle<'static, Val> {
         v_flat(make_array(val_int(a), b))
     } else if string_eq_p(n, str_lit!("flatarray-ref-i64")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VFlat(arr) => {
-                array_ref(arr, val_int(b))
-            }
-            _ => {
-                let other = tagcase_;
-                v_unit()
-            }
+        if Val::__is_VFlat(tagcase_) {
+            let (arr,) = Val::__VFlat(tagcase_);
+            array_ref(arr, val_int(b))
+        } else {
+            let other = tagcase_;
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("flatarray-set-i64!")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VFlat(arr) => {
-                array_set_x(arr, val_int(b), car(cdr(cdr(xs))));
-                v_unit()
-            }
-            _ => {
-                let other = tagcase_;
-                v_unit()
-            }
+        if Val::__is_VFlat(tagcase_) {
+            let (arr,) = Val::__VFlat(tagcase_);
+            array_set_x(arr, val_int(b), car(cdr(cdr(xs))));
+            v_unit()
+        } else {
+            let other = tagcase_;
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("flatarray-length-i64")) {
         let tagcase_ = a;
-        match *tagcase_ {
-            Val::VFlat(arr) => {
-                v_int(array_length(arr))
-            }
-            _ => {
-                let other = tagcase_;
-                v_unit()
-            }
+        if Val::__is_VFlat(tagcase_) {
+            let (arr,) = Val::__VFlat(tagcase_);
+            v_int(array_length(arr))
+        } else {
+            let other = tagcase_;
+            v_unit()
         }
     } else if string_eq_p(n, str_lit!("%case=")) {
         flag(same_atom_p(a, b))

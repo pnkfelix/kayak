@@ -483,59 +483,57 @@
 
       (define put-constructors (subr kfx (ctx string strings strings sexps chars) chars)
         (lambda (c d lived params variants acc)
-          "A constructor for each variant: in the heap, `&'static`; with lived
-           regions (C270), at their lifetimes, made in the heap (kayak-rt's
-           `alloc`, as an arena of the heap holds only what lives for the run),
-           and, with one, its `_in` twin, made in a place's arena."
+          "A constructor for each variant (C500: its objects Fixpt's, kayak-rt's
+           `data_heap`): in the heap, `'static`; with lived regions (C270), at
+           their lifetimes, made in the heap (kayak-rt's `data_alloc`, as an
+           arena of the heap holds only what lives for the run), and, with one,
+           its `_in` twin, made in a place's arena."
           (if (null? variants)
               acc
               (let* ((v (items (car variants)))
                      (tag (sym-name (car v)))
+                     (i (i64->string (i64- (size variants) 1)))
                      (gen (lambda ((more string))
                             (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (onto (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + kayak_rt::Trace")) params) (if (string=? more "") nil (the strings (list more))))) ", ") ">"))))
                      (named (string-append (camel d) (if (and (null? lived) (null? params)) "" (string-append "<" (string-append (words-of-sep (onto (map lifetime lived) (map camel params)) ", ") ">")))))
                      (at (if (null? lived) "'static" (lifetime (car lived))))
-                     (made (string-append (camel d) (string-append "::" (variant-name tag))))
+                     (fields (lambda ((acc chars))
+                               (if (null? (cdr v)) (put "()" acc) (put ",)" (put-fields c (cdr v) 0 #f (put "(" acc))))))
                      (acc (put "pub fn " acc))
                      (acc (put (mangle tag) acc))
                      (acc (if (null? lived) (put-generics-of params #t acc) (put (gen "") acc)))
                      (acc (put "(" acc))
                      (acc (put-fields c (cdr v) 0 #t acc))
-                     ;; A handle (C478), the heap's or the region's.
-                     (acc (put (string-append ") -> kayak_rt::Handle<" (string-append at ", ")) acc))
+                     ;; Its value, the heap's or the region's (C500).
+                     (acc (put (string-append ") -> kayak_rt::data::DataAt<" (string-append at ", ")) acc))
                      (acc (put ">" (put named acc)))
-                     (acc (put (if (null? lived) " {\n    kayak_rt::heap_alloc(" " {\n    kayak_rt::alloc(") acc))
-                     (acc (put made acc))
-                     (acc (put "(" acc))
-                     (acc (put "))\n}\n\n" (put-fields c (cdr v) 0 #f acc)))
+                     (acc (put (string-append (if (null? lived) " {\n    kayak_rt::data::data_heap::<" " {\n    kayak_rt::data::data_alloc::<") (string-append named (string-append ", " (string-append i ">(")))) acc))
+                     (acc (put ")\n}\n\n" (fields acc)))
                      (acc (if (null? lived)
                               acc
                               ;; Its heap twin (C271): at `'static`, in the heap's
                               ;; arena, for a call at no region of a lifetime.
-                              (let* ((acc (put "pub fn " acc))
+                              (let* ((heaped (string-append (camel d) (string-append "<" (string-append (words-of-sep (onto (map (lambda ((r string)) "'static") lived) (map camel params)) ", ") ">"))))
+                                     (acc (put "pub fn " acc))
                                      (acc (put (string-append (mangle tag) "_heap") acc))
                                      (acc (put-generics-of params #t acc))
                                      (acc (put "(" acc))
                                      (acc (put-fields (in-heap c) (cdr v) 0 #t acc))
-                                     (acc (put ") -> kayak_rt::Handle<'static, " acc))
-                                     (acc (put (string-append (camel d) (string-append "<" (string-append (words-of-sep (onto (map (lambda ((r string)) "'static") lived) (map camel params)) ", ") ">>"))) acc))
-                                     (acc (put " {\n    kayak_rt::heap_alloc(" acc))
-                                     (acc (put made acc))
-                                     (acc (put "(" acc)))
-                                (put "))\n}\n\n" (put-fields c (cdr v) 0 #f acc)))))
+                                     (acc (put ") -> kayak_rt::data::DataAt<'static, " acc))
+                                     (acc (put heaped acc))
+                                     (acc (put (string-append "> {\n    kayak_rt::data::data_heap::<" (string-append heaped (string-append ", " (string-append i ">(")))) acc)))
+                                (put ")\n}\n\n" (fields acc)))))
                      (acc (if (not (i64= (size lived) 1))
                               acc
                               (let* ((acc (put "pub fn " acc))
                                      (acc (put (string-append (mangle tag) "_in") acc))
-                                     (acc (put (gen (string-append "Place_: Holds<" (string-append named ">"))) acc))
+                                     (acc (put (gen "Place_: kayak_rt::Holds<kayak_rt::data::DataBox>") acc))
                                      (acc (put (string-append "(place_: &" (string-append at " Place_")) acc))
                                      (acc (if (null? (cdr v)) acc (put-fields c (cdr v) 0 #t (put ", " acc))))
-                                     (acc (put (string-append ") -> kayak_rt::Handle<" (string-append at ", ")) acc))
+                                     (acc (put (string-append ") -> kayak_rt::data::DataAt<" (string-append at ", ")) acc))
                                      (acc (put ">" (put named acc)))
-                                     (acc (put " {\n    place_.arena().alloc(" acc))
-                                     (acc (put made acc))
-                                     (acc (put "(" acc)))
-                                (put "))\n}\n\n" (put-fields c (cdr v) 0 #f acc))))))
+                                     (acc (put (string-append " {\n    kayak_rt::data::data_in::<" (string-append named (string-append ", " (string-append i ", _>(place_, ")))) acc)))
+                                (put ")\n}\n\n" (fields acc))))))
                 (put-constructors c d lived params (cdr variants) acc)))))
 
       (define put-datatype (subr kfx (ctx sexps chars) chars)
@@ -547,7 +545,7 @@
                  (params (head-type-params (car xs)))
                  (lived (if (string=? (module-here c) "") (lived-regions (lst (cons (sym "define-datatype" "" 0) xs) "" 0 0)) nil))
                  (inner (with-locals c (map (lambda ((r string)) (string-append "%letrena " r)) lived)))
-                 (acc (put "pub enum " acc))
+                 (acc (put "#[derive(Clone, Copy)]\npub enum " acc))
                  (acc (put (camel d) acc))
                  (acc (if (null? lived)
                           (put-generics-of params #t acc)
@@ -555,36 +553,114 @@
                  (acc (put " {\n" acc))
                  (acc (put-variants inner (cdr xs) acc))
                  (acc (put "}\n\n" acc))
-                 (acc (put-trace-impl d lived params (cdr xs) acc)))
+                 (acc (put-variant-impls inner d lived params (cdr xs) acc))
+                 (acc (put-data-impl d lived params (cdr xs) acc)))
             (put-constructors inner d lived params (cdr xs) acc))))
 
-      (define put-trace-impl (subr kfx (string strings strings sexps chars) chars)
-        (lambda (d lived params variants acc)
-          "Its `Visit` (C479, C481; kayak-rt's `trace.rs`): what a handle
-           points to, each variant's fields traced, what of the heap they reach
-           told the tracer; its type parameters traceable."
-          (let* ((generic (onto (map lifetime lived)
-                                (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + kayak_rt::Trace")) params)))
-                 (args (onto (map lifetime lived) (map camel params)))
-                 (acc (put (string-append "impl" (string-append (if (null? generic) "" (string-append "<" (string-append (words-of-sep generic ", ") ">"))) " kayak_rt::Visit for ")) acc))
-                 (acc (put (camel d) acc))
-                 (acc (if (null? args) acc (put (string-append "<" (string-append (words-of-sep args ", ") ">")) acc)))
-                 (acc (put " {\n    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {\n" acc))
-                 (acc (if (null? variants) (put "        let _ = t;\n        match *self {}\n" acc) (put "        match self {\n" acc)))
-                 (acc (put-trace-arms variants acc))
-                 (acc (if (null? variants) acc (put "        }\n" acc))))
-            (put "    }\n}\n\n" acc))))
+      (define data-generics (subr kfx (strings strings) string)
+        (lambda (lived params)
+          "A datatype's impl's generics: its lived regions' lifetimes, its type
+           parameters traceable."
+          (let ((generic (onto (map lifetime lived)
+                               (map (lambda ((p string)) (string-append (camel p) ": Copy + 'static + kayak_rt::Trace")) params))))
+            (if (null? generic) "" (string-append "<" (string-append (words-of-sep generic ", ") ">"))))))
+
+      (define data-named (subr kfx (string strings strings) string)
+        (lambda (d lived params)
+          "A datatype's enum as its impls name it, with its lifetimes and
+           parameters."
+          (let ((args (onto (map lifetime lived) (map camel params))))
+            (string-append (camel d) (if (null? args) "" (string-append "<" (string-append (words-of-sep args ", ") ">")))))))
+
+      (define data-binds (subr kfx (i64) string)
+        (lambda (n)
+          "A variant's fields bound, `f0, f1, ...`, a tuple's pattern: `()`
+           for none."
+          (if (i64= n 0)
+              "()"
+              (string-append "(" (string-append (words-of-sep (map (lambda ((i i64)) (string-append "f" (i64->string i))) (counting 0 n)) ", ") ",)")))))
 
       (define-rec
-        (put-trace-arms (subr kfx (sexps chars) chars)
-          (lambda (variants acc)
+        (put-variant-impls (subr kfx (ctx string strings strings sexps chars) chars)
+          (lambda (c d lived params variants acc)
+            "Each variant's `Variant` (C500, kayak-rt's `sum.rs`): its fields'
+             types, a tuple, and its tag, a symbol of its own; numbered by the
+             variants after it, as each impl of the datatype's numbers them."
             (if (null? variants)
                 acc
                 (let* ((v (items (car variants)))
-                       (fields (map (lambda ((i i64)) (string-append "f" (i64->string i))) (counting 0 (size (cdr v)))))
-                       (acc (put (string-append "            Self::" (string-append (camel (sym-name (car v))) (string-append "(" (string-append (words-of-sep fields ", ") ") => {")))) acc))
-                       (acc (put (string-list-append (map (lambda ((f string)) (string-append " kayak_rt::Trace::trace(*" (string-append f ", t);"))) fields)) acc)))
-                  (put-trace-arms (cdr variants) (put " }\n" acc)))))))
+                       (i (i64->string (i64- (size variants) 1)))
+                       (acc (put (string-append "impl" (string-append (data-generics lived params)
+                                  (string-append " kayak_rt::data::Variant<" (string-append i (string-append "> for " (string-append (data-named d lived params) " {\n    type Fields = (")))))) acc))
+                       (acc (put-types c (cdr v) acc))
+                       (acc (put (if (null? (cdr v)) ");\n" ",);\n") acc))
+                       (acc (put (string-append "    #[inline(always)]\n    fn tag() -> &'static kayak_rt::SymObj {\n        kayak_rt::tag_lit!(\"" (string-append (sym-name (car v)) "\")\n    }\n}\n\n")) acc))
+                       ;; What a `tagcase` reads (C500): whether a value is the
+                       ;; variant, and its fields as the variant's.
+                       (vn (variant-name (sym-name (car v))))
+                       (acc (put (string-append "#[allow(non_snake_case)]\nimpl" (string-append (data-generics lived params) (string-append " " (string-append (data-named d lived params) " {\n")))) acc))
+                       (acc (put (string-append "    #[inline(always)]\n    pub fn __is_" (string-append vn (string-append "(w: kayak_rt::data::DataAt<'_, Self>) -> bool {\n        w.is::<" (string-append i ">()\n    }\n")))) acc))
+                       (acc (put (string-append "    #[inline(always)]\n    pub fn __" (string-append vn (string-append "(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<" (string-append i (string-append ">>::Fields {\n        w.fields::<" (string-append i ">()\n    }\n}\n\n")))))) acc)))
+                  (put-variant-impls c d lived params (cdr variants) acc))))))
+
+      (define-rec
+        (put-data-reads (subr kfx (sexps chars) chars)
+          (lambda (variants acc)
+            "`read`'s arms: by the tag, its variant's own symbol (one word read,
+             compared with each variant's), the variant's fields read."
+            (if (null? variants)
+                (put "{\n            kayak_rt::data::no_variant()\n        }\n" acc)
+                (let* ((v (items (car variants)))
+                       (n (size (cdr v)))
+                       (i (i64->string (i64- (size variants) 1))))
+                  (put-data-reads (cdr variants)
+                    (put (string-append "if w.is::<" (string-append i
+                           (string-append ">() {\n            let " (string-append (data-binds n)
+                             (string-append " = w.fields::<" (string-append i (string-append ">();\n            Self::"
+                               (string-append (camel (sym-name (car v))) (string-append "(" (string-append (words-of-sep (map (lambda ((k i64)) (string-append "f" (i64->string k))) (counting 0 n)) ", ") ")\n        } else "))))))))))
+                         acc)))))))
+
+      (define-rec
+        (put-data-objects (subr kfx (sexps string chars) chars)
+          (lambda (variants what acc)
+            "`reach`'s and `object`'s arms: the variant's object, by its tag."
+            (if (null? variants)
+                acc
+                (let ((i (i64->string (i64- (size variants) 1))))
+                  (put-data-objects (cdr variants) what
+                    (put (string-append "        if w.is::<" (string-append i (string-append ">() { " (string-append what (string-append "(w.obj::<" (string-append i ">()); }\n"))))))
+                         acc)))))))
+
+      (define-rec
+        (put-data-of-objects (subr kfx (sexps chars) chars)
+          (lambda (variants acc)
+            "`of_object`'s: the object, if a variant's of the datatype's."
+            (if (null? variants)
+                acc
+                (let ((i (i64->string (i64- (size variants) 1))))
+                  (put-data-of-objects (cdr variants)
+                    (put (string-append "        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, " (string-append i ">(o) { return ::core::option::Option::Some(x); }\n"))
+                         acc)))))))
+
+      (define put-data-impl (subr kfx (string strings strings sexps chars) chars)
+        (lambda (d lived params variants acc)
+          "Its `Datatype` (C500, kayak-rt's `sum.rs`): its value read of its
+           objects, Fixpt's sum of a product; what they reach traced (C479);
+           its object as a union holds it."
+          (let* ((acc (put (string-append "impl" (string-append (data-generics lived params) (string-append " kayak_rt::data::Datatype for " (string-append (data-named d lived params) " {\n")))) acc))
+                 (acc (put "    #[inline]\n    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {\n        " acc))
+                 (acc (if (null? variants) (put "let _ = w;\n        " acc) acc))
+                 (acc (put-data-reads variants acc))
+                 (acc (put "    }\n    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {\n" acc))
+                 (acc (if (null? variants) (put "        let _ = (w, t);\n" acc) acc))
+                 (acc (put-data-objects variants "return t.reach" acc))
+                 (acc (put "    }\n    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {\n" acc))
+                 (acc (put-data-objects variants "return " acc))
+                 (acc (put "        let _ = w;\n        kayak_rt::data::no_variant()\n    }\n" acc))
+                 (acc (put "    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {\n" acc))
+                 (acc (if (null? variants) (put "        let _ = o;\n" acc) acc))
+                 (acc (put-data-of-objects variants acc)))
+            (put "        ::core::option::Option::None\n    }\n}\n\n" acc))))
 
       (define put-generics-list (subr kfx (strings chars) chars)
         (lambda (ps acc)

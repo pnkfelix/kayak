@@ -16,46 +16,145 @@ use super::*;
 // 2^-64 for a pair, it is not guarded against. In FX-26 alone, so that a
 // program using it runs on Fixpt as in kayak; kayak-rt may give the same
 // names in Rust (the second stage), as it gives the prelude's.
+#[derive(Clone, Copy)]
 pub enum Memo {
     Memo(i64, Str),
 }
 
-impl kayak_rt::Visit for Memo {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Memo(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Memo {
+    type Fields = (i64, Str,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("memo")
     }
 }
 
-pub fn memo(f0: i64, f1: Str) -> kayak_rt::Handle<'static, Memo> {
-    kayak_rt::heap_alloc(Memo::Memo(f0, f1))
+#[allow(non_snake_case)]
+impl Memo {
+    #[inline(always)]
+    pub fn __is_Memo(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Memo(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
-pub type Memos = List<kayak_rt::Handle<'static, Memo>>;
+impl kayak_rt::data::Datatype for Memo {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Memo(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn memo(f0: i64, f1: Str) -> kayak_rt::data::DataAt<'static, Memo> {
+    kayak_rt::data::data_heap::<Memo, 0>((f0, f1,))
+}
+
+pub type Memos = List<kayak_rt::data::DataAt<'static, Memo>>;
 
 // Names and a fingerprint each (C384): a persistent AVL tree, by name, as
 // the checker's index of its bindings is (check.kfx's `bix`).
+#[derive(Clone, Copy)]
 pub enum Fmap {
     FmNone(),
-    FmNode(kayak_rt::Handle<'static, Fmap>, Str, i64, i64, kayak_rt::Handle<'static, Fmap>),
+    FmNode(kayak_rt::data::DataAt<'static, Fmap>, Str, i64, i64, kayak_rt::data::DataAt<'static, Fmap>),
 }
 
-impl kayak_rt::Visit for Fmap {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::FmNone() => { }
-            Self::FmNode(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
-        }
+impl kayak_rt::data::Variant<1> for Fmap {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("fm-none")
     }
 }
 
-pub fn fm_none() -> kayak_rt::Handle<'static, Fmap> {
-    kayak_rt::heap_alloc(Fmap::FmNone())
+#[allow(non_snake_case)]
+impl Fmap {
+    #[inline(always)]
+    pub fn __is_FmNone(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __FmNone(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn fm_node(f0: kayak_rt::Handle<'static, Fmap>, f1: Str, f2: i64, f3: i64, f4: kayak_rt::Handle<'static, Fmap>) -> kayak_rt::Handle<'static, Fmap> {
-    kayak_rt::heap_alloc(Fmap::FmNode(f0, f1, f2, f3, f4))
+impl kayak_rt::data::Variant<0> for Fmap {
+    type Fields = (kayak_rt::data::DataAt<'static, Fmap>, Str, i64, i64, kayak_rt::data::DataAt<'static, Fmap>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("fm-node")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Fmap {
+    #[inline(always)]
+    pub fn __is_FmNode(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __FmNode(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Fmap {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let () = w.fields::<1>();
+            Self::FmNone()
+        } else if w.is::<0>() {
+            let (f0, f1, f2, f3, f4,) = w.fields::<0>();
+            Self::FmNode(f0, f1, f2, f3, f4)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn fm_none() -> kayak_rt::data::DataAt<'static, Fmap> {
+    kayak_rt::data::data_heap::<Fmap, 1>(())
+}
+
+pub fn fm_node(f0: kayak_rt::data::DataAt<'static, Fmap>, f1: Str, f2: i64, f3: i64, f4: kayak_rt::data::DataAt<'static, Fmap>) -> kayak_rt::data::DataAt<'static, Fmap> {
+    kayak_rt::data::data_heap::<Fmap, 0>((f0, f1, f2, f3, f4,))
 }
 
 pub mod queries {
@@ -84,12 +183,11 @@ pub mod queries {
                 return acc;
             } else {
                 let tagcase_ = car(ms);
-                match *tagcase_ {
-                    Memo::Memo(h, t) => {
-                        (ms, acc) = (cdr(ms), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(i64_to_string(string_length_i64(t)), kayak_rt::heap_cons(str_lit!("\t"), kayak_rt::heap_cons(i64_to_string(h), acc)))))));
-                        continue;
-                    }
-                }
+                if Memo::__is_Memo(tagcase_) {
+                    let (h, t,) = Memo::__Memo(tagcase_);
+                    (ms, acc) = (cdr(ms), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(t, kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(i64_to_string(string_length_i64(t)), kayak_rt::heap_cons(str_lit!("\t"), kayak_rt::heap_cons(i64_to_string(h), acc)))))));
+                    continue;
+                } else { kayak_rt::data::no_variant() }
             }
         }
     }
@@ -151,19 +249,17 @@ pub mod queries {
     }
 
     #[inline]
-    pub fn fmap_height(t: kayak_rt::Handle<'static, Fmap>) -> i64 {
+    pub fn fmap_height(t: kayak_rt::data::DataAt<'static, Fmap>) -> i64 {
         let tagcase_ = t;
-        match *tagcase_ {
-            Fmap::FmNone() => {
-                0i64
-            }
-            Fmap::FmNode(l, k, x, h, r) => {
-                h
-            }
-        }
+        if Fmap::__is_FmNone(tagcase_) {
+            0i64
+        } else if Fmap::__is_FmNode(tagcase_) {
+            let (l, k, x, h, r,) = Fmap::__FmNode(tagcase_);
+            h
+        } else { kayak_rt::data::no_variant() }
     }
 
-    pub fn fmap_node(l: kayak_rt::Handle<'static, Fmap>, k: Str, x: i64, r: kayak_rt::Handle<'static, Fmap>) -> kayak_rt::Handle<'static, Fmap> {
+    pub fn fmap_node(l: kayak_rt::data::DataAt<'static, Fmap>, k: Str, x: i64, r: kayak_rt::data::DataAt<'static, Fmap>) -> kayak_rt::data::DataAt<'static, Fmap> {
         let (hl, hr) = (fmap_height(l), fmap_height(r));
         fm_node(l, k, x, i64_plus(1i64, if i64_gt(hl, hr) {
             hl
@@ -173,52 +269,44 @@ pub mod queries {
     }
 
     /// As `bix-balanced` (check.kfx).
-    pub fn fmap_balanced(l: kayak_rt::Handle<'static, Fmap>, k: Str, x: i64, r: kayak_rt::Handle<'static, Fmap>) -> kayak_rt::Handle<'static, Fmap> {
+    pub fn fmap_balanced(l: kayak_rt::data::DataAt<'static, Fmap>, k: Str, x: i64, r: kayak_rt::data::DataAt<'static, Fmap>) -> kayak_rt::data::DataAt<'static, Fmap> {
         let (hl, hr) = (fmap_height(l), fmap_height(r));
         if i64_gt(hl, i64_plus(hr, 1i64)) {
             let tagcase_ = l;
-            match *tagcase_ {
-                Fmap::FmNode(ll, lk, lx, lh, lr) => {
-                    if i64_gt_eq(fmap_height(ll), fmap_height(lr)) {
-                        fmap_node(ll, lk, lx, fmap_node(lr, k, x, r))
-                    } else {
-                        let tagcase_ = lr;
-                        match *tagcase_ {
-                            Fmap::FmNode(rl, rk, rx, rh, rr) => {
-                                fmap_node(fmap_node(ll, lk, lx, rl), rk, rx, fmap_node(rr, k, x, r))
-                            }
-                            Fmap::FmNone() => {
-                                fmap_node(l, k, x, r)
-                            }
-                        }
-                    }
+            if Fmap::__is_FmNode(tagcase_) {
+                let (ll, lk, lx, lh, lr,) = Fmap::__FmNode(tagcase_);
+                if i64_gt_eq(fmap_height(ll), fmap_height(lr)) {
+                    fmap_node(ll, lk, lx, fmap_node(lr, k, x, r))
+                } else {
+                    let tagcase_ = lr;
+                    if Fmap::__is_FmNode(tagcase_) {
+                        let (rl, rk, rx, rh, rr,) = Fmap::__FmNode(tagcase_);
+                        fmap_node(fmap_node(ll, lk, lx, rl), rk, rx, fmap_node(rr, k, x, r))
+                    } else if Fmap::__is_FmNone(tagcase_) {
+                        fmap_node(l, k, x, r)
+                    } else { kayak_rt::data::no_variant() }
                 }
-                Fmap::FmNone() => {
-                    fmap_node(l, k, x, r)
-                }
-            }
+            } else if Fmap::__is_FmNone(tagcase_) {
+                fmap_node(l, k, x, r)
+            } else { kayak_rt::data::no_variant() }
         } else if i64_gt(hr, i64_plus(hl, 1i64)) {
             let tagcase_ = r;
-            match *tagcase_ {
-                Fmap::FmNode(rl, rk, rx, rh, rr) => {
-                    if i64_gt_eq(fmap_height(rr), fmap_height(rl)) {
-                        fmap_node(fmap_node(l, k, x, rl), rk, rx, rr)
-                    } else {
-                        let tagcase_ = rl;
-                        match *tagcase_ {
-                            Fmap::FmNode(ml, mk2, mx, mh, mr) => {
-                                fmap_node(fmap_node(l, k, x, ml), mk2, mx, fmap_node(mr, rk, rx, rr))
-                            }
-                            Fmap::FmNone() => {
-                                fmap_node(l, k, x, r)
-                            }
-                        }
-                    }
+            if Fmap::__is_FmNode(tagcase_) {
+                let (rl, rk, rx, rh, rr,) = Fmap::__FmNode(tagcase_);
+                if i64_gt_eq(fmap_height(rr), fmap_height(rl)) {
+                    fmap_node(fmap_node(l, k, x, rl), rk, rx, rr)
+                } else {
+                    let tagcase_ = rl;
+                    if Fmap::__is_FmNode(tagcase_) {
+                        let (ml, mk2, mx, mh, mr,) = Fmap::__FmNode(tagcase_);
+                        fmap_node(fmap_node(l, k, x, ml), mk2, mx, fmap_node(mr, rk, rx, rr))
+                    } else if Fmap::__is_FmNone(tagcase_) {
+                        fmap_node(l, k, x, r)
+                    } else { kayak_rt::data::no_variant() }
                 }
-                Fmap::FmNone() => {
-                    fmap_node(l, k, x, r)
-                }
-            }
+            } else if Fmap::__is_FmNone(tagcase_) {
+                fmap_node(l, k, x, r)
+            } else { kayak_rt::data::no_variant() }
         } else {
             fmap_node(l, k, x, r)
         }
@@ -270,14 +358,13 @@ pub mod queries {
     pub fn memo_find(mut ms: Memos, mut k: i64) -> Memos {
         loop {
             if null_p(ms) {
-                return nil::<kayak_rt::Handle<'static, Memo>>();
+                return nil::<kayak_rt::data::DataAt<'static, Memo>>();
             } else if {
                 let tagcase_ = car(ms);
-                match *tagcase_ {
-                    Memo::Memo(h, t) => {
-                        i64_eq(h, k)
-                    }
-                }
+                if Memo::__is_Memo(tagcase_) {
+                    let (h, t,) = Memo::__Memo(tagcase_);
+                    i64_eq(h, k)
+                } else { kayak_rt::data::no_variant() }
             } {
                 return kayak_rt::heap_cons(car(ms), kayak_rt::nil());
             } else {
@@ -287,44 +374,40 @@ pub mod queries {
         }
     }
 
-    pub fn fmap_put(t: kayak_rt::Handle<'static, Fmap>, n: Str, x: i64) -> kayak_rt::Handle<'static, Fmap> {
+    pub fn fmap_put(t: kayak_rt::data::DataAt<'static, Fmap>, n: Str, x: i64) -> kayak_rt::data::DataAt<'static, Fmap> {
         let tagcase_ = t;
-        match *tagcase_ {
-            Fmap::FmNone() => {
-                fm_node(fm_none(), n, x, 1i64, fm_none())
+        if Fmap::__is_FmNone(tagcase_) {
+            fm_node(fm_none(), n, x, 1i64, fm_none())
+        } else if Fmap::__is_FmNode(tagcase_) {
+            let (l, k, y, h, r,) = Fmap::__FmNode(tagcase_);
+            if string_eq_p(n, k) {
+                fm_node(l, k, x, h, r)
+            } else if string_lt_p(n, k) {
+                fmap_balanced(fmap_put(l, n, x), k, y, r)
+            } else {
+                fmap_balanced(l, k, y, fmap_put(r, n, x))
             }
-            Fmap::FmNode(l, k, y, h, r) => {
-                if string_eq_p(n, k) {
-                    fm_node(l, k, x, h, r)
-                } else if string_lt_p(n, k) {
-                    fmap_balanced(fmap_put(l, n, x), k, y, r)
-                } else {
-                    fmap_balanced(l, k, y, fmap_put(r, n, x))
-                }
-            }
-        }
+        } else { kayak_rt::data::no_variant() }
     }
 
     /// `n`'s fingerprint; 0 for a name with none.
-    pub fn fmap_get(mut t: kayak_rt::Handle<'static, Fmap>, mut n: Str) -> i64 {
+    pub fn fmap_get(mut t: kayak_rt::data::DataAt<'static, Fmap>, mut n: Str) -> i64 {
         loop {
             let tagcase_ = t;
-            match *tagcase_ {
-                Fmap::FmNone() => {
-                    return 0i64;
+            if Fmap::__is_FmNone(tagcase_) {
+                return 0i64;
+            } else if Fmap::__is_FmNode(tagcase_) {
+                let (l, k, x, h, r,) = Fmap::__FmNode(tagcase_);
+                if string_eq_p(n, k) {
+                    return x;
+                } else if string_lt_p(n, k) {
+                    t = l;
+                    continue;
+                } else {
+                    t = r;
+                    continue;
                 }
-                Fmap::FmNode(l, k, x, h, r) => {
-                    if string_eq_p(n, k) {
-                        return x;
-                    } else if string_lt_p(n, k) {
-                        t = l;
-                        continue;
-                    } else {
-                        t = r;
-                        continue;
-                    }
-                }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 
@@ -342,9 +425,9 @@ pub mod queries {
         let n = string_length_i64(s);
         let h = string_length_i64(head);
         if (i64_gt_eq(n, h) && string_eq_p(substring(s, int_lit(0), i64_to_int(h)), head)) {
-            memo_records(s, h, n, nil::<kayak_rt::Handle<'static, Memo>>())
+            memo_records(s, h, n, nil::<kayak_rt::data::DataAt<'static, Memo>>())
         } else {
-            nil::<kayak_rt::Handle<'static, Memo>>()
+            nil::<kayak_rt::data::DataAt<'static, Memo>>()
         }
     }
 }

@@ -16,28 +16,27 @@ pub fn c_rec_fill_x(mut bs: Cbinds, mut c: Code) -> () {
             return ();
         } else {
             let tagcase_ = car(bs);
-            match *tagcase_ {
-                Cbind::Cbind(n, x) => {
-                    c_name_for_x(n, x);
-                    set(cg_lambda_at(), lambda_at(x));
-                    c_exp(x, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, false);
-                    regs_form_twins_x();
-                    r_note_constant_x(n, x);
-                    c_op1(c, str_lit!("global!"), o_global(n));
-                    c_wrote_x(n);
-                    bs = cdr(bs);
-                    continue;
-                }
-            }
+            if Cbind::__is_Cbind(tagcase_) {
+                let (n, x,) = Cbind::__Cbind(tagcase_);
+                c_name_for_x(n, x);
+                set(cg_lambda_at(), lambda_at(x));
+                c_exp(x, nil::<kayak_rt::data::DataAt<'static, Centry>>(), 0i64, c, false);
+                regs_form_twins_x();
+                r_note_constant_x(n, x);
+                c_op1(c, str_lit!("global!"), o_global(n));
+                c_wrote_x(n);
+                bs = cdr(bs);
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
 // A global defined by a form not a lambda's, or by an untyped one: its
 // value made, its words' twins, its global set.
-pub fn c_define_value_x(n: Str, x: kayak_rt::Handle<'static, Cx>, c: Code) -> () {
+pub fn c_define_value_x(n: Str, x: kayak_rt::data::DataAt<'static, Cx>, c: Code) -> () {
     set(cg_form_writes(), nil::<Str>());
-    c_exp(x, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, false);
+    c_exp(x, nil::<kayak_rt::data::DataAt<'static, Centry>>(), 0i64, c, false);
     regs_form_twins_x();
     c_push_global_x(n);
     r_note_constant_x(n, x);
@@ -48,103 +47,97 @@ pub fn c_define_value_x(n: Str, x: kayak_rt::Handle<'static, Cx>, c: Code) -> ()
 // Each form in turn; the last expression's value is left on the stack.
 // After each, the twins of the words it made, as Fixpt's form loop makes
 // them, the globals it writes counted (C248).
-pub fn c_tops(mut ts: List<kayak_rt::Handle<'static, Ctop>>, mut c: Code, mut has_value: bool) -> bool {
+pub fn c_tops(mut ts: List<kayak_rt::data::DataAt<'static, Ctop>>, mut c: Code, mut has_value: bool) -> bool {
     loop {
         if null_p(ts) {
             return has_value;
         } else {
             let tagcase_ = car(ts);
-            match *tagcase_ {
-                Ctop::TDefine(n, typed, x) => {
-                    if has_value {
-                        c_op(c, str_lit!("drop"))
-                    } else {
-                        ()
-                    };
-                    {
-                        let tagcase_ = x;
-                        match *tagcase_ {
-                            Cx::XLambda(ps, body, a) => {
-                                if typed {
-                                    c_push_global_x(n);
-                                    set(c_word_name(), kayak_rt::heap_cons(n, kayak_rt::nil()));
-                                    set(cg_defining(), kayak_rt::heap_cons(n, kayak_rt::nil()));
-                                    set(cg_lambda_at(), a);
-                                    set(cg_form_writes(), kayak_rt::heap_cons(n, kayak_rt::nil()));
-                                    r_note_constant_x(n, x);
-                                    c_lambda(ps, body, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, nil::<Str>(), nil::<kayak_rt::Handle<'static, Cx>>());
-                                    regs_form_twins_x();
-                                    r_note_inline_x(n, ps, body, a);
-                                    c_op1(c, str_lit!("global!"), o_global(n));
-                                    c_wrote_x(n)
-                                } else {
-                                    c_define_value_x(n, x, c)
-                                }
-                            }
-                            _ => {
-                                let y = tagcase_;
-                                c_define_value_x(n, x, c)
-                            }
+            if Ctop::__is_TDefine(tagcase_) {
+                let (n, typed, x,) = Ctop::__TDefine(tagcase_);
+                if has_value {
+                    c_op(c, str_lit!("drop"))
+                } else {
+                    ()
+                };
+                {
+                    let tagcase_ = x;
+                    if Cx::__is_XLambda(tagcase_) {
+                        let (ps, body, a,) = Cx::__XLambda(tagcase_);
+                        if typed {
+                            c_push_global_x(n);
+                            set(c_word_name(), kayak_rt::heap_cons(n, kayak_rt::nil()));
+                            set(cg_defining(), kayak_rt::heap_cons(n, kayak_rt::nil()));
+                            set(cg_lambda_at(), a);
+                            set(cg_form_writes(), kayak_rt::heap_cons(n, kayak_rt::nil()));
+                            r_note_constant_x(n, x);
+                            c_lambda(ps, body, nil::<kayak_rt::data::DataAt<'static, Centry>>(), 0i64, c, nil::<Str>(), nil::<kayak_rt::data::DataAt<'static, Cx>>());
+                            regs_form_twins_x();
+                            r_note_inline_x(n, ps, body, a);
+                            c_op1(c, str_lit!("global!"), o_global(n));
+                            c_wrote_x(n)
+                        } else {
+                            c_define_value_x(n, x, c)
                         }
-                    };
-                    (ts, has_value) = (cdr(ts), false);
-                    continue;
-                }
-                Ctop::TDefineRec(bs) => {
-                    if has_value {
-                        c_op(c, str_lit!("drop"))
                     } else {
-                        ()
-                    };
-                    c_rec_globals_x(bs);
-                    set(cg_form_writes(), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Cbind>| {
-                        let tagcase_ = b;
-                        match *tagcase_ {
-                            Cbind::Cbind(n, x) => {
-                                n
-                            }
-                        }
-                    })), bs));
-                    c_rec_fill_x(bs, c);
-                    (ts, has_value) = (cdr(ts), false);
-                    continue;
-                }
-                Ctop::TExp(x) => {
-                    if has_value {
-                        c_op(c, str_lit!("drop"))
-                    } else {
-                        ()
-                    };
-                    set(cg_form_writes(), nil::<Str>());
-                    c_exp(x, nil::<kayak_rt::Handle<'static, Centry>>(), 0i64, c, false);
-                    regs_form_twins_x();
-                    (ts, has_value) = (cdr(ts), true);
-                    continue;
-                }
-                Ctop::TNone() => {
-                    ts = cdr(ts);
-                    continue;
-                }
-            }
+                        let y = tagcase_;
+                        c_define_value_x(n, x, c)
+                    }
+                };
+                (ts, has_value) = (cdr(ts), false);
+                continue;
+            } else if Ctop::__is_TDefineRec(tagcase_) {
+                let (bs,) = Ctop::__TDefineRec(tagcase_);
+                if has_value {
+                    c_op(c, str_lit!("drop"))
+                } else {
+                    ()
+                };
+                c_rec_globals_x(bs);
+                set(cg_form_writes(), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Cbind>| {
+                    let tagcase_ = b;
+                    if Cbind::__is_Cbind(tagcase_) {
+                        let (n, x,) = Cbind::__Cbind(tagcase_);
+                        n
+                    } else { kayak_rt::data::no_variant() }
+                })), bs));
+                c_rec_fill_x(bs, c);
+                (ts, has_value) = (cdr(ts), false);
+                continue;
+            } else if Ctop::__is_TExp(tagcase_) {
+                let (x,) = Ctop::__TExp(tagcase_);
+                if has_value {
+                    c_op(c, str_lit!("drop"))
+                } else {
+                    ()
+                };
+                set(cg_form_writes(), nil::<Str>());
+                c_exp(x, nil::<kayak_rt::data::DataAt<'static, Centry>>(), 0i64, c, false);
+                regs_form_twins_x();
+                (ts, has_value) = (cdr(ts), true);
+                continue;
+            } else if Ctop::__is_TNone(tagcase_) {
+                ts = cdr(ts);
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
 /// Each form's tops in turn, as `c-tops`, its file the form's file
 /// (C366).
-pub fn c_filed(mut fts: List<kayak_rt::Handle<'static, Ftops>>, mut c: Code, mut has_value: bool) -> bool {
+pub fn c_filed(mut fts: List<kayak_rt::data::DataAt<'static, Ftops>>, mut c: Code, mut has_value: bool) -> bool {
     loop {
         if null_p(fts) {
             return has_value;
         } else {
             let tagcase_ = car(fts);
-            match *tagcase_ {
-                Ftops::Ftops(f, ts) => {
-                    set(cg_form_file(), f);
-                    (fts, has_value) = (cdr(fts), c_tops(ts, c, has_value));
-                    continue;
-                }
-            }
+            if Ftops::__is_Ftops(tagcase_) {
+                let (f, ts,) = Ftops::__Ftops(tagcase_);
+                set(cg_form_file(), f);
+                (fts, has_value) = (cdr(fts), c_tops(ts, c, has_value));
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -152,7 +145,7 @@ pub fn c_filed(mut fts: List<kayak_rt::Handle<'static, Ftops>>, mut c: Code, mut
 // A program's one word, which runs it and leaves the value of its last
 // expression (unit, if it has none), and the words it makes.
 pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
-    let c = the::<Code>(kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Item>>()));
+    let c = the::<Code>(kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Item>>()));
     set(cg_facts(), fs);
     set(cg_source(), if null_p(forms) {
         str_lit!("")
@@ -161,54 +154,51 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     });
     set(cg_form_file(), get(cg_source()));
     set(cg_files(), nil::<Str>());
-    set(cg_qnodes(), nil::<kayak_rt::Handle<'static, Qnode>>());
-    set(cg_convert_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
+    set(cg_qnodes(), nil::<kayak_rt::data::DataAt<'static, Qnode>>());
+    set(cg_convert_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Fact>| {
         let tagcase_ = x;
-        match *tagcase_ {
-            Fact::Fact(f, p, what) => {
-                (has_prefix_p(what, str_lit!("convert ")) || has_prefix_p(what, str_lit!("convention ")))
-            }
-        }
+        if Fact::__is_Fact(tagcase_) {
+            let (f, p, what,) = Fact::__Fact(tagcase_);
+            (has_prefix_p(what, str_lit!("convert ")) || has_prefix_p(what, str_lit!("convention ")))
+        } else { kayak_rt::data::no_variant() }
     })), fs));
     set(cg_fx_calls(), nil::<i64>());
     set(cg_native_calls(), nil::<i64>());
-    set(cg_module_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
+    set(cg_module_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Fact>| {
         let tagcase_ = x;
-        match *tagcase_ {
-            Fact::Fact(f, p, what) => {
-                (has_prefix_p(what, str_lit!("with-spec ")) || has_prefix_p(what, str_lit!("module-arg ")) || has_prefix_p(what, str_lit!("module-had ")) || has_prefix_p(what, str_lit!("module-made ")) || string_eq_p(what, str_lit!("module-value")) || string_eq_p(what, str_lit!("with-value")))
-            }
-        }
+        if Fact::__is_Fact(tagcase_) {
+            let (f, p, what,) = Fact::__Fact(tagcase_);
+            (has_prefix_p(what, str_lit!("with-spec ")) || has_prefix_p(what, str_lit!("module-arg ")) || has_prefix_p(what, str_lit!("module-had ")) || has_prefix_p(what, str_lit!("module-made ")) || string_eq_p(what, str_lit!("module-value")) || string_eq_p(what, str_lit!("with-value")))
+        } else { kayak_rt::data::no_variant() }
     })), fs));
-    set(cg_layouts(), nil::<kayak_rt::Handle<'static, Clayout>>());
-    set(cg_included(), nil::<kayak_rt::Handle<'static, Clayout>>());
-    set(cg_made(), nil::<kayak_rt::Handle<'static, Cmade>>());
-    set(cg_words(), nil::<kayak_rt::Handle<'static, Word>>());
+    set(cg_layouts(), nil::<kayak_rt::data::DataAt<'static, Clayout>>());
+    set(cg_included(), nil::<kayak_rt::data::DataAt<'static, Clayout>>());
+    set(cg_made(), nil::<kayak_rt::data::DataAt<'static, Cmade>>());
+    set(cg_words(), nil::<kayak_rt::data::DataAt<'static, Word>>());
     globals_reset_x();
-    set(cg_call_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Fact>| {
+    set(cg_call_facts(), filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Fact>| {
         let tagcase_ = x;
-        match *tagcase_ {
-            Fact::Fact(f, p, what) => {
-                (string_eq_p(what, str_lit!("call-fx")) || string_eq_p(what, str_lit!("call-native")))
-            }
-        }
+        if Fact::__is_Fact(tagcase_) {
+            let (f, p, what,) = Fact::__Fact(tagcase_);
+            (string_eq_p(what, str_lit!("call-fx")) || string_eq_p(what, str_lit!("call-native")))
+        } else { kayak_rt::data::no_variant() }
     })), fs));
     set(cg_standard_words(), nil::<Str>());
     set(c_this_params(), -1i64);
-    set(cg_twins(), nil::<kayak_rt::Handle<'static, Twin>>());
+    set(cg_twins(), nil::<kayak_rt::data::DataAt<'static, Twin>>());
     set(cg_defining(), nil::<Str>());
     set(cg_lambda_at(), -1i64);
-    set(cg_define_at(), nil::<kayak_rt::Handle<'static, Dpos>>());
-    set(cg_writes(), nil::<kayak_rt::Handle<'static, Gwrites>>());
+    set(cg_define_at(), nil::<kayak_rt::data::DataAt<'static, Dpos>>());
+    set(cg_writes(), nil::<kayak_rt::data::DataAt<'static, Gwrites>>());
     set(cg_form_writes(), nil::<Str>());
-    set(cg_reg_codes(), nil::<kayak_rt::Handle<'static, Rnamed>>());
-    set(cg_inlines(), nil::<kayak_rt::Handle<'static, Rinline>>());
-    set(cg_unrolls(), nil::<kayak_rt::Handle<'static, Rinline>>());
-    set(cg_specials(), nil::<kayak_rt::Handle<'static, Rspecial>>());
-    set(cg_copies(), nil::<kayak_rt::Handle<'static, Rcopy>>());
-    set(cg_consts(), nil::<kayak_rt::Handle<'static, Rgconst>>());
-    set(cg_form_lambdas(), nil::<kayak_rt::Handle<'static, Lword>>());
-    set(cg_standard_twins(), nil::<kayak_rt::Handle<'static, Stwin>>());
+    set(cg_reg_codes(), nil::<kayak_rt::data::DataAt<'static, Rnamed>>());
+    set(cg_inlines(), nil::<kayak_rt::data::DataAt<'static, Rinline>>());
+    set(cg_unrolls(), nil::<kayak_rt::data::DataAt<'static, Rinline>>());
+    set(cg_specials(), nil::<kayak_rt::data::DataAt<'static, Rspecial>>());
+    set(cg_copies(), nil::<kayak_rt::data::DataAt<'static, Rcopy>>());
+    set(cg_consts(), nil::<kayak_rt::data::DataAt<'static, Rgconst>>());
+    set(cg_form_lambdas(), nil::<kayak_rt::data::DataAt<'static, Lword>>());
+    set(cg_standard_twins(), nil::<kayak_rt::data::DataAt<'static, Stwin>>());
     if c_filed(parse_tops_filed(forms), c, false) {
         ()
     } else {
@@ -230,17 +220,16 @@ pub fn cells_of(mut xs: Citems, mut n: i64) -> i64 {
     }
 }
 
-pub fn word_named(mut ws: List<kayak_rt::Handle<'static, Word>>, mut n: Str) -> List<kayak_rt::Handle<'static, Word>> {
+pub fn word_named(mut ws: List<kayak_rt::data::DataAt<'static, Word>>, mut n: Str) -> List<kayak_rt::data::DataAt<'static, Word>> {
     loop {
         if null_p(ws) {
-            return nil::<kayak_rt::Handle<'static, Word>>();
+            return nil::<kayak_rt::data::DataAt<'static, Word>>();
         } else if {
             let tagcase_ = car(ws);
-            match *tagcase_ {
-                Word::Word(m, xs) => {
-                    string_eq_p(m, n)
-                }
-            }
+            if Word::__is_Word(tagcase_) {
+                let (m, xs,) = Word::__Word(tagcase_);
+                string_eq_p(m, n)
+            } else { kayak_rt::data::no_variant() }
         } {
             return kayak_rt::heap_cons(car(ws), kayak_rt::nil());
         } else {
@@ -255,35 +244,72 @@ pub fn word_named(mut ws: List<kayak_rt::Handle<'static, Word>>, mut n: Str) -> 
 // is first written and named `#N#` after, numbered as written, across the
 // listing. First each node's reaches counted, in the order written, its
 // parts only at its first; then the marks replaced.
+#[derive(Clone, Copy)]
 pub enum Qseen {
     Qseen(i64, i64),
 }
 
-impl kayak_rt::Visit for Qseen {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Qseen(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Qseen {
+    type Fields = (i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("qseen")
     }
 }
 
-pub fn qseen(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Qseen> {
-    kayak_rt::heap_alloc(Qseen::Qseen(f0, f1))
+#[allow(non_snake_case)]
+impl Qseen {
+    #[inline(always)]
+    pub fn __is_Qseen(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Qseen(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Qseen {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Qseen(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn qseen(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, Qseen> {
+    kayak_rt::data::data_heap::<Qseen, 0>((f0, f1,))
 }
 
 #[inline]
-pub fn cg_qreached() -> Ref<List<kayak_rt::Handle<'static, Qseen>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Qseen>>>);
+pub fn cg_qreached() -> Ref<List<kayak_rt::data::DataAt<'static, Qseen>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Qseen>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Qseen>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Qseen>>())
     })
 }
 
 #[inline]
-pub fn cg_qlabels() -> Ref<List<kayak_rt::Handle<'static, Qseen>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Qseen>>>);
+pub fn cg_qlabels() -> Ref<List<kayak_rt::data::DataAt<'static, Qseen>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Qseen>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Qseen>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Qseen>>())
     })
 }
 
@@ -295,95 +321,89 @@ pub fn cg_qnext() -> Ref<i64> {
     })
 }
 
-pub fn qseen_of(mut ss: List<kayak_rt::Handle<'static, Qseen>>, mut n: i64) -> i64 {
+pub fn qseen_of(mut ss: List<kayak_rt::data::DataAt<'static, Qseen>>, mut n: i64) -> i64 {
     loop {
         if null_p(ss) {
             return 0i64;
         } else {
             let tagcase_ = car(ss);
-            match *tagcase_ {
-                Qseen::Qseen(k, v) => {
-                    if i64_eq(k, n) {
-                        return v;
-                    } else {
-                        ss = cdr(ss);
-                        continue;
-                    }
+            if Qseen::__is_Qseen(tagcase_) {
+                let (k, v,) = Qseen::__Qseen(tagcase_);
+                if i64_eq(k, n) {
+                    return v;
+                } else {
+                    ss = cdr(ss);
+                    continue;
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
-pub fn qnode_parts(mut ns: List<kayak_rt::Handle<'static, Qnode>>, mut n: i64) -> List<kayak_rt::Handle<'static, Lit>> {
+pub fn qnode_parts(mut ns: List<kayak_rt::data::DataAt<'static, Qnode>>, mut n: i64) -> List<kayak_rt::data::DataAt<'static, Lit>> {
     loop {
         if null_p(ns) {
-            return nil::<kayak_rt::Handle<'static, Lit>>();
+            return nil::<kayak_rt::data::DataAt<'static, Lit>>();
         } else {
             let tagcase_ = car(ns);
-            match *tagcase_ {
-                Qnode::Qnode(k, a, d) => {
-                    if i64_eq(k, n) {
-                        return kayak_rt::heap_cons(a, kayak_rt::heap_cons(d, kayak_rt::nil()));
-                    } else {
-                        ns = cdr(ns);
-                        continue;
-                    }
+            if Qnode::__is_Qnode(tagcase_) {
+                let (k, a, d,) = Qnode::__Qnode(tagcase_);
+                if i64_eq(k, n) {
+                    return kayak_rt::heap_cons(a, kayak_rt::heap_cons(d, kayak_rt::nil()));
+                } else {
+                    ns = cdr(ns);
+                    continue;
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
-pub fn q_reached_x(mut l: kayak_rt::Handle<'static, Lit>) -> () {
+pub fn q_reached_x(mut l: kayak_rt::data::DataAt<'static, Lit>) -> () {
     loop {
         let tagcase_ = l;
-        match *tagcase_ {
-            Lit::LQuoted(n) => {
-                let c = qseen_of(get(cg_qreached()), n);
-                set(cg_qreached(), kayak_rt::heap_cons(qseen(n, i64_plus(c, 1i64)), get(cg_qreached())));
-                if i64_eq(c, 0i64) {
-                    let ps = qnode_parts(get(cg_qnodes()), n);
-                    q_reached_x(car(ps));
-                    l = car(cdr(ps));
-                    continue;
-                } else {
-                    return ();
-                }
-            }
-            _ => {
-                let y = tagcase_;
+        if Lit::__is_LQuoted(tagcase_) {
+            let (n,) = Lit::__LQuoted(tagcase_);
+            let c = qseen_of(get(cg_qreached()), n);
+            set(cg_qreached(), kayak_rt::heap_cons(qseen(n, i64_plus(c, 1i64)), get(cg_qreached())));
+            if i64_eq(c, 0i64) {
+                let ps = qnode_parts(get(cg_qnodes()), n);
+                q_reached_x(car(ps));
+                l = car(cdr(ps));
+                continue;
+            } else {
                 return ();
             }
+        } else {
+            let y = tagcase_;
+            return ();
         }
     }
 }
 
-pub fn q_written_x(l: kayak_rt::Handle<'static, Lit>) -> Str {
+pub fn q_written_x(l: kayak_rt::data::DataAt<'static, Lit>) -> Str {
     let tagcase_ = l;
-    match *tagcase_ {
-        Lit::LQuoted(n) => {
-            let (ps, k) = (qnode_parts(get(cg_qnodes()), n), qseen_of(get(cg_qlabels()), n));
-            if i64_gt(k, 0i64) {
-                string_append(str_lit!("#"), string_append(i64_to_string(i64_minus(k, 1i64)), str_lit!("#")))
-            } else if i64_gt(qseen_of(get(cg_qreached()), n), 1i64) {
-                let m = get(cg_qnext());
-                set(cg_qnext(), i64_plus(m, 1i64));
-                set(cg_qlabels(), kayak_rt::heap_cons(qseen(n, i64_plus(m, 1i64)), get(cg_qlabels())));
-                string_append(str_lit!("#"), string_append(i64_to_string(m), string_append(str_lit!("="), q_pair_text(ps))))
-            } else {
-                q_pair_text(ps)
-            }
+    if Lit::__is_LQuoted(tagcase_) {
+        let (n,) = Lit::__LQuoted(tagcase_);
+        let (ps, k) = (qnode_parts(get(cg_qnodes()), n), qseen_of(get(cg_qlabels()), n));
+        if i64_gt(k, 0i64) {
+            string_append(str_lit!("#"), string_append(i64_to_string(i64_minus(k, 1i64)), str_lit!("#")))
+        } else if i64_gt(qseen_of(get(cg_qreached()), n), 1i64) {
+            let m = get(cg_qnext());
+            set(cg_qnext(), i64_plus(m, 1i64));
+            set(cg_qlabels(), kayak_rt::heap_cons(qseen(n, i64_plus(m, 1i64)), get(cg_qlabels())));
+            string_append(str_lit!("#"), string_append(i64_to_string(m), string_append(str_lit!("="), q_pair_text(ps))))
+        } else {
+            q_pair_text(ps)
         }
-        _ => {
-            let y = tagcase_;
-            lit_text(l)
-        }
+    } else {
+        let y = tagcase_;
+        lit_text(l)
     }
 }
 
 #[inline]
-pub fn q_pair_text(ps: List<kayak_rt::Handle<'static, Lit>>) -> Str {
+pub fn q_pair_text(ps: List<kayak_rt::data::DataAt<'static, Lit>>) -> Str {
     string_append(str_lit!("("), string_append(q_written_x(car(ps)), string_append(str_lit!(" . "), string_append(q_written_x(car(cdr(ps))), str_lit!(")")))))
 }
 

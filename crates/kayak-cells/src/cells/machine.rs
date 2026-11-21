@@ -2302,31 +2302,93 @@ pub fn hand_run_x(mut m: HandCode, mut base: i64) -> () {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum Ran {
     RanAnswer(i64),
     RanFailed(Str),
 }
 
-impl kayak_rt::Visit for Ran {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::RanAnswer(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::RanFailed(f0) => { kayak_rt::Trace::trace(*f0, t); }
-        }
+impl kayak_rt::data::Variant<1> for Ran {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ran-answer")
     }
 }
 
-pub fn ran_answer(f0: i64) -> kayak_rt::Handle<'static, Ran> {
-    kayak_rt::heap_alloc(Ran::RanAnswer(f0))
+#[allow(non_snake_case)]
+impl Ran {
+    #[inline(always)]
+    pub fn __is_RanAnswer(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __RanAnswer(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn ran_failed(f0: Str) -> kayak_rt::Handle<'static, Ran> {
-    kayak_rt::heap_alloc(Ran::RanFailed(f0))
+impl kayak_rt::data::Variant<0> for Ran {
+    type Fields = (Str,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ran-failed")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Ran {
+    #[inline(always)]
+    pub fn __is_RanFailed(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __RanFailed(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Ran {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::RanAnswer(f0)
+        } else if w.is::<0>() {
+            let (f0,) = w.fields::<0>();
+            Self::RanFailed(f0)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn ran_answer(f0: i64) -> kayak_rt::data::DataAt<'static, Ran> {
+    kayak_rt::data::data_heap::<Ran, 1>((f0,))
+}
+
+pub fn ran_failed(f0: Str) -> kayak_rt::data::DataAt<'static, Ran> {
+    kayak_rt::data::data_heap::<Ran, 0>((f0,))
 }
 
 /// Word `w` run with an empty stack, at most `steps` instructions (Fixpt's
 /// `run_word`): what it leaves on top, or why it failed.
-pub fn run_word_x(w: i64, steps: i64) -> kayak_rt::Handle<'static, Ran> {
+pub fn run_word_x(w: i64, steps: i64) -> kayak_rt::data::DataAt<'static, Ran> {
     set(dsp(), 0i64);
     set(rsp(), 0i64);
     set(cur(), v_false());

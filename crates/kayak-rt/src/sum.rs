@@ -451,8 +451,369 @@ impl Show for Sum {
     }
 }
 
+/// FX-26's datatypes (C500): each value Fixpt's sum of a product. A
+/// module of its own, so that a program's glob of kayak-rt's names meets
+/// none of a program's own (a datatype `variant`'s enum, `Variant`).
+pub mod data {
+    use super::{HeapWord, KIND_SUM, SymObj, layout};
+
+    /// A datatype's value of a tag none of its variants have: its word
+    /// not of its type, which no checked program makes.
+    #[cold]
+    pub fn no_variant() -> ! {
+        crate::fail("a datatype's value of a tag not its own")
+    }
+
+    #[cold]
+    fn not_its_variant() -> ! {
+        crate::fail("a datatype's value read as a variant not its own")
+    }
+
+    /// Fixpt's product's kind (37): a datatype's value's fields.
+    const KIND_PRODUCT: u8 = 37;
+
+    /// A datatype's variant `I` (C500): the types of its fields, a tuple, and
+    /// its tag, a symbol of its own (`tag_lit!` in the one `tag` of the
+    /// impl), so that an object made of a variant is read again only as that
+    /// variant: what makes [`DataAt::fields`] sound is that the tag it finds
+    /// is the very symbol the variant's impl made it with, and so the fields
+    /// are of the types they were made of. kfx writes one impl per variant.
+    pub trait Variant<const I: usize>: Sized {
+        type Fields: crate::Captures;
+        fn tag() -> &'static SymObj;
+    }
+
+    /// A datatype (C500): its enum, the value taken apart (what a `tagcase`
+    /// matches); in the heap, the objects [`DataAt`] points to. kfx writes it,
+    /// each method by the variants' tags.
+    pub trait Datatype: Sized + Copy {
+        /// The value a word is, its variant's fields read.
+        fn read(w: DataAt<'_, Self>) -> Self;
+        /// What its variant's object reaches, the object reached.
+        fn reach<'a>(w: DataAt<'a, Self>, t: &mut crate::Tracer<'a>)
+        where
+            Self: 'a;
+        /// Its variant's object, as a union holds it.
+        fn object(w: DataAt<'static, Self>) -> &'static dyn crate::value::Obj
+        where
+            Self: 'static;
+        /// The value whose variant's object `o` is, if it is one of this
+        /// datatype's.
+        fn of_object(o: &'static dyn crate::value::Obj) -> Option<DataAt<'static, Self>>
+        where
+            Self: 'static;
+    }
+
+    /// A datatype's value's objects (C500), as Fixpt's `define-datatype`
+    /// makes one (`expand_datatype`: a sum of products): Fixpt's product
+    /// (kind 37, frozen), its variant's fields' words; then Fixpt's sum (kind
+    /// 36, frozen), its tag and a word to the product. Made as one, so one
+    /// allocation of kayak's makes the two.
+    #[repr(C)]
+    pub struct DataObj<E: crate::Captures> {
+        /// Never zero (its tag `110`): so that an arena's `OnceCell` of
+        /// one needs no word of its own to say whether it is filled.
+        pub(super) p_header: std::num::NonZeroU64,
+        words: E::Words,
+        p_trailer: u64,
+        pub(super) s_header: u64,
+        tag: HeapWord,
+        /// The product's word, its suffix's start (the sum's header): written
+        /// once the object is where it stays.
+        pub(super) payload: std::cell::Cell<HeapWord>,
+        s_trailer: u64,
+    }
+
+    // SAFETY: its one cell is written once, as it is made, before any word to
+    // it is; then the whole object is frozen.
+    unsafe impl<E: crate::Captures> Sync for DataObj<E> where E::Words: Sync {}
+
+    impl<E: crate::Captures> DataObj<E> {
+        /// The product's fields as Fixpt counts them, its trailer one.
+        const P_TO_TRAILER: usize = std::mem::offset_of!(DataObj<E>, p_trailer) / 8;
+        /// From the object's start to the sum's suffix, where its word points.
+        const TO_END: usize = std::mem::size_of::<DataObj<E>>();
+
+        fn new(tag: &'static SymObj, e: E) -> Self {
+            DataObj {
+                p_header: match std::num::NonZeroU64::new(layout::header(
+                    KIND_PRODUCT,
+                    Self::P_TO_TRAILER,
+                    0,
+                    true,
+                    true,
+                )) {
+                    Some(h) => h,
+                    None => unreachable!(),
+                },
+                words: e.words(),
+                p_trailer: layout::trailer(Self::P_TO_TRAILER),
+                s_header: layout::header(KIND_SUM, 3, 0, true, true),
+                tag: tag.word(),
+                payload: std::cell::Cell::new(HeapWord::UNIT),
+                s_trailer: layout::trailer(3),
+            }
+        }
+
+        /// The word to it, its payload written, once it is where it stays.
+        fn placed<'r, D>(&'r self) -> DataAt<'r, D> {
+            let start = std::ptr::from_ref(self).cast::<u8>();
+            let at = |n: usize| start.wrapping_add(n).cast::<u64>();
+            self.payload
+                .set(HeapWord::object_at(at(std::mem::offset_of!(
+                    DataObj<E>,
+                    s_header
+                ))));
+            DataAt(
+                HeapWord::object_at(at(Self::TO_END)),
+                std::marker::PhantomData,
+            )
+        }
+
+        /// Its fields.
+        #[inline(always)]
+        pub fn fields(&self) -> E {
+            E::of_words(self.words)
+        }
+    }
+
+    /// A datatype's variant's object: its fields traced.
+    impl<E: crate::Captures> crate::Visit for DataObj<E> {
+        fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+            crate::Trace::trace(self.fields(), t);
+        }
+    }
+
+    /// A datatype's value (C500): one Fixpt word, to its sum's suffix,
+    /// tagged `100`; in a `letrena`'s place `DataAt<'r, D>`, in the heap
+    /// `DataAt<'static, D>`. Its word made only of its objects (`placed`).
+    #[repr(transparent)]
+    pub struct DataAt<'r, D>(HeapWord, std::marker::PhantomData<&'r D>);
+
+    impl<D> Clone for DataAt<'_, D> {
+        #[inline(always)]
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    impl<D> Copy for DataAt<'_, D> {}
+
+    impl<'r, D> DataAt<'r, D> {
+        /// The sum's `i`th word back from its suffix.
+        #[inline(always)]
+        pub(super) fn back(self, i: usize) -> u64 {
+            // SAFETY: its word is made only by `placed`, one past the end of a
+            // datatype's object that lives for `'r`, whose last words are its
+            // sum's: its header, tag, payload and trailer.
+            unsafe { *self.0.object_ptr().sub(i) }
+        }
+
+        /// Its tag's word's bits.
+        #[inline(always)]
+        fn tag_word(self) -> usize {
+            self.back(3) as usize
+        }
+
+        /// Its tag's discriminant: its symbol's hash.
+        #[inline]
+        pub fn tag_hash(self) -> u64 {
+            // SAFETY: as `back`; its tag a symbol's word (`DataObj::new`), of
+            // a `static`, its hash `HASH_BACK` words before its suffix.
+            let h = unsafe {
+                let tag = *self.0.object_ptr().sub(3).cast::<HeapWord>();
+                *tag.object_ptr().sub(SymObj::HASH_BACK)
+            };
+            ((h as i64) >> 3) as u64
+        }
+
+        /// Whether it is of variant `I`: its tag that variant's symbol.
+        #[inline(always)]
+        pub fn is<const I: usize>(self) -> bool
+        where
+            D: Variant<I>,
+        {
+            self.tag_word() == <D as Variant<I>>::tag().word().raw()
+        }
+
+        /// Its object, as variant `I`'s: that variant's, or a failure.
+        #[inline(always)]
+        pub fn obj<const I: usize>(self) -> &'r DataObj<<D as Variant<I>>::Fields>
+        where
+            D: Variant<I>,
+        {
+            if !self.is::<I>() {
+                not_its_variant();
+            }
+            let end = self.0.object_ptr().cast::<u8>();
+            // SAFETY: its tag is variant `I`'s own symbol, made only into an
+            // object of `I`'s fields (`DataObj::new`, by `data_heap`, ...);
+            // its word one past that object's end, of its provenance.
+            unsafe {
+                &*end
+                    .sub(DataObj::<<D as Variant<I>>::Fields>::TO_END)
+                    .cast::<DataObj<<D as Variant<I>>::Fields>>()
+            }
+        }
+
+        /// Its fields, as variant `I`'s.
+        #[inline(always)]
+        pub fn fields<const I: usize>(self) -> <D as Variant<I>>::Fields
+        where
+            D: Variant<I>,
+        {
+            self.obj::<I>().fields()
+        }
+
+        /// Its word.
+        #[inline(always)]
+        pub fn word(self) -> HeapWord {
+            self.0
+        }
+
+        /// Whether it is the same value as `other` (`eq?`).
+        #[inline(always)]
+        pub fn same(self, other: Self) -> bool {
+            self.0.raw() == other.0.raw()
+        }
+    }
+
+    impl<D: Datatype> DataAt<'_, D> {
+        /// The value, taken apart.
+        #[inline]
+        pub fn get(self) -> D {
+            D::read(self)
+        }
+    }
+
+    /// A datatype's value: its object reached; held as its word.
+    impl<'r, D: Datatype + 'r> crate::Trace for DataAt<'r, D> {
+        type Stored = HeapWord;
+        #[inline(always)]
+        fn store(self) -> HeapWord {
+            self.0
+        }
+        #[inline(always)]
+        fn load(w: HeapWord) -> Self {
+            DataAt(w, std::marker::PhantomData)
+        }
+        #[inline]
+        fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+        where
+            Self: 'a,
+        {
+            D::reach(self, t);
+        }
+    }
+
+    /// A datatype's value as a union's member: its variant's object.
+    impl<D: Datatype + 'static> crate::value::Member for DataAt<'static, D> {
+        #[inline]
+        fn object(self) -> &'static dyn crate::value::Obj {
+            D::object(self)
+        }
+        #[inline]
+        fn of_object(o: &'static dyn crate::value::Obj) -> Option<Self> {
+            D::of_object(o)
+        }
+    }
+
+    /// `o` as variant `I`'s object of `D`, if it is one: its type that
+    /// variant's, its tag that variant's symbol (two datatypes' variants may
+    /// have one type of fields).
+    pub fn data_of_object<D: Variant<I> + 'static, const I: usize>(
+        o: &'static dyn crate::value::Obj,
+    ) -> Option<DataAt<'static, D>>
+    where
+        <D as Variant<I>>::Fields: 'static,
+    {
+        let x = (o as &dyn std::any::Any).downcast_ref::<DataObj<<D as Variant<I>>::Fields>>()?;
+        let w = DataAt::<D>(
+            HeapWord::object_at(
+                std::ptr::from_ref(x)
+                    .cast::<u8>()
+                    .wrapping_add(DataObj::<<D as Variant<I>>::Fields>::TO_END)
+                    .cast(),
+            ),
+            std::marker::PhantomData,
+        );
+        w.is::<I>().then_some(w)
+    }
+
+    /// Variant `I` of `D`, of `fields`, in the heap.
+    #[inline]
+    pub fn data_heap<D: Variant<I> + 'static, const I: usize>(
+        fields: <D as Variant<I>>::Fields,
+    ) -> DataAt<'static, D>
+    where
+        <D as Variant<I>>::Fields: 'static,
+    {
+        crate::heap_alloc(DataObj::new(D::tag(), fields))
+            .to_ref()
+            .placed()
+    }
+
+    /// The same, at a region's lifetime, kept for the run (`alloc`'s way).
+    #[inline]
+    pub fn data_alloc<'r, D: Variant<I> + 'r, const I: usize>(
+        fields: <D as Variant<I>>::Fields,
+    ) -> DataAt<'r, D>
+    where
+        <D as Variant<I>>::Fields: 'r,
+    {
+        crate::alloc(DataObj::new(D::tag(), fields))
+            .to_ref()
+            .placed()
+    }
+
+    /// What a place keeps a datatype's value in (C500): its variant's
+    /// object, boxed, any variant's of any datatype; freed with the
+    /// place. Its type no lifetime's, so that a place's arenas need not
+    /// outlive the place (a box of a lifetime's object might, Rust's drop
+    /// check supposes, read it as it is freed; this one's never does).
+    pub struct DataBox(Box<dyn crate::Visit + 'static>);
+
+    /// A place's datatype's value: its object visited.
+    impl crate::Visit for DataBox {
+        fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+            self.0.visit(t);
+        }
+        fn visit_size(&self) -> usize {
+            self.0.visit_size()
+        }
+        fn visit_name(&self) -> &'static str {
+            self.0.visit_name()
+        }
+    }
+
+    /// Variant `I` of `D`, of `fields`, in the place `p`.
+    pub fn data_in<'r, D: Variant<I> + 'r, const I: usize, P: crate::Holds<DataBox>>(
+        p: &'r P,
+        fields: <D as Variant<I>>::Fields,
+    ) -> DataAt<'r, D>
+    where
+        <D as Variant<I>>::Fields: 'r,
+    {
+        type Obj<D, const I: usize> = DataObj<<D as Variant<I>>::Fields>;
+        const { assert!(!std::mem::needs_drop::<Obj<D, I>>()) };
+        let b = Box::new(DataObj::new(D::tag(), fields));
+        let at: *const Obj<D, I> = &*b;
+        let b: Box<dyn crate::Visit + 'r> = b;
+        // SAFETY: only its lifetime's bound changed, not its layout. The
+        // box is freed with the place's arena, borrowed for `'r`, and its
+        // object visited only while the arena is (a trace of `'a`, within
+        // `'r`); freeing it runs no code (asserted), so reads nothing.
+        let b: Box<dyn crate::Visit + 'static> = unsafe { std::mem::transmute(b) };
+        p.arena().alloc(DataBox(b));
+        // SAFETY: the box's contents never move, and live while the arena
+        // is borrowed, `'r`.
+        unsafe { &*at }.placed()
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::data::*;
     use super::*;
 
     /// Fixpt's hash of a symbol (`symbol_hash_of`), worked by hand: FNV-1a
@@ -514,6 +875,116 @@ mod tests {
         // In a pair, its word.
         let xs = crate::heap_cons(s, crate::nil());
         assert_eq!(sum_name(crate::car(xs)), "circle");
+    }
+
+    /// A datatype as kfx writes one (C500): `(define-datatype tree
+    /// (leaf) (node tree i64 tree))`.
+    #[derive(Clone, Copy)]
+    enum Tree {
+        Leaf(),
+        Node(DataAt<'static, Tree>, i64, DataAt<'static, Tree>),
+    }
+
+    impl Variant<0> for Tree {
+        type Fields = ();
+        fn tag() -> &'static SymObj {
+            crate::tag_lit!("leaf")
+        }
+    }
+
+    impl Variant<1> for Tree {
+        type Fields = (DataAt<'static, Tree>, i64, DataAt<'static, Tree>);
+        fn tag() -> &'static SymObj {
+            crate::tag_lit!("node")
+        }
+    }
+
+    impl Datatype for Tree {
+        fn read(w: DataAt<'_, Self>) -> Self {
+            let h = w.tag_hash();
+            if h == const { tag_hash("leaf") } {
+                let () = w.fields::<0>();
+                Self::Leaf()
+            } else if h == const { tag_hash("node") } {
+                let (f0, f1, f2) = w.fields::<1>();
+                Self::Node(f0, f1, f2)
+            } else {
+                crate::fail("a datatype's value of a tag not its own")
+            }
+        }
+        fn reach<'a>(w: DataAt<'a, Self>, t: &mut crate::Tracer<'a>)
+        where
+            Self: 'a,
+        {
+            if w.is::<0>() {
+                t.reach(w.obj::<0>())
+            } else {
+                t.reach(w.obj::<1>())
+            }
+        }
+        fn object(w: DataAt<'static, Self>) -> &'static dyn crate::value::Obj {
+            if w.is::<0>() {
+                w.obj::<0>()
+            } else {
+                w.obj::<1>()
+            }
+        }
+        fn of_object(o: &'static dyn crate::value::Obj) -> Option<DataAt<'static, Self>> {
+            data_of_object::<Self, 0>(o).or_else(|| data_of_object::<Self, 1>(o))
+        }
+    }
+
+    fn sum_tree(t: DataAt<'static, Tree>) -> i64 {
+        match t.get() {
+            Tree::Leaf() => 0,
+            Tree::Node(l, n, r) => sum_tree(l) + n + sum_tree(r),
+        }
+    }
+
+    /// Fixpt's datatype value (C500): a word to Fixpt's sum (kind 36, its
+    /// tag, its payload a word to Fixpt's product, kind 37, of its fields).
+    #[test]
+    fn a_datatype_value_fixpt_sum_of_product() {
+        let leaf = || data_heap::<Tree, 0>(());
+        let t = data_heap::<Tree, 1>((leaf(), 5, data_heap::<Tree, 1>((leaf(), 7, leaf()))));
+        assert_eq!(std::mem::size_of::<DataAt<'static, Tree>>(), 8);
+        assert_eq!(sum_tree(t), 12);
+        assert_eq!(t.word().raw() & 7, 0b100);
+        let sh = t.back(4);
+        assert_eq!(((sh >> 3) & 0xff, (sh >> 14) & 0x3ffff), (36, 3));
+        assert_eq!(t.tag_hash(), tag_hash("node"));
+        // Its payload, a word to the product, whose header is kind 37,
+        // three fields and its trailer.
+        let o = t.obj::<1>();
+        assert_eq!(o.payload.get().raw() & 7, 0b100);
+        assert_eq!(
+            o.payload.get().raw(),
+            std::ptr::from_ref(&o.s_header) as usize | 4
+        );
+        let ph = o.p_header.get();
+        assert_eq!(((ph >> 3) & 0xff, (ph >> 14) & 0x3ffff), (37, 4));
+        // An arena's cell of one no larger than it (its header a niche).
+        assert_eq!(
+            std::mem::size_of::<std::cell::OnceCell<DataObj<((), i64)>>>(),
+            std::mem::size_of::<DataObj<((), i64)>>()
+        );
+        assert!(!t.same(leaf()));
+        // In a union, its object; found again.
+        let v = crate::value::other(t, crate::value::Shape::Product);
+        assert_eq!(
+            sum_tree(crate::value::unbox_other::<DataAt<'static, Tree>>(v)),
+            12
+        );
+        // Traced: three nodes, four leaves.
+        let mut tr = crate::traced(t);
+        assert!(tr.take_opaque().is_empty());
+    }
+
+    #[test]
+    #[should_panic(expected = "not its own")]
+    fn a_datatype_value_read_as_another_variant_fails() {
+        let t = data_heap::<Tree, 0>(());
+        let _ = t.fields::<1>();
     }
 
     #[test]

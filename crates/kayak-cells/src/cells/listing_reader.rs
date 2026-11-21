@@ -181,40 +181,114 @@ pub fn number_of(cs: Chars) -> i64 {
 
 // A word's block: its name, its cells, its entry, its instructions' lines
 // (each where it starts, and the rest of it).
+#[derive(Clone, Copy)]
 pub enum Iline {
     Iline(i64, Chars),
 }
 
-impl kayak_rt::Visit for Iline {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Iline(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Iline {
+    type Fields = (i64, Chars,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("iline")
     }
 }
 
-pub fn iline(f0: i64, f1: Chars) -> kayak_rt::Handle<'static, Iline> {
-    kayak_rt::heap_alloc(Iline::Iline(f0, f1))
+#[allow(non_snake_case)]
+impl Iline {
+    #[inline(always)]
+    pub fn __is_Iline(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Iline(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
+impl kayak_rt::data::Datatype for Iline {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Iline(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn iline(f0: i64, f1: Chars) -> kayak_rt::data::DataAt<'static, Iline> {
+    kayak_rt::data::data_heap::<Iline, 0>((f0, f1,))
+}
+
+#[derive(Clone, Copy)]
 pub enum Block {
-    Block(Str, i64, i64, List<kayak_rt::Handle<'static, Iline>>),
+    Block(Str, i64, i64, List<kayak_rt::data::DataAt<'static, Iline>>),
 }
 
-impl kayak_rt::Visit for Block {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Block(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-        }
+impl kayak_rt::data::Variant<0> for Block {
+    type Fields = (Str, i64, i64, List<kayak_rt::data::DataAt<'static, Iline>>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("block")
     }
 }
 
-pub fn block(f0: Str, f1: i64, f2: i64, f3: List<kayak_rt::Handle<'static, Iline>>) -> kayak_rt::Handle<'static, Block> {
-    kayak_rt::heap_alloc(Block::Block(f0, f1, f2, f3))
+#[allow(non_snake_case)]
+impl Block {
+    #[inline(always)]
+    pub fn __is_Block(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Block(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Block {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1, f2, f3,) = w.fields::<0>();
+            Self::Block(f0, f1, f2, f3)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn block(f0: Str, f1: i64, f2: i64, f3: List<kayak_rt::data::DataAt<'static, Iline>>) -> kayak_rt::data::DataAt<'static, Block> {
+    kayak_rt::data::data_heap::<Block, 0>((f0, f1, f2, f3,))
 }
 
 /// `word NAME (N cells, cellular):` or `(N cells, the routine R):`.
-pub fn header_block(cs: Chars) -> kayak_rt::Handle<'static, Block> {
+pub fn header_block(cs: Chars) -> kayak_rt::data::DataAt<'static, Block> {
     let rest = chars_dropped(cs, 5i64);
     let name = list_to_string(chars_before_char(rest, ' '));
     let inside = after_char(rest, open_paren());
@@ -227,16 +301,16 @@ pub fn header_block(cs: Chars) -> kayak_rt::Handle<'static, Block> {
         match listing_error(string_append(str_lit!("a word of no kind tier 1 runs: "), list_to_string(cs))) {};
         0i64
     });
-    block(name, n, entry, nil::<kayak_rt::Handle<'static, Iline>>())
+    block(name, n, entry, nil::<kayak_rt::data::DataAt<'static, Iline>>())
 }
 
 /// The blocks of a listing's lines, newest last. `mode`: 0 in a word's
 /// cells, 1 in its register code (each instruction kept at `-2 - AT`),
 /// 2 in what else is listed of it, passed over.
-pub fn blocks(mut ls: List<Chars>, mut out: List<kayak_rt::Handle<'static, Block>>, mut mode: i64) -> List<kayak_rt::Handle<'static, Block>> {
+pub fn blocks(mut ls: List<Chars>, mut out: List<kayak_rt::data::DataAt<'static, Block>>, mut mode: i64) -> List<kayak_rt::data::DataAt<'static, Block>> {
     loop {
         if null_p(ls) {
-            return the::<List<kayak_rt::Handle<'static, Block>>>(reverse(out));
+            return the::<List<kayak_rt::data::DataAt<'static, Block>>>(reverse(out));
         } else {
             let l = car(ls);
             if starts_p(l, string_chars(str_lit!("word "))) {
@@ -244,7 +318,7 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<kayak_rt::Handle<'static, Block
                 continue;
             } else if starts_p(l, string_chars(str_lit!("; the compilers disagree"))) {
                 match listing_error(str_lit!("the compilers disagree")) {};
-                return nil::<kayak_rt::Handle<'static, Block>>();
+                return nil::<kayak_rt::data::DataAt<'static, Block>>();
             } else if (null_p(l) || char_eq_p(car(l), ';')) {
                 (ls, mode) = (cdr(ls), 0i64);
                 continue;
@@ -263,19 +337,18 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<kayak_rt::Handle<'static, Block
                 let text = spaces_dropped(after_char(t, colon()));
                 if contains_p(text, string_chars(str_lit!("…"))) {
                     match listing_error(str_lit!("a literal cut short")) {};
-                    return nil::<kayak_rt::Handle<'static, Block>>();
+                    return nil::<kayak_rt::data::DataAt<'static, Block>>();
                 } else {
                     (ls, out) = (cdr(ls), {
                         let tagcase_ = car(out);
-                        match *tagcase_ {
-                            Block::Block(n, c, e, is) => {
-                                kayak_rt::heap_cons(block(n, c, e, kayak_rt::heap_cons(iline(if i64_eq(mode, 1i64) {
-                                    i64_minus(-2i64, at)
-                                } else {
-                                    at
-                                }, text), is)), cdr(out))
-                            }
-                        }
+                        if Block::__is_Block(tagcase_) {
+                            let (n, c, e, is,) = Block::__Block(tagcase_);
+                            kayak_rt::heap_cons(block(n, c, e, kayak_rt::heap_cons(iline(if i64_eq(mode, 1i64) {
+                                i64_minus(-2i64, at)
+                            } else {
+                                at
+                            }, text), is)), cdr(out))
+                        } else { kayak_rt::data::no_variant() }
                     });
                     continue;
                 }
@@ -287,36 +360,73 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<kayak_rt::Handle<'static, Block
 // Each word's line table (C245), as kayak's compiler writes it after the
 // word: its name, and the rest of its `; at FILE CELL:POS …` line, read
 // by `--profile`. Fixpt's listings have none.
+#[derive(Clone, Copy)]
 pub enum Ltext {
     Ltext(Str, Str),
 }
 
-impl kayak_rt::Visit for Ltext {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Ltext(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Ltext {
+    type Fields = (Str, Str,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ltext")
     }
 }
 
-pub fn ltext(f0: Str, f1: Str) -> kayak_rt::Handle<'static, Ltext> {
-    kayak_rt::heap_alloc(Ltext::Ltext(f0, f1))
+#[allow(non_snake_case)]
+impl Ltext {
+    #[inline(always)]
+    pub fn __is_Ltext(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Ltext(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Ltext {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Ltext(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn ltext(f0: Str, f1: Str) -> kayak_rt::data::DataAt<'static, Ltext> {
+    kayak_rt::data::data_heap::<Ltext, 0>((f0, f1,))
 }
 
 #[inline]
-pub fn line_tables() -> Ref<List<kayak_rt::Handle<'static, Ltext>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Ltext>>>);
+pub fn line_tables() -> Ref<List<kayak_rt::data::DataAt<'static, Ltext>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Ltext>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Ltext>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Ltext>>())
     })
 }
 
 // Its register code's, `; regs at FILE INSTRUCTION:POS …` (C249).
 #[inline]
-pub fn reg_line_tables() -> Ref<List<kayak_rt::Handle<'static, Ltext>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Ltext>>>);
+pub fn reg_line_tables() -> Ref<List<kayak_rt::data::DataAt<'static, Ltext>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Ltext>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Ltext>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Ltext>>())
     })
 }
 
@@ -343,23 +453,60 @@ pub fn tables_read_x(mut ls: List<Chars>, mut name: Str) -> () {
 }
 
 // A line table's entries: each a cell and the source position from it on.
+#[derive(Clone, Copy)]
 pub enum Cpos {
     Cpos(i64, i64),
 }
 
-impl kayak_rt::Visit for Cpos {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Cpos(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Cpos {
+    type Fields = (i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("cpos")
     }
 }
 
-pub fn cpos(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Cpos> {
-    kayak_rt::heap_alloc(Cpos::Cpos(f0, f1))
+#[allow(non_snake_case)]
+impl Cpos {
+    #[inline(always)]
+    pub fn __is_Cpos(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Cpos(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
-pub fn cposes(cs: Chars, out: List<kayak_rt::Handle<'static, Cpos>>) -> List<kayak_rt::Handle<'static, Cpos>> {
+impl kayak_rt::data::Datatype for Cpos {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Cpos(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn cpos(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, Cpos> {
+    kayak_rt::data::data_heap::<Cpos, 0>((f0, f1,))
+}
+
+pub fn cposes(cs: Chars, out: List<kayak_rt::data::DataAt<'static, Cpos>>) -> List<kayak_rt::data::DataAt<'static, Cpos>> {
     let cs = spaces_dropped(cs);
     if null_p(cs) {
         reverse(out)
@@ -371,32 +518,31 @@ pub fn cposes(cs: Chars, out: List<kayak_rt::Handle<'static, Cpos>>) -> List<kay
 
 /// The rest of word `n`'s `; at` line, "" if none: the first listed of
 /// a name listed again, the one its word is made from.
-pub fn table_named(mut ts: List<kayak_rt::Handle<'static, Ltext>>, mut n: Str, mut had: Str) -> Str {
+pub fn table_named(mut ts: List<kayak_rt::data::DataAt<'static, Ltext>>, mut n: Str, mut had: Str) -> Str {
     loop {
         if null_p(ts) {
             return had;
         } else {
             let tagcase_ = car(ts);
-            match *tagcase_ {
-                Ltext::Ltext(m, text) => {
-                    (ts, had) = (cdr(ts), if string_eq_p(m, n) {
-                        text
-                    } else {
-                        had
-                    });
-                    continue;
-                }
-            }
+            if Ltext::__is_Ltext(tagcase_) {
+                let (m, text,) = Ltext::__Ltext(tagcase_);
+                (ts, had) = (cdr(ts), if string_eq_p(m, n) {
+                    text
+                } else {
+                    had
+                });
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
 // The words, by name.
 #[inline]
-pub fn words() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
+pub fn words() -> Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, NamedSlot>>())
     })
 }
 
@@ -458,114 +604,297 @@ pub fn global_named(name: Str) -> i64 {
 // cycle through pairs is too; one through a vector or other bloblet is
 // refused (not yet).
 // fixpt-source: crates/fixpt-runtime/src/literal.rs@196dd2a
+#[derive(Clone, Copy)]
 pub enum Lab {
     Lab(i64, i64),
 }
 
-impl kayak_rt::Visit for Lab {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Lab(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Lab {
+    type Fields = (i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("lab")
     }
 }
 
-pub fn lab(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Lab> {
-    kayak_rt::heap_alloc(Lab::Lab(f0, f1))
+#[allow(non_snake_case)]
+impl Lab {
+    #[inline(always)]
+    pub fn __is_Lab(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Lab(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Lab {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Lab(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn lab(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, Lab> {
+    kayak_rt::data::data_heap::<Lab, 0>((f0, f1,))
 }
 
 #[inline]
-pub fn labels() -> Ref<List<kayak_rt::Handle<'static, Lab>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Lab>>>);
+pub fn labels() -> Ref<List<kayak_rt::data::DataAt<'static, Lab>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Lab>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Lab>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Lab>>())
     })
 }
 
 // What reading gives: a value, an integer, a text or values, and what is
 // left to read.
+#[derive(Clone, Copy)]
 pub enum Lgot {
     Lgot(i64, Chars),
 }
 
-impl kayak_rt::Visit for Lgot {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Lgot(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Lgot {
+    type Fields = (i64, Chars,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("lgot")
     }
 }
 
-pub fn lgot(f0: i64, f1: Chars) -> kayak_rt::Handle<'static, Lgot> {
-    kayak_rt::heap_alloc(Lgot::Lgot(f0, f1))
+#[allow(non_snake_case)]
+impl Lgot {
+    #[inline(always)]
+    pub fn __is_Lgot(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Lgot(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
+impl kayak_rt::data::Datatype for Lgot {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Lgot(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn lgot(f0: i64, f1: Chars) -> kayak_rt::data::DataAt<'static, Lgot> {
+    kayak_rt::data::data_heap::<Lgot, 0>((f0, f1,))
+}
+
+#[derive(Clone, Copy)]
 pub enum Gint {
     Gint(Int, Chars),
 }
 
-impl kayak_rt::Visit for Gint {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Gint(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Gint {
+    type Fields = (Int, Chars,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("gint")
     }
 }
 
-pub fn gint(f0: Int, f1: Chars) -> kayak_rt::Handle<'static, Gint> {
-    kayak_rt::heap_alloc(Gint::Gint(f0, f1))
+#[allow(non_snake_case)]
+impl Gint {
+    #[inline(always)]
+    pub fn __is_Gint(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Gint(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
+impl kayak_rt::data::Datatype for Gint {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Gint(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn gint(f0: Int, f1: Chars) -> kayak_rt::data::DataAt<'static, Gint> {
+    kayak_rt::data::data_heap::<Gint, 0>((f0, f1,))
+}
+
+#[derive(Clone, Copy)]
 pub enum Gtext {
     Gtext(Str, Chars),
 }
 
-impl kayak_rt::Visit for Gtext {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Gtext(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Gtext {
+    type Fields = (Str, Chars,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("gtext")
     }
 }
 
-pub fn gtext(f0: Str, f1: Chars) -> kayak_rt::Handle<'static, Gtext> {
-    kayak_rt::heap_alloc(Gtext::Gtext(f0, f1))
+#[allow(non_snake_case)]
+impl Gtext {
+    #[inline(always)]
+    pub fn __is_Gtext(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Gtext(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
+impl kayak_rt::data::Datatype for Gtext {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Gtext(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn gtext(f0: Str, f1: Chars) -> kayak_rt::data::DataAt<'static, Gtext> {
+    kayak_rt::data::data_heap::<Gtext, 0>((f0, f1,))
+}
+
+#[derive(Clone, Copy)]
 pub enum Gall {
     Gall(List<i64>, Chars),
 }
 
-impl kayak_rt::Visit for Gall {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Gall(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Gall {
+    type Fields = (List<i64>, Chars,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("gall")
     }
 }
 
-pub fn gall(f0: List<i64>, f1: Chars) -> kayak_rt::Handle<'static, Gall> {
-    kayak_rt::heap_alloc(Gall::Gall(f0, f1))
+#[allow(non_snake_case)]
+impl Gall {
+    #[inline(always)]
+    pub fn __is_Gall(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Gall(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
-pub fn label_value(mut ls: List<kayak_rt::Handle<'static, Lab>>, mut n: i64) -> i64 {
+impl kayak_rt::data::Datatype for Gall {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Gall(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn gall(f0: List<i64>, f1: Chars) -> kayak_rt::data::DataAt<'static, Gall> {
+    kayak_rt::data::data_heap::<Gall, 0>((f0, f1,))
+}
+
+pub fn label_value(mut ls: List<kayak_rt::data::DataAt<'static, Lab>>, mut n: i64) -> i64 {
     loop {
         if null_p(ls) {
             return 0i64;
         } else if {
             let tagcase_ = car(ls);
-            match *tagcase_ {
-                Lab::Lab(m, v) => {
-                    i64_eq(m, n)
-                }
-            }
+            if Lab::__is_Lab(tagcase_) {
+                let (m, v,) = Lab::__Lab(tagcase_);
+                i64_eq(m, n)
+            } else { kayak_rt::data::no_variant() }
         } {
             let tagcase_ = car(ls);
-            match *tagcase_ {
-                Lab::Lab(m, v) => {
-                    return v;
-                }
-            }
+            if Lab::__is_Lab(tagcase_) {
+                let (m, v,) = Lab::__Lab(tagcase_);
+                return v;
+            } else { kayak_rt::data::no_variant() }
         } else {
             ls = cdr(ls);
             continue;
@@ -590,7 +919,7 @@ pub fn hex_digit_value(c: char) -> i64 {
     }
 }
 
-pub fn hex_int(mut cs: Chars, mut acc: Int) -> kayak_rt::Handle<'static, Gint> {
+pub fn hex_int(mut cs: Chars, mut acc: Int) -> kayak_rt::data::DataAt<'static, Gint> {
     loop {
         if (not(null_p(cs)) && i64_gt_eq(hex_digit_value(car(cs)), 0i64)) {
             (cs, acc) = (cdr(cs), _plus(_star(acc, int_lit(16)), i64_to_int(hex_digit_value(car(cs)))));
@@ -601,7 +930,7 @@ pub fn hex_int(mut cs: Chars, mut acc: Int) -> kayak_rt::Handle<'static, Gint> {
     }
 }
 
-pub fn decimal_int(mut cs: Chars, mut acc: Int) -> kayak_rt::Handle<'static, Gint> {
+pub fn decimal_int(mut cs: Chars, mut acc: Int) -> kayak_rt::data::DataAt<'static, Gint> {
     loop {
         if (not(null_p(cs)) && char_numeric_p(car(cs))) {
             (cs, acc) = (cdr(cs), _plus(_star(acc, int_lit(10)), i64_to_int(i64_minus(char_to_i64(car(cs)), 48i64))));
@@ -612,14 +941,13 @@ pub fn decimal_int(mut cs: Chars, mut acc: Int) -> kayak_rt::Handle<'static, Gin
     }
 }
 
-pub fn signed_int(cs: Chars) -> kayak_rt::Handle<'static, Gint> {
+pub fn signed_int(cs: Chars) -> kayak_rt::data::DataAt<'static, Gint> {
     if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
         let tagcase_ = decimal_int(cdr(cs), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                gint(_minus(int_lit(0), n), rest)
-            }
-        }
+        if Gint::__is_Gint(tagcase_) {
+            let (n, rest,) = Gint::__Gint(tagcase_);
+            gint(_minus(int_lit(0), n), rest)
+        } else { kayak_rt::data::no_variant() }
     } else {
         decimal_int(cs, int_lit(0))
     }
@@ -628,7 +956,7 @@ pub fn signed_int(cs: Chars) -> kayak_rt::Handle<'static, Gint> {
 /// A string's or a symbol's characters up to `q`: one that is not
 /// printable ASCII, or is `q` or a backslash, written by its code in hex,
 /// after a backslash and an `x`, before a `;`.
-pub fn escaped_text(mut cs: Chars, mut q: char, mut acc: Chars) -> kayak_rt::Handle<'static, Gtext> {
+pub fn escaped_text(mut cs: Chars, mut q: char, mut acc: Chars) -> kayak_rt::data::DataAt<'static, Gtext> {
     loop {
         if null_p(cs) {
             match listing_error(str_lit!("a literal's text runs to the end")) {};
@@ -637,12 +965,11 @@ pub fn escaped_text(mut cs: Chars, mut q: char, mut acc: Chars) -> kayak_rt::Han
             return gtext(list_to_string(the::<Chars>(reverse(acc))), cdr(cs));
         } else if char_eq_p(car(cs), backslash()) {
             let tagcase_ = hex_int(chars_dropped(cs, 2i64), int_lit(0));
-            match *tagcase_ {
-                Gint::Gint(n, rest) => {
-                    (cs, acc) = (cdr(rest), kayak_rt::heap_cons(i64_to_char(int_to_i64(n)), acc));
-                    continue;
-                }
-            }
+            if Gint::__is_Gint(tagcase_) {
+                let (n, rest,) = Gint::__Gint(tagcase_);
+                (cs, acc) = (cdr(rest), kayak_rt::heap_cons(i64_to_char(int_to_i64(n)), acc));
+                continue;
+            } else { kayak_rt::data::no_variant() }
         } else {
             (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
             continue;
@@ -807,153 +1134,135 @@ pub fn bytevector_literal_x(xs: List<i64>) -> i64 {
 }
 
 /// One literal, from the start of `cs`.
-pub fn lit_datum(cs: Chars) -> kayak_rt::Handle<'static, Lgot> {
+pub fn lit_datum(cs: Chars) -> kayak_rt::data::DataAt<'static, Lgot> {
     if null_p(cs) {
         match listing_error(str_lit!("a literal is missing")) {};
         lgot(0i64, nil::<char>())
     } else if (char_numeric_p(car(cs)) || char_eq_p(car(cs), '-')) {
         let tagcase_ = signed_int(cs);
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                if (not(null_p(rest)) && char_eq_p(car(rest), '/')) {
-                    let tagcase_ = decimal_int(cdr(rest), int_lit(0));
-                    match *tagcase_ {
-                        Gint::Gint(d, rest2) => {
-                            lgot(make_ratnum_x(int_value_x(n), int_value_x(d)), rest2)
-                        }
-                    }
-                } else {
-                    lgot(int_value_x(n), rest)
-                }
+        if Gint::__is_Gint(tagcase_) {
+            let (n, rest,) = Gint::__Gint(tagcase_);
+            if (not(null_p(rest)) && char_eq_p(car(rest), '/')) {
+                let tagcase_ = decimal_int(cdr(rest), int_lit(0));
+                if Gint::__is_Gint(tagcase_) {
+                    let (d, rest2,) = Gint::__Gint(tagcase_);
+                    lgot(make_ratnum_x(int_value_x(n), int_value_x(d)), rest2)
+                } else { kayak_rt::data::no_variant() }
+            } else {
+                lgot(int_value_x(n), rest)
             }
-        }
+        } else { kayak_rt::data::no_variant() }
     } else if char_eq_p(car(cs), dquote()) {
         let tagcase_ = escaped_text(cdr(cs), dquote(), nil::<char>());
-        match *tagcase_ {
-            Gtext::Gtext(t, rest) => {
-                lgot(make_string_x(t), rest)
-            }
-        }
+        if Gtext::__is_Gtext(tagcase_) {
+            let (t, rest,) = Gtext::__Gtext(tagcase_);
+            lgot(make_string_x(t), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if char_eq_p(car(cs), bar()) {
         let tagcase_ = escaped_text(cdr(cs), bar(), nil::<char>());
-        match *tagcase_ {
-            Gtext::Gtext(t, rest) => {
-                lgot(symbol_x(t), rest)
-            }
-        }
+        if Gtext::__is_Gtext(tagcase_) {
+            let (t, rest,) = Gtext::__Gtext(tagcase_);
+            lgot(symbol_x(t), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("()"))) {
         lgot(v_null(), chars_dropped(cs, 2i64))
     } else if char_eq_p(car(cs), open_paren()) {
         pair_rest(cdr(cs), cons_x(v_null(), v_null()))
     } else if starts_p(cs, string_chars(str_lit!("#f64x"))) {
         let tagcase_ = hex_int(chars_dropped(cs, 5i64), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                lgot(flonum_bits_x(int_to_i64(n)), rest)
-            }
-        }
+        if Gint::__is_Gint(tagcase_) {
+            let (n, rest,) = Gint::__Gint(tagcase_);
+            lgot(flonum_bits_x(int_to_i64(n)), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#f32x"))) {
         let tagcase_ = hex_int(chars_dropped(cs, 5i64), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                lgot(f32_bits(int_to_i64(n)), rest)
-            }
-        }
+        if Gint::__is_Gint(tagcase_) {
+            let (n, rest,) = Gint::__Gint(tagcase_);
+            lgot(f32_bits(int_to_i64(n)), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#\\x"))) {
         let tagcase_ = hex_int(chars_dropped(cs, 3i64), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                lgot(char_value(int_to_i64(n)), rest)
-            }
-        }
+        if Gint::__is_Gint(tagcase_) {
+            let (n, rest,) = Gint::__Gint(tagcase_);
+            lgot(char_value(int_to_i64(n)), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#u8("))) {
         let tagcase_ = lit_items(chars_dropped(cs, 4i64), nil::<i64>());
-        match *tagcase_ {
-            Gall::Gall(xs, rest) => {
-                lgot(bytevector_literal_x(xs), rest)
-            }
-        }
+        if Gall::__is_Gall(tagcase_) {
+            let (xs, rest,) = Gall::__Gall(tagcase_);
+            lgot(bytevector_literal_x(xs), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#("))) {
         let tagcase_ = lit_items(chars_dropped(cs, 2i64), nil::<i64>());
-        match *tagcase_ {
-            Gall::Gall(xs, rest) => {
-                lgot(vector_literal_x(xs), rest)
-            }
-        }
+        if Gall::__is_Gall(tagcase_) {
+            let (xs, rest,) = Gall::__Gall(tagcase_);
+            lgot(vector_literal_x(xs), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#word "))) {
         let tagcase_ = escaped_text(cdr(chars_dropped(cs, 6i64)), dquote(), nil::<char>());
-        match *tagcase_ {
-            Gtext::Gtext(t, rest) => {
-                lgot(listing_word(string_chars(t)), rest)
-            }
-        }
+        if Gtext::__is_Gtext(tagcase_) {
+            let (t, rest,) = Gtext::__Gtext(tagcase_);
+            lgot(listing_word(string_chars(t)), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#global "))) {
         let tagcase_ = escaped_text(cdr(chars_dropped(cs, 8i64)), dquote(), nil::<char>());
-        match *tagcase_ {
-            Gtext::Gtext(t, rest) => {
-                lgot(global_named(t), rest)
-            }
-        }
+        if Gtext::__is_Gtext(tagcase_) {
+            let (t, rest,) = Gtext::__Gtext(tagcase_);
+            lgot(global_named(t), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#trailer "))) {
         let tagcase_ = decimal_int(chars_dropped(cs, 9i64), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                lgot(i64_or(i64_shl(int_to_i64(n), int_lit(3)), t_trailer()), rest)
-            }
-        }
+        if Gint::__is_Gint(tagcase_) {
+            let (n, rest,) = Gint::__Gint(tagcase_);
+            lgot(i64_or(i64_shl(int_to_i64(n), int_lit(3)), t_trailer()), rest)
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#bloblet("))) {
         let at = chars_dropped(cs, 9i64);
         let kind = list_to_string(chars_before_char(at, ' '));
         let tagcase_ = lit_items(expect(chars_dropped(at, i64_plus(string_length_i64(kind), 1i64)), str_lit!("(")), nil::<i64>());
-        match *tagcase_ {
-            Gall::Gall(fields, rest) => {
-                let tagcase_ = lit_items(expect(spaces_dropped(rest), str_lit!("#u8(")), nil::<i64>());
-                match *tagcase_ {
-                    Gall::Gall(bytes, rest2) => {
-                        lgot(bloblet_literal_x(kind, fields, bytes), expect(rest2, str_lit!(")")))
-                    }
-                }
-            }
-        }
+        if Gall::__is_Gall(tagcase_) {
+            let (fields, rest,) = Gall::__Gall(tagcase_);
+            let tagcase_ = lit_items(expect(spaces_dropped(rest), str_lit!("#u8(")), nil::<i64>());
+            if Gall::__is_Gall(tagcase_) {
+                let (bytes, rest2,) = Gall::__Gall(tagcase_);
+                lgot(bloblet_literal_x(kind, fields, bytes), expect(rest2, str_lit!(")")))
+            } else { kayak_rt::data::no_variant() }
+        } else { kayak_rt::data::no_variant() }
     } else if starts_p(cs, string_chars(str_lit!("#suffix-ref("))) {
         let tagcase_ = lit_datum(chars_dropped(cs, 12i64));
-        match *tagcase_ {
-            Lgot::Lgot(o, rest) => {
-                let tagcase_ = decimal_int(spaces_dropped(rest), int_lit(0));
-                match *tagcase_ {
-                    Gint::Gint(n, rest2) => {
-                        lgot(make_sref(address(o), int_to_i64(n)), expect(rest2, str_lit!(")")))
-                    }
-                }
-            }
-        }
+        if Lgot::__is_Lgot(tagcase_) {
+            let (o, rest,) = Lgot::__Lgot(tagcase_);
+            let tagcase_ = decimal_int(spaces_dropped(rest), int_lit(0));
+            if Gint::__is_Gint(tagcase_) {
+                let (n, rest2,) = Gint::__Gint(tagcase_);
+                lgot(make_sref(address(o), int_to_i64(n)), expect(rest2, str_lit!(")")))
+            } else { kayak_rt::data::no_variant() }
+        } else { kayak_rt::data::no_variant() }
     } else if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs)))) {
         let tagcase_ = decimal_int(cdr(cs), int_lit(0));
-        match *tagcase_ {
-            Gint::Gint(n, rest) => {
-                if starts_p(rest, string_chars(str_lit!("#"))) {
-                    let v = label_value(get(labels()), int_to_i64(n));
-                    if i64_eq(v, 0i64) {
-                        match listing_error(str_lit!("a label named before what it labels is made: a cycle through a vector or bloblet, not yet")) {};
-                        lgot(0i64, nil::<char>())
-                    } else {
-                        lgot(v, cdr(rest))
-                    }
-                } else if (starts_p(rest, string_chars(str_lit!("=("))) && not(starts_p(rest, string_chars(str_lit!("=()"))))) {
-                    pair_rest(chars_dropped(rest, 2i64), labelled_x(int_to_i64(n), cons_x(v_null(), v_null())))
-                } else if starts_p(rest, string_chars(str_lit!("="))) {
-                    let tagcase_ = lit_datum(cdr(rest));
-                    match *tagcase_ {
-                        Lgot::Lgot(v, rest2) => {
-                            lgot(labelled_x(int_to_i64(n), v), rest2)
-                        }
-                    }
-                } else {
-                    match listing_error(str_lit!("a label neither made nor named")) {};
+        if Gint::__is_Gint(tagcase_) {
+            let (n, rest,) = Gint::__Gint(tagcase_);
+            if starts_p(rest, string_chars(str_lit!("#"))) {
+                let v = label_value(get(labels()), int_to_i64(n));
+                if i64_eq(v, 0i64) {
+                    match listing_error(str_lit!("a label named before what it labels is made: a cycle through a vector or bloblet, not yet")) {};
                     lgot(0i64, nil::<char>())
+                } else {
+                    lgot(v, cdr(rest))
                 }
+            } else if (starts_p(rest, string_chars(str_lit!("=("))) && not(starts_p(rest, string_chars(str_lit!("=()"))))) {
+                pair_rest(chars_dropped(rest, 2i64), labelled_x(int_to_i64(n), cons_x(v_null(), v_null())))
+            } else if starts_p(rest, string_chars(str_lit!("="))) {
+                let tagcase_ = lit_datum(cdr(rest));
+                if Lgot::__is_Lgot(tagcase_) {
+                    let (v, rest2,) = Lgot::__Lgot(tagcase_);
+                    lgot(labelled_x(int_to_i64(n), v), rest2)
+                } else { kayak_rt::data::no_variant() }
+            } else {
+                match listing_error(str_lit!("a label neither made nor named")) {};
+                lgot(0i64, nil::<char>())
             }
-        }
+        } else { kayak_rt::data::no_variant() }
     } else if char_eq_p(car(cs), '#') {
         let name = list_to_string(chars_before_char(until_delimiter(cs, nil::<char>()), ' '));
         let rest = chars_dropped(cs, string_length_i64(name));
@@ -982,24 +1291,22 @@ pub fn lit_datum(cs: Chars) -> kayak_rt::Handle<'static, Lgot> {
 }
 
 /// A pair's `car . cdr)`, into pair `p`, made already.
-pub fn pair_rest(cs: Chars, p: i64) -> kayak_rt::Handle<'static, Lgot> {
+pub fn pair_rest(cs: Chars, p: i64) -> kayak_rt::data::DataAt<'static, Lgot> {
     let tagcase_ = lit_datum(cs);
-    match *tagcase_ {
-        Lgot::Lgot(a, rest) => {
-            word_set_x(address(p), a);
-            let tagcase_ = lit_datum(expect(rest, str_lit!(" . ")));
-            match *tagcase_ {
-                Lgot::Lgot(d, rest2) => {
-                    word_set_x(i64_plus(address(p), 1i64), d);
-                    lgot(p, expect(rest2, str_lit!(")")))
-                }
-            }
-        }
-    }
+    if Lgot::__is_Lgot(tagcase_) {
+        let (a, rest,) = Lgot::__Lgot(tagcase_);
+        word_set_x(address(p), a);
+        let tagcase_ = lit_datum(expect(rest, str_lit!(" . ")));
+        if Lgot::__is_Lgot(tagcase_) {
+            let (d, rest2,) = Lgot::__Lgot(tagcase_);
+            word_set_x(i64_plus(address(p), 1i64), d);
+            lgot(p, expect(rest2, str_lit!(")")))
+        } else { kayak_rt::data::no_variant() }
+    } else { kayak_rt::data::no_variant() }
 }
 
 /// Literals a space apart, to a `)`.
-pub fn lit_items(cs: Chars, acc: List<i64>) -> kayak_rt::Handle<'static, Gall> {
+pub fn lit_items(cs: Chars, acc: List<i64>) -> kayak_rt::data::DataAt<'static, Gall> {
     let cs = spaces_dropped(cs);
     if null_p(cs) {
         match listing_error(str_lit!("a literal's items run to the end")) {};
@@ -1008,11 +1315,10 @@ pub fn lit_items(cs: Chars, acc: List<i64>) -> kayak_rt::Handle<'static, Gall> {
         gall(the::<List<i64>>(reverse(acc)), cdr(cs))
     } else {
         let tagcase_ = lit_datum(cs);
-        match *tagcase_ {
-            Lgot::Lgot(v, rest) => {
-                lit_items(rest, kayak_rt::heap_cons(v, acc))
-            }
-        }
+        if Lgot::__is_Lgot(tagcase_) {
+            let (v, rest,) = Lgot::__Lgot(tagcase_);
+            lit_items(rest, kayak_rt::heap_cons(v, acc))
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
@@ -1020,10 +1326,10 @@ pub fn lit_items(cs: Chars, acc: List<i64>) -> kayak_rt::Handle<'static, Gall> {
 // its free values, so it is taken as a closure of none, one for each word,
 // and its word checked to read none (`free-read?`) once all are made.
 #[inline]
-pub fn literals() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
+pub fn literals() -> Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, NamedSlot>>())
     })
 }
 
@@ -1061,22 +1367,21 @@ pub fn free_read_p(mut w: i64, mut k: i64) -> bool {
     }
 }
 
-pub fn literals_checked_x(mut ls: List<kayak_rt::Handle<'static, NamedSlot>>) -> () {
+pub fn literals_checked_x(mut ls: List<kayak_rt::data::DataAt<'static, NamedSlot>>) -> () {
     loop {
         if null_p(ls) {
             return ();
         } else {
             let tagcase_ = car(ls);
-            match *tagcase_ {
-                NamedSlot::NamedSlot(n, i) => {
-                    if free_read_p(slot_of(named_value(car(ls)), f_word()), f_cell0()) {
-                        return match listing_error(string_append(str_lit!("a closure as a literal, whose word reads a free value: "), n)) {};
-                    } else {
-                        ls = cdr(ls);
-                        continue;
-                    }
+            if NamedSlot::__is_NamedSlot(tagcase_) {
+                let (n, i,) = NamedSlot::__NamedSlot(tagcase_);
+                if free_read_p(slot_of(named_value(car(ls)), f_word()), f_cell0()) {
+                    return match listing_error(string_append(str_lit!("a closure as a literal, whose word reads a free value: "), n)) {};
+                } else {
+                    ls = cdr(ls);
+                    continue;
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -1088,16 +1393,15 @@ pub fn literal(cs: Chars) -> i64 {
         closure_literal(listing_word(chars_dropped(cs, 11i64)))
     } else {
         let tagcase_ = lit_datum(cs);
-        match *tagcase_ {
-            Lgot::Lgot(v, rest) => {
-                if null_p(spaces_dropped(rest)) {
-                    v
-                } else {
-                    match listing_error(string_append(str_lit!("a literal: "), list_to_string(cs))) {};
-                    0i64
-                }
+        if Lgot::__is_Lgot(tagcase_) {
+            let (v, rest,) = Lgot::__Lgot(tagcase_);
+            if null_p(spaces_dropped(rest)) {
+                v
+            } else {
+                match listing_error(string_append(str_lit!("a literal: "), list_to_string(cs))) {};
+                0i64
             }
-        }
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
@@ -1106,10 +1410,10 @@ pub fn literal(cs: Chars) -> i64 {
 // Fixpt's `make_register_word` makes one: its entry -1 here (Fixpt's 0,
 // not compiled, is `docol` to tier 1), its twin the word.
 #[inline]
-pub fn register_words() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
+pub fn register_words() -> Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, NamedSlot>>())
     })
 }
 
@@ -1191,12 +1495,11 @@ pub fn reg_instruction_x(rw: i64, at: i64, text: Chars) -> () {
         } else if i64_eq(n, ro_prim3imm()) {
             reg_put_x(rw, at, 1i64, prim.call(ops));
             let tagcase_ = lit_datum(second);
-            match *tagcase_ {
-                Lgot::Lgot(v, rest) => {
-                    reg_put_x(rw, at, 2i64, v);
-                    reg_put_x(rw, at, 3i64, num.call(spaces_dropped(rest)))
-                }
-            }
+            if Lgot::__is_Lgot(tagcase_) {
+                let (v, rest,) = Lgot::__Lgot(tagcase_);
+                reg_put_x(rw, at, 2i64, v);
+                reg_put_x(rw, at, 3i64, num.call(spaces_dropped(rest)))
+            } else { kayak_rt::data::no_variant() }
         } else if i64_eq(n, ro_lambda()) {
             let rest = chars_dropped(ops, 5i64);
             reg_put_x(rw, at, 1i64, listing_word(chars_before_char(rest, ' ')));
@@ -1224,52 +1527,51 @@ pub fn cell_set_x(w: i64, at: i64, v: i64) -> () {
     slot_set_x(w, i64_plus(f_cell0(), at), v)
 }
 
-pub fn instruction_x(w: i64, rw: i64, il: kayak_rt::Handle<'static, Iline>) -> () {
+pub fn instruction_x(w: i64, rw: i64, il: kayak_rt::data::DataAt<'static, Iline>) -> () {
     let tagcase_ = il;
-    match *tagcase_ {
-        Iline::Iline(at, text) => {
-            if i64_lt(at, 0i64) {
-                reg_instruction_x(rw, i64_minus(-2i64, at), text)
+    if Iline::__is_Iline(tagcase_) {
+        let (at, text,) = Iline::__Iline(tagcase_);
+        if i64_lt(at, 0i64) {
+            reg_instruction_x(rw, i64_minus(-2i64, at), text)
+        } else {
+            let name = list_to_string(chars_before_char(text, ' '));
+            let ops = spaces_dropped(chars_dropped(text, string_length_i64(name)));
+            let n = position_in(routine_names(), name, 0i64);
+            if string_eq_p(name, str_lit!("word")) {
+                cell_set_x(w, at, listing_word(ops))
+            } else if i64_lt(n, 0i64) {
+                match listing_error(string_append(str_lit!("no routine is named "), name)) {}
             } else {
-                let name = list_to_string(chars_before_char(text, ' '));
-                let ops = spaces_dropped(chars_dropped(text, string_length_i64(name)));
-                let n = position_in(routine_names(), name, 0i64);
-                if string_eq_p(name, str_lit!("word")) {
-                    cell_set_x(w, at, listing_word(ops))
-                } else if i64_lt(n, 0i64) {
-                    match listing_error(string_append(str_lit!("no routine is named "), name)) {}
-                } else {
-                    cell_set_x(w, at, fix(n));
-                    if i64_eq(n, rt_lit()) {
-                        cell_set_x(w, i64_plus(at, 1i64), literal(ops))
-                    } else if (i64_eq(n, rt_branch()) || i64_eq(n, rt_zbranch())) {
-                        cell_set_x(w, i64_plus(at, 1i64), fix(i64_minus(number_of(chars_dropped(ops, 2i64)), i64_plus(at, 2i64))))
-                    } else if (i64_eq(n, rt_global()) || i64_eq(n, rt_global_set())) {
-                        cell_set_x(w, i64_plus(at, 1i64), global_named(list_to_string(ops)))
-                    } else if i64_eq(n, rt_prim()) {
-                        let pname = list_to_string(chars_before_char(ops, ' '));
-                        let p = prim_number(pname);
-                        if i64_lt(p, 0i64) {
-                            match listing_error(string_append(str_lit!("a primitive tier 1 does not have yet: "), pname)) {}
-                        } else {
-                            cell_set_x(w, i64_plus(at, 1i64), fix(p));
-                            cell_set_x(w, i64_plus(at, 2i64), fix(number_of(after_char(ops, ' '))))
-                        }
-                    } else if i64_eq(n, rt_closure()) {
-                        let rest = chars_dropped(ops, 5i64);
-                        cell_set_x(w, i64_plus(at, 1i64), listing_word(rest));
-                        cell_set_x(w, i64_plus(at, 2i64), fix(number_of(chars_dropped(after_char(rest, ' '), 5i64))))
-                    } else if i64_eq(operand_count(n), 1i64) {
-                        cell_set_x(w, i64_plus(at, 1i64), fix(number_of(ops)))
-                    } else if i64_eq(operand_count(n), 0i64) {
-                        ()
+                cell_set_x(w, at, fix(n));
+                if i64_eq(n, rt_lit()) {
+                    cell_set_x(w, i64_plus(at, 1i64), literal(ops))
+                } else if (i64_eq(n, rt_branch()) || i64_eq(n, rt_zbranch())) {
+                    cell_set_x(w, i64_plus(at, 1i64), fix(i64_minus(number_of(chars_dropped(ops, 2i64)), i64_plus(at, 2i64))))
+                } else if (i64_eq(n, rt_global()) || i64_eq(n, rt_global_set())) {
+                    cell_set_x(w, i64_plus(at, 1i64), global_named(list_to_string(ops)))
+                } else if i64_eq(n, rt_prim()) {
+                    let pname = list_to_string(chars_before_char(ops, ' '));
+                    let p = prim_number(pname);
+                    if i64_lt(p, 0i64) {
+                        match listing_error(string_append(str_lit!("a primitive tier 1 does not have yet: "), pname)) {}
                     } else {
-                        match listing_error(string_append(str_lit!("operands tier 1 does not read yet: "), name)) {}
+                        cell_set_x(w, i64_plus(at, 1i64), fix(p));
+                        cell_set_x(w, i64_plus(at, 2i64), fix(number_of(after_char(ops, ' '))))
                     }
+                } else if i64_eq(n, rt_closure()) {
+                    let rest = chars_dropped(ops, 5i64);
+                    cell_set_x(w, i64_plus(at, 1i64), listing_word(rest));
+                    cell_set_x(w, i64_plus(at, 2i64), fix(number_of(chars_dropped(after_char(rest, ' '), 5i64))))
+                } else if i64_eq(operand_count(n), 1i64) {
+                    cell_set_x(w, i64_plus(at, 1i64), fix(number_of(ops)))
+                } else if i64_eq(operand_count(n), 0i64) {
+                    ()
+                } else {
+                    match listing_error(string_append(str_lit!("operands tier 1 does not read yet: "), name)) {}
                 }
             }
         }
-    }
+    } else { kayak_rt::data::no_variant() }
 }
 
 pub fn chars_eq_p(mut a: Chars, mut b: Chars) -> bool {
@@ -1317,7 +1619,7 @@ pub fn unlabelled(mut cs: Chars, mut acc: Chars) -> Chars {
     }
 }
 
-pub fn ilines_eq_p(mut a: List<kayak_rt::Handle<'static, Iline>>, mut b: List<kayak_rt::Handle<'static, Iline>>) -> bool {
+pub fn ilines_eq_p(mut a: List<kayak_rt::data::DataAt<'static, Iline>>, mut b: List<kayak_rt::data::DataAt<'static, Iline>>) -> bool {
     loop {
         if null_p(a) {
             return null_p(b);
@@ -1326,16 +1628,14 @@ pub fn ilines_eq_p(mut a: List<kayak_rt::Handle<'static, Iline>>, mut b: List<ka
         } else {
             if {
                 let tagcase_ = car(a);
-                match *tagcase_ {
-                    Iline::Iline(x, xs) => {
-                        let tagcase_ = car(b);
-                        match *tagcase_ {
-                            Iline::Iline(y, ys) => {
-                                (i64_eq(x, y) && chars_eq_p(unlabelled(xs, nil::<char>()), unlabelled(ys, nil::<char>())))
-                            }
-                        }
-                    }
-                }
+                if Iline::__is_Iline(tagcase_) {
+                    let (x, xs,) = Iline::__Iline(tagcase_);
+                    let tagcase_ = car(b);
+                    if Iline::__is_Iline(tagcase_) {
+                        let (y, ys,) = Iline::__Iline(tagcase_);
+                        (i64_eq(x, y) && chars_eq_p(unlabelled(xs, nil::<char>()), unlabelled(ys, nil::<char>())))
+                    } else { kayak_rt::data::no_variant() }
+                } else { kayak_rt::data::no_variant() }
             } {
                 (a, b) = (cdr(a), cdr(b));
                 continue;
@@ -1346,19 +1646,18 @@ pub fn ilines_eq_p(mut a: List<kayak_rt::Handle<'static, Iline>>, mut b: List<ka
     }
 }
 
-pub fn block_named(mut bs: List<kayak_rt::Handle<'static, Block>>, mut n: Str) -> List<kayak_rt::Handle<'static, Block>> {
+pub fn block_named(mut bs: List<kayak_rt::data::DataAt<'static, Block>>, mut n: Str) -> List<kayak_rt::data::DataAt<'static, Block>> {
     loop {
         if null_p(bs) {
-            return nil::<kayak_rt::Handle<'static, Block>>();
+            return nil::<kayak_rt::data::DataAt<'static, Block>>();
         } else if {
             let tagcase_ = car(bs);
-            match *tagcase_ {
-                Block::Block(m, c, e, is) => {
-                    string_eq_p(m, n)
-                }
-            }
+            if Block::__is_Block(tagcase_) {
+                let (m, c, e, is,) = Block::__Block(tagcase_);
+                string_eq_p(m, n)
+            } else { kayak_rt::data::no_variant() }
         } {
-            return the::<List<kayak_rt::Handle<'static, Block>>>(kayak_rt::heap_cons(car(bs), kayak_rt::nil()));
+            return the::<List<kayak_rt::data::DataAt<'static, Block>>>(kayak_rt::heap_cons(car(bs), kayak_rt::nil()));
         } else {
             bs = cdr(bs);
             continue;
@@ -1369,67 +1668,64 @@ pub fn block_named(mut bs: List<kayak_rt::Handle<'static, Block>>, mut n: Str) -
 /// The blocks, a word listed twice, cell for cell the same, once (C122:
 /// a word reached two ways is listed each time, as words are compared
 /// by no program, its two copies are one); two that differ, refused.
-pub fn distinct_blocks(mut bs: List<kayak_rt::Handle<'static, Block>>, mut seen: List<kayak_rt::Handle<'static, Block>>) -> List<kayak_rt::Handle<'static, Block>> {
+pub fn distinct_blocks(mut bs: List<kayak_rt::data::DataAt<'static, Block>>, mut seen: List<kayak_rt::data::DataAt<'static, Block>>) -> List<kayak_rt::data::DataAt<'static, Block>> {
     loop {
         if null_p(bs) {
-            return the::<List<kayak_rt::Handle<'static, Block>>>(reverse(seen));
+            return the::<List<kayak_rt::data::DataAt<'static, Block>>>(reverse(seen));
         } else {
             let tagcase_ = car(bs);
-            match *tagcase_ {
-                Block::Block(n, c, e, is) => {
-                    let had = block_named(seen, n);
-                    if null_p(had) {
-                        (bs, seen) = (cdr(bs), kayak_rt::heap_cons(car(bs), seen));
-                        continue;
-                    } else if {
-                        let tagcase_ = car(had);
-                        match *tagcase_ {
-                            Block::Block(m, c2, e2, is2) => {
-                                (i64_eq(c, c2) && i64_eq(e, e2) && ilines_eq_p(is, is2))
-                            }
-                        }
-                    } {
-                        bs = cdr(bs);
-                        continue;
-                    } else {
-                        match listing_error(string_append(str_lit!("two words are named "), n)) {};
-                        return nil::<kayak_rt::Handle<'static, Block>>();
-                    }
+            if Block::__is_Block(tagcase_) {
+                let (n, c, e, is,) = Block::__Block(tagcase_);
+                let had = block_named(seen, n);
+                if null_p(had) {
+                    (bs, seen) = (cdr(bs), kayak_rt::heap_cons(car(bs), seen));
+                    continue;
+                } else if {
+                    let tagcase_ = car(had);
+                    if Block::__is_Block(tagcase_) {
+                        let (m, c2, e2, is2,) = Block::__Block(tagcase_);
+                        (i64_eq(c, c2) && i64_eq(e, e2) && ilines_eq_p(is, is2))
+                    } else { kayak_rt::data::no_variant() }
+                } {
+                    bs = cdr(bs);
+                    continue;
+                } else {
+                    match listing_error(string_append(str_lit!("two words are named "), n)) {};
+                    return nil::<kayak_rt::data::DataAt<'static, Block>>();
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
 /// How many cells a word's register code has: past its last instruction.
-pub fn register_cells(mut is: List<kayak_rt::Handle<'static, Iline>>, mut n: i64) -> i64 {
+pub fn register_cells(mut is: List<kayak_rt::data::DataAt<'static, Iline>>, mut n: i64) -> i64 {
     loop {
         if null_p(is) {
             return n;
         } else {
             let tagcase_ = car(is);
-            match *tagcase_ {
-                Iline::Iline(at, text) => {
-                    if i64_lt(at, -1i64) {
-                        let k = i64_minus(-2i64, at);
-                        let op = position_in(rop_names(), list_to_string(chars_before_char(text, ' ')), 0i64);
-                        let end = i64_plus(k, i64_plus(1i64, if i64_lt(op, 0i64) {
-                            0i64
-                        } else {
-                            rop_operands(op)
-                        }));
-                        (is, n) = (cdr(is), if i64_gt(end, n) {
-                            end
-                        } else {
-                            n
-                        });
-                        continue;
+            if Iline::__is_Iline(tagcase_) {
+                let (at, text,) = Iline::__Iline(tagcase_);
+                if i64_lt(at, -1i64) {
+                    let k = i64_minus(-2i64, at);
+                    let op = position_in(rop_names(), list_to_string(chars_before_char(text, ' ')), 0i64);
+                    let end = i64_plus(k, i64_plus(1i64, if i64_lt(op, 0i64) {
+                        0i64
                     } else {
-                        is = cdr(is);
-                        continue;
-                    }
+                        rop_operands(op)
+                    }));
+                    (is, n) = (cdr(is), if i64_gt(end, n) {
+                        end
+                    } else {
+                        n
+                    });
+                    continue;
+                } else {
+                    is = cdr(is);
+                    continue;
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -1447,7 +1743,7 @@ pub fn make_register_word_x(name: Str, twin: i64, n: i64) -> i64 {
 /// Each register word its word's twin (`--regs`), where tier 1 runs it:
 /// one entered with its arguments in registers, at most `REGS` of them
 /// (Fixpt runs the others, `vargs` and more, as stack code too).
-pub fn twins_linked_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>) -> () {
+pub fn twins_linked_x(mut rs: List<kayak_rt::data::DataAt<'static, NamedSlot>>) -> () {
     loop {
         if null_p(rs) {
             return ();
@@ -1467,28 +1763,27 @@ pub fn twins_linked_x(mut rs: List<kayak_rt::Handle<'static, NamedSlot>>) -> () 
 }
 
 /// Each block's word, made, its cells not yet written.
-pub fn words_made_x(mut bs: List<kayak_rt::Handle<'static, Block>>) -> () {
+pub fn words_made_x(mut bs: List<kayak_rt::data::DataAt<'static, Block>>) -> () {
     loop {
         if null_p(bs) {
             return ();
         } else {
             {
                 let tagcase_ = car(bs);
-                match *tagcase_ {
-                    Block::Block(n, c, e, is) => {
-                        if not(i64_eq(lookup(get(words()), n), 0i64)) {
-                            match listing_error(string_append(str_lit!("two words are named "), n)) {}
+                if Block::__is_Block(tagcase_) {
+                    let (n, c, e, is,) = Block::__Block(tagcase_);
+                    if not(i64_eq(lookup(get(words()), n), 0i64)) {
+                        match listing_error(string_append(str_lit!("two words are named "), n)) {}
+                    } else {
+                        let (w, rc) = (make_code_word_x(n, c, e), register_cells(is, 0i64));
+                        set(words(), kayak_rt::heap_cons(named_x(n, w), get(words())));
+                        if i64_gt(rc, 0i64) {
+                            set(register_words(), kayak_rt::heap_cons(named_x(n, make_register_word_x(n, w, rc)), get(register_words())))
                         } else {
-                            let (w, rc) = (make_code_word_x(n, c, e), register_cells(is, 0i64));
-                            set(words(), kayak_rt::heap_cons(named_x(n, w), get(words())));
-                            if i64_gt(rc, 0i64) {
-                                set(register_words(), kayak_rt::heap_cons(named_x(n, make_register_word_x(n, w, rc)), get(register_words())))
-                            } else {
-                                ()
-                            }
+                            ()
                         }
                     }
-                }
+                } else { kayak_rt::data::no_variant() }
             };
             bs = cdr(bs);
             continue;
@@ -1496,7 +1791,7 @@ pub fn words_made_x(mut bs: List<kayak_rt::Handle<'static, Block>>) -> () {
     }
 }
 
-pub fn cells_written_x(mut w: i64, mut rw: i64, mut is: List<kayak_rt::Handle<'static, Iline>>) -> () {
+pub fn cells_written_x(mut w: i64, mut rw: i64, mut is: List<kayak_rt::data::DataAt<'static, Iline>>) -> () {
     loop {
         if null_p(is) {
             return ();
@@ -1510,25 +1805,24 @@ pub fn cells_written_x(mut w: i64, mut rw: i64, mut is: List<kayak_rt::Handle<'s
 
 /// A word listed again: its literals read, for the labels they make, and
 /// dropped.
-pub fn literals_read_x(mut is: List<kayak_rt::Handle<'static, Iline>>) -> () {
+pub fn literals_read_x(mut is: List<kayak_rt::data::DataAt<'static, Iline>>) -> () {
     loop {
         if null_p(is) {
             return ();
         } else {
             {
                 let tagcase_ = car(is);
-                match *tagcase_ {
-                    Iline::Iline(at, text) => {
-                        if i64_lt(at, 0i64) {
-                            reg_instruction_x(0i64, i64_minus(-2i64, at), text)
-                        } else if starts_p(text, string_chars(str_lit!("lit "))) {
-                            literal(chars_dropped(text, 4i64));
-                            ()
-                        } else {
-                            ()
-                        }
+                if Iline::__is_Iline(tagcase_) {
+                    let (at, text,) = Iline::__Iline(tagcase_);
+                    if i64_lt(at, 0i64) {
+                        reg_instruction_x(0i64, i64_minus(-2i64, at), text)
+                    } else if starts_p(text, string_chars(str_lit!("lit "))) {
+                        literal(chars_dropped(text, 4i64));
+                        ()
+                    } else {
+                        ()
                     }
-                }
+                } else { kayak_rt::data::no_variant() }
             };
             is = cdr(is);
             continue;
@@ -1539,24 +1833,23 @@ pub fn literals_read_x(mut is: List<kayak_rt::Handle<'static, Iline>>) -> () {
 /// Every block's cells, in the listing's order, so that a label is made
 /// where Fixpt writes it first: a word's first listing written into it,
 /// a later one's literals only read.
-pub fn blocks_written_x(mut bs: List<kayak_rt::Handle<'static, Block>>, mut seen: Strings) -> () {
+pub fn blocks_written_x(mut bs: List<kayak_rt::data::DataAt<'static, Block>>, mut seen: Strings) -> () {
     loop {
         if null_p(bs) {
             return ();
         } else {
             let tagcase_ = car(bs);
-            match *tagcase_ {
-                Block::Block(n, c, e, is) => {
-                    let is = the::<List<kayak_rt::Handle<'static, Iline>>>(reverse(is));
-                    if string_member_p(n, seen) {
-                        literals_read_x(is)
-                    } else {
-                        cells_written_x(lookup(get(words()), n), lookup(get(register_words()), n), is)
-                    };
-                    (bs, seen) = (cdr(bs), kayak_rt::heap_cons(n, seen));
-                    continue;
-                }
-            }
+            if Block::__is_Block(tagcase_) {
+                let (n, c, e, is,) = Block::__Block(tagcase_);
+                let is = the::<List<kayak_rt::data::DataAt<'static, Iline>>>(reverse(is));
+                if string_member_p(n, seen) {
+                    literals_read_x(is)
+                } else {
+                    cells_written_x(lookup(get(words()), n), lookup(get(register_words()), n), is)
+                };
+                (bs, seen) = (cdr(bs), kayak_rt::heap_cons(n, seen));
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -1565,8 +1858,8 @@ pub fn blocks_written_x(mut bs: List<kayak_rt::Handle<'static, Block>>, mut seen
 pub fn listing_words_x(text: Str) -> i64 {
     let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
     let u = tables_read_x(ls, str_lit!(""));
-    let all = blocks(ls, nil::<kayak_rt::Handle<'static, Block>>(), 0i64);
-    let bs = distinct_blocks(all, nil::<kayak_rt::Handle<'static, Block>>());
+    let all = blocks(ls, nil::<kayak_rt::data::DataAt<'static, Block>>(), 0i64);
+    let bs = distinct_blocks(all, nil::<kayak_rt::data::DataAt<'static, Block>>());
     words_made_x(bs);
     blocks_written_x(all, nil::<Str>());
     literals_checked_x(get(literals()));
@@ -1586,43 +1879,41 @@ pub fn listing_words_x(text: Str) -> i64 {
 
 /// The blocks of `bs` whose words the heap has none of yet; the names it
 /// has, onto `had`, in what is returned's place: see `listing-added!`.
-pub fn blocks_named_anew(mut bs: List<kayak_rt::Handle<'static, Block>>, mut out: List<kayak_rt::Handle<'static, Block>>, mut had: Strings) -> List<kayak_rt::Handle<'static, Block>> {
+pub fn blocks_named_anew(mut bs: List<kayak_rt::data::DataAt<'static, Block>>, mut out: List<kayak_rt::data::DataAt<'static, Block>>, mut had: Strings) -> List<kayak_rt::data::DataAt<'static, Block>> {
     loop {
         if null_p(bs) {
-            return the::<List<kayak_rt::Handle<'static, Block>>>(reverse(out));
+            return the::<List<kayak_rt::data::DataAt<'static, Block>>>(reverse(out));
         } else {
             let tagcase_ = car(bs);
-            match *tagcase_ {
-                Block::Block(n, c, e, is) => {
-                    if i64_eq(lookup(get(words()), n), 0i64) {
-                        (bs, out) = (cdr(bs), kayak_rt::heap_cons(car(bs), out));
-                        continue;
-                    } else {
-                        bs = cdr(bs);
-                        continue;
-                    }
+            if Block::__is_Block(tagcase_) {
+                let (n, c, e, is,) = Block::__Block(tagcase_);
+                if i64_eq(lookup(get(words()), n), 0i64) {
+                    (bs, out) = (cdr(bs), kayak_rt::heap_cons(car(bs), out));
+                    continue;
+                } else {
+                    bs = cdr(bs);
+                    continue;
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
-pub fn names_had(mut bs: List<kayak_rt::Handle<'static, Block>>, mut acc: Strings) -> Strings {
+pub fn names_had(mut bs: List<kayak_rt::data::DataAt<'static, Block>>, mut acc: Strings) -> Strings {
     loop {
         if null_p(bs) {
             return acc;
         } else {
             let tagcase_ = car(bs);
-            match *tagcase_ {
-                Block::Block(n, c, e, is) => {
-                    (bs, acc) = (cdr(bs), if i64_eq(lookup(get(words()), n), 0i64) {
-                        acc
-                    } else {
-                        kayak_rt::heap_cons(n, acc)
-                    });
-                    continue;
-                }
-            }
+            if Block::__is_Block(tagcase_) {
+                let (n, c, e, is,) = Block::__Block(tagcase_);
+                (bs, acc) = (cdr(bs), if i64_eq(lookup(get(words()), n), 0i64) {
+                    acc
+                } else {
+                    kayak_rt::heap_cons(n, acc)
+                });
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -1634,10 +1925,10 @@ pub fn names_had(mut bs: List<kayak_rt::Handle<'static, Block>>, mut acc: String
 pub fn listing_added_x(text: Str) -> () {
     let ls = lines_of(string_chars(text), nil::<char>(), nil::<List<char>>());
     let u = tables_read_x(ls, str_lit!(""));
-    let all = blocks(ls, nil::<kayak_rt::Handle<'static, Block>>(), 0i64);
-    let bs = distinct_blocks(all, nil::<kayak_rt::Handle<'static, Block>>());
+    let all = blocks(ls, nil::<kayak_rt::data::DataAt<'static, Block>>(), 0i64);
+    let bs = distinct_blocks(all, nil::<kayak_rt::data::DataAt<'static, Block>>());
     let had = names_had(bs, nil::<Str>());
-    words_made_x(blocks_named_anew(bs, nil::<kayak_rt::Handle<'static, Block>>(), nil::<Str>()));
+    words_made_x(blocks_named_anew(bs, nil::<kayak_rt::data::DataAt<'static, Block>>(), nil::<Str>()));
     blocks_written_x(all, had);
     literals_checked_x(get(literals()));
     if get(regs_on()) {

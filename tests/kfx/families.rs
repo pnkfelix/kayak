@@ -5,80 +5,241 @@ use kayak_rt::*;
 // Type families: datatypes and type abbreviations with parameters, types
 // and regions. In Rust, generic enums and aliases; the regions erased.
 
+#[derive(Clone, Copy)]
 pub enum Rose<'r, T: Copy + 'static + kayak_rt::Trace> {
     Leaf(T),
-    Node(ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>),
+    Node(ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, T>>>),
 }
 
-impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::Visit for Rose<'r, T> {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Leaf(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Node(f0) => { kayak_rt::Trace::trace(*f0, t); }
-        }
+impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Variant<1> for Rose<'r, T> {
+    type Fields = (T,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("leaf")
     }
 }
 
-pub fn leaf<'r, T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
-    kayak_rt::alloc(Rose::Leaf(f0))
+#[allow(non_snake_case)]
+impl<'r, T: Copy + 'static + kayak_rt::Trace> Rose<'r, T> {
+    #[inline(always)]
+    pub fn __is_Leaf(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Leaf(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn leaf_heap<T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::Handle<'static, Rose<'static, T>> {
-    kayak_rt::heap_alloc(Rose::Leaf(f0))
+impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Variant<0> for Rose<'r, T> {
+    type Fields = (ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, T>>>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("node")
+    }
 }
 
-pub fn leaf_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
-    place_.arena().alloc(Rose::Leaf(f0))
+#[allow(non_snake_case)]
+impl<'r, T: Copy + 'static + kayak_rt::Trace> Rose<'r, T> {
+    #[inline(always)]
+    pub fn __is_Node(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Node(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
-pub fn node<'r, T: Copy + 'static + kayak_rt::Trace>(f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
-    kayak_rt::alloc(Rose::Node(f0))
+impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Datatype for Rose<'r, T> {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::Leaf(f0)
+        } else if w.is::<0>() {
+            let (f0,) = w.fields::<0>();
+            Self::Node(f0)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
 }
 
-pub fn node_heap<T: Copy + 'static + kayak_rt::Trace>(f0: List<kayak_rt::Handle<'static, Rose<'static, T>>>) -> kayak_rt::Handle<'static, Rose<'static, T>> {
-    kayak_rt::heap_alloc(Rose::Node(f0))
+pub fn leaf<'r, T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::data::DataAt<'r, Rose<'r, T>> {
+    kayak_rt::data::data_alloc::<Rose<'r, T>, 1>((f0,))
 }
 
-pub fn node_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
-    place_.arena().alloc(Rose::Node(f0))
+pub fn leaf_heap<T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::data::DataAt<'static, Rose<'static, T>> {
+    kayak_rt::data::data_heap::<Rose<'static, T>, 1>((f0,))
 }
 
+pub fn leaf_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: kayak_rt::Holds<kayak_rt::data::DataBox>>(place_: &'r Place_, f0: T) -> kayak_rt::data::DataAt<'r, Rose<'r, T>> {
+    kayak_rt::data::data_in::<Rose<'r, T>, 1, _>(place_, (f0,))
+}
+
+pub fn node<'r, T: Copy + 'static + kayak_rt::Trace>(f0: ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, T>>>) -> kayak_rt::data::DataAt<'r, Rose<'r, T>> {
+    kayak_rt::data::data_alloc::<Rose<'r, T>, 0>((f0,))
+}
+
+pub fn node_heap<T: Copy + 'static + kayak_rt::Trace>(f0: List<kayak_rt::data::DataAt<'static, Rose<'static, T>>>) -> kayak_rt::data::DataAt<'static, Rose<'static, T>> {
+    kayak_rt::data::data_heap::<Rose<'static, T>, 0>((f0,))
+}
+
+pub fn node_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: kayak_rt::Holds<kayak_rt::data::DataBox>>(place_: &'r Place_, f0: ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, T>>>) -> kayak_rt::data::DataAt<'r, Rose<'r, T>> {
+    kayak_rt::data::data_in::<Rose<'r, T>, 0, _>(place_, (f0,))
+}
+
+#[derive(Clone, Copy)]
 pub enum Option<A: Copy + 'static + kayak_rt::Trace> {
     None(),
     Some(A),
 }
 
-impl<A: Copy + 'static + kayak_rt::Trace> kayak_rt::Visit for Option<A> {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::None() => { }
-            Self::Some(f0) => { kayak_rt::Trace::trace(*f0, t); }
-        }
+impl<A: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Variant<1> for Option<A> {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("none")
     }
 }
 
-pub fn none<A: Copy + 'static + kayak_rt::Trace>() -> kayak_rt::Handle<'static, Option<A>> {
-    kayak_rt::heap_alloc(Option::None())
+#[allow(non_snake_case)]
+impl<A: Copy + 'static + kayak_rt::Trace> Option<A> {
+    #[inline(always)]
+    pub fn __is_None(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __None(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn some<A: Copy + 'static + kayak_rt::Trace>(f0: A) -> kayak_rt::Handle<'static, Option<A>> {
-    kayak_rt::heap_alloc(Option::Some(f0))
+impl<A: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Variant<0> for Option<A> {
+    type Fields = (A,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("some")
+    }
 }
 
+#[allow(non_snake_case)]
+impl<A: Copy + 'static + kayak_rt::Trace> Option<A> {
+    #[inline(always)]
+    pub fn __is_Some(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Some(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl<A: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Datatype for Option<A> {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let () = w.fields::<1>();
+            Self::None()
+        } else if w.is::<0>() {
+            let (f0,) = w.fields::<0>();
+            Self::Some(f0)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn none<A: Copy + 'static + kayak_rt::Trace>() -> kayak_rt::data::DataAt<'static, Option<A>> {
+    kayak_rt::data::data_heap::<Option<A>, 1>(())
+}
+
+pub fn some<A: Copy + 'static + kayak_rt::Trace>(f0: A) -> kayak_rt::data::DataAt<'static, Option<A>> {
+    kayak_rt::data::data_heap::<Option<A>, 0>((f0,))
+}
+
+#[derive(Clone, Copy)]
 pub enum Both<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace> {
     Both(A, B),
 }
 
-impl<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace> kayak_rt::Visit for Both<A, B> {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Both(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Variant<0> for Both<A, B> {
+    type Fields = (A, B,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("both")
     }
 }
 
-pub fn both<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(f0: A, f1: B) -> kayak_rt::Handle<'static, Both<A, B>> {
-    kayak_rt::heap_alloc(Both::Both(f0, f1))
+#[allow(non_snake_case)]
+impl<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace> Both<A, B> {
+    #[inline(always)]
+    pub fn __is_Both(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Both(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Datatype for Both<A, B> {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Both(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn both<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(f0: A, f1: B) -> kayak_rt::data::DataAt<'static, Both<A, B>> {
+    kayak_rt::data::data_heap::<Both<A, B>, 0>((f0, f1,))
 }
 
 pub type Stack<T> = List<T>;
@@ -86,20 +247,19 @@ pub type Stack<T> = List<T>;
 pub type Ints = Stack<i64>;
 
 #[inline]
-pub fn total(x: kayak_rt::Handle<'static, Rose<'static, i64>>) -> i64 {
+pub fn total(x: kayak_rt::data::DataAt<'static, Rose<'static, i64>>) -> i64 {
     let tagcase_ = x;
-    match *tagcase_ {
-        Rose::Leaf(n) => {
-            n
-        }
-        Rose::Node(kids) => {
-            total_all(kids)
-        }
-    }
+    if Rose::__is_Leaf(tagcase_) {
+        let (n,) = Rose::__Leaf(tagcase_);
+        n
+    } else if Rose::__is_Node(tagcase_) {
+        let (kids,) = Rose::__Node(tagcase_);
+        total_all(kids)
+    } else { kayak_rt::data::no_variant() }
 }
 
 #[inline]
-pub fn total_all(ks: List<kayak_rt::Handle<'static, Rose<'static, i64>>>) -> i64 {
+pub fn total_all(ks: List<kayak_rt::data::DataAt<'static, Rose<'static, i64>>>) -> i64 {
     if null_p(ks) {
         0i64
     } else {
@@ -108,7 +268,7 @@ pub fn total_all(ks: List<kayak_rt::Handle<'static, Rose<'static, i64>>>) -> i64
 }
 
 #[inline]
-pub fn first<A: Copy + 'static + kayak_rt::Trace>(xs: Stack<A>) -> kayak_rt::Handle<'static, Option<A>> {
+pub fn first<A: Copy + 'static + kayak_rt::Trace>(xs: Stack<A>) -> kayak_rt::data::DataAt<'static, Option<A>> {
     if null_p(xs) {
         none::<A>()
     } else {
@@ -117,40 +277,36 @@ pub fn first<A: Copy + 'static + kayak_rt::Trace>(xs: Stack<A>) -> kayak_rt::Han
 }
 
 #[inline]
-pub fn or_else<A: Copy + 'static + kayak_rt::Trace>(o: kayak_rt::Handle<'static, Option<A>>, d: A) -> A {
+pub fn or_else<A: Copy + 'static + kayak_rt::Trace>(o: kayak_rt::data::DataAt<'static, Option<A>>, d: A) -> A {
     let tagcase_ = o;
-    match *tagcase_ {
-        Option::None() => {
-            d
-        }
-        Option::Some(x) => {
-            x
-        }
-    }
+    if Option::__is_None(tagcase_) {
+        d
+    } else if Option::__is_Some(tagcase_) {
+        let (x,) = Option::__Some(tagcase_);
+        x
+    } else { kayak_rt::data::no_variant() }
 }
 
 #[inline]
-pub fn swap<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(p: kayak_rt::Handle<'static, Both<A, B>>) -> kayak_rt::Handle<'static, Both<B, A>> {
+pub fn swap<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(p: kayak_rt::data::DataAt<'static, Both<A, B>>) -> kayak_rt::data::DataAt<'static, Both<B, A>> {
     let tagcase_ = p;
-    match *tagcase_ {
-        Both::Both(x, y) => {
-            both(y, x)
-        }
-    }
+    if Both::__is_Both(tagcase_) {
+        let (x, y,) = Both::__Both(tagcase_);
+        both(y, x)
+    } else { kayak_rt::data::no_variant() }
 }
 
 pub fn main() -> Str {
-    let kids = the::<List<kayak_rt::Handle<'static, Rose<'static, i64>>>>(kayak_rt::heap_cons(leaf_heap(1i64), kayak_rt::heap_cons(leaf_heap(2i64), kayak_rt::nil())));
-    let tree = the::<kayak_rt::Handle<'static, Rose<'static, i64>>>(node_heap(kayak_rt::heap_cons(node_heap(kids), kayak_rt::heap_cons(leaf_heap(4i64), nil::<kayak_rt::Handle<'static, Rose<'static, i64>>>()))));
+    let kids = the::<List<kayak_rt::data::DataAt<'static, Rose<'static, i64>>>>(kayak_rt::heap_cons(leaf_heap(1i64), kayak_rt::heap_cons(leaf_heap(2i64), kayak_rt::nil())));
+    let tree = the::<kayak_rt::data::DataAt<'static, Rose<'static, i64>>>(node_heap(kayak_rt::heap_cons(node_heap(kids), kayak_rt::heap_cons(leaf_heap(4i64), nil::<kayak_rt::data::DataAt<'static, Rose<'static, i64>>>()))));
     let xs = the::<Ints>(kayak_rt::heap_cons(7i64, kayak_rt::heap_cons(8i64, kayak_rt::heap_cons(9i64, kayak_rt::nil()))));
-    let p = the::<kayak_rt::Handle<'static, Both<Str, i64>>>(both(str_lit!("x"), 5i64));
+    let p = the::<kayak_rt::data::DataAt<'static, Both<Str, i64>>>(both(str_lit!("x"), 5i64));
     string_append(i64_to_string(total(tree)), string_append(str_lit!(" "), string_append(i64_to_string(or_else(first(xs), 0i64)), string_append(str_lit!(" "), string_append(i64_to_string(or_else(first(the::<Ints>(nil::<i64>())), -1i64)), string_append(str_lit!(" "), {
         let tagcase_ = swap(p);
-        match *tagcase_ {
-            Both::Both(n, s) => {
-                string_append(i64_to_string(n), s)
-            }
-        }
+        if Both::__is_Both(tagcase_) {
+            let (n, s,) = Both::__Both(tagcase_);
+            string_append(i64_to_string(n), s)
+        } else { kayak_rt::data::no_variant() }
     }))))))
 }
 

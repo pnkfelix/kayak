@@ -259,26 +259,88 @@ pub fn counting(from: i64, n: i64) -> List<i64> {
 
 // A set of names, a balanced tree (C92): a membership test in a few
 // comparisons, where a list of hundreds took as many.
+#[derive(Clone, Copy)]
 pub enum Nset {
     Nempty(),
-    Nnode(kayak_rt::Handle<'static, Nset>, Str, kayak_rt::Handle<'static, Nset>),
+    Nnode(kayak_rt::data::DataAt<'static, Nset>, Str, kayak_rt::data::DataAt<'static, Nset>),
 }
 
-impl kayak_rt::Visit for Nset {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Nempty() => { }
-            Self::Nnode(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-        }
+impl kayak_rt::data::Variant<1> for Nset {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("nempty")
     }
 }
 
-pub fn nempty() -> kayak_rt::Handle<'static, Nset> {
-    kayak_rt::heap_alloc(Nset::Nempty())
+#[allow(non_snake_case)]
+impl Nset {
+    #[inline(always)]
+    pub fn __is_Nempty(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Nempty(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn nnode(f0: kayak_rt::Handle<'static, Nset>, f1: Str, f2: kayak_rt::Handle<'static, Nset>) -> kayak_rt::Handle<'static, Nset> {
-    kayak_rt::heap_alloc(Nset::Nnode(f0, f1, f2))
+impl kayak_rt::data::Variant<0> for Nset {
+    type Fields = (kayak_rt::data::DataAt<'static, Nset>, Str, kayak_rt::data::DataAt<'static, Nset>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("nnode")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Nset {
+    #[inline(always)]
+    pub fn __is_Nnode(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Nnode(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Nset {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let () = w.fields::<1>();
+            Self::Nempty()
+        } else if w.is::<0>() {
+            let (f0, f1, f2,) = w.fields::<0>();
+            Self::Nnode(f0, f1, f2)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn nempty() -> kayak_rt::data::DataAt<'static, Nset> {
+    kayak_rt::data::data_heap::<Nset, 1>(())
+}
+
+pub fn nnode(f0: kayak_rt::data::DataAt<'static, Nset>, f1: Str, f2: kayak_rt::data::DataAt<'static, Nset>) -> kayak_rt::data::DataAt<'static, Nset> {
+    kayak_rt::data::data_heap::<Nset, 0>((f0, f1, f2,))
 }
 
 pub fn merged_strings(a: List<Str>, b: List<Str>) -> List<Str> {
@@ -335,7 +397,7 @@ pub fn dropped(mut xs: List<Str>, mut n: i64) -> List<Str> {
 }
 
 /// The first `n` of `xs`, sorted, as a balanced tree.
-pub fn tree_of(xs: List<Str>, n: i64) -> kayak_rt::Handle<'static, Nset> {
+pub fn tree_of(xs: List<Str>, n: i64) -> kayak_rt::data::DataAt<'static, Nset> {
     if i64_lt_eq(n, 0i64) {
         nempty()
     } else {
@@ -346,49 +408,45 @@ pub fn tree_of(xs: List<Str>, n: i64) -> kayak_rt::Handle<'static, Nset> {
 }
 
 #[inline]
-pub fn nset_of(xs: List<Str>) -> kayak_rt::Handle<'static, Nset> {
+pub fn nset_of(xs: List<Str>) -> kayak_rt::data::DataAt<'static, Nset> {
     let sorted = sorted_strings(xs);
     tree_of(sorted, size(sorted))
 }
 
 /// `s` with `x`, unbalanced: for what a walk has seen.
-pub fn nset_added(x: Str, s: kayak_rt::Handle<'static, Nset>) -> kayak_rt::Handle<'static, Nset> {
+pub fn nset_added(x: Str, s: kayak_rt::data::DataAt<'static, Nset>) -> kayak_rt::data::DataAt<'static, Nset> {
     let tagcase_ = s;
-    match *tagcase_ {
-        Nset::Nempty() => {
-            nnode(nempty(), x, nempty())
+    if Nset::__is_Nempty(tagcase_) {
+        nnode(nempty(), x, nempty())
+    } else if Nset::__is_Nnode(tagcase_) {
+        let (l, k, r,) = Nset::__Nnode(tagcase_);
+        if string_eq_p(x, k) {
+            s
+        } else if string_lt_p(x, k) {
+            nnode(nset_added(x, l), k, r)
+        } else {
+            nnode(l, k, nset_added(x, r))
         }
-        Nset::Nnode(l, k, r) => {
-            if string_eq_p(x, k) {
-                s
-            } else if string_lt_p(x, k) {
-                nnode(nset_added(x, l), k, r)
-            } else {
-                nnode(l, k, nset_added(x, r))
-            }
-        }
-    }
+    } else { kayak_rt::data::no_variant() }
 }
 
-pub fn in_nset_p(mut x: Str, mut s: kayak_rt::Handle<'static, Nset>) -> bool {
+pub fn in_nset_p(mut x: Str, mut s: kayak_rt::data::DataAt<'static, Nset>) -> bool {
     loop {
         let tagcase_ = s;
-        match *tagcase_ {
-            Nset::Nempty() => {
-                return false;
+        if Nset::__is_Nempty(tagcase_) {
+            return false;
+        } else if Nset::__is_Nnode(tagcase_) {
+            let (l, k, r,) = Nset::__Nnode(tagcase_);
+            if string_eq_p(x, k) {
+                return true;
+            } else if string_lt_p(x, k) {
+                s = l;
+                continue;
+            } else {
+                s = r;
+                continue;
             }
-            Nset::Nnode(l, k, r) => {
-                if string_eq_p(x, k) {
-                    return true;
-                } else if string_lt_p(x, k) {
-                    s = l;
-                    continue;
-                } else {
-                    s = r;
-                    continue;
-                }
-            }
-        }
+        } else { kayak_rt::data::no_variant() }
     }
 }
 

@@ -36,7 +36,7 @@ pub fn k_words(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> Lis
     }
 }
 
-pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
+pub fn k_of(s: Str) -> kayak_rt::data::DataAt<'static, Sexp> {
     let ws = k_words(string_chars(s), nil::<char>(), nil::<Str>());
     if null_p(cdr(ws)) {
         lst(kayak_rt::heap_cons(sym(car(ws), str_lit!(""), 0i64), kayak_rt::nil()), str_lit!(""), 0i64, 0i64)
@@ -46,7 +46,7 @@ pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
 }
 
 #[inline]
-pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
+pub fn k_text(k: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
     if string_eq_p(key_arg(k, 0i64), str_lit!("")) {
         key_query(k)
     } else {
@@ -54,24 +54,22 @@ pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
     }
 }
 
-pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, mut before: Reader) -> Str {
+pub fn file_in(mut fs: List<kayak_rt::data::DataAt<'static, DbFile>>, mut name: Str, mut before: Reader) -> Str {
     loop {
         if null_p(fs) {
             return before.call(name);
         } else if {
             let tagcase_ = car(fs);
-            match *tagcase_ {
-                DbFile::DbFile(n, t) => {
-                    string_eq_p(n, name)
-                }
-            }
+            if DbFile::__is_DbFile(tagcase_) {
+                let (n, t,) = DbFile::__DbFile(tagcase_);
+                string_eq_p(n, name)
+            } else { kayak_rt::data::no_variant() }
         } {
             let tagcase_ = car(fs);
-            match *tagcase_ {
-                DbFile::DbFile(n, t) => {
-                    return t;
-                }
-            }
+            if DbFile::__is_DbFile(tagcase_) {
+                let (n, t,) = DbFile::__DbFile(tagcase_);
+                return t;
+            } else { kayak_rt::data::no_variant() }
         } else {
             fs = cdr(fs);
             continue;
@@ -80,7 +78,7 @@ pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, m
 }
 
 pub fn reread(d: Db, whose: Str) -> Db {
-    let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
+    let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
         true
     })));
     let before = db_reader(d);
@@ -136,7 +134,7 @@ pub fn string_to_i64_of(s: Str) -> i64 {
     digits(string_chars(s), 0i64)
 }
 
-pub fn run(d: Db, key: kayak_rt::Handle<'static, Sexp>) -> Str {
+pub fn run(d: Db, key: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
     let k = k_text(key);
     let q = car(words_from(string_chars(k), nil::<char>(), nil::<Str>()));
     if string_eq_p(q, str_lit!("len")) {

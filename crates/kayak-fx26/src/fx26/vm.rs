@@ -476,11 +476,10 @@ pub fn arm_found(mut start: i64, mut n: i64, mut tag: i64) -> i64 {
             return -1i64;
         } else if {
             let tagcase_ = armx_at(start);
-            match *tagcase_ {
-                Armx::Armx(t, c, b) => {
-                    i64_eq(t, tag)
-                }
-            }
+            if Armx::__is_Armx(tagcase_) {
+                let (t, c, b,) = Armx::__Armx(tagcase_);
+                i64_eq(t, tag)
+            } else { kayak_rt::data::no_variant() }
         } {
             return start;
         } else {
@@ -511,20 +510,57 @@ pub fn consts() -> FlatArray<i64> {
 // there, as in any machine that has tail calls. Consecutive activations of
 // one procedure are one line, with their count; what is outside every
 // lambda, none.
+#[derive(Clone, Copy)]
 pub enum Activation {
     Activation(i64, i64, i64),
 }
 
-impl kayak_rt::Visit for Activation {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Activation(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-        }
+impl kayak_rt::data::Variant<0> for Activation {
+    type Fields = (i64, i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("activation")
     }
 }
 
-pub fn activation(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Activation> {
-    kayak_rt::heap_alloc(Activation::Activation(f0, f1, f2))
+#[allow(non_snake_case)]
+impl Activation {
+    #[inline(always)]
+    pub fn __is_Activation(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Activation(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Activation {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1, f2,) = w.fields::<0>();
+            Self::Activation(f0, f1, f2)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn activation(f0: i64, f1: i64, f2: i64) -> kayak_rt::data::DataAt<'static, Activation> {
+    kayak_rt::data::data_heap::<Activation, 0>((f0, f1, f2,))
 }
 
 pub fn frame_node(k: i64) -> i64 {
@@ -567,23 +603,60 @@ pub fn env_within_p(mut outer: i64, mut e: i64, mut depth: i64) -> bool {
 // the activation it is in (`owner`, -1 none yet; `env`), how many of that
 // lambda's have come one after another (`n`), and the runs finished, the
 // first 17 kept (last first), and how many.
+#[derive(Clone, Copy)]
 pub enum Walked {
-    Walked(List<kayak_rt::Handle<'static, Activation>>, i64),
+    Walked(List<kayak_rt::data::DataAt<'static, Activation>>, i64),
 }
 
-impl kayak_rt::Visit for Walked {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Walked(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Walked {
+    type Fields = (List<kayak_rt::data::DataAt<'static, Activation>>, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("walked")
     }
 }
 
-pub fn walked(f0: List<kayak_rt::Handle<'static, Activation>>, f1: i64) -> kayak_rt::Handle<'static, Walked> {
-    kayak_rt::heap_alloc(Walked::Walked(f0, f1))
+#[allow(non_snake_case)]
+impl Walked {
+    #[inline(always)]
+    pub fn __is_Walked(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Walked(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
-pub fn activations(mut owner: i64, mut env: i64, mut n: i64, mut k: i64, mut acc: List<kayak_rt::Handle<'static, Activation>>, mut runs: i64) -> kayak_rt::Handle<'static, Walked> {
+impl kayak_rt::data::Datatype for Walked {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Walked(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn walked(f0: List<kayak_rt::data::DataAt<'static, Activation>>, f1: i64) -> kayak_rt::data::DataAt<'static, Walked> {
+    kayak_rt::data::data_heap::<Walked, 0>((f0, f1,))
+}
+
+pub fn activations(mut owner: i64, mut env: i64, mut n: i64, mut k: i64, mut acc: List<kayak_rt::data::DataAt<'static, Activation>>, mut runs: i64) -> kayak_rt::data::DataAt<'static, Walked> {
     loop {
         if i64_eq(k, w_nil()) {
             if i64_lt(owner, 0i64) {
@@ -620,7 +693,7 @@ pub fn activations(mut owner: i64, mut env: i64, mut n: i64, mut k: i64, mut acc
     }
 }
 
-pub fn activations_reversed(mut xs: List<kayak_rt::Handle<'static, Activation>>, mut acc: List<kayak_rt::Handle<'static, Activation>>) -> List<kayak_rt::Handle<'static, Activation>> {
+pub fn activations_reversed(mut xs: List<kayak_rt::data::DataAt<'static, Activation>>, mut acc: List<kayak_rt::data::DataAt<'static, Activation>>) -> List<kayak_rt::data::DataAt<'static, Activation>> {
     loop {
         if null_p(xs) {
             return acc;
@@ -631,22 +704,21 @@ pub fn activations_reversed(mut xs: List<kayak_rt::Handle<'static, Activation>>,
     }
 }
 
-pub fn trace_lines(xs: List<kayak_rt::Handle<'static, Activation>>, shown: i64, runs: i64) -> List<Str> {
+pub fn trace_lines(xs: List<kayak_rt::data::DataAt<'static, Activation>>, shown: i64, runs: i64) -> List<Str> {
     if null_p(xs) {
         nil::<Str>()
     } else if i64_gt_eq(shown, 16i64) {
         kayak_rt::heap_cons(string_append(str_lit!("... and "), string_append(i64_to_string(i64_minus(runs, 16i64)), str_lit!(" more"))), kayak_rt::nil())
     } else {
         let tagcase_ = car(xs);
-        match *tagcase_ {
-            Activation::Activation(o, e, n) => {
-                kayak_rt::heap_cons(string_append(str_lit!("in "), string_append(array_ref(get(wheres()), i64_to_int(o)), if i64_gt(n, 1i64) {
-                    string_append(str_lit!(", "), string_append(i64_to_string(n), str_lit!(" calls")))
-                } else {
-                    str_lit!("")
-                })), trace_lines(cdr(xs), i64_plus(shown, 1i64), runs))
-            }
-        }
+        if Activation::__is_Activation(tagcase_) {
+            let (o, e, n,) = Activation::__Activation(tagcase_);
+            kayak_rt::heap_cons(string_append(str_lit!("in "), string_append(array_ref(get(wheres()), i64_to_int(o)), if i64_gt(n, 1i64) {
+                string_append(str_lit!(", "), string_append(i64_to_string(n), str_lit!(" calls")))
+            } else {
+                str_lit!("")
+            })), trace_lines(cdr(xs), i64_plus(shown, 1i64), runs))
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
@@ -654,12 +726,11 @@ pub fn trace_lines(xs: List<kayak_rt::Handle<'static, Activation>>, shown: i64, 
 /// yet; `w-failed`.
 pub fn stopped_x(node: i64, env: i64, k: i64) -> i64 {
     if null_p(get(engine_trace())) {
-        let tagcase_ = activations(node_owner(node), env, 1i64, k, nil::<kayak_rt::Handle<'static, Activation>>(), 0i64);
-        match *tagcase_ {
-            Walked::Walked(acc, runs) => {
-                set(engine_trace(), trace_lines(activations_reversed(acc, nil::<kayak_rt::Handle<'static, Activation>>()), 0i64, runs))
-            }
-        }
+        let tagcase_ = activations(node_owner(node), env, 1i64, k, nil::<kayak_rt::data::DataAt<'static, Activation>>(), 0i64);
+        if Walked::__is_Walked(tagcase_) {
+            let (acc, runs,) = Walked::__Walked(tagcase_);
+            set(engine_trace(), trace_lines(activations_reversed(acc, nil::<kayak_rt::data::DataAt<'static, Activation>>()), 0i64, runs))
+        } else { kayak_rt::data::no_variant() }
     } else {
         ()
     };
@@ -781,115 +852,114 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     ()
                 };
                 let tagcase_ = node_at(node);
-                match *tagcase_ {
-                    Node::NLit(c) => {
-                        (mode, node, val, f, args) = (1i64, 0i64, constant_at(c), 0i64, 0i64);
-                        continue;
-                    }
-                    Node::NLocal(d, s) => {
-                        (mode, node, val, f, args) = (1i64, 0i64, bloblet_value(env_up(env, d), i64_plus(s, 1i64)), 0i64, 0i64);
-                        continue;
-                    }
-                    Node::NGlobal(i) => {
-                        let w = flatarray_ref_i64(get(globals()), i);
-                        if i64_eq(w, w_unbound()) {
-                            unbound_global(i);
-                            let go_r = failed_at(node, env, k);
-                            if get(go_on()) {
-                                set(go_on(), false);
-                                let g = get(go_regs());
-                                (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
-                                continue;
-                            } else {
-                                return go_r;
-                            }
-                        } else {
-                            (mode, node, val, f, args) = (1i64, 0i64, w, 0i64, 0i64);
+                if Node::__is_NLit(tagcase_) {
+                    let (c,) = Node::__NLit(tagcase_);
+                    (mode, node, val, f, args) = (1i64, 0i64, constant_at(c), 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NLocal(tagcase_) {
+                    let (d, s,) = Node::__NLocal(tagcase_);
+                    (mode, node, val, f, args) = (1i64, 0i64, bloblet_value(env_up(env, d), i64_plus(s, 1i64)), 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NGlobal(tagcase_) {
+                    let (i,) = Node::__NGlobal(tagcase_);
+                    let w = flatarray_ref_i64(get(globals()), i);
+                    if i64_eq(w, w_unbound()) {
+                        unbound_global(i);
+                        let go_r = failed_at(node, env, k);
+                        if get(go_on()) {
+                            set(go_on(), false);
+                            let g = get(go_regs());
+                            (mode, node, env, k, val, f, args) = (flatarray_ref_i64(g, 0i64), flatarray_ref_i64(g, 1i64), flatarray_ref_i64(g, 2i64), flatarray_ref_i64(g, 3i64), flatarray_ref_i64(g, 4i64), flatarray_ref_i64(g, 5i64), flatarray_ref_i64(g, 6i64));
                             continue;
+                        } else {
+                            return go_r;
                         }
-                    }
-                    Node::NLambda(n, body) => {
-                        let p = alloc_x(ob_proc(), 2i64);
-                        bloblet_value_set_x(p, 0i64, code_word(node));
-                        bloblet_value_set_x(p, 1i64, env);
-                        (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
+                    } else {
+                        (mode, node, val, f, args) = (1i64, 0i64, w, 0i64, 0i64);
                         continue;
                     }
-                    Node::NCall(at, count) => {
+                } else if Node::__is_NLambda(tagcase_) {
+                    let (n, body,) = Node::__NLambda(tagcase_);
+                    let p = alloc_x(ob_proc(), 2i64);
+                    bloblet_value_set_x(p, 0i64, code_word(node));
+                    bloblet_value_set_x(p, 1i64, env);
+                    (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NCall(tagcase_) {
+                    let (at, count,) = Node::__NCall(tagcase_);
+                    (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_list(), k, 4i64, code_word(node), fixnum(1i64), env, w_nil()), 0i64, 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NIf(tagcase_) {
+                    let (c, t, e,) = Node::__NIf(tagcase_);
+                    (mode, node, k, val, f, args) = (0i64, c, frame_x(fk_if(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NSeq(tagcase_) {
+                    let (at, count,) = Node::__NSeq(tagcase_);
+                    if i64_eq(count, 0i64) {
+                        (mode, node, val, f, args) = (1i64, 0i64, w_unit(), 0i64, 0i64);
+                        continue;
+                    } else if i64_eq(count, 1i64) {
+                        (mode, node, val, f, args) = (0i64, kid_at(at), 0i64, 0i64, 0i64);
+                        continue;
+                    } else {
+                        (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_seq(), k, 3i64, code_word(node), fixnum(1i64), env, 0i64), 0i64, 0i64, 0i64);
+                        continue;
+                    }
+                } else if Node::__is_NLet(tagcase_) {
+                    let (at, count, body,) = Node::__NLet(tagcase_);
+                    if i64_eq(count, 0i64) {
+                        let e = alloc_x(ob_env(), 1i64);
+                        bloblet_value_set_x(e, 0i64, env);
+                        (mode, node, env, val, f, args) = (0i64, body, e, 0i64, 0i64, 0i64);
+                        continue;
+                    } else {
                         (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_list(), k, 4i64, code_word(node), fixnum(1i64), env, w_nil()), 0i64, 0i64, 0i64);
                         continue;
                     }
-                    Node::NIf(c, t, e) => {
-                        (mode, node, k, val, f, args) = (0i64, c, frame_x(fk_if(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, 0i64, 0i64);
+                } else if Node::__is_NLetrec(tagcase_) {
+                    let (at, count, body,) = Node::__NLetrec(tagcase_);
+                    let e = alloc_x(ob_env(), i64_plus(count, 1i64));
+                    bloblet_value_set_x(e, 0i64, env);
+                    slots_unbound_x(e, 1i64, count);
+                    if i64_eq(count, 0i64) {
+                        (mode, node, env, val, f, args) = (0i64, body, e, 0i64, 0i64, 0i64);
+                        continue;
+                    } else {
+                        (mode, node, env, k, val, f, args) = (0i64, kid_at(at), e, frame_x(fk_letrec(), k, 3i64, code_word(node), fixnum(0i64), e, 0i64), 0i64, 0i64, 0i64);
                         continue;
                     }
-                    Node::NSeq(at, count) => {
-                        if i64_eq(count, 0i64) {
-                            (mode, node, val, f, args) = (1i64, 0i64, w_unit(), 0i64, 0i64);
-                            continue;
-                        } else if i64_eq(count, 1i64) {
-                            (mode, node, val, f, args) = (0i64, kid_at(at), 0i64, 0i64, 0i64);
-                            continue;
-                        } else {
-                            (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_seq(), k, 3i64, code_word(node), fixnum(1i64), env, 0i64), 0i64, 0i64, 0i64);
-                            continue;
-                        }
-                    }
-                    Node::NLet(at, count, body) => {
-                        if i64_eq(count, 0i64) {
-                            let e = alloc_x(ob_env(), 1i64);
-                            bloblet_value_set_x(e, 0i64, env);
-                            (mode, node, env, val, f, args) = (0i64, body, e, 0i64, 0i64, 0i64);
-                            continue;
-                        } else {
-                            (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_list(), k, 4i64, code_word(node), fixnum(1i64), env, w_nil()), 0i64, 0i64, 0i64);
-                            continue;
-                        }
-                    }
-                    Node::NLetrec(at, count, body) => {
-                        let e = alloc_x(ob_env(), i64_plus(count, 1i64));
-                        bloblet_value_set_x(e, 0i64, env);
-                        slots_unbound_x(e, 1i64, count);
-                        if i64_eq(count, 0i64) {
-                            (mode, node, env, val, f, args) = (0i64, body, e, 0i64, 0i64, 0i64);
-                            continue;
-                        } else {
-                            (mode, node, env, k, val, f, args) = (0i64, kid_at(at), e, frame_x(fk_letrec(), k, 3i64, code_word(node), fixnum(0i64), e, 0i64), 0i64, 0i64, 0i64);
-                            continue;
-                        }
-                    }
-                    Node::NDefine(i, x) => {
-                        (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_define(), k, 1i64, fixnum(i), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
+                } else if Node::__is_NDefine(tagcase_) {
+                    let (i, x,) = Node::__NDefine(tagcase_);
+                    (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_define(), k, 1i64, fixnum(i), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NSum(tagcase_) {
+                    let (t, x,) = Node::__NSum(tagcase_);
+                    (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_sum(), k, 1i64, fixnum(t), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NProduct(tagcase_) {
+                    let (labels, at, count,) = Node::__NProduct(tagcase_);
+                    if i64_eq(count, 0i64) {
+                        let p = product_made_x(0i64);
+                        frozen_whole_x(p);
+                        (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
+                        continue;
+                    } else {
+                        (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_list(), k, 4i64, code_word(node), fixnum(1i64), env, w_nil()), 0i64, 0i64, 0i64);
                         continue;
                     }
-                    Node::NSum(t, x) => {
-                        (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_sum(), k, 1i64, fixnum(t), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
-                        continue;
-                    }
-                    Node::NProduct(labels, at, count) => {
-                        if i64_eq(count, 0i64) {
-                            let p = product_made_x(0i64);
-                            frozen_whole_x(p);
-                            (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
-                            continue;
-                        } else {
-                            (mode, node, k, val, f, args) = (0i64, kid_at(at), frame_x(fk_list(), k, 4i64, code_word(node), fixnum(1i64), env, w_nil()), 0i64, 0i64, 0i64);
-                            continue;
-                        }
-                    }
-                    Node::NField(i, x) => {
-                        (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_field(), k, 1i64, fixnum(i), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
-                        continue;
-                    }
-                    Node::NTagcase(x, start, count, default) => {
-                        (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_tagcase(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, 0i64, 0i64);
-                        continue;
-                    }
-                    Node::NPrompt(t, h, body) => {
-                        (mode, node, k, val, f, args) = (0i64, t, frame_x(fk_ptag(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, 0i64, 0i64);
-                        continue;
-                    }
-                }
+                } else if Node::__is_NField(tagcase_) {
+                    let (i, x,) = Node::__NField(tagcase_);
+                    (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_field(), k, 1i64, fixnum(i), 0i64, 0i64, 0i64), 0i64, 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NTagcase(tagcase_) {
+                    let (x, start, count, default,) = Node::__NTagcase(tagcase_);
+                    (mode, node, k, val, f, args) = (0i64, x, frame_x(fk_tagcase(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, 0i64, 0i64);
+                    continue;
+                } else if Node::__is_NPrompt(tagcase_) {
+                    let (t, h, body,) = Node::__NPrompt(tagcase_);
+                    (mode, node, k, val, f, args) = (0i64, t, frame_x(fk_ptag(), k, 2i64, code_word(node), env, 0i64, 0i64), 0i64, 0i64, 0i64);
+                    continue;
+                } else { kayak_rt::data::no_variant() }
             } else if i64_eq(mode, 1i64) {
                 if i64_eq(k, w_nil()) {
                     return val;
@@ -897,39 +967,35 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     let (kind, next) = (frame_kind(k), frame_next(k));
                     if i64_eq(kind, fk_if()) {
                         let tagcase_ = node_at(code_index(frame_field(k, 0i64)));
-                        match *tagcase_ {
-                            Node::NIf(c, t, e) => {
-                                (mode, node, env, k, val, f, args) = (0i64, if truthy_p(val) {
-                                    t
-                                } else {
-                                    e
-                                }, frame_field(k, 1i64), next, 0i64, 0i64, 0i64);
-                                continue;
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
-                                continue;
-                            }
+                        if Node::__is_NIf(tagcase_) {
+                            let (c, t, e,) = Node::__NIf(tagcase_);
+                            (mode, node, env, k, val, f, args) = (0i64, if truthy_p(val) {
+                                t
+                            } else {
+                                e
+                            }, frame_field(k, 1i64), next, 0i64, 0i64, 0i64);
+                            continue;
+                        } else {
+                            let other = tagcase_;
+                            (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
+                            continue;
                         }
                     } else if i64_eq(kind, fk_seq()) {
                         let tagcase_ = node_at(code_index(frame_field(k, 0i64)));
-                        match *tagcase_ {
-                            Node::NSeq(at, count) => {
-                                let (pos, e) = (fixnum_value(frame_field(k, 1i64)), frame_field(k, 2i64));
-                                if i64_eq(i64_plus(pos, 1i64), count) {
-                                    (mode, node, env, k, val, f, args) = (0i64, kid_at(i64_plus(at, pos)), e, next, 0i64, 0i64, 0i64);
-                                    continue;
-                                } else {
-                                    (mode, node, env, k, val, f, args) = (0i64, kid_at(i64_plus(at, pos)), e, frame_x(fk_seq(), next, 3i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), e, 0i64), 0i64, 0i64, 0i64);
-                                    continue;
-                                }
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
+                        if Node::__is_NSeq(tagcase_) {
+                            let (at, count,) = Node::__NSeq(tagcase_);
+                            let (pos, e) = (fixnum_value(frame_field(k, 1i64)), frame_field(k, 2i64));
+                            if i64_eq(i64_plus(pos, 1i64), count) {
+                                (mode, node, env, k, val, f, args) = (0i64, kid_at(i64_plus(at, pos)), e, next, 0i64, 0i64, 0i64);
+                                continue;
+                            } else {
+                                (mode, node, env, k, val, f, args) = (0i64, kid_at(i64_plus(at, pos)), e, frame_x(fk_seq(), next, 3i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), e, 0i64), 0i64, 0i64, 0i64);
                                 continue;
                             }
+                        } else {
+                            let other = tagcase_;
+                            (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
+                            continue;
                         }
                     } else if i64_eq(kind, fk_list()) {
                         let go_r = list_step(k, next, val);
@@ -946,21 +1012,19 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         let pos = fixnum_value(frame_field(k, 1i64));
                         bloblet_value_set_x(e, i64_plus(pos, 1i64), val);
                         let tagcase_ = node_at(code_index(frame_field(k, 0i64)));
-                        match *tagcase_ {
-                            Node::NLetrec(at, count, body) => {
-                                if i64_eq(i64_plus(pos, 1i64), count) {
-                                    (mode, node, env, k, val, f, args) = (0i64, body, e, next, 0i64, 0i64, 0i64);
-                                    continue;
-                                } else {
-                                    (mode, node, env, k, val, f, args) = (0i64, kid_at(i64_plus(at, i64_plus(pos, 1i64))), e, frame_x(fk_letrec(), next, 3i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), e, 0i64), 0i64, 0i64, 0i64);
-                                    continue;
-                                }
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
+                        if Node::__is_NLetrec(tagcase_) {
+                            let (at, count, body,) = Node::__NLetrec(tagcase_);
+                            if i64_eq(i64_plus(pos, 1i64), count) {
+                                (mode, node, env, k, val, f, args) = (0i64, body, e, next, 0i64, 0i64, 0i64);
+                                continue;
+                            } else {
+                                (mode, node, env, k, val, f, args) = (0i64, kid_at(i64_plus(at, i64_plus(pos, 1i64))), e, frame_x(fk_letrec(), next, 3i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), e, 0i64), 0i64, 0i64, 0i64);
                                 continue;
                             }
+                        } else {
+                            let other = tagcase_;
+                            (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
+                            continue;
                         }
                     } else if i64_eq(kind, fk_define()) {
                         flatarray_set_i64_x(get(globals()), fixnum_value(frame_field(k, 0i64)), val);
@@ -984,29 +1048,25 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         }
                     } else if i64_eq(kind, fk_ptag()) {
                         let tagcase_ = node_at(code_index(frame_field(k, 0i64)));
-                        match *tagcase_ {
-                            Node::NPrompt(t, h, body) => {
-                                (mode, node, env, k, val, f, args) = (0i64, h, frame_field(k, 1i64), frame_x(fk_phandler(), next, 3i64, val, frame_field(k, 0i64), frame_field(k, 1i64), 0i64), 0i64, 0i64, 0i64);
-                                continue;
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
-                                continue;
-                            }
+                        if Node::__is_NPrompt(tagcase_) {
+                            let (t, h, body,) = Node::__NPrompt(tagcase_);
+                            (mode, node, env, k, val, f, args) = (0i64, h, frame_field(k, 1i64), frame_x(fk_phandler(), next, 3i64, val, frame_field(k, 0i64), frame_field(k, 1i64), 0i64), 0i64, 0i64, 0i64);
+                            continue;
+                        } else {
+                            let other = tagcase_;
+                            (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
+                            continue;
                         }
                     } else if i64_eq(kind, fk_phandler()) {
                         let tagcase_ = node_at(code_index(frame_field(k, 1i64)));
-                        match *tagcase_ {
-                            Node::NPrompt(t, h, body) => {
-                                (mode, node, env, k, val, f, args) = (0i64, body, frame_field(k, 2i64), frame_x(fk_prompt(), next, 2i64, fixnum(tag_number(frame_field(k, 0i64))), val, 0i64, 0i64), 0i64, 0i64, 0i64);
-                                continue;
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
-                                continue;
-                            }
+                        if Node::__is_NPrompt(tagcase_) {
+                            let (t, h, body,) = Node::__NPrompt(tagcase_);
+                            (mode, node, env, k, val, f, args) = (0i64, body, frame_field(k, 2i64), frame_x(fk_prompt(), next, 2i64, fixnum(tag_number(frame_field(k, 0i64))), val, 0i64, 0i64), 0i64, 0i64, 0i64);
+                            continue;
+                        } else {
+                            let other = tagcase_;
+                            (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
+                            continue;
                         }
                     } else if i64_eq(kind, fk_prompt()) {
                         (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
@@ -1090,90 +1150,85 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
     let env = frame_field(k, 2i64);
     let got = pair_x(val, frame_field(k, 3i64));
     let tagcase_ = node_at(nd);
-    match *tagcase_ {
-        Node::NCall(at, count) => {
-            if i64_lt(pos, count) {
-                next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
-            } else {
-                let xs = reverse_words_x(got, w_nil());
-                next_step_x(2i64, nd, env, next, 0i64, pair_car(xs), pair_cdr(xs))
-            }
+    if Node::__is_NCall(tagcase_) {
+        let (at, count,) = Node::__NCall(tagcase_);
+        if i64_lt(pos, count) {
+            next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
+        } else {
+            let xs = reverse_words_x(got, w_nil());
+            next_step_x(2i64, nd, env, next, 0i64, pair_car(xs), pair_cdr(xs))
         }
-        Node::NLet(at, count, body) => {
-            if i64_lt(pos, count) {
-                next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
-            } else {
-                let e = alloc_x(ob_env(), i64_plus(count, 1i64));
-                bloblet_value_set_x(e, 0i64, env);
-                fill_from_reversed_x(e, count, got);
-                next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
-            }
+    } else if Node::__is_NLet(tagcase_) {
+        let (at, count, body,) = Node::__NLet(tagcase_);
+        if i64_lt(pos, count) {
+            next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
+        } else {
+            let e = alloc_x(ob_env(), i64_plus(count, 1i64));
+            bloblet_value_set_x(e, 0i64, env);
+            fill_from_reversed_x(e, count, got);
+            next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
         }
-        Node::NProduct(labels, at, count) => {
-            if i64_lt(pos, count) {
-                next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
-            } else {
-                let p = product_made_x(count);
-                product_from_reversed_x(p, i64_minus(count, 1i64), got);
-                frozen_whole_x(p);
-                next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
-            }
+    } else if Node::__is_NProduct(tagcase_) {
+        let (labels, at, count,) = Node::__NProduct(tagcase_);
+        if i64_lt(pos, count) {
+            next_step_x(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
+        } else {
+            let p = product_made_x(count);
+            product_from_reversed_x(p, i64_minus(count, 1i64), got);
+            frozen_whole_x(p);
+            next_step_x(1i64, 0i64, env, next, p, 0i64, 0i64)
         }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: a list frame of no list"));
-            failed_at(-1i64, 0i64, k)
-        }
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: a list frame of no list"));
+        failed_at(-1i64, 0i64, k)
     }
 }
 
 pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
     let tagcase_ = node_at(code_index(frame_field(k, 0i64)));
-    match *tagcase_ {
-        Node::NTagcase(x, start, count, default) => {
-            let env = frame_field(k, 1i64);
-            let is_sum = is_obj_p(val, ob_sum());
-            let tag = if is_sum {
-                sum_tag_number(val)
-            } else {
-                the::<i64>(-1i64)
-            };
-            let found = arm_found(start, count, tag);
-            if i64_lt(found, 0i64) {
-                let e = alloc_x(ob_env(), 2i64);
-                bloblet_value_set_x(e, 0i64, env);
-                bloblet_value_set_x(e, 1i64, val);
-                next_step_x(0i64, default, e, next, 0i64, 0i64, 0i64)
-            } else {
-                let tagcase_ = armx_at(found);
-                match *tagcase_ {
-                    Armx::Armx(t, binds, body) => {
-                        let whole = if is_sum {
-                            sum_value(val)
-                        } else {
-                            val
-                        };
-                        if (i64_eq(binds, -1i64) || (is_sum && not(is_obj_p(whole, ob_product())))) {
-                            let e = alloc_x(ob_env(), 2i64);
-                            bloblet_value_set_x(e, 0i64, env);
-                            bloblet_value_set_x(e, 1i64, whole);
-                            next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
-                        } else {
-                            let n = obj_size(whole);
-                            let e = alloc_x(ob_env(), i64_plus(n, 1i64));
-                            product_to_slots_x(e, whole, 0i64, n);
-                            bloblet_value_set_x(e, 0i64, env);
-                            next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
-                        }
-                    }
+    if Node::__is_NTagcase(tagcase_) {
+        let (x, start, count, default,) = Node::__NTagcase(tagcase_);
+        let env = frame_field(k, 1i64);
+        let is_sum = is_obj_p(val, ob_sum());
+        let tag = if is_sum {
+            sum_tag_number(val)
+        } else {
+            the::<i64>(-1i64)
+        };
+        let found = arm_found(start, count, tag);
+        if i64_lt(found, 0i64) {
+            let e = alloc_x(ob_env(), 2i64);
+            bloblet_value_set_x(e, 0i64, env);
+            bloblet_value_set_x(e, 1i64, val);
+            next_step_x(0i64, default, e, next, 0i64, 0i64, 0i64)
+        } else {
+            let tagcase_ = armx_at(found);
+            if Armx::__is_Armx(tagcase_) {
+                let (t, binds, body,) = Armx::__Armx(tagcase_);
+                let whole = if is_sum {
+                    sum_value(val)
+                } else {
+                    val
+                };
+                if (i64_eq(binds, -1i64) || (is_sum && not(is_obj_p(whole, ob_product())))) {
+                    let e = alloc_x(ob_env(), 2i64);
+                    bloblet_value_set_x(e, 0i64, env);
+                    bloblet_value_set_x(e, 1i64, whole);
+                    next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
+                } else {
+                    let n = obj_size(whole);
+                    let e = alloc_x(ob_env(), i64_plus(n, 1i64));
+                    product_to_slots_x(e, whole, 0i64, n);
+                    bloblet_value_set_x(e, 0i64, env);
+                    next_step_x(0i64, body, e, next, 0i64, 0i64, 0i64)
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
-        _ => {
-            let other = tagcase_;
-            failed_with_x(str_lit!("the engine: a tagcase frame of no tagcase"));
-            failed_at(-1i64, 0i64, k)
-        }
+    } else {
+        let other = tagcase_;
+        failed_with_x(str_lit!("the engine: a tagcase frame of no tagcase"));
+        failed_at(-1i64, 0i64, k)
     }
 }
 
@@ -1213,26 +1268,24 @@ pub fn abort_to(tag: i64, k: i64, v: i64) -> i64 {
 pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
     if is_obj_p(f, ob_proc()) {
         let tagcase_ = node_at(code_index(bloblet_value(f, 0i64)));
-        match *tagcase_ {
-            Node::NLambda(arity, body) => {
-                if i64_eq(arity, -1i64) {
-                    let e = alloc_x(ob_env(), 2i64);
-                    bloblet_value_set_x(e, 0i64, bloblet_value(f, 1i64));
-                    bloblet_value_set_x(e, 1i64, args);
-                    next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
-                } else {
-                    let n = list_count(args, 0i64);
-                    let e = alloc_x(ob_env(), i64_plus(n, 1i64));
-                    bloblet_value_set_x(e, 0i64, bloblet_value(f, 1i64));
-                    args_env_x(e, 1i64, args, n);
-                    next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
-                }
+        if Node::__is_NLambda(tagcase_) {
+            let (arity, body,) = Node::__NLambda(tagcase_);
+            if i64_eq(arity, -1i64) {
+                let e = alloc_x(ob_env(), 2i64);
+                bloblet_value_set_x(e, 0i64, bloblet_value(f, 1i64));
+                bloblet_value_set_x(e, 1i64, args);
+                next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
+            } else {
+                let n = list_count(args, 0i64);
+                let e = alloc_x(ob_env(), i64_plus(n, 1i64));
+                bloblet_value_set_x(e, 0i64, bloblet_value(f, 1i64));
+                args_env_x(e, 1i64, args, n);
+                next_step_x(0i64, body, e, k, 0i64, 0i64, 0i64)
             }
-            _ => {
-                let other = tagcase_;
-                failed_with_x(str_lit!("the engine: a procedure of no lambda"));
-                failed_at(node, env, k)
-            }
+        } else {
+            let other = tagcase_;
+            failed_with_x(str_lit!("the engine: a procedure of no lambda"));
+            failed_at(node, env, k)
         }
     } else if is_obj_p(f, ob_ctor()) {
         // A datatype's constructor (C324): Fixpt's expansion, `(sum tag (product

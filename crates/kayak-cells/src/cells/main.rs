@@ -78,18 +78,16 @@ pub fn option_of(mut r#as: List<Str>, mut name: Str, mut otherwise: i64) -> i64 
             } else {
                 let ds = read_all(car(cdr(r#as)), str_lit!("<args>"), 1i64);
                 let tagcase_ = car(ds);
-                match *tagcase_ {
-                    Sexp::Num(n, f, p) => {
-                        if i64_gt(n, 0i64) {
-                            return n;
-                        } else {
-                            return otherwise;
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
+                if Sexp::__is_Num(tagcase_) {
+                    let (n, f, p,) = Sexp::__Num(tagcase_);
+                    if i64_gt(n, 0i64) {
+                        return n;
+                    } else {
                         return otherwise;
                     }
+                } else {
+                    let other = tagcase_;
+                    return otherwise;
                 }
             }
         } else {
@@ -117,22 +115,21 @@ pub fn after_dashes(mut r#as: Strings) -> Strings {
 // and the words that ran the most, on the standard error. A cell's line is
 // that of the last entry of its word's line table at or before it, its
 // position read in the table's file.
-pub fn pos_at(mut es: List<kayak_rt::Handle<'static, Cpos>>, mut cell: i64, mut had: i64) -> i64 {
+pub fn pos_at(mut es: List<kayak_rt::data::DataAt<'static, Cpos>>, mut cell: i64, mut had: i64) -> i64 {
     loop {
         if null_p(es) {
             return had;
         } else {
             let tagcase_ = car(es);
-            match *tagcase_ {
-                Cpos::Cpos(c, p) => {
-                    if i64_gt(c, cell) {
-                        return had;
-                    } else {
-                        (es, had) = (cdr(es), p);
-                        continue;
-                    }
+            if Cpos::__is_Cpos(tagcase_) {
+                let (c, p,) = Cpos::__Cpos(tagcase_);
+                if i64_gt(c, cell) {
+                    return had;
+                } else {
+                    (es, had) = (cdr(es), p);
+                    continue;
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -187,7 +184,7 @@ pub fn line_of(mut starts: FlatArray<i64>, mut pos: i64, mut lo: i64, mut hi: i6
 
 /// Word `w`'s counts, each added to its line's in `into` (key: line +
 /// 1), or if `exact` its position's (key: position + 1).
-pub fn word_lines_x(mut t: FlatArray<i64>, mut w: i64, mut es: List<kayak_rt::Handle<'static, Cpos>>, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>, mut i: i64) -> FlatArray<i64> {
+pub fn word_lines_x(mut t: FlatArray<i64>, mut w: i64, mut es: List<kayak_rt::data::DataAt<'static, Cpos>>, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>, mut i: i64) -> FlatArray<i64> {
     loop {
         if i64_gt_eq(i, tally_slots(t)) {
             return into;
@@ -208,24 +205,23 @@ pub fn word_lines_x(mut t: FlatArray<i64>, mut w: i64, mut es: List<kayak_rt::Ha
     }
 }
 
-pub fn lines_tallied_x(mut ts: List<kayak_rt::Handle<'static, Ltext>>, mut file: Str, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>) -> FlatArray<i64> {
+pub fn lines_tallied_x(mut ts: List<kayak_rt::data::DataAt<'static, Ltext>>, mut file: Str, mut starts: FlatArray<i64>, mut exact: bool, mut into: FlatArray<i64>) -> FlatArray<i64> {
     loop {
         if null_p(ts) {
             return into;
         } else {
             let tagcase_ = car(ts);
-            match *tagcase_ {
-                Ltext::Ltext(n, text) => {
-                    let cs = string_chars(text);
-                    let w = lookup(get(words()), n);
-                    (ts, into) = (cdr(ts), if (i64_eq(w, 0i64) || not(string_eq_p(list_to_string(chars_before_char(cs, ' ')), file))) {
-                        into
-                    } else {
-                        word_lines_x(get(profile()), w, cposes(after_char(cs, ' '), nil::<kayak_rt::Handle<'static, Cpos>>()), starts, exact, into, 0i64)
-                    });
-                    continue;
-                }
-            }
+            if Ltext::__is_Ltext(tagcase_) {
+                let (n, text,) = Ltext::__Ltext(tagcase_);
+                let cs = string_chars(text);
+                let w = lookup(get(words()), n);
+                (ts, into) = (cdr(ts), if (i64_eq(w, 0i64) || not(string_eq_p(list_to_string(chars_before_char(cs, ' ')), file))) {
+                    into
+                } else {
+                    word_lines_x(get(profile()), w, cposes(after_char(cs, ' '), nil::<kayak_rt::data::DataAt<'static, Cpos>>()), starts, exact, into, 0i64)
+                });
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
@@ -320,17 +316,16 @@ pub fn cut(mut cs: Chars, mut n: i64, mut acc: Chars) -> Str {
     }
 }
 
-pub fn word_name_of(mut ws: List<kayak_rt::Handle<'static, NamedSlot>>, mut w: i64) -> Str {
+pub fn word_name_of(mut ws: List<kayak_rt::data::DataAt<'static, NamedSlot>>, mut w: i64) -> Str {
     loop {
         if null_p(ws) {
             return string_append(str_lit!("(word at "), string_append(i64_to_string(w), str_lit!(")")));
         } else if i64_eq(named_value(car(ws)), w) {
             let tagcase_ = car(ws);
-            match *tagcase_ {
-                NamedSlot::NamedSlot(n, i) => {
-                    return n;
-                }
-            }
+            if NamedSlot::__is_NamedSlot(tagcase_) {
+                let (n, i,) = NamedSlot::__NamedSlot(tagcase_);
+                return n;
+            } else { kayak_rt::data::no_variant() }
         } else {
             ws = cdr(ws);
             continue;
@@ -389,11 +384,10 @@ pub fn profile_shown_x() -> () {
         str_lit!("")
     } else {
         let tagcase_ = car(ts);
-        match *tagcase_ {
-            Ltext::Ltext(n, text) => {
-                list_to_string(chars_before_char(string_chars(text), ' '))
-            }
-        }
+        if Ltext::__is_Ltext(tagcase_) {
+            let (n, text,) = Ltext::__Ltext(tagcase_);
+            list_to_string(chars_before_char(string_chars(text), ' '))
+        } else { kayak_rt::data::no_variant() }
     };
     let by_line = if string_eq_p(file, str_lit!("")) {
         str_lit!("no line tables: the listing is not kayak's (`kayak-fx26 --cells`)\n")
@@ -486,29 +480,28 @@ pub fn cells_main() -> Int {
             ()
         };
         let tagcase_ = r;
-        match *tagcase_ {
-            Ran::RanAnswer(v) => {
-                if not(string_member_p(str_lit!("--main"), r#as)) {
-                    say(string_append(written(v), str_lit!("\n")));
-                    int_lit(0)
-                } else if is_fixnum_p(v) {
-                    match exit(i64_to_int(i64_and(fix_val(v), 255i64))) {};
-                    int_lit(0)
-                } else {
-                    int_lit(0)
-                }
+        if Ran::__is_RanAnswer(tagcase_) {
+            let (v,) = Ran::__RanAnswer(tagcase_);
+            if not(string_member_p(str_lit!("--main"), r#as)) {
+                say(string_append(written(v), str_lit!("\n")));
+                int_lit(0)
+            } else if is_fixnum_p(v) {
+                match exit(i64_to_int(i64_and(fix_val(v), 255i64))) {};
+                int_lit(0)
+            } else {
+                int_lit(0)
             }
-            Ran::RanFailed(m) => {
-                write_err(string_append(str_lit!("evaluation failed: "), string_append(m, str_lit!("\n"))));
-                if string_has_p(m, str_lit!("stack overflow")) {
-                    write_err(overflow_shown());
-                    ()
-                } else {
-                    ()
-                };
-                int_lit(1)
-            }
-        }
+        } else if Ran::__is_RanFailed(tagcase_) {
+            let (m,) = Ran::__RanFailed(tagcase_);
+            write_err(string_append(str_lit!("evaluation failed: "), string_append(m, str_lit!("\n"))));
+            if string_has_p(m, str_lit!("stack overflow")) {
+                write_err(overflow_shown());
+                ()
+            } else {
+                ()
+            };
+            int_lit(1)
+        } else { kayak_rt::data::no_variant() }
     }
 }
 

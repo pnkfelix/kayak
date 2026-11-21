@@ -59,17 +59,17 @@ pub mod kc_x64 {
     }
 
     #[inline]
-    pub fn kc_datum() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, Str> {
+    pub fn kc_datum() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, Str> {
         kayak_rt::as_proc(kc_front::kc_datum)
     }
 
     #[inline]
-    pub fn kc_items_of() -> kayak_rt::Proc5<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, Str, Str, List<Str>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn kc_items_of() -> kayak_rt::Proc5<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, Str, Str, List<Str>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_front::kc_items_of)
     }
 
     #[inline]
-    pub fn kc_keys() -> kayak_rt::Proc3<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, Str, List<Str>> {
+    pub fn kc_keys() -> kayak_rt::Proc3<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, Str, List<Str>> {
         kayak_rt::as_proc(kc_front::kc_keys)
     }
 
@@ -81,132 +81,132 @@ pub mod kc_x64 {
     }
 
     #[inline]
-    pub fn l0_item() -> kayak_rt::Proc4<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, Str, Str, kayak_rt::Handle<'static, Sexp>> {
+    pub fn l0_item() -> kayak_rt::Proc4<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, Str, Str, kayak_rt::data::DataAt<'static, Sexp>> {
         kayak_rt::as_proc(kc_l0::l0_item)
     }
 
     #[inline]
-    pub fn term_head() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, Str> {
+    pub fn term_head() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, Str> {
         kayak_rt::as_proc(kc_l0::term_head)
     }
 
     #[inline]
-    pub fn item_kind() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, Str> {
+    pub fn item_kind() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, Str> {
         kayak_rt::as_proc(kc_l0::item_kind)
     }
 
     #[inline]
-    pub fn item_name() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, Str> {
+    pub fn item_name() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, Str> {
         kayak_rt::as_proc(kc_l0::item_name)
     }
 
     #[inline]
-    pub fn item_params() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn item_params() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::item_params)
     }
 
     #[inline]
-    pub fn item_body() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, kayak_rt::Handle<'static, Sexp>> {
+    pub fn item_body() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, kayak_rt::data::DataAt<'static, Sexp>> {
         kayak_rt::as_proc(kc_l0::item_body)
     }
 
     #[inline]
-    pub fn call_name() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, Str> {
+    pub fn call_name() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, Str> {
         kayak_rt::as_proc(kc_l0::call_name)
     }
 
     #[inline]
-    pub fn call_args() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn call_args() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::call_args)
     }
 
     #[inline]
-    pub fn var_number() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, i64> {
+    pub fn var_number() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, i64> {
         kayak_rt::as_proc(kc_l0::var_number)
     }
 
     #[inline]
-    pub fn let_bindings() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn let_bindings() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::let_bindings)
     }
 
     #[inline]
-    pub fn let_body() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, kayak_rt::Handle<'static, Sexp>> {
+    pub fn let_body() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, kayak_rt::data::DataAt<'static, Sexp>> {
         kayak_rt::as_proc(kc_l0::let_body)
     }
 
     #[inline]
-    pub fn if_parts() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn if_parts() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::if_parts)
     }
 
     #[inline]
-    pub fn seq_terms() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn seq_terms() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::seq_terms)
     }
 
     #[inline]
-    pub fn prim_name() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, Str> {
+    pub fn prim_name() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, Str> {
         kayak_rt::as_proc(kc_l0::prim_name)
     }
 
     #[inline]
-    pub fn prim_args() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn prim_args() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::prim_args)
     }
 
     #[inline]
-    pub fn term_number() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, i64> {
+    pub fn term_number() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, i64> {
         kayak_rt::as_proc(kc_l0::term_number)
     }
 
     #[inline]
-    pub fn term_text() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, Str> {
+    pub fn term_text() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, Str> {
         kayak_rt::as_proc(kc_l0::term_text)
     }
 
     #[inline]
-    pub fn lambda_params() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn lambda_params() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::lambda_params)
     }
 
     #[inline]
-    pub fn lambda_free() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn lambda_free() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::lambda_free)
     }
 
     #[inline]
-    pub fn app_fn() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, kayak_rt::Handle<'static, Sexp>> {
+    pub fn app_fn() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, kayak_rt::data::DataAt<'static, Sexp>> {
         kayak_rt::as_proc(kc_l0::app_fn)
     }
 
     #[inline]
-    pub fn app_args() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn app_args() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::app_args)
     }
 
     #[inline]
-    pub fn gproc_arity() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, i64> {
+    pub fn gproc_arity() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, i64> {
         kayak_rt::as_proc(kc_l0::gproc_arity)
     }
 
     #[inline]
-    pub fn tagcase_arms() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn tagcase_arms() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::tagcase_arms)
     }
 
     #[inline]
-    pub fn letrec_binders() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn letrec_binders() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::letrec_binders)
     }
 
     #[inline]
-    pub fn letrec_values() -> kayak_rt::Proc1s<'static, kayak_rt::Handle<'static, Sexp>, List<kayak_rt::Handle<'static, Sexp>>> {
+    pub fn letrec_values() -> kayak_rt::Proc1s<'static, kayak_rt::data::DataAt<'static, Sexp>, List<kayak_rt::data::DataAt<'static, Sexp>>> {
         kayak_rt::as_proc(kc_l0::letrec_values)
     }
 
     #[inline]
-    pub fn sexp_at() -> kayak_rt::Proc2s<'static, List<kayak_rt::Handle<'static, Sexp>>, i64, kayak_rt::Handle<'static, Sexp>> {
+    pub fn sexp_at() -> kayak_rt::Proc2s<'static, List<kayak_rt::data::DataAt<'static, Sexp>>, i64, kayak_rt::data::DataAt<'static, Sexp>> {
         kayak_rt::as_proc(kc_rust::sexp_at)
     }
 
@@ -267,7 +267,7 @@ pub mod kc_x64 {
     }
 
     /// A constant term's value, as a word of Fixpt's format.
-    pub fn x64_constant_of(t: kayak_rt::Handle<'static, Sexp>) -> i64 {
+    pub fn x64_constant_of(t: kayak_rt::data::DataAt<'static, Sexp>) -> i64 {
         let (h, n) = (term_head().call(t), term_number().call(t));
         if string_eq_p(h, str_lit!("int")) {
             i64_star(n, 8i64)
@@ -288,29 +288,65 @@ pub mod kc_x64 {
     // Code so far: its lines, the newest first; the next label's number; how
     // many of the frame's slots it uses; and the failures' calls, kept out of
     // the line, after the code's `ret` (the newest first).
+    #[derive(Clone, Copy)]
     pub enum X64Code {
         X64Code(List<Str>, i64, i64, List<Str>, Str),
     }
 
-    impl kayak_rt::Visit for X64Code {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::X64Code(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
-            }
+    impl kayak_rt::data::Variant<0> for X64Code {
+        type Fields = (List<Str>, i64, i64, List<Str>, Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("x64-code")
         }
     }
 
-    pub fn x64_code(f0: List<Str>, f1: i64, f2: i64, f3: List<Str>, f4: Str) -> kayak_rt::Handle<'static, X64Code> {
-        kayak_rt::heap_alloc(X64Code::X64Code(f0, f1, f2, f3, f4))
+    #[allow(non_snake_case)]
+    impl X64Code {
+        #[inline(always)]
+        pub fn __is_X64Code(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __X64Code(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
     }
 
-    pub fn x64_emit(c: kayak_rt::Handle<'static, X64Code>, line: Str) -> kayak_rt::Handle<'static, X64Code> {
+    impl kayak_rt::data::Datatype for X64Code {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<0>() {
+                let (f0, f1, f2, f3, f4,) = w.fields::<0>();
+                Self::X64Code(f0, f1, f2, f3, f4)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn x64_code(f0: List<Str>, f1: i64, f2: i64, f3: List<Str>, f4: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
+        kayak_rt::data::data_heap::<X64Code, 0>((f0, f1, f2, f3, f4,))
+    }
+
+    pub fn x64_emit(c: kayak_rt::data::DataAt<'static, X64Code>, line: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, k, fs, px) => {
-                x64_code(kayak_rt::heap_cons(string_append(str_lit!("    "), string_append(line, str_lit!("\n"))), ls), n, k, fs, px)
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, k, fs, px,) = X64Code::__X64Code(tagcase_);
+            x64_code(kayak_rt::heap_cons(string_append(str_lit!("    "), string_append(line, str_lit!("\n"))), ls), n, k, fs, px)
+        } else { kayak_rt::data::no_variant() }
     }
 
     // A cell's store (C451): through the code area's writable view, the
@@ -343,66 +379,60 @@ pub mod kc_x64 {
 
     // Lines already made, as they are, after the code so far.
     #[inline]
-    pub fn x64_emit_lines(c: kayak_rt::Handle<'static, X64Code>, text: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_lines(c: kayak_rt::data::DataAt<'static, X64Code>, text: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, k, fs, px) => {
-                x64_code(kayak_rt::heap_cons(text, ls), n, k, fs, px)
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, k, fs, px,) = X64Code::__X64Code(tagcase_);
+            x64_code(kayak_rt::heap_cons(text, ls), n, k, fs, px)
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
-    pub fn x64_emit_label(c: kayak_rt::Handle<'static, X64Code>, l: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_label(c: kayak_rt::data::DataAt<'static, X64Code>, l: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, k, fs, px) => {
-                x64_code(kayak_rt::heap_cons(string_append(l, str_lit!(":\n")), ls), n, k, fs, px)
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, k, fs, px,) = X64Code::__X64Code(tagcase_);
+            x64_code(kayak_rt::heap_cons(string_append(l, str_lit!(":\n")), ls), n, k, fs, px)
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
-    pub fn x64_fresh_label(c: kayak_rt::Handle<'static, X64Code>) -> i64 {
+    pub fn x64_fresh_label(c: kayak_rt::data::DataAt<'static, X64Code>) -> i64 {
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, k, fs, px) => {
-                n
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, k, fs, px,) = X64Code::__X64Code(tagcase_);
+            n
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
-    pub fn x64_labelled(c: kayak_rt::Handle<'static, X64Code>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_labelled(c: kayak_rt::data::DataAt<'static, X64Code>) -> kayak_rt::data::DataAt<'static, X64Code> {
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, k, fs, px) => {
-                x64_code(ls, i64_plus(n, 1i64), k, fs, px)
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, k, fs, px,) = X64Code::__X64Code(tagcase_);
+            x64_code(ls, i64_plus(n, 1i64), k, fs, px)
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
-    pub fn x64_label(c: kayak_rt::Handle<'static, X64Code>, what: Str, n: i64) -> Str {
+    pub fn x64_label(c: kayak_rt::data::DataAt<'static, X64Code>, what: Str, n: i64) -> Str {
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, k, slots, fs, px) => {
-                string_list_append(kayak_rt::heap_cons(str_lit!(".L"), kayak_rt::heap_cons(px, kayak_rt::heap_cons(str_lit!("_"), kayak_rt::heap_cons(what, kayak_rt::heap_cons(i64_to_string(n), kayak_rt::nil()))))))
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, k, slots, fs, px,) = X64Code::__X64Code(tagcase_);
+            string_list_append(kayak_rt::heap_cons(str_lit!(".L"), kayak_rt::heap_cons(px, kayak_rt::heap_cons(str_lit!("_"), kayak_rt::heap_cons(what, kayak_rt::heap_cons(i64_to_string(n), kayak_rt::nil()))))))
+        } else { kayak_rt::data::no_variant() }
     }
 
-    pub fn x64_using(c: kayak_rt::Handle<'static, X64Code>, slots: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_using(c: kayak_rt::data::DataAt<'static, X64Code>, slots: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, k, fs, px) => {
-                x64_code(ls, n, if i64_gt(slots, k) {
-                    slots
-                } else {
-                    k
-                }, fs, px)
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, k, fs, px,) = X64Code::__X64Code(tagcase_);
+            x64_code(ls, n, if i64_gt(slots, k) {
+                slots
+            } else {
+                k
+            }, fs, px)
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
@@ -411,7 +441,7 @@ pub mod kc_x64 {
     }
 
     /// `%rax` made #t if the flags say `cc`, else #f.
-    pub fn x64_boolean_if(c: kayak_rt::Handle<'static, X64Code>, cc: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_boolean_if(c: kayak_rt::data::DataAt<'static, X64Code>, cc: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         x64_emit(x64_emit(x64_emit(c, string_append(str_lit!("movl $"), string_append(i64_to_string(x64_word_false()), str_lit!(", %eax")))), string_append(str_lit!("movl $"), string_append(i64_to_string(x64_word_true()), str_lit!(", %ecx")))), string_append(str_lit!("cmov"), string_append(cc, str_lit!(" %rcx, %rax"))))
     }
 
@@ -420,7 +450,7 @@ pub mod kc_x64 {
     // line (`kc_gc_call`, given how many bytes), the values in registers
     // pushed first (`pre`) for it to move and popped after (`post`), and
     // the check made again.
-    pub fn x64_allocating(c: kayak_rt::Handle<'static, X64Code>, lea: Str, pre: Str, post: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_allocating(c: kayak_rt::data::DataAt<'static, X64Code>, lea: Str, pre: Str, post: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         let k = x64_fresh_label(c);
         let again = x64_label(c, str_lit!("alloc"), k);
         let gc = x64_label(c, str_lit!("gc"), k);
@@ -430,11 +460,10 @@ pub mod kc_x64 {
         let c = x64_emit(c, str_lit!("cmpq %r13, %rdx"));
         let c = x64_emit(c, string_append(str_lit!("ja "), gc));
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, slots, fs, px) => {
-                x64_code(ls, n, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(gc, kayak_rt::heap_cons(str_lit!(":\n"), kayak_rt::heap_cons(pre, kayak_rt::heap_cons(str_lit!("    movq %rdx, %rdi\n    subq %r12, %rdi\n    call kc_gc_call\n"), kayak_rt::heap_cons(post, kayak_rt::heap_cons(str_lit!("    jmp "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::nil()))))))))), fs), px)
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, slots, fs, px,) = X64Code::__X64Code(tagcase_);
+            x64_code(ls, n, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(gc, kayak_rt::heap_cons(str_lit!(":\n"), kayak_rt::heap_cons(pre, kayak_rt::heap_cons(str_lit!("    movq %rdx, %rdi\n    subq %r12, %rdi\n    call kc_gc_call\n"), kayak_rt::heap_cons(post, kayak_rt::heap_cons(str_lit!("    jmp "), kayak_rt::heap_cons(again, kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::nil()))))))))), fs), px)
+        } else { kayak_rt::data::no_variant() }
     }
 
     // A frame's slots zeroed (C453), so that the collector, which reads
@@ -452,16 +481,15 @@ pub mod kc_x64 {
 
     /// A jump, if the flags say `cc`, to the failure `what`, whose call is out
     /// of the line, after the code's `ret`.
-    pub fn x64_failing_if(c: kayak_rt::Handle<'static, X64Code>, cc: Str, what: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_failing_if(c: kayak_rt::data::DataAt<'static, X64Code>, cc: Str, what: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         let k = x64_fresh_label(c);
         let bad = x64_label(c, str_lit!("fail"), k);
         let c = x64_emit(x64_labelled(c), string_append(str_lit!("j"), string_append(cc, string_append(str_lit!(" "), bad))));
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, slots, fs, px) => {
-                x64_code(ls, n, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit!(":\n    movl $"), kayak_rt::heap_cons(i64_to_string(what), kayak_rt::heap_cons(str_lit!(", %edi\n    call kc_fail\n"), kayak_rt::nil()))))), fs), px)
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, slots, fs, px,) = X64Code::__X64Code(tagcase_);
+            x64_code(ls, n, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit!(":\n    movl $"), kayak_rt::heap_cons(i64_to_string(what), kayak_rt::heap_cons(str_lit!(", %edi\n    call kc_fail\n"), kayak_rt::nil()))))), fs), px)
+        } else { kayak_rt::data::no_variant() }
     }
 
     // The bloblet kind a predicate tests for (C448).
@@ -589,7 +617,7 @@ pub mod kc_x64 {
 
     /// Arguments `k` (from 6) to `n` - 1, from the slots from `si`, stored
     /// in the state block's words from `x64-state-args`.
-    pub fn x64_spilled_args(mut c: kayak_rt::Handle<'static, X64Code>, mut si: i64, mut k: i64, mut n: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_spilled_args(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut si: i64, mut k: i64, mut n: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if i64_gt_eq(k, n) {
                 return c;
@@ -603,7 +631,7 @@ pub mod kc_x64 {
     /// The `n` arguments in the slots from `si` where the callee takes them:
     /// the first six in registers, the rest in the state block's words.
     #[inline]
-    pub fn x64_args_passed(c: kayak_rt::Handle<'static, X64Code>, si: i64, n: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_args_passed(c: kayak_rt::data::DataAt<'static, X64Code>, si: i64, n: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         x64_moved_args(if i64_gt(n, 6i64) {
             x64_spilled_args(c, si, 6i64, n)
         } else {
@@ -612,7 +640,7 @@ pub mod kc_x64 {
     }
 
     /// Parameters `k` (from 6) to `n` - 1, from the state block into their slots.
-    pub fn x64_loaded_args(mut c: kayak_rt::Handle<'static, X64Code>, mut k: i64, mut n: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_loaded_args(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut k: i64, mut n: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if i64_gt_eq(k, n) {
                 return c;
@@ -624,7 +652,7 @@ pub mod kc_x64 {
     }
 
     /// The `n` arguments in the slots from `si` moved to their registers.
-    pub fn x64_moved_args(mut c: kayak_rt::Handle<'static, X64Code>, mut regs: List<Str>, mut si: i64, mut n: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_moved_args(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut regs: List<Str>, mut si: i64, mut n: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if (i64_lt_eq(n, 0i64) || null_p(regs)) {
                 return c;
@@ -654,7 +682,7 @@ pub mod kc_x64 {
     }
 
     /// Free value `i` from slot `slots[i]`, at word `m - i` of the cell.
-    pub fn x64_stored_free(mut c: kayak_rt::Handle<'static, X64Code>, mut slots: List<i64>, mut m: i64, mut j: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_stored_free(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut slots: List<i64>, mut m: i64, mut j: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if null_p(slots) {
                 return c;
@@ -666,7 +694,7 @@ pub mod kc_x64 {
     }
 
     /// A closure of `code` over the values in `slots`, in `%rax`.
-    pub fn x64_emit_closure(c: kayak_rt::Handle<'static, X64Code>, code: Str, slots: List<i64>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_closure(c: kayak_rt::data::DataAt<'static, X64Code>, code: Str, slots: List<i64>) -> kayak_rt::data::DataAt<'static, X64Code> {
         let m = size(slots);
         let bytes = i64_star(8i64, i64_plus(m, 4i64));
         let c = x64_allocating(c, string_append(str_lit!("leaq "), string_append(i64_to_string(bytes), str_lit!("(%r12), %rdx"))), str_lit!(""), str_lit!(""));
@@ -682,7 +710,7 @@ pub mod kc_x64 {
     }
 
     /// A lambda's free values, from its closure in `%r10`, each to its slot.
-    pub fn x64_loaded_free(mut c: kayak_rt::Handle<'static, X64Code>, mut i: i64, mut m: i64, mut si: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_loaded_free(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut i: i64, mut m: i64, mut si: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if i64_gt_eq(i, m) {
                 return c;
@@ -725,18 +753,17 @@ pub mod kc_x64 {
     // A literal's data, out of the line with the failures' calls, and its
     // label.
     #[inline]
-    pub fn x64_data(c: kayak_rt::Handle<'static, X64Code>, text: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_data(c: kayak_rt::data::DataAt<'static, X64Code>, text: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         let tagcase_ = c;
-        match *tagcase_ {
-            X64Code::X64Code(ls, n, k, fs, px) => {
-                x64_code(ls, n, k, kayak_rt::heap_cons(text, fs), px)
-            }
-        }
+        if X64Code::__is_X64Code(tagcase_) {
+            let (ls, n, k, fs, px,) = X64Code::__X64Code(tagcase_);
+            x64_code(ls, n, k, kayak_rt::heap_cons(text, fs), px)
+        } else { kayak_rt::data::no_variant() }
     }
 
     /// `%rax`, then `%rcx`, given to the runtime's `f`, its answer in `%rax`.
     #[inline]
-    pub fn x64_calling(c: kayak_rt::Handle<'static, X64Code>, f: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_calling(c: kayak_rt::data::DataAt<'static, X64Code>, f: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         x64_emit(x64_emit(x64_emit(c, str_lit!("movq %rax, %rdi")), str_lit!("movq %rcx, %rsi")), string_append(str_lit!("call "), f))
     }
 
@@ -746,7 +773,7 @@ pub mod kc_x64 {
     // below 0 is past it; `%rsi` made the address from which the element
     // is at -20 (the value's tag 4, then the trailer and the element's
     // place counted back from it, `-4 - 8 (i + 2)`).
-    pub fn x64_array_index(c: kayak_rt::Handle<'static, X64Code>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_array_index(c: kayak_rt::data::DataAt<'static, X64Code>) -> kayak_rt::data::DataAt<'static, X64Code> {
         let k = x64_fresh_label(c);
         let bad = x64_label(c, str_lit!("fail"), k);
         let c = x64_labelled(c);
@@ -758,11 +785,10 @@ pub mod kc_x64 {
         let c = x64_emit(c, string_append(str_lit!("jae "), bad));
         let c = {
             let tagcase_ = c;
-            match *tagcase_ {
-                X64Code::X64Code(ls, n, slots, fs, px) => {
-                    x64_code(ls, n, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit!(":\n    movq %rsi, %rdi\n    call kc_array_index_fail\n"), kayak_rt::nil()))), fs), px)
-                }
-            }
+            if X64Code::__is_X64Code(tagcase_) {
+                let (ls, n, slots, fs, px,) = X64Code::__X64Code(tagcase_);
+                x64_code(ls, n, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit!(":\n    movq %rsi, %rdi\n    call kc_array_index_fail\n"), kayak_rt::nil()))), fs), px)
+            } else { kayak_rt::data::no_variant() }
         };
         let c = x64_emit(c, str_lit!("movq %rcx, %rsi"));
         let c = x64_emit(c, str_lit!("shlq $3, %rsi"));
@@ -773,7 +799,7 @@ pub mod kc_x64 {
     // A symbol named `name` in `%rax` (C421): interned by the runtime the
     // first time it is met, and kept in a cell of its name's, common to every
     // object that names it.
-    pub fn x64_emit_symbol(c: kayak_rt::Handle<'static, X64Code>, name: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_symbol(c: kayak_rt::data::DataAt<'static, X64Code>, name: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         let k = x64_fresh_label(c);
         let l = x64_label(c, str_lit!("str"), k);
         let done = x64_label(c, str_lit!("sym"), k);
@@ -794,7 +820,7 @@ pub mod kc_x64 {
     // kind 36, its tag and its payload; products, kind 37, its fields):
     // value `i` the field `i + 2` back from the value, as an array's
     // element is.
-    pub fn x64_stored_values(mut c: kayak_rt::Handle<'static, X64Code>, mut si: i64, mut i: i64, mut n: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_stored_values(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut si: i64, mut i: i64, mut n: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if i64_gt_eq(i, n) {
                 return c;
@@ -805,7 +831,7 @@ pub mod kc_x64 {
         }
     }
 
-    pub fn x64_emit_bloblet(c: kayak_rt::Handle<'static, X64Code>, kind: i64, si: i64, n: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_bloblet(c: kayak_rt::data::DataAt<'static, X64Code>, kind: i64, si: i64, n: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         let bytes = i64_star(8i64, i64_plus(n, 2i64));
         let c = x64_allocating(c, string_append(str_lit!("leaq "), string_append(i64_to_string(bytes), str_lit!("(%r12), %rdx"))), str_lit!(""), str_lit!(""));
         let c = x64_emit(c, string_append(str_lit!("movabsq $"), string_append(i64_to_string(i64_plus(i64_plus(6i64, i64_star(kind, 8i64)), i64_star(i64_plus(n, 1i64), 16384i64))), str_lit!(", %rcx"))));
@@ -817,40 +843,75 @@ pub mod kc_x64 {
     }
 
     // Where each variable is: its binder's number and its slot.
+    #[derive(Clone, Copy)]
     pub enum X64At {
         X64At(i64, i64),
     }
 
-    impl kayak_rt::Visit for X64At {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::X64At(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<0> for X64At {
+        type Fields = (i64, i64,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("x64-at")
         }
     }
 
-    pub fn x64_at(f0: i64, f1: i64) -> kayak_rt::Handle<'static, X64At> {
-        kayak_rt::heap_alloc(X64At::X64At(f0, f1))
+    #[allow(non_snake_case)]
+    impl X64At {
+        #[inline(always)]
+        pub fn __is_X64At(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __X64At(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
     }
 
-    pub fn x64_slot_of(mut k: i64, mut env: List<kayak_rt::Handle<'static, X64At>>) -> i64 {
+    impl kayak_rt::data::Datatype for X64At {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::X64At(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn x64_at(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, X64At> {
+        kayak_rt::data::data_heap::<X64At, 0>((f0, f1,))
+    }
+
+    pub fn x64_slot_of(mut k: i64, mut env: List<kayak_rt::data::DataAt<'static, X64At>>) -> i64 {
         loop {
             if null_p(env) {
                 return the::<i64>(-1i64);
             } else if {
                 let tagcase_ = car(env);
-                match *tagcase_ {
-                    X64At::X64At(j, s) => {
-                        i64_eq(j, k)
-                    }
-                }
+                if X64At::__is_X64At(tagcase_) {
+                    let (j, s,) = X64At::__X64At(tagcase_);
+                    i64_eq(j, k)
+                } else { kayak_rt::data::no_variant() }
             } {
                 let tagcase_ = car(env);
-                match *tagcase_ {
-                    X64At::X64At(j, s) => {
-                        return s;
-                    }
-                }
+                if X64At::__is_X64At(tagcase_) {
+                    let (j, s,) = X64At::__X64At(tagcase_);
+                    return s;
+                } else { kayak_rt::data::no_variant() }
             } else {
                 env = cdr(env);
                 continue;
@@ -858,21 +919,19 @@ pub mod kc_x64 {
         }
     }
 
-    pub fn x64_params_at(mut ps: Sexps, mut i: i64, mut env: List<kayak_rt::Handle<'static, X64At>>) -> List<kayak_rt::Handle<'static, X64At>> {
+    pub fn x64_params_at(mut ps: Sexps, mut i: i64, mut env: List<kayak_rt::data::DataAt<'static, X64At>>) -> List<kayak_rt::data::DataAt<'static, X64At>> {
         loop {
             if null_p(ps) {
                 return env;
             } else {
                 (ps, i, env) = (cdr(ps), i64_plus(i, 1i64), kayak_rt::heap_cons(x64_at({
                     let tagcase_ = car(items(car(ps)));
-                    match *tagcase_ {
-                        Sexp::Num(k, f, p) => {
-                            k
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            -1i64
-                        }
+                    if Sexp::__is_Num(tagcase_) {
+                        let (k, f, p,) = Sexp::__Num(tagcase_);
+                        k
+                    } else {
+                        let other = tagcase_;
+                        -1i64
                     }
                 }, i), env));
                 continue;
@@ -880,7 +939,7 @@ pub mod kc_x64 {
         }
     }
 
-    pub fn x64_stored_params(mut c: kayak_rt::Handle<'static, X64Code>, mut regs: List<Str>, mut i: i64, mut n: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_stored_params(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut regs: List<Str>, mut i: i64, mut n: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if (i64_gt_eq(i, n) || null_p(regs)) {
                 return c;
@@ -892,22 +951,20 @@ pub mod kc_x64 {
     }
 
     #[inline]
-    pub fn term_at_number(t: kayak_rt::Handle<'static, Sexp>, i: i64) -> i64 {
+    pub fn term_at_number(t: kayak_rt::data::DataAt<'static, Sexp>, i: i64) -> i64 {
         let tagcase_ = car(reverse(items(t)));
-        match *tagcase_ {
-            Sexp::Num(k, f, p) => {
-                k
-            }
-            _ => {
-                let other = tagcase_;
-                0i64
-            }
+        if Sexp::__is_Num(tagcase_) {
+            let (k, f, p,) = Sexp::__Num(tagcase_);
+            k
+        } else {
+            let other = tagcase_;
+            0i64
         }
     }
 
     /// A product's fields, from `%rdx`, field `j` (from 1) at `-12 - 8j`,
     /// each to its slot from `si`.
-    pub fn x64_fields_bound(mut c: kayak_rt::Handle<'static, X64Code>, mut si: i64, mut j: i64, mut m: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_fields_bound(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut si: i64, mut j: i64, mut m: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if i64_gt(j, m) {
                 return c;
@@ -918,7 +975,7 @@ pub mod kc_x64 {
         }
     }
 
-    pub fn x64_zeroed(mut c: kayak_rt::Handle<'static, X64Code>, mut si: i64, mut n: i64) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_zeroed(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut si: i64, mut n: i64) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if i64_lt_eq(n, 0i64) {
                 return c;
@@ -931,21 +988,19 @@ pub mod kc_x64 {
 
     /// Of the closure in slot `slot`, each free value `j` on that is one of
     /// the group's binders (their numbers `group`) set from its slot.
-    pub fn x64_free_patched(mut c: kayak_rt::Handle<'static, X64Code>, mut fv: Sexps, mut j: i64, mut slot: i64, mut group: List<i64>, mut env: List<kayak_rt::Handle<'static, X64At>>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_free_patched(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut fv: Sexps, mut j: i64, mut slot: i64, mut group: List<i64>, mut env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if null_p(fv) {
                 return c;
             } else {
                 let k = {
                     let tagcase_ = car(items(car(fv)));
-                    match *tagcase_ {
-                        Sexp::Num(n, f, p) => {
-                            n
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            the::<i64>(-1i64)
-                        }
+                    if Sexp::__is_Num(tagcase_) {
+                        let (n, f, p,) = Sexp::__Num(tagcase_);
+                        n
+                    } else {
+                        let other = tagcase_;
+                        the::<i64>(-1i64)
                     }
                 };
                 (c, fv, j) = (if i64_in_p(k, group) {
@@ -971,22 +1026,20 @@ pub mod kc_x64 {
         }
     }
 
-    pub fn x64_letrec_patched(mut c: kayak_rt::Handle<'static, X64Code>, mut vs: Sexps, mut si: i64, mut i: i64, mut bs: Sexps, mut env: List<kayak_rt::Handle<'static, X64At>>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_letrec_patched(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut vs: Sexps, mut si: i64, mut i: i64, mut bs: Sexps, mut env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if null_p(vs) {
                 return c;
             } else {
                 (c, vs, i) = (if string_eq_p(term_head().call(car(vs)), str_lit!("lambda")) {
-                    x64_free_patched(c, lambda_free().call(car(vs)), 0i64, i64_plus(si, i), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
+                    x64_free_patched(c, lambda_free().call(car(vs)), 0i64, i64_plus(si, i), map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
                         let tagcase_ = car(items(b));
-                        match *tagcase_ {
-                            Sexp::Num(n, f, p) => {
-                                n
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                the::<i64>(-1i64)
-                            }
+                        if Sexp::__is_Num(tagcase_) {
+                            let (n, f, p,) = Sexp::__Num(tagcase_);
+                            n
+                        } else {
+                            let other = tagcase_;
+                            the::<i64>(-1i64)
                         }
                     })), bs), env)
                 } else {
@@ -1000,7 +1053,7 @@ pub mod kc_x64 {
     #[inline]
     pub fn x64_but_last(xs: Sexps) -> Sexps {
         if (null_p(xs) || null_p(cdr(xs))) {
-            nil::<kayak_rt::Handle<'static, Sexp>>()
+            nil::<kayak_rt::data::DataAt<'static, Sexp>>()
         } else {
             kayak_rt::heap_cons(car(xs), x64_but_last(cdr(xs)))
         }
@@ -1008,7 +1061,7 @@ pub mod kc_x64 {
 
     /// Code that leaves `t`'s value in `%rax`, using the frame's slots from
     /// `si`, its variables where `env` says.
-    pub fn x64_emit_expr(c: kayak_rt::Handle<'static, X64Code>, t: kayak_rt::Handle<'static, Sexp>, si: i64, env: List<kayak_rt::Handle<'static, X64At>>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_expr(c: kayak_rt::data::DataAt<'static, X64Code>, t: kayak_rt::data::DataAt<'static, Sexp>, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
         let h = term_head().call(t);
         if (string_eq_p(h, str_lit!("prim")) && i64_lt(size(prim_args().call(t)), 3i64) && not(string_eq_p(prim_name().call(t), str_lit!("new")))) {
             let args = prim_args().call(t);
@@ -1133,7 +1186,7 @@ pub mod kc_x64 {
     /// A lambda (C412): its function, out of the line, after the code's
     /// `ret` with the failures' calls, its parameters' and free values'
     /// slots first; and here, a closure of it over the free values.
-    pub fn x64_emit_lambda(c: kayak_rt::Handle<'static, X64Code>, t: kayak_rt::Handle<'static, Sexp>, env: List<kayak_rt::Handle<'static, X64At>>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_lambda(c: kayak_rt::data::DataAt<'static, X64Code>, t: kayak_rt::data::DataAt<'static, Sexp>, env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
         let ps = lambda_params().call(t);
         let n = size(ps);
         let fv = lambda_free().call(t);
@@ -1143,37 +1196,33 @@ pub mod kc_x64 {
             c
         } else {
             let tagcase_ = c;
-            match *tagcase_ {
-                X64Code::X64Code(ls, k, slots, fs, px) => {
-                    let sym = string_list_append(kayak_rt::heap_cons(str_lit!("kcl_"), kayak_rt::heap_cons(px, kayak_rt::heap_cons(str_lit!("_"), kayak_rt::heap_cons(i64_to_string(term_number().call(t)), kayak_rt::nil())))));
-                    let fr = x64_label(c, str_lit!("frame"), k);
-                    let inner = x64_using(x64_code(nil::<Str>(), i64_plus(k, 1i64), 0i64, nil::<Str>(), px), i64_plus(n, m));
-                    let inner = x64_loaded_args(x64_stored_params(inner, x64_arg_registers(), 0i64, n), 6i64, n);
-                    let inner = x64_loaded_free(inner, 0i64, m, n);
-                    let env2 = x64_params_at(fv, n, x64_params_at(ps, 0i64, nil::<kayak_rt::Handle<'static, kc_x64::X64At>>()));
-                    let inner = x64_emit_tail(inner, item_body().call(t), i64_plus(n, m), env2, fr);
-                    let tagcase_ = inner;
-                    match *tagcase_ {
-                        X64Code::X64Code(ls2, k2, slots2, fs2, px2) => {
-                            let frame = x64_frame_of_call(slots2);
-                            x64_emit_closure(x64_code(ls, k2, slots, kayak_rt::heap_cons(string_list_append(append(kayak_rt::heap_cons(str_lit!("    .p2align 4\n"), kayak_rt::heap_cons(sym, kayak_rt::heap_cons(str_lit!(":\n    subq $"), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit!(", %rsp\n"), kayak_rt::heap_cons(x64_entry_checks(sym), kayak_rt::heap_cons(x64_frame_zeroed(frame, 0i64, nil::<Str>()), kayak_rt::nil()))))))), append(reverse(ls2), append(reverse(fs2), kayak_rt::heap_cons(x64_entry_calls(sym), kayak_rt::heap_cons(str_lit!("    .set "), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit!(", "), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::nil())))))))))), fs), px), sym, map(kayak_rt::as_proc(kayak_rt::closure1s((env,), |(env,), v: kayak_rt::Handle<'static, Sexp>| {
-                                x64_slot_of({
-                                    let tagcase_ = car(items(v));
-                                    match *tagcase_ {
-                                        Sexp::Num(j, f, p) => {
-                                            j
-                                        }
-                                        _ => {
-                                            let other = tagcase_;
-                                            -1i64
-                                        }
-                                    }
-                                }, env)
-                            })), fv))
-                        }
-                    }
-                }
-            }
+            if X64Code::__is_X64Code(tagcase_) {
+                let (ls, k, slots, fs, px,) = X64Code::__X64Code(tagcase_);
+                let sym = string_list_append(kayak_rt::heap_cons(str_lit!("kcl_"), kayak_rt::heap_cons(px, kayak_rt::heap_cons(str_lit!("_"), kayak_rt::heap_cons(i64_to_string(term_number().call(t)), kayak_rt::nil())))));
+                let fr = x64_label(c, str_lit!("frame"), k);
+                let inner = x64_using(x64_code(nil::<Str>(), i64_plus(k, 1i64), 0i64, nil::<Str>(), px), i64_plus(n, m));
+                let inner = x64_loaded_args(x64_stored_params(inner, x64_arg_registers(), 0i64, n), 6i64, n);
+                let inner = x64_loaded_free(inner, 0i64, m, n);
+                let env2 = x64_params_at(fv, n, x64_params_at(ps, 0i64, nil::<kayak_rt::data::DataAt<'static, kc_x64::X64At>>()));
+                let inner = x64_emit_tail(inner, item_body().call(t), i64_plus(n, m), env2, fr);
+                let tagcase_ = inner;
+                if X64Code::__is_X64Code(tagcase_) {
+                    let (ls2, k2, slots2, fs2, px2,) = X64Code::__X64Code(tagcase_);
+                    let frame = x64_frame_of_call(slots2);
+                    x64_emit_closure(x64_code(ls, k2, slots, kayak_rt::heap_cons(string_list_append(append(kayak_rt::heap_cons(str_lit!("    .p2align 4\n"), kayak_rt::heap_cons(sym, kayak_rt::heap_cons(str_lit!(":\n    subq $"), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit!(", %rsp\n"), kayak_rt::heap_cons(x64_entry_checks(sym), kayak_rt::heap_cons(x64_frame_zeroed(frame, 0i64, nil::<Str>()), kayak_rt::nil()))))))), append(reverse(ls2), append(reverse(fs2), kayak_rt::heap_cons(x64_entry_calls(sym), kayak_rt::heap_cons(str_lit!("    .set "), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit!(", "), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::nil())))))))))), fs), px), sym, map(kayak_rt::as_proc(kayak_rt::closure1s((env,), |(env,), v: kayak_rt::data::DataAt<'static, Sexp>| {
+                        x64_slot_of({
+                            let tagcase_ = car(items(v));
+                            if Sexp::__is_Num(tagcase_) {
+                                let (j, f, p,) = Sexp::__Num(tagcase_);
+                                j
+                            } else {
+                                let other = tagcase_;
+                                -1i64
+                            }
+                        }, env)
+                    })), fv))
+                } else { kayak_rt::data::no_variant() }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 
@@ -1192,7 +1241,7 @@ pub mod kc_x64 {
     /// handler called on it, in the prompt's continuation. Each word of
     /// the record a value, a stack address or a code address, as the
     /// collector's scan of the stack wants.
-    pub fn x64_emit_prompt(c: kayak_rt::Handle<'static, X64Code>, t: kayak_rt::Handle<'static, Sexp>, si: i64, env: List<kayak_rt::Handle<'static, X64At>>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_prompt(c: kayak_rt::data::DataAt<'static, X64Code>, t: kayak_rt::data::DataAt<'static, Sexp>, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
         let xs = items(t);
         let k = x64_fresh_label(c);
         let handler = x64_label(c, str_lit!("abort"), k);
@@ -1228,7 +1277,7 @@ pub mod kc_x64 {
     /// `fr` bytes: its value returned, or, a call, the frame given back and
     /// the callee jumped to, so that it returns to this one's caller; its
     /// arguments are in registers, so no frame of the caller's is written.
-    pub fn x64_emit_tail(mut c: kayak_rt::Handle<'static, X64Code>, mut t: kayak_rt::Handle<'static, Sexp>, mut si: i64, mut env: List<kayak_rt::Handle<'static, X64At>>, mut fr: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_tail(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut t: kayak_rt::data::DataAt<'static, Sexp>, mut si: i64, mut env: List<kayak_rt::data::DataAt<'static, X64At>>, mut fr: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             let h = term_head().call(t);
             if string_eq_p(h, str_lit!("if")) {
@@ -1285,7 +1334,7 @@ pub mod kc_x64 {
     /// are then; then each closure's free values that are the group's
     /// binders patched from their slots, now each made (Ghuloum's way);
     /// then the body, in tail position if `fr` is given.
-    pub fn x64_emit_letrec(c: kayak_rt::Handle<'static, X64Code>, t: kayak_rt::Handle<'static, Sexp>, si: i64, env: List<kayak_rt::Handle<'static, X64At>>, fr: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_letrec(c: kayak_rt::data::DataAt<'static, X64Code>, t: kayak_rt::data::DataAt<'static, Sexp>, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>, fr: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         let bs = letrec_binders().call(t);
         let n = size(bs);
         let env2 = x64_params_at(bs, si, env);
@@ -1300,7 +1349,7 @@ pub mod kc_x64 {
         }
     }
 
-    pub fn x64_letrec_values(c: kayak_rt::Handle<'static, X64Code>, vs: Sexps, at: i64, si: i64, env: List<kayak_rt::Handle<'static, X64At>>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_letrec_values(c: kayak_rt::data::DataAt<'static, X64Code>, vs: Sexps, at: i64, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
         if null_p(vs) {
             c
         } else {
@@ -1315,7 +1364,7 @@ pub mod kc_x64 {
     /// product's fields, or, `else`, the sum, in the slots after, and its
     /// body is the `tagcase`'s, in tail position if `fr`, its function's
     /// frame, is given. No arm: none can be, the checker found.
-    pub fn x64_emit_tagcase(c: kayak_rt::Handle<'static, X64Code>, t: kayak_rt::Handle<'static, Sexp>, si: i64, env: List<kayak_rt::Handle<'static, X64At>>, fr: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_tagcase(c: kayak_rt::data::DataAt<'static, X64Code>, t: kayak_rt::data::DataAt<'static, Sexp>, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>, fr: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         let k = x64_fresh_label(c);
         let past = x64_label(c, str_lit!("esac"), k);
         let c = x64_labelled(c);
@@ -1330,21 +1379,19 @@ pub mod kc_x64 {
         }
     }
 
-    pub fn x64_emit_arms(c: kayak_rt::Handle<'static, X64Code>, arms: Sexps, si: i64, env: List<kayak_rt::Handle<'static, X64At>>, fr: Str, past: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_arms(c: kayak_rt::data::DataAt<'static, X64Code>, arms: Sexps, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>, fr: Str, past: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         if null_p(arms) {
             c
         } else {
             let a = items(car(arms));
             let kind = {
                 let tagcase_ = car(a);
-                match *tagcase_ {
-                    Sexp::Sym(n, f, p) => {
-                        n
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit!("")
-                    }
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f, p,) = Sexp::__Sym(tagcase_);
+                    n
+                } else {
+                    let other = tagcase_;
+                    str_lit!("")
                 }
             };
             let k = x64_fresh_label(c);
@@ -1355,14 +1402,12 @@ pub mod kc_x64 {
             } else {
                 let c = x64_emit_symbol(c, {
                     let tagcase_ = second(a);
-                    match *tagcase_ {
-                        Sexp::Str(s, f, p) => {
-                            s
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            str_lit!("")
-                        }
+                    if Sexp::__is_Str(tagcase_) {
+                        let (s, f, p,) = Sexp::__Str(tagcase_);
+                        s
+                    } else {
+                        let other = tagcase_;
+                        str_lit!("")
                     }
                 });
                 let c = x64_emit(c, string_append(str_lit!("movq "), string_append(x64_slot(si), str_lit!(", %rcx"))));
@@ -1401,7 +1446,7 @@ pub mod kc_x64 {
     /// Each binding's value made where the `let` is (`env`), into a slot of
     /// its own; then the body, the binders in scope (`inner`) (C404), in
     /// tail position if `fr`, its function's frame, is given (C413).
-    pub fn x64_emit_let(c: kayak_rt::Handle<'static, X64Code>, bs: Sexps, body: kayak_rt::Handle<'static, Sexp>, si: i64, env: List<kayak_rt::Handle<'static, X64At>>, inner: List<kayak_rt::Handle<'static, X64At>>, fr: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_let(c: kayak_rt::data::DataAt<'static, X64Code>, bs: Sexps, body: kayak_rt::data::DataAt<'static, Sexp>, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>, inner: List<kayak_rt::data::DataAt<'static, X64At>>, fr: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         if null_p(bs) {
             if string_eq_p(fr, str_lit!("")) {
                 x64_emit_expr(c, body, si, inner)
@@ -1412,14 +1457,12 @@ pub mod kc_x64 {
             let b = items(car(bs));
             let k = {
                 let tagcase_ = car(b);
-                match *tagcase_ {
-                    Sexp::Num(n, f, p) => {
-                        n
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        the::<i64>(-1i64)
-                    }
+                if Sexp::__is_Num(tagcase_) {
+                    let (n, f, p,) = Sexp::__Num(tagcase_);
+                    n
+                } else {
+                    let other = tagcase_;
+                    the::<i64>(-1i64)
                 }
             };
             let c = x64_emit_expr(c, third(b), si, env);
@@ -1429,7 +1472,7 @@ pub mod kc_x64 {
     }
 
     /// Each argument made into a slot of its own, from `si`.
-    pub fn x64_emit_args(c: kayak_rt::Handle<'static, X64Code>, args: Sexps, si: i64, env: List<kayak_rt::Handle<'static, X64At>>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_args(c: kayak_rt::data::DataAt<'static, X64Code>, args: Sexps, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
         if null_p(args) {
             c
         } else {
@@ -1440,7 +1483,7 @@ pub mod kc_x64 {
     }
 
     /// Each in turn, the last's value kept.
-    pub fn x64_emit_seq(mut c: kayak_rt::Handle<'static, X64Code>, mut ts: Sexps, mut si: i64, mut env: List<kayak_rt::Handle<'static, X64At>>) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_seq(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut ts: Sexps, mut si: i64, mut env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
         loop {
             if null_p(ts) {
                 return c;
@@ -1452,7 +1495,7 @@ pub mod kc_x64 {
     }
 
     /// Code that makes `%rax`, the argument, the primitive `n`'s value.
-    pub fn x64_emit_unary(c: kayak_rt::Handle<'static, X64Code>, n: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_unary(c: kayak_rt::data::DataAt<'static, X64Code>, n: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         if string_eq_p(n, str_lit!("not")) {
             x64_boolean_if(x64_emit(c, string_append(str_lit!("cmpq $"), string_append(i64_to_string(x64_word_false()), str_lit!(", %rax")))), str_lit!("e"))
         } else if string_eq_p(n, str_lit!("null?")) {
@@ -1560,7 +1603,7 @@ pub mod kc_x64 {
     /// the primitive `n`'s value. A fixnum is its value times 8: a sum or a
     /// difference of two is the sum's, its overflow the 64-bit one; a
     /// product, one of them shifted back first.
-    pub fn x64_emit_binary(c: kayak_rt::Handle<'static, X64Code>, n: Str) -> kayak_rt::Handle<'static, X64Code> {
+    pub fn x64_emit_binary(c: kayak_rt::data::DataAt<'static, X64Code>, n: Str) -> kayak_rt::data::DataAt<'static, X64Code> {
         if string_member_p(n, x64_comparisons()) {
             x64_boolean_if(x64_emit(c, str_lit!("cmpq %rcx, %rax")), x64_condition(n))
         } else if (string_eq_p(n, str_lit!("abort-current-continuation")) || string_eq_p(n, str_lit!("escape"))) {
@@ -1598,11 +1641,10 @@ pub mod kc_x64 {
             let c = x64_emit(c, string_append(str_lit!("jae "), bad));
             let c = {
                 let tagcase_ = c;
-                match *tagcase_ {
-                    X64Code::X64Code(ls, n2, slots, fs, px) => {
-                        x64_code(ls, n2, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit!(":\n    movq -4(%rax), %rdi\n    call kc_string_index_fail\n"), kayak_rt::nil()))), fs), px)
-                    }
-                }
+                if X64Code::__is_X64Code(tagcase_) {
+                    let (ls, n2, slots, fs, px,) = X64Code::__X64Code(tagcase_);
+                    x64_code(ls, n2, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit!(":\n    movq -4(%rax), %rdi\n    call kc_string_index_fail\n"), kayak_rt::nil()))), fs), px)
+                } else { kayak_rt::data::no_variant() }
             };
             let c = x64_emit(c, str_lit!("movq %rcx, %rdx"));
             let c = x64_emit(c, str_lit!("shrq $1, %rdx"));
@@ -1630,11 +1672,10 @@ pub mod kc_x64 {
             let c = x64_emit(c, string_append(str_lit!("js "), bad));
             let c = {
                 let tagcase_ = c;
-                match *tagcase_ {
-                    X64Code::X64Code(ls, n2, slots, fs, px) => {
-                        x64_code(ls, n2, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit!(":\n    call kc_make_array_fail\n"), kayak_rt::nil()))), fs), px)
-                    }
-                }
+                if X64Code::__is_X64Code(tagcase_) {
+                    let (ls, n2, slots, fs, px,) = X64Code::__X64Code(tagcase_);
+                    x64_code(ls, n2, slots, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(bad, kayak_rt::heap_cons(str_lit!(":\n    call kc_make_array_fail\n"), kayak_rt::nil()))), fs), px)
+                } else { kayak_rt::data::no_variant() }
             };
             let c = x64_allocating(c, str_lit!("leaq 16(%r12,%rax,8), %rdx"), str_lit!("    shlq $3, %rax\n    pushq %rax\n    pushq %rcx\n"), str_lit!("    popq %rcx\n    popq %rax\n    sarq $3, %rax\n"));
             let c = x64_emit(c, str_lit!("leaq 1(%rax), %rsi"));
@@ -1736,7 +1777,7 @@ pub mod kc_x64 {
         string_list_append(kayak_rt::heap_cons(str_lit!("(asm "), kayak_rt::heap_cons(i64_to_string(slots), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(kc_datum().call(str(string_list_append(reverse(ls)), str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(kc_datum().call(str(string_list_append(reverse(fails)), str_lit!(""), 0i64)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil()))))))))
     }
 
-    pub fn q_asm_item(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
+    pub fn q_asm_item(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, a_path: Str, a_key: Str) -> Str {
         let path = a_path;
         let key = a_key;
         let i = l0_item().call(d, run, path, key);
@@ -1751,60 +1792,53 @@ pub mod kc_x64 {
                 not_yet().call(path, str_lit!("a procedure of more than 64 parameters"))
             } else {
                 let fr = string_append(str_lit!(".L"), string_append(px, str_lit!("_frame")));
-                let tagcase_ = x64_emit_tail(x64_loaded_args(x64_stored_params(x64_using(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>(), px), n), x64_arg_registers(), 0i64, n), 6i64, n), item_body().call(i), n, x64_params_at(ps, 0i64, nil::<kayak_rt::Handle<'static, kc_x64::X64At>>()), fr);
-                match *tagcase_ {
-                    X64Code::X64Code(ls, m, slots, fails, px2) => {
-                        x64_asm_item_text(0i64, append(ls, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!("    .globl "), kayak_rt::heap_cons(x64_proc_symbol(item_name().call(i)), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(x64_proc_symbol(item_name().call(i)), kayak_rt::heap_cons(str_lit!(":\n    subq $"), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit!(", %rsp\n"), kayak_rt::heap_cons(x64_entry_checks(x64_proc_symbol(item_name().call(i))), kayak_rt::heap_cons(x64_frame_zeroed(x64_frame_of_call(slots), 0i64, nil::<Str>()), kayak_rt::nil())))))))))), kayak_rt::nil())), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(x64_entry_calls(x64_proc_symbol(item_name().call(i))), kayak_rt::heap_cons(str_lit!("    .set "), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit!(", "), kayak_rt::heap_cons(i64_to_string(x64_frame_of_call(slots)), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::nil()))))))), fails))
-                    }
-                }
+                let tagcase_ = x64_emit_tail(x64_loaded_args(x64_stored_params(x64_using(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>(), px), n), x64_arg_registers(), 0i64, n), 6i64, n), item_body().call(i), n, x64_params_at(ps, 0i64, nil::<kayak_rt::data::DataAt<'static, kc_x64::X64At>>()), fr);
+                if X64Code::__is_X64Code(tagcase_) {
+                    let (ls, m, slots, fails, px2,) = X64Code::__X64Code(tagcase_);
+                    x64_asm_item_text(0i64, append(ls, kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!("    .globl "), kayak_rt::heap_cons(x64_proc_symbol(item_name().call(i)), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::heap_cons(x64_proc_symbol(item_name().call(i)), kayak_rt::heap_cons(str_lit!(":\n    subq $"), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit!(", %rsp\n"), kayak_rt::heap_cons(x64_entry_checks(x64_proc_symbol(item_name().call(i))), kayak_rt::heap_cons(x64_frame_zeroed(x64_frame_of_call(slots), 0i64, nil::<Str>()), kayak_rt::nil())))))))))), kayak_rt::nil())), kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(x64_entry_calls(x64_proc_symbol(item_name().call(i))), kayak_rt::heap_cons(str_lit!("    .set "), kayak_rt::heap_cons(fr, kayak_rt::heap_cons(str_lit!(", "), kayak_rt::heap_cons(i64_to_string(x64_frame_of_call(slots)), kayak_rt::heap_cons(str_lit!("\n"), kayak_rt::nil()))))))), fails))
+                } else { kayak_rt::data::no_variant() }
             }
         } else if string_eq_p(k, str_lit!("global")) {
-            let tagcase_ = x64_emit_expr(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>(), px), item_body().call(i), 0i64, nil::<kayak_rt::Handle<'static, kc_x64::X64At>>());
-            match *tagcase_ {
-                X64Code::X64Code(ls, m, slots, fails, px2) => {
-                    x64_asm_item_text(slots, kayak_rt::heap_cons(x64_cell_stored(str_lit!("%rax"), x64_global_symbol(item_name().call(i))), ls), fails)
-                }
-            }
+            let tagcase_ = x64_emit_expr(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>(), px), item_body().call(i), 0i64, nil::<kayak_rt::data::DataAt<'static, kc_x64::X64At>>());
+            if X64Code::__is_X64Code(tagcase_) {
+                let (ls, m, slots, fails, px2,) = X64Code::__X64Code(tagcase_);
+                x64_asm_item_text(slots, kayak_rt::heap_cons(x64_cell_stored(str_lit!("%rax"), x64_global_symbol(item_name().call(i))), ls), fails)
+            } else { kayak_rt::data::no_variant() }
         } else {
-            let tagcase_ = x64_emit_expr(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>(), px), item_body().call(i), 0i64, nil::<kayak_rt::Handle<'static, kc_x64::X64At>>());
-            match *tagcase_ {
-                X64Code::X64Code(ls, m, slots, fails, px2) => {
-                    x64_asm_item_text(slots, kayak_rt::heap_cons(str_lit!("    movq %rax, %rdi\n    call kc_show\n"), ls), fails)
-                }
-            }
+            let tagcase_ = x64_emit_expr(x64_code(nil::<Str>(), 0i64, 0i64, nil::<Str>(), px), item_body().call(i), 0i64, nil::<kayak_rt::data::DataAt<'static, kc_x64::X64At>>());
+            if X64Code::__is_X64Code(tagcase_) {
+                let (ls, m, slots, fails, px2,) = X64Code::__X64Code(tagcase_);
+                x64_asm_item_text(slots, kayak_rt::heap_cons(str_lit!("    movq %rax, %rdi\n    call kc_show\n"), ls), fails)
+            } else { kayak_rt::data::no_variant() }
         }
     }
 
     #[inline]
-    pub fn x64_asm_of(d: Db, run: Runner, path: Str, key: Str) -> kayak_rt::Handle<'static, Sexp> {
+    pub fn x64_asm_of(d: Db, run: Runner, path: Str, key: Str) -> kayak_rt::data::DataAt<'static, Sexp> {
         car(read_all(db_get(d, run, key2(str_lit!("asm-item"), path, key)), str_lit!("asm"), 1i64))
     }
 
     #[inline]
-    pub fn x64_part(x: kayak_rt::Handle<'static, Sexp>, i: i64) -> Str {
+    pub fn x64_part(x: kayak_rt::data::DataAt<'static, Sexp>, i: i64) -> Str {
         let tagcase_ = sexp_at().call(items(x), i);
-        match *tagcase_ {
-            Sexp::Str(s, f, p) => {
-                s
-            }
-            _ => {
-                let other = tagcase_;
-                str_lit!("")
-            }
+        if Sexp::__is_Str(tagcase_) {
+            let (s, f, p,) = Sexp::__Str(tagcase_);
+            s
+        } else {
+            let other = tagcase_;
+            str_lit!("")
         }
     }
 
     #[inline]
-    pub fn x64_slots_of(x: kayak_rt::Handle<'static, Sexp>) -> i64 {
+    pub fn x64_slots_of(x: kayak_rt::data::DataAt<'static, Sexp>) -> i64 {
         let tagcase_ = second(items(x));
-        match *tagcase_ {
-            Sexp::Num(k, f, p) => {
-                k
-            }
-            _ => {
-                let other = tagcase_;
-                0i64
-            }
+        if Sexp::__is_Num(tagcase_) {
+            let (k, f, p,) = Sexp::__Num(tagcase_);
+            k
+        } else {
+            let other = tagcase_;
+            0i64
         }
     }
 
@@ -2043,13 +2077,13 @@ pub mod kc_x64 {
     // `asm PATH`: the program: each global's cell; each procedure; then
     // `kc_entry`, which keeps the heap in `%r12` and `%r13` and makes the
     // value definitions and expressions in order.
-    pub fn q_asm(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, path: Str, a_key: Str) -> Str {
+    pub fn q_asm(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, path: Str, a_key: Str) -> Str {
         let keys = kc_keys().call(d, run, path);
         let its = kc_items_of().call(d, run, str_lit!("asm-item"), path, keys);
         let l0s = kc_items_of().call(d, run, str_lit!("l0-item"), path, keys);
         let kinds = map(item_kind(), l0s);
         let names = map(item_name(), l0s);
-        let frame = x64_frame(x64_max_slots(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
+        let frame = x64_frame(x64_max_slots(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Sexp>| {
             i64_gt(x64_slots_of(x), -1i64)
         })), its), 0i64));
         string_list_append(append(kayak_rt::heap_cons(str_lit!("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit!(".\n    .bss\n    .p2align 3\nkc_cells_lo:\n"), kayak_rt::nil()))), append(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, n: Str| {
@@ -2058,19 +2092,19 @@ pub mod kc_x64 {
             } else {
                 str_lit!("")
             }
-        })), kinds, names), append(kayak_rt::heap_cons(str_lit!("kc_cells_hi:\n    .text\n"), kayak_rt::nil()), append(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, x: kayak_rt::Handle<'static, Sexp>| {
+        })), kinds, names), append(kayak_rt::heap_cons(str_lit!("kc_cells_hi:\n    .text\n"), kayak_rt::nil()), append(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, x: kayak_rt::data::DataAt<'static, Sexp>| {
             if string_eq_p(k, str_lit!("proc")) {
                 string_append(x64_part(x, 2i64), x64_part(x, 3i64))
             } else {
                 str_lit!("")
             }
-        })), kinds, its), append(kayak_rt::heap_cons(str_lit!("    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"), kayak_rt::heap_cons(str_lit!("    call kc_gc_init\n    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!(", %rsp\n"), kayak_rt::heap_cons(x64_frame_zeroed(frame, 0i64, nil::<Str>()), kayak_rt::heap_cons(str_lit!("    movq %rsp, 672(%r15)\n"), kayak_rt::nil())))))), append(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, x: kayak_rt::Handle<'static, Sexp>| {
+        })), kinds, its), append(kayak_rt::heap_cons(str_lit!("    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"), kayak_rt::heap_cons(str_lit!("    call kc_gc_init\n    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!(", %rsp\n"), kayak_rt::heap_cons(x64_frame_zeroed(frame, 0i64, nil::<Str>()), kayak_rt::heap_cons(str_lit!("    movq %rsp, 672(%r15)\n"), kayak_rt::nil())))))), append(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, x: kayak_rt::data::DataAt<'static, Sexp>| {
             if string_eq_p(k, str_lit!("proc")) {
                 str_lit!("")
             } else {
                 x64_part(x, 2i64)
             }
-        })), kinds, its), append(kayak_rt::heap_cons(str_lit!("    movq %r12, 680(%r15)\n"), kayak_rt::heap_cons(str_lit!("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!(", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil())))), append(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, x: kayak_rt::Handle<'static, Sexp>| {
+        })), kinds, its), append(kayak_rt::heap_cons(str_lit!("    movq %r12, 680(%r15)\n"), kayak_rt::heap_cons(str_lit!("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!(", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil())))), append(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, x: kayak_rt::data::DataAt<'static, Sexp>| {
             if string_eq_p(k, str_lit!("proc")) {
                 str_lit!("")
             } else {
@@ -2084,14 +2118,14 @@ pub mod kc_x64 {
     // makes the value definitions and expressions in order; their failures'
     // calls. With each procedure's object (`x64-object-text`), what `asm`
     // writes as one file, `kc build` assembles apart.
-    pub fn q_asm_entry(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, path: Str, a_key: Str) -> Str {
+    pub fn q_asm_entry(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, path: Str, a_key: Str) -> Str {
         let keys = kc_keys().call(d, run, path);
         let ifs = kc_items_of().call(d, run, str_lit!("interface"), path, keys);
         let kinds = map(item_kind(), ifs);
         let names = map(item_name(), ifs);
         let rest = x64_not_procs(keys, kinds, nil::<Str>());
         let its = kc_items_of().call(d, run, str_lit!("asm-item"), path, rest);
-        let frame = x64_frame(x64_max_slots(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
+        let frame = x64_frame(x64_max_slots(filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Sexp>| {
             i64_gt(x64_slots_of(x), -1i64)
         })), its), 0i64));
         string_list_append(append(kayak_rt::heap_cons(str_lit!("# Made by kc (docs/research/kc.md) from "), kayak_rt::heap_cons(path, kayak_rt::heap_cons(str_lit!(".\n    .bss\n    .p2align 3\nkc_cells_lo:\n"), kayak_rt::nil()))), append(map2(kayak_rt::as_proc(kayak_rt::closure2s((), |(), k: Str, n: Str| {
@@ -2100,16 +2134,16 @@ pub mod kc_x64 {
             } else {
                 str_lit!("")
             }
-        })), kinds, names), append(kayak_rt::heap_cons(str_lit!("kc_cells_hi:\n    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"), kayak_rt::heap_cons(str_lit!("    call kc_gc_init\n    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!(", %rsp\n"), kayak_rt::heap_cons(x64_frame_zeroed(frame, 0i64, nil::<Str>()), kayak_rt::heap_cons(str_lit!("    movq %rsp, 672(%r15)\n"), kayak_rt::nil())))))), append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
+        })), kinds, names), append(kayak_rt::heap_cons(str_lit!("kc_cells_hi:\n    .text\n    .globl kc_entry\nkc_entry:\n    pushq %r15\n    pushq %r14\n    pushq %r13\n    pushq %r12\n    movq %rdi, %r12\n    movq %rsi, %r13\n    movq %rdx, %r15\n"), kayak_rt::heap_cons(str_lit!("    call kc_gc_init\n    subq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!(", %rsp\n"), kayak_rt::heap_cons(x64_frame_zeroed(frame, 0i64, nil::<Str>()), kayak_rt::heap_cons(str_lit!("    movq %rsp, 672(%r15)\n"), kayak_rt::nil())))))), append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Sexp>| {
             x64_part(x, 2i64)
-        })), its), append(kayak_rt::heap_cons(str_lit!("    movq %r12, 680(%r15)\n"), kayak_rt::heap_cons(str_lit!("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!(", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil())))), append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::Handle<'static, Sexp>| {
+        })), its), append(kayak_rt::heap_cons(str_lit!("    movq %r12, 680(%r15)\n"), kayak_rt::heap_cons(str_lit!("    addq $"), kayak_rt::heap_cons(i64_to_string(frame), kayak_rt::heap_cons(str_lit!(", %rsp\n    popq %r12\n    popq %r13\n    popq %r14\n    popq %r15\n    ret\n"), kayak_rt::nil())))), append(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), x: kayak_rt::data::DataAt<'static, Sexp>| {
             x64_part(x, 3i64)
         })), its), kayak_rt::heap_cons(x64_entry_support(x64_applies_p(kinds, names)), kayak_rt::heap_cons(str_lit!("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil())))))))))
     }
 
     // A procedure's object's assembly (C419), of its `asm-item`.
     #[inline]
-    pub fn x64_object_text(x: kayak_rt::Handle<'static, Sexp>) -> Str {
+    pub fn x64_object_text(x: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
         string_list_append(kayak_rt::heap_cons(str_lit!("    .text\n"), kayak_rt::heap_cons(x64_part(x, 2i64), kayak_rt::heap_cons(x64_part(x, 3i64), kayak_rt::heap_cons(str_lit!("    .section .note.GNU-stack,\"\",@progbits\n"), kayak_rt::nil())))))
     }
 
@@ -2169,7 +2203,7 @@ pub mod kc_x64 {
     // FP)` of each run of procedures (their `asm-item`s'), then `(() FP)` of
     // what is no procedure's (`asm-entry`'s). An edit that leaves every
     // procedure's code as it was leaves this as it was.
-    pub fn q_objects(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::Handle<'static, Imap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<kayak_rt::Handle<'static, Smap>>, Ref<kayak_rt::Handle<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::Handle<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::Handle<'static, Sexp>>>>, kayak_rt::Handle<'static, Sexp>, Str>, path: Str, a_key: Str) -> Str {
+    pub fn q_objects(d: Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, run: kayak_rt::Proc2<'static, Product_3rev_5nodes_3ids_6shards_6groups_7nshards_5reads_5dirty_6frames_4last_4runs_3ran<Ref<i64>, Ref<kayak_rt::data::DataAt<'static, Imap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<kayak_rt::data::DataAt<'static, Smap>>, Ref<kayak_rt::data::DataAt<'static, Kmap>>, Ref<i64>, Ref<kayak_rt::Proc1<'static, Str, Str>>, Ref<bool>, Ref<List<kayak_rt::data::DataAt<'static, Frame>>>, Ref<List<i64>>, Ref<i64>, Ref<List<kayak_rt::data::DataAt<'static, Sexp>>>>, kayak_rt::data::DataAt<'static, Sexp>, Str>, path: Str, a_key: Str) -> Str {
         let keys = kc_keys().call(d, run, path);
         let kinds = map(item_kind(), kc_items_of().call(d, run, str_lit!("interface"), path, keys));
         string_list_append(append(kayak_rt::heap_cons(str_lit!("("), kayak_rt::nil()), append(x64_object_lines(d, run, path, keys, kinds, nil::<Str>(), 0i64, queries::fnv_offset(), nil::<Str>()), kayak_rt::heap_cons(str_lit!("(() "), kayak_rt::heap_cons(i64_to_string(db_get_fingerprint(d, run, key1(str_lit!("asm-entry"), path))), kayak_rt::heap_cons(str_lit!("))"), kayak_rt::nil()))))))

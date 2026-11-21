@@ -280,35 +280,72 @@ pub fn code_gray() -> Ref<List<i64>> {
     })
 }
 
+#[derive(Clone, Copy)]
 pub enum Cblock {
     Cblock(i64, i64),
 }
 
-impl kayak_rt::Visit for Cblock {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Cblock(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Cblock {
+    type Fields = (i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("cblock")
     }
 }
 
-pub fn cblock(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Cblock> {
-    kayak_rt::heap_alloc(Cblock::Cblock(f0, f1))
+#[allow(non_snake_case)]
+impl Cblock {
+    #[inline(always)]
+    pub fn __is_Cblock(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Cblock(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Cblock {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Cblock(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn cblock(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, Cblock> {
+    kayak_rt::data::data_heap::<Cblock, 0>((f0, f1,))
 }
 
 #[inline]
-pub fn code_frees() -> Ref<List<kayak_rt::Handle<'static, Cblock>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Cblock>>>);
+pub fn code_frees() -> Ref<List<kayak_rt::data::DataAt<'static, Cblock>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Cblock>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Cblock>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Cblock>>())
     })
 }
 
 #[inline]
-pub fn stub_free() -> Ref<List<kayak_rt::Handle<'static, Cblock>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Cblock>>>);
+pub fn stub_free() -> Ref<List<kayak_rt::data::DataAt<'static, Cblock>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Cblock>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Cblock>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Cblock>>())
     })
 }
 
@@ -335,10 +372,10 @@ pub fn vlambda_word() -> Ref<i64> {
 }
 
 #[inline]
-pub fn adapter_words() -> Ref<List<kayak_rt::Handle<'static, Cblock>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Cblock>>>);
+pub fn adapter_words() -> Ref<List<kayak_rt::data::DataAt<'static, Cblock>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Cblock>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Cblock>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Cblock>>())
     })
 }
 
@@ -789,35 +826,72 @@ pub fn string_text(v: i64) -> Str {
 // Symbols, interned: an object of its name, its hash and its global slot,
 // in `alloc`'s order (Fixpt's `intern`), one for each name. Tier 1 keeps
 // no global slots: each is 0.
+#[derive(Clone, Copy)]
 pub enum NamedSlot {
     NamedSlot(Str, i64),
 }
 
-impl kayak_rt::Visit for NamedSlot {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::NamedSlot(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for NamedSlot {
+    type Fields = (Str, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("named-slot")
     }
 }
 
-pub fn named_slot(f0: Str, f1: i64) -> kayak_rt::Handle<'static, NamedSlot> {
-    kayak_rt::heap_alloc(NamedSlot::NamedSlot(f0, f1))
+#[allow(non_snake_case)]
+impl NamedSlot {
+    #[inline(always)]
+    pub fn __is_NamedSlot(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __NamedSlot(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for NamedSlot {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::NamedSlot(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn named_slot(f0: Str, f1: i64) -> kayak_rt::data::DataAt<'static, NamedSlot> {
+    kayak_rt::data::data_heap::<NamedSlot, 0>((f0, f1,))
 }
 
 #[inline]
-pub fn symbols() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
+pub fn symbols() -> Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, NamedSlot>>())
     })
 }
 
 #[inline]
-pub fn named_globals() -> Ref<List<kayak_rt::Handle<'static, NamedSlot>>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, NamedSlot>>>);
+pub fn named_globals() -> Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, NamedSlot>>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, NamedSlot>>())
+        kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, NamedSlot>>())
     })
 }
 
@@ -841,7 +915,7 @@ pub fn named_count() -> Ref<i64> {
     })
 }
 
-pub fn named_x(n: Str, v: i64) -> kayak_rt::Handle<'static, NamedSlot> {
+pub fn named_x(n: Str, v: i64) -> kayak_rt::data::DataAt<'static, NamedSlot> {
     let (i, m) = (get(named_count()), get(named_values()));
     if i64_lt(i, flatarray_length_i64(m)) {
         ()
@@ -856,26 +930,24 @@ pub fn named_x(n: Str, v: i64) -> kayak_rt::Handle<'static, NamedSlot> {
 }
 
 #[inline]
-pub fn named_value(x: kayak_rt::Handle<'static, NamedSlot>) -> i64 {
+pub fn named_value(x: kayak_rt::data::DataAt<'static, NamedSlot>) -> i64 {
     let tagcase_ = x;
-    match *tagcase_ {
-        NamedSlot::NamedSlot(m, i) => {
-            flatarray_ref_i64(get(named_values()), i)
-        }
-    }
+    if NamedSlot::__is_NamedSlot(tagcase_) {
+        let (m, i,) = NamedSlot::__NamedSlot(tagcase_);
+        flatarray_ref_i64(get(named_values()), i)
+    } else { kayak_rt::data::no_variant() }
 }
 
-pub fn lookup(mut xs: List<kayak_rt::Handle<'static, NamedSlot>>, mut n: Str) -> i64 {
+pub fn lookup(mut xs: List<kayak_rt::data::DataAt<'static, NamedSlot>>, mut n: Str) -> i64 {
     loop {
         if null_p(xs) {
             return 0i64;
         } else if {
             let tagcase_ = car(xs);
-            match *tagcase_ {
-                NamedSlot::NamedSlot(m, i) => {
-                    string_eq_p(m, n)
-                }
-            }
+            if NamedSlot::__is_NamedSlot(tagcase_) {
+                let (m, i,) = NamedSlot::__NamedSlot(tagcase_);
+                string_eq_p(m, n)
+            } else { kayak_rt::data::no_variant() }
         } {
             return named_value(car(xs));
         } else {
@@ -1325,7 +1397,7 @@ pub fn code_free_block_x(j: i64, n: i64) -> () {
 /// made, 0 if none); a free run at the end the part's top again; the
 /// free list `frees` made anew (Fixpt's sweep of its code area); the
 /// stubbed part's if `stubbed`, else the native part's.
-pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<kayak_rt::Handle<'static, Cblock>>, mut stubbed: bool) -> () {
+pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<kayak_rt::data::DataAt<'static, Cblock>>, mut stubbed: bool) -> () {
     loop {
         if i64_gt_eq(j, if stubbed {
             get(stub_top())
@@ -1373,27 +1445,26 @@ pub fn code_swept_x(mut j: i64, mut run: i64, mut len: i64, mut frees: List<kaya
 
 /// The free list, the first block of `n` words or more taken
 /// (`code-fit-at`), what is left of it free.
-pub fn code_fit_x(bs: List<kayak_rt::Handle<'static, Cblock>>, n: i64) -> List<kayak_rt::Handle<'static, Cblock>> {
+pub fn code_fit_x(bs: List<kayak_rt::data::DataAt<'static, Cblock>>, n: i64) -> List<kayak_rt::data::DataAt<'static, Cblock>> {
     if null_p(bs) {
-        nil::<kayak_rt::Handle<'static, Cblock>>()
+        nil::<kayak_rt::data::DataAt<'static, Cblock>>()
     } else {
         let tagcase_ = car(bs);
-        match *tagcase_ {
-            Cblock::Cblock(j, m) => {
-                if i64_gt_eq(get(code_fit_at()), 0i64) {
-                    bs
-                } else if i64_eq(m, n) {
-                    set(code_fit_at(), j);
-                    cdr(bs)
-                } else if i64_gt(m, n) {
-                    set(code_fit_at(), j);
-                    code_free_block_x(i64_plus(j, n), i64_minus(m, n));
-                    kayak_rt::heap_cons(cblock(i64_plus(j, n), i64_minus(m, n)), cdr(bs))
-                } else {
-                    kayak_rt::heap_cons(car(bs), code_fit_x(cdr(bs), n))
-                }
+        if Cblock::__is_Cblock(tagcase_) {
+            let (j, m,) = Cblock::__Cblock(tagcase_);
+            if i64_gt_eq(get(code_fit_at()), 0i64) {
+                bs
+            } else if i64_eq(m, n) {
+                set(code_fit_at(), j);
+                cdr(bs)
+            } else if i64_gt(m, n) {
+                set(code_fit_at(), j);
+                code_free_block_x(i64_plus(j, n), i64_minus(m, n));
+                kayak_rt::heap_cons(cblock(i64_plus(j, n), i64_minus(m, n)), cdr(bs))
+            } else {
+                kayak_rt::heap_cons(car(bs), code_fit_x(cdr(bs), n))
             }
-        }
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
@@ -1468,16 +1539,15 @@ pub fn make_code_word_x(name: Str, n: i64, entry: i64) -> i64 {
     }
 }
 
-pub fn adapters_forwarded_x(ws: List<kayak_rt::Handle<'static, Cblock>>) -> List<kayak_rt::Handle<'static, Cblock>> {
+pub fn adapters_forwarded_x(ws: List<kayak_rt::data::DataAt<'static, Cblock>>) -> List<kayak_rt::data::DataAt<'static, Cblock>> {
     if null_p(ws) {
-        nil::<kayak_rt::Handle<'static, Cblock>>()
+        nil::<kayak_rt::data::DataAt<'static, Cblock>>()
     } else {
         let tagcase_ = car(ws);
-        match *tagcase_ {
-            Cblock::Cblock(n, w) => {
-                kayak_rt::heap_cons(cblock(n, forward_x(w)), adapters_forwarded_x(cdr(ws)))
-            }
-        }
+        if Cblock::__is_Cblock(tagcase_) {
+            let (n, w,) = Cblock::__Cblock(tagcase_);
+            kayak_rt::heap_cons(cblock(n, forward_x(w)), adapters_forwarded_x(cdr(ws)))
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
@@ -1512,8 +1582,8 @@ pub fn collect_end_x() -> () {
     weak_moved_x(get(weak_seen()));
     set(weak_seen(), nil::<i64>());
     if get(code_on()) {
-        code_swept_x(get(stub_lo()), 0i64, 0i64, nil::<kayak_rt::Handle<'static, Cblock>>(), true);
-        code_swept_x(get(code_lo()), 0i64, 0i64, nil::<kayak_rt::Handle<'static, Cblock>>(), false)
+        code_swept_x(get(stub_lo()), 0i64, 0i64, nil::<kayak_rt::data::DataAt<'static, Cblock>>(), true);
+        code_swept_x(get(code_lo()), 0i64, 0i64, nil::<kayak_rt::data::DataAt<'static, Cblock>>(), false)
     } else {
         ()
     };

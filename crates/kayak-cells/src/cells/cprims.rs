@@ -15,20 +15,57 @@ use super::*;
 
 // Each primitive: its name, how many arguments it takes, at least and at
 // most (-1: any), and its operation.
+#[derive(Clone, Copy)]
 pub enum Pdef {
     Pdef(Str, i64, i64, i64),
 }
 
-impl kayak_rt::Visit for Pdef {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Pdef(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-        }
+impl kayak_rt::data::Variant<0> for Pdef {
+    type Fields = (Str, i64, i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("pdef")
     }
 }
 
-pub fn pdef(f0: Str, f1: i64, f2: i64, f3: i64) -> kayak_rt::Handle<'static, Pdef> {
-    kayak_rt::heap_alloc(Pdef::Pdef(f0, f1, f2, f3))
+#[allow(non_snake_case)]
+impl Pdef {
+    #[inline(always)]
+    pub fn __is_Pdef(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Pdef(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Pdef {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1, f2, f3,) = w.fields::<0>();
+            Self::Pdef(f0, f1, f2, f3)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn pdef(f0: Str, f1: i64, f2: i64, f3: i64) -> kayak_rt::data::DataAt<'static, Pdef> {
+    kayak_rt::data::data_heap::<Pdef, 0>((f0, f1, f2, f3,))
 }
 
 // The operations. Families: the fixed widths' from `o-fixed` (32 to a
@@ -1237,10 +1274,10 @@ pub fn f32_suffixes() -> List<Str> {
 
 /// A family's primitives, `prefix` and each suffix, operation `base + i`:
 /// one argument from place `unary-from` on, else two.
-pub fn family(mut prefix: Str, mut suffixes: List<Str>, mut base: i64, mut i: i64, mut unary_from: i64) -> List<kayak_rt::Handle<'static, Pdef>> {
+pub fn family(mut prefix: Str, mut suffixes: List<Str>, mut base: i64, mut i: i64, mut unary_from: i64) -> List<kayak_rt::data::DataAt<'static, Pdef>> {
     loop {
         if null_p(suffixes) {
-            return nil::<kayak_rt::Handle<'static, Pdef>>();
+            return nil::<kayak_rt::data::DataAt<'static, Pdef>>();
         } else if string_eq_p(car(suffixes), str_lit!("")) {
             (suffixes, i) = (cdr(suffixes), i64_plus(i, 1i64));
             continue;
@@ -1258,17 +1295,17 @@ pub fn family(mut prefix: Str, mut suffixes: List<Str>, mut base: i64, mut i: i6
     }
 }
 
-pub fn fixed_families(ws: List<Str>, w: i64) -> List<kayak_rt::Handle<'static, Pdef>> {
+pub fn fixed_families(ws: List<Str>, w: i64) -> List<kayak_rt::data::DataAt<'static, Pdef>> {
     if null_p(ws) {
-        nil::<kayak_rt::Handle<'static, Pdef>>()
+        nil::<kayak_rt::data::DataAt<'static, Pdef>>()
     } else {
         let base = i64_plus(o_fixed(), i64_star(32i64, w));
         onto(family(string_append(str_lit!("%fx26-"), car(ws)), fixed_suffixes(), base, 0i64, 15i64), kayak_rt::heap_cons(pdef(string_append(str_lit!("%fx26-int->"), car(ws)), 1i64, 1i64, i64_plus(base, 16i64)), kayak_rt::heap_cons(pdef(string_append(str_lit!("%fx26-"), string_append(car(ws), str_lit!("->int"))), 1i64, 1i64, i64_plus(base, 17i64)), fixed_families(cdr(ws), i64_plus(w, 1i64)))))
     }
 }
 
-pub fn prims() -> List<kayak_rt::Handle<'static, Pdef>> {
-    static ONCE: std::sync::OnceLock<List<kayak_rt::Handle<'static, Pdef>>> = std::sync::OnceLock::new();
+pub fn prims() -> List<kayak_rt::data::DataAt<'static, Pdef>> {
+    static ONCE: std::sync::OnceLock<List<kayak_rt::data::DataAt<'static, Pdef>>> = std::sync::OnceLock::new();
     once(&ONCE, || {
         onto(kayak_rt::heap_cons(pdef(str_lit!("list"), 0i64, -1i64, o_list()), kayak_rt::heap_cons(pdef(str_lit!("%make-box"), 1i64, 1i64, o_make_box()), kayak_rt::heap_cons(pdef(str_lit!("%region-enter"), 0i64, 0i64, o_region_enter()), kayak_rt::heap_cons(pdef(str_lit!("%region-exit"), 2i64, 2i64, o_region_exit()), kayak_rt::heap_cons(pdef(str_lit!("%region-cons"), 3i64, 3i64, o_region_cons()), kayak_rt::heap_cons(pdef(str_lit!("%make-frozen"), 1i64, -1i64, o_make_frozen()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-mul"), 2i64, 2i64, o_mul()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-quotient"), 2i64, 2i64, o_quotient()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-remainder"), 2i64, 2i64, o_remainder()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-zero?"), 1i64, 1i64, o_zero()), kayak_rt::heap_cons(pdef(str_lit!("set-car!"), 2i64, 2i64, o_set_car()), kayak_rt::heap_cons(pdef(str_lit!("set-cdr!"), 2i64, 2i64, o_set_cdr()), kayak_rt::heap_cons(pdef(str_lit!("length"), 1i64, 1i64, o_length()), kayak_rt::heap_cons(pdef(str_lit!("pair?"), 1i64, 1i64, o_pair()), kayak_rt::heap_cons(pdef(str_lit!("exact-integer?"), 1i64, 1i64, o_exact_integer()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-nat?"), 1i64, 1i64, o_nat()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-list-copy"), 1i64, 1i64, o_list_copy()), kayak_rt::heap_cons(pdef(str_lit!("boolean?"), 1i64, 1i64, o_boolean()), kayak_rt::heap_cons(pdef(str_lit!("null?"), 1i64, 1i64, o_null()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-int-less"), 2i64, 2i64, o_int_less()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-int-eq"), 2i64, 2i64, o_int_eq()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-add"), 2i64, 2i64, o_add()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-sub"), 2i64, 2i64, o_sub()), kayak_rt::heap_cons(pdef(str_lit!("modulo"), 2i64, 2i64, o_modulo()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-max"), 2i64, 2i64, o_max()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-min"), 2i64, 2i64, o_min()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-arithmetic-shift"), 2i64, 2i64, o_shift()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bitwise-and"), 2i64, 2i64, o_bit_and()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bitwise-ior"), 2i64, 2i64, o_bit_ior()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bitwise-xor"), 2i64, 2i64, o_bit_xor()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bitwise-not"), 1i64, 1i64, o_bit_not()), kayak_rt::heap_cons(pdef(str_lit!("number->string"), 1i64, 2i64, o_number_string()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-fixnum?"), 1i64, 1i64, o_fixnum()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-int->f64"), 1i64, 1i64, o_int_f64()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-int->f32"), 1i64, 1i64, o_int_f32()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-f64->f32"), 1i64, 1i64, o_f64_f32()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-f64->bits"), 1i64, 1i64, o_f64_bits()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bits->f64"), 1i64, 1i64, o_bits_f64()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-f32->bits"), 1i64, 1i64, o_f32_bits()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bits->f32"), 1i64, 1i64, o_bits_f32()), kayak_rt::heap_cons(pdef(str_lit!("append"), 0i64, -1i64, o_append()), kayak_rt::heap_cons(pdef(str_lit!("reverse"), 1i64, 1i64, o_reverse()), kayak_rt::heap_cons(pdef(str_lit!("list->vector"), 1i64, 1i64, o_list_vector()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-append-list"), 1i64, 1i64, o_append_list()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-length-is?"), 2i64, 2i64, o_length_is()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-first"), 2i64, 2i64, o_first()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-acyclic?"), 1i64, 1i64, o_acyclic()), kayak_rt::heap_cons(pdef(str_lit!("eq?"), 2i64, 2i64, o_eq()), kayak_rt::heap_cons(pdef(str_lit!("not"), 1i64, 1i64, o_not()), kayak_rt::heap_cons(pdef(str_lit!("symbol?"), 1i64, 1i64, o_symbol()), kayak_rt::heap_cons(pdef(str_lit!("string?"), 1i64, 1i64, o_string()), kayak_rt::heap_cons(pdef(str_lit!("char?"), 1i64, 1i64, o_char()), kayak_rt::heap_cons(pdef(str_lit!("vector?"), 1i64, 1i64, o_vector()), kayak_rt::heap_cons(pdef(str_lit!("bytevector?"), 1i64, 1i64, o_bytevector()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-procedure?"), 1i64, 1i64, o_procedure()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-array?"), 1i64, 1i64, o_array()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-f32?"), 1i64, 1i64, o_f32()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-box?"), 1i64, 1i64, o_box()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-sum?"), 1i64, 1i64, o_sum()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-product?"), 1i64, 1i64, o_product()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-datum-f64?"), 1i64, 1i64, o_datum_f64()), kayak_rt::heap_cons(pdef(str_lit!("string-length"), 1i64, 1i64, o_string_length()), kayak_rt::heap_cons(pdef(str_lit!("string-ref"), 2i64, 2i64, o_string_ref()), kayak_rt::heap_cons(pdef(str_lit!("string-append"), 0i64, -1i64, o_string_append()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string-append-list"), 1i64, 1i64, o_string_append_list()), kayak_rt::heap_cons(pdef(str_lit!("substring"), 3i64, 3i64, o_substring()), kayak_rt::heap_cons(pdef(str_lit!("string"), 0i64, -1i64, o_make_string_of()), kayak_rt::heap_cons(pdef(str_lit!("string=?"), 1i64, -1i64, o_string_eq()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string<?"), 2i64, 2i64, o_string_lt()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string<=?"), 2i64, 2i64, o_string_le()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string>?"), 2i64, 2i64, o_string_gt()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string>=?"), 2i64, 2i64, o_string_ge()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string-compare"), 2i64, 2i64, o_string_compare()), kayak_rt::heap_cons(pdef(str_lit!("%string-hash"), 1i64, 1i64, o_string_hash()), kayak_rt::heap_cons(pdef(str_lit!("%symbol-hash"), 1i64, 1i64, o_symbol_hash()), kayak_rt::heap_cons(pdef(str_lit!("char->integer"), 1i64, 1i64, o_char_integer()), kayak_rt::heap_cons(pdef(str_lit!("integer->char"), 1i64, 1i64, o_integer_char()), kayak_rt::heap_cons(pdef(str_lit!("char-upcase"), 1i64, 1i64, o_char_upcase()), kayak_rt::heap_cons(pdef(str_lit!("char-downcase"), 1i64, 1i64, o_char_downcase()), kayak_rt::heap_cons(pdef(str_lit!("char-numeric?"), 1i64, 1i64, o_char_numeric()), kayak_rt::heap_cons(pdef(str_lit!("char-alphabetic?"), 1i64, 1i64, o_char_alphabetic()), kayak_rt::heap_cons(pdef(str_lit!("char-whitespace?"), 1i64, 1i64, o_char_whitespace()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-char<?"), 2i64, 2i64, o_char_lt()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-char<=?"), 2i64, 2i64, o_char_le()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-char>?"), 2i64, 2i64, o_char_gt()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-char>=?"), 2i64, 2i64, o_char_ge()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-error"), 1i64, 1i64, o_error()), kayak_rt::heap_cons(pdef(str_lit!("%make-bloblet"), 1i64, -1i64, o_make_bloblet()), kayak_rt::heap_cons(pdef(str_lit!("%make-bloblet-filled"), 3i64, 3i64, o_make_bloblet_filled()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet?"), 1i64, 1i64, o_bloblet()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-kind"), 1i64, 1i64, o_bloblet_kind()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-fields"), 1i64, 1i64, o_bloblet_fields()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-bytes"), 1i64, 1i64, o_bloblet_bytes()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-ref"), 2i64, 2i64, o_bloblet_ref()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-set!"), 3i64, 3i64, o_bloblet_set()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-byte"), 2i64, 2i64, o_bloblet_byte()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-set-byte!"), 3i64, 3i64, o_bloblet_set_byte()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-freeze!"), 3i64, 3i64, o_bloblet_freeze()), kayak_rt::heap_cons(pdef(str_lit!("%bloblet-frozen?"), 1i64, 1i64, o_bloblet_frozen()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-array->list"), 1i64, 1i64, o_array_list()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-list->array"), 1i64, 1i64, o_list_array()), kayak_rt::heap_cons(pdef(str_lit!("%stay-cellular"), 1i64, 1i64, o_stay_cellular()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-native-code?"), 0i64, 0i64, o_native_code()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-native-convention"), 0i64, 0i64, o_native_convention()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-make-eqtable"), 1i64, 1i64, o_make_eqtable()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-eqtable-ref"), 3i64, 3i64, o_eqtable_ref()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-eqtable-has?"), 2i64, 2i64, o_eqtable_has()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-eqtable-count"), 1i64, 1i64, o_eqtable_count()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-eqtable-set!"), 3i64, 3i64, o_eqtable_set()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-eqtable-delete!"), 2i64, 2i64, o_eqtable_delete()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-assume"), 1i64, 1i64, o_assume()), kayak_rt::heap_cons(pdef(str_lit!("list->string"), 1i64, 1i64, o_list_string()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-rep-of-nodes"), 3i64, 3i64, o_rep_of_nodes()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-rep-nodes"), 2i64, 2i64, o_rep_nodes()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-assert"), 1i64, 1i64, o_assert()), kayak_rt::heap_cons(pdef(str_lit!("string->symbol"), 1i64, 1i64, o_string_symbol()), kayak_rt::heap_cons(pdef(str_lit!("string->list"), 1i64, 1i64, o_string_list()), kayak_rt::heap_cons(pdef(str_lit!("symbol->string"), 1i64, 1i64, o_symbol_string()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-syscall-require"), 3i64, 3i64, o_syscall_require()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-syscall-available?"), 2i64, 2i64, o_syscall_available()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-syscall"), 3i64, 9i64, o_syscall()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-seal-code"), 1i64, 1i64, o_seal_code()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-native-procedure"), 1i64, 1i64, o_native_procedure()), kayak_rt::heap_cons(pdef(str_lit!("%reap-enter"), 0i64, 0i64, o_reap_enter()), kayak_rt::heap_cons(pdef(str_lit!("%region-new"), 2i64, 2i64, o_region_new()), kayak_rt::heap_cons(pdef(str_lit!("%region-make-array"), 3i64, 3i64, o_region_make_array()), kayak_rt::heap_cons(pdef(str_lit!("%region-make-bloblet"), 2i64, -1i64, o_region_make_bloblet()), kayak_rt::heap_cons(pdef(str_lit!("%region-closure"), 2i64, -1i64, o_region_closure()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-vlambda"), 1i64, 1i64, o_vlambda()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-make-icell"), 0i64, 0i64, o_make_icell()), kayak_rt::heap_cons(pdef(str_lit!("%region-make-icell"), 1i64, 1i64, o_region_make_icell()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-icell-get"), 1i64, 1i64, o_icell_get()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref"), 2i64, 2i64, o_suffix_ref()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref?"), 1i64, 1i64, o_suffix_ref_p()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref+"), 2i64, 2i64, o_suffix_ref_add()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-owner"), 1i64, 1i64, o_suffix_ref_owner()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-offset"), 1i64, 1i64, o_suffix_ref_offset()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-suffix-fits"), 2i64, 2i64, o_suffix_fits()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-suffix-ref-length"), 2i64, 2i64, o_suffix_ref_length()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-suffix-ref-get"), 2i64, 2i64, o_suffix_ref_get()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-suffix-ref-index"), 3i64, 3i64, o_suffix_ref_index()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-blobref-index"), 3i64, 3i64, o_blobref_index()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-suffix-ref-set!"), 3i64, 3i64, o_suffix_ref_set()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-tag"), 2i64, 2i64, o_flat_tag()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-variant!"), 3i64, 3i64, o_flat_variant()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-no-arm"), 1i64, 1i64, o_flat_no_arm()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-u8"), 1i64, 1i64, o_suffix_u8()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-u32"), 1i64, 1i64, o_suffix_u32()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-u64"), 1i64, 1i64, o_suffix_u64()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-f64"), 1i64, 1i64, o_suffix_f64()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-u8-set!"), 2i64, 2i64, o_suffix_u8_set()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-u32-set!"), 2i64, 2i64, o_suffix_u32_set()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-u64-set!"), 2i64, 2i64, o_suffix_u64_set()), kayak_rt::heap_cons(pdef(str_lit!("%suffix-ref-f64-set!"), 2i64, 2i64, o_suffix_f64_set()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-i32"), 0i64, 0i64, o_flat_code()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-u32"), 0i64, 0i64, i64_plus(o_flat_code(), 1i64)), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-i64"), 0i64, 0i64, i64_plus(o_flat_code(), 2i64)), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-u64"), 0i64, 0i64, i64_plus(o_flat_code(), 3i64)), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-f32"), 0i64, 0i64, i64_plus(o_flat_code(), 4i64)), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flat-f64"), 0i64, 0i64, i64_plus(o_flat_code(), 5i64)), kayak_rt::heap_cons(pdef(str_lit!("%fx26-make-flatarray"), 3i64, 3i64, o_make_flatarray()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flatarray-ref"), 2i64, 2i64, o_flatarray_ref()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flatarray-set!"), 3i64, 3i64, o_flatarray_set()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-flatarray-length"), 1i64, 1i64, o_flatarray_length()), kayak_rt::heap_cons(pdef(str_lit!("make-bytevector"), 1i64, 2i64, o_make_bytevector()), kayak_rt::heap_cons(pdef(str_lit!("bytevector-length"), 1i64, 1i64, o_bytevector_length()), kayak_rt::heap_cons(pdef(str_lit!("bytevector-u8-ref"), 2i64, 2i64, o_bytevector_ref()), kayak_rt::heap_cons(pdef(str_lit!("bytevector-u8-set!"), 3i64, 3i64, o_bytevector_set()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bytevector-u8-set!"), 3i64, 3i64, o_fx26_bytevector_set()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bytevector-copy"), 3i64, 3i64, o_bytevector_copy()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bytevector-copy!"), 5i64, 5i64, o_bytevector_copy_into()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bytevector=?"), 2i64, 2i64, o_bytevector_equal()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-make-string"), 2i64, 2i64, o_make_string()), kayak_rt::heap_cons(pdef(str_lit!("%region-make-string"), 3i64, 3i64, o_region_make_string()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string-set!"), 3i64, 3i64, o_string_set()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string-fill!"), 2i64, 2i64, o_string_fill()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string-copy"), 3i64, 3i64, o_string_copy()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string-copy!"), 5i64, 5i64, o_string_copy_into()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-string->utf8"), 1i64, 1i64, o_string_utf8()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-utf8->string"), 1i64, 1i64, o_utf8_string()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-bytevector"), 1i64, 1i64, o_bytevector_of()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-byte?"), 1i64, 1i64, o_byte()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-unit-cell"), 0i64, 0i64, o_unit_cell()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-nil-cell"), 0i64, 0i64, o_nil_cell()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-sum-cell"), 2i64, 2i64, o_sum_cell()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-pair-cell"), 2i64, 2i64, o_pair_cell()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-product-cell"), 1i64, 1i64, o_product_cell()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-list?"), 1i64, 1i64, o_list_p()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-convert"), 2i64, 2i64, o_convert()), kayak_rt::heap_cons(pdef(str_lit!("%kayak-stage-run"), 5i64, 5i64, o_kayak_stage()), kayak_rt::heap_cons(pdef(str_lit!("%kayak-reify"), 3i64, 3i64, o_kayak_reify()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-evidence-bound"), 1i64, 1i64, o_evidence_bound()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-make-session"), 1i64, 1i64, o_make_session()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-session-redefines"), 2i64, 2i64, o_session_redefines()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-session-committed!"), 2i64, 2i64, o_session_committed()), kayak_rt::heap_cons(pdef(str_lit!("%kayak-session-run"), 5i64, 5i64, o_kayak_session()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-session-ready"), 3i64, 3i64, o_session_ready()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-intern-datum"), 1i64, 1i64, o_intern_datum()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-keyword?"), 1i64, 1i64, o_keyword_p()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-symbol->keyword"), 1i64, 1i64, o_symbol_keyword()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-keyword->symbol"), 1i64, 1i64, o_keyword_symbol()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-file-info"), 1i64, 1i64, o_file_info()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-read-symlink"), 1i64, 1i64, o_read_symlink()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-process-start"), 2i64, 2i64, o_process_start()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-process-output"), 1i64, 1i64, o_process_output()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-process-status"), 1i64, 1i64, o_process_status()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-process-write"), 2i64, 2i64, o_process_write()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-process-close-input"), 1i64, 1i64, o_process_close_input()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-process-signal"), 2i64, 2i64, o_process_signal()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-process-exit"), 1i64, 1i64, o_process_exit()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-process-news"), 0i64, 0i64, o_process_news()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-write-out"), 1i64, 1i64, o_write_out()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-write-err"), 1i64, 1i64, o_write_err()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-exit"), 1i64, 1i64, o_exit()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-read-line"), 0i64, 0i64, o_read_line()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-read-byte"), 0i64, 0i64, o_read_byte()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-read-bytes"), 3i64, 3i64, o_read_bytes()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-stdin-ready?"), 0i64, 0i64, o_stdin_ready()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-terminal-raw"), 0i64, 0i64, o_terminal_raw()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-terminal-restore"), 0i64, 0i64, o_terminal_restore()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-terminal-size"), 0i64, 0i64, o_terminal_size()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-args"), 0i64, 0i64, o_args()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-read-file"), 1i64, 1i64, o_read_file()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-list-dir"), 1i64, 1i64, o_list_dir()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-write-file"), 2i64, 2i64, o_write_file()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-sched"), 3i64, 3i64, o_sched()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-icell-put!"), 2i64, 2i64, o_icell_put()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-preempt-done"), 0i64, 0i64, o_preempt_done()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-clock"), 0i64, 0i64, o_clock()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-sleep-until"), 1i64, 1i64, o_sleep_until()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-address-identity"), 0i64, 0i64, o_address_identity()), kayak_rt::heap_cons(pdef(str_lit!("%fx26-char-in?"), 2i64, 2i64, o_char_in()), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))), onto(fixed_families(fixed_widths(), 0i64), onto(family(str_lit!("%fx26-f64"), f64_suffixes(), o_f64(), 0i64, 13i64), family(str_lit!("%fx26-f32"), f32_suffixes(), o_f32_ops(), 0i64, 13i64))))
     })
@@ -1276,24 +1313,22 @@ pub fn prims() -> List<kayak_rt::Handle<'static, Pdef>> {
 
 // A primitive's cell: its operation, above how many arguments it takes, at
 // least (8 bits) and at most (8 bits, 255 for any).
-pub fn pdef_named(mut ps: List<kayak_rt::Handle<'static, Pdef>>, mut n: Str) -> i64 {
+pub fn pdef_named(mut ps: List<kayak_rt::data::DataAt<'static, Pdef>>, mut n: Str) -> i64 {
     loop {
         if null_p(ps) {
             return -1i64;
         } else if {
             let tagcase_ = car(ps);
-            match *tagcase_ {
-                Pdef::Pdef(m, lo, hi, o) => {
-                    string_eq_p(m, n)
-                }
-            }
+            if Pdef::__is_Pdef(tagcase_) {
+                let (m, lo, hi, o,) = Pdef::__Pdef(tagcase_);
+                string_eq_p(m, n)
+            } else { kayak_rt::data::no_variant() }
         } {
             let tagcase_ = car(ps);
-            match *tagcase_ {
-                Pdef::Pdef(m, lo, hi, o) => {
-                    return i64_or(i64_shl(o, int_lit(16)), i64_or(i64_shl(lo, int_lit(8)), i64_and(hi, 255i64)));
-                }
-            }
+            if Pdef::__is_Pdef(tagcase_) {
+                let (m, lo, hi, o,) = Pdef::__Pdef(tagcase_);
+                return i64_or(i64_shl(o, int_lit(16)), i64_or(i64_shl(lo, int_lit(8)), i64_and(hi, 255i64)));
+            } else { kayak_rt::data::no_variant() }
         } else {
             ps = cdr(ps);
             continue;
@@ -1301,24 +1336,22 @@ pub fn pdef_named(mut ps: List<kayak_rt::Handle<'static, Pdef>>, mut n: Str) -> 
     }
 }
 
-pub fn pdef_of(mut ps: List<kayak_rt::Handle<'static, Pdef>>, mut op: i64) -> Str {
+pub fn pdef_of(mut ps: List<kayak_rt::data::DataAt<'static, Pdef>>, mut op: i64) -> Str {
     loop {
         if null_p(ps) {
             return str_lit!("?");
         } else if {
             let tagcase_ = car(ps);
-            match *tagcase_ {
-                Pdef::Pdef(m, lo, hi, o) => {
-                    i64_eq(o, op)
-                }
-            }
+            if Pdef::__is_Pdef(tagcase_) {
+                let (m, lo, hi, o,) = Pdef::__Pdef(tagcase_);
+                i64_eq(o, op)
+            } else { kayak_rt::data::no_variant() }
         } {
             let tagcase_ = car(ps);
-            match *tagcase_ {
-                Pdef::Pdef(m, lo, hi, o) => {
-                    return m;
-                }
-            }
+            if Pdef::__is_Pdef(tagcase_) {
+                let (m, lo, hi, o,) = Pdef::__Pdef(tagcase_);
+                return m;
+            } else { kayak_rt::data::no_variant() }
         } else {
             ps = cdr(ps);
             continue;
@@ -2331,22 +2364,21 @@ pub fn adapter_p(c: i64) -> bool {
     (i64_eq(w, v_false()) || i64_eq(w, get(adapter_code())))
 }
 
-pub fn adapter_word_of(mut ws: List<kayak_rt::Handle<'static, Cblock>>, mut n: i64) -> i64 {
+pub fn adapter_word_of(mut ws: List<kayak_rt::data::DataAt<'static, Cblock>>, mut n: i64) -> i64 {
     loop {
         if null_p(ws) {
             return 0i64;
         } else {
             let tagcase_ = car(ws);
-            match *tagcase_ {
-                Cblock::Cblock(k, w) => {
-                    if i64_eq(k, n) {
-                        return w;
-                    } else {
-                        ws = cdr(ws);
-                        continue;
-                    }
+            if Cblock::__is_Cblock(tagcase_) {
+                let (k, w,) = Cblock::__Cblock(tagcase_);
+                if i64_eq(k, n) {
+                    return w;
+                } else {
+                    ws = cdr(ws);
+                    continue;
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }

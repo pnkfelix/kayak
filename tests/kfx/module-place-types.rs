@@ -6,26 +6,88 @@ use kayak_rt::*;
 // datatypes are defined outside: a type abbreviation and an effect defined
 // in the module, naming its place, and its items of them.
 
+#[derive(Clone, Copy)]
 pub enum Shape {
     Sq(i64),
     Rect(i64, i64),
 }
 
-impl kayak_rt::Visit for Shape {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Sq(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Rect(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<1> for Shape {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("sq")
     }
 }
 
-pub fn sq(f0: i64) -> kayak_rt::Handle<'static, Shape> {
-    kayak_rt::heap_alloc(Shape::Sq(f0))
+#[allow(non_snake_case)]
+impl Shape {
+    #[inline(always)]
+    pub fn __is_Sq(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Sq(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn rect(f0: i64, f1: i64) -> kayak_rt::Handle<'static, Shape> {
-    kayak_rt::heap_alloc(Shape::Rect(f0, f1))
+impl kayak_rt::data::Variant<0> for Shape {
+    type Fields = (i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("rect")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Shape {
+    #[inline(always)]
+    pub fn __is_Rect(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Rect(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Shape {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::Sq(f0)
+        } else if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Rect(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn sq(f0: i64) -> kayak_rt::data::DataAt<'static, Shape> {
+    kayak_rt::data::data_heap::<Shape, 1>((f0,))
+}
+
+pub fn rect(f0: i64, f1: i64) -> kayak_rt::data::DataAt<'static, Shape> {
+    kayak_rt::data::data_heap::<Shape, 0>((f0, f1,))
 }
 
 pub struct Shapes<'p, Place_P>(pub &'p Place_P, pub &'p shapes_in::ShapesState<'p, Place_P>);
@@ -52,7 +114,7 @@ pub mod shapes_in {
     /// What shapes-in makes (C274): its module's items, the place given, and its
     /// values, made as it is made (C433).
     pub struct ShapesState<'p, Place_P> {
-        pub kept: std::cell::Cell<Option<RefAt<'p, List<kayak_rt::Handle<'static, Shape>>>>>,
+        pub kept: std::cell::Cell<Option<RefAt<'p, List<kayak_rt::data::DataAt<'static, Shape>>>>>,
         pub phantom_: std::marker::PhantomData<&'p Place_P>,
     }
 
@@ -65,21 +127,20 @@ pub mod shapes_in {
     }
 
     #[inline]
-    pub fn square(k: i64) -> kayak_rt::Handle<'static, Shape> {
+    pub fn square(k: i64) -> kayak_rt::data::DataAt<'static, Shape> {
         sq(k)
     }
 
     #[inline]
-    pub fn area_of(s: kayak_rt::Handle<'static, Shape>) -> i64 {
+    pub fn area_of(s: kayak_rt::data::DataAt<'static, Shape>) -> i64 {
         let tagcase_ = s;
-        match *tagcase_ {
-            Shape::Sq(k) => {
-                i64_star(k, k)
-            }
-            Shape::Rect(w, h) => {
-                i64_star(w, h)
-            }
-        }
+        if Shape::__is_Sq(tagcase_) {
+            let (k,) = Shape::__Sq(tagcase_);
+            i64_star(k, k)
+        } else if Shape::__is_Rect(tagcase_) {
+            let (w, h,) = Shape::__Rect(tagcase_);
+            i64_star(w, h)
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
@@ -92,7 +153,7 @@ pub mod shapes_in {
     }
 
     #[inline]
-    pub fn total_of(xs: List<kayak_rt::Handle<'static, Shape>>) -> i64 {
+    pub fn total_of(xs: List<kayak_rt::data::DataAt<'static, Shape>>) -> i64 {
         if null_p(xs) {
             0i64
         } else {
@@ -112,7 +173,7 @@ pub mod shapes_in {
             kept: std::cell::Cell::new(None),
             phantom_: std::marker::PhantomData,
         }).to_ref();
-        maker_st.kept.set(Some(new(nil::<kayak_rt::Handle<'static, Shape>>())));
+        maker_st.kept.set(Some(new(nil::<kayak_rt::data::DataAt<'static, Shape>>())));
         maker_st
     }
 }

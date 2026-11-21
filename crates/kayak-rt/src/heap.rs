@@ -32,17 +32,33 @@ impl Hasher for IdHasher {
 
 type Table = HashMap<TypeId, &'static dyn Any, BuildHasherDefault<IdHasher>>;
 
+/// The arenas found last, by the low bits of their types' hashes (C500:
+/// a datatype's value is of its variant's type, so allocations go from
+/// arena to arena more than when one entry was kept).
+const CACHED: usize = 64;
+
+type Cached = Cell<Option<(TypeId, &'static dyn Any)>>;
+
 thread_local! {
     static ARENAS: RefCell<Table> = RefCell::new(Table::default());
-    /// The arena found last, which the next allocation most often wants.
-    static LAST: Cell<Option<(TypeId, &'static dyn Any)>> = const { Cell::new(None) };
+    static CACHE: [Cached; CACHED] = const { [const { Cell::new(None) }; CACHED] };
+}
+
+/// Where in the cache `T`'s arena is kept.
+#[inline(always)]
+fn slot_of(id: TypeId) -> usize {
+    use std::hash::{Hash, Hasher};
+    let mut h = IdHasher::default();
+    id.hash(&mut h);
+    (h.finish() as usize) % CACHED
 }
 
 /// This thread's heap arena for `T`, made at its first use.
 #[inline]
 fn arena_of<T: 'static>() -> &'static Arena<T> {
     let id = TypeId::of::<T>();
-    if let Some((k, a)) = LAST.with(Cell::get)
+    let slot = slot_of(id);
+    if let Some((k, a)) = CACHE.with(|c| c[slot].get())
         && k == id
         && let Some(arena) = a.downcast_ref::<Arena<T>>()
     {
@@ -54,7 +70,7 @@ fn arena_of<T: 'static>() -> &'static Arena<T> {
             arena
         })
     });
-    LAST.with(|l| l.set(Some((id, a))));
+    CACHE.with(|c| c[slot].set(Some((id, a))));
     match a.downcast_ref::<Arena<T>>() {
         Some(arena) => arena,
         None => crate::fail("heap: an arena of another type"),

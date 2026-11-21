@@ -10,8 +10,9 @@ use super::*;
 // (`opnd`, as stack code's), a label a number, a branch or guard a label
 // it goes to, and `save`'s and `pop`'s operand the frame's size, known
 // once the body is done.
+#[derive(Clone, Copy)]
 pub enum Ritem {
-    RiOp(Str, List<kayak_rt::Handle<'static, Opnd>>),
+    RiOp(Str, List<kayak_rt::data::DataAt<'static, Opnd>>),
     RiFrame(Str),
     RiLabel(i64),
     RiBranch(Str, i64),
@@ -19,44 +20,205 @@ pub enum Ritem {
     RiPos(i64),
 }
 
-impl kayak_rt::Visit for Ritem {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::RiOp(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            Self::RiFrame(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::RiLabel(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::RiBranch(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            Self::RiGuard(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-            Self::RiPos(f0) => { kayak_rt::Trace::trace(*f0, t); }
-        }
+impl kayak_rt::data::Variant<5> for Ritem {
+    type Fields = (Str, List<kayak_rt::data::DataAt<'static, Opnd>>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ri-op")
     }
 }
 
-pub fn ri_op(f0: Str, f1: List<kayak_rt::Handle<'static, Opnd>>) -> kayak_rt::Handle<'static, Ritem> {
-    kayak_rt::heap_alloc(Ritem::RiOp(f0, f1))
+#[allow(non_snake_case)]
+impl Ritem {
+    #[inline(always)]
+    pub fn __is_RiOp(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<5>()
+    }
+    #[inline(always)]
+    pub fn __RiOp(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<5>>::Fields {
+        w.fields::<5>()
+    }
 }
 
-pub fn ri_frame(f0: Str) -> kayak_rt::Handle<'static, Ritem> {
-    kayak_rt::heap_alloc(Ritem::RiFrame(f0))
+impl kayak_rt::data::Variant<4> for Ritem {
+    type Fields = (Str,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ri-frame")
+    }
 }
 
-pub fn ri_label(f0: i64) -> kayak_rt::Handle<'static, Ritem> {
-    kayak_rt::heap_alloc(Ritem::RiLabel(f0))
+#[allow(non_snake_case)]
+impl Ritem {
+    #[inline(always)]
+    pub fn __is_RiFrame(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<4>()
+    }
+    #[inline(always)]
+    pub fn __RiFrame(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
+        w.fields::<4>()
+    }
 }
 
-pub fn ri_branch(f0: Str, f1: i64) -> kayak_rt::Handle<'static, Ritem> {
-    kayak_rt::heap_alloc(Ritem::RiBranch(f0, f1))
+impl kayak_rt::data::Variant<3> for Ritem {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ri-label")
+    }
 }
 
-pub fn ri_guard(f0: Str, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Ritem> {
-    kayak_rt::heap_alloc(Ritem::RiGuard(f0, f1, f2))
+#[allow(non_snake_case)]
+impl Ritem {
+    #[inline(always)]
+    pub fn __is_RiLabel(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<3>()
+    }
+    #[inline(always)]
+    pub fn __RiLabel(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+        w.fields::<3>()
+    }
 }
 
-pub fn ri_pos(f0: i64) -> kayak_rt::Handle<'static, Ritem> {
-    kayak_rt::heap_alloc(Ritem::RiPos(f0))
+impl kayak_rt::data::Variant<2> for Ritem {
+    type Fields = (Str, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ri-branch")
+    }
 }
 
-pub type Ritems = List<kayak_rt::Handle<'static, Ritem>>;
+#[allow(non_snake_case)]
+impl Ritem {
+    #[inline(always)]
+    pub fn __is_RiBranch(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<2>()
+    }
+    #[inline(always)]
+    pub fn __RiBranch(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+        w.fields::<2>()
+    }
+}
+
+impl kayak_rt::data::Variant<1> for Ritem {
+    type Fields = (Str, i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ri-guard")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Ritem {
+    #[inline(always)]
+    pub fn __is_RiGuard(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __RiGuard(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
+}
+
+impl kayak_rt::data::Variant<0> for Ritem {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("ri-pos")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Ritem {
+    #[inline(always)]
+    pub fn __is_RiPos(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __RiPos(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Ritem {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<5>() {
+            let (f0, f1,) = w.fields::<5>();
+            Self::RiOp(f0, f1)
+        } else if w.is::<4>() {
+            let (f0,) = w.fields::<4>();
+            Self::RiFrame(f0)
+        } else if w.is::<3>() {
+            let (f0,) = w.fields::<3>();
+            Self::RiLabel(f0)
+        } else if w.is::<2>() {
+            let (f0, f1,) = w.fields::<2>();
+            Self::RiBranch(f0, f1)
+        } else if w.is::<1>() {
+            let (f0, f1, f2,) = w.fields::<1>();
+            Self::RiGuard(f0, f1, f2)
+        } else if w.is::<0>() {
+            let (f0,) = w.fields::<0>();
+            Self::RiPos(f0)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<5>() { return t.reach(w.obj::<5>()); }
+        if w.is::<4>() { return t.reach(w.obj::<4>()); }
+        if w.is::<3>() { return t.reach(w.obj::<3>()); }
+        if w.is::<2>() { return t.reach(w.obj::<2>()); }
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<5>() { return (w.obj::<5>()); }
+        if w.is::<4>() { return (w.obj::<4>()); }
+        if w.is::<3>() { return (w.obj::<3>()); }
+        if w.is::<2>() { return (w.obj::<2>()); }
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 5>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn ri_op(f0: Str, f1: List<kayak_rt::data::DataAt<'static, Opnd>>) -> kayak_rt::data::DataAt<'static, Ritem> {
+    kayak_rt::data::data_heap::<Ritem, 5>((f0, f1,))
+}
+
+pub fn ri_frame(f0: Str) -> kayak_rt::data::DataAt<'static, Ritem> {
+    kayak_rt::data::data_heap::<Ritem, 4>((f0,))
+}
+
+pub fn ri_label(f0: i64) -> kayak_rt::data::DataAt<'static, Ritem> {
+    kayak_rt::data::data_heap::<Ritem, 3>((f0,))
+}
+
+pub fn ri_branch(f0: Str, f1: i64) -> kayak_rt::data::DataAt<'static, Ritem> {
+    kayak_rt::data::data_heap::<Ritem, 2>((f0, f1,))
+}
+
+pub fn ri_guard(f0: Str, f1: i64, f2: i64) -> kayak_rt::data::DataAt<'static, Ritem> {
+    kayak_rt::data::data_heap::<Ritem, 1>((f0, f1, f2,))
+}
+
+pub fn ri_pos(f0: i64) -> kayak_rt::data::DataAt<'static, Ritem> {
+    kayak_rt::data::data_heap::<Ritem, 0>((f0,))
+}
+
+pub type Ritems = List<kayak_rt::data::DataAt<'static, Ritem>>;
 
 pub fn rop_index(mut xs: List<Str>, mut n: Str, mut i: i64) -> i64 {
     loop {
@@ -71,28 +233,27 @@ pub fn rop_index(mut xs: List<Str>, mut n: Str, mut i: i64) -> i64 {
     }
 }
 
-pub fn ritem_size(x: kayak_rt::Handle<'static, Ritem>) -> i64 {
+pub fn ritem_size(x: kayak_rt::data::DataAt<'static, Ritem>) -> i64 {
     let tagcase_ = x;
-    match *tagcase_ {
-        Ritem::RiOp(name, os) => {
-            i64_plus(1i64, rop_operands(rop_index(rop_names(), name, 0i64)))
-        }
-        Ritem::RiFrame(name) => {
-            2i64
-        }
-        Ritem::RiLabel(n) => {
-            0i64
-        }
-        Ritem::RiBranch(name, n) => {
-            2i64
-        }
-        Ritem::RiGuard(g, w, n) => {
-            4i64
-        }
-        Ritem::RiPos(p) => {
-            0i64
-        }
-    }
+    if Ritem::__is_RiOp(tagcase_) {
+        let (name, os,) = Ritem::__RiOp(tagcase_);
+        i64_plus(1i64, rop_operands(rop_index(rop_names(), name, 0i64)))
+    } else if Ritem::__is_RiFrame(tagcase_) {
+        let (name,) = Ritem::__RiFrame(tagcase_);
+        2i64
+    } else if Ritem::__is_RiLabel(tagcase_) {
+        let (n,) = Ritem::__RiLabel(tagcase_);
+        0i64
+    } else if Ritem::__is_RiBranch(tagcase_) {
+        let (name, n,) = Ritem::__RiBranch(tagcase_);
+        2i64
+    } else if Ritem::__is_RiGuard(tagcase_) {
+        let (g, w, n,) = Ritem::__RiGuard(tagcase_);
+        4i64
+    } else if Ritem::__is_RiPos(tagcase_) {
+        let (p,) = Ritem::__RiPos(tagcase_);
+        0i64
+    } else { kayak_rt::data::no_variant() }
 }
 
 pub fn ritems_size(mut xs: Ritems, mut n: i64) -> i64 {
@@ -106,21 +267,19 @@ pub fn ritems_size(mut xs: Ritems, mut n: i64) -> i64 {
     }
 }
 
-pub fn rplaces_of(mut xs: Ritems, mut at: i64, mut acc: List<kayak_rt::Handle<'static, LabelAt>>) -> List<kayak_rt::Handle<'static, LabelAt>> {
+pub fn rplaces_of(mut xs: Ritems, mut at: i64, mut acc: List<kayak_rt::data::DataAt<'static, LabelAt>>) -> List<kayak_rt::data::DataAt<'static, LabelAt>> {
     loop {
         if null_p(xs) {
             return acc;
         } else {
             (xs, at, acc) = (cdr(xs), i64_plus(at, ritem_size(car(xs))), {
                 let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Ritem::RiLabel(n) => {
-                        kayak_rt::heap_cons(label_at(n, at), acc)
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        acc
-                    }
+                if Ritem::__is_RiLabel(tagcase_) {
+                    let (n,) = Ritem::__RiLabel(tagcase_);
+                    kayak_rt::heap_cons(label_at(n, at), acc)
+                } else {
+                    let y = tagcase_;
+                    acc
                 }
             });
             continue;
@@ -146,29 +305,25 @@ pub fn rline(at: i64, text: Str) -> Str {
 
 // An operand as register code lists it: a word as a constant, as its
 // cell is shown (`#word "NAME"`, C259); any other as the stack code's.
-pub fn ropnd_text(o: kayak_rt::Handle<'static, Opnd>) -> Str {
+pub fn ropnd_text(o: kayak_rt::data::DataAt<'static, Opnd>) -> Str {
     let tagcase_ = o;
-    match *tagcase_ {
-        Opnd::OLit(l) => {
-            let tagcase_ = l;
-            match *tagcase_ {
-                Lit::LWord(w) => {
-                    string_append(str_lit!("#word \""), string_append(shown_name(w), str_lit!("\"")))
-                }
-                _ => {
-                    let y = tagcase_;
-                    opnd_text(o)
-                }
-            }
-        }
-        _ => {
+    if Opnd::__is_OLit(tagcase_) {
+        let (l,) = Opnd::__OLit(tagcase_);
+        let tagcase_ = l;
+        if Lit::__is_LWord(tagcase_) {
+            let (w,) = Lit::__LWord(tagcase_);
+            string_append(str_lit!("#word \""), string_append(shown_name(w), str_lit!("\"")))
+        } else {
             let y = tagcase_;
             opnd_text(o)
         }
+    } else {
+        let y = tagcase_;
+        opnd_text(o)
     }
 }
 
-pub fn rop_text(name: Str, os: List<kayak_rt::Handle<'static, Opnd>>) -> Str {
+pub fn rop_text(name: Str, os: List<kayak_rt::data::DataAt<'static, Opnd>>) -> Str {
     if string_eq_p(name, str_lit!("lambda")) {
         string_append(str_lit!("lambda "), string_append(opnd_text(car(os)), string_append(str_lit!(" over "), opnd_text(second_opnd(os)))))
     } else {
@@ -182,7 +337,7 @@ pub fn rop_text(name: Str, os: List<kayak_rt::Handle<'static, Opnd>>) -> Str {
 
 // A word's register code's lines, and the words they name, in order;
 // `frame` the frame's size.
-pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>, mut frame: i64, mut out: Strings, mut named: Strings) -> kayak_rt::Handle<'static, Wsaid> {
+pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::data::DataAt<'static, LabelAt>>, mut frame: i64, mut out: Strings, mut named: Strings) -> kayak_rt::data::DataAt<'static, Wsaid> {
     loop {
         if null_p(xs) {
             return wsaid(put_sep_lines(reverse(out)), reverse(named));
@@ -190,126 +345,155 @@ pub fn rlines_of(mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'sta
             let x = car(xs);
             let next = i64_plus(at, ritem_size(x));
             let tagcase_ = x;
-            match *tagcase_ {
-                Ritem::RiLabel(n) => {
-                    (xs, at) = (cdr(xs), next);
-                    continue;
-                }
-                Ritem::RiPos(p) => {
-                    (xs, at) = (cdr(xs), next);
-                    continue;
-                }
-                Ritem::RiFrame(name) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit!(" "), i64_to_string(frame)))), out));
-                    continue;
-                }
-                Ritem::RiBranch(name, n) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit!(" → "), i64_to_string(place_at(ps, n))))), out));
-                    continue;
-                }
-                Ritem::RiGuard(g, w, n) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(str_lit!("global-guard "), string_append(g, string_append(str_lit!(" written "), string_append(i64_to_string(w), string_append(str_lit!(" else → "), i64_to_string(place_at(ps, n)))))))), out));
-                    continue;
-                }
-                Ritem::RiOp(name, os) => {
-                    (xs, at, out, named) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, rop_text(name, os)), out), onto(reverse(words_said(os)), named));
-                    continue;
-                }
-            }
+            if Ritem::__is_RiLabel(tagcase_) {
+                let (n,) = Ritem::__RiLabel(tagcase_);
+                (xs, at) = (cdr(xs), next);
+                continue;
+            } else if Ritem::__is_RiPos(tagcase_) {
+                let (p,) = Ritem::__RiPos(tagcase_);
+                (xs, at) = (cdr(xs), next);
+                continue;
+            } else if Ritem::__is_RiFrame(tagcase_) {
+                let (name,) = Ritem::__RiFrame(tagcase_);
+                (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit!(" "), i64_to_string(frame)))), out));
+                continue;
+            } else if Ritem::__is_RiBranch(tagcase_) {
+                let (name, n,) = Ritem::__RiBranch(tagcase_);
+                (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(name, string_append(str_lit!(" → "), i64_to_string(place_at(ps, n))))), out));
+                continue;
+            } else if Ritem::__is_RiGuard(tagcase_) {
+                let (g, w, n,) = Ritem::__RiGuard(tagcase_);
+                (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, string_append(str_lit!("global-guard "), string_append(g, string_append(str_lit!(" written "), string_append(i64_to_string(w), string_append(str_lit!(" else → "), i64_to_string(place_at(ps, n)))))))), out));
+                continue;
+            } else if Ritem::__is_RiOp(tagcase_) {
+                let (name, os,) = Ritem::__RiOp(tagcase_);
+                (xs, at, out, named) = (cdr(xs), next, kayak_rt::heap_cons(rline(at, rop_text(name, os)), out), onto(reverse(words_said(os)), named));
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
 // Register code made: its items in order, its frame's size.
+#[derive(Clone, Copy)]
 pub enum Rcode {
     Rcode(Ritems, i64),
 }
 
-impl kayak_rt::Visit for Rcode {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Rcode(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Rcode {
+    type Fields = (Ritems, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("rcode")
     }
 }
 
-pub fn rcode(f0: Ritems, f1: i64) -> kayak_rt::Handle<'static, Rcode> {
-    kayak_rt::heap_alloc(Rcode::Rcode(f0, f1))
+#[allow(non_snake_case)]
+impl Rcode {
+    #[inline(always)]
+    pub fn __is_Rcode(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Rcode(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Rcode {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Rcode(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn rcode(f0: Ritems, f1: i64) -> kayak_rt::data::DataAt<'static, Rcode> {
+    kayak_rt::data::data_heap::<Rcode, 0>((f0, f1,))
 }
 
 // Its line table (C249): `; regs at FILE CELL:POS …`, each where an
 // expression's code begins and its source position, as the stack code's
 // (`line-table`); none if none.
-pub fn rtable_entries(mut xs: Ritems, mut at: i64, mut acc: List<kayak_rt::Handle<'static, Tentry>>) -> List<kayak_rt::Handle<'static, Tentry>> {
+pub fn rtable_entries(mut xs: Ritems, mut at: i64, mut acc: List<kayak_rt::data::DataAt<'static, Tentry>>) -> List<kayak_rt::data::DataAt<'static, Tentry>> {
     loop {
         if null_p(xs) {
             return acc;
         } else {
             let tagcase_ = car(xs);
-            match *tagcase_ {
-                Ritem::RiPos(p) => {
-                    let acc = if (not(null_p(acc)) && {
-                        let tagcase_ = car(acc);
-                        match *tagcase_ {
-                            Tentry::Tentry(a, q) => {
-                                i64_eq(a, at)
-                            }
-                        }
-                    }) {
-                        cdr(acc)
-                    } else {
-                        acc
-                    };
-                    if (not(null_p(acc)) && {
-                        let tagcase_ = car(acc);
-                        match *tagcase_ {
-                            Tentry::Tentry(a, q) => {
-                                i64_eq(q, p)
-                            }
-                        }
-                    }) {
-                        return rtable_entries(cdr(xs), at, acc);
-                    } else {
-                        return rtable_entries(cdr(xs), at, kayak_rt::heap_cons(tentry(at, p), acc));
-                    }
+            if Ritem::__is_RiPos(tagcase_) {
+                let (p,) = Ritem::__RiPos(tagcase_);
+                let acc = if (not(null_p(acc)) && {
+                    let tagcase_ = car(acc);
+                    if Tentry::__is_Tentry(tagcase_) {
+                        let (a, q,) = Tentry::__Tentry(tagcase_);
+                        i64_eq(a, at)
+                    } else { kayak_rt::data::no_variant() }
+                }) {
+                    cdr(acc)
+                } else {
+                    acc
+                };
+                if (not(null_p(acc)) && {
+                    let tagcase_ = car(acc);
+                    if Tentry::__is_Tentry(tagcase_) {
+                        let (a, q,) = Tentry::__Tentry(tagcase_);
+                        i64_eq(q, p)
+                    } else { kayak_rt::data::no_variant() }
+                }) {
+                    return rtable_entries(cdr(xs), at, acc);
+                } else {
+                    return rtable_entries(cdr(xs), at, kayak_rt::heap_cons(tentry(at, p), acc));
                 }
-                _ => {
-                    let y = tagcase_;
-                    (xs, at) = (cdr(xs), i64_plus(at, ritem_size(car(xs))));
-                    continue;
-                }
+            } else {
+                let y = tagcase_;
+                (xs, at) = (cdr(xs), i64_plus(at, ritem_size(car(xs))));
+                continue;
             }
         }
     }
 }
 
-pub fn rcode_line_table(rc: kayak_rt::Handle<'static, Rcode>) -> Str {
+pub fn rcode_line_table(rc: kayak_rt::data::DataAt<'static, Rcode>) -> Str {
     let tagcase_ = rc;
-    match *tagcase_ {
-        Rcode::Rcode(xs, frame) => {
-            let es = entries_shown(rtable_entries(xs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()), nil::<Str>());
-            if (null_p(es) || string_eq_p(get(cg_source()), str_lit!(""))) {
-                str_lit!("")
-            } else {
-                string_append(str_lit!("; regs at "), string_append(get(cg_source()), string_append(str_lit!(" "), string_append(spaced(es), str_lit!("\n")))))
-            }
+    if Rcode::__is_Rcode(tagcase_) {
+        let (xs, frame,) = Rcode::__Rcode(tagcase_);
+        let es = entries_shown(rtable_entries(xs, 0i64, nil::<kayak_rt::data::DataAt<'static, Tentry>>()), nil::<Str>());
+        if (null_p(es) || string_eq_p(get(cg_source()), str_lit!(""))) {
+            str_lit!("")
+        } else {
+            string_append(str_lit!("; regs at "), string_append(get(cg_source()), string_append(str_lit!(" "), string_append(spaced(es), str_lit!("\n")))))
         }
-    }
+    } else { kayak_rt::data::no_variant() }
 }
 
 // Its lines as the listing writes them, after its word's cells, and the
 // words it names.
-pub fn rcode_said(rc: kayak_rt::Handle<'static, Rcode>) -> kayak_rt::Handle<'static, Wsaid> {
+pub fn rcode_said(rc: kayak_rt::data::DataAt<'static, Rcode>) -> kayak_rt::data::DataAt<'static, Wsaid> {
     let tagcase_ = rc;
-    match *tagcase_ {
-        Rcode::Rcode(xs, frame) => {
-            let tagcase_ = rlines_of(xs, 0i64, rplaces_of(xs, 0i64, nil::<kayak_rt::Handle<'static, LabelAt>>()), frame, nil::<Str>(), nil::<Str>());
-            match *tagcase_ {
-                Wsaid::Wsaid(text, named) => {
-                    wsaid(string_append(str_lit!("  its register code ("), string_append(i64_to_string(ritems_size(xs, 0i64)), string_append(str_lit!(" cells, not compiled):\n"), text))), named)
-                }
-            }
-        }
-    }
+    if Rcode::__is_Rcode(tagcase_) {
+        let (xs, frame,) = Rcode::__Rcode(tagcase_);
+        let tagcase_ = rlines_of(xs, 0i64, rplaces_of(xs, 0i64, nil::<kayak_rt::data::DataAt<'static, LabelAt>>()), frame, nil::<Str>(), nil::<Str>());
+        if Wsaid::__is_Wsaid(tagcase_) {
+            let (text, named,) = Wsaid::__Wsaid(tagcase_);
+            wsaid(string_append(str_lit!("  its register code ("), string_append(i64_to_string(ritems_size(xs, 0i64)), string_append(str_lit!(" cells, not compiled):\n"), text))), named)
+        } else { kayak_rt::data::no_variant() }
+    } else { kayak_rt::data::no_variant() }
 }
 

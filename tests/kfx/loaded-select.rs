@@ -7,30 +7,92 @@ use kayak_rt::*;
 pub mod made__load__0__areas {
     use super::*;
 
+    #[derive(Clone, Copy)]
     pub enum Shape {
         Dot(Int),
         Box(Int, Int),
     }
 
-    impl kayak_rt::Visit for Shape {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::Dot(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::Box(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<1> for Shape {
+        type Fields = (Int,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("dot")
         }
     }
 
-    pub fn dot(f0: Int) -> kayak_rt::Handle<'static, Shape> {
-        kayak_rt::heap_alloc(Shape::Dot(f0))
+    #[allow(non_snake_case)]
+    impl Shape {
+        #[inline(always)]
+        pub fn __is_Dot(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __Dot(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn r#box(f0: Int, f1: Int) -> kayak_rt::Handle<'static, Shape> {
-        kayak_rt::heap_alloc(Shape::Box(f0, f1))
+    impl kayak_rt::data::Variant<0> for Shape {
+        type Fields = (Int, Int,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("box")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Shape {
+        #[inline(always)]
+        pub fn __is_Box(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Box(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Shape {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let (f0,) = w.fields::<1>();
+                Self::Dot(f0)
+            } else if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::Box(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn dot(f0: Int) -> kayak_rt::data::DataAt<'static, Shape> {
+        kayak_rt::data::data_heap::<Shape, 1>((f0,))
+    }
+
+    pub fn r#box(f0: Int, f1: Int) -> kayak_rt::data::DataAt<'static, Shape> {
+        kayak_rt::data::data_heap::<Shape, 0>((f0, f1,))
     }
 
     #[inline]
-    pub fn make_box(w: Int, h: Int) -> kayak_rt::Handle<'static, Shape> {
+    pub fn make_box(w: Int, h: Int) -> kayak_rt::data::DataAt<'static, Shape> {
         r#box(w, h)
     }
 }
@@ -44,19 +106,18 @@ pub mod made__load__1__loaded_select {
         pub use super::made__load__0__areas::{dot, r#box, make_box, Shape};
     }
 
-    pub type Shape = kayak_rt::Handle<'static, made__load__0__areas::Shape>;
+    pub type Shape = kayak_rt::data::DataAt<'static, made__load__0__areas::Shape>;
 
     #[inline]
     pub fn area(s: Shape) -> Int {
         let tagcase_ = s;
-        match *tagcase_ {
-            made__load__0__areas::Shape::Dot(x) => {
-                int_lit(0)
-            }
-            made__load__0__areas::Shape::Box(w, h) => {
-                _star(w, h)
-            }
-        }
+        if made__load__0__areas::Shape::__is_Dot(tagcase_) {
+            let (x,) = made__load__0__areas::Shape::__Dot(tagcase_);
+            int_lit(0)
+        } else if made__load__0__areas::Shape::__is_Box(tagcase_) {
+            let (w, h,) = made__load__0__areas::Shape::__Box(tagcase_);
+            _star(w, h)
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]

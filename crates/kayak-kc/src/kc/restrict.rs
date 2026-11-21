@@ -114,25 +114,23 @@ pub mod restrictions {
     }
 
     /// The control primitive a chain of `proj`s instantiates, or none.
-    pub fn projected_control(mut e: kayak_rt::Handle<'static, Sexp>) -> Str {
+    pub fn projected_control(mut e: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
         loop {
             if head_is_p(e, str_lit!("proj")) {
                 e = second(items(e));
                 continue;
             } else {
                 let tagcase_ = e;
-                match *tagcase_ {
-                    Sexp::Sym(n, f, p) => {
-                        if control_primitive_p(n) {
-                            return n;
-                        } else {
-                            return str_lit!("");
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f, p,) = Sexp::__Sym(tagcase_);
+                    if control_primitive_p(n) {
+                        return n;
+                    } else {
                         return str_lit!("");
                     }
+                } else {
+                    let other = tagcase_;
+                    return str_lit!("");
                 }
             }
         }
@@ -144,275 +142,247 @@ pub mod restrictions {
     }
 
     #[inline]
-    pub fn items_of(e: kayak_rt::Handle<'static, Sexp>) -> Sexps {
+    pub fn items_of(e: kayak_rt::data::DataAt<'static, Sexp>) -> Sexps {
         let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Lst(ys, f, l, p) => {
-                ys
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<kayak_rt::Handle<'static, Sexp>>()
-            }
+        if Sexp::__is_Lst(tagcase_) {
+            let (ys, f, l, p,) = Sexp::__Lst(tagcase_);
+            ys
+        } else {
+            let other = tagcase_;
+            nil::<kayak_rt::data::DataAt<'static, Sexp>>()
         }
     }
 
     #[inline]
-    pub fn cdr_items_of(e: kayak_rt::Handle<'static, Sexp>) -> Sexps {
+    pub fn cdr_items_of(e: kayak_rt::data::DataAt<'static, Sexp>) -> Sexps {
         let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Lst(ys, f, l, p) => {
-                if null_p(ys) {
-                    nil::<kayak_rt::Handle<'static, Sexp>>()
-                } else {
-                    cdr(ys)
-                }
+        if Sexp::__is_Lst(tagcase_) {
+            let (ys, f, l, p,) = Sexp::__Lst(tagcase_);
+            if null_p(ys) {
+                nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+            } else {
+                cdr(ys)
             }
-            _ => {
-                let other = tagcase_;
-                nil::<kayak_rt::Handle<'static, Sexp>>()
-            }
+        } else {
+            let other = tagcase_;
+            nil::<kayak_rt::data::DataAt<'static, Sexp>>()
         }
     }
 
     /// `e`, whose nearest list began at `line` of `file`: refused if it is
     /// what KFX does not have, else each of its parts.
-    pub fn restricted(mut e: kayak_rt::Handle<'static, Sexp>, mut file: Str, mut line: i64) -> () {
+    pub fn restricted(mut e: kayak_rt::data::DataAt<'static, Sexp>, mut file: Str, mut line: i64) -> () {
         loop {
             let tagcase_ = e;
-            match *tagcase_ {
-                Sexp::Sym(n, f, p) => {
-                    if (string_eq_p(n, str_lit!("#%toplevel")) || has_prefix_p(n, str_lit!("#%toplevel:"))) {
-                        return match restriction_refused(file, line, string_append(n, str_lit!(", the top level's names whatever binds them here, FX-26's, which KFX has not (C397)"))) {};
-                    } else if (string_eq_p(n, str_lit!("call-with-composable-continuation")) || string_eq_p(n, str_lit!("call-with-current-continuation")) || string_eq_p(n, str_lit!("call/cc")) || string_eq_p(n, str_lit!("cwcc"))) {
-                        return match restriction_refused(file, line, string_append(n, str_lit!(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {};
-                    } else if string_member_p(n, mark_names()) {
-                        return match restriction_refused(file, line, string_append(n, str_lit!(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {};
-                    } else if (keyword_name_p(n) || string_member_p(n, keyword_names())) {
-                        return match restriction_refused(file, line, string_append(n, str_lit!(", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)"))) {};
-                    } else if string_member_p(n, evidence_names()) {
-                        return match restriction_refused(file, line, string_append(n, str_lit!(", FX-26's evidence, which KFX has not yet (C308)"))) {};
-                    } else if string_member_p(n, session_names()) {
-                        return match restriction_refused(file, line, string_append(n, str_lit!(", FX-26's sessions, which KFX has not yet (C309)"))) {};
-                    } else if string_eq_p(n, str_lit!("%stage")) {
-                        return match restriction_refused(file, line, str_lit!("`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)")) {};
-                    } else if string_eq_p(n, str_lit!("list")) {
-                        return match restriction_refused(file, line, str_lit!("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {};
-                    } else if string_member_p(n, not_yet_names()) {
-                        return match restriction_refused(file, line, string_append(n, str_lit!(", FX-26's, which KFX has not yet (C156)"))) {};
-                    } else if string_member_p(n, copied_names()) {
-                        return match restriction_refused(file, line, string_append(n, str_lit!(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {};
-                    } else {
-                        return ();
-                    }
+            if Sexp::__is_Sym(tagcase_) {
+                let (n, f, p,) = Sexp::__Sym(tagcase_);
+                if (string_eq_p(n, str_lit!("#%toplevel")) || has_prefix_p(n, str_lit!("#%toplevel:"))) {
+                    return match restriction_refused(file, line, string_append(n, str_lit!(", the top level's names whatever binds them here, FX-26's, which KFX has not (C397)"))) {};
+                } else if (string_eq_p(n, str_lit!("call-with-composable-continuation")) || string_eq_p(n, str_lit!("call-with-current-continuation")) || string_eq_p(n, str_lit!("call/cc")) || string_eq_p(n, str_lit!("cwcc"))) {
+                    return match restriction_refused(file, line, string_append(n, str_lit!(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {};
+                } else if string_member_p(n, mark_names()) {
+                    return match restriction_refused(file, line, string_append(n, str_lit!(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {};
+                } else if (keyword_name_p(n) || string_member_p(n, keyword_names())) {
+                    return match restriction_refused(file, line, string_append(n, str_lit!(", a keyword or of keywords, FX-26's, which KFX has not yet: kayak-rt has no keyword value (C291)"))) {};
+                } else if string_member_p(n, evidence_names()) {
+                    return match restriction_refused(file, line, string_append(n, str_lit!(", FX-26's evidence, which KFX has not yet (C308)"))) {};
+                } else if string_member_p(n, session_names()) {
+                    return match restriction_refused(file, line, string_append(n, str_lit!(", FX-26's sessions, which KFX has not yet (C309)"))) {};
+                } else if string_eq_p(n, str_lit!("%stage")) {
+                    return match restriction_refused(file, line, str_lit!("`stage`, FX-26's, which KFX has not yet: kayak-rt checks no code as it runs (C304)")) {};
+                } else if string_eq_p(n, str_lit!("list")) {
+                    return match restriction_refused(file, line, str_lit!("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {};
+                } else if string_member_p(n, not_yet_names()) {
+                    return match restriction_refused(file, line, string_append(n, str_lit!(", FX-26's, which KFX has not yet (C156)"))) {};
+                } else if string_member_p(n, copied_names()) {
+                    return match restriction_refused(file, line, string_append(n, str_lit!(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {};
+                } else {
+                    return ();
                 }
-                Sexp::Lst(xs, f, l, p) => {
-                    if null_p(xs) {
-                        return ();
-                    } else if (sym_is_p(car(xs), str_lit!("quote")) && i64_eq(size(xs), 2i64)) {
-                        // Data: its names name nothing (C429: the macros' kernel's table quotes
-                        // `oneshot`, a form's word).
-                        return ();
-                    } else if (sym_is_p(car(xs), str_lit!("define-generative")) && i64_gt(size(xs), 3i64)) {
-                        // Its conversions' names, `#:seal mk #:unseal get` (C428): keywords
-                        // KFX reads there, as names, not values.
-                        (e, file, line) = (generative_core(e), f, l);
-                        continue;
-                    } else if sym_is_p(car(xs), str_lit!("list")) {
-                        return restricted_all(cdr(xs), f, l);
-                    } else if ((sym_is_p(car(xs), str_lit!("poly")) || sym_is_p(car(xs), str_lit!("plambda"))) && i64_gt_eq(size(xs), 2i64) && {
-                        let tagcase_ = second(xs);
-                        match *tagcase_ {
-                            Sexp::Lst(bs, f2, l2, p2) => {
-                                any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
-                                    let tagcase_ = b;
-                                    match *tagcase_ {
-                                        Sexp::Lst(ys, f3, l3, p3) => {
-                                            (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit!("conv")))
-                                        }
-                                        _ => {
-                                            let other = tagcase_;
-                                            false
-                                        }
-                                    }
-                                })), bs)
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
-                        }
-                    }) {
-                        return match restriction_refused(f, l, str_lit!("a convention binder, FX-26's, which KFX has not (C205)")) {};
-                    } else if (i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit!("region")) && sym_is_p(third(xs), str_lit!("distinct"))) {
-                        return match restriction_refused(f, l, str_lit!("a distinct region binder, FX-26's, which KFX has not yet (C204)")) {};
-                    } else if (sym_is_p(car(xs), str_lit!("bloblet")) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Sexp>| {
-                        head_is_p(a, str_lit!("frozen"))
-                    })), cdr(xs))) {
-                        return match restriction_refused(f, l, str_lit!("a frozen bloblet, FX-26's, which KFX has not yet (C201)")) {};
-                    } else if ({
-                        let tagcase_ = car(xs);
-                        match *tagcase_ {
-                            Sexp::Sym(h, f2, p2) => {
-                                string_member_p(h, region_heads())
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
-                        }
-                    } && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Sexp>| {
-                        ((head_is_p(a, str_lit!("const")) || head_is_p(a, str_lit!("acyclic"))) && not(sym_is_p(second(items(a)), str_lit!("heap"))))
-                    })), cdr(xs))) {
-                        return match restriction_refused(f, l, str_lit!("data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)")) {};
-                    } else if ({
-                        let tagcase_ = car(xs);
-                        match *tagcase_ {
-                            Sexp::Sym(h, f2, p2) => {
-                                string_member_p(h, region_heads())
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
-                        }
-                    } && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::Handle<'static, Sexp>| {
-                        sym_is_p(a, str_lit!("heap"))
-                    })), cdr(xs))) {
-                        return match restriction_refused(f, l, str_lit!("the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)")) {};
-                    } else if (sym_is_p(car(xs), str_lit!("confirm-nat")) || sym_is_p(car(xs), str_lit!("confirm-length")) || (sym_is_p(car(xs), str_lit!("acyclic")) && i64_eq(size(xs), 4i64))) {
-                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's, which KFX has not yet (C159)"))) {};
-                    } else if (sym_is_p(car(xs), str_lit!("nlist")) || (sym_is_p(car(xs), str_lit!("nat")) && i64_eq(size(xs), 2i64)) || (sym_is_p(car(xs), str_lit!("poly")) && not(null_p(cdr(xs))) && {
-                        let tagcase_ = second(xs);
-                        match *tagcase_ {
-                            Sexp::Lst(bs, f2, l2, p2) => {
-                                any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
-                                    let tagcase_ = b;
-                                    match *tagcase_ {
-                                        Sexp::Lst(ys, f3, l3, p3) => {
-                                            (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit!("size")))
-                                        }
-                                        _ => {
-                                            let other = tagcase_;
-                                            false
-                                        }
-                                    }
-                                })), bs)
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
-                        }
-                    })) {
-                        return match restriction_refused(f, l, str_lit!("sizes (nlist, (nat s), a size binder), FX-26's, which KFX has not yet (C158)")) {};
-                    } else if (sym_is_p(car(xs), str_lit!("vsubr")) || sym_is_p(car(xs), str_lit!("vlambda")) || sym_is_p(car(xs), str_lit!("apply"))) {
-                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {};
-                    } else if (sym_is_p(car(xs), str_lit!("arrayof")) && i64_eq(size(xs), 3i64) && (sym_is_p(third(xs), str_lit!("finite")) || head_is_p(third(xs), str_lit!("+")) || head_is_p(third(xs), str_lit!("-")))) {
-                        return match restriction_refused(f, l, str_lit!("a flat array of a length not literal, FX-26's, which KFX has not yet (C175)")) {};
-                    } else if {
-                        let binders = if ((sym_is_p(car(xs), str_lit!("poly")) || sym_is_p(car(xs), str_lit!("plambda"))) && i64_gt(size(xs), 1i64)) {
-                            items_of(second(xs))
-                        } else if ((sym_is_p(car(xs), str_lit!("define-type")) || sym_is_p(car(xs), str_lit!("define-generative"))) && i64_gt(size(xs), 1i64)) {
-                            cdr_items_of(second(xs))
-                        } else {
-                            nil::<kayak_rt::Handle<'static, Sexp>>()
-                        };
-                        any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
+            } else if Sexp::__is_Lst(tagcase_) {
+                let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+                if null_p(xs) {
+                    return ();
+                } else if (sym_is_p(car(xs), str_lit!("quote")) && i64_eq(size(xs), 2i64)) {
+                    // Data: its names name nothing (C429: the macros' kernel's table quotes
+                    // `oneshot`, a form's word).
+                    return ();
+                } else if (sym_is_p(car(xs), str_lit!("define-generative")) && i64_gt(size(xs), 3i64)) {
+                    // Its conversions' names, `#:seal mk #:unseal get` (C428): keywords
+                    // KFX reads there, as names, not values.
+                    (e, file, line) = (generative_core(e), f, l);
+                    continue;
+                } else if sym_is_p(car(xs), str_lit!("list")) {
+                    return restricted_all(cdr(xs), f, l);
+                } else if ((sym_is_p(car(xs), str_lit!("poly")) || sym_is_p(car(xs), str_lit!("plambda"))) && i64_gt_eq(size(xs), 2i64) && {
+                    let tagcase_ = second(xs);
+                    if Sexp::__is_Lst(tagcase_) {
+                        let (bs, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                        any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
                             let tagcase_ = b;
-                            match *tagcase_ {
-                                Sexp::Lst(ys, f2, l2, p2) => {
-                                    (i64_eq(size(ys), 2i64) && {
-                                        let tagcase_ = second(ys);
-                                        match *tagcase_ {
-                                            Sexp::Sym(k, f3, p3) => {
-                                                string_member_p(k, kind_names())
-                                            }
-                                            _ => {
-                                                let other = tagcase_;
-                                                false
-                                            }
-                                        }
-                                    })
-                                }
-                                _ => {
+                            if Sexp::__is_Lst(tagcase_) {
+                                let (ys, f3, l3, p3,) = Sexp::__Lst(tagcase_);
+                                (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit!("conv")))
+                            } else {
+                                let other = tagcase_;
+                                false
+                            }
+                        })), bs)
+                    } else {
+                        let other = tagcase_;
+                        false
+                    }
+                }) {
+                    return match restriction_refused(f, l, str_lit!("a convention binder, FX-26's, which KFX has not (C205)")) {};
+                } else if (i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit!("region")) && sym_is_p(third(xs), str_lit!("distinct"))) {
+                    return match restriction_refused(f, l, str_lit!("a distinct region binder, FX-26's, which KFX has not yet (C204)")) {};
+                } else if (sym_is_p(car(xs), str_lit!("bloblet")) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::data::DataAt<'static, Sexp>| {
+                    head_is_p(a, str_lit!("frozen"))
+                })), cdr(xs))) {
+                    return match restriction_refused(f, l, str_lit!("a frozen bloblet, FX-26's, which KFX has not yet (C201)")) {};
+                } else if ({
+                    let tagcase_ = car(xs);
+                    if Sexp::__is_Sym(tagcase_) {
+                        let (h, f2, p2,) = Sexp::__Sym(tagcase_);
+                        string_member_p(h, region_heads())
+                    } else {
+                        let other = tagcase_;
+                        false
+                    }
+                } && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::data::DataAt<'static, Sexp>| {
+                    ((head_is_p(a, str_lit!("const")) || head_is_p(a, str_lit!("acyclic"))) && not(sym_is_p(second(items(a)), str_lit!("heap"))))
+                })), cdr(xs))) {
+                    return match restriction_refused(f, l, str_lit!("data frozen into a place but the heap, FX-26's, which KFX has not yet (C161, C193)")) {};
+                } else if ({
+                    let tagcase_ = car(xs);
+                    if Sexp::__is_Sym(tagcase_) {
+                        let (h, f2, p2,) = Sexp::__Sym(tagcase_);
+                        string_member_p(h, region_heads())
+                    } else {
+                        let other = tagcase_;
+                        false
+                    }
+                } && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), a: kayak_rt::data::DataAt<'static, Sexp>| {
+                    sym_is_p(a, str_lit!("heap"))
+                })), cdr(xs))) {
+                    return match restriction_refused(f, l, str_lit!("the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)")) {};
+                } else if (sym_is_p(car(xs), str_lit!("confirm-nat")) || sym_is_p(car(xs), str_lit!("confirm-length")) || (sym_is_p(car(xs), str_lit!("acyclic")) && i64_eq(size(xs), 4i64))) {
+                    return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's, which KFX has not yet (C159)"))) {};
+                } else if (sym_is_p(car(xs), str_lit!("nlist")) || (sym_is_p(car(xs), str_lit!("nat")) && i64_eq(size(xs), 2i64)) || (sym_is_p(car(xs), str_lit!("poly")) && not(null_p(cdr(xs))) && {
+                    let tagcase_ = second(xs);
+                    if Sexp::__is_Lst(tagcase_) {
+                        let (bs, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                        any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
+                            let tagcase_ = b;
+                            if Sexp::__is_Lst(tagcase_) {
+                                let (ys, f3, l3, p3,) = Sexp::__Lst(tagcase_);
+                                (i64_eq(size(ys), 2i64) && sym_is_p(second(ys), str_lit!("size")))
+                            } else {
+                                let other = tagcase_;
+                                false
+                            }
+                        })), bs)
+                    } else {
+                        let other = tagcase_;
+                        false
+                    }
+                })) {
+                    return match restriction_refused(f, l, str_lit!("sizes (nlist, (nat s), a size binder), FX-26's, which KFX has not yet (C158)")) {};
+                } else if (sym_is_p(car(xs), str_lit!("vsubr")) || sym_is_p(car(xs), str_lit!("vlambda")) || sym_is_p(car(xs), str_lit!("apply"))) {
+                    return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {};
+                } else if (sym_is_p(car(xs), str_lit!("arrayof")) && i64_eq(size(xs), 3i64) && (sym_is_p(third(xs), str_lit!("finite")) || head_is_p(third(xs), str_lit!("+")) || head_is_p(third(xs), str_lit!("-")))) {
+                    return match restriction_refused(f, l, str_lit!("a flat array of a length not literal, FX-26's, which KFX has not yet (C175)")) {};
+                } else if {
+                    let binders = if ((sym_is_p(car(xs), str_lit!("poly")) || sym_is_p(car(xs), str_lit!("plambda"))) && i64_gt(size(xs), 1i64)) {
+                        items_of(second(xs))
+                    } else if ((sym_is_p(car(xs), str_lit!("define-type")) || sym_is_p(car(xs), str_lit!("define-generative"))) && i64_gt(size(xs), 1i64)) {
+                        cdr_items_of(second(xs))
+                    } else {
+                        nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+                    };
+                    any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
+                        let tagcase_ = b;
+                        if Sexp::__is_Lst(tagcase_) {
+                            let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                            (i64_eq(size(ys), 2i64) && {
+                                let tagcase_ = second(ys);
+                                if Sexp::__is_Sym(tagcase_) {
+                                    let (k, f3, p3,) = Sexp::__Sym(tagcase_);
+                                    string_member_p(k, kind_names())
+                                } else {
                                     let other = tagcase_;
                                     false
                                 }
-                            }
-                        })), binders)
-                    } {
-                        return match restriction_refused(f, l, str_lit!("a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)")) {};
-                    } else if (sym_is_p(car(xs), str_lit!("define-generative")) && i64_gt(size(xs), 1i64) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
-                        let tagcase_ = b;
-                        match *tagcase_ {
-                            Sexp::Lst(ys, f2, l2, p2) => {
-                                i64_eq(size(ys), 3i64)
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
+                            })
+                        } else {
+                            let other = tagcase_;
+                            false
                         }
-                    })), cdr_items_of(second(xs)))) {
-                        return match restriction_refused(f, l, str_lit!("a variance mark, FX-26's, which KFX does not have (its families are invariant; C188)")) {};
-                    } else if (sym_is_p(car(xs), str_lit!("proves")) && i64_eq(size(xs), 2i64)) {
-                        return match restriction_refused(f, l, str_lit!("a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)")) {};
-                    } else if (sym_is_p(car(xs), str_lit!("flatarrayof")) && i64_eq(size(xs), 3i64) && not(sym_is_p(second(xs), str_lit!("i64")))) {
-                        return match restriction_refused(f, l, str_lit!("a flat array of other than i64, FX-26's, which KFX has not yet (C175)")) {};
-                    } else if (sym_is_p(car(xs), str_lit!("=>")) || sym_is_p(car(xs), str_lit!("dlambda"))) {
-                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)"))) {};
-                    } else if {
-                        let tagcase_ = car(xs);
-                        match *tagcase_ {
-                            Sexp::Sym(n, f2, p2) => {
-                                string_member_p(n, string_writer_names())
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
-                        }
-                    } {
-                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's strings at a region, which KFX has not yet: kayak-rt's strings are immutable (C285)"))) {};
-                    } else if (sym_is_p(car(xs), str_lit!("allof")) || sym_is_p(car(xs), str_lit!("anyof"))) {
-                        return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's logical types, which KFX has not yet: its Rust's types have no intersections or overlapping unions (C354)"))) {};
-                    } else if sym_is_p(car(xs), str_lit!("composable")) {
-                        return match restriction_refused(f, l, str_lit!("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {};
-                    } else if (sym_is_p(car(xs), str_lit!("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit!("poly"))) {
-                        return match restriction_refused(f, l, str_lit!("a poly in a poly, which KFX's Rust writes as one: write it so (C70)")) {};
-                    } else if (head_is_p(car(xs), str_lit!("proj")) && string_member_p(projected_control(car(xs)), prompt_names())) {
-                        // An abort or an escape through `proj`s, called: the emitter writes
-                        // it as the primitive's call (C105).
-                        return restricted_all(cdr(xs), f, l);
-                    } else if (sym_is_p(car(xs), str_lit!("proj")) && not(null_p(cdr(xs))) && {
-                        let tagcase_ = second(xs);
-                        match *tagcase_ {
-                            Sexp::Sym(n, f2, p2) => {
-                                control_primitive_p(n)
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
-                        }
-                    }) {
-                        return match restriction_refused(f, l, string_append(str_lit!("a proj of "), string_append(sym_name(second(xs)), str_lit!(", a control primitive KFX types by its own rule")))) {};
+                    })), binders)
+                } {
+                    return match restriction_refused(f, l, str_lit!("a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)")) {};
+                } else if (sym_is_p(car(xs), str_lit!("define-generative")) && i64_gt(size(xs), 1i64) && any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
+                    let tagcase_ = b;
+                    if Sexp::__is_Lst(tagcase_) {
+                        let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                        i64_eq(size(ys), 3i64)
                     } else {
-                        return restricted_all(xs, f, l);
+                        let other = tagcase_;
+                        false
                     }
-                }
-                Sexp::Real(t, f, p) => {
-                    if written_out_real_p(t) {
-                        return ();
+                })), cdr_items_of(second(xs)))) {
+                    return match restriction_refused(f, l, str_lit!("a variance mark, FX-26's, which KFX does not have (its families are invariant; C188)")) {};
+                } else if (sym_is_p(car(xs), str_lit!("proves")) && i64_eq(size(xs), 2i64)) {
+                    return match restriction_refused(f, l, str_lit!("a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)")) {};
+                } else if (sym_is_p(car(xs), str_lit!("flatarrayof")) && i64_eq(size(xs), 3i64) && not(sym_is_p(second(xs), str_lit!("i64")))) {
+                    return match restriction_refused(f, l, str_lit!("a flat array of other than i64, FX-26's, which KFX has not yet (C175)")) {};
+                } else if (sym_is_p(car(xs), str_lit!("=>")) || sym_is_p(car(xs), str_lit!("dlambda"))) {
+                    return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's higher kinds, which KFX has not yet: its Rust's generics are over types (C173)"))) {};
+                } else if {
+                    let tagcase_ = car(xs);
+                    if Sexp::__is_Sym(tagcase_) {
+                        let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+                        string_member_p(n, string_writer_names())
                     } else {
-                        return match restriction_refused(file, line, string_append(str_lit!("a number with an exponent, or its point first, which KFX reads not: write it out, "), t)) {};
+                        let other = tagcase_;
+                        false
                     }
+                } {
+                    return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's strings at a region, which KFX has not yet: kayak-rt's strings are immutable (C285)"))) {};
+                } else if (sym_is_p(car(xs), str_lit!("allof")) || sym_is_p(car(xs), str_lit!("anyof"))) {
+                    return match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit!(", FX-26's logical types, which KFX has not yet: its Rust's types have no intersections or overlapping unions (C354)"))) {};
+                } else if sym_is_p(car(xs), str_lit!("composable")) {
+                    return match restriction_refused(f, l, str_lit!("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {};
+                } else if (sym_is_p(car(xs), str_lit!("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit!("poly"))) {
+                    return match restriction_refused(f, l, str_lit!("a poly in a poly, which KFX's Rust writes as one: write it so (C70)")) {};
+                } else if (head_is_p(car(xs), str_lit!("proj")) && string_member_p(projected_control(car(xs)), prompt_names())) {
+                    // An abort or an escape through `proj`s, called: the emitter writes
+                    // it as the primitive's call (C105).
+                    return restricted_all(cdr(xs), f, l);
+                } else if (sym_is_p(car(xs), str_lit!("proj")) && not(null_p(cdr(xs))) && {
+                    let tagcase_ = second(xs);
+                    if Sexp::__is_Sym(tagcase_) {
+                        let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+                        control_primitive_p(n)
+                    } else {
+                        let other = tagcase_;
+                        false
+                    }
+                }) {
+                    return match restriction_refused(f, l, string_append(str_lit!("a proj of "), string_append(sym_name(second(xs)), str_lit!(", a control primitive KFX types by its own rule")))) {};
+                } else {
+                    return restricted_all(xs, f, l);
                 }
-                _ => {
-                    let other = tagcase_;
+            } else if Sexp::__is_Real(tagcase_) {
+                let (t, f, p,) = Sexp::__Real(tagcase_);
+                if written_out_real_p(t) {
                     return ();
+                } else {
+                    return match restriction_refused(file, line, string_append(str_lit!("a number with an exponent, or its point first, which KFX reads not: write it out, "), t)) {};
                 }
+            } else {
+                let other = tagcase_;
+                return ();
             }
         }
     }
@@ -431,128 +401,114 @@ pub mod restrictions {
 
     /// Whether a type's head names a family of places alone, `(name (p
     /// place) ...)` (C274).
-    pub fn place_family_p(head: kayak_rt::Handle<'static, Sexp>) -> bool {
+    pub fn place_family_p(head: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
         let tagcase_ = head;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                (not(null_p(cdr(xs))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
-                    not((i64_eq(size(items(b)), 2i64) && sym_is_p(second(items(b)), str_lit!("place"))))
-                })), cdr(xs))))
-            }
-            _ => {
-                let other = tagcase_;
-                false
-            }
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            (not(null_p(cdr(xs))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
+                not((i64_eq(size(items(b)), 2i64) && sym_is_p(second(items(b)), str_lit!("place"))))
+            })), cdr(xs))))
+        } else {
+            let other = tagcase_;
+            false
         }
     }
 
     /// A module type other than a `define-type`'s, FX-26's first-class
     /// modules' (C170), which KFX has not: its module types are Rust
     /// traits, named (C24).
-    pub fn moduleof_restricted(e: kayak_rt::Handle<'static, Sexp>) -> () {
+    pub fn moduleof_restricted(e: kayak_rt::data::DataAt<'static, Sexp>) -> () {
         let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                if null_p(xs) {
-                    ()
-                } else if (sym_is_p(car(xs), str_lit!("define-type")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit!("moduleof")) && not((trait_moduleof_p(third(xs)) && {
-                    let tagcase_ = second(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f2, p2) => {
-                            true
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                })) && not(place_family_p(second(xs)))) {
-                    match restriction_refused(f, l, str_lit!("a module type KFX has not as a Rust trait: of an effect's description, or with parameters, FX-26's (C24, C170)")) {}
-                } else if (sym_is_p(car(xs), str_lit!("define-type")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit!("moduleof"))) {
-                    map(kayak_rt::as_proc(moduleof_restricted), cdr(items(third(xs))));
-                    ()
-                } else if sym_is_p(car(xs), str_lit!("moduleof")) {
-                    match restriction_refused(f, l, str_lit!("a module type not named by a define-type, FX-26's first-class modules', which KFX has not yet (C24, C170)")) {}
-                } else if sym_is_p(car(xs), str_lit!("quote")) {
-                    ()
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            if null_p(xs) {
+                ()
+            } else if (sym_is_p(car(xs), str_lit!("define-type")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit!("moduleof")) && not((trait_moduleof_p(third(xs)) && {
+                let tagcase_ = second(xs);
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+                    true
                 } else {
-                    map(kayak_rt::as_proc(moduleof_restricted), xs);
-                    ()
+                    let other = tagcase_;
+                    false
                 }
-            }
-            _ => {
-                let other = tagcase_;
+            })) && not(place_family_p(second(xs)))) {
+                match restriction_refused(f, l, str_lit!("a module type KFX has not as a Rust trait: of an effect's description, or with parameters, FX-26's (C24, C170)")) {}
+            } else if (sym_is_p(car(xs), str_lit!("define-type")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit!("moduleof"))) {
+                map(kayak_rt::as_proc(moduleof_restricted), cdr(items(third(xs))));
+                ()
+            } else if sym_is_p(car(xs), str_lit!("moduleof")) {
+                match restriction_refused(f, l, str_lit!("a module type not named by a define-type, FX-26's first-class modules', which KFX has not yet (C24, C170)")) {}
+            } else if sym_is_p(car(xs), str_lit!("quote")) {
+                ()
+            } else {
+                map(kayak_rt::as_proc(moduleof_restricted), xs);
                 ()
             }
+        } else {
+            let other = tagcase_;
+            ()
         }
     }
 
     /// Whether a procedure type's parameter is named, `(x : T)`, as the
     /// checker reads one (`param-name-written`).
-    pub fn param_named_p(q: kayak_rt::Handle<'static, Sexp>, types: Strings) -> bool {
+    pub fn param_named_p(q: kayak_rt::data::DataAt<'static, Sexp>, types: Strings) -> bool {
         let tagcase_ = q;
-        match *tagcase_ {
-            Sexp::Lst(ys, f, l, p) => {
-                (i64_eq(size(ys), 3i64) && {
-                    let tagcase_ = car(ys);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f2, p2) => {
-                            true
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                } && sym_is_p(second(ys), str_lit!(":")))
-            }
-            _ => {
-                let other = tagcase_;
-                false
-            }
+        if Sexp::__is_Lst(tagcase_) {
+            let (ys, f, l, p,) = Sexp::__Lst(tagcase_);
+            (i64_eq(size(ys), 3i64) && {
+                let tagcase_ = car(ys);
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+                    true
+                } else {
+                    let other = tagcase_;
+                    false
+                }
+            } && sym_is_p(second(ys), str_lit!(":")))
+        } else {
+            let other = tagcase_;
+            false
         }
     }
 
     /// A procedure type's specification, or its parameters named
     /// (C162), FX-26's, which KFX has not yet.
-    pub fn specs_restricted(e: kayak_rt::Handle<'static, Sexp>, types: Strings) -> () {
+    pub fn specs_restricted(e: kayak_rt::data::DataAt<'static, Sexp>, types: Strings) -> () {
         let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                if null_p(xs) {
-                    ()
-                } else if ((sym_is_p(car(xs), str_lit!("subr")) || sym_is_p(car(xs), str_lit!("->"))) && i64_gt(size(xs), 2i64) && (spec_clause_p(last(xs)) || latent_result_p(last(xs)) || {
-                    let tagcase_ = if sym_is_p(car(xs), str_lit!("->")) {
-                        second(xs)
-                    } else if head_is_p(second(xs), str_lit!("conv")) {
-                        fourth(xs)
-                    } else {
-                        third(xs)
-                    };
-                    match *tagcase_ {
-                        Sexp::Lst(ps, f2, l2, p2) => {
-                            any_p(kayak_rt::as_proc(kayak_rt::closure1s((types,), |(types,), q: kayak_rt::Handle<'static, Sexp>| {
-                                param_named_p(q, types)
-                            })), ps)
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                })) {
-                    match restriction_refused(f, l, str_lit!("a procedure type's specification, or its parameters named, FX-26's, which KFX has not yet (C162)")) {}
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            if null_p(xs) {
+                ()
+            } else if ((sym_is_p(car(xs), str_lit!("subr")) || sym_is_p(car(xs), str_lit!("->"))) && i64_gt(size(xs), 2i64) && (spec_clause_p(last(xs)) || latent_result_p(last(xs)) || {
+                let tagcase_ = if sym_is_p(car(xs), str_lit!("->")) {
+                    second(xs)
+                } else if head_is_p(second(xs), str_lit!("conv")) {
+                    fourth(xs)
                 } else {
-                    map(kayak_rt::as_proc(kayak_rt::closure1s((types,), |(types,), x: kayak_rt::Handle<'static, Sexp>| {
-                        specs_restricted(x, types)
-                    })), xs);
-                    ()
+                    third(xs)
+                };
+                if Sexp::__is_Lst(tagcase_) {
+                    let (ps, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                    any_p(kayak_rt::as_proc(kayak_rt::closure1s((types,), |(types,), q: kayak_rt::data::DataAt<'static, Sexp>| {
+                        param_named_p(q, types)
+                    })), ps)
+                } else {
+                    let other = tagcase_;
+                    false
                 }
-            }
-            _ => {
-                let other = tagcase_;
+            })) {
+                match restriction_refused(f, l, str_lit!("a procedure type's specification, or its parameters named, FX-26's, which KFX has not yet (C162)")) {}
+            } else {
+                map(kayak_rt::as_proc(kayak_rt::closure1s((types,), |(types,), x: kayak_rt::data::DataAt<'static, Sexp>| {
+                    specs_restricted(x, types)
+                })), xs);
                 ()
             }
+        } else {
+            let other = tagcase_;
+            ()
         }
     }
 
@@ -562,7 +518,7 @@ pub mod restrictions {
     // Rust's or kayak-rt's own, each a KFX name (C27), none two alike
     // camel-cased. FX-26 has neither rule.
     pub fn primitive_names() -> Strings {
-        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), p: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), p: kayak_rt::data::DataAt<'static, Sexp>| {
             sym_name(car(items(p)))
         })), onto(read_all(primitives(), str_lit!(""), 1i64), read_all(prelude(), str_lit!(""), 1i64)))
     }
@@ -570,41 +526,37 @@ pub mod restrictions {
     /// Each definition among `forms`, as the list that says where it is: a
     /// `define`, or a `define-rec`'s item; a module's items' are its own
     /// scope's.
-    pub fn defined_names(forms: Sexps) -> List<kayak_rt::Handle<'static, Sexp>> {
+    pub fn defined_names(forms: Sexps) -> List<kayak_rt::data::DataAt<'static, Sexp>> {
         if null_p(forms) {
-            nil::<kayak_rt::Handle<'static, Sexp>>()
+            nil::<kayak_rt::data::DataAt<'static, Sexp>>()
         } else {
             let f = car(forms);
             onto(if (head_is_p(f, str_lit!("define")) || head_is_p(f, str_lit!("define*"))) {
                 let tagcase_ = second(items(f));
-                match *tagcase_ {
-                    Sexp::Sym(n, fl, p) => {
-                        the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        nil::<kayak_rt::Handle<'static, Sexp>>()
-                    }
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, fl, p,) = Sexp::__Sym(tagcase_);
+                    the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+                } else {
+                    let other = tagcase_;
+                    nil::<kayak_rt::data::DataAt<'static, Sexp>>()
                 }
             } else if head_is_p(f, str_lit!("define-rec")) {
                 cdr(items(f))
             } else {
-                nil::<kayak_rt::Handle<'static, Sexp>>()
+                nil::<kayak_rt::data::DataAt<'static, Sexp>>()
             }, defined_names(cdr(forms)))
         }
     }
 
     #[inline]
-    pub fn line_of(e: kayak_rt::Handle<'static, Sexp>) -> i64 {
+    pub fn line_of(e: kayak_rt::data::DataAt<'static, Sexp>) -> i64 {
         let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                l
-            }
-            _ => {
-                let other = tagcase_;
-                0i64
-            }
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            l
+        } else {
+            let other = tagcase_;
+            0i64
         }
     }
 
@@ -634,8 +586,8 @@ pub mod restrictions {
         }
     }
 
-    pub fn module_own_items(f: kayak_rt::Handle<'static, Sexp>) -> Sexps {
-        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
+    pub fn module_own_items(f: kayak_rt::data::DataAt<'static, Sexp>) -> Sexps {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::data::DataAt<'static, Sexp>| {
             if head_is_p(g, str_lit!("hide")) {
                 cdr(items(g))
             } else {
@@ -646,88 +598,80 @@ pub mod restrictions {
 
     /// The names a type mentions where a type is: not a `select`'s
     /// (another module's), a field's label, a binder, a module type's.
-    pub fn sexp_names(mut e: kayak_rt::Handle<'static, Sexp>) -> Strings {
+    pub fn sexp_names(mut e: kayak_rt::data::DataAt<'static, Sexp>) -> Strings {
         loop {
             let tagcase_ = e;
-            match *tagcase_ {
-                Sexp::Sym(n, f, p) => {
-                    return the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()));
-                }
-                Sexp::Lst(xs, f, l, p) => {
-                    if null_p(xs) {
-                        return nil::<Str>();
-                    } else if (head_is_p(e, str_lit!("select")) || head_is_p(e, str_lit!("quote")) || head_is_p(e, str_lit!("moduleof"))) {
-                        return nil::<Str>();
-                    } else if (head_is_p(e, str_lit!("productof")) || head_is_p(e, str_lit!("sumof"))) {
-                        return concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
-                            let tagcase_ = g;
-                            match *tagcase_ {
-                                Sexp::Lst(ys, f2, l2, p2) => {
-                                    concat(map(kayak_rt::as_proc(sexp_names), cdr(ys)))
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    nil::<Str>()
-                                }
-                            }
-                        })), cdr(xs)));
-                    } else if (head_is_p(e, str_lit!("poly")) || head_is_p(e, str_lit!("dlambda")) || head_is_p(e, str_lit!("mu"))) {
-                        e = last(xs);
-                        continue;
-                    } else {
-                        return concat(map(kayak_rt::as_proc(sexp_names), xs));
-                    }
-                }
-                _ => {
-                    let other = tagcase_;
+            if Sexp::__is_Sym(tagcase_) {
+                let (n, f, p,) = Sexp::__Sym(tagcase_);
+                return the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()));
+            } else if Sexp::__is_Lst(tagcase_) {
+                let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+                if null_p(xs) {
                     return nil::<Str>();
+                } else if (head_is_p(e, str_lit!("select")) || head_is_p(e, str_lit!("quote")) || head_is_p(e, str_lit!("moduleof"))) {
+                    return nil::<Str>();
+                } else if (head_is_p(e, str_lit!("productof")) || head_is_p(e, str_lit!("sumof"))) {
+                    return concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::data::DataAt<'static, Sexp>| {
+                        let tagcase_ = g;
+                        if Sexp::__is_Lst(tagcase_) {
+                            let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                            concat(map(kayak_rt::as_proc(sexp_names), cdr(ys)))
+                        } else {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    })), cdr(xs)));
+                } else if (head_is_p(e, str_lit!("poly")) || head_is_p(e, str_lit!("dlambda")) || head_is_p(e, str_lit!("mu"))) {
+                    e = last(xs);
+                    continue;
+                } else {
+                    return concat(map(kayak_rt::as_proc(sexp_names), xs));
                 }
+            } else {
+                let other = tagcase_;
+                return nil::<Str>();
             }
         }
     }
 
     /// The define-types of `forms`, and of their modules.
     pub fn abbreviations(forms: Sexps) -> Sexps {
-        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::data::DataAt<'static, Sexp>| {
             if (head_is_p(f, str_lit!("define-type")) && i64_eq(size(items(f)), 3i64)) {
                 the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
             } else if module_def_p(f) {
-                filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
+                filter(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::data::DataAt<'static, Sexp>| {
                     (head_is_p(g, str_lit!("define-type")) && i64_eq(size(items(g)), 3i64))
                 })), module_own_items(f))
             } else {
-                nil::<kayak_rt::Handle<'static, Sexp>>()
+                nil::<kayak_rt::data::DataAt<'static, Sexp>>()
             }
         })), forms))
     }
 
-    pub fn abbreviation_name(f: kayak_rt::Handle<'static, Sexp>) -> Str {
+    pub fn abbreviation_name(f: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
         let h = second(items(f));
         let tagcase_ = h;
-        match *tagcase_ {
-            Sexp::Sym(n, f2, p2) => {
-                n
-            }
-            Sexp::Lst(ys, f2, l2, p2) => {
-                if null_p(ys) {
-                    str_lit!("")
+        if Sexp::__is_Sym(tagcase_) {
+            let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+            n
+        } else if Sexp::__is_Lst(tagcase_) {
+            let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+            if null_p(ys) {
+                str_lit!("")
+            } else {
+                let tagcase_ = car(ys);
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f3, p3,) = Sexp::__Sym(tagcase_);
+                    n
                 } else {
-                    let tagcase_ = car(ys);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f3, p3) => {
-                            n
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            str_lit!("")
-                        }
-                    }
+                    let other = tagcase_;
+                    str_lit!("")
                 }
             }
-            _ => {
-                let other = tagcase_;
-                str_lit!("")
-            }
+        } else {
+            let other = tagcase_;
+            str_lit!("")
         }
     }
 
@@ -743,10 +687,10 @@ pub mod restrictions {
                 todo = cdr(todo);
                 continue;
             } else {
-                let found = filter(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), f: kayak_rt::Handle<'static, Sexp>| {
+                let found = filter(kayak_rt::as_proc(kayak_rt::closure1s((todo,), |(todo,), f: kayak_rt::data::DataAt<'static, Sexp>| {
                     string_eq_p(abbreviation_name(f), car(todo))
                 })), abbrevs);
-                (todo, seen) = (onto(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
+                (todo, seen) = (onto(concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::data::DataAt<'static, Sexp>| {
                     sexp_names(third(items(f)))
                 })), found)), cdr(todo)), kayak_rt::heap_cons(car(todo), seen));
                 continue;
@@ -755,271 +699,243 @@ pub mod restrictions {
     }
 
     /// A type as written: refused if it has a `(mu t T)`.
-    pub fn mu_in_type(t: kayak_rt::Handle<'static, Sexp>) -> () {
+    pub fn mu_in_type(t: kayak_rt::data::DataAt<'static, Sexp>) -> () {
         let tagcase_ = t;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit!("mu")) && {
-                    let tagcase_ = second(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f2, p2) => {
-                            true
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                }) {
-                    match restriction_refused(f, l, str_lit!("a recursive type, `mu`, FX-26's, which KFX has not: write a datatype (C174)")) {}
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            if (i64_eq(size(xs), 3i64) && sym_is_p(car(xs), str_lit!("mu")) && {
+                let tagcase_ = second(xs);
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+                    true
                 } else {
-                    map(kayak_rt::as_proc(mu_in_type), xs);
-                    ()
+                    let other = tagcase_;
+                    false
                 }
-            }
-            _ => {
-                let other = tagcase_;
+            }) {
+                match restriction_refused(f, l, str_lit!("a recursive type, `mu`, FX-26's, which KFX has not: write a datatype (C174)")) {}
+            } else {
+                map(kayak_rt::as_proc(mu_in_type), xs);
                 ()
             }
+        } else {
+            let other = tagcase_;
+            ()
         }
     }
 
     /// Each type written in `e` where a form has one (a definition's, a
     /// `the`'s, a binding's of `define-rec` or `letrec`): `mu` is a type's
     /// word only there, and may name a procedure elsewhere.
-    pub fn mu_written(mut e: kayak_rt::Handle<'static, Sexp>) -> () {
+    pub fn mu_written(mut e: kayak_rt::data::DataAt<'static, Sexp>) -> () {
         loop {
             let tagcase_ = e;
-            match *tagcase_ {
-                Sexp::Lst(xs, f, l, p) => {
-                    if null_p(xs) {
-                        return ();
-                    } else if sym_is_p(car(xs), str_lit!("quote")) {
-                        return ();
-                    } else if ((sym_is_p(car(xs), str_lit!("define")) || sym_is_p(car(xs), str_lit!("define*")) || sym_is_p(car(xs), str_lit!("define-type"))) && i64_eq(size(xs), 4i64)) {
-                        mu_in_type(third(xs));
-                        e = fourth(xs);
-                        continue;
-                    } else if (sym_is_p(car(xs), str_lit!("define-type")) && i64_eq(size(xs), 3i64)) {
-                        return mu_in_type(third(xs));
-                    } else if (sym_is_p(car(xs), str_lit!("the")) && i64_eq(size(xs), 3i64)) {
-                        mu_in_type(second(xs));
-                        e = third(xs);
-                        continue;
-                    } else if (sym_is_p(car(xs), str_lit!("define-rec")) || sym_is_p(car(xs), str_lit!("letrec"))) {
-                        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
-                            let tagcase_ = b;
-                            match *tagcase_ {
-                                Sexp::Lst(ys, f2, l2, p2) => {
-                                    if i64_eq(size(ys), 3i64) {
-                                        mu_in_type(second(ys));
-                                        mu_written(third(ys))
-                                    } else {
-                                        mu_written(b)
-                                    }
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    ()
-                                }
+            if Sexp::__is_Lst(tagcase_) {
+                let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+                if null_p(xs) {
+                    return ();
+                } else if sym_is_p(car(xs), str_lit!("quote")) {
+                    return ();
+                } else if ((sym_is_p(car(xs), str_lit!("define")) || sym_is_p(car(xs), str_lit!("define*")) || sym_is_p(car(xs), str_lit!("define-type"))) && i64_eq(size(xs), 4i64)) {
+                    mu_in_type(third(xs));
+                    e = fourth(xs);
+                    continue;
+                } else if (sym_is_p(car(xs), str_lit!("define-type")) && i64_eq(size(xs), 3i64)) {
+                    return mu_in_type(third(xs));
+                } else if (sym_is_p(car(xs), str_lit!("the")) && i64_eq(size(xs), 3i64)) {
+                    mu_in_type(second(xs));
+                    e = third(xs);
+                    continue;
+                } else if (sym_is_p(car(xs), str_lit!("define-rec")) || sym_is_p(car(xs), str_lit!("letrec"))) {
+                    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
+                        let tagcase_ = b;
+                        if Sexp::__is_Lst(tagcase_) {
+                            let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                            if i64_eq(size(ys), 3i64) {
+                                mu_in_type(second(ys));
+                                mu_written(third(ys))
+                            } else {
+                                mu_written(b)
                             }
-                        })), if sym_is_p(car(xs), str_lit!("letrec")) {
-                            items(second(xs))
                         } else {
-                            cdr(xs)
-                        });
-                        if sym_is_p(car(xs), str_lit!("letrec")) {
-                            map(kayak_rt::as_proc(mu_written), cdr(cdr(xs)));
-                            return ();
-                        } else {
-                            return ();
+                            let other = tagcase_;
+                            ()
                         }
+                    })), if sym_is_p(car(xs), str_lit!("letrec")) {
+                        items(second(xs))
                     } else {
-                        map(kayak_rt::as_proc(mu_written), xs);
+                        cdr(xs)
+                    });
+                    if sym_is_p(car(xs), str_lit!("letrec")) {
+                        map(kayak_rt::as_proc(mu_written), cdr(cdr(xs)));
+                        return ();
+                    } else {
                         return ();
                     }
-                }
-                _ => {
-                    let other = tagcase_;
+                } else {
+                    map(kayak_rt::as_proc(mu_written), xs);
                     return ();
                 }
+            } else {
+                let other = tagcase_;
+                return ();
             }
         }
     }
 
     /// A name kayak-rt or the emitter writes, bound (C187): FX-26's, which
     /// KFX's names are not (C27).
-    pub fn reserved_bound(e: kayak_rt::Handle<'static, Sexp>) -> () {
+    pub fn reserved_bound(e: kayak_rt::data::DataAt<'static, Sexp>) -> () {
         let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                let bound = kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
-                    let tagcase_ = b;
-                    match *tagcase_ {
-                        Sexp::Sym(n, f2, p2) => {
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            let bound = kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
+                let tagcase_ = b;
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                } else if Sexp::__is_Lst(tagcase_) {
+                    let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                    if null_p(ys) {
+                        nil::<Str>()
+                    } else {
+                        let tagcase_ = car(ys);
+                        if Sexp::__is_Sym(tagcase_) {
+                            let (n, f3, p3,) = Sexp::__Sym(tagcase_);
                             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                        }
-                        Sexp::Lst(ys, f2, l2, p2) => {
-                            if null_p(ys) {
-                                nil::<Str>()
-                            } else {
-                                let tagcase_ = car(ys);
-                                match *tagcase_ {
-                                    Sexp::Sym(n, f3, p3) => {
-                                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        nil::<Str>()
-                                    }
-                                }
-                            }
-                        }
-                        _ => {
+                        } else {
                             let other = tagcase_;
                             nil::<Str>()
                         }
                     }
-                });
-                let names = if null_p(xs) {
-                    nil::<Str>()
-                } else if (sym_is_p(car(xs), str_lit!("let")) || sym_is_p(car(xs), str_lit!("let*")) || sym_is_p(car(xs), str_lit!("letrec"))) {
-                    if i64_gt(size(xs), 1i64) {
-                        let tagcase_ = second(xs);
-                        match *tagcase_ {
-                            Sexp::Lst(bs, f2, l2, p2) => {
-                                concat(map(bound, bs))
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                nil::<Str>()
-                            }
-                        }
-                    } else {
-                        nil::<Str>()
-                    }
-                } else if (sym_is_p(car(xs), str_lit!("lambda")) || sym_is_p(car(xs), str_lit!("rlambda"))) {
-                    if i64_gt(size(xs), 1i64) {
-                        let tagcase_ = second(xs);
-                        match *tagcase_ {
-                            Sexp::Lst(bs, f2, l2, p2) => {
-                                concat(map(bound, bs))
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                nil::<Str>()
-                            }
-                        }
-                    } else {
-                        nil::<Str>()
-                    }
-                } else if (sym_is_p(car(xs), str_lit!("define")) || sym_is_p(car(xs), str_lit!("define*"))) {
-                    if i64_gt(size(xs), 1i64) {
-                        bound.call(second(xs))
-                    } else {
-                        nil::<Str>()
-                    }
-                } else if sym_is_p(car(xs), str_lit!("define-rec")) {
-                    concat(map(bound, cdr(xs)))
-                } else if (sym_is_p(car(xs), str_lit!("tagcase")) || sym_is_p(car(xs), str_lit!("typecase"))) {
-                    concat(map(kayak_rt::as_proc(kayak_rt::closure1s((bound,), |(bound,), arm: kayak_rt::Handle<'static, Sexp>| {
-                        let tagcase_ = arm;
-                        match *tagcase_ {
-                            Sexp::Lst(ys, f2, l2, p2) => {
-                                if i64_gt(size(ys), 1i64) {
-                                    let tagcase_ = second(ys);
-                                    match *tagcase_ {
-                                        Sexp::Sym(n, f3, p3) => {
-                                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                                        }
-                                        Sexp::Lst(zs, f3, l3, p3) => {
-                                            concat(map(bound, zs))
-                                        }
-                                        _ => {
-                                            let other = tagcase_;
-                                            nil::<Str>()
-                                        }
-                                    }
-                                } else {
-                                    nil::<Str>()
-                                }
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                nil::<Str>()
-                            }
-                        }
-                    })), if i64_gt(size(xs), 2i64) {
-                        cdr(cdr(xs))
-                    } else {
-                        nil::<kayak_rt::Handle<'static, Sexp>>()
-                    }))
                 } else {
+                    let other = tagcase_;
                     nil::<Str>()
-                };
-                let wrong = kayak_rt::closure1s((), |(), n: Str| {
-                    (not(has_prefix_p(n, str_lit!("%"))) && not(has_prefix_p(n, str_lit!("made--"))) && not(string_eq_p(n, str_lit!("_"))) && (kfx_reserved_p(n) || not(kfx_name_p(n))))
-                });
-                if any_p(wrong, names) {
-                    match restriction_refused(f, l, string_append(str_lit!("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(filter(wrong, names)))) {}
-                } else {
-                    map(kayak_rt::as_proc(reserved_bound), xs);
-                    ()
                 }
-            }
-            _ => {
-                let other = tagcase_;
+            });
+            let names = if null_p(xs) {
+                nil::<Str>()
+            } else if (sym_is_p(car(xs), str_lit!("let")) || sym_is_p(car(xs), str_lit!("let*")) || sym_is_p(car(xs), str_lit!("letrec"))) {
+                if i64_gt(size(xs), 1i64) {
+                    let tagcase_ = second(xs);
+                    if Sexp::__is_Lst(tagcase_) {
+                        let (bs, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                        concat(map(bound, bs))
+                    } else {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                } else {
+                    nil::<Str>()
+                }
+            } else if (sym_is_p(car(xs), str_lit!("lambda")) || sym_is_p(car(xs), str_lit!("rlambda"))) {
+                if i64_gt(size(xs), 1i64) {
+                    let tagcase_ = second(xs);
+                    if Sexp::__is_Lst(tagcase_) {
+                        let (bs, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                        concat(map(bound, bs))
+                    } else {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                } else {
+                    nil::<Str>()
+                }
+            } else if (sym_is_p(car(xs), str_lit!("define")) || sym_is_p(car(xs), str_lit!("define*"))) {
+                if i64_gt(size(xs), 1i64) {
+                    bound.call(second(xs))
+                } else {
+                    nil::<Str>()
+                }
+            } else if sym_is_p(car(xs), str_lit!("define-rec")) {
+                concat(map(bound, cdr(xs)))
+            } else if (sym_is_p(car(xs), str_lit!("tagcase")) || sym_is_p(car(xs), str_lit!("typecase"))) {
+                concat(map(kayak_rt::as_proc(kayak_rt::closure1s((bound,), |(bound,), arm: kayak_rt::data::DataAt<'static, Sexp>| {
+                    let tagcase_ = arm;
+                    if Sexp::__is_Lst(tagcase_) {
+                        let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                        if i64_gt(size(ys), 1i64) {
+                            let tagcase_ = second(ys);
+                            if Sexp::__is_Sym(tagcase_) {
+                                let (n, f3, p3,) = Sexp::__Sym(tagcase_);
+                                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                            } else if Sexp::__is_Lst(tagcase_) {
+                                let (zs, f3, l3, p3,) = Sexp::__Lst(tagcase_);
+                                concat(map(bound, zs))
+                            } else {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        } else {
+                            nil::<Str>()
+                        }
+                    } else {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                })), if i64_gt(size(xs), 2i64) {
+                    cdr(cdr(xs))
+                } else {
+                    nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+                }))
+            } else {
+                nil::<Str>()
+            };
+            let wrong = kayak_rt::closure1s((), |(), n: Str| {
+                (not(has_prefix_p(n, str_lit!("%"))) && not(has_prefix_p(n, str_lit!("made--"))) && not(string_eq_p(n, str_lit!("_"))) && (kfx_reserved_p(n) || not(kfx_name_p(n))))
+            });
+            if any_p(wrong, names) {
+                match restriction_refused(f, l, string_append(str_lit!("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(filter(wrong, names)))) {}
+            } else {
+                map(kayak_rt::as_proc(reserved_bound), xs);
                 ()
             }
+        } else {
+            let other = tagcase_;
+            ()
         }
     }
 
     /// Each type defined, as `FILE|NAME`, in `forms` and their modules.
     pub fn file_types(forms: Sexps) -> Strings {
-        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::Handle<'static, Sexp>| {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), g: kayak_rt::data::DataAt<'static, Sexp>| {
             let tagcase_ = g;
-            match *tagcase_ {
-                Sexp::Lst(xs, f, l, p) => {
-                    if ((head_is_p(g, str_lit!("define-type")) || head_is_p(g, str_lit!("define-datatype")) || head_is_p(g, str_lit!("define-generative"))) && i64_gt(size(xs), 1i64)) {
-                        let n = {
-                            let tagcase_ = second(xs);
-                            match *tagcase_ {
-                                Sexp::Sym(m, f2, p2) => {
+            if Sexp::__is_Lst(tagcase_) {
+                let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+                if ((head_is_p(g, str_lit!("define-type")) || head_is_p(g, str_lit!("define-datatype")) || head_is_p(g, str_lit!("define-generative"))) && i64_gt(size(xs), 1i64)) {
+                    let n = {
+                        let tagcase_ = second(xs);
+                        if Sexp::__is_Sym(tagcase_) {
+                            let (m, f2, p2,) = Sexp::__Sym(tagcase_);
+                            m
+                        } else if Sexp::__is_Lst(tagcase_) {
+                            let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                            if null_p(ys) {
+                                str_lit!("")
+                            } else {
+                                let tagcase_ = car(ys);
+                                if Sexp::__is_Sym(tagcase_) {
+                                    let (m, f3, p3,) = Sexp::__Sym(tagcase_);
                                     m
-                                }
-                                Sexp::Lst(ys, f2, l2, p2) => {
-                                    if null_p(ys) {
-                                        str_lit!("")
-                                    } else {
-                                        let tagcase_ = car(ys);
-                                        match *tagcase_ {
-                                            Sexp::Sym(m, f3, p3) => {
-                                                m
-                                            }
-                                            _ => {
-                                                let other = tagcase_;
-                                                str_lit!("")
-                                            }
-                                        }
-                                    }
-                                }
-                                _ => {
+                                } else {
                                     let other = tagcase_;
                                     str_lit!("")
                                 }
                             }
-                        };
-                        the::<Strings>(kayak_rt::heap_cons(string_append(f, string_append(str_lit!("|"), n)), kayak_rt::nil()))
-                    } else if module_def_p(g) {
-                        file_types(module_own_items(g))
-                    } else {
-                        nil::<Str>()
-                    }
-                }
-                _ => {
-                    let other = tagcase_;
+                        } else {
+                            let other = tagcase_;
+                            str_lit!("")
+                        }
+                    };
+                    the::<Strings>(kayak_rt::heap_cons(string_append(f, string_append(str_lit!("|"), n)), kayak_rt::nil()))
+                } else if module_def_p(g) {
+                    file_types(module_own_items(g))
+                } else {
                     nil::<Str>()
                 }
+            } else {
+                let other = tagcase_;
+                nil::<Str>()
             }
         })), forms))
     }
@@ -1046,71 +962,65 @@ pub mod restrictions {
     /// type parameter of its name camel-cased (C27, C189; the checker's
     /// once, FX-26 having no such rule): a KFX name, none a type the Rust
     /// names, none a type the program has, no two alike.
-    pub fn binders_restricted(types: Strings, e: kayak_rt::Handle<'static, Sexp>) -> () {
+    pub fn binders_restricted(types: Strings, e: kayak_rt::data::DataAt<'static, Sexp>) -> () {
         let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                let binders = if null_p(xs) {
-                    nil::<kayak_rt::Handle<'static, Sexp>>()
-                } else if ((sym_is_p(car(xs), str_lit!("poly")) || sym_is_p(car(xs), str_lit!("plambda"))) && i64_gt(size(xs), 1i64)) {
-                    items_of(second(xs))
-                } else if ((sym_is_p(car(xs), str_lit!("define-type")) || sym_is_p(car(xs), str_lit!("define-generative")) || sym_is_p(car(xs), str_lit!("define-datatype"))) && i64_gt(size(xs), 1i64)) {
-                    cdr_items_of(second(xs))
-                } else {
-                    nil::<kayak_rt::Handle<'static, Sexp>>()
-                };
-                let names = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Sexp>| {
-                    let tagcase_ = b;
-                    match *tagcase_ {
-                        Sexp::Lst(ys, f2, l2, p2) => {
-                            if (i64_gt(size(ys), 1i64) && sym_is_p(second(ys), str_lit!("type"))) {
-                                let tagcase_ = car(ys);
-                                match *tagcase_ {
-                                    Sexp::Sym(n, f3, p3) => {
-                                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        nil::<Str>()
-                                    }
-                                }
-                            } else {
-                                nil::<Str>()
-                            }
-                        }
-                        _ => {
+        if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            let binders = if null_p(xs) {
+                nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+            } else if ((sym_is_p(car(xs), str_lit!("poly")) || sym_is_p(car(xs), str_lit!("plambda"))) && i64_gt(size(xs), 1i64)) {
+                items_of(second(xs))
+            } else if ((sym_is_p(car(xs), str_lit!("define-type")) || sym_is_p(car(xs), str_lit!("define-generative")) || sym_is_p(car(xs), str_lit!("define-datatype"))) && i64_gt(size(xs), 1i64)) {
+                cdr_items_of(second(xs))
+            } else {
+                nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+            };
+            let names = concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Sexp>| {
+                let tagcase_ = b;
+                if Sexp::__is_Lst(tagcase_) {
+                    let (ys, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                    if (i64_gt(size(ys), 1i64) && sym_is_p(second(ys), str_lit!("type"))) {
+                        let tagcase_ = car(ys);
+                        if Sexp::__is_Sym(tagcase_) {
+                            let (n, f3, p3,) = Sexp::__Sym(tagcase_);
+                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                        } else {
                             let other = tagcase_;
                             nil::<Str>()
                         }
+                    } else {
+                        nil::<Str>()
                     }
-                })), binders));
-                let theirs = if null_p(names) {
+                } else {
+                    let other = tagcase_;
                     nil::<Str>()
-                } else {
-                    map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: Str| {
-                        camel(bare_type_name(string_chars(t), nil::<char>()))
-                    })), map(kayak_rt::as_proc(after_file), filter(kayak_rt::as_proc(kayak_rt::closure1s((f,), |(f,), t: Str| {
-                        has_prefix_p(t, string_append(f, str_lit!("|")))
-                    })), types)))
-                };
-                let bad = filter(kayak_rt::as_proc(kayak_rt::closure1s((theirs,), |(theirs,), n: Str| {
-                    (not(kfx_name_p(n)) || string_member_p(camel(n), rust_type_names()) || string_member_p(camel(n), theirs))
-                })), names);
-                if not(null_p(bad)) {
-                    match restriction_refused(f, l, string_append(str_lit!("a type variable named as KFX's Rust cannot have it (C27): "), car(bad))) {}
-                } else if repeated_p(map(kayak_rt::as_proc(camel), names)) {
-                    match restriction_refused(f, l, str_lit!("two type variables named alike in Rust (camel-cased, as `a` and `a-`)")) {}
-                } else {
-                    map(kayak_rt::as_proc(kayak_rt::closure1s((types,), |(types,), x: kayak_rt::Handle<'static, Sexp>| {
-                        binders_restricted(types, x)
-                    })), xs);
-                    ()
                 }
-            }
-            _ => {
-                let other = tagcase_;
+            })), binders));
+            let theirs = if null_p(names) {
+                nil::<Str>()
+            } else {
+                map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), t: Str| {
+                    camel(bare_type_name(string_chars(t), nil::<char>()))
+                })), map(kayak_rt::as_proc(after_file), filter(kayak_rt::as_proc(kayak_rt::closure1s((f,), |(f,), t: Str| {
+                    has_prefix_p(t, string_append(f, str_lit!("|")))
+                })), types)))
+            };
+            let bad = filter(kayak_rt::as_proc(kayak_rt::closure1s((theirs,), |(theirs,), n: Str| {
+                (not(kfx_name_p(n)) || string_member_p(camel(n), rust_type_names()) || string_member_p(camel(n), theirs))
+            })), names);
+            if not(null_p(bad)) {
+                match restriction_refused(f, l, string_append(str_lit!("a type variable named as KFX's Rust cannot have it (C27): "), car(bad))) {}
+            } else if repeated_p(map(kayak_rt::as_proc(camel), names)) {
+                match restriction_refused(f, l, str_lit!("two type variables named alike in Rust (camel-cased, as `a` and `a-`)")) {}
+            } else {
+                map(kayak_rt::as_proc(kayak_rt::closure1s((types,), |(types,), x: kayak_rt::data::DataAt<'static, Sexp>| {
+                    binders_restricted(types, x)
+                })), xs);
                 ()
             }
+        } else {
+            let other = tagcase_;
+            ()
         }
     }
 
@@ -1120,18 +1030,16 @@ pub mod restrictions {
         let abbrevs = abbreviations(forms);
         map(kayak_rt::as_proc(mu_written), forms);
         map(kayak_rt::as_proc(reserved_bound), forms);
-        map(kayak_rt::as_proc(kayak_rt::closure1s((abbrevs,), |(abbrevs,), f: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((abbrevs,), |(abbrevs,), f: kayak_rt::data::DataAt<'static, Sexp>| {
             let n = abbreviation_name(f);
             if (not(string_eq_p(n, str_lit!(""))) && reaches_p(abbrevs, sexp_names(third(items(f))), nil::<Str>(), n)) {
                 let tagcase_ = f;
-                match *tagcase_ {
-                    Sexp::Lst(xs, f2, l2, p2) => {
-                        match restriction_refused(f2, l2, string_append(str_lit!("a type abbreviation that mentions itself, "), string_append(n, str_lit!(": Rust's type aliases cannot; a datatype can")))) {}
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        ()
-                    }
+                if Sexp::__is_Lst(tagcase_) {
+                    let (xs, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                    match restriction_refused(f2, l2, string_append(str_lit!("a type abbreviation that mentions itself, "), string_append(n, str_lit!(": Rust's type aliases cannot; a datatype can")))) {}
+                } else {
+                    let other = tagcase_;
+                    ()
                 }
             } else {
                 ()
@@ -1146,14 +1054,12 @@ pub mod restrictions {
             match restriction_refused(str_lit!("the program"), 0i64, message) {}
         } else {
             let tagcase_ = car(fs);
-            match *tagcase_ {
-                Sexp::Lst(xs, file, line, pos) => {
-                    match restriction_refused(file, line, message) {}
-                }
-                _ => {
-                    let other = tagcase_;
-                    match restriction_refused(str_lit!("the program"), 0i64, message) {}
-                }
+            if Sexp::__is_Lst(tagcase_) {
+                let (xs, file, line, pos,) = Sexp::__Lst(tagcase_);
+                match restriction_refused(file, line, message) {}
+            } else {
+                let other = tagcase_;
+                match restriction_refused(str_lit!("the program"), 0i64, message) {}
             }
         }
     }
@@ -1184,18 +1090,16 @@ pub mod restrictions {
                 return ();
             } else if {
                 let tagcase_ = car(fs);
-                match *tagcase_ {
-                    Fact::Fact(f, p, what) => {
-                        (string_eq_p(f, str_lit!("%kfx")) && has_prefix_p(what, str_lit!("kfx-refuses ")))
-                    }
-                }
+                if Fact::__is_Fact(tagcase_) {
+                    let (f, p, what,) = Fact::__Fact(tagcase_);
+                    (string_eq_p(f, str_lit!("%kfx")) && has_prefix_p(what, str_lit!("kfx-refuses ")))
+                } else { kayak_rt::data::no_variant() }
             } {
                 let tagcase_ = car(fs);
-                match *tagcase_ {
-                    Fact::Fact(f, p, what) => {
-                        return error(string_append(str_lit!("kfx: "), after_prefix(what, str_lit!("kfx-refuses "))));
-                    }
-                }
+                if Fact::__is_Fact(tagcase_) {
+                    let (f, p, what,) = Fact::__Fact(tagcase_);
+                    return error(string_append(str_lit!("kfx: "), after_prefix(what, str_lit!("kfx-refuses "))));
+                } else { kayak_rt::data::no_variant() }
             } else {
                 fs = cdr(fs);
                 continue;
@@ -1206,7 +1110,7 @@ pub mod restrictions {
     pub fn names_restricted(forms: Sexps) -> () {
         let prims = primitive_names();
         names_once(defined_names(forms), nil::<Str>(), prims);
-        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::data::DataAt<'static, Sexp>| {
             if module_def_p(f) {
                 names_once(defined_names(module_own_items(f)), nil::<Str>(), nil::<Str>())
             } else {
@@ -1224,36 +1128,32 @@ pub mod restrictions {
         names_restricted(forms);
         restricted_all(forms, str_lit!("the program"), 0i64);
         let (types, fts) = (concat(type_scopes(forms)), file_types(forms));
-        map(kayak_rt::as_proc(kayak_rt::closure1s((types,), |(types,), f: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((types,), |(types,), f: kayak_rt::data::DataAt<'static, Sexp>| {
             specs_restricted(f, types)
         })), forms);
         map(kayak_rt::as_proc(moduleof_restricted), forms);
         recursion_restricted(forms);
-        map(kayak_rt::as_proc(kayak_rt::closure1s((fts,), |(fts,), f: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((fts,), |(fts,), f: kayak_rt::data::DataAt<'static, Sexp>| {
             binders_restricted(fts, f)
         })), forms);
-        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::Handle<'static, Sexp>| {
+        map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), f: kayak_rt::data::DataAt<'static, Sexp>| {
             if (head_is_p(f, str_lit!("define")) && {
                 let tagcase_ = second(items(f));
-                match *tagcase_ {
-                    Sexp::Sym(n, f2, p2) => {
-                        has_prefix_p(n, str_lit!("%shared:input:"))
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        false
-                    }
+                if Sexp::__is_Sym(tagcase_) {
+                    let (n, f2, p2,) = Sexp::__Sym(tagcase_);
+                    has_prefix_p(n, str_lit!("%shared:input:"))
+                } else {
+                    let other = tagcase_;
+                    false
                 }
             }) {
                 let tagcase_ = f;
-                match *tagcase_ {
-                    Sexp::Lst(xs, f2, l2, p2) => {
-                        match restriction_refused(f2, l2, str_lit!("a load-input of a file whose expression is no module, FX-26's, which KFX reads not yet (C116, C171)")) {}
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        ()
-                    }
+                if Sexp::__is_Lst(tagcase_) {
+                    let (xs, f2, l2, p2,) = Sexp::__Lst(tagcase_);
+                    match restriction_refused(f2, l2, str_lit!("a load-input of a file whose expression is no module, FX-26's, which KFX reads not yet (C116, C171)")) {}
+                } else {
+                    let other = tagcase_;
+                    ()
                 }
             } else {
                 ()

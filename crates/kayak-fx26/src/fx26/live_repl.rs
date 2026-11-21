@@ -46,6 +46,7 @@ use super::*;
 // is now (its number, state, line, the output since, when begun and
 // ended, its steps, the collections meanwhile); the draft's run's
 // outcome (its serial, its note, whether an error).
+#[derive(Clone, Copy)]
 pub enum Request {
     EntryGiven(i64, Str, Str, bool),
     DraftGiven(i64, Str, Str),
@@ -54,58 +55,256 @@ pub enum Request {
     Limited(i64),
 }
 
-impl kayak_rt::Visit for Request {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::EntryGiven(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-            Self::DraftGiven(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-            Self::DraftDropped() => { }
-            Self::Cancelled(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Limited(f0) => { kayak_rt::Trace::trace(*f0, t); }
-        }
+impl kayak_rt::data::Variant<4> for Request {
+    type Fields = (i64, Str, Str, bool,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("entry-given")
     }
 }
 
-pub fn entry_given(f0: i64, f1: Str, f2: Str, f3: bool) -> kayak_rt::Handle<'static, Request> {
-    kayak_rt::heap_alloc(Request::EntryGiven(f0, f1, f2, f3))
+#[allow(non_snake_case)]
+impl Request {
+    #[inline(always)]
+    pub fn __is_EntryGiven(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<4>()
+    }
+    #[inline(always)]
+    pub fn __EntryGiven(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
+        w.fields::<4>()
+    }
 }
 
-pub fn draft_given(f0: i64, f1: Str, f2: Str) -> kayak_rt::Handle<'static, Request> {
-    kayak_rt::heap_alloc(Request::DraftGiven(f0, f1, f2))
+impl kayak_rt::data::Variant<3> for Request {
+    type Fields = (i64, Str, Str,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("draft-given")
+    }
 }
 
-pub fn draft_dropped() -> kayak_rt::Handle<'static, Request> {
-    kayak_rt::heap_alloc(Request::DraftDropped())
+#[allow(non_snake_case)]
+impl Request {
+    #[inline(always)]
+    pub fn __is_DraftGiven(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<3>()
+    }
+    #[inline(always)]
+    pub fn __DraftGiven(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+        w.fields::<3>()
+    }
 }
 
-pub fn cancelled(f0: i64) -> kayak_rt::Handle<'static, Request> {
-    kayak_rt::heap_alloc(Request::Cancelled(f0))
+impl kayak_rt::data::Variant<2> for Request {
+    type Fields = ();
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("draft-dropped")
+    }
 }
 
-pub fn limited(f0: i64) -> kayak_rt::Handle<'static, Request> {
-    kayak_rt::heap_alloc(Request::Limited(f0))
+#[allow(non_snake_case)]
+impl Request {
+    #[inline(always)]
+    pub fn __is_DraftDropped(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<2>()
+    }
+    #[inline(always)]
+    pub fn __DraftDropped(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+        w.fields::<2>()
+    }
 }
 
+impl kayak_rt::data::Variant<1> for Request {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("cancelled")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Request {
+    #[inline(always)]
+    pub fn __is_Cancelled(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Cancelled(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
+}
+
+impl kayak_rt::data::Variant<0> for Request {
+    type Fields = (i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("limited")
+    }
+}
+
+#[allow(non_snake_case)]
+impl Request {
+    #[inline(always)]
+    pub fn __is_Limited(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Limited(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Request {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<4>() {
+            let (f0, f1, f2, f3,) = w.fields::<4>();
+            Self::EntryGiven(f0, f1, f2, f3)
+        } else if w.is::<3>() {
+            let (f0, f1, f2,) = w.fields::<3>();
+            Self::DraftGiven(f0, f1, f2)
+        } else if w.is::<2>() {
+            let () = w.fields::<2>();
+            Self::DraftDropped()
+        } else if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::Cancelled(f0)
+        } else if w.is::<0>() {
+            let (f0,) = w.fields::<0>();
+            Self::Limited(f0)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<4>() { return t.reach(w.obj::<4>()); }
+        if w.is::<3>() { return t.reach(w.obj::<3>()); }
+        if w.is::<2>() { return t.reach(w.obj::<2>()); }
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<4>() { return (w.obj::<4>()); }
+        if w.is::<3>() { return (w.obj::<3>()); }
+        if w.is::<2>() { return (w.obj::<2>()); }
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn entry_given(f0: i64, f1: Str, f2: Str, f3: bool) -> kayak_rt::data::DataAt<'static, Request> {
+    kayak_rt::data::data_heap::<Request, 4>((f0, f1, f2, f3,))
+}
+
+pub fn draft_given(f0: i64, f1: Str, f2: Str) -> kayak_rt::data::DataAt<'static, Request> {
+    kayak_rt::data::data_heap::<Request, 3>((f0, f1, f2,))
+}
+
+pub fn draft_dropped() -> kayak_rt::data::DataAt<'static, Request> {
+    kayak_rt::data::data_heap::<Request, 2>(())
+}
+
+pub fn cancelled(f0: i64) -> kayak_rt::data::DataAt<'static, Request> {
+    kayak_rt::data::data_heap::<Request, 1>((f0,))
+}
+
+pub fn limited(f0: i64) -> kayak_rt::data::DataAt<'static, Request> {
+    kayak_rt::data::data_heap::<Request, 0>((f0,))
+}
+
+#[derive(Clone, Copy)]
 pub enum News {
     EntryNews(i64, i64, Str, Str, i64, i64, i64, i64),
     DraftNews(i64, Str, bool),
 }
 
-impl kayak_rt::Visit for News {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::EntryNews(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); }
-            Self::DraftNews(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-        }
+impl kayak_rt::data::Variant<1> for News {
+    type Fields = (i64, i64, Str, Str, i64, i64, i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("entry-news")
     }
 }
 
-pub fn entry_news(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> kayak_rt::Handle<'static, News> {
-    kayak_rt::heap_alloc(News::EntryNews(f0, f1, f2, f3, f4, f5, f6, f7))
+#[allow(non_snake_case)]
+impl News {
+    #[inline(always)]
+    pub fn __is_EntryNews(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __EntryNews(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn draft_news(f0: i64, f1: Str, f2: bool) -> kayak_rt::Handle<'static, News> {
-    kayak_rt::heap_alloc(News::DraftNews(f0, f1, f2))
+impl kayak_rt::data::Variant<0> for News {
+    type Fields = (i64, Str, bool,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("draft-news")
+    }
+}
+
+#[allow(non_snake_case)]
+impl News {
+    #[inline(always)]
+    pub fn __is_DraftNews(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __DraftNews(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for News {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0, f1, f2, f3, f4, f5, f6, f7,) = w.fields::<1>();
+            Self::EntryNews(f0, f1, f2, f3, f4, f5, f6, f7)
+        } else if w.is::<0>() {
+            let (f0, f1, f2,) = w.fields::<0>();
+            Self::DraftNews(f0, f1, f2)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn entry_news(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> kayak_rt::data::DataAt<'static, News> {
+    kayak_rt::data::data_heap::<News, 1>((f0, f1, f2, f3, f4, f5, f6, f7,))
+}
+
+pub fn draft_news(f0: i64, f1: Str, f2: bool) -> kayak_rt::data::DataAt<'static, News> {
+    kayak_rt::data::data_heap::<News, 0>((f0, f1, f2,))
 }
 
 pub mod session {
@@ -323,7 +522,7 @@ pub mod session {
     /// it was before the engine said one rather than failing, for the Rust
     /// to catch (`machine-refused!`).
     #[inline]
-    pub fn numbered_or_failed_x(tops: List<kayak_rt::Handle<'static, Top>>) -> List<i64> {
+    pub fn numbered_or_failed_x(tops: List<kayak_rt::data::DataAt<'static, Top>>) -> List<i64> {
         let ns = number_tops_x(tops);
         failure_raised_x();
         ns
@@ -397,18 +596,18 @@ pub mod session {
     }
 
     #[inline]
-    pub fn requests() -> Ref<List<kayak_rt::Handle<'static, Request>>> {
-        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Request>>>);
+    pub fn requests() -> Ref<List<kayak_rt::data::DataAt<'static, Request>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Request>>>);
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, Request>>())
+            kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, Request>>())
         })
     }
 
     #[inline]
-    pub fn news_out() -> Ref<List<kayak_rt::Handle<'static, News>>> {
-        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, News>>>);
+    pub fn news_out() -> Ref<List<kayak_rt::data::DataAt<'static, News>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, News>>>);
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, News>>())
+            kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, News>>())
         })
     }
 
@@ -429,7 +628,7 @@ pub mod session {
     }
 
     #[inline]
-    pub fn asked_x(r: kayak_rt::Handle<'static, Request>) -> () {
+    pub fn asked_x(r: kayak_rt::data::DataAt<'static, Request>) -> () {
         set(requests(), kayak_rt::heap_cons(r, get(requests())))
     }
 
@@ -732,7 +931,7 @@ pub mod session {
     }
 
     #[inline]
-    pub fn definition_form_p(f: kayak_rt::Handle<'static, Sexp>) -> bool {
+    pub fn definition_form_p(f: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
         any_p(kayak_rt::as_proc(kayak_rt::closure1s((f,), |(f,), h: Str| {
             head_is_p(f, h)
         })), kayak_rt::heap_cons(str_lit!("define"), kayak_rt::heap_cons(str_lit!("define*"), kayak_rt::heap_cons(str_lit!("define-rec"), kayak_rt::heap_cons(str_lit!("define-type"), kayak_rt::heap_cons(str_lit!("define-datatype"), kayak_rt::heap_cons(str_lit!("define-generative"), kayak_rt::heap_cons(str_lit!("define-effect"), kayak_rt::nil()))))))))
@@ -781,26 +980,24 @@ pub mod session {
     }
 
     // Reading what was typed: the `%k` an entry names.
-    pub fn named_results(x: kayak_rt::Handle<'static, Sexp>) -> List<i64> {
+    pub fn named_results(x: kayak_rt::data::DataAt<'static, Sexp>) -> List<i64> {
         let tagcase_ = x;
-        match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                let cs = string_chars(n);
-                if (not(null_p(cs)) && char_eq_p(car(cs), '%') && not(null_p(cdr(cs))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
-                    not(char_numeric_p(c))
-                })), cdr(cs)))) {
-                    kayak_rt::heap_cons(number_from(cdr(cs), 0i64), kayak_rt::nil())
-                } else {
-                    nil::<i64>()
-                }
-            }
-            Sexp::Lst(xs, f, l, p) => {
-                concat(map(kayak_rt::as_proc(named_results), xs))
-            }
-            _ => {
-                let other = tagcase_;
+        if Sexp::__is_Sym(tagcase_) {
+            let (n, f, p,) = Sexp::__Sym(tagcase_);
+            let cs = string_chars(n);
+            if (not(null_p(cs)) && char_eq_p(car(cs), '%') && not(null_p(cdr(cs))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
+                not(char_numeric_p(c))
+            })), cdr(cs)))) {
+                kayak_rt::heap_cons(number_from(cdr(cs), 0i64), kayak_rt::nil())
+            } else {
                 nil::<i64>()
             }
+        } else if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            concat(map(kayak_rt::as_proc(named_results), xs))
+        } else {
+            let other = tagcase_;
+            nil::<i64>()
         }
     }
 
@@ -1284,17 +1481,16 @@ pub mod session {
 
     // Completion: the name before the cursor, among the checker's.
     pub fn known_names() -> Strings {
-        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Bind>| {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Bind>| {
             let tagcase_ = b;
-            match *tagcase_ {
-                Bind::Bind(n, sc, w) => {
-                    if (has_prefix_p(n, str_lit!("%")) || has_char_in_p(n, ' ')) {
-                        nil::<Str>()
-                    } else {
-                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                    }
+            if Bind::__is_Bind(tagcase_) {
+                let (n, sc, w,) = Bind::__Bind(tagcase_);
+                if (has_prefix_p(n, str_lit!("%")) || has_char_in_p(n, ' ')) {
+                    nil::<Str>()
+                } else {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         })), cv_binds(get(repl_cv()))))
     }
 
@@ -1483,20 +1679,18 @@ pub mod session {
             string_append(n, str_lit!(" is not defined"))
         } else {
             let tagcase_ = car(found);
-            match *tagcase_ {
-                Bind::Bind(n2, sc, w) => {
-                    let tagcase_ = sc;
-                    match *tagcase_ {
-                        Scheme::Scheme(tvars, t) => {
-                            string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit!("prim")) {
-                                str_lit!(", a primitive")
-                            } else {
-                                str_lit!("")
-                            })))
-                        }
-                    }
-                }
-            }
+            if Bind::__is_Bind(tagcase_) {
+                let (n2, sc, w,) = Bind::__Bind(tagcase_);
+                let tagcase_ = sc;
+                if Scheme::__is_Scheme(tagcase_) {
+                    let (tvars, t,) = Scheme::__Scheme(tagcase_);
+                    string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit!("prim")) {
+                        str_lit!(", a primitive")
+                    } else {
+                        str_lit!("")
+                    })))
+                } else { kayak_rt::data::no_variant() }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 
@@ -1573,11 +1767,10 @@ pub mod session {
         }, 1i64);
         let made = entry_forms(k, forms, str_lit!(""), str_lit!(""), true, nil::<i64>());
         let tagcase_ = made;
-        match *tagcase_ {
-            MadeEntry::MadeEntry(typed, defined, quiet, tops) => {
-                set(entries(), kayak_rt::heap_cons(make_entry(k, text, typed, defined, quiet, concat(map(kayak_rt::as_proc(named_results), forms)), st_waiting(), tops, str_lit!(""), timed, now), cdr(get(entries()))))
-            }
-        }
+        if MadeEntry::__is_MadeEntry(tagcase_) {
+            let (typed, defined, quiet, tops,) = MadeEntry::__MadeEntry(tagcase_);
+            set(entries(), kayak_rt::heap_cons(make_entry(k, text, typed, defined, quiet, concat(map(kayak_rt::as_proc(named_results), forms)), st_waiting(), tops, str_lit!(""), timed, now), cdr(get(entries()))))
+        } else { kayak_rt::data::no_variant() }
     }
 
     /// A command's line, as an entry's that is done.
@@ -1586,27 +1779,64 @@ pub mod session {
         set(entries(), kayak_rt::heap_cons(make_entry(i64_minus(0i64, get(commands())), str_lit!(""), str_lit!(""), str_lit!(""), true, nil::<i64>(), st_done(), nil::<i64>(), line, false, now), get(entries())))
     }
 
+    #[derive(Clone, Copy)]
     pub enum MadeEntry {
         MadeEntry(Str, Str, bool, List<i64>),
     }
 
-    impl kayak_rt::Visit for MadeEntry {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::MadeEntry(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-            }
+    impl kayak_rt::data::Variant<0> for MadeEntry {
+        type Fields = (Str, Str, bool, List<i64>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("made-entry")
         }
     }
 
-    pub fn made_entry(f0: Str, f1: Str, f2: bool, f3: List<i64>) -> kayak_rt::Handle<'static, MadeEntry> {
-        kayak_rt::heap_alloc(MadeEntry::MadeEntry(f0, f1, f2, f3))
+    #[allow(non_snake_case)]
+    impl MadeEntry {
+        #[inline(always)]
+        pub fn __is_MadeEntry(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __MadeEntry(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for MadeEntry {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<0>() {
+                let (f0, f1, f2, f3,) = w.fields::<0>();
+                Self::MadeEntry(f0, f1, f2, f3)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn made_entry(f0: Str, f1: Str, f2: bool, f3: List<i64>) -> kayak_rt::data::DataAt<'static, MadeEntry> {
+        kayak_rt::data::data_heap::<MadeEntry, 0>((f0, f1, f2, f3,))
     }
 
     /// Each form checked and lowered, as `repl-forms` does, in order; an
     /// expression's value `%k`'s, the global bound at its type: what is
     /// written after its value (the last expression's), and the lines of
     /// the definitions.
-    pub fn entry_forms(mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut tops: List<i64>) -> kayak_rt::Handle<'static, MadeEntry> {
+    pub fn entry_forms(mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut tops: List<i64>) -> kayak_rt::data::DataAt<'static, MadeEntry> {
         loop {
             if null_p(forms) {
                 return made_entry(typed, defined, quiet, tops);
@@ -1671,23 +1901,21 @@ pub mod session {
     }
 
     /// The checker's environment with `name` a global of `form`'s type.
-    pub fn result_bound(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, name: Str) -> kayak_rt::Handle<'static, Cv> {
+    pub fn result_bound(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::data::DataAt<'static, Sexp>, name: Str) -> kayak_rt::data::DataAt<'static, Cv> {
         let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
-        match *tagcase_ {
-            Res::Res(t, es, s) => {
-                with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil()))
-            }
-        }
+        if Res::__is_Res(tagcase_) {
+            let (t, es, s,) = Res::__Res(tagcase_);
+            with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil()))
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
-    pub fn expression_effects(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Strings {
+    pub fn expression_effects(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::data::DataAt<'static, Sexp>) -> Strings {
         let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
-        match *tagcase_ {
-            Res::Res(t, es, s) => {
-                es
-            }
-        }
+        if Res::__is_Res(tagcase_) {
+            let (t, es, s,) = Res::__Res(tagcase_);
+            es
+        } else { kayak_rt::data::no_variant() }
     }
 
     pub fn start_top_x(e: Entry) -> () {
@@ -1766,9 +1994,9 @@ pub mod session {
     }
 
     /// Each entry as it is now, its output since taken, for the front.
-    pub fn entries_news(es: List<Entry>) -> List<kayak_rt::Handle<'static, News>> {
+    pub fn entries_news(es: List<Entry>) -> List<kayak_rt::data::DataAt<'static, News>> {
         if null_p(es) {
-            nil::<kayak_rt::Handle<'static, News>>()
+            nil::<kayak_rt::data::DataAt<'static, News>>()
         } else {
             let e = car(es);
             let out = get(e.9);
@@ -2050,48 +2278,172 @@ pub mod session {
     // too, as the task in slot 0, by turns with the entries, its value under
     // the draft before Enter; dropped, the IR numbered for it with it, when
     // the draft changes.
+    #[derive(Clone, Copy)]
     pub enum Closing {
         NotClosable(),
         ClosedOff(Str, i64, List<i64>, bool),
     }
 
-    impl kayak_rt::Visit for Closing {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::NotClosable() => { }
-                Self::ClosedOff(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-            }
+    impl kayak_rt::data::Variant<1> for Closing {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("not-closable")
         }
     }
 
-    pub fn not_closable() -> kayak_rt::Handle<'static, Closing> {
-        kayak_rt::heap_alloc(Closing::NotClosable())
+    #[allow(non_snake_case)]
+    impl Closing {
+        #[inline(always)]
+        pub fn __is_NotClosable(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __NotClosable(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn closed_off(f0: Str, f1: i64, f2: List<i64>, f3: bool) -> kayak_rt::Handle<'static, Closing> {
-        kayak_rt::heap_alloc(Closing::ClosedOff(f0, f1, f2, f3))
+    impl kayak_rt::data::Variant<0> for Closing {
+        type Fields = (Str, i64, List<i64>, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("closed-off")
+        }
     }
 
+    #[allow(non_snake_case)]
+    impl Closing {
+        #[inline(always)]
+        pub fn __is_ClosedOff(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __ClosedOff(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Closing {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let () = w.fields::<1>();
+                Self::NotClosable()
+            } else if w.is::<0>() {
+                let (f0, f1, f2, f3,) = w.fields::<0>();
+                Self::ClosedOff(f0, f1, f2, f3)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn not_closable() -> kayak_rt::data::DataAt<'static, Closing> {
+        kayak_rt::data::data_heap::<Closing, 1>(())
+    }
+
+    pub fn closed_off(f0: Str, f1: i64, f2: List<i64>, f3: bool) -> kayak_rt::data::DataAt<'static, Closing> {
+        kayak_rt::data::data_heap::<Closing, 0>((f0, f1, f2, f3,))
+    }
+
+    #[derive(Clone, Copy)]
     pub enum Scan {
         Unbalanced(),
         Scanned(List<i64>, bool),
     }
 
-    impl kayak_rt::Visit for Scan {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::Unbalanced() => { }
-                Self::Scanned(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<1> for Scan {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("unbalanced")
         }
     }
 
-    pub fn unbalanced() -> kayak_rt::Handle<'static, Scan> {
-        kayak_rt::heap_alloc(Scan::Unbalanced())
+    #[allow(non_snake_case)]
+    impl Scan {
+        #[inline(always)]
+        pub fn __is_Unbalanced(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __Unbalanced(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn scanned(f0: List<i64>, f1: bool) -> kayak_rt::Handle<'static, Scan> {
-        kayak_rt::heap_alloc(Scan::Scanned(f0, f1))
+    impl kayak_rt::data::Variant<0> for Scan {
+        type Fields = (List<i64>, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("scanned")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Scan {
+        #[inline(always)]
+        pub fn __is_Scanned(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Scanned(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Scan {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let () = w.fields::<1>();
+                Self::Unbalanced()
+            } else if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::Scanned(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn unbalanced() -> kayak_rt::data::DataAt<'static, Scan> {
+        kayak_rt::data::data_heap::<Scan, 1>(())
+    }
+
+    pub fn scanned(f0: List<i64>, f1: bool) -> kayak_rt::data::DataAt<'static, Scan> {
+        kayak_rt::data::data_heap::<Scan, 0>((f0, f1,))
     }
 
     /// Where the text stops being finished: at a string not closed (begun
@@ -2171,7 +2523,7 @@ pub mod session {
 
     /// Where the lists still open begin, the innermost first; and whether the
     /// text ends in a comment. A list closed that was never opened: none.
-    pub fn open_lists(mut cs: List<char>, mut i: i64, mut open: List<i64>, mut str: bool, mut comment: bool) -> kayak_rt::Handle<'static, Scan> {
+    pub fn open_lists(mut cs: List<char>, mut i: i64, mut open: List<i64>, mut str: bool, mut comment: bool) -> kayak_rt::data::DataAt<'static, Scan> {
         loop {
             if null_p(cs) {
                 return scanned(open, comment);
@@ -2232,22 +2584,20 @@ pub mod session {
     /// its lists closed; where that stops being the draft, the lists it
     /// closed, and whether the draft was finished (nothing left out or
     /// closed).
-    pub fn closed_text(text: Str) -> kayak_rt::Handle<'static, Closing> {
+    pub fn closed_text(text: Str) -> kayak_rt::data::DataAt<'static, Closing> {
         let kept = before_quotes(text, kept_end(string_chars(text), 0i64, -1i64, false, -1i64));
         let typed = cut(text, 0i64, kept);
         let tagcase_ = open_lists(string_chars(typed), 0i64, nil::<i64>(), false, false);
-        match *tagcase_ {
-            Scan::Unbalanced() => {
-                not_closable()
-            }
-            Scan::Scanned(open, comment) => {
-                closed_off(string_append(typed, string_append(if (comment && not(null_p(open))) {
-                    str_lit!("\n")
-                } else {
-                    str_lit!("")
-                }, closers(size(open)))), kept, open, (null_p(open) && i64_eq(kept, string_length_i64(text))))
-            }
-        }
+        if Scan::__is_Unbalanced(tagcase_) {
+            not_closable()
+        } else if Scan::__is_Scanned(tagcase_) {
+            let (open, comment,) = Scan::__Scanned(tagcase_);
+            closed_off(string_append(typed, string_append(if (comment && not(null_p(open))) {
+                str_lit!("\n")
+            } else {
+                str_lit!("")
+            }, closers(size(open)))), kept, open, (null_p(open) && i64_eq(kept, string_length_i64(text))))
+        } else { kayak_rt::data::no_variant() }
     }
 
     pub fn i64_member_p(mut x: i64, mut xs: List<i64>) -> bool {
@@ -2388,7 +2738,7 @@ pub mod session {
             let typed = trimmed_end(cut(text, 0i64, kept));
             let inner = program_read(string_append(cut(text, car(open), kept), str_lit!(")")), str_lit!("<hint>"), 1i64);
             let xs = if null_p(inner) {
-                nil::<kayak_rt::Handle<'static, Sexp>>()
+                nil::<kayak_rt::data::DataAt<'static, Sexp>>()
             } else {
                 items(car(inner))
             };
@@ -2399,18 +2749,16 @@ pub mod session {
                 str_lit!("")
             } else {
                 let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Sexp::Sym(op, f, p) => {
-                        if form_keyword_p(op) {
-                            str_lit!("")
-                        } else {
-                            op
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
+                if Sexp::__is_Sym(tagcase_) {
+                    let (op, f, p,) = Sexp::__Sym(tagcase_);
+                    if form_keyword_p(op) {
                         str_lit!("")
+                    } else {
+                        op
                     }
+                } else {
+                    let other = tagcase_;
+                    str_lit!("")
                 }
             })
         }
@@ -2537,7 +2885,7 @@ pub mod session {
         }
     }
 
-    pub fn checked_all(mut v: kayak_rt::Handle<'static, Cv>, mut forms: Sexps) -> kayak_rt::Handle<'static, Cv> {
+    pub fn checked_all(mut v: kayak_rt::data::DataAt<'static, Cv>, mut forms: Sexps) -> kayak_rt::data::DataAt<'static, Cv> {
         loop {
             if null_p(forms) {
                 return v;
@@ -2549,7 +2897,7 @@ pub mod session {
     }
 
     /// What the REPL writes of each definition among `forms`.
-    pub fn definition_lines(mut v: kayak_rt::Handle<'static, Cv>, mut forms: Sexps) -> Strings {
+    pub fn definition_lines(mut v: kayak_rt::data::DataAt<'static, Cv>, mut forms: Sexps) -> Strings {
         loop {
             if null_p(forms) {
                 return nil::<Str>();
@@ -2598,7 +2946,7 @@ pub mod session {
         }
     }
 
-    pub fn expression_speculated_x(form: kayak_rt::Handle<'static, Sexp>) -> () {
+    pub fn expression_speculated_x(form: kayak_rt::data::DataAt<'static, Sexp>) -> () {
         let r#type = form_type(get(repl_cv()), form);
         let effects = expression_effects(get(repl_cv()), form);
         let waiting = unfinished_of(named_results(form));
@@ -2884,18 +3232,16 @@ pub mod session {
         };
         let key = {
             let tagcase_ = closing;
-            match *tagcase_ {
-                Closing::NotClosable() => {
-                    str_lit!("")
-                }
-                Closing::ClosedOff(closed, kept, open, finished) => {
-                    string_append(if finished {
-                        str_lit!("f|")
-                    } else {
-                        str_lit!("u|")
-                    }, trimmed_end(closed))
-                }
-            }
+            if Closing::__is_NotClosable(tagcase_) {
+                str_lit!("")
+            } else if Closing::__is_ClosedOff(tagcase_) {
+                let (closed, kept, open, finished,) = Closing::__ClosedOff(tagcase_);
+                string_append(if finished {
+                    str_lit!("f|")
+                } else {
+                    str_lit!("u|")
+                }, trimmed_end(closed))
+            } else { kayak_rt::data::no_variant() }
         };
         if (not(string_eq_p(key, str_lit!(""))) && string_eq_p(key, get(spec_key()))) {
             set(speculated(), true)
@@ -2904,24 +3250,22 @@ pub mod session {
             set(speculated(), true);
             set(spec_key(), key);
             let tagcase_ = closing;
-            match *tagcase_ {
-                Closing::NotClosable() => {
-                    ()
-                }
-                Closing::ClosedOff(closed, kept, open, finished) => {
-                    set(spec_text(), closed);
-                    set(spec_kept(), kept);
-                    set(spec_open(), open);
-                    set(spec_finished(), finished);
-                    holes_set_x(d, kept, open);
-                    set(spec_phase(), if (finished || null_p(get(hole_texts()))) {
-                        4i64
-                    } else {
-                        1i64
-                    });
-                    speculated_forms_x(program_read(closed, str_lit!("<draft>"), 1i64), finished)
-                }
-            }
+            if Closing::__is_NotClosable(tagcase_) {
+                ()
+            } else if Closing::__is_ClosedOff(tagcase_) {
+                let (closed, kept, open, finished,) = Closing::__ClosedOff(tagcase_);
+                set(spec_text(), closed);
+                set(spec_kept(), kept);
+                set(spec_open(), open);
+                set(spec_finished(), finished);
+                holes_set_x(d, kept, open);
+                set(spec_phase(), if (finished || null_p(get(hole_texts()))) {
+                    4i64
+                } else {
+                    1i64
+                });
+                speculated_forms_x(program_read(closed, str_lit!("<draft>"), 1i64), finished)
+            } else { kayak_rt::data::no_variant() }
         }
     }
 
@@ -3087,40 +3431,38 @@ pub mod session {
 
     /// The front's requests not yet sent, the oldest first.
     #[inline]
-    pub fn requests_x() -> List<kayak_rt::Handle<'static, Request>> {
+    pub fn requests_x() -> List<kayak_rt::data::DataAt<'static, Request>> {
         let rs = get(requests());
-        set(requests(), nil::<kayak_rt::Handle<'static, Request>>());
-        reversed_onto(rs, nil::<kayak_rt::Handle<'static, Request>>())
+        set(requests(), nil::<kayak_rt::data::DataAt<'static, Request>>());
+        reversed_onto(rs, nil::<kayak_rt::data::DataAt<'static, Request>>())
     }
 
     /// On the machine's side, a request from the front. An entry given is
     /// checked again here, after those before it, as there; a refusal fails,
     /// and the Rust gives it to `machine-refused!`.
-    pub fn request_x(r: kayak_rt::Handle<'static, Request>, now: i64) -> () {
+    pub fn request_x(r: kayak_rt::data::DataAt<'static, Request>, now: i64) -> () {
         let tagcase_ = r;
-        match *tagcase_ {
-            Request::EntryGiven(k, text, label, timed) => {
-                set(repl_count(), i64_minus(k, 1i64));
-                submit_x(text, label, timed, now)
+        if Request::__is_EntryGiven(tagcase_) {
+            let (k, text, label, timed,) = Request::__EntryGiven(tagcase_);
+            set(repl_count(), i64_minus(k, 1i64));
+            submit_x(text, label, timed, now)
+        } else if Request::__is_DraftGiven(tagcase_) {
+            let (serial, text, r#type,) = Request::__DraftGiven(tagcase_);
+            draft_run_x(serial, text, r#type)
+        } else if Request::__is_DraftDropped(tagcase_) {
+            speculation_dropped_x()
+        } else if Request::__is_Cancelled(tagcase_) {
+            let (k,) = Request::__Cancelled(tagcase_);
+            let found = entry_numbered(get(entries()), k);
+            if (not(null_p(found)) && unfinished_p(car(found))) {
+                interrupted_x(car(found), now)
+            } else {
+                ()
             }
-            Request::DraftGiven(serial, text, r#type) => {
-                draft_run_x(serial, text, r#type)
-            }
-            Request::DraftDropped() => {
-                speculation_dropped_x()
-            }
-            Request::Cancelled(k) => {
-                let found = entry_numbered(get(entries()), k);
-                if (not(null_p(found)) && unfinished_p(car(found))) {
-                    interrupted_x(car(found), now)
-                } else {
-                    ()
-                }
-            }
-            Request::Limited(n) => {
-                set(step_limit(), n)
-            }
-        }
+        } else if Request::__is_Limited(tagcase_) {
+            let (n,) = Request::__Limited(tagcase_);
+            set(step_limit(), n)
+        } else { kayak_rt::data::no_variant() }
     }
 
     /// A request that failed on the machine's side: an entry's check, which
@@ -3139,47 +3481,46 @@ pub mod session {
     /// entry whose state or line changed, or that wrote; then the draft's
     /// run's outcome. What was sent of an entry is kept as its `drawn`,
     /// which this side draws nothing to.
-    pub fn news_taken_x(now: i64) -> List<kayak_rt::Handle<'static, News>> {
+    pub fn news_taken_x(now: i64) -> List<kayak_rt::data::DataAt<'static, News>> {
         let (es, drafts) = (entries_where(kayak_rt::closure1((), |(), e: Entry| {
             (i64_gt(e.0, 0i64) && (not(string_eq_p(get(e.9), str_lit!(""))) || not(string_eq_p(entry_key(e), get(e.13)))))
         }), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())), get(news_out()));
-        set(news_out(), nil::<kayak_rt::Handle<'static, News>>());
-        onto(entries_news(es), reversed_onto(drafts, nil::<kayak_rt::Handle<'static, News>>()))
+        set(news_out(), nil::<kayak_rt::data::DataAt<'static, News>>());
+        onto(entries_news(es), reversed_onto(drafts, nil::<kayak_rt::data::DataAt<'static, News>>()))
     }
 
     /// On the front's side, news from the machine: an entry's state, line
     /// and output; the draft's run's outcome, if that run is still the
     /// draft's.
-    pub fn news_x(n: kayak_rt::Handle<'static, News>, now: i64) -> () {
+    pub fn news_x(n: kayak_rt::data::DataAt<'static, News>, now: i64) -> () {
         let tagcase_ = n;
-        match *tagcase_ {
-            News::EntryNews(k, state, shown, out, began, ended, steps, collected) => {
-                let found = entry_numbered(get(entries()), k);
-                if null_p(found) {
-                    ()
+        if News::__is_EntryNews(tagcase_) {
+            let (k, state, shown, out, began, ended, steps, collected,) = News::__EntryNews(tagcase_);
+            let found = entry_numbered(get(entries()), k);
+            if null_p(found) {
+                ()
+            } else {
+                let e = car(found);
+                set(e.8, shown);
+                set(e.9, string_append(get(e.9), out));
+                set(e.10, began);
+                set(e.15, steps);
+                if (unfinished_p(e) && not(i64_lt_eq(state, st_running()))) {
+                    ended_x(e, state, ended);
+                    set(e.17, i64_plus(e.16, collected))
                 } else {
-                    let e = car(found);
-                    set(e.8, shown);
-                    set(e.9, string_append(get(e.9), out));
-                    set(e.10, began);
-                    set(e.15, steps);
-                    if (unfinished_p(e) && not(i64_lt_eq(state, st_running()))) {
-                        ended_x(e, state, ended);
-                        set(e.17, i64_plus(e.16, collected))
-                    } else {
-                        set(e.6, state)
-                    }
+                    set(e.6, state)
                 }
             }
-            News::DraftNews(serial, text, error) => {
-                if (i64_eq(serial, get(spec_serial())) && i64_eq(get(spec_state()), 1i64)) {
-                    set(spec_state(), 2i64);
-                    noted_x(text, error)
-                } else {
-                    ()
-                }
+        } else if News::__is_DraftNews(tagcase_) {
+            let (serial, text, error,) = News::__DraftNews(tagcase_);
+            if (i64_eq(serial, get(spec_serial())) && i64_eq(get(spec_state()), 1i64)) {
+                set(spec_state(), 2i64);
+                noted_x(text, error)
+            } else {
+                ()
             }
-        }
+        } else { kayak_rt::data::no_variant() }
     }
 
     /// Whether to leave: ^D (or the input's end) asked, and no entry unfinished.

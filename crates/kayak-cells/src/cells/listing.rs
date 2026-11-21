@@ -138,69 +138,66 @@ pub fn w_escaped_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p 
 
 // A literal as `lit-text` writes it; a quoted node as its label says
 // (`q-written!`, the reaches counted first).
-pub fn w_lit_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, l: kayak_rt::Handle<'static, Lit>) -> () {
+pub fn w_lit_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, l: kayak_rt::data::DataAt<'static, Lit>) -> () {
     let tagcase_ = l;
-    match *tagcase_ {
-        Lit::LInt(k) => {
-            w_str_x(p, b, n, int_to_string(k))
-        }
-        Lit::LBool(v) => {
-            w_str_x(p, b, n, if v {
-                str_lit!("#t")
-            } else {
-                str_lit!("#f")
-            })
-        }
-        Lit::LUnit() => {
-            w_str_x(p, b, n, str_lit!("|#u|"))
-        }
-        Lit::LNil() => {
-            w_str_x(p, b, n, str_lit!("()"))
-        }
-        Lit::LStr(s) => {
-            w_byte_x(p, b, n, 34i64);
-            w_escaped_x(p, b, n, s, 34i64, 0i64, string_length_i64(s));
-            w_byte_x(p, b, n, 34i64)
-        }
-        Lit::LChar(ch) => {
-            w_str_x(p, b, n, str_lit!("#\\x"));
-            w_digits_x(p, b, n, char_to_i64(ch), 16i64)
-        }
-        Lit::LF64(x) => {
-            w_str_x(p, b, n, str_lit!("#f64x"));
-            w_str_x(p, b, n, hex_bits(x, 16i64, nil::<char>()))
-        }
-        Lit::LSym(s) => {
-            w_byte_x(p, b, n, 124i64);
-            w_escaped_x(p, b, n, s, 124i64, 0i64, string_length_i64(s));
-            w_byte_x(p, b, n, 124i64)
-        }
-        Lit::LPair(a, d) => {
-            w_byte_x(p, b, n, 40i64);
-            w_lit_x(p, b, n, a);
-            w_str_x(p, b, n, str_lit!(" . "));
-            w_lit_x(p, b, n, d);
-            w_byte_x(p, b, n, 41i64)
-        }
-        Lit::LWord(w) => {
-            w_str_x(p, b, n, str_lit!("word "));
-            w_name_x(p, b, n, w)
-        }
-        Lit::LQuoted(k) => {
-            w_str_x(p, b, n, q_written_x(l))
-        }
-        Lit::LFrozen(kind, fs) => {
-            w_str_x(p, b, n, str_lit!("#bloblet("));
-            w_str_x(p, b, n, kind);
-            w_str_x(p, b, n, str_lit!(" (#trailer "));
-            w_i64_x(p, b, n, i64_plus(1i64, size(fs)));
-            w_lits_x(p, b, n, fs);
-            w_str_x(p, b, n, str_lit!(") #u8())"))
-        }
-    }
+    if Lit::__is_LInt(tagcase_) {
+        let (k,) = Lit::__LInt(tagcase_);
+        w_str_x(p, b, n, int_to_string(k))
+    } else if Lit::__is_LBool(tagcase_) {
+        let (v,) = Lit::__LBool(tagcase_);
+        w_str_x(p, b, n, if v {
+            str_lit!("#t")
+        } else {
+            str_lit!("#f")
+        })
+    } else if Lit::__is_LUnit(tagcase_) {
+        w_str_x(p, b, n, str_lit!("|#u|"))
+    } else if Lit::__is_LNil(tagcase_) {
+        w_str_x(p, b, n, str_lit!("()"))
+    } else if Lit::__is_LStr(tagcase_) {
+        let (s,) = Lit::__LStr(tagcase_);
+        w_byte_x(p, b, n, 34i64);
+        w_escaped_x(p, b, n, s, 34i64, 0i64, string_length_i64(s));
+        w_byte_x(p, b, n, 34i64)
+    } else if Lit::__is_LChar(tagcase_) {
+        let (ch,) = Lit::__LChar(tagcase_);
+        w_str_x(p, b, n, str_lit!("#\\x"));
+        w_digits_x(p, b, n, char_to_i64(ch), 16i64)
+    } else if Lit::__is_LF64(tagcase_) {
+        let (x,) = Lit::__LF64(tagcase_);
+        w_str_x(p, b, n, str_lit!("#f64x"));
+        w_str_x(p, b, n, hex_bits(x, 16i64, nil::<char>()))
+    } else if Lit::__is_LSym(tagcase_) {
+        let (s,) = Lit::__LSym(tagcase_);
+        w_byte_x(p, b, n, 124i64);
+        w_escaped_x(p, b, n, s, 124i64, 0i64, string_length_i64(s));
+        w_byte_x(p, b, n, 124i64)
+    } else if Lit::__is_LPair(tagcase_) {
+        let (a, d,) = Lit::__LPair(tagcase_);
+        w_byte_x(p, b, n, 40i64);
+        w_lit_x(p, b, n, a);
+        w_str_x(p, b, n, str_lit!(" . "));
+        w_lit_x(p, b, n, d);
+        w_byte_x(p, b, n, 41i64)
+    } else if Lit::__is_LWord(tagcase_) {
+        let (w,) = Lit::__LWord(tagcase_);
+        w_str_x(p, b, n, str_lit!("word "));
+        w_name_x(p, b, n, w)
+    } else if Lit::__is_LQuoted(tagcase_) {
+        let (k,) = Lit::__LQuoted(tagcase_);
+        w_str_x(p, b, n, q_written_x(l))
+    } else if Lit::__is_LFrozen(tagcase_) {
+        let (kind, fs,) = Lit::__LFrozen(tagcase_);
+        w_str_x(p, b, n, str_lit!("#bloblet("));
+        w_str_x(p, b, n, kind);
+        w_str_x(p, b, n, str_lit!(" (#trailer "));
+        w_i64_x(p, b, n, i64_plus(1i64, size(fs)));
+        w_lits_x(p, b, n, fs);
+        w_str_x(p, b, n, str_lit!(") #u8())"))
+    } else { kayak_rt::data::no_variant() }
 }
 
-pub fn w_lits_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut ls: List<kayak_rt::Handle<'static, Lit>>) -> () {
+pub fn w_lits_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut ls: List<kayak_rt::data::DataAt<'static, Lit>>) -> () {
     loop {
         if null_p(ls) {
             return ();
@@ -215,54 +212,49 @@ pub fn w_lits_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Pla
 
 // An operand as the stack code's lines write it (`opnd-text`), and as
 // register code's do (`ropnd-text`: a word as its cell is shown).
-pub fn w_opnd_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::Handle<'static, Opnd>) -> () {
+pub fn w_opnd_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::data::DataAt<'static, Opnd>) -> () {
     let tagcase_ = o;
-    match *tagcase_ {
-        Opnd::OInt(k) => {
-            w_i64_x(p, b, n, k)
-        }
-        Opnd::OLit(l) => {
-            w_lit_x(p, b, n, l)
-        }
-        Opnd::OWord(w) => {
-            w_str_x(p, b, n, str_lit!("word "));
-            w_name_x(p, b, n, w)
-        }
-        Opnd::OGlobal(g) => {
-            w_str_x(p, b, n, g)
-        }
-        Opnd::OPrim(q) => {
-            w_str_x(p, b, n, q)
-        }
-    }
+    if Opnd::__is_OInt(tagcase_) {
+        let (k,) = Opnd::__OInt(tagcase_);
+        w_i64_x(p, b, n, k)
+    } else if Opnd::__is_OLit(tagcase_) {
+        let (l,) = Opnd::__OLit(tagcase_);
+        w_lit_x(p, b, n, l)
+    } else if Opnd::__is_OWord(tagcase_) {
+        let (w,) = Opnd::__OWord(tagcase_);
+        w_str_x(p, b, n, str_lit!("word "));
+        w_name_x(p, b, n, w)
+    } else if Opnd::__is_OGlobal(tagcase_) {
+        let (g,) = Opnd::__OGlobal(tagcase_);
+        w_str_x(p, b, n, g)
+    } else if Opnd::__is_OPrim(tagcase_) {
+        let (q,) = Opnd::__OPrim(tagcase_);
+        w_str_x(p, b, n, q)
+    } else { kayak_rt::data::no_variant() }
 }
 
-pub fn w_ropnd_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::Handle<'static, Opnd>) -> () {
+pub fn w_ropnd_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, o: kayak_rt::data::DataAt<'static, Opnd>) -> () {
     let tagcase_ = o;
-    match *tagcase_ {
-        Opnd::OLit(l) => {
-            let tagcase_ = l;
-            match *tagcase_ {
-                Lit::LWord(w) => {
-                    w_str_x(p, b, n, str_lit!("#word \""));
-                    w_name_x(p, b, n, w);
-                    w_byte_x(p, b, n, 34i64)
-                }
-                _ => {
-                    let y = tagcase_;
-                    w_opnd_x(p, b, n, o)
-                }
-            }
-        }
-        _ => {
+    if Opnd::__is_OLit(tagcase_) {
+        let (l,) = Opnd::__OLit(tagcase_);
+        let tagcase_ = l;
+        if Lit::__is_LWord(tagcase_) {
+            let (w,) = Lit::__LWord(tagcase_);
+            w_str_x(p, b, n, str_lit!("#word \""));
+            w_name_x(p, b, n, w);
+            w_byte_x(p, b, n, 34i64)
+        } else {
             let y = tagcase_;
             w_opnd_x(p, b, n, o)
         }
+    } else {
+        let y = tagcase_;
+        w_opnd_x(p, b, n, o)
     }
 }
 
 // Operands, a space before each.
-pub fn w_opnds_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut os: List<kayak_rt::Handle<'static, Opnd>>, mut regs: bool) -> () {
+pub fn w_opnds_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut os: List<kayak_rt::data::DataAt<'static, Opnd>>, mut regs: bool) -> () {
     loop {
         if null_p(os) {
             return ();
@@ -280,7 +272,7 @@ pub fn w_opnds_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Pl
 }
 
 // An instruction's text (`ins-text`; register code's, `rop-text`, `regs`).
-pub fn w_ins_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, r: Str, os: List<kayak_rt::Handle<'static, Opnd>>, regs: bool) -> () {
+pub fn w_ins_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, r: Str, os: List<kayak_rt::data::DataAt<'static, Opnd>>, regs: bool) -> () {
     if string_eq_p(r, if regs {
         str_lit!("lambda")
     } else {
@@ -306,7 +298,7 @@ pub fn w_at_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, 
 }
 
 // A word's lines (`lines-of-items`), each then a newline.
-pub fn w_lines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>) -> () {
+pub fn w_lines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Citems, mut at: i64, mut ps: List<kayak_rt::data::DataAt<'static, LabelAt>>) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -315,31 +307,30 @@ pub fn w_lines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Pl
             let next = i64_plus(at, item_size(x));
             {
                 let tagcase_ = x;
-                match *tagcase_ {
-                    Item::ItLabel(k) => {
-                        ()
-                    }
-                    Item::ItPos(q) => {
-                        ()
-                    }
-                    Item::ItBranch(k) => {
-                        w_at_x(p, b, n, at, 4i64);
-                        w_str_x(p, b, n, str_lit!("branch → "));
-                        w_i64_x(p, b, n, place_at(ps, k));
-                        w_byte_x(p, b, n, 10i64)
-                    }
-                    Item::ItZbranch(k) => {
-                        w_at_x(p, b, n, at, 4i64);
-                        w_str_x(p, b, n, str_lit!("0branch → "));
-                        w_i64_x(p, b, n, place_at(ps, k));
-                        w_byte_x(p, b, n, 10i64)
-                    }
-                    Item::ItIns(r, os) => {
-                        w_at_x(p, b, n, at, 4i64);
-                        w_ins_x(p, b, n, r, os, false);
-                        w_byte_x(p, b, n, 10i64)
-                    }
-                }
+                if Item::__is_ItLabel(tagcase_) {
+                    let (k,) = Item::__ItLabel(tagcase_);
+                    ()
+                } else if Item::__is_ItPos(tagcase_) {
+                    let (q,) = Item::__ItPos(tagcase_);
+                    ()
+                } else if Item::__is_ItBranch(tagcase_) {
+                    let (k,) = Item::__ItBranch(tagcase_);
+                    w_at_x(p, b, n, at, 4i64);
+                    w_str_x(p, b, n, str_lit!("branch → "));
+                    w_i64_x(p, b, n, place_at(ps, k));
+                    w_byte_x(p, b, n, 10i64)
+                } else if Item::__is_ItZbranch(tagcase_) {
+                    let (k,) = Item::__ItZbranch(tagcase_);
+                    w_at_x(p, b, n, at, 4i64);
+                    w_str_x(p, b, n, str_lit!("0branch → "));
+                    w_i64_x(p, b, n, place_at(ps, k));
+                    w_byte_x(p, b, n, 10i64)
+                } else if Item::__is_ItIns(tagcase_) {
+                    let (r, os,) = Item::__ItIns(tagcase_);
+                    w_at_x(p, b, n, at, 4i64);
+                    w_ins_x(p, b, n, r, os, false);
+                    w_byte_x(p, b, n, 10i64)
+                } else { kayak_rt::data::no_variant() }
             };
             (xs, at) = (cdr(xs), next);
             continue;
@@ -348,7 +339,7 @@ pub fn w_lines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Pl
 }
 
 // Register code's lines (`rlines-of`), each then a newline.
-pub fn w_rlines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::Handle<'static, LabelAt>>, mut frame: i64) -> () {
+pub fn w_rlines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut xs: Ritems, mut at: i64, mut ps: List<kayak_rt::data::DataAt<'static, LabelAt>>, mut frame: i64) -> () {
     loop {
         if null_p(xs) {
             return ();
@@ -357,43 +348,42 @@ pub fn w_rlines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p P
             let next = i64_plus(at, ritem_size(x));
             {
                 let tagcase_ = x;
-                match *tagcase_ {
-                    Ritem::RiLabel(k) => {
-                        ()
-                    }
-                    Ritem::RiPos(q) => {
-                        ()
-                    }
-                    Ritem::RiFrame(name) => {
-                        w_at_x(p, b, n, at, 6i64);
-                        w_str_x(p, b, n, name);
-                        w_byte_x(p, b, n, 32i64);
-                        w_i64_x(p, b, n, frame);
-                        w_byte_x(p, b, n, 10i64)
-                    }
-                    Ritem::RiBranch(name, k) => {
-                        w_at_x(p, b, n, at, 6i64);
-                        w_str_x(p, b, n, name);
-                        w_str_x(p, b, n, str_lit!(" → "));
-                        w_i64_x(p, b, n, place_at(ps, k));
-                        w_byte_x(p, b, n, 10i64)
-                    }
-                    Ritem::RiGuard(g, w, k) => {
-                        w_at_x(p, b, n, at, 6i64);
-                        w_str_x(p, b, n, str_lit!("global-guard "));
-                        w_str_x(p, b, n, g);
-                        w_str_x(p, b, n, str_lit!(" written "));
-                        w_i64_x(p, b, n, w);
-                        w_str_x(p, b, n, str_lit!(" else → "));
-                        w_i64_x(p, b, n, place_at(ps, k));
-                        w_byte_x(p, b, n, 10i64)
-                    }
-                    Ritem::RiOp(name, os) => {
-                        w_at_x(p, b, n, at, 6i64);
-                        w_ins_x(p, b, n, name, os, true);
-                        w_byte_x(p, b, n, 10i64)
-                    }
-                }
+                if Ritem::__is_RiLabel(tagcase_) {
+                    let (k,) = Ritem::__RiLabel(tagcase_);
+                    ()
+                } else if Ritem::__is_RiPos(tagcase_) {
+                    let (q,) = Ritem::__RiPos(tagcase_);
+                    ()
+                } else if Ritem::__is_RiFrame(tagcase_) {
+                    let (name,) = Ritem::__RiFrame(tagcase_);
+                    w_at_x(p, b, n, at, 6i64);
+                    w_str_x(p, b, n, name);
+                    w_byte_x(p, b, n, 32i64);
+                    w_i64_x(p, b, n, frame);
+                    w_byte_x(p, b, n, 10i64)
+                } else if Ritem::__is_RiBranch(tagcase_) {
+                    let (name, k,) = Ritem::__RiBranch(tagcase_);
+                    w_at_x(p, b, n, at, 6i64);
+                    w_str_x(p, b, n, name);
+                    w_str_x(p, b, n, str_lit!(" → "));
+                    w_i64_x(p, b, n, place_at(ps, k));
+                    w_byte_x(p, b, n, 10i64)
+                } else if Ritem::__is_RiGuard(tagcase_) {
+                    let (g, w, k,) = Ritem::__RiGuard(tagcase_);
+                    w_at_x(p, b, n, at, 6i64);
+                    w_str_x(p, b, n, str_lit!("global-guard "));
+                    w_str_x(p, b, n, g);
+                    w_str_x(p, b, n, str_lit!(" written "));
+                    w_i64_x(p, b, n, w);
+                    w_str_x(p, b, n, str_lit!(" else → "));
+                    w_i64_x(p, b, n, place_at(ps, k));
+                    w_byte_x(p, b, n, 10i64)
+                } else if Ritem::__is_RiOp(tagcase_) {
+                    let (name, os,) = Ritem::__RiOp(tagcase_);
+                    w_at_x(p, b, n, at, 6i64);
+                    w_ins_x(p, b, n, name, os, true);
+                    w_byte_x(p, b, n, 10i64)
+                } else { kayak_rt::data::no_variant() }
             };
             (xs, at) = (cdr(xs), next);
             continue;
@@ -402,7 +392,7 @@ pub fn w_rlines_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p P
 }
 
 // A line table's entries, `CELL:POS`, apart by spaces, the oldest first.
-pub fn w_entries_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut es: List<kayak_rt::Handle<'static, Tentry>>, mut first: bool) -> () {
+pub fn w_entries_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p Place_P, mut b: RefAt<'p, BytesAt<'p>>, mut n: RefAt<'p, i64>, mut es: List<kayak_rt::data::DataAt<'static, Tentry>>, mut first: bool) -> () {
     loop {
         if null_p(es) {
             return ();
@@ -414,13 +404,12 @@ pub fn w_entries_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p 
             };
             {
                 let tagcase_ = car(es);
-                match *tagcase_ {
-                    Tentry::Tentry(a, q) => {
-                        w_i64_x(p, b, n, a);
-                        w_byte_x(p, b, n, 58i64);
-                        w_i64_x(p, b, n, q)
-                    }
-                }
+                if Tentry::__is_Tentry(tagcase_) {
+                    let (a, q,) = Tentry::__Tentry(tagcase_);
+                    w_i64_x(p, b, n, a);
+                    w_byte_x(p, b, n, 58i64);
+                    w_i64_x(p, b, n, q)
+                } else { kayak_rt::data::no_variant() }
             };
             (es, first) = (cdr(es), false);
             continue;
@@ -430,7 +419,7 @@ pub fn w_entries_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(mut p: &'p 
 
 // A line table (`line-table`, `rcode-line-table`): `HEAD FILE ENTRIES`
 // and a newline; none if no entries, or no file.
-pub fn w_table_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, head: Str, es: List<kayak_rt::Handle<'static, Tentry>>) -> () {
+pub fn w_table_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P, b: RefAt<'p, BytesAt<'p>>, n: RefAt<'p, i64>, head: Str, es: List<kayak_rt::data::DataAt<'static, Tentry>>) -> () {
     if (null_p(es) || string_eq_p(get(cg_source()), str_lit!(""))) {
         ()
     } else {
@@ -450,25 +439,24 @@ pub fn w_word_x<'p, Place_P: kayak_rt::Visit + Holds<BytesCells>>(p: &'p Place_P
     w_str_x(p, b, n, str_lit!(" ("));
     w_i64_x(p, b, n, cells_of(xs, 0i64));
     w_str_x(p, b, n, str_lit!(" cells, cellular):\n"));
-    w_lines_x(p, b, n, xs, 0i64, places_of(xs, 0i64, nil::<kayak_rt::Handle<'static, LabelAt>>()));
+    w_lines_x(p, b, n, xs, 0i64, places_of(xs, 0i64, nil::<kayak_rt::data::DataAt<'static, LabelAt>>()));
     {
         let rc = reg_code_of(get(cg_reg_codes()), name);
         if null_p(rc) {
             ()
         } else {
             let tagcase_ = car(rc);
-            match *tagcase_ {
-                Rcode::Rcode(rs, frame) => {
-                    w_str_x(p, b, n, str_lit!("  its register code ("));
-                    w_i64_x(p, b, n, ritems_size(rs, 0i64));
-                    w_str_x(p, b, n, str_lit!(" cells, not compiled):\n"));
-                    w_rlines_x(p, b, n, rs, 0i64, rplaces_of(rs, 0i64, nil::<kayak_rt::Handle<'static, LabelAt>>()), frame);
-                    w_table_x(p, b, n, str_lit!("; regs at "), rtable_entries(rs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()))
-                }
-            }
+            if Rcode::__is_Rcode(tagcase_) {
+                let (rs, frame,) = Rcode::__Rcode(tagcase_);
+                w_str_x(p, b, n, str_lit!("  its register code ("));
+                w_i64_x(p, b, n, ritems_size(rs, 0i64));
+                w_str_x(p, b, n, str_lit!(" cells, not compiled):\n"));
+                w_rlines_x(p, b, n, rs, 0i64, rplaces_of(rs, 0i64, nil::<kayak_rt::data::DataAt<'static, LabelAt>>()), frame);
+                w_table_x(p, b, n, str_lit!("; regs at "), rtable_entries(rs, 0i64, nil::<kayak_rt::data::DataAt<'static, Tentry>>()))
+            } else { kayak_rt::data::no_variant() }
         }
     };
-    w_table_x(p, b, n, str_lit!("; at "), table_entries(xs, 0i64, nil::<kayak_rt::Handle<'static, Tentry>>()))
+    w_table_x(p, b, n, str_lit!("; at "), table_entries(xs, 0i64, nil::<kayak_rt::data::DataAt<'static, Tentry>>()))
 }
 
 // A word's text, written in a place of its own, freed once it is made one
@@ -481,7 +469,7 @@ pub fn word_written(name: Str, xs: Citems) -> Str {
         impl<'r> Holds<BytesCells> for Region_R<'r> { fn arena(&self) -> &Arena<BytesCells> { &self.a1 } }
         impl<'r> Holds<kayak_rt::RefObj<i64>> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::RefObj<i64>> { &self.a2 } }
         impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); kayak_rt::Visit::visit(&self.a1, t); kayak_rt::Visit::visit(&self.a2, t); } }
-        fn letrena__r<'r>(r: &'r Region_R<'r>, name: Str, xs: List<kayak_rt::Handle<'static, Item>>) -> Str {
+        fn letrena__r<'r>(r: &'r Region_R<'r>, name: Str, xs: List<kayak_rt::data::DataAt<'static, Item>>) -> Str {
             let (b, n) = (the::<RefAt<'r, BytesAt<'r>>>(rnew(r, the::<BytesAt<'r>>(make_bytevector_in(r, int_lit(4096), 0u8)))), the::<RefAt<'r, i64>>(rnew(r, 0i64)));
             w_word_x(r, b, n, name, xs);
             let tagcase_ = utf8_to_string(the::<BytesAt<'r>>(bytevector_copy_in(r, get(b), int_lit(0), i64_to_int(get(n)))));
@@ -508,14 +496,12 @@ pub fn items_named(mut xs: Citems, mut acc: Strings) -> Strings {
         } else {
             (xs, acc) = (cdr(xs), {
                 let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Item::ItIns(r, os) => {
-                        onto(reverse(words_said(os)), acc)
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        acc
-                    }
+                if Item::__is_ItIns(tagcase_) {
+                    let (r, os,) = Item::__ItIns(tagcase_);
+                    onto(reverse(words_said(os)), acc)
+                } else {
+                    let y = tagcase_;
+                    acc
                 }
             });
             continue;
@@ -530,14 +516,12 @@ pub fn ritems_named(mut xs: Ritems, mut acc: Strings) -> Strings {
         } else {
             (xs, acc) = (cdr(xs), {
                 let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Ritem::RiOp(r, os) => {
-                        onto(reverse(words_said(os)), acc)
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        acc
-                    }
+                if Ritem::__is_RiOp(tagcase_) {
+                    let (r, os,) = Ritem::__RiOp(tagcase_);
+                    onto(reverse(words_said(os)), acc)
+                } else {
+                    let y = tagcase_;
+                    acc
                 }
             });
             continue;
@@ -547,7 +531,7 @@ pub fn ritems_named(mut xs: Ritems, mut acc: Strings) -> Strings {
 
 // The words listed, in order, from `program`, as `disasm.rs` walks them:
 // the words a word names pushed in order, the last pushed next.
-pub fn words_listed(mut todo: Strings, mut seen: Strings, mut out: List<kayak_rt::Handle<'static, Word>>) -> List<kayak_rt::Handle<'static, Word>> {
+pub fn words_listed(mut todo: Strings, mut seen: Strings, mut out: List<kayak_rt::data::DataAt<'static, Word>>) -> List<kayak_rt::data::DataAt<'static, Word>> {
     loop {
         if null_p(todo) {
             return reverse(out);
@@ -561,22 +545,20 @@ pub fn words_listed(mut todo: Strings, mut seen: Strings, mut out: List<kayak_rt
                 continue;
             } else {
                 let tagcase_ = car(w);
-                match *tagcase_ {
-                    Word::Word(name, xs) => {
-                        let rc = reg_code_of(get(cg_reg_codes()), name);
-                        (todo, seen, out) = (onto(reverse(onto(items_named(xs, nil::<Str>()), if null_p(rc) {
-                            nil::<Str>()
-                        } else {
-                            let tagcase_ = car(rc);
-                            match *tagcase_ {
-                                Rcode::Rcode(rs, frame) => {
-                                    ritems_named(rs, nil::<Str>())
-                                }
-                            }
-                        })), cdr(todo)), kayak_rt::heap_cons(name, seen), kayak_rt::heap_cons(car(w), out));
-                        continue;
-                    }
-                }
+                if Word::__is_Word(tagcase_) {
+                    let (name, xs,) = Word::__Word(tagcase_);
+                    let rc = reg_code_of(get(cg_reg_codes()), name);
+                    (todo, seen, out) = (onto(reverse(onto(items_named(xs, nil::<Str>()), if null_p(rc) {
+                        nil::<Str>()
+                    } else {
+                        let tagcase_ = car(rc);
+                        if Rcode::__is_Rcode(tagcase_) {
+                            let (rs, frame,) = Rcode::__Rcode(tagcase_);
+                            ritems_named(rs, nil::<Str>())
+                        } else { kayak_rt::data::no_variant() }
+                    })), cdr(todo)), kayak_rt::heap_cons(name, seen), kayak_rt::heap_cons(car(w), out));
+                    continue;
+                } else { kayak_rt::data::no_variant() }
             }
         }
     }
@@ -585,30 +567,28 @@ pub fn words_listed(mut todo: Strings, mut seen: Strings, mut out: List<kayak_rt
 // Each quoted node's reaches counted, in the order the listing writes
 // them (`q-marks`' order): each word's cells' literals, then its register
 // code's, each literal's parts in order.
-pub fn lit_reached_x(mut l: kayak_rt::Handle<'static, Lit>) -> () {
+pub fn lit_reached_x(mut l: kayak_rt::data::DataAt<'static, Lit>) -> () {
     loop {
         let tagcase_ = l;
-        match *tagcase_ {
-            Lit::LQuoted(k) => {
-                return q_reached_x(l);
-            }
-            Lit::LPair(a, d) => {
-                lit_reached_x(a);
-                l = d;
-                continue;
-            }
-            Lit::LFrozen(kind, fs) => {
-                return lits_reached_x(fs);
-            }
-            _ => {
-                let y = tagcase_;
-                return ();
-            }
+        if Lit::__is_LQuoted(tagcase_) {
+            let (k,) = Lit::__LQuoted(tagcase_);
+            return q_reached_x(l);
+        } else if Lit::__is_LPair(tagcase_) {
+            let (a, d,) = Lit::__LPair(tagcase_);
+            lit_reached_x(a);
+            l = d;
+            continue;
+        } else if Lit::__is_LFrozen(tagcase_) {
+            let (kind, fs,) = Lit::__LFrozen(tagcase_);
+            return lits_reached_x(fs);
+        } else {
+            let y = tagcase_;
+            return ();
         }
     }
 }
 
-pub fn lits_reached_x(mut ls: List<kayak_rt::Handle<'static, Lit>>) -> () {
+pub fn lits_reached_x(mut ls: List<kayak_rt::data::DataAt<'static, Lit>>) -> () {
     loop {
         if null_p(ls) {
             return ();
@@ -620,21 +600,19 @@ pub fn lits_reached_x(mut ls: List<kayak_rt::Handle<'static, Lit>>) -> () {
     }
 }
 
-pub fn opnds_reached_x(mut os: List<kayak_rt::Handle<'static, Opnd>>) -> () {
+pub fn opnds_reached_x(mut os: List<kayak_rt::data::DataAt<'static, Opnd>>) -> () {
     loop {
         if null_p(os) {
             return ();
         } else {
             {
                 let tagcase_ = car(os);
-                match *tagcase_ {
-                    Opnd::OLit(l) => {
-                        lit_reached_x(l)
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        ()
-                    }
+                if Opnd::__is_OLit(tagcase_) {
+                    let (l,) = Opnd::__OLit(tagcase_);
+                    lit_reached_x(l)
+                } else {
+                    let y = tagcase_;
+                    ()
                 }
             };
             os = cdr(os);
@@ -650,14 +628,12 @@ pub fn items_reached_x(mut xs: Citems) -> () {
         } else {
             {
                 let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Item::ItIns(r, os) => {
-                        opnds_reached_x(os)
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        ()
-                    }
+                if Item::__is_ItIns(tagcase_) {
+                    let (r, os,) = Item::__ItIns(tagcase_);
+                    opnds_reached_x(os)
+                } else {
+                    let y = tagcase_;
+                    ()
                 }
             };
             xs = cdr(xs);
@@ -673,14 +649,12 @@ pub fn ritems_reached_x(mut xs: Ritems) -> () {
         } else {
             {
                 let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Ritem::RiOp(r, os) => {
-                        opnds_reached_x(os)
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        ()
-                    }
+                if Ritem::__is_RiOp(tagcase_) {
+                    let (r, os,) = Ritem::__RiOp(tagcase_);
+                    opnds_reached_x(os)
+                } else {
+                    let y = tagcase_;
+                    ()
                 }
             };
             xs = cdr(xs);
@@ -689,59 +663,56 @@ pub fn ritems_reached_x(mut xs: Ritems) -> () {
     }
 }
 
-pub fn words_reached_x(mut ws: List<kayak_rt::Handle<'static, Word>>) -> () {
+pub fn words_reached_x(mut ws: List<kayak_rt::data::DataAt<'static, Word>>) -> () {
     loop {
         if null_p(ws) {
             return ();
         } else {
             let tagcase_ = car(ws);
-            match *tagcase_ {
-                Word::Word(name, xs) => {
-                    items_reached_x(xs);
-                    {
-                        let rc = reg_code_of(get(cg_reg_codes()), name);
-                        if null_p(rc) {
-                            ()
-                        } else {
-                            let tagcase_ = car(rc);
-                            match *tagcase_ {
-                                Rcode::Rcode(rs, frame) => {
-                                    ritems_reached_x(rs)
-                                }
-                            }
-                        }
-                    };
-                    ws = cdr(ws);
-                    continue;
-                }
-            }
+            if Word::__is_Word(tagcase_) {
+                let (name, xs,) = Word::__Word(tagcase_);
+                items_reached_x(xs);
+                {
+                    let rc = reg_code_of(get(cg_reg_codes()), name);
+                    if null_p(rc) {
+                        ()
+                    } else {
+                        let tagcase_ = car(rc);
+                        if Rcode::__is_Rcode(tagcase_) {
+                            let (rs, frame,) = Rcode::__Rcode(tagcase_);
+                            ritems_reached_x(rs)
+                        } else { kayak_rt::data::no_variant() }
+                    }
+                };
+                ws = cdr(ws);
+                continue;
+            } else { kayak_rt::data::no_variant() }
         }
     }
 }
 
-pub fn words_written(ws: List<kayak_rt::Handle<'static, Word>>) -> Strings {
+pub fn words_written(ws: List<kayak_rt::data::DataAt<'static, Word>>) -> Strings {
     if null_p(ws) {
         nil::<Str>()
     } else {
         let tagcase_ = car(ws);
-        match *tagcase_ {
-            Word::Word(name, xs) => {
-                let t = word_written(name, xs);
-                kayak_rt::heap_cons(t, words_written(cdr(ws)))
-            }
-        }
+        if Word::__is_Word(tagcase_) {
+            let (name, xs,) = Word::__Word(tagcase_);
+            let t = word_written(name, xs);
+            kayak_rt::heap_cons(t, words_written(cdr(ws)))
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
 // The listing, a word's text each, in order (C266, C268): the quoted
 // nodes' reaches counted across all the words first, then each written.
 pub fn cells_listing() -> Strings {
-    let ws = words_listed(kayak_rt::heap_cons(str_lit!("program"), kayak_rt::nil()), nil::<Str>(), nil::<kayak_rt::Handle<'static, Word>>());
+    let ws = words_listed(kayak_rt::heap_cons(str_lit!("program"), kayak_rt::nil()), nil::<Str>(), nil::<kayak_rt::data::DataAt<'static, Word>>());
     if null_p(get(cg_qnodes())) {
         ()
     } else {
-        set(cg_qreached(), nil::<kayak_rt::Handle<'static, Qseen>>());
-        set(cg_qlabels(), nil::<kayak_rt::Handle<'static, Qseen>>());
+        set(cg_qreached(), nil::<kayak_rt::data::DataAt<'static, Qseen>>());
+        set(cg_qlabels(), nil::<kayak_rt::data::DataAt<'static, Qseen>>());
         set(cg_qnext(), 0i64);
         words_reached_x(ws)
     };

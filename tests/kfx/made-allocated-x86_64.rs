@@ -127,37 +127,124 @@ const _: () = kayak_rt::tags_apart_from_runtime(&["refused", "ok"]);
 pub mod made__load__0__fx26_convention {
     use super::*;
 
+    #[derive(Clone, Copy)]
     pub enum CvSx {
         CxName(Str),
         CxInt(Int),
-        CxList(List<kayak_rt::Handle<'static, CvSx>>),
+        CxList(List<kayak_rt::data::DataAt<'static, CvSx>>),
     }
 
-    impl kayak_rt::Visit for CvSx {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::CxName(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::CxInt(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::CxList(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            }
+    impl kayak_rt::data::Variant<2> for CvSx {
+        type Fields = (Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("cx-name")
         }
     }
 
-    pub fn cx_name(f0: Str) -> kayak_rt::Handle<'static, CvSx> {
-        kayak_rt::heap_alloc(CvSx::CxName(f0))
+    #[allow(non_snake_case)]
+    impl CvSx {
+        #[inline(always)]
+        pub fn __is_CxName(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<2>()
+        }
+        #[inline(always)]
+        pub fn __CxName(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+            w.fields::<2>()
+        }
     }
 
-    pub fn cx_int(f0: Int) -> kayak_rt::Handle<'static, CvSx> {
-        kayak_rt::heap_alloc(CvSx::CxInt(f0))
+    impl kayak_rt::data::Variant<1> for CvSx {
+        type Fields = (Int,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("cx-int")
+        }
     }
 
-    pub fn cx_list(f0: List<kayak_rt::Handle<'static, CvSx>>) -> kayak_rt::Handle<'static, CvSx> {
-        kayak_rt::heap_alloc(CvSx::CxList(f0))
+    #[allow(non_snake_case)]
+    impl CvSx {
+        #[inline(always)]
+        pub fn __is_CxInt(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __CxInt(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub type CvSxs = List<kayak_rt::Handle<'static, CvSx>>;
+    impl kayak_rt::data::Variant<0> for CvSx {
+        type Fields = (List<kayak_rt::data::DataAt<'static, CvSx>>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("cx-list")
+        }
+    }
 
-    pub type CvAt = Product_1x_2at<kayak_rt::Handle<'static, CvSx>, Int>;
+    #[allow(non_snake_case)]
+    impl CvSx {
+        #[inline(always)]
+        pub fn __is_CxList(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __CxList(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for CvSx {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<2>() {
+                let (f0,) = w.fields::<2>();
+                Self::CxName(f0)
+            } else if w.is::<1>() {
+                let (f0,) = w.fields::<1>();
+                Self::CxInt(f0)
+            } else if w.is::<0>() {
+                let (f0,) = w.fields::<0>();
+                Self::CxList(f0)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<2>() { return t.reach(w.obj::<2>()); }
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<2>() { return (w.obj::<2>()); }
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn cx_name(f0: Str) -> kayak_rt::data::DataAt<'static, CvSx> {
+        kayak_rt::data::data_heap::<CvSx, 2>((f0,))
+    }
+
+    pub fn cx_int(f0: Int) -> kayak_rt::data::DataAt<'static, CvSx> {
+        kayak_rt::data::data_heap::<CvSx, 1>((f0,))
+    }
+
+    pub fn cx_list(f0: List<kayak_rt::data::DataAt<'static, CvSx>>) -> kayak_rt::data::DataAt<'static, CvSx> {
+        kayak_rt::data::data_heap::<CvSx, 0>((f0,))
+    }
+
+    pub type CvSxs = List<kayak_rt::data::DataAt<'static, CvSx>>;
+
+    pub type CvAt = Product_1x_2at<kayak_rt::data::DataAt<'static, CvSx>, Int>;
 
     pub type CvSxsAt = Product_2xs_2at<CvSxs, Int>;
 
@@ -242,7 +329,7 @@ pub mod cv {
         }
     }
 
-    pub fn cv_atom(a: Str) -> kayak_rt::Handle<'static, CvSx> {
+    pub fn cv_atom(a: Str) -> kayak_rt::data::DataAt<'static, CvSx> {
         let neg = (_gt(string_length(a), int_lit(1)) && char_eq_p(string_ref(a, int_lit(0)), '-'));
         let n = if _eq(string_length(a), int_lit(0)) {
             int_lit(-1)
@@ -264,7 +351,7 @@ pub mod cv {
 
     pub fn cv_read_at(t: Str, i: Int) -> CvAt {
         if _gt_eq(i, string_length(t)) {
-            Product_1x_2at(cx_list(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>()), i)
+            Product_1x_2at(cx_list(nil::<kayak_rt::data::DataAt<'static, made__load__0__fx26_convention::CvSx>>()), i)
         } else if char_eq_p(cv_ch(t, i), '(') {
             let r = cv_read_items(t, _plus(i, int_lit(1)));
             Product_1x_2at(cx_list(r.0), r.1)
@@ -277,9 +364,9 @@ pub mod cv {
     pub fn cv_read_items(mut t: Str, mut i: Int) -> CvSxsAt {
         loop {
             if _gt_eq(i, string_length(t)) {
-                return Product_2xs_2at(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>(), i);
+                return Product_2xs_2at(nil::<kayak_rt::data::DataAt<'static, made__load__0__fx26_convention::CvSx>>(), i);
             } else if char_eq_p(cv_ch(t, i), ')') {
-                return Product_2xs_2at(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>(), _plus(i, int_lit(1)));
+                return Product_2xs_2at(nil::<kayak_rt::data::DataAt<'static, made__load__0__fx26_convention::CvSx>>(), _plus(i, int_lit(1)));
             } else if char_eq_p(cv_ch(t, i), ' ') {
                 i = _plus(i, int_lit(1));
                 continue;
@@ -292,49 +379,43 @@ pub mod cv {
     }
 
     #[inline]
-    pub fn cx_items(x: kayak_rt::Handle<'static, CvSx>) -> CvSxs {
+    pub fn cx_items(x: kayak_rt::data::DataAt<'static, CvSx>) -> CvSxs {
         let tagcase_ = x;
-        match *tagcase_ {
-            made__load__0__fx26_convention::CvSx::CxList(xs) => {
-                xs
-            }
-            _ => {
-                let y = tagcase_;
-                nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>()
-            }
+        if made__load__0__fx26_convention::CvSx::__is_CxList(tagcase_) {
+            let (xs,) = made__load__0__fx26_convention::CvSx::__CxList(tagcase_);
+            xs
+        } else {
+            let y = tagcase_;
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__fx26_convention::CvSx>>()
         }
     }
 
     #[inline]
-    pub fn cx_name_of(x: kayak_rt::Handle<'static, CvSx>) -> Str {
+    pub fn cx_name_of(x: kayak_rt::data::DataAt<'static, CvSx>) -> Str {
         let tagcase_ = x;
-        match *tagcase_ {
-            made__load__0__fx26_convention::CvSx::CxName(n) => {
-                n
-            }
-            _ => {
-                let y = tagcase_;
-                str_lit!("")
-            }
+        if made__load__0__fx26_convention::CvSx::__is_CxName(tagcase_) {
+            let (n,) = made__load__0__fx26_convention::CvSx::__CxName(tagcase_);
+            n
+        } else {
+            let y = tagcase_;
+            str_lit!("")
         }
     }
 
     #[inline]
-    pub fn cx_int_of(x: kayak_rt::Handle<'static, CvSx>) -> Int {
+    pub fn cx_int_of(x: kayak_rt::data::DataAt<'static, CvSx>) -> Int {
         let tagcase_ = x;
-        match *tagcase_ {
-            made__load__0__fx26_convention::CvSx::CxInt(n) => {
-                n
-            }
-            _ => {
-                let y = tagcase_;
-                int_lit(0)
-            }
+        if made__load__0__fx26_convention::CvSx::__is_CxInt(tagcase_) {
+            let (n,) = made__load__0__fx26_convention::CvSx::__CxInt(tagcase_);
+            n
+        } else {
+            let y = tagcase_;
+            int_lit(0)
         }
     }
 
     #[inline]
-    pub fn cx_role(x: kayak_rt::Handle<'static, CvSx>) -> Str {
+    pub fn cx_role(x: kayak_rt::data::DataAt<'static, CvSx>) -> Str {
         let xs = cx_items(x);
         if null_p(xs) {
             str_lit!("")
@@ -346,7 +427,7 @@ pub mod cv {
     pub fn cx_get(mut xs: CvSxs, mut role: Str) -> CvSxs {
         loop {
             if null_p(xs) {
-                return nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>();
+                return nil::<kayak_rt::data::DataAt<'static, made__load__0__fx26_convention::CvSx>>();
             } else if string_eq_p(cx_role(car(xs)), role) {
                 return cdr(cx_items(car(xs)));
             } else {
@@ -369,10 +450,10 @@ pub mod cv {
         }
     }
 
-    pub fn cx_nth(mut xs: CvSxs, mut k: Int) -> kayak_rt::Handle<'static, CvSx> {
+    pub fn cx_nth(mut xs: CvSxs, mut k: Int) -> kayak_rt::data::DataAt<'static, CvSx> {
         loop {
             if null_p(xs) {
-                return cx_list(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>());
+                return cx_list(nil::<kayak_rt::data::DataAt<'static, made__load__0__fx26_convention::CvSx>>());
             } else if _eq(k, int_lit(0)) {
                 return car(xs);
             } else {
@@ -415,7 +496,7 @@ pub mod cv {
         }
     }
 
-    pub fn cx_reg(st: CvSxs, x: kayak_rt::Handle<'static, CvSx>) -> Int {
+    pub fn cx_reg(st: CvSxs, x: kayak_rt::data::DataAt<'static, CvSx>) -> Int {
         let n = cx_name_of(x);
         if string_eq_p(cx_role(x), str_lit!("state")) {
             _plus(cv_in_state(), cx_int_at(st, cx_name_of(cx_nth(cx_items(x), int_lit(1)))))
@@ -480,10 +561,10 @@ pub mod cv {
         }
     }
 
-    pub fn cx_find(mut xs: CvSxs, mut role: Str) -> kayak_rt::Handle<'static, CvSx> {
+    pub fn cx_find(mut xs: CvSxs, mut role: Str) -> kayak_rt::data::DataAt<'static, CvSx> {
         loop {
             if null_p(xs) {
-                return cx_list(nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>());
+                return cx_list(nil::<kayak_rt::data::DataAt<'static, made__load__0__fx26_convention::CvSx>>());
             } else if string_eq_p(cx_role(car(xs)), role) {
                 return car(xs);
             } else {
@@ -828,7 +909,7 @@ pub mod cv {
 
     pub fn cv_parse_all(ts: CvStrs) -> CvSxs {
         if null_p(ts) {
-            nil::<kayak_rt::Handle<'static, made__load__0__fx26_convention::CvSx>>()
+            nil::<kayak_rt::data::DataAt<'static, made__load__0__fx26_convention::CvSx>>()
         } else {
             the::<CvSxs>(kayak_rt::heap_cons(cv_read_at(car(ts), int_lit(0)).0, cv_parse_all(cdr(ts))))
         }

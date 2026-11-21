@@ -42,7 +42,7 @@ pub fn k_words(mut cs: List<char>, mut w: List<char>, mut acc: List<Str>) -> Lis
     }
 }
 
-pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
+pub fn k_of(s: Str) -> kayak_rt::data::DataAt<'static, Sexp> {
     let ws = k_words(string_chars(s), nil::<char>(), nil::<Str>());
     if null_p(cdr(ws)) {
         lst(kayak_rt::heap_cons(sym(car(ws), str_lit!(""), 0i64), kayak_rt::nil()), str_lit!(""), 0i64, 0i64)
@@ -52,7 +52,7 @@ pub fn k_of(s: Str) -> kayak_rt::Handle<'static, Sexp> {
 }
 
 #[inline]
-pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
+pub fn k_text(k: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
     if string_eq_p(key_arg(k, 0i64), str_lit!("")) {
         key_query(k)
     } else {
@@ -60,24 +60,22 @@ pub fn k_text(k: kayak_rt::Handle<'static, Sexp>) -> Str {
     }
 }
 
-pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, mut before: Reader) -> Str {
+pub fn file_in(mut fs: List<kayak_rt::data::DataAt<'static, DbFile>>, mut name: Str, mut before: Reader) -> Str {
     loop {
         if null_p(fs) {
             return before.call(name);
         } else if {
             let tagcase_ = car(fs);
-            match *tagcase_ {
-                DbFile::DbFile(n, t) => {
-                    string_eq_p(n, name)
-                }
-            }
+            if DbFile::__is_DbFile(tagcase_) {
+                let (n, t,) = DbFile::__DbFile(tagcase_);
+                string_eq_p(n, name)
+            } else { kayak_rt::data::no_variant() }
         } {
             let tagcase_ = car(fs);
-            match *tagcase_ {
-                DbFile::DbFile(n, t) => {
-                    return t;
-                }
-            }
+            if DbFile::__is_DbFile(tagcase_) {
+                let (n, t,) = DbFile::__DbFile(tagcase_);
+                return t;
+            } else { kayak_rt::data::no_variant() }
         } else {
             fs = cdr(fs);
             continue;
@@ -86,7 +84,7 @@ pub fn file_in(mut fs: List<kayak_rt::Handle<'static, DbFile>>, mut name: Str, m
 }
 
 pub fn reread(d: Db, whose: Str) -> Db {
-    let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::Handle<'static, Sexp>| {
+    let fs = db_saved(d, str_lit!("test"), kayak_rt::as_proc(kayak_rt::closure1s((), |(), k: kayak_rt::data::DataAt<'static, Sexp>| {
         true
     })));
     let before = db_reader(d);
@@ -124,7 +122,7 @@ pub fn key_after(mut cs: List<char>) -> Str {
     }
 }
 
-pub fn run(d: Db, key: kayak_rt::Handle<'static, Sexp>) -> Str {
+pub fn run(d: Db, key: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
     let k = k_text(key);
     let h = string_ref_i64(k, 0i64);
     if char_eq_p(h, 'm') {
@@ -211,23 +209,60 @@ pub fn set_all_x(mut d: Db, mut vals: List<i64>, mut durs: List<i64>, mut i: i64
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum Tally {
     Tally(i64, i64, i64),
 }
 
-impl kayak_rt::Visit for Tally {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Tally(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-        }
+impl kayak_rt::data::Variant<0> for Tally {
+    type Fields = (i64, i64, i64,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("tally")
     }
 }
 
-pub fn tally(f0: i64, f1: i64, f2: i64) -> kayak_rt::Handle<'static, Tally> {
-    kayak_rt::heap_alloc(Tally::Tally(f0, f1, f2))
+#[allow(non_snake_case)]
+impl Tally {
+    #[inline(always)]
+    pub fn __is_Tally(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Tally(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
-pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: kayak_rt::Handle<'static, Tally>) -> kayak_rt::Handle<'static, Tally> {
+impl kayak_rt::data::Datatype for Tally {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1, f2,) = w.fields::<0>();
+            Self::Tally(f0, f1, f2)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn tally(f0: i64, f1: i64, f2: i64) -> kayak_rt::data::DataAt<'static, Tally> {
+    kayak_rt::data::data_heap::<Tally, 0>((f0, f1, f2,))
+}
+
+pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: kayak_rt::data::DataAt<'static, Tally>) -> kayak_rt::data::DataAt<'static, Tally> {
     if i64_eq(n, 0i64) {
         acc
     } else {
@@ -249,15 +284,14 @@ pub fn steps(d: Db, n: i64, seed: i64, vals: List<i64>, durs: List<i64>, acc: ka
         set_all_x(fresh, vals, durs, 0i64);
         let want = db_get(fresh, kayak_rt::as_proc(run), k_of(k));
         let tagcase_ = acc;
-        match *tagcase_ {
-            Tally::Tally(wrong, mine, theirs) => {
-                steps(d, i64_minus(n, 1i64), s4, vals, durs, tally(if string_eq_p(got, want) {
-                    wrong
-                } else {
-                    i64_plus(wrong, 1i64)
-                }, i64_plus(mine, ours), i64_plus(theirs, db_runs(fresh))))
-            }
-        }
+        if Tally::__is_Tally(tagcase_) {
+            let (wrong, mine, theirs,) = Tally::__Tally(tagcase_);
+            steps(d, i64_minus(n, 1i64), s4, vals, durs, tally(if string_eq_p(got, want) {
+                wrong
+            } else {
+                i64_plus(wrong, 1i64)
+            }, i64_plus(mine, ours), i64_plus(theirs, db_runs(fresh))))
+        } else { kayak_rt::data::no_variant() }
     }
 }
 
@@ -285,10 +319,9 @@ pub fn main() -> Str {
     let durs = the::<List<i64>>(kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(0i64, kayak_rt::nil()))))));
     set_all_x(d, vals, durs, 0i64);
     let tagcase_ = steps(d, 300i64, 20261112i64, vals, durs, tally(0i64, 0i64, 0i64));
-    match *tagcase_ {
-        Tally::Tally(wrong, mine, theirs) => {
-            string_list_append(kayak_rt::heap_cons(regression(), kayak_rt::heap_cons(str_lit!("; 300 steps, "), kayak_rt::heap_cons(i64_to_string(wrong), kayak_rt::heap_cons(str_lit!(" disagreed; bodies run "), kayak_rt::heap_cons(i64_to_string(mine), kayak_rt::heap_cons(str_lit!(" against "), kayak_rt::heap_cons(i64_to_string(theirs), kayak_rt::heap_cons(str_lit!(" from scratch"), kayak_rt::nil())))))))))
-        }
-    }
+    if Tally::__is_Tally(tagcase_) {
+        let (wrong, mine, theirs,) = Tally::__Tally(tagcase_);
+        string_list_append(kayak_rt::heap_cons(regression(), kayak_rt::heap_cons(str_lit!("; 300 steps, "), kayak_rt::heap_cons(i64_to_string(wrong), kayak_rt::heap_cons(str_lit!(" disagreed; bodies run "), kayak_rt::heap_cons(i64_to_string(mine), kayak_rt::heap_cons(str_lit!(" against "), kayak_rt::heap_cons(i64_to_string(theirs), kayak_rt::heap_cons(str_lit!(" from scratch"), kayak_rt::nil())))))))))
+    } else { kayak_rt::data::no_variant() }
 }
 

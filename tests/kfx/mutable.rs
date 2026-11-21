@@ -92,31 +92,67 @@ pub fn copy_x<'r1, 'r2>(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i:
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum Counter {
     Counter(Str, Ref<i64>),
 }
 
-impl kayak_rt::Visit for Counter {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Counter(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-        }
+impl kayak_rt::data::Variant<0> for Counter {
+    type Fields = (Str, Ref<i64>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("counter")
     }
 }
 
-pub fn counter(f0: Str, f1: Ref<i64>) -> kayak_rt::Handle<'static, Counter> {
-    kayak_rt::heap_alloc(Counter::Counter(f0, f1))
+#[allow(non_snake_case)]
+impl Counter {
+    #[inline(always)]
+    pub fn __is_Counter(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Counter(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
+}
+
+impl kayak_rt::data::Datatype for Counter {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<0>() {
+            let (f0, f1,) = w.fields::<0>();
+            Self::Counter(f0, f1)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
+}
+
+pub fn counter(f0: Str, f1: Ref<i64>) -> kayak_rt::data::DataAt<'static, Counter> {
+    kayak_rt::data::data_heap::<Counter, 0>((f0, f1,))
 }
 
 #[inline]
-pub fn bump_x(k: kayak_rt::Handle<'static, Counter>) -> i64 {
+pub fn bump_x(k: kayak_rt::data::DataAt<'static, Counter>) -> i64 {
     let tagcase_ = k;
-    match *tagcase_ {
-        Counter::Counter(name, cell) => {
-            set(cell, i64_plus(get(cell), 1i64));
-            get(cell)
-        }
-    }
+    if Counter::__is_Counter(tagcase_) {
+        let (name, cell,) = Counter::__Counter(tagcase_);
+        set(cell, i64_plus(get(cell), 1i64));
+        get(cell)
+    } else { kayak_rt::data::no_variant() }
 }
 
 pub fn main() -> Str {

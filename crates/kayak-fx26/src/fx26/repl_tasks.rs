@@ -53,126 +53,499 @@ use super::*;
 pub mod tasks {
     use super::*;
 
+    #[derive(Clone, Copy)]
     pub enum Told {
         EntryTold(i64, i64, Str, Str, i64, i64, i64, i64),
         DraftTold(i64, Str, bool),
     }
 
-    impl kayak_rt::Visit for Told {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::EntryTold(f0, f1, f2, f3, f4, f5, f6, f7) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); }
-                Self::DraftTold(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-            }
+    impl kayak_rt::data::Variant<1> for Told {
+        type Fields = (i64, i64, Str, Str, i64, i64, i64, i64,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("entry-told")
         }
     }
 
-    pub fn entry_told(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> kayak_rt::Handle<'static, Told> {
-        kayak_rt::heap_alloc(Told::EntryTold(f0, f1, f2, f3, f4, f5, f6, f7))
+    #[allow(non_snake_case)]
+    impl Told {
+        #[inline(always)]
+        pub fn __is_EntryTold(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __EntryTold(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn draft_told(f0: i64, f1: Str, f2: bool) -> kayak_rt::Handle<'static, Told> {
-        kayak_rt::heap_alloc(Told::DraftTold(f0, f1, f2))
+    impl kayak_rt::data::Variant<0> for Told {
+        type Fields = (i64, Str, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("draft-told")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Told {
+        #[inline(always)]
+        pub fn __is_DraftTold(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __DraftTold(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Told {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let (f0, f1, f2, f3, f4, f5, f6, f7,) = w.fields::<1>();
+                Self::EntryTold(f0, f1, f2, f3, f4, f5, f6, f7)
+            } else if w.is::<0>() {
+                let (f0, f1, f2,) = w.fields::<0>();
+                Self::DraftTold(f0, f1, f2)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn entry_told(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> kayak_rt::data::DataAt<'static, Told> {
+        kayak_rt::data::data_heap::<Told, 1>((f0, f1, f2, f3, f4, f5, f6, f7,))
+    }
+
+    pub fn draft_told(f0: i64, f1: Str, f2: bool) -> kayak_rt::data::DataAt<'static, Told> {
+        kayak_rt::data::data_heap::<Told, 0>((f0, f1, f2,))
     }
 
     // A scripted round's outcome: the news, the clock after the slices, and
     // whether no task may run.
+    #[derive(Clone, Copy)]
     pub enum Ran {
-        Ran(List<kayak_rt::Handle<'static, Told>>, i64, bool),
+        Ran(List<kayak_rt::data::DataAt<'static, Told>>, i64, bool),
     }
 
-    impl kayak_rt::Visit for Ran {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::Ran(f0, f1, f2) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); }
-            }
+    impl kayak_rt::data::Variant<0> for Ran {
+        type Fields = (List<kayak_rt::data::DataAt<'static, Told>>, i64, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("ran")
         }
     }
 
-    pub fn ran(f0: List<kayak_rt::Handle<'static, Told>>, f1: i64, f2: bool) -> kayak_rt::Handle<'static, Ran> {
-        kayak_rt::heap_alloc(Ran::Ran(f0, f1, f2))
+    #[allow(non_snake_case)]
+    impl Ran {
+        #[inline(always)]
+        pub fn __is_Ran(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Ran(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
     }
 
+    impl kayak_rt::data::Datatype for Ran {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<0>() {
+                let (f0, f1, f2,) = w.fields::<0>();
+                Self::Ran(f0, f1, f2)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn ran(f0: List<kayak_rt::data::DataAt<'static, Told>>, f1: i64, f2: bool) -> kayak_rt::data::DataAt<'static, Ran> {
+        kayak_rt::data::data_heap::<Ran, 0>((f0, f1, f2,))
+    }
+
+    #[derive(Clone, Copy)]
     pub enum Asked {
         EntryAsked(i64, Str, Str, bool, Str, Str, bool, List<i64>, Strings),
         DraftAsked(i64, Str, Str, Strings),
         DraftUnasked(),
         CancelAsked(i64),
         LimitAsked(i64),
-        RoundEnded(i64, ICell<kayak_rt::Handle<'static, Ran>>),
+        RoundEnded(i64, ICell<kayak_rt::data::DataAt<'static, Ran>>),
         FrontEnded(),
         FrontFailed(Str),
     }
 
-    impl kayak_rt::Visit for Asked {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::EntryAsked(f0, f1, f2, f3, f4, f5, f6, f7, f8) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); kayak_rt::Trace::trace(*f7, t); kayak_rt::Trace::trace(*f8, t); }
-                Self::DraftAsked(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-                Self::DraftUnasked() => { }
-                Self::CancelAsked(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::LimitAsked(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::RoundEnded(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-                Self::FrontEnded() => { }
-                Self::FrontFailed(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            }
+    impl kayak_rt::data::Variant<7> for Asked {
+        type Fields = (i64, Str, Str, bool, Str, Str, bool, List<i64>, Strings,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("entry-asked")
         }
     }
 
-    pub fn entry_asked(f0: i64, f1: Str, f2: Str, f3: bool, f4: Str, f5: Str, f6: bool, f7: List<i64>, f8: Strings) -> kayak_rt::Handle<'static, Asked> {
-        kayak_rt::heap_alloc(Asked::EntryAsked(f0, f1, f2, f3, f4, f5, f6, f7, f8))
+    #[allow(non_snake_case)]
+    impl Asked {
+        #[inline(always)]
+        pub fn __is_EntryAsked(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<7>()
+        }
+        #[inline(always)]
+        pub fn __EntryAsked(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<7>>::Fields {
+            w.fields::<7>()
+        }
     }
 
-    pub fn draft_asked(f0: i64, f1: Str, f2: Str, f3: Strings) -> kayak_rt::Handle<'static, Asked> {
-        kayak_rt::heap_alloc(Asked::DraftAsked(f0, f1, f2, f3))
+    impl kayak_rt::data::Variant<6> for Asked {
+        type Fields = (i64, Str, Str, Strings,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("draft-asked")
+        }
     }
 
-    pub fn draft_unasked() -> kayak_rt::Handle<'static, Asked> {
-        kayak_rt::heap_alloc(Asked::DraftUnasked())
+    #[allow(non_snake_case)]
+    impl Asked {
+        #[inline(always)]
+        pub fn __is_DraftAsked(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<6>()
+        }
+        #[inline(always)]
+        pub fn __DraftAsked(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<6>>::Fields {
+            w.fields::<6>()
+        }
     }
 
-    pub fn cancel_asked(f0: i64) -> kayak_rt::Handle<'static, Asked> {
-        kayak_rt::heap_alloc(Asked::CancelAsked(f0))
+    impl kayak_rt::data::Variant<5> for Asked {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("draft-unasked")
+        }
     }
 
-    pub fn limit_asked(f0: i64) -> kayak_rt::Handle<'static, Asked> {
-        kayak_rt::heap_alloc(Asked::LimitAsked(f0))
+    #[allow(non_snake_case)]
+    impl Asked {
+        #[inline(always)]
+        pub fn __is_DraftUnasked(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<5>()
+        }
+        #[inline(always)]
+        pub fn __DraftUnasked(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<5>>::Fields {
+            w.fields::<5>()
+        }
     }
 
-    pub fn round_ended(f0: i64, f1: ICell<kayak_rt::Handle<'static, Ran>>) -> kayak_rt::Handle<'static, Asked> {
-        kayak_rt::heap_alloc(Asked::RoundEnded(f0, f1))
+    impl kayak_rt::data::Variant<4> for Asked {
+        type Fields = (i64,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("cancel-asked")
+        }
     }
 
-    pub fn front_ended() -> kayak_rt::Handle<'static, Asked> {
-        kayak_rt::heap_alloc(Asked::FrontEnded())
+    #[allow(non_snake_case)]
+    impl Asked {
+        #[inline(always)]
+        pub fn __is_CancelAsked(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<4>()
+        }
+        #[inline(always)]
+        pub fn __CancelAsked(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
+            w.fields::<4>()
+        }
     }
 
-    pub fn front_failed(f0: Str) -> kayak_rt::Handle<'static, Asked> {
-        kayak_rt::heap_alloc(Asked::FrontFailed(f0))
+    impl kayak_rt::data::Variant<3> for Asked {
+        type Fields = (i64,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("limit-asked")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Asked {
+        #[inline(always)]
+        pub fn __is_LimitAsked(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<3>()
+        }
+        #[inline(always)]
+        pub fn __LimitAsked(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+            w.fields::<3>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<2> for Asked {
+        type Fields = (i64, ICell<kayak_rt::data::DataAt<'static, Ran>>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("round-ended")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Asked {
+        #[inline(always)]
+        pub fn __is_RoundEnded(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<2>()
+        }
+        #[inline(always)]
+        pub fn __RoundEnded(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+            w.fields::<2>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<1> for Asked {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("front-ended")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Asked {
+        #[inline(always)]
+        pub fn __is_FrontEnded(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __FrontEnded(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<0> for Asked {
+        type Fields = (Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("front-failed")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Asked {
+        #[inline(always)]
+        pub fn __is_FrontFailed(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __FrontFailed(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Asked {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<7>() {
+                let (f0, f1, f2, f3, f4, f5, f6, f7, f8,) = w.fields::<7>();
+                Self::EntryAsked(f0, f1, f2, f3, f4, f5, f6, f7, f8)
+            } else if w.is::<6>() {
+                let (f0, f1, f2, f3,) = w.fields::<6>();
+                Self::DraftAsked(f0, f1, f2, f3)
+            } else if w.is::<5>() {
+                let () = w.fields::<5>();
+                Self::DraftUnasked()
+            } else if w.is::<4>() {
+                let (f0,) = w.fields::<4>();
+                Self::CancelAsked(f0)
+            } else if w.is::<3>() {
+                let (f0,) = w.fields::<3>();
+                Self::LimitAsked(f0)
+            } else if w.is::<2>() {
+                let (f0, f1,) = w.fields::<2>();
+                Self::RoundEnded(f0, f1)
+            } else if w.is::<1>() {
+                let () = w.fields::<1>();
+                Self::FrontEnded()
+            } else if w.is::<0>() {
+                let (f0,) = w.fields::<0>();
+                Self::FrontFailed(f0)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<7>() { return t.reach(w.obj::<7>()); }
+            if w.is::<6>() { return t.reach(w.obj::<6>()); }
+            if w.is::<5>() { return t.reach(w.obj::<5>()); }
+            if w.is::<4>() { return t.reach(w.obj::<4>()); }
+            if w.is::<3>() { return t.reach(w.obj::<3>()); }
+            if w.is::<2>() { return t.reach(w.obj::<2>()); }
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<7>() { return (w.obj::<7>()); }
+            if w.is::<6>() { return (w.obj::<6>()); }
+            if w.is::<5>() { return (w.obj::<5>()); }
+            if w.is::<4>() { return (w.obj::<4>()); }
+            if w.is::<3>() { return (w.obj::<3>()); }
+            if w.is::<2>() { return (w.obj::<2>()); }
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 7>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 6>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 5>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn entry_asked(f0: i64, f1: Str, f2: Str, f3: bool, f4: Str, f5: Str, f6: bool, f7: List<i64>, f8: Strings) -> kayak_rt::data::DataAt<'static, Asked> {
+        kayak_rt::data::data_heap::<Asked, 7>((f0, f1, f2, f3, f4, f5, f6, f7, f8,))
+    }
+
+    pub fn draft_asked(f0: i64, f1: Str, f2: Str, f3: Strings) -> kayak_rt::data::DataAt<'static, Asked> {
+        kayak_rt::data::data_heap::<Asked, 6>((f0, f1, f2, f3,))
+    }
+
+    pub fn draft_unasked() -> kayak_rt::data::DataAt<'static, Asked> {
+        kayak_rt::data::data_heap::<Asked, 5>(())
+    }
+
+    pub fn cancel_asked(f0: i64) -> kayak_rt::data::DataAt<'static, Asked> {
+        kayak_rt::data::data_heap::<Asked, 4>((f0,))
+    }
+
+    pub fn limit_asked(f0: i64) -> kayak_rt::data::DataAt<'static, Asked> {
+        kayak_rt::data::data_heap::<Asked, 3>((f0,))
+    }
+
+    pub fn round_ended(f0: i64, f1: ICell<kayak_rt::data::DataAt<'static, Ran>>) -> kayak_rt::data::DataAt<'static, Asked> {
+        kayak_rt::data::data_heap::<Asked, 2>((f0, f1,))
+    }
+
+    pub fn front_ended() -> kayak_rt::data::DataAt<'static, Asked> {
+        kayak_rt::data::data_heap::<Asked, 1>(())
+    }
+
+    pub fn front_failed(f0: Str) -> kayak_rt::data::DataAt<'static, Asked> {
+        kayak_rt::data::data_heap::<Asked, 0>((f0,))
     }
 
     // The relay's mailbox: a request from the front; the machine asking for
     // those kept, into an I-cell, waiting for one or not.
+    #[derive(Clone, Copy)]
     pub enum Relayed {
-        FromFront(kayak_rt::Handle<'static, Asked>),
-        Taken(ICell<List<kayak_rt::Handle<'static, Asked>>>, bool),
+        FromFront(kayak_rt::data::DataAt<'static, Asked>),
+        Taken(ICell<List<kayak_rt::data::DataAt<'static, Asked>>>, bool),
     }
 
-    impl kayak_rt::Visit for Relayed {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::FromFront(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::Taken(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<1> for Relayed {
+        type Fields = (kayak_rt::data::DataAt<'static, Asked>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("from-front")
         }
     }
 
-    pub fn from_front(f0: kayak_rt::Handle<'static, Asked>) -> kayak_rt::Handle<'static, Relayed> {
-        kayak_rt::heap_alloc(Relayed::FromFront(f0))
+    #[allow(non_snake_case)]
+    impl Relayed {
+        #[inline(always)]
+        pub fn __is_FromFront(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __FromFront(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn taken(f0: ICell<List<kayak_rt::Handle<'static, Asked>>>, f1: bool) -> kayak_rt::Handle<'static, Relayed> {
-        kayak_rt::heap_alloc(Relayed::Taken(f0, f1))
+    impl kayak_rt::data::Variant<0> for Relayed {
+        type Fields = (ICell<List<kayak_rt::data::DataAt<'static, Asked>>>, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("taken")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Relayed {
+        #[inline(always)]
+        pub fn __is_Taken(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Taken(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Relayed {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let (f0,) = w.fields::<1>();
+                Self::FromFront(f0)
+            } else if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::Taken(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn from_front(f0: kayak_rt::data::DataAt<'static, Asked>) -> kayak_rt::data::DataAt<'static, Relayed> {
+        kayak_rt::data::data_heap::<Relayed, 1>((f0,))
+    }
+
+    pub fn taken(f0: ICell<List<kayak_rt::data::DataAt<'static, Asked>>>, f1: bool) -> kayak_rt::data::DataAt<'static, Relayed> {
+        kayak_rt::data::data_heap::<Relayed, 0>((f0, f1,))
     }
 
     // Entries' states, as each side keeps them.
@@ -584,48 +957,172 @@ pub mod tasks {
         }
     }
 
+    #[derive(Clone, Copy)]
     pub enum Closing {
         Unclosable(),
         ClosedAs(Str, i64, List<i64>, bool),
     }
 
-    impl kayak_rt::Visit for Closing {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::Unclosable() => { }
-                Self::ClosedAs(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-            }
+    impl kayak_rt::data::Variant<1> for Closing {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("unclosable")
         }
     }
 
-    pub fn unclosable() -> kayak_rt::Handle<'static, Closing> {
-        kayak_rt::heap_alloc(Closing::Unclosable())
+    #[allow(non_snake_case)]
+    impl Closing {
+        #[inline(always)]
+        pub fn __is_Unclosable(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __Unclosable(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn closed_as(f0: Str, f1: i64, f2: List<i64>, f3: bool) -> kayak_rt::Handle<'static, Closing> {
-        kayak_rt::heap_alloc(Closing::ClosedAs(f0, f1, f2, f3))
+    impl kayak_rt::data::Variant<0> for Closing {
+        type Fields = (Str, i64, List<i64>, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("closed-as")
+        }
     }
 
+    #[allow(non_snake_case)]
+    impl Closing {
+        #[inline(always)]
+        pub fn __is_ClosedAs(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __ClosedAs(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Closing {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let () = w.fields::<1>();
+                Self::Unclosable()
+            } else if w.is::<0>() {
+                let (f0, f1, f2, f3,) = w.fields::<0>();
+                Self::ClosedAs(f0, f1, f2, f3)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn unclosable() -> kayak_rt::data::DataAt<'static, Closing> {
+        kayak_rt::data::data_heap::<Closing, 1>(())
+    }
+
+    pub fn closed_as(f0: Str, f1: i64, f2: List<i64>, f3: bool) -> kayak_rt::data::DataAt<'static, Closing> {
+        kayak_rt::data::data_heap::<Closing, 0>((f0, f1, f2, f3,))
+    }
+
+    #[derive(Clone, Copy)]
     pub enum Scan {
         IllBalanced(),
         ScannedAs(List<i64>, bool),
     }
 
-    impl kayak_rt::Visit for Scan {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::IllBalanced() => { }
-                Self::ScannedAs(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<1> for Scan {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("ill-balanced")
         }
     }
 
-    pub fn ill_balanced() -> kayak_rt::Handle<'static, Scan> {
-        kayak_rt::heap_alloc(Scan::IllBalanced())
+    #[allow(non_snake_case)]
+    impl Scan {
+        #[inline(always)]
+        pub fn __is_IllBalanced(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __IllBalanced(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
     }
 
-    pub fn scanned_as(f0: List<i64>, f1: bool) -> kayak_rt::Handle<'static, Scan> {
-        kayak_rt::heap_alloc(Scan::ScannedAs(f0, f1))
+    impl kayak_rt::data::Variant<0> for Scan {
+        type Fields = (List<i64>, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("scanned-as")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Scan {
+        #[inline(always)]
+        pub fn __is_ScannedAs(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __ScannedAs(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Scan {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<1>() {
+                let () = w.fields::<1>();
+                Self::IllBalanced()
+            } else if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::ScannedAs(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn ill_balanced() -> kayak_rt::data::DataAt<'static, Scan> {
+        kayak_rt::data::data_heap::<Scan, 1>(())
+    }
+
+    pub fn scanned_as(f0: List<i64>, f1: bool) -> kayak_rt::data::DataAt<'static, Scan> {
+        kayak_rt::data::data_heap::<Scan, 0>((f0, f1,))
     }
 
     /// Where the text stops being finished: at a string not closed (begun
@@ -705,7 +1202,7 @@ pub mod tasks {
 
     /// Where the lists still open begin, the innermost first; and whether the
     /// text ends in a comment. A list closed that was never opened: none.
-    pub fn open_lists(mut cs: List<char>, mut i: i64, mut open: List<i64>, mut str: bool, mut comment: bool) -> kayak_rt::Handle<'static, Scan> {
+    pub fn open_lists(mut cs: List<char>, mut i: i64, mut open: List<i64>, mut str: bool, mut comment: bool) -> kayak_rt::data::DataAt<'static, Scan> {
         loop {
             if null_p(cs) {
                 return scanned_as(open, comment);
@@ -766,22 +1263,20 @@ pub mod tasks {
     /// its lists closed; where that stops being the draft, the lists it
     /// closed, and whether the draft was finished (nothing left out or
     /// closed).
-    pub fn closed_text(text: Str) -> kayak_rt::Handle<'static, Closing> {
+    pub fn closed_text(text: Str) -> kayak_rt::data::DataAt<'static, Closing> {
         let kept = before_quotes(text, kept_end(string_chars(text), 0i64, -1i64, false, -1i64));
         let typed = cut(text, 0i64, kept);
         let tagcase_ = open_lists(string_chars(typed), 0i64, nil::<i64>(), false, false);
-        match *tagcase_ {
-            Scan::IllBalanced() => {
-                unclosable()
-            }
-            Scan::ScannedAs(open, comment) => {
-                closed_as(string_append(typed, string_append(if (comment && not(null_p(open))) {
-                    str_lit!("\n")
-                } else {
-                    str_lit!("")
-                }, closers(size(open)))), kept, open, (null_p(open) && i64_eq(kept, string_length_i64(text))))
-            }
-        }
+        if Scan::__is_IllBalanced(tagcase_) {
+            unclosable()
+        } else if Scan::__is_ScannedAs(tagcase_) {
+            let (open, comment,) = Scan::__ScannedAs(tagcase_);
+            closed_as(string_append(typed, string_append(if (comment && not(null_p(open))) {
+                str_lit!("\n")
+            } else {
+                str_lit!("")
+            }, closers(size(open)))), kept, open, (null_p(open) && i64_eq(kept, string_length_i64(text))))
+        } else { kayak_rt::data::no_variant() }
     }
 
     pub fn i64_member_p(mut x: i64, mut xs: List<i64>) -> bool {
@@ -963,32 +1458,30 @@ pub mod tasks {
     }
 
     #[inline]
-    pub fn definition_form_p(f: kayak_rt::Handle<'static, Sexp>) -> bool {
+    pub fn definition_form_p(f: kayak_rt::data::DataAt<'static, Sexp>) -> bool {
         any_p(kayak_rt::as_proc(kayak_rt::closure1s((f,), |(f,), h: Str| {
             head_is_p(f, h)
         })), kayak_rt::heap_cons(str_lit!("define"), kayak_rt::heap_cons(str_lit!("define*"), kayak_rt::heap_cons(str_lit!("define-rec"), kayak_rt::heap_cons(str_lit!("define-type"), kayak_rt::heap_cons(str_lit!("define-datatype"), kayak_rt::heap_cons(str_lit!("define-generative"), kayak_rt::heap_cons(str_lit!("define-effect"), kayak_rt::nil()))))))))
     }
 
-    pub fn named_results(x: kayak_rt::Handle<'static, Sexp>) -> List<i64> {
+    pub fn named_results(x: kayak_rt::data::DataAt<'static, Sexp>) -> List<i64> {
         let tagcase_ = x;
-        match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                let cs = string_chars(n);
-                if (not(null_p(cs)) && char_eq_p(car(cs), '%') && not(null_p(cdr(cs))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
-                    not(char_numeric_p(c))
-                })), cdr(cs)))) {
-                    kayak_rt::heap_cons(number_from(cdr(cs), 0i64), kayak_rt::nil())
-                } else {
-                    nil::<i64>()
-                }
-            }
-            Sexp::Lst(xs, f, l, p) => {
-                concat(map(kayak_rt::as_proc(named_results), xs))
-            }
-            _ => {
-                let other = tagcase_;
+        if Sexp::__is_Sym(tagcase_) {
+            let (n, f, p,) = Sexp::__Sym(tagcase_);
+            let cs = string_chars(n);
+            if (not(null_p(cs)) && char_eq_p(car(cs), '%') && not(null_p(cdr(cs))) && not(any_p(kayak_rt::as_proc(kayak_rt::closure1s((), |(), c: char| {
+                not(char_numeric_p(c))
+            })), cdr(cs)))) {
+                kayak_rt::heap_cons(number_from(cdr(cs), 0i64), kayak_rt::nil())
+            } else {
                 nil::<i64>()
             }
+        } else if Sexp::__is_Lst(tagcase_) {
+            let (xs, f, l, p,) = Sexp::__Lst(tagcase_);
+            concat(map(kayak_rt::as_proc(named_results), xs))
+        } else {
+            let other = tagcase_;
+            nil::<i64>()
         }
     }
 
@@ -1042,125 +1535,472 @@ pub mod tasks {
     // checker's environment and the globals' names before it, its number,
     // text and label); `,type`'s text; a try of the draft, or of a text with
     // a hole in it, finished or not. What is found, or the refusal.
+    #[derive(Clone, Copy)]
     pub enum Job {
-        CheckEntry(kayak_rt::Handle<'static, Cv>, Strings, i64, Str, Str),
-        TypeOf(kayak_rt::Handle<'static, Cv>, Str),
-        Try(kayak_rt::Handle<'static, Cv>, Strings, Str, bool),
+        CheckEntry(kayak_rt::data::DataAt<'static, Cv>, Strings, i64, Str, Str),
+        TypeOf(kayak_rt::data::DataAt<'static, Cv>, Str),
+        Try(kayak_rt::data::DataAt<'static, Cv>, Strings, Str, bool),
         HoleItems(Str),
-        Recheck(kayak_rt::Handle<'static, Cv>, kayak_rt::Handle<'static, Sexp>),
+        Recheck(kayak_rt::data::DataAt<'static, Cv>, kayak_rt::data::DataAt<'static, Sexp>),
     }
 
-    impl kayak_rt::Visit for Job {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::CheckEntry(f0, f1, f2, f3, f4) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); }
-                Self::TypeOf(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-                Self::Try(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-                Self::HoleItems(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::Recheck(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<4> for Job {
+        type Fields = (kayak_rt::data::DataAt<'static, Cv>, Strings, i64, Str, Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("check-entry")
         }
     }
 
-    pub fn check_entry(f0: kayak_rt::Handle<'static, Cv>, f1: Strings, f2: i64, f3: Str, f4: Str) -> kayak_rt::Handle<'static, Job> {
-        kayak_rt::heap_alloc(Job::CheckEntry(f0, f1, f2, f3, f4))
+    #[allow(non_snake_case)]
+    impl Job {
+        #[inline(always)]
+        pub fn __is_CheckEntry(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<4>()
+        }
+        #[inline(always)]
+        pub fn __CheckEntry(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
+            w.fields::<4>()
+        }
     }
 
-    pub fn type_of(f0: kayak_rt::Handle<'static, Cv>, f1: Str) -> kayak_rt::Handle<'static, Job> {
-        kayak_rt::heap_alloc(Job::TypeOf(f0, f1))
+    impl kayak_rt::data::Variant<3> for Job {
+        type Fields = (kayak_rt::data::DataAt<'static, Cv>, Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("type-of")
+        }
     }
 
-    pub fn r#try(f0: kayak_rt::Handle<'static, Cv>, f1: Strings, f2: Str, f3: bool) -> kayak_rt::Handle<'static, Job> {
-        kayak_rt::heap_alloc(Job::Try(f0, f1, f2, f3))
+    #[allow(non_snake_case)]
+    impl Job {
+        #[inline(always)]
+        pub fn __is_TypeOf(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<3>()
+        }
+        #[inline(always)]
+        pub fn __TypeOf(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+            w.fields::<3>()
+        }
     }
 
-    pub fn hole_items(f0: Str) -> kayak_rt::Handle<'static, Job> {
-        kayak_rt::heap_alloc(Job::HoleItems(f0))
+    impl kayak_rt::data::Variant<2> for Job {
+        type Fields = (kayak_rt::data::DataAt<'static, Cv>, Strings, Str, bool,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("try")
+        }
     }
 
-    pub fn recheck(f0: kayak_rt::Handle<'static, Cv>, f1: kayak_rt::Handle<'static, Sexp>) -> kayak_rt::Handle<'static, Job> {
-        kayak_rt::heap_alloc(Job::Recheck(f0, f1))
+    #[allow(non_snake_case)]
+    impl Job {
+        #[inline(always)]
+        pub fn __is_Try(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<2>()
+        }
+        #[inline(always)]
+        pub fn __Try(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+            w.fields::<2>()
+        }
     }
 
+    impl kayak_rt::data::Variant<1> for Job {
+        type Fields = (Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("hole-items")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Job {
+        #[inline(always)]
+        pub fn __is_HoleItems(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __HoleItems(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<0> for Job {
+        type Fields = (kayak_rt::data::DataAt<'static, Cv>, kayak_rt::data::DataAt<'static, Sexp>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("recheck")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Job {
+        #[inline(always)]
+        pub fn __is_Recheck(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Recheck(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Job {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<4>() {
+                let (f0, f1, f2, f3, f4,) = w.fields::<4>();
+                Self::CheckEntry(f0, f1, f2, f3, f4)
+            } else if w.is::<3>() {
+                let (f0, f1,) = w.fields::<3>();
+                Self::TypeOf(f0, f1)
+            } else if w.is::<2>() {
+                let (f0, f1, f2, f3,) = w.fields::<2>();
+                Self::Try(f0, f1, f2, f3)
+            } else if w.is::<1>() {
+                let (f0,) = w.fields::<1>();
+                Self::HoleItems(f0)
+            } else if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::Recheck(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<4>() { return t.reach(w.obj::<4>()); }
+            if w.is::<3>() { return t.reach(w.obj::<3>()); }
+            if w.is::<2>() { return t.reach(w.obj::<2>()); }
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<4>() { return (w.obj::<4>()); }
+            if w.is::<3>() { return (w.obj::<3>()); }
+            if w.is::<2>() { return (w.obj::<2>()); }
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn check_entry(f0: kayak_rt::data::DataAt<'static, Cv>, f1: Strings, f2: i64, f3: Str, f4: Str) -> kayak_rt::data::DataAt<'static, Job> {
+        kayak_rt::data::data_heap::<Job, 4>((f0, f1, f2, f3, f4,))
+    }
+
+    pub fn type_of(f0: kayak_rt::data::DataAt<'static, Cv>, f1: Str) -> kayak_rt::data::DataAt<'static, Job> {
+        kayak_rt::data::data_heap::<Job, 3>((f0, f1,))
+    }
+
+    pub fn r#try(f0: kayak_rt::data::DataAt<'static, Cv>, f1: Strings, f2: Str, f3: bool) -> kayak_rt::data::DataAt<'static, Job> {
+        kayak_rt::data::data_heap::<Job, 2>((f0, f1, f2, f3,))
+    }
+
+    pub fn hole_items(f0: Str) -> kayak_rt::data::DataAt<'static, Job> {
+        kayak_rt::data::data_heap::<Job, 1>((f0,))
+    }
+
+    pub fn recheck(f0: kayak_rt::data::DataAt<'static, Cv>, f1: kayak_rt::data::DataAt<'static, Sexp>) -> kayak_rt::data::DataAt<'static, Job> {
+        kayak_rt::data::data_heap::<Job, 0>((f0, f1,))
+    }
+
+    #[derive(Clone, Copy)]
     pub enum Done {
-        EntryDone(kayak_rt::Handle<'static, Cv>, Strings, Str, Str, bool, List<i64>, Strings),
+        EntryDone(kayak_rt::data::DataAt<'static, Cv>, Strings, Str, Str, bool, List<i64>, Strings),
         ShownDone(Str),
         TriedNone(),
         TriedExpression(Str, Strings, List<i64>, Strings),
         TriedDefinitions(Str),
         ItemsDone(i64, Str),
-        Rechecked(kayak_rt::Handle<'static, Cv>),
+        Rechecked(kayak_rt::data::DataAt<'static, Cv>),
         RefusedDone(Str),
     }
 
-    impl kayak_rt::Visit for Done {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::EntryDone(f0, f1, f2, f3, f4, f5, f6) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); kayak_rt::Trace::trace(*f4, t); kayak_rt::Trace::trace(*f5, t); kayak_rt::Trace::trace(*f6, t); }
-                Self::ShownDone(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::TriedNone() => { }
-                Self::TriedExpression(f0, f1, f2, f3) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); kayak_rt::Trace::trace(*f2, t); kayak_rt::Trace::trace(*f3, t); }
-                Self::TriedDefinitions(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::ItemsDone(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-                Self::Rechecked(f0) => { kayak_rt::Trace::trace(*f0, t); }
-                Self::RefusedDone(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            }
+    impl kayak_rt::data::Variant<7> for Done {
+        type Fields = (kayak_rt::data::DataAt<'static, Cv>, Strings, Str, Str, bool, List<i64>, Strings,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("entry-done")
         }
     }
 
-    pub fn entry_done(f0: kayak_rt::Handle<'static, Cv>, f1: Strings, f2: Str, f3: Str, f4: bool, f5: List<i64>, f6: Strings) -> kayak_rt::Handle<'static, Done> {
-        kayak_rt::heap_alloc(Done::EntryDone(f0, f1, f2, f3, f4, f5, f6))
+    #[allow(non_snake_case)]
+    impl Done {
+        #[inline(always)]
+        pub fn __is_EntryDone(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<7>()
+        }
+        #[inline(always)]
+        pub fn __EntryDone(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<7>>::Fields {
+            w.fields::<7>()
+        }
     }
 
-    pub fn shown_done(f0: Str) -> kayak_rt::Handle<'static, Done> {
-        kayak_rt::heap_alloc(Done::ShownDone(f0))
+    impl kayak_rt::data::Variant<6> for Done {
+        type Fields = (Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("shown-done")
+        }
     }
 
-    pub fn tried_none() -> kayak_rt::Handle<'static, Done> {
-        kayak_rt::heap_alloc(Done::TriedNone())
+    #[allow(non_snake_case)]
+    impl Done {
+        #[inline(always)]
+        pub fn __is_ShownDone(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<6>()
+        }
+        #[inline(always)]
+        pub fn __ShownDone(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<6>>::Fields {
+            w.fields::<6>()
+        }
     }
 
-    pub fn tried_expression(f0: Str, f1: Strings, f2: List<i64>, f3: Strings) -> kayak_rt::Handle<'static, Done> {
-        kayak_rt::heap_alloc(Done::TriedExpression(f0, f1, f2, f3))
+    impl kayak_rt::data::Variant<5> for Done {
+        type Fields = ();
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("tried-none")
+        }
     }
 
-    pub fn tried_definitions(f0: Str) -> kayak_rt::Handle<'static, Done> {
-        kayak_rt::heap_alloc(Done::TriedDefinitions(f0))
+    #[allow(non_snake_case)]
+    impl Done {
+        #[inline(always)]
+        pub fn __is_TriedNone(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<5>()
+        }
+        #[inline(always)]
+        pub fn __TriedNone(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<5>>::Fields {
+            w.fields::<5>()
+        }
     }
 
-    pub fn items_done(f0: i64, f1: Str) -> kayak_rt::Handle<'static, Done> {
-        kayak_rt::heap_alloc(Done::ItemsDone(f0, f1))
+    impl kayak_rt::data::Variant<4> for Done {
+        type Fields = (Str, Strings, List<i64>, Strings,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("tried-expression")
+        }
     }
 
-    pub fn rechecked(f0: kayak_rt::Handle<'static, Cv>) -> kayak_rt::Handle<'static, Done> {
-        kayak_rt::heap_alloc(Done::Rechecked(f0))
+    #[allow(non_snake_case)]
+    impl Done {
+        #[inline(always)]
+        pub fn __is_TriedExpression(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<4>()
+        }
+        #[inline(always)]
+        pub fn __TriedExpression(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<4>>::Fields {
+            w.fields::<4>()
+        }
     }
 
-    pub fn refused_done(f0: Str) -> kayak_rt::Handle<'static, Done> {
-        kayak_rt::heap_alloc(Done::RefusedDone(f0))
+    impl kayak_rt::data::Variant<3> for Done {
+        type Fields = (Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("tried-definitions")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Done {
+        #[inline(always)]
+        pub fn __is_TriedDefinitions(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<3>()
+        }
+        #[inline(always)]
+        pub fn __TriedDefinitions(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<3>>::Fields {
+            w.fields::<3>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<2> for Done {
+        type Fields = (i64, Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("items-done")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Done {
+        #[inline(always)]
+        pub fn __is_ItemsDone(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<2>()
+        }
+        #[inline(always)]
+        pub fn __ItemsDone(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<2>>::Fields {
+            w.fields::<2>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<1> for Done {
+        type Fields = (kayak_rt::data::DataAt<'static, Cv>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("rechecked")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Done {
+        #[inline(always)]
+        pub fn __is_Rechecked(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<1>()
+        }
+        #[inline(always)]
+        pub fn __Rechecked(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+            w.fields::<1>()
+        }
+    }
+
+    impl kayak_rt::data::Variant<0> for Done {
+        type Fields = (Str,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("refused-done")
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Done {
+        #[inline(always)]
+        pub fn __is_RefusedDone(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __RefusedDone(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Done {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<7>() {
+                let (f0, f1, f2, f3, f4, f5, f6,) = w.fields::<7>();
+                Self::EntryDone(f0, f1, f2, f3, f4, f5, f6)
+            } else if w.is::<6>() {
+                let (f0,) = w.fields::<6>();
+                Self::ShownDone(f0)
+            } else if w.is::<5>() {
+                let () = w.fields::<5>();
+                Self::TriedNone()
+            } else if w.is::<4>() {
+                let (f0, f1, f2, f3,) = w.fields::<4>();
+                Self::TriedExpression(f0, f1, f2, f3)
+            } else if w.is::<3>() {
+                let (f0,) = w.fields::<3>();
+                Self::TriedDefinitions(f0)
+            } else if w.is::<2>() {
+                let (f0, f1,) = w.fields::<2>();
+                Self::ItemsDone(f0, f1)
+            } else if w.is::<1>() {
+                let (f0,) = w.fields::<1>();
+                Self::Rechecked(f0)
+            } else if w.is::<0>() {
+                let (f0,) = w.fields::<0>();
+                Self::RefusedDone(f0)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<7>() { return t.reach(w.obj::<7>()); }
+            if w.is::<6>() { return t.reach(w.obj::<6>()); }
+            if w.is::<5>() { return t.reach(w.obj::<5>()); }
+            if w.is::<4>() { return t.reach(w.obj::<4>()); }
+            if w.is::<3>() { return t.reach(w.obj::<3>()); }
+            if w.is::<2>() { return t.reach(w.obj::<2>()); }
+            if w.is::<1>() { return t.reach(w.obj::<1>()); }
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<7>() { return (w.obj::<7>()); }
+            if w.is::<6>() { return (w.obj::<6>()); }
+            if w.is::<5>() { return (w.obj::<5>()); }
+            if w.is::<4>() { return (w.obj::<4>()); }
+            if w.is::<3>() { return (w.obj::<3>()); }
+            if w.is::<2>() { return (w.obj::<2>()); }
+            if w.is::<1>() { return (w.obj::<1>()); }
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 7>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 6>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 5>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 4>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 3>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 2>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn entry_done(f0: kayak_rt::data::DataAt<'static, Cv>, f1: Strings, f2: Str, f3: Str, f4: bool, f5: List<i64>, f6: Strings) -> kayak_rt::data::DataAt<'static, Done> {
+        kayak_rt::data::data_heap::<Done, 7>((f0, f1, f2, f3, f4, f5, f6,))
+    }
+
+    pub fn shown_done(f0: Str) -> kayak_rt::data::DataAt<'static, Done> {
+        kayak_rt::data::data_heap::<Done, 6>((f0,))
+    }
+
+    pub fn tried_none() -> kayak_rt::data::DataAt<'static, Done> {
+        kayak_rt::data::data_heap::<Done, 5>(())
+    }
+
+    pub fn tried_expression(f0: Str, f1: Strings, f2: List<i64>, f3: Strings) -> kayak_rt::data::DataAt<'static, Done> {
+        kayak_rt::data::data_heap::<Done, 4>((f0, f1, f2, f3,))
+    }
+
+    pub fn tried_definitions(f0: Str) -> kayak_rt::data::DataAt<'static, Done> {
+        kayak_rt::data::data_heap::<Done, 3>((f0,))
+    }
+
+    pub fn items_done(f0: i64, f1: Str) -> kayak_rt::data::DataAt<'static, Done> {
+        kayak_rt::data::data_heap::<Done, 2>((f0, f1,))
+    }
+
+    pub fn rechecked(f0: kayak_rt::data::DataAt<'static, Cv>) -> kayak_rt::data::DataAt<'static, Done> {
+        kayak_rt::data::data_heap::<Done, 1>((f0,))
+    }
+
+    pub fn refused_done(f0: Str) -> kayak_rt::data::DataAt<'static, Done> {
+        kayak_rt::data::data_heap::<Done, 0>((f0,))
     }
 
     /// The checker's environment with `name` a global of `form`'s type.
-    pub fn result_bound(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>, name: Str) -> kayak_rt::Handle<'static, Cv> {
+    pub fn result_bound(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::data::DataAt<'static, Sexp>, name: Str) -> kayak_rt::data::DataAt<'static, Cv> {
         let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
-        match *tagcase_ {
-            Res::Res(t, es, s) => {
-                with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil()))
-            }
-        }
+        if Res::__is_Res(tagcase_) {
+            let (t, es, s,) = Res::__Res(tagcase_);
+            with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil()))
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
-    pub fn expression_effects(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> Strings {
+    pub fn expression_effects(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::data::DataAt<'static, Sexp>) -> Strings {
         let tagcase_ = expressions::synth(at(v, str_lit!("a top-level expression"), nil::<Str>()), new_state(), form);
-        match *tagcase_ {
-            Res::Res(t, es, s) => {
-                es
-            }
-        }
+        if Res::__is_Res(tagcase_) {
+            let (t, es, s,) = Res::__Res(tagcase_);
+            es
+        } else { kayak_rt::data::no_variant() }
     }
 
-    pub fn checked_all(mut v: kayak_rt::Handle<'static, Cv>, mut forms: Sexps) -> kayak_rt::Handle<'static, Cv> {
+    pub fn checked_all(mut v: kayak_rt::data::DataAt<'static, Cv>, mut forms: Sexps) -> kayak_rt::data::DataAt<'static, Cv> {
         loop {
             if null_p(forms) {
                 return v;
@@ -1172,7 +2012,7 @@ pub mod tasks {
     }
 
     /// What the REPL writes of each definition among `forms`.
-    pub fn definition_lines(mut v: kayak_rt::Handle<'static, Cv>, mut forms: Sexps) -> Strings {
+    pub fn definition_lines(mut v: kayak_rt::data::DataAt<'static, Cv>, mut forms: Sexps) -> Strings {
         loop {
             if null_p(forms) {
                 return nil::<Str>();
@@ -1196,7 +2036,7 @@ pub mod tasks {
     /// here if anywhere: an expression's value `%k`'s, the global bound
     /// at its type; what is written after its value, the lines of the
     /// definitions, whether it only reads and allocates.
-    pub fn entry_checked(mut v: kayak_rt::Handle<'static, Cv>, mut gs: Strings, mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut needs: List<i64>, mut file: Str) -> kayak_rt::Handle<'static, Done> {
+    pub fn entry_checked(mut v: kayak_rt::data::DataAt<'static, Cv>, mut gs: Strings, mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut needs: List<i64>, mut file: Str) -> kayak_rt::data::DataAt<'static, Done> {
         loop {
             if null_p(forms) {
                 return entry_done(v, gs, typed, defined, quiet, needs, entry_facts(v, file));
@@ -1247,91 +2087,87 @@ pub mod tasks {
         }
     }
 
-    pub fn job_done(j: kayak_rt::Handle<'static, Job>) -> kayak_rt::Handle<'static, Done> {
+    pub fn job_done(j: kayak_rt::data::DataAt<'static, Job>) -> kayak_rt::data::DataAt<'static, Done> {
         let tagcase_ = j;
-        match *tagcase_ {
-            Job::CheckEntry(v, gs, k, text, label) => {
-                let file = if string_eq_p(label, str_lit!("")) {
-                    string_append(str_lit!("<fx26:"), string_append(i64_to_string(k), str_lit!(">")))
-                } else {
-                    label
-                };
-                let forms = program_read(text, file, 1i64);
-                entry_checked(v, gs, k, forms, str_lit!(""), str_lit!(""), true, concat(map(kayak_rt::as_proc(named_results), forms)), file)
+        if Job::__is_CheckEntry(tagcase_) {
+            let (v, gs, k, text, label,) = Job::__CheckEntry(tagcase_);
+            let file = if string_eq_p(label, str_lit!("")) {
+                string_append(str_lit!("<fx26:"), string_append(i64_to_string(k), str_lit!(">")))
+            } else {
+                label
+            };
+            let forms = program_read(text, file, 1i64);
+            entry_checked(v, gs, k, forms, str_lit!(""), str_lit!(""), true, concat(map(kayak_rt::as_proc(named_results), forms)), file)
+        } else if Job::__is_TypeOf(tagcase_) {
+            let (v, text,) = Job::__TypeOf(tagcase_);
+            let forms = program_read(text, str_lit!("<,type>"), 1i64);
+            if null_p(forms) {
+                error(str_lit!("nothing to type"));
+                shown_done(str_lit!(""))
+            } else {
+                shown_done(form_type(v, car(forms)))
             }
-            Job::TypeOf(v, text) => {
-                let forms = program_read(text, str_lit!("<,type>"), 1i64);
-                if null_p(forms) {
-                    error(str_lit!("nothing to type"));
-                    shown_done(str_lit!(""))
-                } else {
-                    shown_done(form_type(v, car(forms)))
-                }
+        } else if Job::__is_Try(tagcase_) {
+            let (v, gs, text, finished,) = Job::__Try(tagcase_);
+            let forms = program_read(text, str_lit!("<draft>"), 1i64);
+            let v2 = checked_all(v, forms);
+            if (not(finished) || null_p(forms)) {
+                tried_none()
+            } else if (null_p(cdr(forms)) && not(definition_form_p(car(forms)))) {
+                lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), gs);
+                tried_expression(form_type(v, car(forms)), expression_effects(v, car(forms)), named_results(car(forms)), entry_facts(v2, str_lit!("<draft>")))
+            } else {
+                tried_definitions(words_lines(definition_lines(v2, forms)))
             }
-            Job::Try(v, gs, text, finished) => {
-                let forms = program_read(text, str_lit!("<draft>"), 1i64);
-                let v2 = checked_all(v, forms);
-                if (not(finished) || null_p(forms)) {
-                    tried_none()
-                } else if (null_p(cdr(forms)) && not(definition_form_p(car(forms)))) {
-                    lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), gs);
-                    tried_expression(form_type(v, car(forms)), expression_effects(v, car(forms)), named_results(car(forms)), entry_facts(v2, str_lit!("<draft>")))
-                } else {
-                    tried_definitions(words_lines(definition_lines(v2, forms)))
-                }
-            }
-            Job::Recheck(v, form) => {
-                let tagcase_ = check_tops(v, kayak_rt::heap_cons(form, kayak_rt::nil()), nil::<kayak_rt::Handle<'static, Typed>>());
-                match *tagcase_ {
-                    Elab::Elab(v2, found) => {
-                        rechecked(v2)
+        } else if Job::__is_Recheck(tagcase_) {
+            let (v, form,) = Job::__Recheck(tagcase_);
+            let tagcase_ = check_tops(v, kayak_rt::heap_cons(form, kayak_rt::nil()), nil::<kayak_rt::data::DataAt<'static, Typed>>());
+            if Elab::__is_Elab(tagcase_) {
+                let (v2, found,) = Elab::__Elab(tagcase_);
+                rechecked(v2)
+            } else { kayak_rt::data::no_variant() }
+        } else if Job::__is_HoleItems(tagcase_) {
+            let (text,) = Job::__HoleItems(tagcase_);
+            let inner = program_read(text, str_lit!("<hint>"), 1i64);
+            let xs = if null_p(inner) {
+                nil::<kayak_rt::data::DataAt<'static, Sexp>>()
+            } else {
+                items(car(inner))
+            };
+            items_done(size(xs), if null_p(xs) {
+                str_lit!("")
+            } else {
+                let tagcase_ = car(xs);
+                if Sexp::__is_Sym(tagcase_) {
+                    let (op, f, p,) = Sexp::__Sym(tagcase_);
+                    if form_keyword_p(op) {
+                        str_lit!("")
+                    } else {
+                        op
                     }
-                }
-            }
-            Job::HoleItems(text) => {
-                let inner = program_read(text, str_lit!("<hint>"), 1i64);
-                let xs = if null_p(inner) {
-                    nil::<kayak_rt::Handle<'static, Sexp>>()
                 } else {
-                    items(car(inner))
-                };
-                items_done(size(xs), if null_p(xs) {
+                    let other = tagcase_;
                     str_lit!("")
-                } else {
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(op, f, p) => {
-                            if form_keyword_p(op) {
-                                str_lit!("")
-                            } else {
-                                op
-                            }
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            str_lit!("")
-                        }
-                    }
-                })
-            }
-        }
+                }
+            })
+        } else { kayak_rt::data::no_variant() }
     }
 
     #[inline]
-    pub fn refusal(m: Str) -> kayak_rt::Handle<'static, Done> {
+    pub fn refusal(m: Str) -> kayak_rt::data::DataAt<'static, Done> {
         refused_done(m)
     }
 
     /// `j` done by a worker, whose watcher, a relay of one message, puts
     /// what it is sent, the outcome or the refusal, where this waits.
-    pub fn worked(j: kayak_rt::Handle<'static, Job>) -> kayak_rt::Handle<'static, Done> {
-        let out = the::<ICell<kayak_rt::Handle<'static, Done>>>(make_icell());
-        let relay = the::<Addr<kayak_rt::Handle<'static, Done>>>(kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<kayak_rt::Handle<'static, tasks::Done>>| {
+    pub fn worked(j: kayak_rt::data::DataAt<'static, Job>) -> kayak_rt::data::DataAt<'static, Done> {
+        let out = the::<ICell<kayak_rt::data::DataAt<'static, Done>>>(make_icell());
+        let relay = the::<Addr<kayak_rt::data::DataAt<'static, Done>>>(kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Done>>| {
             let _ = {
                 struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
                 impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
                 impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
-                fn letrena__r<'r>(r: &'r Region_R<'r>, out: ICell<kayak_rt::Handle<'static, tasks::Done>>, r#box: Inbox<kayak_rt::Handle<'static, tasks::Done>>) -> () {
+                fn letrena__r<'r>(r: &'r Region_R<'r>, out: ICell<kayak_rt::data::DataAt<'static, tasks::Done>>, r#box: Inbox<kayak_rt::data::DataAt<'static, tasks::Done>>) -> () {
                     kayak_rt::process::icell_put_x(out, kayak_rt::process::receive(r#box))
                 }
                 let r__arena = Region_R::default();
@@ -1343,7 +2179,7 @@ pub mod tasks {
                 struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
                 impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
                 impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
-                fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<kayak_rt::Handle<'static, tasks::Done>>, j: kayak_rt::Handle<'static, tasks::Job>) -> () {
+                fn letrena__r<'r>(r: &'r Region_R<'r>, relay: Addr<kayak_rt::data::DataAt<'static, tasks::Done>>, j: kayak_rt::data::DataAt<'static, tasks::Job>) -> () {
                     kayak_rt::process::send(relay, job_done(j))
                 }
                 let r__arena = Region_R::default();
@@ -1415,10 +2251,10 @@ pub mod tasks {
     }
 
     #[inline]
-    pub fn m_news() -> Ref<List<kayak_rt::Handle<'static, Told>>> {
-        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::Handle<'static, Told>>>);
+    pub fn m_news() -> Ref<List<kayak_rt::data::DataAt<'static, Told>>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<kayak_rt::data::DataAt<'static, Told>>>);
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<kayak_rt::Handle<'static, tasks::Told>>())
+            kayak_rt::heap_new(nil::<kayak_rt::data::DataAt<'static, tasks::Told>>())
         })
     }
 
@@ -1698,41 +2534,38 @@ pub mod tasks {
     }
 
     /// A request from the front.
-    pub fn m_asked_x(r: kayak_rt::Handle<'static, Asked>, now: i64) -> () {
+    pub fn m_asked_x(r: kayak_rt::data::DataAt<'static, Asked>, now: i64) -> () {
         let tagcase_ = r;
-        match *tagcase_ {
-            Asked::EntryAsked(k, text, label, timed, typed, defined, quiet, needs, facts) => {
-                m_given_x(k, text, label, timed, typed, defined, quiet, needs, facts, now)
-            }
-            Asked::DraftAsked(serial, text, r#type, facts) => {
-                m_draft_run_x(serial, text, r#type, facts)
-            }
-            Asked::DraftUnasked() => {
-                m_spec_dropped_x()
-            }
-            Asked::CancelAsked(k) => {
-                let found = m_numbered(get(m_entries()), k);
-                if (not(null_p(found)) && m_unfinished_p(car(found))) {
-                    m_interrupted_x(car(found), now)
-                } else {
-                    ()
-                }
-            }
-            Asked::LimitAsked(n) => {
-                set(m_step_limit(), n)
-            }
-            Asked::RoundEnded(clock, reply) => {
+        if Asked::__is_EntryAsked(tagcase_) {
+            let (k, text, label, timed, typed, defined, quiet, needs, facts,) = Asked::__EntryAsked(tagcase_);
+            m_given_x(k, text, label, timed, typed, defined, quiet, needs, facts, now)
+        } else if Asked::__is_DraftAsked(tagcase_) {
+            let (serial, text, r#type, facts,) = Asked::__DraftAsked(tagcase_);
+            m_draft_run_x(serial, text, r#type, facts)
+        } else if Asked::__is_DraftUnasked(tagcase_) {
+            m_spec_dropped_x()
+        } else if Asked::__is_CancelAsked(tagcase_) {
+            let (k,) = Asked::__CancelAsked(tagcase_);
+            let found = m_numbered(get(m_entries()), k);
+            if (not(null_p(found)) && m_unfinished_p(car(found))) {
+                m_interrupted_x(car(found), now)
+            } else {
                 ()
             }
-            Asked::FrontEnded() => {
-                set(m_over(), true)
-            }
-            Asked::FrontFailed(m) => {
-                terminal_restore();
-                write_err(string_append(str_lit!("kayak-fx26: the REPL's front failed: "), string_append(m, str_lit!("\n"))));
-                set(m_over(), true)
-            }
-        }
+        } else if Asked::__is_LimitAsked(tagcase_) {
+            let (n,) = Asked::__LimitAsked(tagcase_);
+            set(m_step_limit(), n)
+        } else if Asked::__is_RoundEnded(tagcase_) {
+            let (clock, reply,) = Asked::__RoundEnded(tagcase_);
+            ()
+        } else if Asked::__is_FrontEnded(tagcase_) {
+            set(m_over(), true)
+        } else if Asked::__is_FrontFailed(tagcase_) {
+            let (m,) = Asked::__FrontFailed(tagcase_);
+            terminal_restore();
+            write_err(string_append(str_lit!("kayak-fx26: the REPL's front failed: "), string_append(m, str_lit!("\n"))));
+            set(m_over(), true)
+        } else { kayak_rt::data::no_variant() }
     }
 
     // Running, by slices.
@@ -1941,9 +2774,9 @@ pub mod tasks {
     }
 
     /// Each entry as it is now, its output since taken, for the front.
-    pub fn entries_news(es: List<Mentry>) -> List<kayak_rt::Handle<'static, Told>> {
+    pub fn entries_news(es: List<Mentry>) -> List<kayak_rt::data::DataAt<'static, Told>> {
         if null_p(es) {
-            nil::<kayak_rt::Handle<'static, tasks::Told>>()
+            nil::<kayak_rt::data::DataAt<'static, tasks::Told>>()
         } else {
             let e = car(es);
             let out = get(e.8);
@@ -1959,18 +2792,18 @@ pub mod tasks {
 
     /// The news not yet sent, the oldest first: each entry whose state or
     /// line changed, or that wrote; then the draft's run's outcome.
-    pub fn news_taken_x() -> List<kayak_rt::Handle<'static, Told>> {
+    pub fn news_taken_x() -> List<kayak_rt::data::DataAt<'static, Told>> {
         let (es, drafts) = (m_where(kayak_rt::closure1((), |(), e: Mentry| {
             (not(string_eq_p(get(e.8), str_lit!(""))) || not(string_eq_p(entry_key(e), get(e.11))))
         }), m_oldest_first(get(m_entries()), nil::<Product_3num_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())), get(m_news()));
-        set(m_news(), nil::<kayak_rt::Handle<'static, tasks::Told>>());
-        onto(entries_news(es), reversed_onto(drafts, nil::<kayak_rt::Handle<'static, tasks::Told>>()))
+        set(m_news(), nil::<kayak_rt::data::DataAt<'static, tasks::Told>>());
+        onto(entries_news(es), reversed_onto(drafts, nil::<kayak_rt::data::DataAt<'static, tasks::Told>>()))
     }
 
     // The machine's loops: asking the relay for the front's requests, by an
     // I-cell, waiting for one or not.
-    pub fn asked_of(relay: Addr<kayak_rt::Handle<'static, Relayed>>, waiting: bool) -> List<kayak_rt::Handle<'static, Asked>> {
-        let c = the::<ICell<List<kayak_rt::Handle<'static, Asked>>>>(make_icell());
+    pub fn asked_of(relay: Addr<kayak_rt::data::DataAt<'static, Relayed>>, waiting: bool) -> List<kayak_rt::data::DataAt<'static, Asked>> {
+        let c = the::<ICell<List<kayak_rt::data::DataAt<'static, Asked>>>>(make_icell());
         kayak_rt::process::send(relay, taken(c, waiting));
         kayak_rt::process::icell_get(c)
     }
@@ -1980,7 +2813,7 @@ pub mod tasks {
         i64_quotient(clock(), 1000000i64)
     }
 
-    pub fn each_asked_x(mut rs: List<kayak_rt::Handle<'static, Asked>>, mut now: i64) -> () {
+    pub fn each_asked_x(mut rs: List<kayak_rt::data::DataAt<'static, Asked>>, mut now: i64) -> () {
         loop {
             if null_p(rs) {
                 return ();
@@ -1992,7 +2825,7 @@ pub mod tasks {
         }
     }
 
-    pub fn each_told_x(mut front: Addr<kayak_rt::Handle<'static, Told>>, mut ns: List<kayak_rt::Handle<'static, Told>>) -> () {
+    pub fn each_told_x(mut front: Addr<kayak_rt::data::DataAt<'static, Told>>, mut ns: List<kayak_rt::data::DataAt<'static, Told>>) -> () {
         loop {
             if null_p(ns) {
                 return ();
@@ -2006,7 +2839,7 @@ pub mod tasks {
 
     /// Slices, the entries by turns, for a sixtieth of a second at most,
     /// or until a request comes, which is taken then.
-    pub fn live_slices_x(mut relay: Addr<kayak_rt::Handle<'static, Relayed>>, mut began: i64) -> () {
+    pub fn live_slices_x(mut relay: Addr<kayak_rt::data::DataAt<'static, Relayed>>, mut began: i64) -> () {
         loop {
             let (k, now) = (next_task(), now_ms());
             if (i64_lt(k, 0i64) || i64_gt_eq(i64_minus(now, began), 16i64)) {
@@ -2025,7 +2858,7 @@ pub mod tasks {
 
     /// The machine of a live or plain session (C103's, in FX-26): requests
     /// taken, waited for when nothing may run; slices; the news sent.
-    pub fn machine_live_x(mut relay: Addr<kayak_rt::Handle<'static, Relayed>>, mut front: Addr<kayak_rt::Handle<'static, Told>>) -> () {
+    pub fn machine_live_x(mut relay: Addr<kayak_rt::data::DataAt<'static, Relayed>>, mut front: Addr<kayak_rt::data::DataAt<'static, Told>>) -> () {
         loop {
             each_asked_x(asked_of(relay, i64_lt(next_task(), 0i64)), now_ms());
             if get(m_over()) {
@@ -2055,20 +2888,18 @@ pub mod tasks {
     }
 
     /// The first round's end among `rs`, if any.
-    pub fn round_of(mut rs: List<kayak_rt::Handle<'static, Asked>>) -> List<kayak_rt::Handle<'static, Asked>> {
+    pub fn round_of(mut rs: List<kayak_rt::data::DataAt<'static, Asked>>) -> List<kayak_rt::data::DataAt<'static, Asked>> {
         loop {
             if null_p(rs) {
-                return nil::<kayak_rt::Handle<'static, tasks::Asked>>();
+                return nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>();
             } else if {
                 let tagcase_ = car(rs);
-                match *tagcase_ {
-                    Asked::RoundEnded(c, r) => {
-                        true
-                    }
-                    _ => {
-                        let o = tagcase_;
-                        false
-                    }
+                if Asked::__is_RoundEnded(tagcase_) {
+                    let (c, r,) = Asked::__RoundEnded(tagcase_);
+                    true
+                } else {
+                    let o = tagcase_;
+                    false
                 }
             } {
                 return kayak_rt::heap_cons(car(rs), kayak_rt::nil());
@@ -2079,41 +2910,37 @@ pub mod tasks {
         }
     }
 
-    pub fn before_round(rs: List<kayak_rt::Handle<'static, Asked>>) -> List<kayak_rt::Handle<'static, Asked>> {
+    pub fn before_round(rs: List<kayak_rt::data::DataAt<'static, Asked>>) -> List<kayak_rt::data::DataAt<'static, Asked>> {
         if null_p(rs) {
-            nil::<kayak_rt::Handle<'static, tasks::Asked>>()
+            nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>()
         } else if {
             let tagcase_ = car(rs);
-            match *tagcase_ {
-                Asked::RoundEnded(c, r) => {
-                    true
-                }
-                _ => {
-                    let o = tagcase_;
-                    false
-                }
+            if Asked::__is_RoundEnded(tagcase_) {
+                let (c, r,) = Asked::__RoundEnded(tagcase_);
+                true
+            } else {
+                let o = tagcase_;
+                false
             }
         } {
-            nil::<kayak_rt::Handle<'static, tasks::Asked>>()
+            nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>()
         } else {
             kayak_rt::heap_cons(car(rs), before_round(cdr(rs)))
         }
     }
 
-    pub fn after_round(mut rs: List<kayak_rt::Handle<'static, Asked>>) -> List<kayak_rt::Handle<'static, Asked>> {
+    pub fn after_round(mut rs: List<kayak_rt::data::DataAt<'static, Asked>>) -> List<kayak_rt::data::DataAt<'static, Asked>> {
         loop {
             if null_p(rs) {
-                return nil::<kayak_rt::Handle<'static, tasks::Asked>>();
+                return nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>();
             } else if {
                 let tagcase_ = car(rs);
-                match *tagcase_ {
-                    Asked::RoundEnded(c, r) => {
-                        true
-                    }
-                    _ => {
-                        let o = tagcase_;
-                        false
-                    }
+                if Asked::__is_RoundEnded(tagcase_) {
+                    let (c, r,) = Asked::__RoundEnded(tagcase_);
+                    true
+                } else {
+                    let o = tagcase_;
+                    false
                 }
             } {
                 return cdr(rs);
@@ -2124,23 +2951,20 @@ pub mod tasks {
         }
     }
 
-    pub fn ends_p(mut rs: List<kayak_rt::Handle<'static, Asked>>) -> bool {
+    pub fn ends_p(mut rs: List<kayak_rt::data::DataAt<'static, Asked>>) -> bool {
         loop {
             if null_p(rs) {
                 return false;
             } else if {
                 let tagcase_ = car(rs);
-                match *tagcase_ {
-                    Asked::FrontEnded() => {
-                        true
-                    }
-                    Asked::FrontFailed(m) => {
-                        true
-                    }
-                    _ => {
-                        let o = tagcase_;
-                        false
-                    }
+                if Asked::__is_FrontEnded(tagcase_) {
+                    true
+                } else if Asked::__is_FrontFailed(tagcase_) {
+                    let (m,) = Asked::__FrontFailed(tagcase_);
+                    true
+                } else {
+                    let o = tagcase_;
+                    false
                 }
             } {
                 return true;
@@ -2155,25 +2979,23 @@ pub mod tasks {
     /// a round's requests taken at its clock, then 16 slices at most; what
     /// they ran put where the front waits. Requests wait for their round's
     /// end, which says the clock.
-    pub fn machine_scripted_x(mut relay: Addr<kayak_rt::Handle<'static, Relayed>>, mut pending: List<kayak_rt::Handle<'static, Asked>>) -> () {
+    pub fn machine_scripted_x(mut relay: Addr<kayak_rt::data::DataAt<'static, Relayed>>, mut pending: List<kayak_rt::data::DataAt<'static, Asked>>) -> () {
         loop {
             let round = round_of(pending);
             if get(m_over()) {
                 return ();
             } else if not(null_p(round)) {
                 let tagcase_ = car(round);
-                match *tagcase_ {
-                    Asked::RoundEnded(clock, reply) => {
-                        each_asked_x(before_round(pending), clock);
-                        let after = scripted_slices_x(clock, 16i64);
-                        kayak_rt::process::icell_put_x(reply, ran(news_taken_x(), after, i64_lt(next_task(), 0i64)));
-                        pending = after_round(pending);
-                        continue;
-                    }
-                    _ => {
-                        let o = tagcase_;
-                        return ();
-                    }
+                if Asked::__is_RoundEnded(tagcase_) {
+                    let (clock, reply,) = Asked::__RoundEnded(tagcase_);
+                    each_asked_x(before_round(pending), clock);
+                    let after = scripted_slices_x(clock, 16i64);
+                    kayak_rt::process::icell_put_x(reply, ran(news_taken_x(), after, i64_lt(next_task(), 0i64)));
+                    pending = after_round(pending);
+                    continue;
+                } else {
+                    let o = tagcase_;
+                    return ();
                 }
             } else if ends_p(pending) {
                 return each_asked_x(pending, 0i64);
@@ -2187,43 +3009,42 @@ pub mod tasks {
     // The relay (C111): the machine's mailbox. What the front asks is kept,
     // the oldest first, until the machine takes it, at once or once there is
     // some.
-    pub fn relay_made() -> Addr<kayak_rt::Handle<'static, Relayed>> {
-        kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<kayak_rt::Handle<'static, tasks::Relayed>>| {
+    pub fn relay_made() -> Addr<kayak_rt::data::DataAt<'static, Relayed>> {
+        kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Relayed>>| {
             let _ = {
                 struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                 impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
                 impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
-                fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<kayak_rt::Handle<'static, tasks::Relayed>>) -> () {
-                    let relaying__knot = knot::<kayak_rt::Proc2<'p, List<kayak_rt::Handle<'static, Asked>>, List<ICell<List<kayak_rt::Handle<'static, Asked>>>>, ()>>();
-                    let relaying = kayak_rt::closure2((r#box,), |(r#box,), mut kept: List<kayak_rt::Handle<'static, Asked>>, mut waiting: List<ICell<List<kayak_rt::Handle<'static, Asked>>>>| {
+                fn letrena__p<'p>(p: &'p Region_P<'p>, r#box: Inbox<kayak_rt::data::DataAt<'static, tasks::Relayed>>) -> () {
+                    let relaying__knot = knot::<kayak_rt::Proc2<'p, List<kayak_rt::data::DataAt<'static, Asked>>, List<ICell<List<kayak_rt::data::DataAt<'static, Asked>>>>, ()>>();
+                    let relaying = kayak_rt::closure2((r#box,), |(r#box,), mut kept: List<kayak_rt::data::DataAt<'static, Asked>>, mut waiting: List<ICell<List<kayak_rt::data::DataAt<'static, Asked>>>>| {
                         loop {
                             let tagcase_ = kayak_rt::process::receive(r#box);
-                            match *tagcase_ {
-                                Relayed::FromFront(r) => {
-                                    if null_p(waiting) {
-                                        kept = cons(r, kept);
-                                        continue;
-                                    } else {
-                                        kayak_rt::process::icell_put_x(car(waiting), reversed_onto(cons(r, kept), nil::<kayak_rt::Handle<'static, tasks::Asked>>()));
-                                        (kept, waiting) = (nil::<kayak_rt::Handle<'static, tasks::Asked>>(), nil::<ICell<List<kayak_rt::Handle<'static, tasks::Asked>>>>());
-                                        continue;
-                                    }
+                            if Relayed::__is_FromFront(tagcase_) {
+                                let (r,) = Relayed::__FromFront(tagcase_);
+                                if null_p(waiting) {
+                                    kept = cons(r, kept);
+                                    continue;
+                                } else {
+                                    kayak_rt::process::icell_put_x(car(waiting), reversed_onto(cons(r, kept), nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>()));
+                                    (kept, waiting) = (nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>(), nil::<ICell<List<kayak_rt::data::DataAt<'static, tasks::Asked>>>>());
+                                    continue;
                                 }
-                                Relayed::Taken(c, wait) => {
-                                    if (wait && null_p(kept)) {
-                                        waiting = kayak_rt::cons(c, kayak_rt::nil());
-                                        continue;
-                                    } else {
-                                        kayak_rt::process::icell_put_x(c, reversed_onto(kept, nil::<kayak_rt::Handle<'static, tasks::Asked>>()));
-                                        (kept, waiting) = (nil::<kayak_rt::Handle<'static, tasks::Asked>>(), nil::<ICell<List<kayak_rt::Handle<'static, tasks::Asked>>>>());
-                                        continue;
-                                    }
+                            } else if Relayed::__is_Taken(tagcase_) {
+                                let (c, wait,) = Relayed::__Taken(tagcase_);
+                                if (wait && null_p(kept)) {
+                                    waiting = kayak_rt::cons(c, kayak_rt::nil());
+                                    continue;
+                                } else {
+                                    kayak_rt::process::icell_put_x(c, reversed_onto(kept, nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>()));
+                                    (kept, waiting) = (nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>(), nil::<ICell<List<kayak_rt::data::DataAt<'static, tasks::Asked>>>>());
+                                    continue;
                                 }
-                            }
+                            } else { kayak_rt::data::no_variant() }
                         }
                     });
                     relaying__knot.set(relaying);
-                    relaying.call(nil::<kayak_rt::Handle<'static, tasks::Asked>>(), nil::<ICell<List<kayak_rt::Handle<'static, tasks::Asked>>>>())
+                    relaying.call(nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>(), nil::<ICell<List<kayak_rt::data::DataAt<'static, tasks::Asked>>>>())
                 }
                 let p__arena = Region_P::default();
                 letrena__p(&p__arena, r#box)
@@ -2329,12 +3150,12 @@ pub mod tasks {
     }
 
     #[inline]
-    pub fn f_say_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, s: Str) -> () {
+    pub fn f_say_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, s: Str) -> () {
         set(f.32, put(s, get(f.32)))
     }
 
     #[inline]
-    pub fn f_up_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: i64) -> () {
+    pub fn f_up_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: i64) -> () {
         if i64_gt(n, 0i64) {
             f_say_x(f, string_append(str_lit!("\u{1b}["), string_append(i64_to_string(n), str_lit!("A"))))
         } else {
@@ -2343,7 +3164,7 @@ pub mod tasks {
     }
 
     #[inline]
-    pub fn f_down_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: i64) -> () {
+    pub fn f_down_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: i64) -> () {
         if i64_gt(n, 0i64) {
             f_say_x(f, string_append(str_lit!("\u{1b}["), string_append(i64_to_string(n), str_lit!("B"))))
         } else {
@@ -2352,16 +3173,16 @@ pub mod tasks {
     }
 
     #[inline]
-    pub fn f_asked_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, q: kayak_rt::Handle<'static, Asked>) -> () {
+    pub fn f_asked_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, q: kayak_rt::data::DataAt<'static, Asked>) -> () {
         set(f.43, cons(q, get(f.43)))
     }
 
     /// The requests not yet sent, the oldest first, to the relay.
-    pub fn f_requests_sent_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> Result<(), Unwind> {
-        let qs = reversed_onto(get(f.43), nil::<kayak_rt::Handle<'static, tasks::Asked>>());
-        set(f.43, nil::<kayak_rt::Handle<'static, tasks::Asked>>());
-        let each__knot = knot::<kayak_rt::Proc2s<'r, Addr<kayak_rt::Handle<'static, Relayed>>, List<kayak_rt::Handle<'static, Asked>>, ()>>();
-        let each = kayak_rt::as_proc(kayak_rt::closure2s((), |(), mut to: Addr<kayak_rt::Handle<'static, Relayed>>, mut qs: List<kayak_rt::Handle<'static, Asked>>| {
+    pub fn f_requests_sent_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> Result<(), Unwind> {
+        let qs = reversed_onto(get(f.43), nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>());
+        set(f.43, nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>());
+        let each__knot = knot::<kayak_rt::Proc2s<'r, Addr<kayak_rt::data::DataAt<'static, Relayed>>, List<kayak_rt::data::DataAt<'static, Asked>>, ()>>();
+        let each = kayak_rt::as_proc(kayak_rt::closure2s((), |(), mut to: Addr<kayak_rt::data::DataAt<'static, Relayed>>, mut qs: List<kayak_rt::data::DataAt<'static, Asked>>| {
             loop {
                 if null_p(qs) {
                     return ();
@@ -2377,7 +3198,7 @@ pub mod tasks {
     }
 
     // What an entry's line says.
-    pub fn f_entry_line<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, e: Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>, now: i64) -> Str {
+    pub fn f_entry_line<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, e: Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>, now: i64) -> Str {
         let s = get(e.6);
         let live = get(f.22);
         let head = if (live && i64_gt(e.0, 0i64)) {
@@ -2414,14 +3235,14 @@ pub mod tasks {
 
     // The note under the draft.
     #[inline]
-    pub fn f_noted_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, error: bool) -> () {
+    pub fn f_noted_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, error: bool) -> () {
         set(f.0, text);
         set(f.1, error);
         set(f.29, true)
     }
 
     /// The note as drawn: its first line, cut to the screen's width.
-    pub fn f_note_shown<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> Str {
+    pub fn f_note_shown<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> Str {
         let line = first_line(get(f.0));
         let width = i64_minus(get(f.24), 1i64);
         let cut_short = (i64_gt(string_length_i64(line), width) || has_char_in_p(get(f.0), '\n'));
@@ -2435,7 +3256,7 @@ pub mod tasks {
     // The screen.
     /// The draft drawn from the start of its first row, the rows below
     /// cleared; its note, if any, on the row after it.
-    pub fn f_draw_draft_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, d: Str) -> () {
+    pub fn f_draw_draft_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, d: Str) -> () {
         let (cs, shown, cols) = (string_chars(d), f_note_shown(f), get(f.24));
         f_say_x(f, str_lit!("\u{d}\u{1b}[J"));
         f_say_x(f, str_lit!("fx26> "));
@@ -2476,7 +3297,7 @@ pub mod tasks {
     }
 
     /// Rows added to the transcript, above the draft: each line.
-    pub fn f_printed_lines_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut ls: Strings) -> () {
+    pub fn f_printed_lines_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut ls: Strings) -> () {
         loop {
             if null_p(ls) {
                 return ();
@@ -2501,11 +3322,11 @@ pub mod tasks {
     }
 
     #[inline]
-    pub fn f_printed_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str) -> () {
+    pub fn f_printed_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str) -> () {
         f_printed_lines_x(f, lines_of(string_chars(text), nil::<char>(), nil::<Str>()))
     }
 
-    pub fn f_output_printed_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut k: i64, mut ls: Strings) -> () {
+    pub fn f_output_printed_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut k: i64, mut ls: Strings) -> () {
         loop {
             if null_p(ls) {
                 return ();
@@ -2521,7 +3342,7 @@ pub mod tasks {
     /// new if not yet, rewritten where it is if changed and on the screen,
     /// or written new if it ended off the screen. The cursor is left at the
     /// draft's first row.
-    pub fn f_entry_drawn_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, e: Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>, now: i64) -> () {
+    pub fn f_entry_drawn_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, e: Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>, now: i64) -> () {
         let out = get(e.8);
         if string_eq_p(out, str_lit!("")) {
             ()
@@ -2554,7 +3375,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_each_drawn_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut es: ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>, mut now: i64) -> () {
+    pub fn f_each_drawn_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut es: ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>, mut now: i64) -> () {
         loop {
             if null_p(es) {
                 return ();
@@ -2566,7 +3387,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_live_screen_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
+    pub fn f_live_screen_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
         let (es, before) = (f_oldest_first(get(f.25), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>()), rev_to_string(get(f.32)));
         set(f.32, nil::<char>());
         f_up_x(f, get(f.34));
@@ -2585,7 +3406,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_each_plain_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut es: ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>, mut now: i64) -> () {
+    pub fn f_each_plain_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut es: ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>, mut now: i64) -> () {
         loop {
             if null_p(es) {
                 return ();
@@ -2617,7 +3438,7 @@ pub mod tasks {
     /// What to write: in plain mode, each entry's output, and its line when
     /// it ends, in order; live, the lines that changed, rewritten in place
     /// if on the screen, new rows above the draft, and the draft.
-    pub fn f_screen_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Str {
+    pub fn f_screen_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Str {
         if get(f.22) {
             f_live_screen_x(f, now)
         } else {
@@ -2629,7 +3450,7 @@ pub mod tasks {
     }
 
     // Editing: the draft and the cursor in it, a character's index.
-    pub fn f_draft_set_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, d: Str, at: i64) -> () {
+    pub fn f_draft_set_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, d: Str, at: i64) -> () {
         if string_eq_p(d, get(f.26)) {
             ()
         } else {
@@ -2640,12 +3461,12 @@ pub mod tasks {
         set(f.29, true)
     }
 
-    pub fn f_inserted_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str) -> () {
+    pub fn f_inserted_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str) -> () {
         let (d, at) = (get(f.26), get(f.33));
         f_draft_set_x(f, string_append(cut(d, 0i64, at), string_append(text, cut(d, at, string_length_i64(d)))), i64_plus(at, string_length_i64(text)))
     }
 
-    pub fn f_deleted_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, from: i64, to: i64) -> () {
+    pub fn f_deleted_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, from: i64, to: i64) -> () {
         let d = get(f.26);
         let n = string_length_i64(d);
         let a = clamped(from, n);
@@ -2657,14 +3478,14 @@ pub mod tasks {
         }
     }
 
-    pub fn f_moved_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, at: i64) -> () {
+    pub fn f_moved_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, at: i64) -> () {
         set(f.33, clamped(at, string_length_i64(get(f.26))));
         set(f.29, true)
     }
 
     /// An entry ended, in `state`: when; a draft that waited for one tried
     /// again.
-    pub fn f_ended_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, e: Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>, state: i64, now: i64) -> () {
+    pub fn f_ended_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, e: Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>, state: i64, now: i64) -> () {
         set(e.6, state);
         set(e.10, now);
         if get(f.9) {
@@ -2677,7 +3498,7 @@ pub mod tasks {
 
     /// The draft's speculation forgotten: its run, on the machine, and its
     /// note.
-    pub fn f_speculation_dropped_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
+    pub fn f_speculation_dropped_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
         if i64_eq(get(f.7), 1i64) {
             f_asked_x(f, draft_unasked())
         } else {
@@ -2703,7 +3524,7 @@ pub mod tasks {
     /// it the transcript's. The entries' lines not yet written are written
     /// first, so that an entry given in the same keys as the one before it
     /// (pasted) comes after that one's line.
-    pub fn f_finish_draft_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
+    pub fn f_finish_draft_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
         if get(f.22) {
             if f_unwritten_p(get(f.25)) {
                 f_live_screen_x(f, now)
@@ -2728,7 +3549,7 @@ pub mod tasks {
 
     // History: a file of entries, each a line, its newlines and backslashes
     // escaped; the last 500 kept.
-    pub fn f_history_written_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
+    pub fn f_history_written_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
         if string_eq_p(get(f.39), str_lit!("")) {
             ()
         } else {
@@ -2744,7 +3565,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_history_read_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
+    pub fn f_history_read_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
         if string_eq_p(get(f.39), str_lit!("")) {
             ()
         } else {
@@ -2772,7 +3593,7 @@ pub mod tasks {
 
     /// Up (`by` 1) to an older entry's text, or down; past the newest, the
     /// draft that was put aside.
-    pub fn f_history_moved_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, by: i64) -> () {
+    pub fn f_history_moved_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, by: i64) -> () {
         let (to, n) = (i64_plus(get(f.37), by), size(get(f.36)));
         if i64_gt_eq(to, n) {
             ()
@@ -2798,7 +3619,7 @@ pub mod tasks {
     /// An escape sequence's final key: up and down move between the draft's
     /// lines, or through the history at its first or last; left, right,
     /// Home, End, Delete.
-    pub fn f_escaped_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, c: i64, now: i64) -> () {
+    pub fn f_escaped_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, c: i64, now: i64) -> () {
         let d = get(f.26);
         let at = get(f.33);
         let start = line_start(d, at);
@@ -2837,30 +3658,29 @@ pub mod tasks {
 
     // Commands, and entries.
     /// A command's line, as an entry's that is done.
-    pub fn f_said_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, line: Str, now: i64) -> () {
+    pub fn f_said_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, line: Str, now: i64) -> () {
         set(f.41, i64_plus(get(f.41), 1i64));
         set(f.25, cons(f_made(i64_minus(0i64, get(f.41)), str_lit!(""), str_lit!(""), str_lit!(""), true, nil::<i64>(), st_done(), line, false, now), get(f.25)))
     }
 
-    pub fn f_known_names<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> Strings {
-        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::Handle<'static, Bind>| {
+    pub fn f_known_names<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> Strings {
+        concat(map(kayak_rt::as_proc(kayak_rt::closure1s((), |(), b: kayak_rt::data::DataAt<'static, Bind>| {
             let tagcase_ = b;
-            match *tagcase_ {
-                Bind::Bind(n, sc, w) => {
-                    if (has_prefix_p(n, str_lit!("%")) || has_char_in_p(n, ' ')) {
-                        nil::<Str>()
-                    } else {
-                        the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
-                    }
+            if Bind::__is_Bind(tagcase_) {
+                let (n, sc, w,) = Bind::__Bind(tagcase_);
+                if (has_prefix_p(n, str_lit!("%")) || has_char_in_p(n, ' ')) {
+                    nil::<Str>()
+                } else {
+                    the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
                 }
-            }
+            } else { kayak_rt::data::no_variant() }
         })), cv_binds(get(f.44))))
     }
 
     /// Tab: the name before the cursor completed as far as the names it
     /// begins agree; if that adds nothing and there are several, they are
     /// said.
-    pub fn f_completed_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
+    pub fn f_completed_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
         let d = get(f.26);
         let at = get(f.33);
         let from = name_start(d, at);
@@ -2887,7 +3707,7 @@ pub mod tasks {
     }
 
     /// The entry being checked refused (its worker failed).
-    pub fn f_refused_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, message: Str, now: i64) -> () {
+    pub fn f_refused_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, message: Str, now: i64) -> () {
         let es = get(f.25);
         if (null_p(es) || not(i64_eq(get(car(es).6), st_checking()))) {
             ()
@@ -2901,7 +3721,7 @@ pub mod tasks {
     // `text`'s forms, if it reads: a draft may not, and a refused entry is
     // then the worker's to say, as any it cannot read.
     pub fn f_read_tried(text: Str, file: Str) -> kayak_rt::Sum {
-        kayak_rt::attempt(|| { the::<kayak_rt::Sum>(kayak_rt::sum_tagged::<List<kayak_rt::Handle<'static, Sexp>>>(kayak_rt::tag_lit!("read"), read_all(text, file, 1i64))) }, |m: Str| {
+        kayak_rt::attempt(|| { the::<kayak_rt::Sum>(kayak_rt::sum_tagged::<List<kayak_rt::data::DataAt<'static, Sexp>>>(kayak_rt::tag_lit!("read"), read_all(text, file, 1i64))) }, |m: Str| {
             the::<kayak_rt::Sum>(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("unread"), ()))
         })
     }
@@ -2923,7 +3743,7 @@ pub mod tasks {
     // state it leaves, which an entry's acceptance makes the session's. An
     // entry (`entry`) leaves its state; a draft, `,type`'s or a hole's,
     // none: theirs is the session's still.
-    pub fn f_expanded<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, file: Str, entry: bool) -> Result<kayak_rt::Sum, Unwind> {
+    pub fn f_expanded<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, file: Str, entry: bool) -> Result<kayak_rt::Sum, Unwind> {
         let s = get(f.49);
         let tagcase_ = f_read_tried(text, file);
         let tag_ = kayak_rt::sum_tag(tagcase_);
@@ -2931,7 +3751,7 @@ pub mod tasks {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
             Ok(kayak_rt::sum_tagged::<Product_11_12<Str, Int>>(kayak_rt::tag_lit!("text"), Product_11_12(text, s)))
         } else if tag_ == const { kayak_rt::tag_hash("read") } {
-            let forms: List<kayak_rt::Handle<'static, Sexp>> = kayak_rt::sum_payload::<List<kayak_rt::Handle<'static, Sexp>>>(tagcase_);
+            let forms: List<kayak_rt::data::DataAt<'static, Sexp>> = kayak_rt::sum_payload::<List<kayak_rt::data::DataAt<'static, Sexp>>>(tagcase_);
             if not((forms_mention_p(forms, macro_heads()) || (f.52).call(s)?)) {
                 Ok(kayak_rt::sum_tagged::<Product_11_12<Str, Int>>(kayak_rt::tag_lit!("text"), Product_11_12(text, s)))
             } else if entry {
@@ -2955,7 +3775,7 @@ pub mod tasks {
     /// An entry of `text`, its forms read as from `label` (`<fx26:k>`, or a
     /// file `,load` reads): checked by a worker, after the entries before
     /// it; given the machine, which lowers and runs it, if accepted.
-    pub fn f_submit_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, label: Str, timed: bool, now: i64) -> Result<(), Unwind> {
+    pub fn f_submit_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, label: Str, timed: bool, now: i64) -> Result<(), Unwind> {
         let k = i64_plus(get(f.46), 1i64);
         set(f.46, k);
         f_speculation_dropped_x(f);
@@ -2973,27 +3793,25 @@ pub mod tasks {
             let xs: Product_11_12<Str, Int> = kayak_rt::sum_payload::<Product_11_12<Str, Int>>(tagcase_);
             let x = xs.0;
             let tagcase_ = worked(check_entry(get(f.44), get(f.45), k, x, label));
-            match *tagcase_ {
-                Done::EntryDone(v, gs, typed, defined, quiet, needs, facts) => {
-                    set(f.44, v);
-                    set(f.45, gs);
-                    set(f.49, xs.1);
-                    set(f.25, cons(f_made(k, text, typed, defined, quiet, needs, st_waiting(), str_lit!(""), timed, now), cdr(get(f.25))));
-                    Ok(f_asked_x(f, entry_asked(k, x, label, timed, typed, defined, quiet, needs, facts)))
-                }
-                Done::RefusedDone(m) => {
-                    Ok(f_refused_x(f, m, now))
-                }
-                _ => {
-                    let other = tagcase_;
-                    Ok(())
-                }
+            if Done::__is_EntryDone(tagcase_) {
+                let (v, gs, typed, defined, quiet, needs, facts,) = Done::__EntryDone(tagcase_);
+                set(f.44, v);
+                set(f.45, gs);
+                set(f.49, xs.1);
+                set(f.25, cons(f_made(k, text, typed, defined, quiet, needs, st_waiting(), str_lit!(""), timed, now), cdr(get(f.25))));
+                Ok(f_asked_x(f, entry_asked(k, x, label, timed, typed, defined, quiet, needs, facts)))
+            } else if Done::__is_RefusedDone(tagcase_) {
+                let (m,) = Done::__RefusedDone(tagcase_);
+                Ok(f_refused_x(f, m, now))
+            } else {
+                let other = tagcase_;
+                Ok(())
             }
         } else { unreachable!() }
     }
 
     /// The draft left on the screen, kept in the history, and emptied.
-    pub fn f_given_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, d: Str, now: i64) -> Result<(), Unwind> {
+    pub fn f_given_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, d: Str, now: i64) -> Result<(), Unwind> {
         f_finish_draft_x(f, now);
         set(f.36, cons(trimmed_end(d), get(f.36)));
         f_history_written_x(f);
@@ -3004,7 +3822,7 @@ pub mod tasks {
 
     /// `,type E`: E checked by a worker, its type and effect said, not run.
     /// A refusal finds the line, as an entry's (`f-refused!`).
-    pub fn f_typed_only_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, now: i64) -> Result<(), Unwind> {
+    pub fn f_typed_only_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, now: i64) -> Result<(), Unwind> {
         set(f.41, i64_plus(get(f.41), 1i64));
         set(f.25, cons(f_made(i64_minus(0i64, get(f.41)), text, str_lit!(""), str_lit!(""), true, nil::<i64>(), st_checking(), str_lit!(""), false, now), get(f.25)));
         let tagcase_ = f_expanded(f, text, str_lit!("<,type>"), false)?;
@@ -3015,50 +3833,46 @@ pub mod tasks {
         } else if tag_ == const { kayak_rt::tag_hash("text") } {
             let xs: Product_11_12<Str, Int> = kayak_rt::sum_payload::<Product_11_12<Str, Int>>(tagcase_);
             let tagcase_ = worked(type_of(get(f.44), xs.0));
-            match *tagcase_ {
-                Done::ShownDone(shown) => {
-                    let e = car(get(f.25));
-                    set(e.7, string_append(text, shown));
-                    set(e.6, st_done());
-                    Ok(set(e.10, now))
-                }
-                Done::RefusedDone(m) => {
-                    Ok(f_refused_x(f, m, now))
-                }
-                _ => {
-                    let other = tagcase_;
-                    Ok(())
-                }
+            if Done::__is_ShownDone(tagcase_) {
+                let (shown,) = Done::__ShownDone(tagcase_);
+                let e = car(get(f.25));
+                set(e.7, string_append(text, shown));
+                set(e.6, st_done());
+                Ok(set(e.10, now))
+            } else if Done::__is_RefusedDone(tagcase_) {
+                let (m,) = Done::__RefusedDone(tagcase_);
+                Ok(f_refused_x(f, m, now))
+            } else {
+                let other = tagcase_;
+                Ok(())
             }
         } else { unreachable!() }
     }
 
     /// `,help NAME`: NAME's type, as the checker has it.
-    pub fn f_described<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: Str) -> Str {
+    pub fn f_described<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: Str) -> Str {
         let found = find_bind(n, cv_binds(get(f.44)));
         if null_p(found) {
             string_append(n, str_lit!(" is not defined"))
         } else {
             let tagcase_ = car(found);
-            match *tagcase_ {
-                Bind::Bind(n2, sc, w) => {
-                    let tagcase_ = sc;
-                    match *tagcase_ {
-                        Scheme::Scheme(tvars, t) => {
-                            string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit!("prim")) {
-                                str_lit!(", a primitive")
-                            } else {
-                                str_lit!("")
-                            })))
-                        }
-                    }
-                }
-            }
+            if Bind::__is_Bind(tagcase_) {
+                let (n2, sc, w,) = Bind::__Bind(tagcase_);
+                let tagcase_ = sc;
+                if Scheme::__is_Scheme(tagcase_) {
+                    let (tvars, t,) = Scheme::__Scheme(tagcase_);
+                    string_append(n, string_append(str_lit!(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit!("prim")) {
+                        str_lit!(", a primitive")
+                    } else {
+                        str_lit!("")
+                    })))
+                } else { kayak_rt::data::no_variant() }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 
     /// `,load FILE`: the file's forms, one entry.
-    pub fn f_loaded_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, path: Str, now: i64) -> Result<(), Unwind> {
+    pub fn f_loaded_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, path: Str, now: i64) -> Result<(), Unwind> {
         let tagcase_ = the::<kayak_rt::Sum>(read_file(path));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("data") } {
@@ -3078,7 +3892,7 @@ pub mod tasks {
         } else { unreachable!() }
     }
 
-    pub fn f_pending_text<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Str {
+    pub fn f_pending_text<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Str {
         let open = f_unfinished(f_oldest_first(get(f.25), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>()));
         if null_p(open) {
             str_lit!("no entry is running")
@@ -3095,7 +3909,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_command_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, line: Str, now: i64) -> Result<(), Unwind> {
+    pub fn f_command_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, line: Str, now: i64) -> Result<(), Unwind> {
         let w = command_word(line);
         let rest = trimmed_end(command_rest(line));
         if string_eq_p(w, str_lit!(",help")) {
@@ -3157,7 +3971,7 @@ pub mod tasks {
 
     /// ^C: the draft dropped, if there is one; else the newest entry not
     /// ended, interrupted.
-    pub fn f_interrupt_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
+    pub fn f_interrupt_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
         if not(string_eq_p(get(f.26), str_lit!(""))) {
             f_draft_set_x(f, str_lit!(""), 0i64);
             set(f.37, -1i64)
@@ -3173,7 +3987,7 @@ pub mod tasks {
 
     /// Enter: the draft given, if whole (a command's line, or forms); else a
     /// newline where the cursor is.
-    pub fn f_entered_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Result<(), Unwind> {
+    pub fn f_entered_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Result<(), Unwind> {
         let d = get(f.26);
         let trimmed = trimmed_start(string_chars(d));
         if (not(null_p(trimmed)) && char_eq_p(car(trimmed), ',') && command_whole_p(list_to_string(trimmed))) {
@@ -3191,7 +4005,7 @@ pub mod tasks {
 
     /// One key: typed, an editing key, or part of an escape sequence (ESC
     /// `[` digits and a final key: the arrows, Home, End, Delete).
-    pub fn f_key_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, c: i64, now: i64) -> Result<(), Unwind> {
+    pub fn f_key_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, c: i64, now: i64) -> Result<(), Unwind> {
         let (d, at) = (get(f.26), get(f.33));
         if i64_eq(get(f.31), 1i64) {
             if (i64_eq(c, 91i64) || i64_eq(c, 79i64)) {
@@ -3265,7 +4079,7 @@ pub mod tasks {
     /// so that a form missing its later parts still reaches the hole; and
     /// what the hole is in that list, read by a worker. None if no list is
     /// open, or it is quoted data.
-    pub fn f_holes_set_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, kept: i64, open: List<i64>) -> Result<(), Unwind> {
+    pub fn f_holes_set_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, text: Str, kept: i64, open: List<i64>) -> Result<(), Unwind> {
         if (null_p(open) || quoted_at_p(text, car(open))) {
             set(f.13, nil::<Str>());
             Ok(set(f.15, -1i64))
@@ -3274,16 +4088,14 @@ pub mod tasks {
             set(f.13, cons(string_append(typed, string_append(str_lit!(" %hole"), closers(size(open)))), cons(string_append(typed, string_append(str_lit!(" %hole"), closers_filled(0i64, size(open), -1i64))), each_filled(string_append(typed, str_lit!(" %hole")), 1i64, size(open)))));
             set(f.15, i64_plus(string_length_i64(typed), 1i64));
             let tagcase_ = worked(hole_items(string_append(cut(text, car(open), kept), str_lit!(")"))));
-            match *tagcase_ {
-                Done::ItemsDone(n, op) => {
-                    set(f.17, n);
-                    Ok(set(f.16, op))
-                }
-                _ => {
-                    let other = tagcase_;
-                    set(f.17, 0i64);
-                    Ok(set(f.16, str_lit!("")))
-                }
+            if Done::__is_ItemsDone(tagcase_) {
+                let (n, op,) = Done::__ItemsDone(tagcase_);
+                set(f.17, n);
+                Ok(set(f.16, op))
+            } else {
+                let other = tagcase_;
+                set(f.17, 0i64);
+                Ok(set(f.16, str_lit!("")))
             }
         }
     }
@@ -3291,7 +4103,7 @@ pub mod tasks {
     /// What the hole wants, as the note says it: a call's `argument` (`argument
     /// 2`, if the checker said it is one), with its operator if a name; else
     /// what goes next.
-    pub fn f_hint_words<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, what: Str, argument: Str) -> Str {
+    pub fn f_hint_words<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, what: Str, argument: Str) -> Str {
         let (want, op) = (str_lit!("an expression of type "), get(f.16));
         if (has_prefix_p(what, want) && not(string_eq_p(argument, str_lit!("")))) {
             string_append(argument, string_append(if string_eq_p(op, str_lit!("")) {
@@ -3316,7 +4128,7 @@ pub mod tasks {
 
     /// No hole reached: the narrowest refusal of a list around it, if any,
     /// says what that list must be.
-    pub fn f_hints_said_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
+    pub fn f_hints_said_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> () {
         set(f.12, 4i64);
         if string_eq_p(get(f.18), str_lit!("")) {
             ()
@@ -3325,7 +4137,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_expression_speculated_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, r#type: Str, effects: Strings, named: List<i64>, facts: Strings) -> () {
+    pub fn f_expression_speculated_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, r#type: Str, effects: Strings, named: List<i64>, facts: Strings) -> () {
         let waiting = f_unfinished_of(get(f.25), named);
         set(f.6, r#type);
         if not(null_p(waiting)) {
@@ -3345,7 +4157,7 @@ pub mod tasks {
     /// subform underlined, if it is about what has been finished. With a
     /// hole: what goes there, if the checker reached it; else, if about a
     /// list around the hole, kept if the narrowest so far.
-    pub fn f_speculation_refused_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, message: Str, now: i64) -> () {
+    pub fn f_speculation_refused_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, message: Str, now: i64) -> () {
         let (at, words, holes, kept, open) = (refused_offset(message), refusal_words(message), get(f.14), get(f.3), get(f.4));
         set(f.14, false);
         if not(holes) {
@@ -3381,7 +4193,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_draft_tried_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Result<(), Unwind> {
+    pub fn f_draft_tried_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Result<(), Unwind> {
         let d = get(f.26);
         let trimmed = trimmed_start(string_chars(d));
         let closing = if (not(null_p(trimmed)) && char_eq_p(car(trimmed), ',')) {
@@ -3391,18 +4203,16 @@ pub mod tasks {
         };
         let key = {
             let tagcase_ = closing;
-            match *tagcase_ {
-                Closing::Unclosable() => {
-                    str_lit!("")
-                }
-                Closing::ClosedAs(closed, kept, open, finished) => {
-                    string_append(if finished {
-                        str_lit!("f|")
-                    } else {
-                        str_lit!("u|")
-                    }, trimmed_end(closed))
-                }
-            }
+            if Closing::__is_Unclosable(tagcase_) {
+                str_lit!("")
+            } else if Closing::__is_ClosedAs(tagcase_) {
+                let (closed, kept, open, finished,) = Closing::__ClosedAs(tagcase_);
+                string_append(if finished {
+                    str_lit!("f|")
+                } else {
+                    str_lit!("u|")
+                }, trimmed_end(closed))
+            } else { kayak_rt::data::no_variant() }
         };
         if (not(string_eq_p(key, str_lit!(""))) && string_eq_p(key, get(f.8))) {
             Ok(set(f.2, true))
@@ -3411,47 +4221,43 @@ pub mod tasks {
             set(f.2, true);
             set(f.8, key);
             let tagcase_ = closing;
-            match *tagcase_ {
-                Closing::Unclosable() => {
-                    Ok(())
-                }
-                Closing::ClosedAs(closed, kept, open, finished) => {
-                    set(f.11, closed);
-                    set(f.3, kept);
-                    set(f.4, open);
-                    set(f.5, finished);
-                    f_holes_set_x(f, d, kept, open)?;
-                    set(f.12, if (finished || null_p(get(f.13))) {
-                        4i64
-                    } else {
-                        1i64
-                    });
-                    let tagcase_ = f_expanded(f, closed, str_lit!("<draft>"), false)?;
-                    let tag_ = kayak_rt::sum_tag(tagcase_);
-                    if tag_ == const { kayak_rt::tag_hash("refused") } {
-                        let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+            if Closing::__is_Unclosable(tagcase_) {
+                Ok(())
+            } else if Closing::__is_ClosedAs(tagcase_) {
+                let (closed, kept, open, finished,) = Closing::__ClosedAs(tagcase_);
+                set(f.11, closed);
+                set(f.3, kept);
+                set(f.4, open);
+                set(f.5, finished);
+                f_holes_set_x(f, d, kept, open)?;
+                set(f.12, if (finished || null_p(get(f.13))) {
+                    4i64
+                } else {
+                    1i64
+                });
+                let tagcase_ = f_expanded(f, closed, str_lit!("<draft>"), false)?;
+                let tag_ = kayak_rt::sum_tag(tagcase_);
+                if tag_ == const { kayak_rt::tag_hash("refused") } {
+                    let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);
+                    Ok(f_speculation_refused_x(f, m, now))
+                } else if tag_ == const { kayak_rt::tag_hash("text") } {
+                    let xs: Product_11_12<Str, Int> = kayak_rt::sum_payload::<Product_11_12<Str, Int>>(tagcase_);
+                    let tagcase_ = worked(r#try(get(f.44), get(f.45), xs.0, finished));
+                    if Done::__is_RefusedDone(tagcase_) {
+                        let (m,) = Done::__RefusedDone(tagcase_);
                         Ok(f_speculation_refused_x(f, m, now))
-                    } else if tag_ == const { kayak_rt::tag_hash("text") } {
-                        let xs: Product_11_12<Str, Int> = kayak_rt::sum_payload::<Product_11_12<Str, Int>>(tagcase_);
-                        let tagcase_ = worked(r#try(get(f.44), get(f.45), xs.0, finished));
-                        match *tagcase_ {
-                            Done::RefusedDone(m) => {
-                                Ok(f_speculation_refused_x(f, m, now))
-                            }
-                            Done::TriedExpression(r#type, effects, named, facts) => {
-                                Ok(f_expression_speculated_x(f, r#type, effects, named, facts))
-                            }
-                            Done::TriedDefinitions(lines) => {
-                                Ok(f_noted_x(f, lines, false))
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                Ok(())
-                            }
-                        }
-                    } else { unreachable!() }
-                }
-            }
+                    } else if Done::__is_TriedExpression(tagcase_) {
+                        let (r#type, effects, named, facts,) = Done::__TriedExpression(tagcase_);
+                        Ok(f_expression_speculated_x(f, r#type, effects, named, facts))
+                    } else if Done::__is_TriedDefinitions(tagcase_) {
+                        let (lines,) = Done::__TriedDefinitions(tagcase_);
+                        Ok(f_noted_x(f, lines, false))
+                    } else {
+                        let other = tagcase_;
+                        Ok(())
+                    }
+                } else { unreachable!() }
+            } else { kayak_rt::data::no_variant() }
         }
     }
 
@@ -3461,7 +4267,7 @@ pub mod tasks {
     /// list is open, with a hole where its next item goes, and with
     /// fillers after that, until the checker says what goes there (C97).
     /// Not in plain mode, nor for a command's line.
-    pub fn f_speculate_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Result<bool, Unwind> {
+    pub fn f_speculate_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> Result<bool, Unwind> {
         if not(get(f.22)) {
             Ok(false)
         } else if not(get(f.2)) {
@@ -3481,14 +4287,12 @@ pub mod tasks {
                 } else if tag_ == const { kayak_rt::tag_hash("text") } {
                     let xs: Product_11_12<Str, Int> = kayak_rt::sum_payload::<Product_11_12<Str, Int>>(tagcase_);
                     let tagcase_ = worked(r#try(get(f.44), get(f.45), xs.0, false));
-                    match *tagcase_ {
-                        Done::RefusedDone(m) => {
-                            f_speculation_refused_x(f, m, now)
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            ()
-                        }
+                    if Done::__is_RefusedDone(tagcase_) {
+                        let (m,) = Done::__RefusedDone(tagcase_);
+                        f_speculation_refused_x(f, m, now)
+                    } else {
+                        let other = tagcase_;
+                        ()
                     }
                 } else { unreachable!() }
             };
@@ -3502,7 +4306,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_speculating_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut now: i64) -> Result<(), Unwind> {
+    pub fn f_speculating_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut now: i64) -> Result<(), Unwind> {
         loop {
             if f_speculate_x(f, now)? {
                 continue;
@@ -3515,39 +4319,38 @@ pub mod tasks {
     // What the machine tells.
     /// An entry's state, line and output; the draft's run's outcome, if
     /// that run is still the draft's.
-    pub fn f_news_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: kayak_rt::Handle<'static, Told>, now: i64) -> () {
+    pub fn f_news_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, n: kayak_rt::data::DataAt<'static, Told>, now: i64) -> () {
         let tagcase_ = n;
-        match *tagcase_ {
-            Told::EntryTold(k, state, shown, out, began, ended, steps, collected) => {
-                let found = f_numbered(get(f.25), k);
-                if null_p(found) {
-                    ()
+        if Told::__is_EntryTold(tagcase_) {
+            let (k, state, shown, out, began, ended, steps, collected,) = Told::__EntryTold(tagcase_);
+            let found = f_numbered(get(f.25), k);
+            if null_p(found) {
+                ()
+            } else {
+                let e = car(found);
+                set(e.7, shown);
+                set(e.8, string_append(get(e.8), out));
+                set(e.9, began);
+                set(e.14, steps);
+                set(e.15, collected);
+                if (f_unfinished_p(e) && not(i64_lt_eq(state, st_running()))) {
+                    f_ended_x(f, e, state, ended)
                 } else {
-                    let e = car(found);
-                    set(e.7, shown);
-                    set(e.8, string_append(get(e.8), out));
-                    set(e.9, began);
-                    set(e.14, steps);
-                    set(e.15, collected);
-                    if (f_unfinished_p(e) && not(i64_lt_eq(state, st_running()))) {
-                        f_ended_x(f, e, state, ended)
-                    } else {
-                        set(e.6, state)
-                    }
+                    set(e.6, state)
                 }
             }
-            Told::DraftTold(serial, text, error) => {
-                if (i64_eq(serial, get(f.10)) && i64_eq(get(f.7), 1i64)) {
-                    set(f.7, 2i64);
-                    f_noted_x(f, text, error)
-                } else {
-                    ()
-                }
+        } else if Told::__is_DraftTold(tagcase_) {
+            let (serial, text, error,) = Told::__DraftTold(tagcase_);
+            if (i64_eq(serial, get(f.10)) && i64_eq(get(f.7), 1i64)) {
+                set(f.7, 2i64);
+                f_noted_x(f, text, error)
+            } else {
+                ()
             }
-        }
+        } else { kayak_rt::data::no_variant() }
     }
 
-    pub fn f_each_news_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut ns: List<kayak_rt::Handle<'static, Told>>, mut now: i64) -> () {
+    pub fn f_each_news_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut ns: List<kayak_rt::data::DataAt<'static, Told>>, mut now: i64) -> () {
         loop {
             if null_p(ns) {
                 return ();
@@ -3563,7 +4366,7 @@ pub mod tasks {
     /// frame if an entry is unfinished and the screen live, else until one
     /// comes.
     #[inline]
-    pub fn f_wait_ms<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> i64 {
+    pub fn f_wait_ms<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> i64 {
         if (get(f.22) && not(null_p(f_unfinished(get(f.25))))) {
             80i64
         } else {
@@ -3572,12 +4375,12 @@ pub mod tasks {
     }
 
     /// Whether to leave: ^D (or the input's end) asked, and no entry unfinished.
-    pub fn f_over_p<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> bool {
+    pub fn f_over_p<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>) -> bool {
         (get(f.42) || (get(f.30) && null_p(f_unfinished(get(f.25)))))
     }
 
     #[inline]
-    pub fn f_written_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
+    pub fn f_written_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, now: i64) -> () {
         let tagcase_ = write_out(f_screen_x(f, now));
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("done") } {
@@ -3591,8 +4394,8 @@ pub mod tasks {
 
     /// The session begun: the checker's environment, the history, the
     /// screen's size; the banner, if live.
-    pub fn f_started_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, is_live: bool, height: i64, width: i64, path: Str) -> Result<Str, Unwind> {
-        let empty = cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>());
+    pub fn f_started_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, is_live: bool, height: i64, width: i64, path: Str) -> Result<Str, Unwind> {
+        let empty = cv(nil::<kayak_rt::data::DataAt<'static, Bind>>(), nil::<kayak_rt::data::DataAt<'static, Dt>>(), nil::<kayak_rt::data::DataAt<'static, Alias>>(), nil::<kayak_rt::data::DataAt<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::data::DataAt<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::data::DataAt<'static, Bind>>());
         set(f.44, with_binds(empty, prim_binds(empty)));
         set(f.39, path);
         f_history_read_x(f);
@@ -3610,15 +4413,15 @@ pub mod tasks {
     // process loaded, given as its items (C444): a process may load one, a
     // load seeing the standard environment alone, where it may hold no
     // procedure of a place (Fixpt's `closed-code.md`).
-    pub fn f_new<'r>(relay: Addr<kayak_rt::Handle<'static, Relayed>>, entry: kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, draft: kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, macros_p: kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>) -> Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>> {
-        Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p(new(str_lit!("")), new(false), new(false), new(0i64), new(nil::<i64>()), new(false), new(str_lit!("")), new(0i64), new(str_lit!("")), new(false), new(0i64), new(str_lit!("")), new(4i64), new(nil::<Str>()), new(false), new(-1i64), new(str_lit!("")), new(0i64), new(str_lit!("")), new(-1i64), new(0i64), new(0i64), new(false), new(24i64), new(80i64), new(nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>()), new(str_lit!("")), new(0i64), new(0i64), new(true), new(false), new(0i64), new(nil::<char>()), new(0i64), new(0i64), new(0i64), new(nil::<Str>()), new(-1i64), new(str_lit!("")), new(str_lit!("")), new(-1i64), new(0i64), new(false), new(nil::<kayak_rt::Handle<'static, tasks::Asked>>()), new(cv(nil::<kayak_rt::Handle<'static, Bind>>(), nil::<kayak_rt::Handle<'static, Dt>>(), nil::<kayak_rt::Handle<'static, Alias>>(), nil::<kayak_rt::Handle<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::Handle<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::Handle<'static, Bind>>())), new(nil::<Str>()), new(0i64), new(false), relay, new(int_lit(0)), entry, draft, macros_p)
+    pub fn f_new<'r>(relay: Addr<kayak_rt::data::DataAt<'static, Relayed>>, entry: kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, draft: kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, macros_p: kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>) -> Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>> {
+        Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p(new(str_lit!("")), new(false), new(false), new(0i64), new(nil::<i64>()), new(false), new(str_lit!("")), new(0i64), new(str_lit!("")), new(false), new(0i64), new(str_lit!("")), new(4i64), new(nil::<Str>()), new(false), new(-1i64), new(str_lit!("")), new(0i64), new(str_lit!("")), new(-1i64), new(0i64), new(0i64), new(false), new(24i64), new(80i64), new(nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>()), new(str_lit!("")), new(0i64), new(0i64), new(true), new(false), new(0i64), new(nil::<char>()), new(0i64), new(0i64), new(0i64), new(nil::<Str>()), new(-1i64), new(str_lit!("")), new(str_lit!("")), new(-1i64), new(0i64), new(false), new(nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>()), new(cv(nil::<kayak_rt::data::DataAt<'static, Bind>>(), nil::<kayak_rt::data::DataAt<'static, Dt>>(), nil::<kayak_rt::data::DataAt<'static, Alias>>(), nil::<kayak_rt::data::DataAt<'static, Effdef>>(), str_lit!("a type"), nil::<Str>(), str_lit!("the REPL"), 0i64, nil::<kayak_rt::data::DataAt<'static, Fact>>(), nil::<Str>(), 0i64, bempty(), nil::<kayak_rt::data::DataAt<'static, Bind>>())), new(nil::<Str>()), new(0i64), new(false), relay, new(int_lit(0)), entry, draft, macros_p)
     }
 
     // A key read, as the key's code, or -1 at the input's end (which asks to
     // leave, as ^D does).
     pub type ByteRead = kayak_rt::Sum;
 
-    pub fn f_byte_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, b: ByteRead) -> Result<(), Unwind> {
+    pub fn f_byte_x<'r>(f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, b: ByteRead) -> Result<(), Unwind> {
         let tagcase_ = b;
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("byte") } {
@@ -3632,27 +4435,64 @@ pub mod tasks {
     }
 
     #[inline]
-    pub fn front_failure(m: Str) -> kayak_rt::Handle<'static, Relayed> {
+    pub fn front_failure(m: Str) -> kayak_rt::data::DataAt<'static, Relayed> {
         from_front(front_failed(m))
     }
 
     // A scripted session's keys: each line `MS TEXT`, TEXT's keys arriving
     // at MS on a virtual clock (`\n`, `\r`, `\t`, `\e`, `\\`, `\xHH`
     // escapes), as C103's Rust read them.
+    #[derive(Clone, Copy)]
     pub enum Arrival {
         Arrival(i64, List<i64>),
     }
 
-    impl kayak_rt::Visit for Arrival {
-        fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-            match self {
-                Self::Arrival(f0, f1) => { kayak_rt::Trace::trace(*f0, t); kayak_rt::Trace::trace(*f1, t); }
-            }
+    impl kayak_rt::data::Variant<0> for Arrival {
+        type Fields = (i64, List<i64>,);
+        #[inline(always)]
+        fn tag() -> &'static kayak_rt::SymObj {
+            kayak_rt::tag_lit!("arrival")
         }
     }
 
-    pub fn arrival(f0: i64, f1: List<i64>) -> kayak_rt::Handle<'static, Arrival> {
-        kayak_rt::heap_alloc(Arrival::Arrival(f0, f1))
+    #[allow(non_snake_case)]
+    impl Arrival {
+        #[inline(always)]
+        pub fn __is_Arrival(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+            w.is::<0>()
+        }
+        #[inline(always)]
+        pub fn __Arrival(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+            w.fields::<0>()
+        }
+    }
+
+    impl kayak_rt::data::Datatype for Arrival {
+        #[inline]
+        fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+            if w.is::<0>() {
+                let (f0, f1,) = w.fields::<0>();
+                Self::Arrival(f0, f1)
+            } else {
+                kayak_rt::data::no_variant()
+            }
+        }
+        fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+            if w.is::<0>() { return t.reach(w.obj::<0>()); }
+        }
+        fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+            if w.is::<0>() { return (w.obj::<0>()); }
+            let _ = w;
+            kayak_rt::data::no_variant()
+        }
+        fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+            if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+            ::core::option::Option::None
+        }
+    }
+
+    pub fn arrival(f0: i64, f1: List<i64>) -> kayak_rt::data::DataAt<'static, Arrival> {
+        kayak_rt::data::data_heap::<Arrival, 0>((f0, f1,))
     }
 
     pub fn hex_digit(c: i64) -> i64 {
@@ -3783,10 +4623,10 @@ pub mod tasks {
         }
     }
 
-    pub fn arrivals_of(mut ls: List<List<i64>>) -> List<kayak_rt::Handle<'static, Arrival>> {
+    pub fn arrivals_of(mut ls: List<List<i64>>) -> List<kayak_rt::data::DataAt<'static, Arrival>> {
         loop {
             if null_p(ls) {
-                return nil::<kayak_rt::Handle<'static, tasks::Arrival>>();
+                return nil::<kayak_rt::data::DataAt<'static, tasks::Arrival>>();
             } else {
                 let l = without_cr(car(ls));
                 if (blank_p(l) || i64_eq(car(l), 35i64)) {
@@ -3799,7 +4639,7 @@ pub mod tasks {
         }
     }
 
-    pub fn f_keys_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut bs: List<i64>, mut clock: i64) -> Result<(), Unwind> {
+    pub fn f_keys_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut bs: List<i64>, mut clock: i64) -> Result<(), Unwind> {
         loop {
             if null_p(bs) {
                 return Ok(());
@@ -3812,39 +4652,36 @@ pub mod tasks {
     }
 
     /// The keys arriving by `clock`, given; those after, left.
-    pub fn f_arrived_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'r, kayak_rt::Handle<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut r#as: List<kayak_rt::Handle<'static, Arrival>>, mut clock: i64) -> Result<List<kayak_rt::Handle<'static, Arrival>>, Unwind> {
+    pub fn f_arrived_x<'r>(mut f: Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, List<i64>>, RefAt<'r, bool>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, ListAt<'r, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Str>, bool, RefAt<'r, i64>, RefAt<'r, i64>>>>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, bool>, RefAt<'r, i64>, RefAt<'r, Chars>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, Str>, RefAt<'r, Str>, RefAt<'r, i64>, RefAt<'r, i64>, RefAt<'r, bool>, RefAt<'r, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'r, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'r, Strings>, RefAt<'r, i64>, RefAt<'r, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'r, Int>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'r, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'r, Int, Result<bool, Unwind>>>, mut r#as: List<kayak_rt::data::DataAt<'static, Arrival>>, mut clock: i64) -> Result<List<kayak_rt::data::DataAt<'static, Arrival>>, Unwind> {
         loop {
             if null_p(r#as) {
-                return Ok(nil::<kayak_rt::Handle<'static, tasks::Arrival>>());
+                return Ok(nil::<kayak_rt::data::DataAt<'static, tasks::Arrival>>());
             } else {
                 let tagcase_ = car(r#as);
-                match *tagcase_ {
-                    Arrival::Arrival(t, bs) => {
-                        if i64_lt_eq(t, clock) {
-                            f_keys_x(f, bs, clock)?;
-                            r#as = cdr(r#as);
-                            continue;
-                        } else {
-                            return Ok(r#as);
-                        }
+                if Arrival::__is_Arrival(tagcase_) {
+                    let (t, bs,) = Arrival::__Arrival(tagcase_);
+                    if i64_lt_eq(t, clock) {
+                        f_keys_x(f, bs, clock)?;
+                        r#as = cdr(r#as);
+                        continue;
+                    } else {
+                        return Ok(r#as);
                     }
-                }
+                } else { kayak_rt::data::no_variant() }
             }
         }
     }
 
     // A definition checked again by a worker (C202): the environment after
     // it, or none if it is refused.
-    pub fn recheck_of(v: kayak_rt::Handle<'static, Cv>, form: kayak_rt::Handle<'static, Sexp>) -> List<kayak_rt::Handle<'static, Cv>> {
+    pub fn recheck_of(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::data::DataAt<'static, Sexp>) -> List<kayak_rt::data::DataAt<'static, Cv>> {
         let tagcase_ = worked(recheck(v, form));
-        match *tagcase_ {
-            Done::Rechecked(v2) => {
-                the::<List<kayak_rt::Handle<'static, Cv>>>(kayak_rt::heap_cons(v2, kayak_rt::nil()))
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<kayak_rt::Handle<'static, Cv>>()
-            }
+        if Done::__is_Rechecked(tagcase_) {
+            let (v2,) = Done::__Rechecked(tagcase_);
+            the::<List<kayak_rt::data::DataAt<'static, Cv>>>(kayak_rt::heap_cons(v2, kayak_rt::nil()))
+        } else {
+            let other = tagcase_;
+            nil::<kayak_rt::data::DataAt<'static, Cv>>()
         }
     }
 
@@ -3914,14 +4751,14 @@ pub mod tasks {
             ()
         };
         let relay = relay_made();
-        let front = the::<Addr<kayak_rt::Handle<'static, Told>>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(front_failure), move |r#box: kayak_rt::Inbox<kayak_rt::Handle<'static, tasks::Told>>| {
+        let front = the::<Addr<kayak_rt::data::DataAt<'static, Told>>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(front_failure), move |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Told>>| {
             let _ = {
                 struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                 impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
                 impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
-                fn letrena__p<'p>(p: &'p Region_P<'p>, height: i64, width: i64, path: Str, r#box: Inbox<kayak_rt::Handle<'static, tasks::Told>>, live: bool, relay: Addr<kayak_rt::Handle<'static, tasks::Relayed>>) -> Result<(), Unwind> {
+                fn letrena__p<'p>(p: &'p Region_P<'p>, height: i64, width: i64, path: Str, r#box: Inbox<kayak_rt::data::DataAt<'static, tasks::Told>>, live: bool, relay: Addr<kayak_rt::data::DataAt<'static, tasks::Relayed>>) -> Result<(), Unwind> {
                     let x = made__load__3__main(p);
-                    let f = the::<Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, List<i64>>, RefAt<'p, bool>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, ListAt<'p, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Str>, bool, RefAt<'p, i64>, RefAt<'p, i64>>>>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Chars>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'p, kayak_rt::Handle<'static, Cv>>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'p, Int>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'p, Int, Result<bool, Unwind>>>>(f_new(relay, kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
+                    let f = the::<Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, List<i64>>, RefAt<'p, bool>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, ListAt<'p, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Str>, bool, RefAt<'p, i64>, RefAt<'p, i64>>>>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Chars>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'p, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'p, Int>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'p, Int, Result<bool, Unwind>>>>(f_new(relay, kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
                         x.drive_asker_x(kayak_rt::as_proc(phase1_asked))?;
                         Ok(x.drive_entry(forms, k)?)
                     }), kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
@@ -4094,14 +4931,14 @@ pub mod tasks {
             repl_start_x();
             set(m_live(), true);
             let relay = relay_made();
-            let front = the::<Addr<kayak_rt::Handle<'static, Told>>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(front_failure), move |r#box: kayak_rt::Inbox<kayak_rt::Handle<'static, tasks::Told>>| {
+            let front = the::<Addr<kayak_rt::data::DataAt<'static, Told>>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(front_failure), move |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Told>>| {
                 let _ = {
                     struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                     impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
                     impl<'p> kayak_rt::Visit for Region_P<'p> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
-                    fn letrena__p<'p>(p: &'p Region_P<'p>, relay: Addr<kayak_rt::Handle<'static, tasks::Relayed>>, arrivals: List<kayak_rt::Handle<'static, tasks::Arrival>>) -> Result<(), Unwind> {
+                    fn letrena__p<'p>(p: &'p Region_P<'p>, relay: Addr<kayak_rt::data::DataAt<'static, tasks::Relayed>>, arrivals: List<kayak_rt::data::DataAt<'static, tasks::Arrival>>) -> Result<(), Unwind> {
                         let x = made__load__3__main(p);
-                        let f = the::<Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, List<i64>>, RefAt<'p, bool>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, ListAt<'p, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Str>, bool, RefAt<'p, i64>, RefAt<'p, i64>>>>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Chars>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, List<kayak_rt::Handle<'static, Asked>>>, RefAt<'p, kayak_rt::Handle<'static, Cv>>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, bool>, Addr<kayak_rt::Handle<'static, Relayed>>, RefAt<'p, Int>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'p, Int, Result<bool, Unwind>>>>(f_new(relay, kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
+                        let f = the::<Product_4note_10note_error_10speculated_9spec_kept_9spec_open_13spec_finished_9spec_type_10spec_state_8spec_key_10spec_waits_11spec_serial_9spec_text_10spec_phase_10hole_texts_12trying_holes_7hole_at_7hole_op_10hole_place_6around_9around_at_10under_from_8under_to_4live_11screen_rows_11screen_cols_7entries_5draft_4rows_10draft_rows_11draft_dirty_7leaving_6escape_7written_6cursor_10cursor_row_12escape_param_7history_10history_at_5stash_12history_path_10step_limit_8commands_8quitting_8requests_2cv_7globals_5count_11input_ended_5relay_8mx_state_8mx_entry_8mx_draft_11mx_macros_p<RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, List<i64>>, RefAt<'p, bool>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, ListAt<'p, Product_3num_4text_5typed_7defined_5quiet_5needs_5state_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_9collected<i64, Str, Str, Str, bool, List<i64>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Str>, bool, RefAt<'p, i64>, RefAt<'p, i64>>>>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, bool>, RefAt<'p, i64>, RefAt<'p, Chars>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, Str>, RefAt<'p, Str>, RefAt<'p, i64>, RefAt<'p, i64>, RefAt<'p, bool>, RefAt<'p, List<kayak_rt::data::DataAt<'static, Asked>>>, RefAt<'p, kayak_rt::data::DataAt<'static, Cv>>, RefAt<'p, Strings>, RefAt<'p, i64>, RefAt<'p, bool>, Addr<kayak_rt::data::DataAt<'static, Relayed>>, RefAt<'p, Int>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12_13<kayak_rt::value::Value, Str, Int>, Unwind>>, kayak_rt::Proc2<'p, kayak_rt::value::Value, Int, Result<Product_11_12<kayak_rt::value::Value, Str>, Unwind>>, kayak_rt::Proc1<'p, Int, Result<bool, Unwind>>>>(f_new(relay, kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
                             x.drive_asker_x(kayak_rt::as_proc(phase1_asked))?;
                             Ok(x.drive_entry(forms, k)?)
                         }), kayak_rt::closure2((x,), |(x,), forms: kayak_rt::value::Value, k: Int| {
@@ -4113,8 +4950,8 @@ pub mod tasks {
                             Ok(x.drive_macros_p(k)?)
                         })));
                         write_out(f_started_x(f, true, 24i64, 80i64, str_lit!(""))?);
-                        let go__knot = knot::<kayak_rt::Proc3<'p, List<kayak_rt::Handle<'static, Arrival>>, i64, bool, Result<(), Unwind>>>();
-                        let go = kayak_rt::closure3((relay, f,), |(relay, f,), mut r#as: List<kayak_rt::Handle<'static, Arrival>>, mut clock: i64, mut ended: bool| {
+                        let go__knot = knot::<kayak_rt::Proc3<'p, List<kayak_rt::data::DataAt<'static, Arrival>>, i64, bool, Result<(), Unwind>>>();
+                        let go = kayak_rt::closure3((relay, f,), |(relay, f,), mut r#as: List<kayak_rt::data::DataAt<'static, Arrival>>, mut clock: i64, mut ended: bool| {
                             loop {
                                 let left = f_arrived_x(f, r#as, clock)?;
                                 let now_ended = if (null_p(left) && not(ended)) {
@@ -4123,39 +4960,37 @@ pub mod tasks {
                                 } else {
                                     ended
                                 };
-                                let reply = the::<ICell<kayak_rt::Handle<'static, Ran>>>(make_icell());
+                                let reply = the::<ICell<kayak_rt::data::DataAt<'static, Ran>>>(make_icell());
                                 f_speculating_x(f, clock)?;
                                 f_asked_x(f, round_ended(clock, reply));
                                 f_requests_sent_x(f)?;
                                 let tagcase_ = kayak_rt::process::icell_get(reply);
-                                match *tagcase_ {
-                                    Ran::Ran(news, after, idle) => {
-                                        f_each_news_x(f, news, after);
-                                        f_written_x(f, after);
-                                        if f_over_p(f) {
-                                            write_out(str_lit!("\u{d}\n"));
-                                            return Ok(kayak_rt::process::send(relay, from_front(front_ended())));
+                                if Ran::__is_Ran(tagcase_) {
+                                    let (news, after, idle,) = Ran::__Ran(tagcase_);
+                                    f_each_news_x(f, news, after);
+                                    f_written_x(f, after);
+                                    if f_over_p(f) {
+                                        write_out(str_lit!("\u{d}\n"));
+                                        return Ok(kayak_rt::process::send(relay, from_front(front_ended())));
+                                    } else {
+                                        (r#as, clock, ended) = (left, if not(idle) {
+                                            after
+                                        } else if null_p(left) {
+                                            i64_plus(after, 80i64)
                                         } else {
-                                            (r#as, clock, ended) = (left, if not(idle) {
-                                                after
-                                            } else if null_p(left) {
-                                                i64_plus(after, 80i64)
-                                            } else {
-                                                let tagcase_ = car(left);
-                                                match *tagcase_ {
-                                                    Arrival::Arrival(t, bs) => {
-                                                        if i64_gt(t, i64_plus(after, 1i64)) {
-                                                            t
-                                                        } else {
-                                                            i64_plus(after, 1i64)
-                                                        }
-                                                    }
+                                            let tagcase_ = car(left);
+                                            if Arrival::__is_Arrival(tagcase_) {
+                                                let (t, bs,) = Arrival::__Arrival(tagcase_);
+                                                if i64_gt(t, i64_plus(after, 1i64)) {
+                                                    t
+                                                } else {
+                                                    i64_plus(after, 1i64)
                                                 }
-                                            }, now_ended);
-                                            continue;
-                                        }
+                                            } else { kayak_rt::data::no_variant() }
+                                        }, now_ended);
+                                        continue;
                                     }
-                                }
+                                } else { kayak_rt::data::no_variant() }
                             }
                         });
                         go__knot.set(go);
@@ -4165,7 +5000,7 @@ pub mod tasks {
                     letrena__p(&p__arena, relay, arrivals).unwrap_or_else(|u| unreachable_unwind(u))
                 };
             }));
-            machine_scripted_x(relay, nil::<kayak_rt::Handle<'static, tasks::Asked>>());
+            machine_scripted_x(relay, nil::<kayak_rt::data::DataAt<'static, tasks::Asked>>());
             int_lit(0)
         } else { unreachable!() }
     }

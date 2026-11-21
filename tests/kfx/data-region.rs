@@ -8,74 +8,135 @@ use kayak_rt::*;
 // before. A rose tree built in a region of its own, summed, a thousand
 // times over.
 
+#[derive(Clone, Copy)]
 pub enum Rose<'r, T: Copy + 'static + kayak_rt::Trace> {
     Leaf(T),
-    Node(ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>),
+    Node(ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, T>>>),
 }
 
-impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::Visit for Rose<'r, T> {
-    fn visit<'a>(&'a self, t: &mut kayak_rt::Tracer<'a>) {
-        match self {
-            Self::Leaf(f0) => { kayak_rt::Trace::trace(*f0, t); }
-            Self::Node(f0) => { kayak_rt::Trace::trace(*f0, t); }
-        }
+impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Variant<1> for Rose<'r, T> {
+    type Fields = (T,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("leaf")
     }
 }
 
-pub fn leaf<'r, T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
-    kayak_rt::alloc(Rose::Leaf(f0))
+#[allow(non_snake_case)]
+impl<'r, T: Copy + 'static + kayak_rt::Trace> Rose<'r, T> {
+    #[inline(always)]
+    pub fn __is_Leaf(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<1>()
+    }
+    #[inline(always)]
+    pub fn __Leaf(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<1>>::Fields {
+        w.fields::<1>()
+    }
 }
 
-pub fn leaf_heap<T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::Handle<'static, Rose<'static, T>> {
-    kayak_rt::heap_alloc(Rose::Leaf(f0))
+impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Variant<0> for Rose<'r, T> {
+    type Fields = (ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, T>>>,);
+    #[inline(always)]
+    fn tag() -> &'static kayak_rt::SymObj {
+        kayak_rt::tag_lit!("node")
+    }
 }
 
-pub fn leaf_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: T) -> kayak_rt::Handle<'r, Rose<'r, T>> {
-    place_.arena().alloc(Rose::Leaf(f0))
+#[allow(non_snake_case)]
+impl<'r, T: Copy + 'static + kayak_rt::Trace> Rose<'r, T> {
+    #[inline(always)]
+    pub fn __is_Node(w: kayak_rt::data::DataAt<'_, Self>) -> bool {
+        w.is::<0>()
+    }
+    #[inline(always)]
+    pub fn __Node(w: kayak_rt::data::DataAt<'_, Self>) -> <Self as kayak_rt::data::Variant<0>>::Fields {
+        w.fields::<0>()
+    }
 }
 
-pub fn node<'r, T: Copy + 'static + kayak_rt::Trace>(f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
-    kayak_rt::alloc(Rose::Node(f0))
+impl<'r, T: Copy + 'static + kayak_rt::Trace> kayak_rt::data::Datatype for Rose<'r, T> {
+    #[inline]
+    fn read(w: kayak_rt::data::DataAt<'_, Self>) -> Self {
+        if w.is::<1>() {
+            let (f0,) = w.fields::<1>();
+            Self::Leaf(f0)
+        } else if w.is::<0>() {
+            let (f0,) = w.fields::<0>();
+            Self::Node(f0)
+        } else {
+            kayak_rt::data::no_variant()
+        }
+    }
+    fn reach<'a>(w: kayak_rt::data::DataAt<'a, Self>, t: &mut kayak_rt::Tracer<'a>) where Self: 'a {
+        if w.is::<1>() { return t.reach(w.obj::<1>()); }
+        if w.is::<0>() { return t.reach(w.obj::<0>()); }
+    }
+    fn object(w: kayak_rt::data::DataAt<'static, Self>) -> &'static dyn kayak_rt::value::Obj where Self: 'static {
+        if w.is::<1>() { return (w.obj::<1>()); }
+        if w.is::<0>() { return (w.obj::<0>()); }
+        let _ = w;
+        kayak_rt::data::no_variant()
+    }
+    fn of_object(o: &'static dyn kayak_rt::value::Obj) -> ::core::option::Option<kayak_rt::data::DataAt<'static, Self>> where Self: 'static {
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 1>(o) { return ::core::option::Option::Some(x); }
+        if let ::core::option::Option::Some(x) = kayak_rt::data::data_of_object::<Self, 0>(o) { return ::core::option::Option::Some(x); }
+        ::core::option::Option::None
+    }
 }
 
-pub fn node_heap<T: Copy + 'static + kayak_rt::Trace>(f0: List<kayak_rt::Handle<'static, Rose<'static, T>>>) -> kayak_rt::Handle<'static, Rose<'static, T>> {
-    kayak_rt::heap_alloc(Rose::Node(f0))
+pub fn leaf<'r, T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::data::DataAt<'r, Rose<'r, T>> {
+    kayak_rt::data::data_alloc::<Rose<'r, T>, 1>((f0,))
 }
 
-pub fn node_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: Holds<Rose<'r, T>>>(place_: &'r Place_, f0: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, T>>>) -> kayak_rt::Handle<'r, Rose<'r, T>> {
-    place_.arena().alloc(Rose::Node(f0))
+pub fn leaf_heap<T: Copy + 'static + kayak_rt::Trace>(f0: T) -> kayak_rt::data::DataAt<'static, Rose<'static, T>> {
+    kayak_rt::data::data_heap::<Rose<'static, T>, 1>((f0,))
+}
+
+pub fn leaf_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: kayak_rt::Holds<kayak_rt::data::DataBox>>(place_: &'r Place_, f0: T) -> kayak_rt::data::DataAt<'r, Rose<'r, T>> {
+    kayak_rt::data::data_in::<Rose<'r, T>, 1, _>(place_, (f0,))
+}
+
+pub fn node<'r, T: Copy + 'static + kayak_rt::Trace>(f0: ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, T>>>) -> kayak_rt::data::DataAt<'r, Rose<'r, T>> {
+    kayak_rt::data::data_alloc::<Rose<'r, T>, 0>((f0,))
+}
+
+pub fn node_heap<T: Copy + 'static + kayak_rt::Trace>(f0: List<kayak_rt::data::DataAt<'static, Rose<'static, T>>>) -> kayak_rt::data::DataAt<'static, Rose<'static, T>> {
+    kayak_rt::data::data_heap::<Rose<'static, T>, 0>((f0,))
+}
+
+pub fn node_in<'r, T: Copy + 'static + kayak_rt::Trace, Place_: kayak_rt::Holds<kayak_rt::data::DataBox>>(place_: &'r Place_, f0: ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, T>>>) -> kayak_rt::data::DataAt<'r, Rose<'r, T>> {
+    kayak_rt::data::data_in::<Rose<'r, T>, 0, _>(place_, (f0,))
 }
 
 // A tree of `n` leaves, `k` to `k + n - 1`, two levels deep, in the place
 // `p` (named as its region, so that what is made at it is made in it).
 
 // (Its `cons` and `list` made in the place too, C271.)
-pub fn build<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, kayak_rt::Handle<'p, Rose<'p, i64>>>> + Holds<Rose<'p, i64>>>(mut p: &'p Place_P, mut k: i64, mut n: i64, mut acc: ListAt<'p, kayak_rt::Handle<'p, Rose<'p, i64>>>) -> kayak_rt::Handle<'p, Rose<'p, i64>> {
+pub fn build<'p, Place_P: kayak_rt::Visit + Holds<Cons<'p, kayak_rt::data::DataAt<'p, Rose<'p, i64>>>> + Holds<kayak_rt::data::DataBox>>(mut p: &'p Place_P, mut k: i64, mut n: i64, mut acc: ListAt<'p, kayak_rt::data::DataAt<'p, Rose<'p, i64>>>) -> kayak_rt::data::DataAt<'p, Rose<'p, i64>> {
     loop {
         if i64_eq(n, 0i64) {
-            return the::<kayak_rt::Handle<'p, Rose<'p, i64>>>(node_in(p, acc));
+            return the::<kayak_rt::data::DataAt<'p, Rose<'p, i64>>>(node_in(p, acc));
         } else {
-            (k, n, acc) = (i64_plus(k, 1i64), i64_minus(n, 1i64), rcons(p, the::<kayak_rt::Handle<'p, Rose<'p, i64>>>(node_in(p, rcons(p, the::<kayak_rt::Handle<'p, Rose<'p, i64>>>(leaf_in(p, k)), kayak_rt::nil()))), acc));
+            (k, n, acc) = (i64_plus(k, 1i64), i64_minus(n, 1i64), rcons(p, the::<kayak_rt::data::DataAt<'p, Rose<'p, i64>>>(node_in(p, rcons(p, the::<kayak_rt::data::DataAt<'p, Rose<'p, i64>>>(leaf_in(p, k)), kayak_rt::nil()))), acc));
             continue;
         }
     }
 }
 
 #[inline]
-pub fn total<'r>(x: kayak_rt::Handle<'r, Rose<'r, i64>>) -> i64 {
+pub fn total<'r>(x: kayak_rt::data::DataAt<'r, Rose<'r, i64>>) -> i64 {
     let tagcase_ = x;
-    match *tagcase_ {
-        Rose::Leaf(n) => {
-            n
-        }
-        Rose::Node(kids) => {
-            total_all(kids)
-        }
-    }
+    if Rose::__is_Leaf(tagcase_) {
+        let (n,) = Rose::__Leaf(tagcase_);
+        n
+    } else if Rose::__is_Node(tagcase_) {
+        let (kids,) = Rose::__Node(tagcase_);
+        total_all(kids)
+    } else { kayak_rt::data::no_variant() }
 }
 
 #[inline]
-pub fn total_all<'r>(ks: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, i64>>>) -> i64 {
+pub fn total_all<'r>(ks: ListAt<'r, kayak_rt::data::DataAt<'r, Rose<'r, i64>>>) -> i64 {
     if null_p(ks) {
         0i64
     } else {
@@ -87,13 +148,13 @@ pub fn total_all<'r>(ks: ListAt<'r, kayak_rt::Handle<'r, Rose<'r, i64>>>) -> i64
 #[inline]
 pub fn one_tree(k: i64) -> i64 {
     {
-        struct Region_R<'r> { a0: Arena<Rose<'r, i64>>, a1: Arena<Cons<'r, kayak_rt::Handle<'r, Rose<'r, i64>>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        struct Region_R<'r> { a0: Arena<kayak_rt::data::DataBox>, a1: Arena<Cons<'r, kayak_rt::data::DataAt<'r, Rose<'r, i64>>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), a1: Arena::default(), phantom_: std::marker::PhantomData } } }
-        impl<'r> Holds<Rose<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Rose<'r, i64>> { &self.a0 } }
-        impl<'r> Holds<Cons<'r, kayak_rt::Handle<'r, Rose<'r, i64>>>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, kayak_rt::Handle<'r, Rose<'r, i64>>>> { &self.a1 } }
+        impl<'r> Holds<kayak_rt::data::DataBox> for Region_R<'r> { fn arena(&self) -> &Arena<kayak_rt::data::DataBox> { &self.a0 } }
+        impl<'r> Holds<Cons<'r, kayak_rt::data::DataAt<'r, Rose<'r, i64>>>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, kayak_rt::data::DataAt<'r, Rose<'r, i64>>>> { &self.a1 } }
         impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); kayak_rt::Visit::visit(&self.a1, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, k: i64) -> i64 {
-            total(build(r, k, 100i64, nil::<kayak_rt::Handle<'r, Rose<'r, i64>>>()))
+            total(build(r, k, 100i64, nil::<kayak_rt::data::DataAt<'r, Rose<'r, i64>>>()))
         }
         let r__arena = Region_R::default();
         letrena__r(&r__arena, k)
@@ -102,8 +163,8 @@ pub fn one_tree(k: i64) -> i64 {
 
 // And one made in the heap, at `acyclic`, as before.
 #[inline]
-pub fn kept() -> kayak_rt::Handle<'static, Rose<'static, i64>> {
-    static ONCE: std::sync::OnceLock<kayak_rt::Handle<'static, Rose<'static, i64>>> = std::sync::OnceLock::new();
+pub fn kept() -> kayak_rt::data::DataAt<'static, Rose<'static, i64>> {
+    static ONCE: std::sync::OnceLock<kayak_rt::data::DataAt<'static, Rose<'static, i64>>> = std::sync::OnceLock::new();
     once(&ONCE, || {
         node_heap(kayak_rt::heap_cons(leaf_heap(1i64), kayak_rt::heap_cons(leaf_heap(2i64), kayak_rt::nil())))
     })
