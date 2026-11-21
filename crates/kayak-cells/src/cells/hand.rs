@@ -4457,7 +4457,7 @@ pub fn hand_made() -> Ref<List<HandCode>> {
 /// tables stays, empty, which the routines still read.
 pub fn hand_code_arm64_x() -> kayak_rt::Sum {
     if not(null_p(get(hand_made()))) {
-        kayak_rt::sum_new::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made") }, "made", car(get(hand_made())))
+        kayak_rt::sum_tagged::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(kayak_rt::tag_lit!("made"), car(get(hand_made())))
     } else {
         set(hand_items(), nil::<kayak_rt::Handle<'static, HandItem>>());
         set(hand_data(), nil::<kayak_rt::Handle<'static, HandItem>>());
@@ -4478,12 +4478,12 @@ pub fn hand_code_arm64_x() -> kayak_rt::Sum {
         let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(_star(int_lit(4), count), ()));
         let bad = all_put_x(b, its, int_lit(0), ls);
         if _gt_eq(bad, int_lit(0)) {
-            kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", string_append(str_lit!("tier 2: instruction "), string_append(int_to_string(bad), str_lit!(" does not encode"))))
+            kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), string_append(str_lit!("tier 2: instruction "), string_append(int_to_string(bad), str_lit!(" does not encode"))))
         } else {
             let p = kayak_rt::as_proc(kayak_rt::native_procedure4::<FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>(seal_code(b)));
             code_named_x(ls, int_lit(4), _star(int_lit(4), count), str_lit!("kayak tier 2: the machine"));
             set(hand_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
-            kayak_rt::sum_new::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(const { kayak_rt::tag_hash("made") }, "made", p)
+            kayak_rt::sum_tagged::<kayak_rt::Proc4<'static, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, Int>>(kayak_rt::tag_lit!("made"), p)
         }
     }
 }

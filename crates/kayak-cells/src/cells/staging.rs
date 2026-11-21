@@ -577,13 +577,13 @@ pub fn rp_moved(a: RpOperand, off: Int, own: List<Symbol>, all: Strings) -> RpOp
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("node") } {
         let j: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", _plus(j, off)))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("node"), _plus(j, off)))
     } else if tag_ == const { kayak_rt::tag_hash("bound") } {
         let p: Product_11_12<Int, Int> = kayak_rt::sum_payload::<Product_11_12<Int, Int>>(tagcase_);
-        the::<RpOperand>(kayak_rt::sum_new::<Product_11_12<Int, Int>>(const { kayak_rt::tag_hash("bound") }, "bound", Product_11_12(_plus(p.0, off), p.1)))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Product_11_12<Int, Int>>(kayak_rt::tag_lit!("bound"), Product_11_12(_plus(p.0, off), p.1)))
     } else if tag_ == const { kayak_rt::tag_hash("hole") } {
         let h: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("hole") }, "hole", rp_index_in(all, nth_symbol(own, h), int_lit(0))))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("hole"), rp_index_in(all, nth_symbol(own, h), int_lit(0))))
     } else {
         let other = tagcase_;
         a
@@ -667,7 +667,7 @@ pub fn rp_of_evidence(p: kayak_rt::Handle<'static, Rpp>, all: Strings) -> RpOper
         Rpp::Rpp(n, off, ns, hs) => {
             let root = rp_node_at(ns, int_lit(0));
             if null_p(root) {
-                the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("int") }, "int", int_lit(0)))
+                the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("int"), int_lit(0)))
             } else {
                 rp_moved(car(car(root).4), off, hs, all)
             }
@@ -688,7 +688,7 @@ pub fn rp_filled_args(r#as: RpOperands, set: bool, holes: List<Symbol>, ps: List
             let h: Int = kayak_rt::sum_payload::<Int>(tagcase_);
             let found = rp_placed_at(ps, nth_symbol(holes, h));
             if null_p(found) {
-                kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("hole") }, "hole", rp_index_in(all, nth_symbol(holes, h), int_lit(0)))), rest)
+                kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("hole"), rp_index_in(all, nth_symbol(holes, h), int_lit(0)))), rest)
             } else {
                 let of = rp_of_evidence(car(found), all);
                 let tagcase_ = of;
@@ -844,7 +844,7 @@ pub fn rp_filled(main: kayak_rt::Handle<'static, Rexp>, es: List<kayak_rt::Handl
                 })), x.4))
             })), filled);
             rexp(onto(mine, moved), all, {
-                let tagcase_ = rp_aliased(aliases, the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", root)));
+                let tagcase_ = rp_aliased(aliases, the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("node"), root)));
                 let tag_ = kayak_rt::sum_tag(tagcase_);
                 if tag_ == const { kayak_rt::tag_hash("node") } {
                     let j: Int = kayak_rt::sum_payload::<Int>(tagcase_);
@@ -947,7 +947,7 @@ pub fn fresh_evidence_x(mut holes: Strings, mut named: Strings) -> List<kayak_rt
         } else {
             let k = get(fresh_regions());
             set(fresh_regions(), i64_plus(k, 1i64));
-            return kayak_rt::heap_cons(rpe(car(holes), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(0), symbol_lit(str_lit!("evidence")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", int_lit(1))), kayak_rt::nil())), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(1), symbol_lit(str_lit!("rconst")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", string_to_symbol(string_append(str_lit!("%region-"), i64_to_string(k))))), kayak_rt::nil())), kayak_rt::nil())), nil::<Symbol>()), fresh_evidence_x(cdr(holes), named));
+            return kayak_rt::heap_cons(rpe(car(holes), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(0), symbol_lit(str_lit!("evidence")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("node"), int_lit(1))), kayak_rt::nil())), kayak_rt::heap_cons(Product_11_12_13_14_15(int_lit(1), symbol_lit(str_lit!("rconst")), false, nil::<Symbol>(), kayak_rt::heap_cons(the::<RpOperand>(kayak_rt::sum_tagged::<Symbol>(kayak_rt::tag_lit!("sym"), string_to_symbol(string_append(str_lit!("%region-"), i64_to_string(k))))), kayak_rt::nil())), kayak_rt::nil())), nil::<Symbol>()), fresh_evidence_x(cdr(holes), named));
         }
     }
 }

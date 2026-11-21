@@ -41,16 +41,16 @@ pub async fn perform_x<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2
 
 // The operations, as a program writes them.
 pub async fn read_line_x<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>) -> Result<Answer, Unwind> {
-    Ok(kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("read-line") }, "read-line", ()))).await?)
+    Ok(kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("read-line"), ()))).await?)
 }
 
 pub async fn write_x<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
+    kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("write"), s))).await?;
     Ok(())
 }
 
 pub async fn clock_x<A: Copy + 'static + kayak_rt::Trace>(rt: Tag<A, Product_2op_1k<Op, kayak_rt::Proc1<'static, Answer, kayak_rt::suspend::Body<A>>>>) -> Result<i64, Unwind> {
-    let tagcase_ = kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("clock") }, "clock", ()))).await?;
+    let tagcase_ = kayak_rt::suspend::body(perform_x::<A>(rt, kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("clock"), ()))).await?;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("time") } {
         let t: i64 = kayak_rt::sum_payload::<i64>(tagcase_);
@@ -115,24 +115,24 @@ pub fn sim(input: Ref<List<Str>>, out: Ref<List<Str>>) -> kayak_rt::Proc2<'stati
             let x: () = kayak_rt::sum_payload::<()>(tagcase_);
             let lines = get(input);
             if null_p(lines) {
-                Ok(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ()))
+                Ok(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ()))
             } else {
                 set(input, cdr(lines));
-                Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("line") }, "line", car(lines)))
+                Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("line"), car(lines)))
             }
         } else if tag_ == const { kayak_rt::tag_hash("write") } {
             let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
             set(out, kayak_rt::heap_cons(s, get(out)));
-            Ok(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("done") }, "done", ()))
+            Ok(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("done"), ()))
         } else if tag_ == const { kayak_rt::tag_hash("clock") } {
             let x: () = kayak_rt::sum_payload::<()>(tagcase_);
-            Ok(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("time") }, "time", n))
+            Ok(kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("time"), n))
         } else if tag_ == const { kayak_rt::tag_hash("read-file") } {
             let p: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-            Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit!("the sim has no files")))
+            Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), str_lit!("the sim has no files")))
         } else if tag_ == const { kayak_rt::tag_hash("write-file") } {
             let f: Product_4path_4text<Str, Str> = kayak_rt::sum_payload::<Product_4path_4text<Str, Str>>(tagcase_);
-            Ok(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("done") }, "done", ()))
+            Ok(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("done"), ()))
         } else { unreachable!() }
     }))
 }
@@ -237,7 +237,7 @@ pub fn replaying(log: Ref<Log<'static>>) -> kayak_rt::Proc2<'static, i64, Op, ka
         let es = get(log);
         if null_p(es) {
             error(string_append(str_lit!("replay: past the log's end, at step "), i64_to_string(n)));
-            Ok(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ()))
+            Ok(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ()))
         } else {
             let e = car(es);
             if (i64_eq(e.0, n) && same_op_p(e.1, o)) {
@@ -245,7 +245,7 @@ pub fn replaying(log: Ref<Log<'static>>) -> kayak_rt::Proc2<'static, i64, Op, ka
                 Ok(e.2)
             } else {
                 error(string_append(str_lit!("replay: the run parts from its log at step "), string_append(i64_to_string(n), string_append(str_lit!(": the log has "), string_append(show_op(e.1), string_append(str_lit!(", the run "), show_op(o)))))));
-                Ok(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ()))
+                Ok(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ()))
             }
         }
     }))
@@ -441,18 +441,18 @@ pub fn entry_of(fs: Fields) -> Entry {
     let k = car(cdr(fs));
     let rest = cdr(cdr(fs));
     let o = the::<Op>(if string_eq_p(k, str_lit!("read-line")) {
-        kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("read-line") }, "read-line", ())
+        kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("read-line"), ())
     } else if string_eq_p(k, str_lit!("write")) {
-        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", car(rest))
+        kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("write"), car(rest))
     } else if string_eq_p(k, str_lit!("clock")) {
-        kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("clock") }, "clock", ())
+        kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("clock"), ())
     } else if string_eq_p(k, str_lit!("read-file")) {
-        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", car(rest))
+        kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("read-file"), car(rest))
     } else if string_eq_p(k, str_lit!("write-file")) {
-        kayak_rt::sum_new::<Product_4path_4text<Str, Str>>(const { kayak_rt::tag_hash("write-file") }, "write-file", Product_4path_4text(car(rest), car(cdr(rest))))
+        kayak_rt::sum_tagged::<Product_4path_4text<Str, Str>>(kayak_rt::tag_lit!("write-file"), Product_4path_4text(car(rest), car(cdr(rest))))
     } else {
         error(string_append(str_lit!("a log's line names no operation: "), k));
-        kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("clock") }, "clock", ())
+        kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("clock"), ())
     });
     let after = if (string_eq_p(k, str_lit!("read-line")) || string_eq_p(k, str_lit!("clock"))) {
         rest
@@ -465,20 +465,20 @@ pub fn entry_of(fs: Fields) -> Entry {
     };
     let j = car(after);
     let a = the::<Answer>(if string_eq_p(j, str_lit!("line")) {
-        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("line") }, "line", car(cdr(after)))
+        kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("line"), car(cdr(after)))
     } else if string_eq_p(j, str_lit!("eof")) {
-        kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ())
+        kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ())
     } else if string_eq_p(j, str_lit!("done")) {
-        kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("done") }, "done", ())
+        kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("done"), ())
     } else if string_eq_p(j, str_lit!("time")) {
-        kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("time") }, "time", number_of(car(cdr(after))))
+        kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("time"), number_of(car(cdr(after))))
     } else if string_eq_p(j, str_lit!("text")) {
-        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("text") }, "text", car(cdr(after)))
+        kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("text"), car(cdr(after)))
     } else if string_eq_p(j, str_lit!("failed")) {
-        kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", car(cdr(after)))
+        kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), car(cdr(after)))
     } else {
         error(string_append(str_lit!("a log's line names no answer: "), j));
-        kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ())
+        kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ())
     });
     Product_4step_2op_6answer(n, o, a)
 }

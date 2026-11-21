@@ -127,5 +127,10 @@ The native back end keeps Fixpt's own representation of sums.
 
 Since then: kfx's sums are one erased `Sum`, its tag hashed (C409), and
 KFX's datatypes stay nominal, Rust's types of their own, the cost of
-expanding them into sums measured too high for the checker (C410).
+expanding them into sums measured too high for the checker (C410). At
+C499 a sum became Fixpt's own object (kind 36: its tag, a word to
+Fixpt's symbol, and its payload, a word), and a tag's discriminant its
+symbol's hash, Fixpt's (FNV-1a, `symbol_hash_of`), not SipHash: one
+representation for both back ends, a collision still a build's failure
+(`tags_apart_from_runtime`).
 

@@ -78,7 +78,7 @@ pub async fn await_x(mut pr: Promise) -> Result<i64, Unwind> {
         } else if tag_ == const { kayak_rt::tag_hash("pending") } {
             let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
             kayak_rt::suspend::body(suspend_x(kayak_rt::closure1((pr, ws,), |(pr, ws,), k: Task| {
-                set(pr, kayak_rt::sum_new::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(const { kayak_rt::tag_hash("pending") }, "pending", kayak_rt::heap_cons(k, ws)))
+                set(pr, kayak_rt::sum_tagged::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(kayak_rt::tag_lit!("pending"), kayak_rt::heap_cons(k, ws)))
             }))).await?;
             continue;
         } else { unreachable!() }
@@ -105,7 +105,7 @@ pub fn resolve_x(pr: Promise, v: i64) -> () {
         ()
     } else if tag_ == const { kayak_rt::tag_hash("pending") } {
         let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
-        set(pr, kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("resolved") }, "resolved", v));
+        set(pr, kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("resolved"), v));
         enqueue_all_x(reverse_tasks(ws, nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
     } else { unreachable!() }
 }
@@ -154,7 +154,7 @@ pub async fn spawn_x(thunk: kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>
 pub fn fut() -> Promise {
     kayak_rt::kept_constant!(ONCE: Promise);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(const { kayak_rt::tag_hash("pending") }, "pending", nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(kayak_rt::tag_lit!("pending"), nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
     })
 }
 

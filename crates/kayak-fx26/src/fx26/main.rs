@@ -2443,7 +2443,7 @@ pub mod made__load__3__main {
 
     #[inline]
     pub fn mx_call_procedural(style: Int, code: Str, d: kayak_rt::value::Value, x: Str, forms: List<Str>) -> kayak_rt::Sum {
-        kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("apart") }, "apart", ())
+        kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("apart"), ())
     }
 
     pub fn mx_limit(name: Str) -> Str {
@@ -18754,9 +18754,9 @@ pub mod made__load__3__main {
     pub fn mx_procedural_run<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad3MainFaceState<'mxp, Place_Mxp>, code: Str) -> kayak_rt::Sum {
         let a = mx_expand_procedural(mxp, maker_st, code);
         if (_gt(string_length(a), int_lit(0)) && char_eq_p(string_ref(a, int_lit(0)), '=')) {
-            kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("ok") }, "ok", substring(a, int_lit(1), string_length(a)))
+            kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("ok"), substring(a, int_lit(1), string_length(a)))
         } else {
-            kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", if _gt(string_length(a), int_lit(0)) {
+            kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), if _gt(string_length(a), int_lit(0)) {
                 substring(a, int_lit(1), string_length(a))
             } else {
                 a
@@ -28090,9 +28090,9 @@ pub fn phase1_answer(request: Str) -> Str {
     } else {
         let tagcase_ = kayak_rt::attempt(|| { the::<kayak_rt::Sum>({
             let forms = with_loads(read_all(text, str_lit!("%phase1"), 1i64), str_lit!("%phase1"), nil::<kayak_rt::Handle<'static, Filed>>());
-            kayak_rt::sum_new::<Product_11_12<List<kayak_rt::Handle<'static, Sexp>>, kayak_rt::Handle<'static, Verdict>>>(const { kayak_rt::tag_hash("ok") }, "ok", Product_11_12(forms, check_program_as(forms, false)))
+            kayak_rt::sum_tagged::<Product_11_12<List<kayak_rt::Handle<'static, Sexp>>, kayak_rt::Handle<'static, Verdict>>>(kayak_rt::tag_lit!("ok"), Product_11_12(forms, check_program_as(forms, false)))
         }) }, |m: Str| {
-            the::<kayak_rt::Sum>(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("refused") }, "refused", m))
+            the::<kayak_rt::Sum>(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("refused"), m))
         });
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("refused") } {

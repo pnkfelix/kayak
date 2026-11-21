@@ -175,11 +175,12 @@ pub fn rep_nodes(
                 .args
                 .iter()
                 .map(|a| match *a {
-                    Arg::Node(i) => sum_of("node", int(i as i64)),
-                    Arg::Bound { binder, pos } => {
-                        sum_of("bound", Product_11_12(int(binder as i64), int(pos as i64)))
-                    }
-                    Arg::Hole(i) => sum_of("hole", int(i as i64)),
+                    Arg::Node(i) => sum_of(crate::tag_lit!("node"), int(i as i64)),
+                    Arg::Bound { binder, pos } => sum_of(
+                        crate::tag_lit!("bound"),
+                        Product_11_12(int(binder as i64), int(pos as i64)),
+                    ),
+                    Arg::Hole(i) => sum_of(crate::tag_lit!("hole"), int(i as i64)),
                     Arg::Const(i) => {
                         let c = &rep.consts[i as usize];
                         let which = keys
@@ -187,7 +188,7 @@ pub fn rep_nodes(
                             .position(|k| *k == c.key)
                             .map_or(-1, |w| w as i64);
                         sum_of(
-                            "const",
+                            crate::tag_lit!("const"),
                             Product_11_12_13(
                                 leak_string(c.name.clone()),
                                 int(which),
@@ -195,9 +196,9 @@ pub fn rep_nodes(
                             ),
                         )
                     }
-                    Arg::Sym(i) => sum_of("sym", sym(rep.name(i))),
-                    Arg::Int(v) => sum_of("int", int(v)),
-                    Arg::Flag(b) => sum_of("flag", b),
+                    Arg::Sym(i) => sum_of(crate::tag_lit!("sym"), sym(rep.name(i))),
+                    Arg::Int(v) => sum_of(crate::tag_lit!("int"), int(v)),
+                    Arg::Flag(b) => sum_of(crate::tag_lit!("flag"), b),
                 })
                 .collect();
             let binders: Vec<Symbol> = node.binders.iter().map(|&b| sym(rep.name(b))).collect();

@@ -1305,7 +1305,7 @@ mod product_tests {
         assert_eq!(crate::array_ref(a, crate::int_lit(1)).0.0, 5);
         assert_eq!(a.object_bytes(), 8 * 5);
         // A sum's payload, held.
-        let su = crate::sum_of("pair", p);
+        let su = crate::sum_of(crate::tag_lit!("pair"), p);
         assert_eq!(crate::sum_payload::<P2<P2<i64, Str>, char>>(su).1, 'c');
     }
 }
@@ -1511,6 +1511,28 @@ impl HeapWord {
                 .wrapping_add(2)
                 .map_addr(|a| a | TAG_OBJECT),
         )
+    }
+
+    /// A string literal's word, made as rustc builds (a tag's name, C499):
+    /// its suffix's address, two words past its start, tagged.
+    pub const fn of_str_lit<const W: usize>(s: &'static StrLit<W>) -> HeapWord {
+        HeapWord::object_at(std::ptr::from_ref(s).cast::<u64>().wrapping_add(2))
+    }
+
+    /// The word to an object whose suffix starts at `at` (8-aligned):
+    /// `at`, tagged `100`, its provenance kept.
+    #[inline(always)]
+    pub(crate) const fn object_at(at: *const u64) -> HeapWord {
+        // An 8-aligned address's low three bits are clear: adding the tag
+        // sets them, as `|` would, and rustc can do it as it builds.
+        HeapWord(at.wrapping_byte_add(TAG_OBJECT))
+    }
+
+    /// Where the suffix of the object a word points to starts: its tag
+    /// cleared, its provenance kept.
+    #[inline(always)]
+    pub(crate) fn object_ptr(self) -> *const u64 {
+        self.0.map_addr(|a| a & !TAG_MASK)
     }
 
     /// The string a word is.

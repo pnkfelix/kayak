@@ -2312,7 +2312,7 @@ pub mod made__load__1__expand {
 
     #[inline]
     pub fn mx_call_procedural(style: Int, code: Str, d: kayak_rt::value::Value, x: Str, forms: List<Str>) -> kayak_rt::Sum {
-        kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("apart") }, "apart", ())
+        kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("apart"), ())
     }
 
     pub fn mx_limit(name: Str) -> Str {
@@ -18623,9 +18623,9 @@ pub mod made__load__1__expand {
     pub fn mx_procedural_run<'mxp, Place_Mxp: kayak_rt::Visit>(mxp: &'mxp Place_Mxp, maker_st: &'mxp MadeLoad1ExpandFaceState<'mxp, Place_Mxp>, code: Str) -> kayak_rt::Sum {
         let a = mx_expand_procedural(mxp, maker_st, code);
         if (_gt(string_length(a), int_lit(0)) && char_eq_p(string_ref(a, int_lit(0)), '=')) {
-            kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("ok") }, "ok", substring(a, int_lit(1), string_length(a)))
+            kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("ok"), substring(a, int_lit(1), string_length(a)))
         } else {
-            kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", if _gt(string_length(a), int_lit(0)) {
+            kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), if _gt(string_length(a), int_lit(0)) {
                 substring(a, int_lit(1), string_length(a))
             } else {
                 a

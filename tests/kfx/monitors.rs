@@ -13,7 +13,7 @@ pub type Report = kayak_rt::Sum;
 
 #[inline]
 pub fn failed(m: Str) -> Report {
-    kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", m)
+    kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), m)
 }
 
 // What a report counts: an answer, itself; a failure, by what it says.
@@ -100,7 +100,7 @@ pub fn start_worker(collector: Addr<Report>) -> Addr<Int> {
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
             impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, collector: Addr<kayak_rt::Sum>, r#box: Inbox<Int>) -> () {
-                kayak_rt::process::send(collector, kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("ok") }, "ok", work(kayak_rt::process::receive(r#box))))
+                kayak_rt::process::send(collector, kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("ok"), work(kayak_rt::process::receive(r#box))))
             }
             let r__arena = Region_R::default();
             letrena__r(&r__arena, collector, r#box)
@@ -128,7 +128,7 @@ pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
                     } else {
                         _star(n, int_lit(2))
                     });
-                    kayak_rt::process::send(collector, kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("ok") }, "ok", _plus(a, b)))
+                    kayak_rt::process::send(collector, kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("ok"), _plus(a, b)))
                 }
             }
             let r__arena = Region_R::default();
@@ -147,7 +147,7 @@ pub fn start_divider(collector: Addr<Report>) -> Addr<Int> {
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
             impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, _: &mut kayak_rt::Tracer<'a_>) { } }
             fn letrena__r<'r>(r: &'r Region_R<'r>, collector: Addr<kayak_rt::Sum>, r#box: Inbox<Int>) -> () {
-                kayak_rt::process::send(collector, kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("ok") }, "ok", quotient(int_lit(7), kayak_rt::process::receive(r#box))))
+                kayak_rt::process::send(collector, kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("ok"), quotient(int_lit(7), kayak_rt::process::receive(r#box))))
             }
             let r__arena = Region_R::default();
             letrena__r(&r__arena, collector, r#box)

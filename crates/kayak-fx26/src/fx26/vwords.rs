@@ -792,7 +792,7 @@ pub fn args_room() -> i64 {
 pub fn pending_line() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ()))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ()))
     })
 }
 
@@ -800,7 +800,7 @@ pub fn pending_line() -> Ref<kayak_rt::Sum> {
 pub fn pending_file() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<Bytes>(const { kayak_rt::tag_hash("data") }, "data", make_bytevector(int_lit(0), int_to_u8(int_lit(0)))))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<Bytes>(kayak_rt::tag_lit!("data"), make_bytevector(int_lit(0), int_to_u8(int_lit(0)))))
     })
 }
 
@@ -808,7 +808,7 @@ pub fn pending_file() -> Ref<kayak_rt::Sum> {
 pub fn pending_names() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<List<Str>>(const { kayak_rt::tag_hash("names") }, "names", nil::<Str>()))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<List<Str>>(kayak_rt::tag_lit!("names"), nil::<Str>()))
     })
 }
 
@@ -968,7 +968,7 @@ pub fn text_written_word_x(p: i64, stream: i64) -> i64 {
 pub fn pending_byte() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ()))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ()))
     })
 }
 
@@ -976,7 +976,7 @@ pub fn pending_byte() -> Ref<kayak_rt::Sum> {
 pub fn pending_count() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ()))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ()))
     })
 }
 
@@ -992,7 +992,7 @@ pub fn pending_bytes() -> Ref<Bytes> {
 pub fn pending_term() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("done") }, "done", ()))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("done"), ()))
     })
 }
 
@@ -1000,7 +1000,7 @@ pub fn pending_term() -> Ref<kayak_rt::Sum> {
 pub fn pending_size() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("not-a-terminal") }, "not-a-terminal", ()))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("not-a-terminal"), ()))
     })
 }
 
@@ -1059,7 +1059,7 @@ pub fn bytes_room_x(n: i64) -> i64 {
         n
     }), int_to_u8(int_lit(0))));
     set(pending_count(), if i64_lt_eq(n, 0i64) {
-        kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("count") }, "count", the::<Int>(int_lit(0)))
+        kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("count"), the::<Int>(int_lit(0)))
     } else {
         read_bytes(get(pending_bytes()), int_lit(0), i64_to_int(n))
     });
@@ -1183,7 +1183,7 @@ pub fn size_word_x() -> i64 {
 pub fn pending_info() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<Product_4kind_4size_8modified_4mode<kayak_rt::Sum, Int, Int, Int>>(const { kayak_rt::tag_hash("info") }, "info", Product_4kind_4size_8modified_4mode(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("other") }, "other", ()), int_lit(0), int_lit(0), int_lit(0))))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<Product_4kind_4size_8modified_4mode<kayak_rt::Sum, Int, Int, Int>>(kayak_rt::tag_lit!("info"), Product_4kind_4size_8modified_4mode(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("other"), ()), int_lit(0), int_lit(0), int_lit(0))))
     })
 }
 
@@ -1191,7 +1191,7 @@ pub fn pending_info() -> Ref<kayak_rt::Sum> {
 pub fn pending_target() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("target") }, "target", str_lit!("")))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("target"), str_lit!("")))
     })
 }
 
@@ -1280,7 +1280,7 @@ pub fn read_symlink_word_x() -> i64 {
 pub fn pending_started() -> Ref<kayak_rt::Sum> {
     kayak_rt::kept_constant!(ONCE: Ref<kayak_rt::Sum>);
     once(&ONCE, || {
-        kayak_rt::heap_new(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("started") }, "started", the::<Int>(int_lit(0))))
+        kayak_rt::heap_new(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("started"), the::<Int>(int_lit(0))))
     })
 }
 

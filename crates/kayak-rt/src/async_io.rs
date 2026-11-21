@@ -143,9 +143,9 @@ fn failed_with(m: String) -> IoError {
 
 fn written(a: Answer) -> Sum {
     match a {
-        Answer::Err(m) => sum_of("failed", failed_with(m)),
+        Answer::Err(m) => sum_of(crate::tag_lit!("failed"), failed_with(m)),
         _ => {
-            static C: SumOf<()> = SumOf::new("done", crate::Held::UNIT);
+            static C: SumOf<()> = SumOf::new(crate::tag_lit!("done"), crate::Held::UNIT);
             C.sum()
         }
     }
@@ -182,7 +182,7 @@ pub(crate) fn write_now(fd: u32, s: Str) -> Sum {
         cx.abandon(token);
     }
     {
-        static C: SumOf<()> = SumOf::new("done", crate::Held::UNIT);
+        static C: SumOf<()> = SumOf::new(crate::tag_lit!("done"), crate::Held::UNIT);
         C.sum()
     }
 }

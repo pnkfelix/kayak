@@ -3278,17 +3278,17 @@
                         (put (fact-with c e "extract-index ") (put "." (put-exp c (car xs) n (value) acc))))
                        (else (put ")" (put (fact-with c e "blob-offset ") (put ").field(" (put-exp c (car xs) n (value) (put "(" acc))))))))
                 ((string=? h "sum")
-                 "A sum (C409): its tag's discriminant, made as rustc builds, its
-                  name, and its payload, at the type the checker found for the tag
+                 "A sum (C409): its tag, Fixpt's symbol, made as rustc builds
+                  (C499), and its payload, at the type the checker found for the tag
                   in the sum expected, if it found one; else as Rust finds it."
                  (let* ((tag (label-of (car xs)))
                         (st (fact-with c e "sum-type "))
                         (payload (if (string=? st "") nil
                                      (filter (lambda ((f sexps)) (string=? (label-of (car f)) tag))
                                              (map items (cdr (items (car (read-all st "" 1))))))))
-                        (acc (put "kayak_rt::sum_new" acc))
+                        (acc (put "kayak_rt::sum_tagged" acc))
                         (acc (if (null? payload) acc (put ">" (put-type (in-heap c) (second (car payload)) (put "::<" acc)))))
-                        (acc (put "\", " (put tag (put "\") }, \"" (put tag (put "(const { kayak_rt::tag_hash(\"" acc)))))))
+                        (acc (put "\"), " (put tag (put "(kayak_rt::tag_lit!(\"" acc)))))
                    (put ")" (put-exp c (second xs) n (value) acc))))
                 ((and (string=? h "attempt") (i64= (size xs) 2) (head-is? (second xs) "lambda") (i64= (size (items (second (items (second xs))))) 1))
                  "FX-26's `attempt` (C415): kayak-rt's, its body a closure, which a

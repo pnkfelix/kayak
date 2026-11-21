@@ -658,6 +658,7 @@ impl Trace for Value {
             Value::Symbol(s) => s.trace(t),
             Value::Int(n) => n.trace(t),
             Value::Pair(p) => t.reach(p),
+            Value::Sum(s) => s.trace(t),
             Value::Other(o, _) => t.reach(o),
             _ => {}
         }

@@ -15457,3 +15457,66 @@ reaches few references), 16.73 million allocations, 354.3 MB; an
 edit's build 0.28 to 0.29 s, a cold one 0.65 to 0.66 s; peak memory 176
 MB and 443 MB, as before. kc's binary 9.46 to 9.43 MB.
 - **The full check**: all passed in 552.7 s, its first run (the machine loaded besides); nextest 5620.
+
+## C499. A sum one Fixpt word, to Fixpt's sum; its tag Fixpt's symbol (2026-11-20)
+
+The user, after C498 (sums next): "Go for it".
+
+Reviewed first, Fixpt: a sum is an object of kind 36, frozen, two
+fields, its tag and its value (`fixpt-runtime`'s `prim.rs`,
+`make_frozen(SUM_KIND, &[tag, v])`; `fixpt-fx26`'s `typed_cells.rs`); its
+tag a symbol, kind 2, interned, three fields: its name (a text of the
+heap's), its hash (`symbol_hash_of`: FNV-1a of the name, its sign bit
+cleared, a fixnum's 61 bits) and its global's place (`heap.rs`'s
+`intern_text`). kayak-rt's sum was a reference to a cell of kayak's own:
+its tag's SipHash, its name (a `&str`, two words), a function giving its
+payload's type, one giving its cell's type to trace, then its payload.
+
+What changed (kayak-rt's `sum.rs`):
+- **`SymObj`**: Fixpt's symbol, kind 2, frozen: its name a string's word
+  (where Fixpt's is a text of its heap's), its hash Fixpt's, its place
+  −1 (kayak has no global by a symbol). Made as rustc builds,
+  `tag_lit!("circle")`, a `static`, its name a string literal's
+  (`HeapWord::of_str_lit`, `object_at`: pointer arithmetic, which a
+  `const` may do, where `|` on an address it may not).
+- **A tag's discriminant its symbol's hash**, Fixpt's, not SipHash:
+  `tag_hash` FNV-1a as `symbol_hash_of` (checked against kayak-rt's
+  `symbol_name_hash`, already Fixpt's). A collision is still a build's
+  failure (`tags_apart_from_runtime`).
+- **`SumOf<T>`**: Fixpt's sum, its header (kind 36, frozen, its fields
+  counting its trailer), its tag (the symbol's word), its payload (its
+  word, `Held`), and one field Fixpt's has not, before its trailer: what
+  it keeps of its payload's type (`SumDesc`, a `static` of each payload
+  type, by an associated `const`), which traces it and which every read
+  of its payload checks, as the cell's two functions did. A `static`'s
+  address, so read as a word it is a fixnum, nothing a walk of Fixpt's
+  would follow. Gone once a payload's word says its type itself.
+- **`Sum`**: its object's start (kayak's raw value, as `Str`'s); held
+  as its word, tagged `100` at its suffix's start (`Stored` its word,
+  where it was the reference itself); the word read back by its
+  trailer's distance. `sum_tag` reads the tag's symbol's hash; a read of
+  the payload finds the desc by the header's count, compared by address
+  first, by `TypeId` if not the same `static`.
+- **A union holds a sum as itself**, `Value::Sum` (`value.rs`), where it
+  held its cell's head: a sum's object has no type of rustc's to be
+  found again by (`Member`'s `into_value` and `of_value`, defaults for
+  the rest). Tried first: a method of `Visit` to find a sum's object
+  again. It cost each of kc's 1,558 vtables an entry and a relocation:
+  kc's binary 9.43 to 9.64 MB. A union's sum is now written as Fixpt
+  writes one, `#<sum TAG>`, not `#<value>`.
+- kfx's emitter: a sum made `sum_tagged::<P>(kayak_rt::tag_lit!("t"),
+  payload)`, not `sum_new::<P>(const { tag_hash("t") }, "t", payload)`;
+  `sum_new` kept the while that `boot/`'s Rust still called it (regen's
+  first generation), then removed. The corpus's Rust blessed again.
+- **Tests**: a sum one word, tagged `100`, its header kind 36, frozen,
+  three fields and its trailer; its tag kind 2; its payload a word; held
+  in a pair; a tag's hash Fixpt's, worked by hand. SipHash's reference
+  vector test gone with SipHash.
+
+Measured (the 1000-procedure bench): the census as C498's, 16.73
+million allocations, 354.3 MB; an edit's build 0.27 to 0.29 s, a cold
+one 0.62 to 0.64 s; peak memory 176 MB and 443 MB, as before. kc's
+binary 9.43 to 9.56 MB: of what is loaded, 61 KB (tag strings and
+symbols, their relocations, the `desc`s, 12 KB of code); the rest
+symbols' names.
+- **The full check**: all passed in 479.3 s, its first run; nextest 5621.

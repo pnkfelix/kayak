@@ -64,14 +64,14 @@ pub type IoError = Product_4kind_6detail<IoKind, Str>;
 pub(crate) fn io_error(e: &std::io::Error) -> IoError {
     use std::io::ErrorKind as K;
     let kind: IoKind = match e.kind() {
-        K::NotFound => sum_of("not-found", ()),
-        K::PermissionDenied => sum_of("permission-denied", ()),
-        K::AlreadyExists => sum_of("already-exists", ()),
-        K::NotADirectory => sum_of("not-a-directory", ()),
-        K::IsADirectory => sum_of("is-a-directory", ()),
-        K::BrokenPipe => sum_of("broken-pipe", ()),
-        K::InvalidData => sum_of("invalid-data", ()),
-        _ => sum_of("other", ()),
+        K::NotFound => sum_of(crate::tag_lit!("not-found"), ()),
+        K::PermissionDenied => sum_of(crate::tag_lit!("permission-denied"), ()),
+        K::AlreadyExists => sum_of(crate::tag_lit!("already-exists"), ()),
+        K::NotADirectory => sum_of(crate::tag_lit!("not-a-directory"), ()),
+        K::IsADirectory => sum_of(crate::tag_lit!("is-a-directory"), ()),
+        K::BrokenPipe => sum_of(crate::tag_lit!("broken-pipe"), ()),
+        K::InvalidData => sum_of(crate::tag_lit!("invalid-data"), ()),
+        _ => sum_of(crate::tag_lit!("other"), ()),
     };
     Product_4kind_6detail(kind, leak_string(e.to_string()))
 }
@@ -216,8 +216,11 @@ pub fn string_to_utf8_in<'r, R: Holds<BytesCells>>(r: &'r R, s: Str) -> BytesAt<
 
 pub fn utf8_to_string(b: BytesAt<'_>) -> Sum {
     match String::from_utf8(to_vec(b)) {
-        Ok(s) => sum_of("text", leak_string(s)),
-        Err(e) => sum_of("bad", i64_to_int(e.utf8_error().valid_up_to() as i64)),
+        Ok(s) => sum_of(crate::tag_lit!("text"), leak_string(s)),
+        Err(e) => sum_of(
+            crate::tag_lit!("bad"),
+            i64_to_int(e.utf8_error().valid_up_to() as i64),
+        ),
     }
 }
 
@@ -231,10 +234,10 @@ pub fn utf8_to_string(b: BytesAt<'_>) -> Sum {
 
 /// The 256 results `read-byte` gives of a byte.
 static BYTES: [SumOf<u8>; 256] = {
-    let mut a = [const { SumOf::new("byte", crate::Held::byte(0u8)) }; 256];
+    let mut a = [const { SumOf::new(crate::tag_lit!("byte"), crate::Held::byte(0u8)) }; 256];
     let mut i = 0;
     while i < 256 {
-        a[i] = SumOf::new("byte", crate::Held::byte(i as u8));
+        a[i] = SumOf::new(crate::tag_lit!("byte"), crate::Held::byte(i as u8));
         i += 1;
     }
     a
@@ -243,10 +246,14 @@ static BYTES: [SumOf<u8>; 256] = {
 /// How many counts of `read-bytes` are made once.
 const COUNTS_KEPT: usize = 4096;
 static COUNTS: [SumOf<Int>; COUNTS_KEPT + 1] = {
-    let mut a = [const { SumOf::new("count", crate::Held::int(Int::fixnum(0))) }; COUNTS_KEPT + 1];
+    let mut a = [const { SumOf::new(crate::tag_lit!("count"), crate::Held::int(Int::fixnum(0))) };
+        COUNTS_KEPT + 1];
     let mut i = 0;
     while i <= COUNTS_KEPT {
-        a[i] = SumOf::new("count", crate::Held::int(Int::fixnum(i as i64)));
+        a[i] = SumOf::new(
+            crate::tag_lit!("count"),
+            crate::Held::int(Int::fixnum(i as i64)),
+        );
         i += 1;
     }
     a
@@ -256,17 +263,17 @@ pub(crate) fn counted(k: usize) -> Sum {
     if k <= COUNTS_KEPT {
         COUNTS[k].sum()
     } else {
-        sum_of("count", i64_to_int(k as i64))
+        sum_of(crate::tag_lit!("count"), i64_to_int(k as i64))
     }
 }
 
 pub(crate) fn written(r: std::io::Result<()>) -> Sum {
     match r {
         Ok(()) => {
-            static C: SumOf<()> = SumOf::new("done", crate::Held::UNIT);
+            static C: SumOf<()> = SumOf::new(crate::tag_lit!("done"), crate::Held::UNIT);
             C.sum()
         }
-        Err(e) => sum_of("failed", io_error(&e)),
+        Err(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
     }
 }
 
@@ -451,14 +458,14 @@ pub fn read_line() -> Sum {
 pub(crate) fn line_answer(r: std::io::Result<Option<Vec<u8>>>) -> Sum {
     match r {
         Ok(None) => {
-            static C: SumOf<()> = SumOf::new("eof", crate::Held::UNIT);
+            static C: SumOf<()> = SumOf::new(crate::tag_lit!("eof"), crate::Held::UNIT);
             C.sum()
         }
         Ok(Some(line)) => match String::from_utf8(line) {
-            Ok(s) => sum_of("line", leak_string(s)),
-            Err(_) => sum_of("failed", invalid_data("a line not UTF-8")),
+            Ok(s) => sum_of(crate::tag_lit!("line"), leak_string(s)),
+            Err(_) => sum_of(crate::tag_lit!("failed"), invalid_data("a line not UTF-8")),
         },
-        Err(e) => sum_of("failed", io_error(&e)),
+        Err(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
     }
 }
 
@@ -753,9 +760,9 @@ pub fn read_byte() -> Sum {
             BYTES[b as usize].sum()
         }
         None => match i.error.take() {
-            Some(e) => sum_of("failed", io_error(&e)),
+            Some(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
             None => {
-                static C: SumOf<()> = SumOf::new("eof", crate::Held::UNIT);
+                static C: SumOf<()> = SumOf::new(crate::tag_lit!("eof"), crate::Held::UNIT);
                 C.sum()
             }
         },
@@ -773,9 +780,9 @@ pub fn read_bytes(bv: BytesAt<'_>, start: Int, end: Int) -> Sum {
     let mut i = arrived();
     if i.buf.is_empty() {
         return match i.error.take() {
-            Some(e) => sum_of("failed", io_error(&e)),
+            Some(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
             None => {
-                static C: SumOf<()> = SumOf::new("eof", crate::Held::UNIT);
+                static C: SumOf<()> = SumOf::new(crate::tag_lit!("eof"), crate::Held::UNIT);
                 C.sum()
             }
         };
@@ -825,14 +832,14 @@ pub(crate) fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
 pub(crate) fn moded(r: Option<std::io::Result<String>>) -> Sum {
     match r {
         None => {
-            static C: SumOf<()> = SumOf::new("not-a-terminal", crate::Held::UNIT);
+            static C: SumOf<()> = SumOf::new(crate::tag_lit!("not-a-terminal"), crate::Held::UNIT);
             C.sum()
         }
         Some(Ok(_)) => {
-            static C: SumOf<()> = SumOf::new("done", crate::Held::UNIT);
+            static C: SumOf<()> = SumOf::new(crate::tag_lit!("done"), crate::Held::UNIT);
             C.sum()
         }
-        Some(Err(e)) => sum_of("failed", io_error(&e)),
+        Some(Err(e)) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
     }
 }
 
@@ -877,8 +884,8 @@ pub fn terminal_size() -> Sum {
 
 pub(crate) fn terminal_size_answer(said: Option<std::io::Result<String>>) -> Sum {
     match said {
-        None => sum_of("not-a-terminal", ()),
-        Some(Err(e)) => sum_of("failed", io_error(&e)),
+        None => sum_of(crate::tag_lit!("not-a-terminal"), ()),
+        Some(Err(e)) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
         Some(Ok(s)) => {
             let ws: Vec<i64> = s
                 .split_whitespace()
@@ -886,10 +893,13 @@ pub(crate) fn terminal_size_answer(said: Option<std::io::Result<String>>) -> Sum
                 .collect();
             match ws[..] {
                 [rows, columns] => sum_of(
-                    "size",
+                    crate::tag_lit!("size"),
                     Product_4rows_7columns(i64_to_int(rows), i64_to_int(columns)),
                 ),
-                _ => sum_of("failed", invalid_data("stty size: no rows and columns")),
+                _ => sum_of(
+                    crate::tag_lit!("failed"),
+                    invalid_data("stty size: no rows and columns"),
+                ),
             }
         }
     }
@@ -968,8 +978,8 @@ pub(crate) fn read_regular_file(path: &str) -> std::io::Result<Vec<u8>> {
 /// program's heap).
 pub(crate) fn read_file_answer(r: std::io::Result<Vec<u8>>) -> Sum {
     match r {
-        Ok(v) => sum_of("data", bytes_of(v)),
-        Err(e) => sum_of("failed", io_error(&e)),
+        Ok(v) => sum_of(crate::tag_lit!("data"), bytes_of(v)),
+        Err(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
     }
 }
 
@@ -997,13 +1007,13 @@ pub(crate) fn list_dir_answer(names: std::io::Result<Vec<String>>) -> Sum {
         Ok(mut ns) => {
             ns.sort();
             sum_of(
-                "names",
+                crate::tag_lit!("names"),
                 ns.into_iter()
                     .rev()
                     .fold(nil(), |acc, n| heap_cons(leak_string(n), acc)),
             )
         }
-        Err(e) => sum_of("failed", io_error(&e)),
+        Err(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
     }
 }
 
@@ -1025,16 +1035,16 @@ pub(crate) fn file_info_answer(r: std::io::Result<std::fs::Metadata>) -> Sum {
         Ok(m) => {
             let t = m.file_type();
             let kind: FileKind = if t.is_symlink() {
-                sum_of("symlink", ())
+                sum_of(crate::tag_lit!("symlink"), ())
             } else if t.is_dir() {
-                sum_of("directory", ())
+                sum_of(crate::tag_lit!("directory"), ())
             } else if t.is_file() {
-                sum_of("file", ())
+                sum_of(crate::tag_lit!("file"), ())
             } else {
-                sum_of("other", ())
+                sum_of(crate::tag_lit!("other"), ())
             };
             sum_of(
-                "info",
+                crate::tag_lit!("info"),
                 Product_4kind_4size_8modified_4mode(
                     kind,
                     i64_to_int(m.len() as i64),
@@ -1043,7 +1053,7 @@ pub(crate) fn file_info_answer(r: std::io::Result<std::fs::Metadata>) -> Sum {
                 ),
             )
         }
-        Err(e) => sum_of("failed", io_error(&e)),
+        Err(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
     }
 }
 
@@ -1056,10 +1066,13 @@ pub fn read_symlink(path: Str) -> Sum {
 pub(crate) fn read_symlink_answer(r: std::io::Result<std::path::PathBuf>) -> Sum {
     match r {
         Ok(t) => match t.into_os_string().into_string() {
-            Ok(t) => sum_of("target", leak_string(t)),
-            Err(_) => sum_of("failed", invalid_data("a target that is not UTF-8")),
+            Ok(t) => sum_of(crate::tag_lit!("target"), leak_string(t)),
+            Err(_) => sum_of(
+                crate::tag_lit!("failed"),
+                invalid_data("a target that is not UTF-8"),
+            ),
         },
-        Err(e) => sum_of("failed", io_error(&e)),
+        Err(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
     }
 }
 
@@ -1224,8 +1237,8 @@ pub fn process_start(argv: crate::ListAt<'_, Str>, dir: Str) -> Sum {
         Ok(p as i64)
     })();
     match started {
-        Ok(p) => sum_of("started", i64_to_int(p)),
-        Err(e) => sum_of("failed", io_error(&e)),
+        Ok(p) => sum_of(crate::tag_lit!("started"), i64_to_int(p)),
+        Err(e) => sum_of(crate::tag_lit!("failed"), io_error(&e)),
     }
 }
 
@@ -1294,14 +1307,18 @@ fn ended(c: &mut Child) -> Option<(Option<i32>, Option<i32>)> {
 /// Whether process `p` runs: until it has exited and its output has all
 /// been read, so that a last `process-output` after gives the rest.
 pub fn process_status(p: Int) -> Sum {
-    with_child(p, sum_of("unknown", ()), |c| match ended(c) {
-        None => sum_of("running", ()),
-        Some(how) => {
-            c.seen_end = true;
-            match how {
-                (Some(code), _) => sum_of("exited", i64_to_int(code.into())),
-                (None, Some(sig)) => sum_of("signalled", i64_to_int(sig.into())),
-                (None, None) => sum_of("unknown", ()),
+    with_child(p, sum_of(crate::tag_lit!("unknown"), ()), |c| {
+        match ended(c) {
+            None => sum_of(crate::tag_lit!("running"), ()),
+            Some(how) => {
+                c.seen_end = true;
+                match how {
+                    (Some(code), _) => sum_of(crate::tag_lit!("exited"), i64_to_int(code.into())),
+                    (None, Some(sig)) => {
+                        sum_of(crate::tag_lit!("signalled"), i64_to_int(sig.into()))
+                    }
+                    (None, None) => sum_of(crate::tag_lit!("unknown"), ()),
+                }
             }
         }
     })
@@ -1328,10 +1345,10 @@ pub(crate) fn process_exited(p: Int) -> Option<Sum> {
         })
     })?;
     Some(match how {
-        None => sum_of("unknown", ()),
-        Some((Some(code), _)) => sum_of("exited", i64_to_int(code.into())),
-        Some((None, Some(sig))) => sum_of("signalled", i64_to_int(sig.into())),
-        Some((None, None)) => sum_of("unknown", ()),
+        None => sum_of(crate::tag_lit!("unknown"), ()),
+        Some((Some(code), _)) => sum_of(crate::tag_lit!("exited"), i64_to_int(code.into())),
+        Some((None, Some(sig))) => sum_of(crate::tag_lit!("signalled"), i64_to_int(sig.into())),
+        Some((None, None)) => sum_of(crate::tag_lit!("unknown"), ()),
     })
 }
 

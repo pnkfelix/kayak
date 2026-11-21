@@ -48,7 +48,7 @@ pub fn faulty(s: Seed<'static>, rate: i64, inner: kayak_rt::Proc2<'static, i64, 
             }
         };
         if (on_file && i64_lt(below_x(s, 100i64), rate)) {
-            Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit!("a fault, injected")))
+            Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), str_lit!("a fault, injected")))
         } else {
             Ok(kayak_rt::suspend::body(inner.call(n, o)).await?)
         }

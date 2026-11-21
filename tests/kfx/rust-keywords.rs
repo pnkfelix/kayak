@@ -148,7 +148,7 @@ pub fn main() -> Str {
         impl<'r#box> Holds<Cons<'r#box, i64>> for Region_Box<'r#box> { fn arena(&self) -> &Arena<Cons<'r#box, i64>> { &self.a0 } }
         impl<'r#box> kayak_rt::Visit for Region_Box<'r#box> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__box<'r#box>(r#box: &'r#box Region_Box<'r#box>, r#for: i64, r#while: kayak_rt::Proc2s<'r#box, i64, i64, i64>) -> Str {
-            let r#pub = build(r#box, r#where(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("where") }, "where", 4i64)));
+            let r#pub = build(r#box, r#where(kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("where"), 4i64)));
             i64_to_string(i64_plus(r#loop(3i64, r#mod()), i64_plus(i64_star(10i64, r#for), i64_plus(i64_star(100i64, r#while.call(2i64, 0i64)), i64_plus(i64_star(1000i64, r#const(r#struct(5i64))), i64_plus(r#impl::r#return(0i64), i64_plus(i64_star(10000i64, car(r#pub)), i64_star(1000000i64, first()))))))))
         }
         let box__arena = Region_Box::default();

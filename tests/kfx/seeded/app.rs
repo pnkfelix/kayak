@@ -12,14 +12,14 @@ use super::*;
 pub type Wl = Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>;
 
 pub async fn say_x(lp: Wl, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
+    kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("write"), s))).await?;
     Ok(())
 }
 
 pub async fn worker(lp: Wl, name: Str) -> Result<(), Unwind> {
     kayak_rt::suspend::body(say_x(lp, string_append(name, str_lit!("1")))).await?;
     {
-        let tagcase_ = kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", name))).await?;
+        let tagcase_ = kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("read-file"), name))).await?;
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("failed") } {
             let m: Str = kayak_rt::sum_payload::<Str>(tagcase_);

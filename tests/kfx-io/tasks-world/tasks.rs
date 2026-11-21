@@ -180,7 +180,7 @@ pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Pr
 // An ivar: a cell written once, whose readers wait until it is.
 #[inline]
 pub fn make_ivar<A: Copy + 'static + kayak_rt::Trace>(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>) -> Ref<kayak_rt::Sum> {
-    kayak_rt::heap_new(the::<kayak_rt::Sum>(kayak_rt::sum_new::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(const { kayak_rt::tag_hash("empty") }, "empty", nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())))
+    kayak_rt::heap_new(the::<kayak_rt::Sum>(kayak_rt::sum_tagged::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(kayak_rt::tag_lit!("empty"), nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>())))
 }
 
 // Its value, waited for.
@@ -193,7 +193,7 @@ pub async fn ivar_get_x<A: Copy + 'static + kayak_rt::Trace>(lp: Product_3tag_5r
     } else if tag_ == const { kayak_rt::tag_hash("empty") } {
         let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
         kayak_rt::suspend::body(suspend_x(lp, kayak_rt::closure1((iv, ws,), |(iv, ws,), k: kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>| kayak_rt::suspend::body(async move {
-            Ok(set(iv, kayak_rt::sum_new::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(const { kayak_rt::tag_hash("empty") }, "empty", kayak_rt::heap_cons(k, ws))))
+            Ok(set(iv, kayak_rt::sum_tagged::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(kayak_rt::tag_lit!("empty"), kayak_rt::heap_cons(k, ws))))
         })))).await?;
         Ok(kayak_rt::suspend::body(ivar_get_x::<A>(lp, iv)).await?)
     } else { unreachable!() }
@@ -218,7 +218,7 @@ pub fn ivar_put_x<A: Copy + 'static + kayak_rt::Trace>(lp: Product_3tag_5ready_8
         error(str_lit!("ivar-put!: written twice"))
     } else if tag_ == const { kayak_rt::tag_hash("empty") } {
         let ws: List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>> = kayak_rt::sum_payload::<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>(tagcase_);
-        set(iv, kayak_rt::sum_new::<A>(const { kayak_rt::tag_hash("full") }, "full", v));
+        set(iv, kayak_rt::sum_tagged::<A>(kayak_rt::tag_lit!("full"), v));
         enqueue_all_x(lp, reverse_tasks(ws, nil::<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>()))
     } else { unreachable!() }
 }

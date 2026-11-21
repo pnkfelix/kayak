@@ -5935,8 +5935,8 @@ pub mod emitter {
                     return put(str_lit!(")"), put(fact_with(c, e, str_lit!("blob-offset ")), put(str_lit!(").field("), put_exp(c, car(xs), n, value(), put(str_lit!("("), acc)))));
                 }
             } else if string_eq_p(h, str_lit!("sum")) {
-                // A sum (C409): its tag's discriminant, made as rustc builds, its
-                // name, and its payload, at the type the checker found for the tag
+                // A sum (C409): its tag, Fixpt's symbol, made as rustc builds
+                // (C499), and its payload, at the type the checker found for the tag
                 // in the sum expected, if it found one; else as Rust finds it.
                 let tag = label_of(car(xs));
                 let st = fact_with(c, e, str_lit!("sum-type "));
@@ -5947,13 +5947,13 @@ pub mod emitter {
                         string_eq_p(label_of(car(f)), tag)
                     })), map(kayak_rt::as_proc(items), cdr(items(car(read_all(st, str_lit!(""), 1i64))))))
                 };
-                let acc = put(str_lit!("kayak_rt::sum_new"), acc);
+                let acc = put(str_lit!("kayak_rt::sum_tagged"), acc);
                 let acc = if null_p(payload) {
                     acc
                 } else {
                     put(str_lit!(">"), put_type(in_heap(c), second(car(payload)), put(str_lit!("::<"), acc)))
                 };
-                let acc = put(str_lit!("\", "), put(tag, put(str_lit!("\") }, \""), put(tag, put(str_lit!("(const { kayak_rt::tag_hash(\""), acc)))));
+                let acc = put(str_lit!("\"), "), put(tag, put(str_lit!("(kayak_rt::tag_lit!(\""), acc)));
                 return put(str_lit!(")"), put_exp(c, second(xs), n, value(), acc));
             } else if (string_eq_p(h, str_lit!("attempt")) && i64_eq(size(xs), 2i64) && head_is_p(second(xs), str_lit!("lambda")) && i64_eq(size(items(second(items(second(xs))))), 1i64)) {
                 // FX-26's `attempt` (C415): kayak-rt's, its body a closure, which a

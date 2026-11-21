@@ -1724,7 +1724,8 @@ harness); K2 onward Ghuloum's steps; the service after K2's first steps.
   `TyId`s) or a datatype kept by its name and unfolded where its shape is
   read; the expansion as Fixpt makes it is `git stash` "C410 WIP".
 - `lang-items.py` lists the emitter's calls of kayak-rt by `NAME(`, so
-  `sum_new::<P>(` and `sum_payload::<T>(` are not listed (C409).
+  `sum_tagged::<P>(` (C499; `sum_new` before) and `sum_payload::<T>(`
+  are not listed (C409), nor the macro `tag_lit!(`.
 
 
 ## 54. The expander's state in kc's collected heap (the user, 2026-11-17)
@@ -1925,8 +1926,17 @@ over its 1664 definitions, 335 of them refused:
   pair Fixpt's headerless two-word cell; C498: a ref one word, tagged
   `100`, to Fixpt's box (kind 10, `RefObj`), and every kayak-rt object's
   header counting its trailer, a large array's extension word before its
-  header, as Fixpt's. Left: each kind held as itself a word once its
-  object is Fixpt's, a sum (36), a datatype's value, a closure (a header
+  header, as Fixpt's; C499: a sum one word, tagged `100`, to Fixpt's
+  sum (kind 36, frozen: its tag, a word to Fixpt's symbol, kind 2, made
+  as rustc builds, `tag_lit!`; its payload, a word), its tag's
+  discriminant its symbol's hash, Fixpt's `symbol_hash_of`, not SipHash.
+  Left of a sum: its payload's type kept in one field Fixpt's has not,
+  before its trailer (`SumDesc`, what traces it and checks a read of its
+  payload), until its payload's word says its type itself; a tag
+  symbol's name a string's word, where Fixpt's is its heap's text, and no
+  global's place (−1); kayak's `symbol` values not yet Fixpt's symbols,
+  nor one of each name. Left: each kind held as itself a word once its
+  object is Fixpt's, a datatype's value, a closure (a header
   too), an array (one word already, tagged not); a bloblet's
   fields; peak memory up 3 to 6% at C495, not explained; a cold build's
   bignums, 82,546 (2.6 MB, of 36.0 million allocations) with kc's object
@@ -1934,7 +1944,8 @@ over its 1664 definitions, 335 of them refused:
   ~~a dynamic value (`Value`, an enum)~~ (done in
   part, C491: traced, its pair and its members' objects reached
   precisely, a member its own object, no box, but what has none yet; a
-  sum precise, its head its cell's type. Left: one word, not three,
+  sum precise, its head its cell's type (C499: its object, as its
+  payload's type has it, found again by `Visit::sum_cell`). Left: one word, not three,
   which needs every object it may point at to say its shape and type as
   Fixpt's headers do: a pair's, a datatype's value's, a sum's, a ref's,
   a closure's), ~~what is still traced as a plain reference, opaque~~

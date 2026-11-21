@@ -40,7 +40,7 @@ pub fn fail_with(message: Str, status: Int) -> Void {
 }
 
 pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
-    let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", path))).await?;
+    let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("read-file"), path))).await?;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("text") } {
         let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -55,7 +55,7 @@ pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
 }
 
 pub async fn write_text(rt: Drt, path: Str, text: Str) -> Result<(), Unwind> {
-    let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_new::<Product_4path_4text<Str, Str>>(const { kayak_rt::tag_hash("write-file") }, "write-file", Product_4path_4text(path, text)))).await?;
+    let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_tagged::<Product_4path_4text<Str, Str>>(kayak_rt::tag_lit!("write-file"), Product_4path_4text(path, text)))).await?;
     let tag_ = kayak_rt::sum_tag(tagcase_);
     if tag_ == const { kayak_rt::tag_hash("done") } {
         let u: () = kayak_rt::sum_payload::<()>(tagcase_);
@@ -211,7 +211,7 @@ pub async fn write_outputs(mut rt: Drt, mut dir: Str, mut os: Outputs) -> Result
 
 // The compiler, run.
 pub async fn put_out(rt: Drt, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
+    kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("write"), s))).await?;
     Ok(())
 }
 
@@ -281,7 +281,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
         let text = kayak_rt::suspend::body(read_text(rt, unit)).await?;
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(unit), lines_from(string_chars(text), nil::<char>()))).await?;
         let old = {
-            let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("read-file") }, "read-file", cache))).await?;
+            let tagcase_ = kayak_rt::suspend::body(perform_x::<Int>(rt, kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("read-file"), cache))).await?;
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("text") } {
                 let t: Str = kayak_rt::sum_payload::<Str>(tagcase_);

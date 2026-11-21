@@ -48,14 +48,14 @@ pub fn areas(ss: List<Shape>) -> i64 {
 // Width subtyping: a `round` where a `shape` is wanted, and a list of them.
 #[inline]
 pub fn one() -> Round {
-    kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("circle") }, "circle", 1i64)
+    kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("circle"), 1i64)
 }
 
 #[inline]
 pub fn rounds() -> List<Round> {
     static ONCE: std::sync::OnceLock<List<Round>> = std::sync::OnceLock::new();
     once(&ONCE, || {
-        kayak_rt::heap_cons(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("circle") }, "circle", 2i64), kayak_rt::heap_cons(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("circle") }, "circle", 3i64), kayak_rt::nil()))
+        kayak_rt::heap_cons(kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("circle"), 2i64), kayak_rt::heap_cons(kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("circle"), 3i64), kayak_rt::nil()))
     })
 }
 
@@ -74,6 +74,6 @@ pub fn not_round(s: Shape) -> i64 {
 }
 
 pub fn main() -> Str {
-    string_append(i64_to_string(area(one())), string_append(str_lit!(" "), string_append(i64_to_string(areas(rounds())), string_append(str_lit!(" "), string_append(i64_to_string(not_round(kayak_rt::sum_new::<Product_1w_1h<i64, i64>>(const { kayak_rt::tag_hash("rect") }, "rect", Product_1w_1h(4i64, 5i64)))), string_append(str_lit!(" "), string_append(i64_to_string(not_round(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("circle") }, "circle", 9i64))), string_append(str_lit!(" "), i64_to_string(area(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("dot") }, "dot", ())))))))))))
+    string_append(i64_to_string(area(one())), string_append(str_lit!(" "), string_append(i64_to_string(areas(rounds())), string_append(str_lit!(" "), string_append(i64_to_string(not_round(kayak_rt::sum_tagged::<Product_1w_1h<i64, i64>>(kayak_rt::tag_lit!("rect"), Product_1w_1h(4i64, 5i64)))), string_append(str_lit!(" "), string_append(i64_to_string(not_round(kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("circle"), 9i64))), string_append(str_lit!(" "), i64_to_string(area(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("dot"), ())))))))))))
 }
 

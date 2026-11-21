@@ -29,6 +29,9 @@ pub enum Value {
     Unit,
     Nil,
     Pair(&'static dyn PairLike),
+    /// A sum (C499): its object's type no type of rustc's, so held as
+    /// itself, its word's shape its header's.
+    Sum(crate::Sum),
     Other(&'static dyn Obj, Shape),
 }
 
@@ -45,6 +48,19 @@ impl<T: Any + crate::Visit> Obj for T {}
 pub trait Member: Copy + 'static {
     fn object(self) -> &'static dyn Obj;
     fn of_object(o: &'static dyn Obj) -> Option<Self>;
+    /// It given for its union, of shape `shape`: its object.
+    #[inline]
+    fn into_value(self, shape: Shape) -> Value {
+        Value::Other(self.object(), shape)
+    }
+    /// It, if `v` holds it.
+    #[inline]
+    fn of_value(v: Value) -> Option<Self> {
+        match v {
+            Value::Other(x, _) => Self::of_object(x),
+            _ => None,
+        }
+    }
 }
 
 /// A handle's value (a datatype's, a ref): its object.
@@ -59,17 +75,27 @@ impl<D: crate::Visit + 'static> Member for crate::Handle<'static, D> {
     }
 }
 
-/// A sum: its cell, by its head.
+/// A sum (C499): held as itself (`Value::Sum`); its object, as its
+/// payload's type has it, where an object is asked for.
 impl Member for crate::Sum {
     #[inline]
     fn object(self) -> &'static dyn Obj {
-        self.head()
+        crate::Sum::object(self)
     }
     #[inline]
-    fn of_object(o: &'static dyn Obj) -> Option<Self> {
-        (o as &dyn Any)
-            .downcast_ref::<crate::SumHead>()
-            .map(crate::Sum::of_head)
+    fn of_object(_: &'static dyn Obj) -> Option<Self> {
+        None
+    }
+    #[inline]
+    fn into_value(self, _: Shape) -> Value {
+        Value::Sum(self)
+    }
+    #[inline]
+    fn of_value(v: Value) -> Option<Self> {
+        match v {
+            Value::Sum(s) => Some(s),
+            _ => None,
+        }
     }
 }
 
@@ -284,7 +310,7 @@ impl<T: crate::Trace + 'static> ToValue for crate::Ref<T> {
 /// reference, a procedure, an array) given for its union: behind `Any`,
 /// its shape kept beside it.
 pub fn other<T: Member>(x: T, shape: Shape) -> Value {
-    Value::Other(x.object(), shape)
+    x.into_value(shape)
 }
 
 /// A list given for its union: `nil`, or its pair, seen as a union's.
@@ -348,12 +374,9 @@ pub fn unbox<T: FromValue>(v: Value) -> T {
 
 /// A union narrowed to a member of another shape: found again by its type.
 pub fn unbox_other<T: Member>(v: Value) -> T {
-    match v {
-        Value::Other(x, _) => match T::of_object(x) {
-            Some(t) => t,
-            None => not_held(),
-        },
-        _ => not_held(),
+    match T::of_value(v) {
+        Some(t) => t,
+        None => not_held(),
     }
 }
 
@@ -393,6 +416,7 @@ impl Shaped for Value {
             Value::Symbol(_) | Value::Unit => Shape::Symbol,
             Value::Nil => Shape::Nil,
             Value::Pair(_) => Shape::Pair,
+            Value::Sum(_) => Shape::Sum,
             Value::Other(_, s) => *s,
         }
     }
@@ -516,6 +540,7 @@ impl Show for Value {
                 }
                 out.push(')');
             }
+            Value::Sum(s) => s.show(out),
             Value::Other(_, Shape::Procedure) => out.push_str("#<procedure>"),
             Value::Other(..) => out.push_str("#<value>"),
         }
@@ -557,15 +582,17 @@ mod tests {
 
     #[test]
     fn a_member_its_own_object_and_traced() {
-        // A sum given for a union: the union holds its cell, no box.
-        let s = crate::sum_of("pair", 7i64);
+        // A sum given for a union: the union holds it, no box.
+        let s = crate::sum_of(crate::tag_lit!("pair"), 7i64);
         let v = other(s, Shape::Sum);
         match v {
-            Value::Other(o, Shape::Sum) => {
-                assert_eq!(std::ptr::from_ref(o).cast::<()>() as usize, s.addr())
-            }
+            Value::Sum(o) => assert_eq!(o.addr(), s.addr()),
             _ => panic!("not a sum's"),
         }
+        assert_eq!(
+            std::ptr::from_ref(crate::Sum::object(s)).cast::<()>() as usize,
+            s.addr()
+        );
         assert_eq!(unbox_other::<crate::Sum>(v).addr(), s.addr());
         // A ref: its box.
         let r: crate::Ref<i64> = crate::heap_new(5);

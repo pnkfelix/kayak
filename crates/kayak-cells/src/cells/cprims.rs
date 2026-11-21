@@ -4523,19 +4523,19 @@ pub fn rp_int(w: i64) -> Int {
 pub fn rp_operand_of(s: i64) -> RpOperand {
     let (tag, v) = (symbol_text(slot_of(s, 2i64)), slot_of(s, 3i64));
     if string_eq_p(tag, str_lit!("node")) {
-        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("node") }, "node", rp_int(v)))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("node"), rp_int(v)))
     } else if string_eq_p(tag, str_lit!("bound")) {
-        the::<RpOperand>(kayak_rt::sum_new::<Product_11_12<Int, Int>>(const { kayak_rt::tag_hash("bound") }, "bound", Product_11_12(rp_int(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64)))))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Product_11_12<Int, Int>>(kayak_rt::tag_lit!("bound"), Product_11_12(rp_int(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64)))))
     } else if string_eq_p(tag, str_lit!("hole")) {
-        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("hole") }, "hole", rp_int(v)))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("hole"), rp_int(v)))
     } else if string_eq_p(tag, str_lit!("const")) {
-        the::<RpOperand>(kayak_rt::sum_new::<Product_11_12_13<Str, Int, Str>>(const { kayak_rt::tag_hash("const") }, "const", Product_11_12_13(string_text(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64)), string_text(slot_of(v, 4i64)))))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Product_11_12_13<Str, Int, Str>>(kayak_rt::tag_lit!("const"), Product_11_12_13(string_text(slot_of(v, 2i64)), rp_int(slot_of(v, 3i64)), string_text(slot_of(v, 4i64)))))
     } else if string_eq_p(tag, str_lit!("sym")) {
-        the::<RpOperand>(kayak_rt::sum_new::<Symbol>(const { kayak_rt::tag_hash("sym") }, "sym", string_to_symbol(symbol_text(v))))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Symbol>(kayak_rt::tag_lit!("sym"), string_to_symbol(symbol_text(v))))
     } else if string_eq_p(tag, str_lit!("int")) {
-        the::<RpOperand>(kayak_rt::sum_new::<Int>(const { kayak_rt::tag_hash("int") }, "int", rp_int(v)))
+        the::<RpOperand>(kayak_rt::sum_tagged::<Int>(kayak_rt::tag_lit!("int"), rp_int(v)))
     } else {
-        the::<RpOperand>(kayak_rt::sum_new::<bool>(const { kayak_rt::tag_hash("flag") }, "flag", i64_eq(v, v_true())))
+        the::<RpOperand>(kayak_rt::sum_tagged::<bool>(kayak_rt::tag_lit!("flag"), i64_eq(v, v_true())))
     }
 }
 

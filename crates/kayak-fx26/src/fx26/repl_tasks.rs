@@ -2901,8 +2901,8 @@ pub mod tasks {
     // `text`'s forms, if it reads: a draft may not, and a refused entry is
     // then the worker's to say, as any it cannot read.
     pub fn f_read_tried(text: Str, file: Str) -> kayak_rt::Sum {
-        kayak_rt::attempt(|| { the::<kayak_rt::Sum>(kayak_rt::sum_new::<List<kayak_rt::Handle<'static, Sexp>>>(const { kayak_rt::tag_hash("read") }, "read", read_all(text, file, 1i64))) }, |m: Str| {
-            the::<kayak_rt::Sum>(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("unread") }, "unread", ()))
+        kayak_rt::attempt(|| { the::<kayak_rt::Sum>(kayak_rt::sum_tagged::<List<kayak_rt::Handle<'static, Sexp>>>(kayak_rt::tag_lit!("read"), read_all(text, file, 1i64))) }, |m: Str| {
+            the::<kayak_rt::Sum>(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("unread"), ()))
         })
     }
 
@@ -2929,24 +2929,24 @@ pub mod tasks {
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("unread") } {
             let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-            Ok(kayak_rt::sum_new::<Product_11_12<Str, Int>>(const { kayak_rt::tag_hash("text") }, "text", Product_11_12(text, s)))
+            Ok(kayak_rt::sum_tagged::<Product_11_12<Str, Int>>(kayak_rt::tag_lit!("text"), Product_11_12(text, s)))
         } else if tag_ == const { kayak_rt::tag_hash("read") } {
             let forms: List<kayak_rt::Handle<'static, Sexp>> = kayak_rt::sum_payload::<List<kayak_rt::Handle<'static, Sexp>>>(tagcase_);
             if not((forms_mention_p(forms, macro_heads()) || (f.52).call(s)?)) {
-                Ok(kayak_rt::sum_new::<Product_11_12<Str, Int>>(const { kayak_rt::tag_hash("text") }, "text", Product_11_12(text, s)))
+                Ok(kayak_rt::sum_tagged::<Product_11_12<Str, Int>>(kayak_rt::tag_lit!("text"), Product_11_12(text, s)))
             } else if entry {
                 let x = (f.50).call(sexps_located(forms), s)?;
                 if string_eq_p(x.1, str_lit!("")) {
-                    Ok(kayak_rt::sum_new::<Product_11_12<Str, Int>>(const { kayak_rt::tag_hash("text") }, "text", Product_11_12(f_written_forms(located_sexps(x.0)), x.2)))
+                    Ok(kayak_rt::sum_tagged::<Product_11_12<Str, Int>>(kayak_rt::tag_lit!("text"), Product_11_12(f_written_forms(located_sexps(x.0)), x.2)))
                 } else {
-                    Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("refused") }, "refused", x.1))
+                    Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("refused"), x.1))
                 }
             } else {
                 let x = (f.51).call(sexps_located(forms), s)?;
                 if string_eq_p(x.1, str_lit!("")) {
-                    Ok(kayak_rt::sum_new::<Product_11_12<Str, Int>>(const { kayak_rt::tag_hash("text") }, "text", Product_11_12(f_written_forms(located_sexps(x.0)), s)))
+                    Ok(kayak_rt::sum_tagged::<Product_11_12<Str, Int>>(kayak_rt::tag_lit!("text"), Product_11_12(f_written_forms(located_sexps(x.0)), s)))
                 } else {
-                    Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("refused") }, "refused", x.1))
+                    Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("refused"), x.1))
                 }
             }
         } else { unreachable!() }

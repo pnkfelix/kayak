@@ -13,13 +13,13 @@ use super::*;
 pub type Wl = Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), kayak_rt::Proc0<'static, kayak_rt::suspend::Body<()>>>, Ref<List<kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>, Ref<List<Product_2at_1k<i64, kayak_rt::Proc1<'static, (), kayak_rt::suspend::Body<()>>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<kayak_rt::Sum>>>>, Ref<i64>>;
 
 pub async fn say_x(lp: Wl, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("write") }, "write", s))).await?;
+    kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("write"), s))).await?;
     Ok(())
 }
 
 pub async fn echo_x(mut lp: Wl, mut n: i64) -> Result<i64, Unwind> {
     loop {
-        let tagcase_ = kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("read-line") }, "read-line", ()))).await?;
+        let tagcase_ = kayak_rt::suspend::body(perform_in_x(lp, kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("read-line"), ()))).await?;
         let tag_ = kayak_rt::sum_tag(tagcase_);
         if tag_ == const { kayak_rt::tag_hash("line") } {
             let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);

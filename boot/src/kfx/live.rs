@@ -19,13 +19,13 @@ pub fn live() -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answe
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("line") } {
                 let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("line") }, "line", s))
+                Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("line"), s))
             } else if tag_ == const { kayak_rt::tag_hash("eof") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                Ok(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("eof") }, "eof", ()))
+                Ok(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("eof"), ()))
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", e.1))
+                Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), e.1))
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("write") } {
             let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
@@ -33,14 +33,14 @@ pub fn live() -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answe
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("done") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                Ok(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("done") }, "done", ()))
+                Ok(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("done"), ()))
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", e.1))
+                Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), e.1))
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("clock") } {
             let x: () = kayak_rt::sum_payload::<()>(tagcase_);
-            Ok(kayak_rt::sum_new::<i64>(const { kayak_rt::tag_hash("time") }, "time", clock()))
+            Ok(kayak_rt::sum_tagged::<i64>(kayak_rt::tag_lit!("time"), clock()))
         } else if tag_ == const { kayak_rt::tag_hash("read-file") } {
             let p: Str = kayak_rt::sum_payload::<Str>(tagcase_);
             let tagcase_ = the::<kayak_rt::Sum>(read_file(p));
@@ -51,14 +51,14 @@ pub fn live() -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answe
                 let tag_ = kayak_rt::sum_tag(tagcase_);
                 if tag_ == const { kayak_rt::tag_hash("text") } {
                     let s: Str = kayak_rt::sum_payload::<Str>(tagcase_);
-                    Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("text") }, "text", s))
+                    Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("text"), s))
                 } else if tag_ == const { kayak_rt::tag_hash("bad") } {
                     let k: Int = kayak_rt::sum_payload::<Int>(tagcase_);
-                    Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", str_lit!("not UTF-8")))
+                    Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), str_lit!("not UTF-8")))
                 } else { unreachable!() }
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", e.1))
+                Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), e.1))
             } else { unreachable!() }
         } else if tag_ == const { kayak_rt::tag_hash("write-file") } {
             let f: Product_4path_4text<Str, Str> = kayak_rt::sum_payload::<Product_4path_4text<Str, Str>>(tagcase_);
@@ -66,10 +66,10 @@ pub fn live() -> kayak_rt::Proc2<'static, i64, Op, kayak_rt::suspend::Body<Answe
             let tag_ = kayak_rt::sum_tag(tagcase_);
             if tag_ == const { kayak_rt::tag_hash("done") } {
                 let u: () = kayak_rt::sum_payload::<()>(tagcase_);
-                Ok(kayak_rt::sum_new::<()>(const { kayak_rt::tag_hash("done") }, "done", ()))
+                Ok(kayak_rt::sum_tagged::<()>(kayak_rt::tag_lit!("done"), ()))
             } else if tag_ == const { kayak_rt::tag_hash("failed") } {
                 let e: Product_4kind_6detail<kayak_rt::Sum, Str> = kayak_rt::sum_payload::<Product_4kind_6detail<kayak_rt::Sum, Str>>(tagcase_);
-                Ok(kayak_rt::sum_new::<Str>(const { kayak_rt::tag_hash("failed") }, "failed", e.1))
+                Ok(kayak_rt::sum_tagged::<Str>(kayak_rt::tag_lit!("failed"), e.1))
             } else { unreachable!() }
         } else { unreachable!() }
     }))
