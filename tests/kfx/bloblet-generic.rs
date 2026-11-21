@@ -7,11 +7,11 @@ use kayak_rt::*;
 
 pub type KeySame<K> = kayak_rt::Proc2s<'static, K, K, bool>;
 
-pub type One<'r, K, V> = kayak_rt::BlobletAt<'r, (std::cell::Cell<KeySame<K>>, std::cell::Cell<K>, std::cell::Cell<V>,)>;
+pub type One<'r, K, V> = kayak_rt::BlobletAt<'r, (kayak_rt::Slot<KeySame<K>>, kayak_rt::Slot<K>, kayak_rt::Slot<V>,)>;
 
 #[inline]
 pub fn make_one<'r, K: Copy + 'static + kayak_rt::Trace, V: Copy + 'static + kayak_rt::Trace>(same: KeySame<K>, key: K, val: V) -> One<'r, K, V> {
-    the::<One<'r, K, V>>(make_bloblet(int_lit(0), (std::cell::Cell::new(same), std::cell::Cell::new(key), std::cell::Cell::new(val),)))
+    the::<One<'r, K, V>>(make_bloblet(int_lit(0), (kayak_rt::Slot::new(same), kayak_rt::Slot::new(key), kayak_rt::Slot::new(val),)))
 }
 
 #[inline]

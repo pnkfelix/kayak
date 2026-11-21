@@ -2237,8 +2237,9 @@
 
       (put-fields-tuple (subr kfx (ctx sexps chars) chars)
         (lambda (c ts acc)
-          "A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`."
-          (put ")" (put-sep (lambda ((t sexp) acc) (put ">," (put-type c t (put "std::cell::Cell<" acc)))) " " ts (put "(" acc)))))
+          "A bloblet's fields, a tuple of cells, each a Fixpt word (C503):
+           `(kayak_rt::Slot<T>, ...,)`."
+          (put ")" (put-sep (lambda ((t sexp) acc) (put ">," (put-type c t (put "kayak_rt::Slot<" acc)))) " " ts (put "(" acc)))))
 
       (heap-made? (subr kfx (ctx sexp) bool)
         (lambda (c t)
@@ -3399,7 +3400,7 @@
                    (put ")" acc)))
                 ((and (or (string=? h "letrena") (string=? h "letreap")) (string=? (local-kind h (ctx-locals c)) "")) (put-letrena c e xs n acc))
                 ((and (or (string=? h "make-bloblet") (string=? h "rmake-bloblet")) (string=? (local-kind h (ctx-locals c)) ""))
-                 "`make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`."
+                 "`make_bloblet(bytes, (kayak_rt::Slot::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`."
                  (let* ((placed (string=? h "rmake-bloblet"))
                         (flat (blob-typed c e "blob-make "))
                         (acc (cond ((null? flat) (put (if placed "rmake_bloblet(" "make_bloblet(") acc))
@@ -3408,7 +3409,7 @@
                         (acc (if placed (put ", " (put-exp c (car xs) n (value) acc)) acc))
                         (rest (if placed (cdr xs) xs))
                         (acc (put ", (" (put-exp c (car rest) n (value) acc)))
-                        (acc (put-sep (lambda ((x sexp) acc) (put ")," (put-exp c x n (value) (put "std::cell::Cell::new(" acc)))) " " (cdr rest) acc)))
+                        (acc (put-sep (lambda ((x sexp) acc) (put ")," (put-exp c x n (value) (put "kayak_rt::Slot::new(" acc)))) " " (cdr rest) acc)))
                    (put "))" acc)))
                 ((and (string=? h "bloblet-ref") (string=? (local-kind h (ctx-locals c)) ""))
                  "A field, a cell: `(b).fields().i.get()`."

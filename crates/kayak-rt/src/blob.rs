@@ -453,13 +453,16 @@ mod tests {
     fn a_typed_suffix_in_place_and_traced() {
         // A suffix of 16 MB, too large for a stack: made zeroed in place.
         type S = FlatArr<Cell<i64>, { 1 << 21 }>;
-        let b = make_tbloblet::<_, S>(int_lit(8 << 21), (Cell::new(crate::str_lit("f")),));
+        let b = make_tbloblet::<_, S>(int_lit(8 << 21), (crate::Slot::new(crate::str_lit("f")),));
         assert_eq!(b.suffix().at(int_lit(12345)).get(), 0);
         b.suffix().at(int_lit((1 << 21) - 1)).set(7);
         assert_eq!(b.suffix().at(int_lit((1 << 21) - 1)).get(), 7);
         assert_eq!(b.byte_size(), 8 << 21);
         assert_eq!(b.fields().0.get().as_str(), "f");
-        assert_eq!(std::mem::size_of::<TBlobletAt<'_, (Cell<i64>,), S>>(), 8);
+        assert_eq!(
+            std::mem::size_of::<TBlobletAt<'_, (crate::Slot<i64>,), S>>(),
+            8
+        );
         let (rows, strings) = crate::traced((b, b)).census();
         assert_eq!(rows.iter().map(|r| r.1).sum::<u64>(), 1);
         assert_eq!(strings.0, 1);
@@ -467,7 +470,7 @@ mod tests {
 
     #[test]
     fn scalars_at_their_offsets_and_not() {
-        let b = make_bloblet(int_lit(72), (Cell::new(int_lit(3)),));
+        let b = make_bloblet(int_lit(72), (crate::Slot::new(int_lit(3)),));
         let r = blobref_at(b, int_lit(0), 72);
         r.field(16).set_f64(2.5);
         r.field(8).set_i32(-7);

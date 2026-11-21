@@ -4389,10 +4389,11 @@ pub mod emitter {
         first_lifetime_in(text, letrena_lifetimes_inner(ctx_locals(c)))
     }
 
-    /// A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`.
+    /// A bloblet's fields, a tuple of cells, each a Fixpt word (C503):
+    /// `(kayak_rt::Slot<T>, ...,)`.
     pub fn put_fields_tuple(c: kayak_rt::data::DataAt<'static, Ctx>, ts: Sexps, acc: Chars) -> Chars {
         put(str_lit!(")"), put_sep(kayak_rt::as_proc(kayak_rt::closure2s((c,), |(c,), t: kayak_rt::data::DataAt<'static, Sexp>, acc: List<char>| {
-            put(str_lit!(">,"), put_type(c, t, put(str_lit!("std::cell::Cell<"), acc)))
+            put(str_lit!(">,"), put_type(c, t, put(str_lit!("kayak_rt::Slot<"), acc)))
         })), str_lit!(" "), ts, put(str_lit!("("), acc)))
     }
 
@@ -6288,7 +6289,7 @@ pub mod emitter {
             } else if ((string_eq_p(h, str_lit!("letrena")) || string_eq_p(h, str_lit!("letreap"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {
                 return put_letrena(c, e, xs, n, acc);
             } else if ((string_eq_p(h, str_lit!("make-bloblet")) || string_eq_p(h, str_lit!("rmake-bloblet"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {
-                // `make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.
+                // `make_bloblet(bytes, (kayak_rt::Slot::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.
                 let placed = string_eq_p(h, str_lit!("rmake-bloblet"));
                 let flat = blob_typed(c, e, str_lit!("blob-make "));
                 let acc = if null_p(flat) {
@@ -6314,7 +6315,7 @@ pub mod emitter {
                 };
                 let acc = put(str_lit!(", ("), put_exp(c, car(rest), n, value(), acc));
                 let acc = put_sep(kayak_rt::as_proc(kayak_rt::closure2s((c, n,), |(c, n,), x: kayak_rt::data::DataAt<'static, Sexp>, acc: List<char>| {
-                    put(str_lit!("),"), put_exp(c, x, n, value(), put(str_lit!("std::cell::Cell::new("), acc)))
+                    put(str_lit!("),"), put_exp(c, x, n, value(), put(str_lit!("kayak_rt::Slot::new("), acc)))
                 })), str_lit!(" "), cdr(rest), acc);
                 return put(str_lit!("))"), acc);
             } else if (string_eq_p(h, str_lit!("bloblet-ref")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit!(""))) {

@@ -1745,7 +1745,7 @@ pub fn code_bytes(c: Convention) -> List<Int> {
     flat(square_code(c, offsets(square_code(c, nil::<Int>()), int_lit(0))))
 }
 
-pub fn put_all(mut b: kayak_rt::BlobletAt<'static, (std::cell::Cell<kayak_rt::Proc2s<'static, Int, Int, Int>>,)>, mut at: Int, mut bs: List<Int>) -> () {
+pub fn put_all(mut b: kayak_rt::BlobletAt<'static, (kayak_rt::Slot<kayak_rt::Proc2s<'static, Int, Int, Int>>,)>, mut at: Int, mut bs: List<Int>) -> () {
     loop {
         if null_p(bs) {
             return ();
@@ -1761,7 +1761,7 @@ pub type Squarer = kayak_rt::Proc1s<'static, Int, Int>;
 
 pub fn square(c: Convention, f: kayak_rt::Proc2s<'static, Int, Int, Int>) -> Squarer {
     let bs = code_bytes(c);
-    let b = the::<kayak_rt::BlobletAt<'static, (std::cell::Cell<kayak_rt::Proc2s<'static, Int, Int, Int>>,)>>(make_bloblet(list_length(bs), (std::cell::Cell::new(f),)));
+    let b = the::<kayak_rt::BlobletAt<'static, (kayak_rt::Slot<kayak_rt::Proc2s<'static, Int, Int, Int>>,)>>(make_bloblet(list_length(bs), (kayak_rt::Slot::new(f),)));
     put_all(b, int_lit(0), bs);
     kayak_rt::as_proc(kayak_rt::native_procedure1::<Int, Int>(seal_code(b)))
 }

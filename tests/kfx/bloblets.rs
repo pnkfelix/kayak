@@ -30,15 +30,15 @@ unsafe impl<A0: Flat, A1: Flat, A2: Flat, A3: Flat> Flat for Product_1a_1b_1c_1d
 
 // Fixpt's bloblet/point.fx, at i64: fields read and written.
 #[inline]
-pub fn p() -> kayak_rt::BlobletAt<'static, (std::cell::Cell<i64>, std::cell::Cell<i64>,)> {
-    kayak_rt::kept_constant!(ONCE: kayak_rt::BlobletAt<'static, (std::cell::Cell<i64>, std::cell::Cell<i64>,)>);
+pub fn p() -> kayak_rt::BlobletAt<'static, (kayak_rt::Slot<i64>, kayak_rt::Slot<i64>,)> {
+    kayak_rt::kept_constant!(ONCE: kayak_rt::BlobletAt<'static, (kayak_rt::Slot<i64>, kayak_rt::Slot<i64>,)>);
     once(&ONCE, || {
-        make_bloblet(int_lit(0), (std::cell::Cell::new(3i64), std::cell::Cell::new(4i64),))
+        make_bloblet(int_lit(0), (kayak_rt::Slot::new(3i64), kayak_rt::Slot::new(4i64),))
     })
 }
 
 #[inline]
-pub fn shift(q: kayak_rt::BlobletAt<'static, (std::cell::Cell<i64>, std::cell::Cell<i64>,)>, dx: i64) -> () {
+pub fn shift(q: kayak_rt::BlobletAt<'static, (kayak_rt::Slot<i64>, kayak_rt::Slot<i64>,)>, dx: i64) -> () {
     { let blob__ = q; blob__.fields().0.set(i64_plus((q).fields().0.get(), dx)); kayak_rt::bloblet_written(blob__, 0) }
 }
 
@@ -84,12 +84,12 @@ pub fn odd() -> BlobRef<O> {
 // A bloblet in a letrena's arena: a sum over a flat array of f64s.
 pub fn total(n: i64) -> f64 {
     {
-        struct Region_R<'r> { a0: Arena<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        struct Region_R<'r> { a0: Arena<TBloblet<(kayak_rt::Slot<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
         impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
-        impl<'r> Holds<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> for Region_R<'r> { fn arena(&self) -> &Arena<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> { &self.a0 } }
+        impl<'r> Holds<TBloblet<(kayak_rt::Slot<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> for Region_R<'r> { fn arena(&self) -> &Arena<TBloblet<(kayak_rt::Slot<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> { &self.a0 } }
         impl<'r> kayak_rt::Visit for Region_R<'r> { fn visit<'a_>(&'a_ self, t: &mut kayak_rt::Tracer<'a_>) { kayak_rt::Visit::visit(&self.a0, t); } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> f64 {
-            let b = the::<kayak_rt::TBlobletAt<'r, (std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>(rmake_tbloblet::<_, FlatArr<std::cell::Cell<f64>, 100>, _>(r, int_lit(800), (std::cell::Cell::new(n),)));
+            let b = the::<kayak_rt::TBlobletAt<'r, (kayak_rt::Slot<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>(rmake_tbloblet::<_, FlatArr<std::cell::Cell<f64>, 100>, _>(r, int_lit(800), (kayak_rt::Slot::new(n),)));
             let xs = the::<&'r FlatArr<std::cell::Cell<f64>, 100>>((b).suffix());
             let fill__knot = knot::<kayak_rt::Proc1<'r, i64, ()>>();
             let add__knot = knot::<kayak_rt::Proc2<'r, i64, f64, f64>>();

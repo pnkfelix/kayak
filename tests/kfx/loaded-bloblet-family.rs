@@ -21,7 +21,7 @@ pub mod made__load__1__loaded_bloblet_family {
 
     pub type Score = made__load__0__uses_cell::Score;
 
-    pub type Counts = kayak_rt::BlobletAt<'static, (std::cell::Cell<Score>,)>;
+    pub type Counts = kayak_rt::BlobletAt<'static, (kayak_rt::Slot<Score>,)>;
 
     #[inline]
     pub fn bump(c: Counts) -> i64 {
@@ -31,7 +31,7 @@ pub mod made__load__1__loaded_bloblet_family {
 
     #[inline]
     pub fn fresh() -> Counts {
-        the::<Counts>(make_bloblet(int_lit(0), (std::cell::Cell::new(41i64),)))
+        the::<Counts>(make_bloblet(int_lit(0), (kayak_rt::Slot::new(41i64),)))
     }
 }
 

@@ -498,6 +498,32 @@ impl<'r, Fs> BlobletAt<'r, Fs> {
     pub fn addr(self) -> usize {
         self.0.as_ptr() as usize
     }
+
+    /// Its word (C503): Fixpt's bloblet word, tagged `100`, to its suffix's
+    /// start, one past its trailer.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        HeapWord::object_at(
+            self.0
+                .as_ptr()
+                .cast::<u8>()
+                .wrapping_add(std::mem::size_of::<BlobHead<Fs>>())
+                .cast::<u64>(),
+        )
+    }
+
+    /// The bloblet a word is.
+    #[inline(always)]
+    pub fn of_word(w: HeapWord) -> Self {
+        // SAFETY: a bloblet's word is made only by `word`, of its object,
+        // alive for `'r`, its trailer just before where the word points.
+        let h = unsafe { w.header_ptr() };
+        BlobletAt(
+            // SAFETY: as above, its head's address.
+            unsafe { NonNull::new_unchecked(h.cast::<BlobHead<Fs>>().cast_mut()) },
+            std::marker::PhantomData,
+        )
+    }
 }
 
 /// A bloblet's head: its fields visited (C486), its suffix plain bytes.
@@ -513,9 +539,17 @@ impl<Fs: crate::Visit> crate::Visit for BlobHead<Fs> {
     }
 }
 
-/// A bloblet: its object reached (C486).
+/// A bloblet: its object reached (C486); held as its word (C503).
 impl<Fs: crate::Visit> crate::Trace for BlobletAt<'_, Fs> {
-    crate::trace_whole!();
+    type Stored = HeapWord;
+    #[inline(always)]
+    fn store(self) -> HeapWord {
+        self.word()
+    }
+    #[inline(always)]
+    fn load(w: HeapWord) -> Self {
+        BlobletAt::of_word(w)
+    }
     #[inline]
     fn trace<'a>(self, t: &mut crate::Tracer<'a>)
     where
@@ -627,9 +661,13 @@ mod bloblet_tests {
 
     #[test]
     fn a_bloblet_its_fields_and_suffix() {
-        let b = Bloblet::new((Cell::new(7i64), Cell::new('x')), 12, false);
+        let b = Bloblet::new(
+            (crate::Slot::new(crate::int_lit(7)), crate::Slot::new('x')),
+            12,
+            false,
+        );
         let at = b.at();
-        assert_eq!(at.fields().0.get(), 7);
+        assert_eq!(at.fields().0.get().small(), Some(7));
         at.fields().1.set('y');
         assert_eq!(at.bytes(), 12);
         assert_eq!(at.suffix().len(), 2);
@@ -638,6 +676,19 @@ mod bloblet_tests {
         assert_eq!(at.fields().1.get(), 'y');
         assert!(!at.suffix_frozen());
         assert_eq!(std::mem::size_of::<BlobletAt<'_, (Cell<i64>,)>>(), 8);
+        // Its fields Fixpt words (C503): a fixnum's, 7 << 3; its own word
+        // Fixpt's, tagged `100`, past its trailer, back to the same bloblet.
+        // SAFETY: its head, alive with `b`.
+        let words = unsafe { std::slice::from_raw_parts(at.0.as_ptr().cast::<u64>(), 4) };
+        assert_eq!(words[1], 7 << 3);
+        assert_eq!(words[3] & 7, 5);
+        use crate::Trace;
+        let w = at.store();
+        assert_eq!(w.raw() & 7, 4);
+        assert_eq!(
+            BlobletAt::<'_, (crate::Slot<crate::Int>, crate::Slot<char>)>::load(w).addr(),
+            at.addr()
+        );
     }
 }
 
@@ -746,6 +797,32 @@ impl<'r, Fs, S> TBlobletAt<'r, Fs, S> {
     pub fn addr(self) -> usize {
         self.0.as_ptr() as usize
     }
+
+    /// Its word (C503): Fixpt's bloblet word, tagged `100`, to its suffix's
+    /// start, one past its trailer.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        HeapWord::object_at(
+            self.0
+                .as_ptr()
+                .cast::<u8>()
+                .wrapping_add(std::mem::offset_of!(TBlobHead<Fs, S>, suffix))
+                .cast::<u64>(),
+        )
+    }
+
+    /// The bloblet a word is.
+    #[inline(always)]
+    pub fn of_word(w: HeapWord) -> Self {
+        // SAFETY: a bloblet's word is made only by `word`, of its object,
+        // alive for `'r`, its trailer just before where the word points.
+        let h = unsafe { w.header_ptr() };
+        TBlobletAt(
+            // SAFETY: as above, its head's address.
+            unsafe { NonNull::new_unchecked(h.cast::<TBlobHead<Fs, S>>().cast_mut()) },
+            std::marker::PhantomData,
+        )
+    }
 }
 
 /// A typed-suffix bloblet's object, owned: a region's arena holds one made
@@ -839,9 +916,18 @@ impl<Fs: crate::Visit, S> crate::Visit for TBlobHead<Fs, S> {
     }
 }
 
-/// A typed-suffix bloblet: its object reached (C487).
+/// A typed-suffix bloblet: its object reached (C487); held as its word
+/// (C503).
 impl<Fs: crate::Visit, S> crate::Trace for TBlobletAt<'_, Fs, S> {
-    crate::trace_whole!();
+    type Stored = HeapWord;
+    #[inline(always)]
+    fn store(self) -> HeapWord {
+        self.word()
+    }
+    #[inline(always)]
+    fn load(w: HeapWord) -> Self {
+        TBlobletAt::of_word(w)
+    }
     #[inline]
     fn trace<'a>(self, t: &mut crate::Tracer<'a>)
     where
@@ -1594,6 +1680,23 @@ impl HeapWord {
         // An 8-aligned address's low three bits are clear: adding the tag
         // sets them, as `|` would, and rustc can do it as it builds.
         HeapWord(at.wrapping_byte_add(TAG_OBJECT))
+    }
+
+    /// The header of the object a word points to (C503), as the trailer
+    /// just before where it points says how far back it is (Fixpt's
+    /// distance, in words).
+    ///
+    /// # Safety
+    /// `self` is a word to an object of a trailer, made of a reference to it
+    /// whose provenance covers its header, alive as long as what is read.
+    #[inline(always)]
+    pub(crate) unsafe fn header_ptr(self) -> *const u64 {
+        let at = self.object_ptr();
+        // SAFETY: the caller's.
+        unsafe {
+            let back = (*at.sub(1) >> 3) as usize;
+            at.sub(1 + back)
+        }
     }
 
     /// Where the suffix of the object a word points to starts: its tag

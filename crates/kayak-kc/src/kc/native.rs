@@ -94,7 +94,7 @@ pub mod kc_native {
 
     pub type HeapArray = FlatArray<i64>;
 
-    pub type Code = kayak_rt::BlobletAt<'static, (std::cell::Cell<HeapArray>,)>;
+    pub type Code = kayak_rt::BlobletAt<'static, (kayak_rt::Slot<HeapArray>,)>;
 
     pub fn bytes_put_x(mut b: Code, mut at: Int, mut bs: List<i64>) -> () {
         loop {
@@ -283,7 +283,7 @@ pub mod kc_native {
 
     pub fn native_sealed(image: List<i64>, words: i64) -> kayak_rt::data::DataAt<'static, RunImage> {
         let h = heap_of(words);
-        let b = the::<Code>(make_bloblet(i64_to_int(size(image)), (std::cell::Cell::new(h),)));
+        let b = the::<Code>(make_bloblet(i64_to_int(size(image)), (kayak_rt::Slot::new(h),)));
         bytes_put_x(b, int_lit(0), image);
         let sealed = seal_code(b);
         let at = last_sealed();

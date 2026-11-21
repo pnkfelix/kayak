@@ -185,7 +185,7 @@ impl Native for crate::Str {
 /// is KFX's alone from then on. A sealed copy is given as itself.
 macro_rules! crossing_bloblet {
     ($n:expr; $($a:ident $i:tt),*) => {
-        impl<$($a: Native + Copy + 'static),*> Native for BlobletAt<'static, ($(std::cell::Cell<$a>,)*)> {
+        impl<$($a: Native + crate::Trace + 'static),*> Native for BlobletAt<'static, ($(crate::Slot<$a>,)*)> {
             fn word(self) -> u64 {
                 let (bytes, code) = self.native_parts();
                 if let Some(c) = code {
@@ -208,7 +208,7 @@ macro_rules! crossing_bloblet {
                     _ => fail("native code: gave what is not a bloblet of the fields wanted"),
                 };
                 let suffix: Vec<u8> = (0..bytes).map(|i| (kayak_jit::suffix_word(w, i / 8) >> (8 * (i % 8))) as u8).collect();
-                crate::blob::of_native(($(std::cell::Cell::new($a::of_word(kayak_jit::slot_of(w, $i + 2))),)*), &suffix)
+                crate::blob::of_native(($(crate::Slot::new($a::of_word(kayak_jit::slot_of(w, $i + 2))),)*), &suffix)
             }
         }
     };
@@ -308,7 +308,7 @@ pub trait NativeFields {
 
 macro_rules! native_fields {
     ($($a:ident $i:tt),*) => {
-        impl<$($a: Native + Copy),*> NativeFields for ($(std::cell::Cell<$a>,)*) {
+        impl<$($a: Native + crate::Trace),*> NativeFields for ($(crate::Slot<$a>,)*) {
             fn field_words(&self) -> Vec<u64> {
                 vec![$(self.$i.get().word()),*]
             }

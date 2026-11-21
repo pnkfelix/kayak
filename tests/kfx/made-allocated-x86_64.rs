@@ -1768,7 +1768,7 @@ pub fn put_all(mut b: kayak_rt::BlobletAt<'static, ()>, mut at: Int, mut bs: Lis
     }
 }
 
-pub type Packed = kayak_rt::BlobletAt<'static, (std::cell::Cell<Str>, std::cell::Cell<Int>,)>;
+pub type Packed = kayak_rt::BlobletAt<'static, (kayak_rt::Slot<Str>, kayak_rt::Slot<Int>,)>;
 
 pub type Packer = kayak_rt::Proc2s<'static, Str, Int, Packed>;
 
@@ -1776,7 +1776,7 @@ pub fn pack(c: Convention) -> Packer {
     let bs = code_bytes(c);
     let b = the::<kayak_rt::BlobletAt<'static, ()>>(make_bloblet(list_length(bs), ()));
     put_all(b, int_lit(0), bs);
-    kayak_rt::as_proc(kayak_rt::native_procedure2::<Str, Int, kayak_rt::BlobletAt<'static, (std::cell::Cell<Str>, std::cell::Cell<Int>,)>>(seal_code(b)))
+    kayak_rt::as_proc(kayak_rt::native_procedure2::<Str, Int, kayak_rt::BlobletAt<'static, (kayak_rt::Slot<Str>, kayak_rt::Slot<Int>,)>>(seal_code(b)))
 }
 
 #[inline]
@@ -1828,7 +1828,7 @@ pub fn main() -> Str {
     } else {
         str_lit!("made 24 24")
     }, string_append(str_lit!(" "), int_to_string(if native_code_p() {
-        total(many(pack(conv()), int_lit(20000), nil::<kayak_rt::BlobletAt<'static, (std::cell::Cell<Str>, std::cell::Cell<Int>,)>>()), int_lit(0))
+        total(many(pack(conv()), int_lit(20000), nil::<kayak_rt::BlobletAt<'static, (kayak_rt::Slot<Str>, kayak_rt::Slot<Int>,)>>()), int_lit(0))
     } else {
         int_lit(1000000)
     })))

@@ -1330,6 +1330,15 @@ impl<T: Trace> Slot<T> {
     }
 }
 
+/// A copy of its value in a cell of its own, as `Cell`'s (a sealed
+/// bloblet's fields, C116).
+impl<T: Trace> Clone for Slot<T> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        Slot(Cell::new(self.0.get()))
+    }
+}
+
 impl<T: Trace> Visit for Slot<T> {
     fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
         self.0.get().reach(t);

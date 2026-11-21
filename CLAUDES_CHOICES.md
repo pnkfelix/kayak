@@ -15686,3 +15686,44 @@ against C501 built from a worktree): instructions 1,493.45 million both
 (to 0.0004%), page faults 66,842–66,847 both, task-clock 290–294 ms both.
 kc holds few arrays in its heap objects; kc's binary 11.49 to 11.50 MB.
 - **The full check**: all passed in 517.1 s, its first run; nextest 5623.
+
+## C503. A bloblet's fields Fixpt words; a bloblet held as its word (2026-11-21)
+
+The user, after C502 (bloblet fields next): "Go ahead".
+
+Reviewed first, Fixpt: a bloblet (kind 32) is `[header][fields…][trailer][suffix]`,
+its fields tagged words, its word tagged `100` (`TAG_BLOBLET`, "index of
+the start of a bloblet's suffix", `layout.rs`), one past its trailer.
+kayak's (C484) had that layout, but each field its value in line, a
+`Cell<T>` (a product's parts, a closure's handle, an integer's own
+representation), and was held in a heap object as its untagged pointer
+to its header (`trace_whole!`).
+
+What changed:
+- **The emitter** (`kfx/emit.kfx`): a bloblet's fields `kayak_rt::Slot<T>`,
+  made by `kayak_rt::Slot::new`, where they were `std::cell::Cell`'s;
+  `Slot` holds its value's word (`Trace::Stored`, a product boxed, C490),
+  read and written as a cell. `bloblet-ref`, `bloblet-set!` unchanged
+  (`.get()`, `.set()`). A typed suffix's cells (its flats) stay `Cell`s:
+  raw bytes, as Fixpt's suffix is. kfx's fixed point: one new generation.
+- **kayak-rt**:
+  - `BlobletAt`, `TBlobletAt`: `word` (Fixpt's, tagged `100`, at the
+    suffix's start), `of_word` (back by the trailer's distance, a
+    `HeapWord::header_ptr` of its own); `Stored` the word.
+  - `native.rs`: a crossing bloblet's fields and `NativeFields` over
+    `Slot`s.
+  - `Slot: Clone` (a sealed copy's fields, C116), as `Cell`'s was.
+- **Regenerated**: kc's `native.rs` (its bloblets of procedures), the
+  corpus's 107 and io-programs' 9 blessed again. The corpus's
+  other machine's (aarch64) `made-*.rs`, stale since before C490 (they
+  still hold `&'static Bloblet`), left as TODO already says: blessed again
+  on it.
+- **Tests**: a bloblet's field a fixnum's word (7 << 3) in its object, its
+  trailer at its place, its word tagged `100`, read back to the same
+  bloblet.
+
+Measured (the 1000-procedure bench's edit build, `perf stat`, twice each,
+against C501's kc): instructions 1,493.46 to 1,493.51 million (+0.003%),
+page faults 66,840–66,854 both; times not compared (a load average of 16).
+kc's bloblets are its native code's few; kc's binary 11.50 MB, as C502.
+- **The full check**: all passed in 560.0 s, its first run; nextest 5623.

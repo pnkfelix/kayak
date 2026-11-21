@@ -1957,8 +1957,10 @@ over its 1664 definitions, 335 of them refused:
   (kind 42) its word to its first element, where each was held as its
   untagged pointer; a large array's trailer counting back to its main
   header, as Fixpt's, where it counted to its extension word. Left: an
-  array in a union boxed; kayak's datum vector (`Vector`) not Fixpt's; a
-  bloblet's fields; peak memory up 3 to 6% at C495, not explained; a cold build's
+  array in a union boxed; kayak's datum vector (`Vector`) not Fixpt's;
+  C503: a bloblet's fields each a Fixpt word (`Slot`, a product's boxed),
+  where each was its value in line (`Cell`), and a bloblet held as Fixpt's
+  bloblet word, tagged `100`, one past its trailer, a typed suffix's too; peak memory up 3 to 6% at C495, not explained; a cold build's
   bignums, 82,546 (2.6 MB, of 36.0 million allocations) with kc's object
   cache empty, not yet traced to where its 64-bit integers are made);
   ~~a dynamic value (`Value`, an enum)~~ (done in
@@ -1978,7 +1980,7 @@ over its 1664 definitions, 335 of them refused:
   `Prod`, one word to Fixpt's product object, kind 37, by its `split`: a
   pair's element, a sum's payload, a ref's and an array's cell, a
   closure's capture; on the stack its parts; the user: no unboxed
-  products holding references. Left in line: a bloblet's field, an
+  products holding references. Left in line: ~~a bloblet's field~~ (C503), an
   `Option`, a datatype's field of a product type (none in kc), a
   message, an I-cell's value, a continuation's and a knot's), ~~an integer
   (`Int`, a bignum's limbs a `Vec`)~~ (done, C488: one word, Fixpt's
