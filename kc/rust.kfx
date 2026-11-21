@@ -156,9 +156,9 @@
                                          (string-list-append (map (lambda ((x string)) (string-append ", " x)) xs))
                                          "| " (rust-proc-name (item-name t)) "(" (words-of-commas xs) "))"))))
             ;; A string, kayak-rt's `str_lit` of a Rust literal; a symbol, its
-            ;; `symbol_lit` of its name's (C421).
+            ;; `sym_lit!` of its name's (C421; C504: its object made as rustc builds).
             ((string=? h "string") (string-append "str_lit!(" (string-append (rust-string (term-text t)) ")")))
-            ((string=? h "symbol") (string-append "symbol_lit(str_lit(" (string-append (rust-string (term-text t)) "))")))
+            ((string=? h "symbol") (string-append "kayak_rt::sym_lit!(" (string-append (rust-string (term-text t)) ")")))
             ((string=? h "int") (string-append "int_lit(" (string-append (i64->string n) "i64)")))
                   ((string=? h "bool") (if (i64= n 1) "true" "false"))
                   ((string=? h "char") (string-append "'\\u{" (string-append (kc-hex n "") "}'")))

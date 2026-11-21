@@ -41,7 +41,8 @@ const KIND_SUM: u8 = 36;
 /// each tag in each crate: a `tagcase` compares hashes, not symbols.
 #[repr(C)]
 pub struct SymObj {
-    header: u64,
+    /// Never zero: a heap arena's cell of one no wider for it (C504).
+    header: std::num::NonZeroU64,
     name: HeapWord,
     hash: HeapWord,
     place: HeapWord,
@@ -57,7 +58,16 @@ impl SymObj {
 
     const fn of(name: HeapWord, text: &str) -> SymObj {
         SymObj {
-            header: layout::header(KIND_SYMBOL, Self::TO_TRAILER, 0, true, true),
+            header: match std::num::NonZeroU64::new(layout::header(
+                KIND_SYMBOL,
+                Self::TO_TRAILER,
+                0,
+                true,
+                true,
+            )) {
+                Some(h) => h,
+                None => panic!("a symbol's header zero"),
+            },
             name,
             hash: HeapWord::fixnum(tag_hash(text) as i64),
             place: HeapWord::fixnum(-1),
@@ -79,6 +89,117 @@ impl SymObj {
     pub fn name(&self) -> Str {
         self.name.to_str()
     }
+}
+
+/// A symbol's object: its name's text reached.
+impl crate::Visit for SymObj {
+    fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
+        crate::Trace::trace(self.name(), t);
+    }
+}
+
+/// `symbol` (C504): one word, to Fixpt's symbol (kind 2, frozen: its
+/// name, its hash, its place, −1), as a tag's (C499). A quoted one made as
+/// rustc builds (`sym_lit!`), one of each in each crate; `string->symbol`'s
+/// made in the heap, one each time. So not one of each name, as Fixpt's
+/// interning has it: `eq?` of two compares their objects, then their
+/// hashes and names, which is what interning makes it (and what kayak's
+/// was, a name's text, C467).
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub struct Symbol(NonNull<SymObj>);
+
+// SAFETY: its object is frozen, never written once made, kept for the run.
+unsafe impl Send for Symbol {}
+// SAFETY: as above.
+unsafe impl Sync for Symbol {}
+
+impl Symbol {
+    /// The symbol whose object is `o` (a quoted one's, `sym_lit!`).
+    #[inline(always)]
+    pub const fn of_obj(o: &'static SymObj) -> Symbol {
+        Symbol(NonNull::from_ref(o))
+    }
+
+    /// One named `name`, made in the heap.
+    pub fn new(name: Str) -> Symbol {
+        let o = crate::heap_alloc(SymObj::of(HeapWord::of_str(name), name.as_str()));
+        Symbol::of_obj(o.to_ref())
+    }
+
+    #[inline(always)]
+    fn obj(self) -> &'static SymObj {
+        // SAFETY: made only of a `&'static SymObj`.
+        unsafe { self.0.as_ref() }
+    }
+
+    /// Its name.
+    #[inline]
+    pub fn name(self) -> Str {
+        self.obj().name()
+    }
+
+    /// Its hash, Fixpt's (`symbol_hash_of`), a fixnum's 61 bits.
+    #[inline]
+    pub fn hash(self) -> u64 {
+        self.obj().hash.to_i64() as u64
+    }
+
+    /// Its word: Fixpt's, tagged `100`, past its trailer.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        HeapWord::object_at(self.0.as_ptr().cast::<u64>().wrapping_add(5))
+    }
+
+    /// The symbol a word is.
+    #[inline(always)]
+    pub fn of_word(w: HeapWord) -> Symbol {
+        match NonNull::new(w.object_ptr().wrapping_sub(5).cast::<SymObj>().cast_mut()) {
+            Some(p) => Symbol(p),
+            None => crate::fail("a heap's word read as a symbol, which it is not"),
+        }
+    }
+}
+
+/// `eq?` of symbols: the same object, or the same hash and name.
+impl PartialEq for Symbol {
+    #[inline]
+    fn eq(&self, other: &Symbol) -> bool {
+        self.0 == other.0
+            || (self.obj().hash.raw() == other.obj().hash.raw()
+                && self.name().as_str() == other.name().as_str())
+    }
+}
+
+impl Eq for Symbol {}
+
+/// A symbol: its object reached (a quoted one's too, rustc's); held as its
+/// word.
+impl crate::Trace for Symbol {
+    type Stored = HeapWord;
+    #[inline(always)]
+    fn store(self) -> HeapWord {
+        self.word()
+    }
+    #[inline(always)]
+    fn load(w: HeapWord) -> Self {
+        Symbol::of_word(w)
+    }
+    #[inline]
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        t.reach(self.obj());
+    }
+}
+
+/// A quoted symbol, its object made as rustc builds: `sym_lit!("name")`.
+#[macro_export]
+macro_rules! sym_lit {
+    ($s:expr) => {
+        $crate::Symbol::of_obj($crate::tag_lit!($s))
+    };
 }
 
 /// A tag, its symbol made as rustc builds: `tag_lit!("circle")`.
@@ -869,7 +990,7 @@ mod tests {
         assert_eq!(s.at(4) & 7, 0b101);
         assert_eq!(Sum::of_word(w).addr(), s.addr());
         let sym = s.tag_obj();
-        assert_eq!((sym.header >> 3) & 0xff, 2);
+        assert_eq!((sym.header.get() >> 3) & 0xff, 2);
         assert_eq!(s.at(1) as usize, sym.word().raw());
         assert_eq!(sym.name().as_str(), "circle");
         // In a pair, its word.
@@ -992,5 +1113,32 @@ mod tests {
     fn a_payload_at_another_type_fails() {
         let s = sum_of(crate::tag_lit!("circle"), 3i64);
         let _ = sum_payload::<u8>(s);
+    }
+}
+
+#[cfg(test)]
+mod symbol_tests {
+    use super::*;
+
+    #[test]
+    fn a_symbol_one_word_to_fixpt_symbol() {
+        assert_eq!(std::mem::size_of::<Symbol>(), 8);
+        assert_eq!(std::mem::size_of::<Option<Symbol>>(), 8);
+        let quoted = crate::sym_lit!("lambda");
+        let made = crate::string_to_symbol(crate::str_lit!("lambda"));
+        let other = crate::string_to_symbol(crate::str_lit!("lambdb"));
+        // `eq?` as interning makes it: by name, whoever made it.
+        assert!(quoted == made && made == quoted && quoted != other);
+        assert_eq!(made.hash(), tag_hash("lambda"));
+        assert_eq!(crate::symbol_to_string(made).as_str(), "lambda");
+        // Its word Fixpt's, to its object's suffix (none), kind 2.
+        use crate::Trace;
+        let w = made.store();
+        assert_eq!(w.raw() & 7, 4);
+        // SAFETY: its header, 5 words before where its word points.
+        let h = unsafe { *w.object_ptr().sub(5) };
+        assert_eq!((h >> 3) & 0xff, 2);
+        assert!(Symbol::load(w) == made);
+        assert!(Symbol::load(quoted.store()) == quoted);
     }
 }

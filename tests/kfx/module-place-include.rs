@@ -207,7 +207,7 @@ pub mod tally_in {
         }).to_ref();
         maker_st.kept.set(Some(new(nil::<kayak_rt::data::DataAt<'static, shapes::Shape>>())));
         maker_st.bonus.set(Some(new(0i64)));
-        maker_st.words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("lambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("plambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("sq"))), kayak_rt::value::Value::Nil)))));
+        maker_st.words.set(Some(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("plambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("sq")), kayak_rt::value::Value::Nil)))));
         maker_st
     }
 }

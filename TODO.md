@@ -1934,8 +1934,11 @@ over its 1664 definitions, 335 of them refused:
   before its trailer (`SumDesc`, what traces it and checks a read of its
   payload), until its payload's word says its type itself; a tag
   symbol's name a string's word, where Fixpt's is its heap's text, and no
-  global's place (−1); kayak's `symbol` values not yet Fixpt's symbols,
-  nor one of each name; C500: a datatype's value one word, to Fixpt's
+  global's place (−1); ~~kayak's `symbol` values not yet Fixpt's
+  symbols~~ (done, C504: one word to Fixpt's symbol, a quoted one's made
+  as rustc builds, `sym_lit!`; `string->symbol`'s in the heap), not yet
+  one of each name (each `string->symbol` a new object; `eq?` compares
+  objects, then hashes and names); C500: a datatype's value one word, to Fixpt's
   sum (36) whose payload is a word to Fixpt's product (37) of its
   variant's fields, as Fixpt's `define-datatype` expands (the user's
   choice over one sum of the fields in line, 2026-11-20): the two
@@ -2015,6 +2018,9 @@ over its 1664 definitions, 335 of them refused:
   output taken, which the program's `pselect` says cannot be (C296). Six
   runs alone, each right. To find: whether tier 1 marks a process ended
   while its output's pipe still holds text (kayak-rt's polling, C295).
+  Again at C504's check (2026-11-21), the machine at a load average of
+  ~450 from elsewhere: under cells, timed out at 600 s (a hang, not a
+  lost line); 30 runs alone after, each right in under a second.
 
 ## 55. Debts against K8: what works against parallelism (the user, 2026-11-18)
 

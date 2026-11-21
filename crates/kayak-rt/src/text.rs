@@ -2,7 +2,9 @@
 //! symbols beside those in `lib.rs` (Fixpt 17ac0c5's `standard.rs`, each as
 //! its runtime has it; `CLAUDES_CHOICES.md` C56).
 
-use crate::{Int, Show, Str, char_byte, cursor_at, fail, i64_to_int, int_to_i64, leak_string};
+use crate::{
+    Int, Show, Str, Symbol, char_byte, cursor_at, fail, i64_to_int, int_to_i64, leak_string,
+};
 
 /// FX-26's `char->integer` and `integer->char`, at `int`.
 #[inline]
@@ -109,30 +111,21 @@ pub fn substring(s: Str, start: Int, end: Int) -> Str {
     crate::str_of_parts(&[&s.as_str()[b0..b1]])
 }
 
-/// `symbol`: a name, compared by its text, which is what FX-26's
-/// interning makes `eq?` of two symbols.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Symbol(Str);
-
 impl Show for Symbol {
     fn show(&self, out: &mut String) {
-        out.push_str(self.0.as_str())
+        out.push_str(self.name().as_str())
     }
 }
 
-/// A quoted symbol, `'name`.
-pub const fn symbol_lit(s: Str) -> Symbol {
-    Symbol(s)
-}
-
+/// `string->symbol` (C504): a symbol's object made of it.
 #[inline]
 pub fn string_to_symbol(s: Str) -> Symbol {
-    Symbol(s)
+    Symbol::new(s)
 }
 
 #[inline]
 pub fn symbol_to_string(s: Symbol) -> Str {
-    s.0
+    s.name()
 }
 
 // Ported from Fixpt (C121; scripts/fixpt-drift.py):
@@ -144,12 +137,9 @@ const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 /// FNV-1a of the name's bytes, its sign bit cleared, as a fixnum of 61
 /// bits, so that a table's buckets are in the same order.
 pub fn symbol_name_hash(s: Symbol) -> Int {
-    let h =
-        s.0.as_str()
-            .bytes()
-            .fold(FNV_OFFSET, |h, b| (h ^ b as u64).wrapping_mul(FNV_PRIME));
-    let n = (h as i64) & i64::MAX;
-    i64_to_int(((n as u64) << 3) as i64 >> 3)
+    // Its object's (C504), Fixpt's `symbol_hash_of` as rustc or the heap
+    // made it.
+    i64_to_int(s.hash() as i64)
 }
 
 /// FX-26's `string-hash`, as Fixpt computes it (`string_hash_of`): FNV-1a
@@ -164,11 +154,11 @@ pub fn string_hash(s: Str) -> Int {
 
 #[inline]
 pub fn symbol_eq_p(a: Symbol, b: Symbol) -> bool {
-    a.0.as_str() == b.0.as_str()
+    a == b
 }
 
 pub fn symbol_compare(a: Symbol, b: Symbol) -> Int {
-    string_compare(a.0, b.0)
+    string_compare(a.name(), b.name())
 }
 
 #[cfg(test)]

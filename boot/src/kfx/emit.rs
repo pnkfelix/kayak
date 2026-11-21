@@ -2920,7 +2920,7 @@ pub mod emitter {
             if (string_eq_p(q, str_lit!("#t")) || string_eq_p(q, str_lit!("#f"))) {
                 put(str_lit!(")"), put_var(c, q, put(str_lit!("kayak_rt::value::ToValue::to_value("), acc)))
             } else {
-                put(str_lit!("\")))"), put_escaped(string_chars(q), '"', put(str_lit!("kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!(\""), acc)))
+                put(str_lit!("\"))"), put_escaped(string_chars(q), '"', put(str_lit!("kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!(\""), acc)))
             }
         } else if Sexp::__is_Num(tagcase_) {
             let (k, f, p,) = Sexp::__Num(tagcase_);
@@ -5454,7 +5454,7 @@ pub mod emitter {
             } else if string_eq_p(kind, str_lit!("symbol")) {
                 // A symbol's data compared in the guard, by name (C73).
                 put_sep(kayak_rt::as_proc(kayak_rt::closure2s((), |(), d: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars| {
-                    put(str_lit!("\")))"), put_escaped(string_chars(sym_name(d)), '"', put(str_lit!("kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit!(\""), acc)))
+                    put(str_lit!("\"))"), put_escaped(string_chars(sym_name(d)), '"', put(str_lit!("kayak_rt::symbol_eq_p(case_, kayak_rt::sym_lit!(\""), acc)))
                 })), str_lit!(" || "), items(car(arm)), put(str_lit!("case_ if "), acc))
             } else if (string_eq_p(kind, str_lit!("int")) || string_eq_p(kind, str_lit!("string"))) {
                 put_sep(kayak_rt::as_proc(kayak_rt::closure2s((c, kind, n,), |(c, kind, n,), d: kayak_rt::data::DataAt<'static, Sexp>, acc: Chars| {
@@ -6230,7 +6230,7 @@ pub mod emitter {
                     if (string_eq_p(q, str_lit!("#t")) || string_eq_p(q, str_lit!("#f"))) {
                         return put_var(c, q, acc);
                     } else {
-                        return put(str_lit!("\"))"), put_escaped(string_chars(q), '"', put(str_lit!("symbol_lit(str_lit!(\""), acc)));
+                        return put(str_lit!("\")"), put_escaped(string_chars(q), '"', put(str_lit!("kayak_rt::sym_lit!(\""), acc)));
                     }
                 } else if Sexp::__is_Num(tagcase_) {
                     let (k, f, p,) = Sexp::__Num(tagcase_);

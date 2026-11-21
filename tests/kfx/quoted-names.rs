@@ -9,7 +9,7 @@ use kayak_rt::*;
 
 #[inline]
 pub fn words() -> kayak_rt::value::Value {
-    kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("oneshot"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("lambda"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("region"))), kayak_rt::value::Value::Nil)))
+    kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("oneshot")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("lambda")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("region")), kayak_rt::value::Value::Nil)))
 }
 
 pub mod m {
@@ -17,7 +17,7 @@ pub mod m {
 
     #[inline]
     pub fn table() -> kayak_rt::value::Value {
-        kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit!("step"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(1)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(2)), kayak_rt::value::Value::Nil)))
+        kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(kayak_rt::sym_lit!("step")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(1)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(2)), kayak_rt::value::Value::Nil)))
     }
 
     #[inline]

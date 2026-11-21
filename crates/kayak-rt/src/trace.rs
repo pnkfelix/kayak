@@ -19,7 +19,7 @@
 //! list is traced in a loop, not a recursion as deep as the list.
 
 use crate::value::Value;
-use crate::{Array, BigAt, Cons, Handle, Int, Str, Symbol, Void};
+use crate::{Array, BigAt, Cons, Handle, Int, Str, Void};
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 
@@ -1202,16 +1202,6 @@ impl Trace for Str {
         Self: 'a,
     {
         t.string(self.as_str());
-    }
-}
-
-/// A symbol: interned, the process's (C467's table), not the heap's.
-impl Trace for Symbol {
-    trace_whole!();
-    fn trace<'a>(self, _: &mut Tracer<'a>)
-    where
-        Self: 'a,
-    {
     }
 }
 

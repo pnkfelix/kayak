@@ -5,6 +5,6 @@ use kayak_rt::*;
 // FX-26's `symbol-name-hash` and `string-hash` (C119), the same as Fixpt's
 // to the bit: a hash table's buckets are in their order.
 pub fn main() -> Str {
-    string_append(int_to_string(symbol_name_hash(symbol_lit(str_lit!("abc")))), string_append(str_lit!(" "), string_append(int_to_string(symbol_name_hash(symbol_lit(str_lit!("make-table")))), string_append(str_lit!(" "), string_append(int_to_string(string_hash(str_lit!("héllo"))), string_append(str_lit!(" "), int_to_string(string_hash(str_lit!("")))))))))
+    string_append(int_to_string(symbol_name_hash(kayak_rt::sym_lit!("abc"))), string_append(str_lit!(" "), string_append(int_to_string(symbol_name_hash(kayak_rt::sym_lit!("make-table"))), string_append(str_lit!(" "), string_append(int_to_string(string_hash(str_lit!("héllo"))), string_append(str_lit!(" "), int_to_string(string_hash(str_lit!("")))))))))
 }
 

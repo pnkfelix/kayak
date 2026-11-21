@@ -367,7 +367,7 @@ pub mod kc_rust {
         } else if string_eq_p(h, str_lit!("string")) {
             string_append(str_lit!("str_lit!("), string_append(rust_string(term_text().call(t)), str_lit!(")")))
         } else if string_eq_p(h, str_lit!("symbol")) {
-            string_append(str_lit!("symbol_lit(str_lit("), string_append(rust_string(term_text().call(t)), str_lit!("))")))
+            string_append(str_lit!("kayak_rt::sym_lit!("), string_append(rust_string(term_text().call(t)), str_lit!(")")))
         } else if string_eq_p(h, str_lit!("int")) {
             string_append(str_lit!("int_lit("), string_append(i64_to_string(n), str_lit!("i64)")))
         } else if string_eq_p(h, str_lit!("bool")) {

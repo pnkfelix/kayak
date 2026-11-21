@@ -15727,3 +15727,44 @@ against C501's kc): instructions 1,493.46 to 1,493.51 million (+0.003%),
 page faults 66,840–66,854 both; times not compared (a load average of 16).
 kc's bloblets are its native code's few; kc's binary 11.50 MB, as C502.
 - **The full check**: all passed in 560.0 s, its first run; nextest 5623.
+
+## C504. A symbol one Fixpt word, to Fixpt's symbol (2026-11-21)
+
+The user, after C503 (`Value` as one word next): "Go ahead". `Value` one
+word needs every member's word to say what it is, as Fixpt's does;
+kayak's `symbol` was a name's string (`Symbol(Str)`, compared by its
+text), held as itself, which a string's word cannot be told apart from.
+So first, a symbol as Fixpt's; then the datum's vector; then `Value`.
+
+Reviewed first: Fixpt's symbol (kind 2, `[name, hash, place]`, frozen),
+which kayak-rt already makes for a sum's tag (`SymObj`, C499, as rustc
+builds, `tag_lit!`); kcrt-core's symbols interned in one table the
+process shares (C467, TODO §55 item 3), which kayak-rt's never were: its
+`eq?` of symbols compared their names.
+
+What changed:
+- **kayak-rt** (`sum.rs`, beside `SymObj`): `Symbol` one word, a pointer
+  to its `SymObj`; its `Stored` Fixpt's word to it (tagged `100`, past its
+  trailer); `Symbol::new` makes one in the heap (a heap arena's cell, its
+  header a `NonZeroU64` so that the cell is no wider); `sym_lit!("name")`
+  a quoted one, its object made as rustc builds, one of each in each
+  crate. `eq?`: the same object, or the same hash and name (what
+  interning makes it, and what kayak's comparison of names was), so not
+  one object of each name: each `string->symbol` makes one (40 bytes),
+  where it made none. `symbol-name-hash` its object's hash, where it was
+  computed at each call. Traced: its object reached.
+- **The emitter**: a quoted symbol `kayak_rt::sym_lit!("x")`, where it was
+  `symbol_lit(str_lit!("x"))` (`symbol_lit` gone). kfx's fixed point: one
+  new generation.
+- **Regenerated**: cells', fx26's and kc's quoted symbols; the corpus's 107
+  and io-programs' 9 blessed again.
+- **Tests**: a symbol one word (and `Option<Symbol>`), its word tagged
+  `100` to an object of kind 2, read back; a quoted one and a made one of
+  one name `eq?`, of another not; its hash Fixpt's.
+
+Measured (the 1000-procedure bench, `perf stat`, twice each, against
+C501's kc; a load average of 450 from elsewhere, so times not compared):
+instructions at a cold build 3,627.96 to 3,627.87 million, at an edit's
+1,493.50 to 1,493.42 million (−0.002% both); page faults the same.
+- **The full check**: a first run stopped at kc-steps (kc's Rust back end, `kc/rust.kfx`, still wrote `symbol_lit`: now `sym_lit!`); a second failed one test, `kayak/io/pselect-processes.fx` under cells timed out at 600 s (TODO's race in tier 1's `pselect`, the machine loaded; 30 runs alone each right).
+  The third run: all passed in 383.6 s; nextest 5624.

@@ -34,7 +34,7 @@ pub fn orders() -> Str {
 
 #[inline]
 pub fn greet(s: Symbol) -> Str {
-    if symbol_eq_p(s, symbol_lit(str_lit!("hello"))) {
+    if symbol_eq_p(s, kayak_rt::sym_lit!("hello")) {
         str_lit!("hi")
     } else {
         symbol_to_string(s)
@@ -42,7 +42,7 @@ pub fn greet(s: Symbol) -> Str {
 }
 
 pub fn symbols() -> Str {
-    string_append(greet(symbol_lit(str_lit!("hello"))), string_append(str_lit!(" "), string_append(greet(string_to_symbol(str_lit!("other"))), string_append(str_lit!(" "), int_to_string(symbol_compare(symbol_lit(str_lit!("a")), symbol_lit(str_lit!("b"))))))))
+    string_append(greet(kayak_rt::sym_lit!("hello")), string_append(str_lit!(" "), string_append(greet(string_to_symbol(str_lit!("other"))), string_append(str_lit!(" "), int_to_string(symbol_compare(kayak_rt::sym_lit!("a"), kayak_rt::sym_lit!("b")))))))
 }
 
 pub fn sum_array(mut a: Array<Int>, mut i: Int, mut acc: Int) -> Int {
