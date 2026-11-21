@@ -1241,7 +1241,15 @@ impl Trace for Int {
 /// A flat array (C489): its object reached once; its elements numbers,
 /// nothing traced.
 impl<T: 'static> Trace for crate::FlatArray<T> {
-    trace_whole!();
+    type Stored = crate::HeapWord;
+    #[inline(always)]
+    fn store(self) -> crate::HeapWord {
+        self.word()
+    }
+    #[inline(always)]
+    fn load(w: crate::HeapWord) -> Self {
+        crate::FlatArray::of_word(w)
+    }
     #[inline]
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
@@ -1328,9 +1336,18 @@ impl<T: Trace> Visit for Slot<T> {
     }
 }
 
-/// An array (C486): its object reached once, its elements visited then.
+/// An array (C486): its object reached once, its elements visited then;
+/// held as its word (C502).
 impl<T: Trace> Trace for Array<T> {
-    trace_whole!();
+    type Stored = crate::HeapWord;
+    #[inline(always)]
+    fn store(self) -> crate::HeapWord {
+        self.word()
+    }
+    #[inline(always)]
+    fn load(w: crate::HeapWord) -> Self {
+        Array::of_word(w)
+    }
     #[inline]
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where

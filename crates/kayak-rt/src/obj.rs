@@ -945,6 +945,22 @@ impl<T> FlatArray<T> {
     pub fn object_bytes(self) -> usize {
         8 * FLAT_PREFIX + (self.header() >> 32) as usize
     }
+
+    /// Its word (C502): Fixpt's, tagged `100`, to its suffix's start, its
+    /// first element, past its trailer.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        HeapWord::object_at(self.0.as_ptr().cast::<u64>())
+    }
+
+    /// The flat array a word is.
+    #[inline(always)]
+    pub fn of_word(w: HeapWord) -> Self {
+        match NonNull::new(w.object_ptr().cast::<Cell<T>>().cast_mut()) {
+            Some(p) => FlatArray(p, std::marker::PhantomData),
+            None => crate::fail("a heap's word read as a flat array, which it is not"),
+        }
+    }
 }
 
 /// `(arrayof T R)` (C485): one word, to an object of Fixpt's layout: its
@@ -991,6 +1007,22 @@ const fn elements_at<T: crate::Trace>(n: usize) -> usize {
 }
 
 impl<T: crate::Trace> Array<T> {
+    /// Its fields as Fixpt counts them (its elements' words and its
+    /// trailer): its header's, or, `large`, its extension word's.
+    #[inline(always)]
+    fn fields(self) -> usize {
+        // SAFETY: an `Array` is made only by `array_made` or `of_word`, of
+        // its main header, the extension word before it if `large`.
+        unsafe {
+            let h = *self.0.as_ptr();
+            if h & LARGE != 0 {
+                (*self.0.as_ptr().sub(1) >> 11) as usize
+            } else {
+                ((h >> 14) & FIELDS_MAX as u64) as usize
+            }
+        }
+    }
+
     /// Its elements, how many.
     #[inline]
     pub fn len(self) -> usize {
@@ -998,17 +1030,7 @@ impl<T: crate::Trace> Array<T> {
         if size == 0 {
             return 0;
         }
-        // SAFETY: an `Array` is made only by `array_made`, of a block whose
-        // first word is its header, or, if large, the extension word.
-        let fields = unsafe {
-            let h = *self.0.as_ptr();
-            if (h >> 3) & 0xff == KIND_EXTENSION {
-                (h >> 11) as usize
-            } else {
-                ((h >> 14) & FIELDS_MAX as u64) as usize
-            }
-        };
-        (fields - 1) * 8 / size
+        (self.fields() - 1) * 8 / size
     }
 
     #[inline]
@@ -1020,20 +1042,12 @@ impl<T: crate::Trace> Array<T> {
     #[inline]
     pub fn cells(self) -> &'static [crate::Slot<T>] {
         let n = self.len();
-        // SAFETY: its elements follow its header words, `n` of them, in the
+        // SAFETY: its elements follow its main header, `n` of them, in the
         // block it was made in (whose pointer it keeps), kept for the run.
-        unsafe {
-            std::slice::from_raw_parts(
-                self.0
-                    .as_ptr()
-                    .add(elements_at::<T>(n))
-                    .cast::<crate::Slot<T>>(),
-                n,
-            )
-        }
+        unsafe { std::slice::from_raw_parts(self.0.as_ptr().add(1).cast::<crate::Slot<T>>(), n) }
     }
 
-    /// Where its object is: its identity.
+    /// Where its object is: its identity, its main header's address.
     #[inline]
     pub fn addr(self) -> usize {
         self.0.as_ptr() as usize
@@ -1045,6 +1059,32 @@ impl<T: crate::Trace> Array<T> {
         (elements_at::<T>(n) * 8 + n * std::mem::size_of::<crate::Slot<T>>()).next_multiple_of(8)
             + 8
     }
+
+    /// Its word (C502): Fixpt's, tagged `100`, to its suffix's start, one
+    /// past its trailer (a vector has no suffix), as Fixpt's word to an
+    /// object is.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        // Its trailer `fields` words past its main header.
+        HeapWord::object_at(self.0.as_ptr().wrapping_add(self.fields() + 1))
+    }
+
+    /// The array a word is: its main header, as its trailer says how far
+    /// back it is.
+    #[inline(always)]
+    pub fn of_word(w: HeapWord) -> Self {
+        let at = w.object_ptr();
+        // SAFETY: an array's word is made only by `word`, of an object kept
+        // for the run, whose trailer, just before where the word points,
+        // says how far back its main header is (Fixpt's distance, 61 bits).
+        unsafe {
+            let back = (*at.sub(1) >> 3) as usize;
+            Array(
+                NonNull::new_unchecked(at.sub(1 + back).cast_mut()),
+                std::marker::PhantomData,
+            )
+        }
+    }
 }
 
 /// An array's object at `addr`, traced (a census's, C486).
@@ -1053,9 +1093,19 @@ impl<T: crate::Trace> Array<T> {
 /// `addr` is an array of `T`'s object, `array_made`'s, kept for the run.
 #[cfg(feature = "heap-stats")]
 unsafe fn trace_array<T: crate::Trace + 'static>(addr: usize, t: &mut crate::Tracer<'static>) {
-    // SAFETY: the caller's.
+    // SAFETY: the caller's: its block's first word its main header, or,
+    // large, the extension word before it.
+    let main = unsafe {
+        let p = addr as *mut u64;
+        if (*p >> 3) & 0xff == KIND_EXTENSION {
+            p.add(1)
+        } else {
+            p
+        }
+    };
+    // SAFETY: as above, `main` its main header.
     let a = Array::<T>(
-        unsafe { NonNull::new_unchecked(addr as *mut u64) },
+        unsafe { NonNull::new_unchecked(main) },
         std::marker::PhantomData,
     );
     crate::Trace::trace(a, t);
@@ -1084,9 +1134,9 @@ pub(crate) fn array_made<T: crate::Trace + 'static>(
     // the header, each element and the trailer written before it is read.
     unsafe {
         let p = std::alloc::alloc(layout).cast::<u64>();
-        let Some(base) = NonNull::new(p) else {
+        if p.is_null() {
             std::alloc::handle_alloc_error(layout)
-        };
+        }
         let fields = field_words::<T>(n);
         if fields > FIELDS_MAX {
             // Fixpt's: the extension word, then the main header, `large`.
@@ -1103,13 +1153,17 @@ pub(crate) fn array_made<T: crate::Trace + 'static>(
             k += 1;
         }
         assert!(k == n, "an array's items fewer than it said");
+        // Its main header, after the extension word if there is one; its
+        // trailer's distance back to it, as Fixpt's (the fields).
+        let main = p.add(at / 8 - 1);
+        debug_assert!(trailer_at / 8 == at / 8 - 1 + fields);
         p.cast::<u8>()
             .add(trailer_at)
             .cast::<u64>()
-            .write(layout::trailer(trailer_at / 8));
+            .write(layout::trailer(fields));
         #[cfg(feature = "heap-stats")]
         crate::census::object(p as usize, layout.size(), trace_array::<T>);
-        Array(base, std::marker::PhantomData)
+        Array(NonNull::new_unchecked(main), std::marker::PhantomData)
     }
 }
 
@@ -1147,6 +1201,20 @@ mod array_tests {
         let big = array_made((0..300_000).map(|k| k as u8));
         assert_eq!(big.len(), 300_000);
         assert_eq!(big.cells()[299_999].get(), (299_999 % 256) as u8);
+        // Its word Fixpt's, past its trailer, back to the same array.
+        use crate::Trace;
+        for x in [a, array_made([7i64].into_iter())] {
+            let w = x.store();
+            assert_eq!(w.raw() & 7, 4);
+            assert_eq!(Array::<i64>::load(w).addr(), x.addr());
+            assert_eq!(Array::<i64>::load(w).len(), x.len());
+        }
+        let wb = big.store();
+        assert_eq!(Array::<u8>::load(wb).addr(), big.addr());
+        // A large one's trailer counts back to its main header, as Fixpt's.
+        // SAFETY: its word points one past its trailer, in its block.
+        let back = unsafe { *wb.object_ptr().sub(1) } >> 3;
+        assert_eq!(back as usize, big.fields());
         let units = array_made(std::iter::repeat_n((), 5));
         assert_eq!(units.len(), 5);
         assert_eq!(std::mem::size_of::<Array<i64>>(), 8);

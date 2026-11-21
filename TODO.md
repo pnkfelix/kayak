@@ -1952,9 +1952,13 @@ over its 1664 definitions, 335 of them refused:
   a code bloblet of machine code); a closure of no free values an object
   too (24 bytes; 254,000 made in a cold build), where it was none. Left
   of a closure: kept in a box of its own (`Box::leak`), not the heap's
-  arenas; a union holds it boxed. Left: each kind held as itself a word
-  once its object is Fixpt's, an array (one word already, tagged not); a bloblet's
-  fields; peak memory up 3 to 6% at C495, not explained; a cold build's
+  arenas; a union holds it boxed. C502: an array held as Fixpt's word to
+  its vector (kind 3), tagged `100`, one past its trailer, as a flat array
+  (kind 42) its word to its first element, where each was held as its
+  untagged pointer; a large array's trailer counting back to its main
+  header, as Fixpt's, where it counted to its extension word. Left: an
+  array in a union boxed; kayak's datum vector (`Vector`) not Fixpt's; a
+  bloblet's fields; peak memory up 3 to 6% at C495, not explained; a cold build's
   bignums, 82,546 (2.6 MB, of 36.0 million allocations) with kc's object
   cache empty, not yet traced to where its 64-bit integers are made);
   ~~a dynamic value (`Value`, an enum)~~ (done in

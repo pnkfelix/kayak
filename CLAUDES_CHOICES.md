@@ -15648,3 +15648,41 @@ a vtable's entry, the same size; each type's code object beside its
 `Visit` vtable, ~80 bytes and their relocations; 284 more type names),
 the rest symbols' names.
 - **The full check**: all passed in 377.4 s, its second run (the first stopped at ~40 s, `lang-items.py --check`); nextest 5623.
+
+## C502. An array held as Fixpt's word to its vector (2026-11-21)
+
+The user, after C501 (arrays next): "Go ahead".
+
+Reviewed first, Fixpt: a vector (kind 3) is `[header][elements…][trailer]`,
+its word tagged `100` one past its trailer (`make_vector`'s
+`blob_v(main + 2 + len)`, `heap.rs`); a large one's extension word
+(kind 255, its field count above bit 11) before its main header
+(`put_header`), the trailer's distance counted to the main header
+(`T_DISTANCE`, "back to the header"). kayak's `Array` was one word
+already (C485), but its untagged pointer to its block's first word, held
+in a heap object as itself (`trace_whole!`); and a large array's trailer
+counted to its extension word, one word too many: a bug no reader met,
+since nothing read an array's trailer.
+
+What changed (kayak-rt):
+- **`obj.rs`'s `Array`**: its pointer to its main header (after the
+  extension word, if large), its elements always one word past it; its
+  field count read from its header, or, `large`, from the word before.
+  `word` (its trailer `fields` words past its main header, the word one
+  past that, tagged `100`) and `of_word` (its trailer's distance back).
+  Its trailer's distance its field count, from its main header.
+- **`FlatArray`** (kind 42, C489): its word Fixpt's, tagged `100`, at its
+  first element, its suffix's start, where it was the untagged pointer.
+- **`trace.rs`**: each's `Stored` its word, where it was itself.
+- Its identity (`addr`, `eq?` on arrays, a census's key) its main
+  header's address; the census's block its allocation's start as before,
+  its trace finding the main header past an extension word.
+- kfx's emitter unchanged; nothing regenerated changed.
+- **Tests**: an array's word tagged `100`, read back to the same array,
+  small and large; a large one's trailer counting back to its main header.
+
+Measured (the 1000-procedure bench's edit build, `perf stat`, twice each,
+against C501 built from a worktree): instructions 1,493.45 million both
+(to 0.0004%), page faults 66,842–66,847 both, task-clock 290–294 ms both.
+kc holds few arrays in its heap objects; kc's binary 11.49 to 11.50 MB.
+- **The full check**: all passed in 517.1 s, its first run; nextest 5623.
