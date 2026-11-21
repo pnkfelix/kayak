@@ -137,7 +137,6 @@ macro_rules! boxed_member {
 
 boxed_member! {
     <T: crate::Trace> crate::Array<T>;
-    <> Vector;
     <> f32;
     <> i32;
     <> u32;
@@ -208,8 +207,9 @@ impl<T: ToValue + crate::Trace + 'static> PairLike for Cons<'static, T> {
     }
 }
 
-/// `datum`'s vector.
-pub type Vector = &'static [Value];
+/// `datum`'s vector (C505): Fixpt's vector (kind 3) of its elements, an
+/// array of them, where it was a slice of its own.
+pub type Vector = crate::Array<Value>;
 
 /// What a value's shape is, for every type a union may have as a member.
 pub trait Shaped {
@@ -401,7 +401,7 @@ pub fn datum_list_to_vector(d: Value) -> Value {
         v.push(c.car());
         p = c.cdr();
     }
-    let v: Vector = Box::leak(v.into_boxed_slice());
+    let v: Vector = crate::obj::array_made(v.into_iter());
     other(v, Shape::Vector)
 }
 
@@ -531,11 +531,11 @@ impl Show for Value {
             Value::Other(x, Shape::Vector) => {
                 out.push_str("#(");
                 if let Some(v) = of_boxed::<Vector>(*x) {
-                    for (i, e) in v.iter().enumerate() {
+                    for (i, e) in v.cells().iter().enumerate() {
                         if i > 0 {
                             out.push(' ');
                         }
-                        e.show(out);
+                        e.get().show(out);
                     }
                 }
                 out.push(')');
@@ -578,6 +578,15 @@ mod tests {
         let mut out = String::new();
         cons(1i64, 2i64).show(&mut out);
         assert_eq!(out, "(1 . 2)");
+        // A datum's vector Fixpt's (C505): an array of its elements.
+        let v = datum_list_to_vector(d);
+        assert!(vector_p(v));
+        let a = unbox_other::<Vector>(v);
+        assert_eq!(a.len(), 2);
+        assert_eq!(i64::from_value(a.cells()[0].get()), 1);
+        let mut out = String::new();
+        v.show(&mut out);
+        assert_eq!(out, "#(1 \"a\")");
     }
 
     #[test]

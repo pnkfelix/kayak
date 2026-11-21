@@ -1960,7 +1960,8 @@ over its 1664 definitions, 335 of them refused:
   (kind 42) its word to its first element, where each was held as its
   untagged pointer; a large array's trailer counting back to its main
   header, as Fixpt's, where it counted to its extension word. Left: an
-  array in a union boxed; kayak's datum vector (`Vector`) not Fixpt's;
+  array in a union boxed; ~~kayak's datum vector (`Vector`) not Fixpt's~~
+  (done, C505: an array of its elements, Fixpt's vector);
   C503: a bloblet's fields each a Fixpt word (`Slot`, a product's boxed),
   where each was its value in line (`Cell`), and a bloblet held as Fixpt's
   bloblet word, tagged `100`, one past its trailer, a typed suffix's too; peak memory up 3 to 6% at C495, not explained; a cold build's

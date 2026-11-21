@@ -1370,38 +1370,6 @@ impl<T: Trace> Visit for Array<T> {
     }
 }
 
-/// A datum's vector (C492): its elements, each traced, its block reached
-/// once.
-struct VectorAt(&'static [Value]);
-
-impl Visit for VectorAt {
-    fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
-        self.visit_owned(t);
-    }
-    fn visit_owned(&self, t: &mut Tracer<'_>) {
-        for v in self.0 {
-            v.trace(t);
-        }
-    }
-    fn visit_size(&self) -> usize {
-        std::mem::size_of_val(self.0)
-    }
-    fn visit_name(&self) -> &'static str {
-        "kayak_rt::value::Vector"
-    }
-}
-
-impl Trace for &'static [Value] {
-    trace_whole!();
-    #[inline]
-    fn trace<'a>(self, t: &mut Tracer<'a>)
-    where
-        Self: 'a,
-    {
-        t.reach_value(self.as_ptr() as usize, VectorAt(self));
-    }
-}
-
 /// A dynamic value (C491): what it holds reached, precisely: a pair, a
 /// member's object, a string, a bignum.
 impl Trace for Value {

@@ -15768,3 +15768,20 @@ instructions at a cold build 3,627.96 to 3,627.87 million, at an edit's
 1,493.50 to 1,493.42 million (−0.002% both); page faults the same.
 - **The full check**: a first run stopped at kc-steps (kc's Rust back end, `kc/rust.kfx`, still wrote `symbol_lit`: now `sym_lit!`); a second failed one test, `kayak/io/pselect-processes.fx` under cells timed out at 600 s (TODO's race in tier 1's `pselect`, the machine loaded; 30 runs alone each right).
   The third run: all passed in 383.6 s; nextest 5624.
+
+## C505. A datum's vector Fixpt's vector (2026-11-21)
+
+The second of `Value`'s three steps (C504). A datum's vector
+(`datum-list->vector`'s, `#(...)`) was a slice of `Value`s of its own
+(`&'static [Value]`), a union's member boxed, traced by a visitor of its
+own (`VectorAt`, C492). Now `Vector` is `Array<Value>`: Fixpt's vector
+(kind 3, C485, C502), its elements' cells, a union's member as any
+array is (still boxed, until C506). `VectorAt` and the slice's `Trace`
+gone. Nothing generated changed (the emitter names `value::Vector`).
+
+Test: a datum's list made a vector, its length and first element, its
+shape `vector`, written `#(1 "a")`.
+
+Measured (the 1000-procedure bench's edit build, against C501's kc):
+instructions 1,493.46 to 1,493.42 million, page faults the same.
+- **The full check**: all passed in 507.2 s, its first run; nextest 5624.
