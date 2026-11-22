@@ -15868,3 +15868,61 @@ MB, allocations +0.02%: a value's pairs 46,932 of 48 bytes (2.3 MB) to
 59,710 of 16 (1.0 MB). The instructions: a value's shape read from its
 object's header, through its trailer, where the enum's tag was in hand.
 - **The full check**: all passed in 520.3 s, its first run; nextest 5625.
+
+## C507. The heap one space of pages, objects found by a bit per word (2026-11-21)
+
+The collector's first step (TODO §54; the user, after C506: "Go for
+it"). The heap was an arena per Rust type (`heap.rs`, found by its
+`TypeId` at each allocation, cells of `OnceCell`s), strings and bignums
+in chunks of their own (`obj.rs`'s `words`), and every other object a
+block of the allocator's (products and closures `Box::leak`ed, arrays,
+bloblets and bytevectors `std::alloc`ed).
+
+Reviewed first: Fixpt's heap (`fixpt-heap`'s `heap.rs`) is one flat
+array of words, Cheney's semispaces, precise roots handed at safepoints;
+allocation never moves anything. kayak's Rust has no root set of its
+own, so §54's collector is Bartlett's mostly-copying: the stack
+ambiguous, a page an ambiguous word reaches pinned whole, the rest moved;
+for which an object must be found from any word that may point into it.
+Coopt's `coopt-heap` (regions, §55 item 2) the later shape of the shared
+heap; this step is a thread's heap.
+
+- **One space** (`obj/space.rs`, obj's own module, as `unsafe` is kept
+  to `obj.rs`): every heap object, of Fixpt's layout or a pair, made by
+  bumping in the thread's page (32 KB), pages given a page at a time
+  from chunks of 2 MB the process shares, each page one thread's (its
+  owner noted, for a collector of a thread's heap). An object past 8 KB
+  a block of its own, noted apart. Its words zeroed, as a chunk comes from
+  the allocator.
+- **A bit per word where an object starts**, set as it is made, so an
+  object is found from any word inside it, tagged (`001`, `100`) or
+  interior (a `&str` into a string's text), without reading the heap:
+  KFX's Rust has words not yet Fixpt's (step 2), so a walk by headers
+  alone could not be trusted yet. `object_of`, the census's now.
+- **Moved into it**: `heap_alloc` (pairs, refs, sums, datatypes' values,
+  symbols), strings, bignums, flonums, products, closures, arrays,
+  bloblets and typed-suffix bloblets of the heap (`kept_new`, where a
+  region's are still its arena's), bytevectors, flat arrays (but a big
+  one of 0s, reserved and committed as touched, C139). The arena per type
+  and its cache gone from `heap.rs`; `Arena` is a region's alone.
+- **The census** (`heap-stats`) notes each object of the space as it is
+  made, with its type's trace (it noted an arena's block); and checks the
+  bits: every stack word in the space finds, by them, a noted object's
+  start, or a string's (which a census counts by its trace). On a cold
+  build at 1000 procedures, 13 marks: so, each. Two lints of `stats.rs`
+  under the feature, older, fixed.
+- **Tests**: an object found from each of its words, tagged too, a large
+  one's as well; pages one thread's each.
+
+Measured, against C506's kc (a worktree), the 1000-procedure bench:
+an edit's build 1.495 to 1.265 billion instructions (−15%), 313–350 to
+279–283 ms, page faults 66,870 to 64,240 (−4%); a cold build 3.39–3.62
+to 3.06 billion (−10%), 728–768 to 669–678 ms, page faults about the
+same (142,000–151,000 to 145,000), peak memory 594 to 551 MB (−7%). kc on
+`procedural-many.fx` (the expander): 19.99 to 17.30 billion instructions
+(−13.5%), 3.10 to 2.67–2.69 s, page faults 660,700 to 616,100 (−7%),
+peak memory 2,644 to 2,464 MB (−7%), its program's output the same. The
+type's arena found at each allocation, and a partly empty chunk for each
+type, were the cost (the machine's load 26 while measured; the
+instructions are the steady measure).
+- **The full check**: all passed in 561.3 s, its first run; nextest 5627.

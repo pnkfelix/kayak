@@ -152,25 +152,12 @@ macro_rules! str_lit {
     }};
 }
 
-/// Words to make strings in, a chunk at a time (C364's bumping): never
-/// freed, as nothing of the heap is yet.
-const CHUNK_WORDS: usize = 1 << 17;
+pub(crate) mod space;
 
-thread_local! {
-    static WORDS: Cell<Option<&'static mut [u64]>> = const { Cell::new(None) };
-}
-
-/// The words of a new object of `w` words, zeroed.
+/// The words of a new object of `w` words, zeroed, in the heap's space.
+#[inline]
 fn words(w: usize) -> &'static mut [u64] {
-    if w >= CHUNK_WORDS / 16 {
-        // A long one its own, leaving the chunk to the short ones.
-        return Box::leak(vec![0u64; w].into_boxed_slice());
-    }
-    let free = WORDS.take().filter(|b| b.len() >= w);
-    let free = free.unwrap_or_else(|| Box::leak(vec![0u64; CHUNK_WORDS].into_boxed_slice()));
-    let (mine, rest) = free.split_at_mut(w);
-    WORDS.set(Some(rest));
-    mine
+    space::words_slice(w)
 }
 
 /// A string of `n` bytes, which `fill` writes; `None` if they are no UTF-8.
@@ -401,6 +388,37 @@ pub(crate) fn bytes_object(bytes: &[u8]) -> BytesCells {
     ws
 }
 
+/// `w` words of the heap's space (C507), zeroed, each a cell, kept for the
+/// run: an object's, which its maker writes.
+pub(crate) fn kept_cells<T: Copy>(w: usize) -> &'static [Cell<T>] {
+    const {
+        assert!(
+            std::mem::size_of::<T>() == 8 && std::mem::align_of::<T>() == 8,
+            "a cell not a word"
+        )
+    };
+    // SAFETY: `w` new words of the space, zeroed, kept for the run, given
+    // to the caller alone; a cell of a word-sized `Copy` type all of whose
+    // bit patterns are values (`u64`, `i64`).
+    unsafe { std::slice::from_raw_parts(space::words(w).cast::<Cell<T>>(), w) }
+}
+
+/// A bytevector's object of `bytes`, in the heap's space (C507).
+pub(crate) fn bytes_kept(bytes: &[u8]) -> &'static [Cell<u64>] {
+    let n = bytes.len();
+    let ws = kept_cells::<u64>(string_words(n));
+    ws[0].set(layout::header(4, 0, n, true, false));
+    ws[1].set(layout::trailer(1));
+    for (i, chunk) in bytes.chunks(8).enumerate() {
+        let mut w = [0u8; 8];
+        w[..chunk.len()].copy_from_slice(chunk);
+        ws[2 + i].set(u64::from_ne_bytes(w));
+    }
+    #[cfg(feature = "heap-stats")]
+    crate::census::object(ws.as_ptr() as usize, 8 * ws.len(), trace_nothing);
+    ws
+}
+
 /// The bytevector whose object is `ws` (`bytes_object`'s), kept for `'r`.
 pub(crate) fn bytes_at(ws: &[Cell<u64>]) -> BytesAt<'_> {
     BytesAt(NonNull::from(ws).cast(), std::marker::PhantomData)
@@ -617,21 +635,38 @@ impl<Fs> Bloblet<Fs> {
         BlobletAt(self.at, std::marker::PhantomData)
     }
 
-    /// It, kept for the run (the heap's: never freed).
-    pub(crate) fn kept<'a>(self) -> BlobletAt<'a, Fs>
+    /// One of `fields` and a zeroed suffix of `bytes`, in the heap's space
+    /// (C507), kept for the run; its suffix frozen if `frozen`.
+    pub(crate) fn kept_new<'a>(fields: Fs, bytes: usize, frozen: bool) -> BlobletAt<'a, Fs>
     where
         Fs: crate::Visit + 'static,
     {
-        let at = self.at;
+        const {
+            assert!(
+                std::mem::align_of::<BlobHead<Fs>>() <= 8,
+                "a bloblet's fields aligned past a word"
+            )
+        };
+        let to_trailer = std::mem::offset_of!(BlobHead<Fs>, trailer) / 8;
+        let size = std::mem::size_of::<BlobHead<Fs>>() + bytes.div_ceil(8) * 8;
+        let p = space::words(size / 8).cast::<BlobHead<Fs>>();
+        // SAFETY: new words of the space, zeroed (the suffix so), enough
+        // for the head and the suffix, aligned for the head; written once.
+        unsafe {
+            p.write(BlobHead {
+                header: layout::header(layout::KIND_BLOBLET, to_trailer, bytes, false, frozen),
+                fields,
+                trailer: layout::trailer(to_trailer),
+            });
+        }
         #[cfg(feature = "heap-stats")]
-        crate::census::object(
-            at.as_ptr() as usize,
-            self.layout.size(),
-            trace_bloblet::<Fs>,
-        );
-        crate::stats::note::<Bloblet<Fs>>(self.layout.size());
-        std::mem::forget(self);
-        BlobletAt(at, std::marker::PhantomData)
+        crate::census::object(p as usize, size, trace_bloblet::<Fs>);
+        crate::stats::note::<Bloblet<Fs>>(size);
+        // SAFETY: not null, a word of the space.
+        BlobletAt(
+            unsafe { NonNull::new_unchecked(p) },
+            std::marker::PhantomData,
+        )
     }
 }
 
@@ -866,19 +901,44 @@ impl<Fs, S> TBloblet<Fs, S> {
         TBlobletAt(self.at, std::marker::PhantomData)
     }
 
-    /// It, kept for the run (the heap's: never freed).
-    pub(crate) fn kept<'a>(self) -> TBlobletAt<'a, Fs, S>
+    /// One of `fields` and a zeroed suffix, its header saying `bytes`, in
+    /// the heap's space (C507), kept for the run.
+    pub(crate) fn kept_new<'a>(bytes: usize, fields: Fs) -> TBlobletAt<'a, Fs, S>
     where
         Fs: crate::Visit + 'static,
-        S: 'static,
+        S: Flat + 'static,
     {
-        let at = self.at;
+        let to_trailer = std::mem::offset_of!(TBlobHead<Fs, S>, trailer) / 8;
         let size = std::mem::size_of::<TBlobHead<Fs, S>>();
+        const {
+            assert!(
+                std::mem::align_of::<TBlobHead<Fs, S>>() <= 8,
+                "a bloblet's suffix aligned past a word"
+            )
+        };
+        let p = space::words(size.div_ceil(8)).cast::<TBlobHead<Fs, S>>();
+        // SAFETY: new words of the space, zeroed, so its suffix a valid
+        // `S` (`Flat`); its header, fields and trailer written before it is
+        // read.
+        unsafe {
+            std::ptr::addr_of_mut!((*p).header).write(layout::header(
+                layout::KIND_BLOBLET,
+                to_trailer,
+                bytes,
+                false,
+                false,
+            ));
+            std::ptr::addr_of_mut!((*p).fields).write(fields);
+            std::ptr::addr_of_mut!((*p).trailer).write(layout::trailer(to_trailer));
+        }
         #[cfg(feature = "heap-stats")]
-        crate::census::object(at.as_ptr() as usize, size, trace_tbloblet::<Fs, S>);
+        crate::census::object(p as usize, size, trace_tbloblet::<Fs, S>);
         crate::stats::note::<TBloblet<Fs, S>>(size);
-        std::mem::forget(self);
-        TBlobletAt(at, std::marker::PhantomData)
+        // SAFETY: not null, a word of the space.
+        TBlobletAt(
+            unsafe { NonNull::new_unchecked(p) },
+            std::marker::PhantomData,
+        )
     }
 }
 
@@ -1232,10 +1292,7 @@ pub(crate) fn array_made_of<T: crate::Trace + 'static>(
     // SAFETY: a layout of nonzero size, aligned to a word; each word of
     // the header, each element and the trailer written before it is read.
     unsafe {
-        let p = std::alloc::alloc(layout).cast::<u64>();
-        if p.is_null() {
-            std::alloc::handle_alloc_error(layout)
-        }
+        let p = space::words(layout.size() / 8);
         let fields = field_words::<T>(n);
         if fields > FIELDS_MAX {
             // Fixpt's: the extension word, then the main header, `large`.
@@ -1358,11 +1415,11 @@ impl<P: crate::Product> Prod<P> {
     pub fn new(p: P) -> Self {
         let words = p.words();
         let to_trailer = std::mem::offset_of!(ProdObj<P>, trailer) / 8;
-        let o: &ProdObj<P> = Box::leak(Box::new(ProdObj {
+        let o: &ProdObj<P> = space::put(ProdObj {
             header: layout::header(KIND_PRODUCT, to_trailer, 0, true, true),
             words,
             trailer: layout::trailer(to_trailer),
-        }));
+        });
         crate::stats::note::<ProdObj<P>>(std::mem::size_of::<ProdObj<P>>());
         #[cfg(feature = "heap-stats")]
         crate::census::one(o);
@@ -2261,7 +2318,7 @@ pub mod procs {
     /// its type is any other), kept for the run, noted for a census.
     fn kept<'r, T: Visit + 'r>(v: T) -> &'r T {
         crate::stats::note::<T>(std::mem::size_of::<T>());
-        let r: &'r T = Box::leak(Box::new(v));
+        let r: &'r T = super::space::put(v);
         #[cfg(feature = "heap-stats")]
         crate::census::one(r);
         r

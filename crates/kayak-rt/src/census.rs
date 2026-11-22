@@ -1,7 +1,8 @@
 //! What the heap holds that the stack reaches (C480), with the
 //! `heap-stats` feature: the mark of a collector (`TODO.md` §54), as a
-//! measure, nothing freed. Each heap arena's block is noted as it is made,
-//! with how a cell of its type is traced; each block kayak-rt leaks for
+//! measure, nothing freed. Each object of the heap's space is noted as it
+//! is made, with how one of its type is traced (C507; before, each heap
+//! arena's block); each block kayak-rt leaks for
 //! itself (a continuation) noted opaque, its size alone; each
 //! constant noted as it is first made. A mark, every `KAYAK_HEAP_MARK`th
 //! allocation: the run's stack read word by word, from here to its top
@@ -16,7 +17,6 @@
 #![allow(unsafe_code)]
 
 use crate::trace::{Trace, Tracer, Visit};
-use std::cell::OnceCell;
 use std::sync::Mutex;
 
 /// A heap arena's block: its cells' addresses, a cell's size, how one is
@@ -65,29 +65,22 @@ pub(crate) fn one<'r>(v: &'r (dyn Visit + 'r)) {
     });
 }
 
-/// A cell at `addr`, traced if it holds a value.
+/// An object of the heap's space (C507), at `addr`, a `T`, reached.
 ///
 /// # Safety
-/// `addr` is a cell of a block `block` noted for `T`, which the heap keeps.
-unsafe fn trace_cell<T: Visit + 'static>(addr: usize, t: &mut Tracer<'static>) {
-    // SAFETY: the caller's: a `OnceCell<T>` of a heap arena, never freed.
-    let c: &'static OnceCell<T> = unsafe { &*(addr as *const OnceCell<T>) };
-    if let Some(v) = c.get() {
-        t.reach(v);
-    }
+/// `addr` is a `T` the space keeps.
+unsafe fn trace_kept<T: Visit + 'static>(addr: usize, t: &mut Tracer<'static>) {
+    // SAFETY: the caller's.
+    t.reach(unsafe { &*(addr as *const T) });
 }
 
-/// A heap arena's new block, of `len` cells of `T` from `p`.
-pub(crate) fn block<T: Visit + 'static>(p: *const OnceCell<T>, len: usize) {
-    let cell = std::mem::size_of::<OnceCell<T>>();
-    let start = p as usize;
-    let mut b = BLOCKS.lock().unwrap_or_else(|e| e.into_inner());
-    b.push(Block {
-        start,
-        end: start + len * cell,
-        cell,
-        trace: trace_cell::<T>,
-    });
+/// An object of the heap's space, made: noted with how it is traced.
+pub(crate) fn kept<T: Visit + 'static>(r: &'static T) {
+    object(
+        std::ptr::from_ref(r) as usize,
+        std::mem::size_of::<T>(),
+        trace_kept::<T>,
+    );
 }
 
 /// A block kayak-rt leaked for itself, of `size` bytes from `p`: opaque.
@@ -154,6 +147,12 @@ struct Found {
     opaque_blocks: u64,
     opaque_bytes: u64,
     via_opaque: u64,
+    /// Words in an object of the heap's space, by its bits of starts
+    /// (C507), and those whose start is not a noted object's.
+    in_space: u64,
+    unnoted: u64,
+    /// Of those, a string's, which a census counts by its trace alone.
+    unnoted_strings: u64,
 }
 
 /// The stack and the constants traced: what they reach, said on standard
@@ -191,6 +190,20 @@ pub(crate) fn mark(allocated: u64) {
     }
     loop {
         while let Some((w, inside)) = words.pop() {
+            if let Some(start) = crate::obj::space::object_of(w) {
+                f.in_space += 1;
+                if found(&blocks, start, |b| b.start, |b| b.end).is_none()
+                    && found(&ones, start, |o| o.start, |o| o.end).is_none()
+                {
+                    f.unnoted += 1;
+                    // SAFETY: the first word of an object of the space,
+                    // kept for the run.
+                    let h = unsafe { *(start as *const u64) };
+                    if h & 7 == 0b110 && (h >> 3) & 0xff == 1 {
+                        f.unnoted_strings += 1;
+                    }
+                }
+            }
             if let Some(b) = found(&blocks, w, |b| b.start, |b| b.end) {
                 f.roots += 1;
                 if inside {
@@ -245,6 +258,15 @@ pub(crate) fn mark(allocated: u64) {
         strings.1 as f64 / 1e6,
         f.opaque_blocks,
         f.opaque_bytes as f64 / 1e6
+    );
+    let (chunks, pages, large) = crate::obj::space::extent();
+    eprintln!(
+        "mark:   space {:.1} MB in chunks, {pages} pages given, {:.1} MB large; {} words in its objects, {} not noted ({} of them strings)",
+        chunks as f64 / 1e6,
+        large as f64 / 1e6,
+        f.in_space,
+        f.unnoted,
+        f.unnoted_strings
     );
     for r in rows.iter().take(8) {
         eprintln!("mark:   {:>9.2} MB {:>9} {}", r.2 as f64 / 1e6, r.1, r.0);

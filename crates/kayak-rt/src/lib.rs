@@ -591,14 +591,16 @@ pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
                     return FlatArray::of_cells(all);
                 }
             }
-            let all: &'static [Cell<i64>] = Box::leak(
-                prefix
-                    .iter()
-                    .map(|&w| Cell::new(w as i64))
-                    .chain((0..n).map(|_| Cell::new(v)))
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice(),
-            );
+            // In the heap's space (C507).
+            let all = obj::kept_cells::<i64>(prefix.len() + n);
+            for (c, &w) in all.iter().zip(&prefix) {
+                c.set(w as i64);
+            }
+            if v != 0 {
+                for c in &all[prefix.len()..] {
+                    c.set(v);
+                }
+            }
             FlatArray::of_cells(all)
         }
         Err(_) => fail("make-flatarray: a negative length"),

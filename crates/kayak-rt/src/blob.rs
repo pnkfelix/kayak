@@ -111,7 +111,7 @@ pub(crate) fn of_native<'a, Fs: crate::Visit + 'static>(
     fields: Fs,
     bytes: &[u8],
 ) -> BlobletAt<'a, Fs> {
-    let b = Bloblet::new(fields, bytes.len(), false).kept();
+    let b = Bloblet::kept_new(fields, bytes.len(), false);
     for (i, &x) in bytes.iter().enumerate() {
         b.set_byte(i, x as u64);
     }
@@ -133,7 +133,7 @@ impl<Fs: crate::NativeFields + crate::Visit + Clone + 'static> BlobletAt<'_, Fs>
         }
         let code = kayak_jit::seal(kayak_jit::layout::KIND_BLOBLET, &slots, false, &bytes);
         let b: BlobletAt<'static, Fs> =
-            Bloblet::new(self.fields().clone(), self.bytes(), true).kept();
+            Bloblet::kept_new(self.fields().clone(), self.bytes(), true);
         for (to, from) in b.suffix().iter().zip(self.suffix()) {
             to.set(from.get());
         }
@@ -179,12 +179,11 @@ pub fn bloblet_written<W: Written>(b: W, k: usize) {
 
 /// `(make-bloblet bytes e …)`: in the heap, never freed.
 pub fn make_bloblet<'a, Fs: crate::Visit + 'static>(bytes: Int, fields: Fs) -> BlobletAt<'a, Fs> {
-    Bloblet::new(
+    Bloblet::kept_new(
         fields,
         index_of(bytes, "make-bloblet: a negative size"),
         false,
     )
-    .kept()
 }
 
 /// `(rmake-bloblet r bytes e …)`: in the region `r`, its object the
@@ -406,7 +405,7 @@ pub fn make_tbloblet<'a, Fs: crate::Visit + 'static, S: Flat + 'static>(
     bytes: Int,
     fields: Fs,
 ) -> TBlobletAt<'a, Fs, S> {
-    TBloblet::new(index_of(bytes, "make-bloblet: a negative size"), fields).kept()
+    TBloblet::kept_new(index_of(bytes, "make-bloblet: a negative size"), fields)
 }
 
 /// `(rmake-bloblet r bytes e …)` of a typed suffix: its object the region's

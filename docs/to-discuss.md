@@ -209,3 +209,8 @@ where it was seen and what it would take.
     word where it is read (its tag and kind, a load and a compare), or
     carry a type in debug builds (a side table by address, as the census
     has)?
+    *Decided (2026-11-21, the user): keep it so for now.* A zero-sized
+    ghost type might later carry more of the member's type statically,
+    with no cost at run time; not now. (Such a type can't check the
+    narrowing itself, since the union has already dropped the type by
+    then; only something kept at run time can.)

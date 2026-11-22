@@ -2000,9 +2000,38 @@ over its 1664 definitions, 335 of them refused:
   61-bit fixnum or a bignum object, kind 6, its limbs in its suffix); then a
   collector, the Rust stack conservative and the heap
   precise (Bartlett's mostly-copying), its stress mode at every
-  allocation: its roots (the stacks, the constants kfx's Rust keeps,
-  kayak-rt's statics and thread locals), cells used again (an arena's
-  cells set once now, `OnceCell`), the threads stopped.
+  allocation (the user, after C506: "Go for it"). Its steps:
+  1. ~~**One space**~~ (done, C507): every heap object (the arenas' types,
+     strings, bignums, flonums, products, closures, arrays, bloblets,
+     bytevectors, flat arrays but a big one of 0s) made by bumping in a
+     page of the thread's (32 KB, from chunks of 2 MB the process shares),
+     a bit per word where an object starts, so an object is found from
+     any word inside it, tagged or interior; an object past 8 KB a block
+     of its own. The arena per type gone (`heap.rs`). Its effect: an
+     edit's build at 1000 procedures −15% instructions, a cold one −10%;
+     the expander's (`procedural-many.fx`) −13% instructions and time,
+     −7% page faults and peak memory. A census (`heap-stats`) finds each
+     stack word's object by the bits, each a noted object's or a
+     string's. Left: a big flat array of 0s (`zeroed_cells`, reserved,
+     C139) not the space's; the space's chunks only appended to.
+  2. **What is held as itself, a word**: `Option`, a plain reference (a
+     place, a module's state, an I-cell, a mailbox, a knot), a handle, a
+     continuation, a blobref (`trace_whole!`'s), each a Fixpt word in the
+     heap, so that an object's fields are traced by its header alone, as
+     Fixpt's; kayak-rt's own leaked objects (continuations, mailboxes,
+     tables, marks) the space's, or roots scanned as the stack is.
+  3. **Roots**: each thread's stack from its base, its registers spilled;
+     the constants (`once.rs`), the regions' arenas, a future's block
+     (`Box::pin`, C493), each scanned or traced; a census of what they
+     reach by the space's bits and headers alone, against the typed one.
+  4. **Collect**: a thread's pages, those its ambiguous roots reach pinned
+     whole, the rest copied (Bartlett's); allocation the safepoint; its
+     stress mode at every allocation under the suite; what another thread
+     may reach first made safe (a message copied, as FX-26's processes
+     have heaps of their own; a `par` child's pages handed to its parent
+     at the join; §55 item 2's shared heap for the rest).
+  5. **Measured on kc**, then incremental collection's design to the user
+     (§54's step 6 above).
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
   edit's build at 1000 procedures 154 MB, kept for the run (kayak-rt has
   no collector), half its time the kernel's page faults. Left, largest

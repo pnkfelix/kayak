@@ -102,7 +102,7 @@ impl Show for BytesAt<'_> {
 
 pub(crate) fn bytes_of(v: Vec<u8>) -> Bytes {
     crate::stats::note::<Bytes>(v.len());
-    crate::obj::bytes_at(Box::leak(crate::obj::bytes_object(&v)))
+    crate::obj::bytes_at(crate::obj::bytes_kept(&v))
 }
 
 /// Bytes kept in region `r`'s arena (C267).

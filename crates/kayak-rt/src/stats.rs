@@ -41,7 +41,7 @@ mod on {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(1_000_000)
         });
-        if (w != "*" && name != w) || COUNT.fetch_add(1, Ordering::Relaxed) % every != 0 {
+        if (w != "*" && name != w) || !COUNT.fetch_add(1, Ordering::Relaxed).is_multiple_of(every) {
             return;
         }
         let bt = std::backtrace::Backtrace::force_capture().to_string();
@@ -93,7 +93,7 @@ mod on {
         let t = TABLE.lock().unwrap_or_else(|e| e.into_inner());
         let Some(t) = t.as_ref() else { return };
         let mut rows: Vec<_> = t.iter().collect();
-        rows.sort_by(|a, b| b.1.1.cmp(&a.1.1));
+        rows.sort_by_key(|a| std::cmp::Reverse(a.1.1));
         let (n, b) = rows
             .iter()
             .fold((0, 0), |(n, b), (_, (m, c))| (n + m, b + c));
