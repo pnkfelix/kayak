@@ -15926,3 +15926,63 @@ type's arena found at each allocation, and a partly empty chunk for each
 type, were the cost (the machine's load 26 while measured; the
 instructions are the steady measure).
 - **The full check**: all passed in 561.3 s, its first run; nextest 5627.
+
+## C508. No heap object holds a value as itself; the heap traced by its layout (2026-11-21)
+
+The collector's second step (TODO §54; the user, after C507: "Go
+ahead"). A value whose type had no Fixpt word yet (`trace_whole!`'s,
+`trace_bytes!`'s) was held as itself, its Rust bytes, where it was a
+heap object's field; a collector tracing by headers, as Fixpt's does,
+would read those bytes as words.
+
+Reviewed first: Fixpt's object model (`docs/object-model.md`): a
+header's F counts the fields and the trailer; a collector reads each
+field as a tagged word, skipping a trailer's and a header's tags, a
+suffix never. Fixpt's I-cell and mailbox are heap objects of kinds of
+their own (46, 47, `layout.rs`'s `KINDS`), its eqtable 43.
+
+- **Surveyed by rustc**: an assertion where a value is stored (`Held::new`,
+  a product's `words`, a closure's captures' `words`), that its type is
+  not held as itself (`Trace::WHOLE`, set by the two macros, a tuple's
+  of its parts), the workspace and its tests built. Found: a bytevector
+  in a sum (kayak-rt's own), I-cells in lists, closures and products
+  (kayak-fx26's REPL, the corpus's `processes`), empty regions' references
+  in closures; and a test's `Option` in a pair. Nothing else: no
+  `Option`, handle, continuation, blobref or `Code` in a heap object.
+- **The assertion kept**, its message what to give a word: a type held as
+  itself is refused, as rustc builds, wherever a heap object would hold it.
+- **A bytevector its word** (`BytesAt::word`, its suffix tagged `100`, kind
+  4, as a string's).
+- **A plain reference its address**, a word of tag `000`, which a
+  collector reads as a fixnum, neither tracing nor moving: what it points
+  to is kayak-rt's own (an I-cell, a mailbox, a knot, a place, a module's
+  state), never the space's (checked in a debug build), and what that
+  holds is the roots' (step 3). kayak-rt's own objects aligned to a word
+  for it (`#[repr(align(8))]`: an I-cell of unit's was 4); a reference to
+  what has no bytes (an empty region) fixnum 0, remade at its load.
+  Fixpt's I-cell is a heap object of its own kind: kayak's stays
+  kayak-rt's, shared between threads (TODO).
+- **An object read by its layout** (`obj::laid`): a header's kind and F
+  (an extension word's count, for a large one), a pair's two words; an
+  untraced kind's fields none (string, bytevector, flonum, bignum); a
+  word's object by its tag, a pair's or an object's header found by its
+  trailer, only in the space; an allocation's objects (a datatype's value
+  is two, C500, its product then its sum).
+- **Found on the way**: a string's and a bytevector's header count no
+  field, though a trailer follows (C482, C483); Fixpt counts it in F.
+  `laid` reads them so; to settle with kc's native code, which reads them
+  too (TODO).
+- **The census** traces the stack's roots twice, by type and by layout:
+  on a cold build at 1000 procedures, 13 marks, the layout reaches every
+  allocation the types do, and 0 to 747 more, every one a bignum or a
+  bytevector, which the typed trace reaches without counting (an `int`'s
+  trace reaches nothing). So a trace by the layout alone is the typed
+  trace, and right where that one was not.
+- **Tests**: a list of an array of a string, a box of an array of a list
+  of a bignum, and a box of a string, each reached by layout, allocation
+  by allocation; the debug build's check of a reference's address run by
+  kayak-rt's and the corpus's tests.
+
+Not measured: no representation changed but a bytevector's in a heap
+object (its word, tagged, where it was its untagged address).
+- **The full check**: all passed in 503.9 s, its first run; nextest 5628.

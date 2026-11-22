@@ -102,6 +102,8 @@ impl Hasher for AddressHasher {
 }
 
 /// A table: each key's address to the key and its value.
+// Aligned to a word, so a heap object may hold its address (C508).
+#[repr(align(8))]
 pub struct EqTableBox<K, V> {
     entries: RefCell<HashMap<usize, (K, V), BuildHasherDefault<AddressHasher>>>,
 }

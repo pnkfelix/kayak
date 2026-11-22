@@ -239,6 +239,8 @@ fn wait_until<R>(
 
 /// `(icell T R)`: empty until its one write. Shared between threads only
 /// when `T` is `Send`, as a transmissible type's Rust is.
+// Aligned to a word, so a heap object may hold its address (C508).
+#[repr(align(8))]
 pub struct ICellBox<T> {
     pub(crate) value: Mutex<Option<T>>,
 }
@@ -291,6 +293,8 @@ pub fn icell_get<T: Copy>(c: ICell<T>) -> T {
 
 /// A process's mailbox: `(addr M R)` the right to send to it, `(inbox M
 /// r)` the right to take from it, its process's alone.
+// Aligned to a word, so a heap object may hold its address (C508).
+#[repr(align(8))]
 pub struct MailboxBox<M> {
     pub(crate) queue: Mutex<VecDeque<M>>,
 }

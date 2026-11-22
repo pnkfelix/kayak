@@ -277,6 +277,8 @@ fn quiet_hook() {
 /// themselves, can name each other through it. FX-26's `letrec` binds only
 /// lambdas, so no knot is read before it is tied; tied once, it is `Sync`
 /// when the procedure is (C102), so a closure holding it may cross.
+// Aligned to a word, so a heap object may hold its address (C508).
+#[repr(align(8))]
 pub struct Knot<T>(std::sync::OnceLock<T>);
 
 /// A knot: its value, once tied, traced (C492).

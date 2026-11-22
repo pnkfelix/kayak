@@ -388,6 +388,25 @@ pub(crate) fn bytes_object(bytes: &[u8]) -> BytesCells {
     ws
 }
 
+impl<'r> BytesAt<'r> {
+    /// Its word, as a heap object holds it (C508): its suffix's address,
+    /// past its header and trailer, tagged `100`, as Fixpt's.
+    #[inline(always)]
+    pub fn word(self) -> HeapWord {
+        HeapWord::object_at(self.0.as_ptr().cast_const().cast::<u64>().wrapping_add(2))
+    }
+
+    /// The bytevector whose word is `w` (`word`'s).
+    #[inline(always)]
+    pub fn of_word(w: HeapWord) -> Self {
+        let p = w.0.map_addr(|a| a & !TAG_MASK).wrapping_sub(2);
+        match NonNull::new(p.cast_mut().cast::<Cell<u64>>()) {
+            Some(p) => BytesAt(p, std::marker::PhantomData),
+            None => crate::fail("a heap's word read as a bytevector, which it is not"),
+        }
+    }
+}
+
 /// `w` words of the heap's space (C507), zeroed, each a cell, kept for the
 /// run: an object's, which its maker writes.
 pub(crate) fn kept_cells<T: Copy>(w: usize) -> &'static [Cell<T>] {
@@ -1768,6 +1787,44 @@ impl HeapWord {
         HeapWord::object_at(std::ptr::from_ref(s).cast::<u64>().wrapping_add(2))
     }
 
+    /// The word of a reference to what is kayak-rt's own, outside the
+    /// heap's space (an I-cell, a mailbox, a knot, a place; C508): its
+    /// address, of tag `000`, a fixnum's to a collector, which neither
+    /// traces nor moves it.
+    #[inline(always)]
+    pub(crate) fn outside<T>(r: &T) -> HeapWord {
+        // One of no bytes (an empty region's) any other: fixnum 0.
+        if std::mem::size_of::<T>() == 0 {
+            return HeapWord::fixnum(0);
+        }
+        const {
+            assert!(
+                std::mem::size_of::<T>() == 0 || std::mem::align_of::<T>() >= 8,
+                "a reference held as its address, aligned less than a word"
+            )
+        };
+        let p = std::ptr::from_ref(r).cast::<u64>();
+        debug_assert!(
+            space::object_of(p.addr()).is_none(),
+            "a reference into the heap's space held as an address"
+        );
+        HeapWord(p)
+    }
+
+    /// The reference whose word is `outside`'s.
+    #[inline(always)]
+    pub(crate) fn to_outside<'r, T>(self) -> &'r T {
+        if std::mem::size_of::<T>() == 0 {
+            // SAFETY: a reference to a value of no bytes, aligned, not
+            // null, is valid wherever it points.
+            return unsafe { &*NonNull::<T>::dangling().as_ptr() };
+        }
+        // SAFETY: a word `outside` made of a `&'r T`, held where a `&'r T`
+        // is (`Held<&'r T>`, its type its maker's), so it is that
+        // reference again, its referent kayak-rt's, alive for `'r`.
+        unsafe { &*self.0.cast::<T>() }
+    }
+
     /// The word to an object whose suffix starts at `at` (8-aligned):
     /// `at`, tagged `100`, its provenance kept.
     #[inline(always)]
@@ -2494,5 +2551,181 @@ pub mod procs {
         Proc4 Proc4s closure4 closure4s Coded4 run4 (A B C D);
         Proc5 Proc5s closure5 closure5s Coded5 run5 (A B C D F);
         Proc6 Proc6s closure6 closure6s Coded6 run6 (A B C D F G);
+    }
+}
+
+/// An object read by its layout alone (C508; `TODO.md` §54, a collector's
+/// trace): what a precise trace of the heap needs, no Rust type. Every
+/// value a heap object holds is a Fixpt word (`Trace::WHOLE`), so its
+/// fields are found by its header, as Fixpt's collector finds them.
+#[cfg_attr(not(any(test, feature = "heap-stats")), allow(dead_code))]
+pub(crate) mod laid {
+    use super::*;
+
+    /// An object at its first word: its identity (its main header's
+    /// address, or a pair's first word), the words that may hold values,
+    /// and its end.
+    pub(crate) struct Laid {
+        pub pair: bool,
+        /// What a collector forwards (`TODO.md` §54's step 4).
+        #[allow(dead_code)]
+        pub id: usize,
+        pub fields: &'static [HeapWord],
+        pub end: usize,
+    }
+
+    /// The kinds whose fields hold no value (Fixpt's untraced kinds).
+    fn untraced(kind: u64) -> bool {
+        matches!(kind, 1 | 4 | 5 | 6)
+    }
+
+    /// The object whose first word is `at`.
+    ///
+    /// # Safety
+    /// `at` is the first word of an object kayak-rt made, kept for the run.
+    pub(crate) unsafe fn at(at: *const u64) -> Laid {
+        // SAFETY: the caller's: its words are the object's, as its header
+        // says them.
+        unsafe {
+            let w = *at;
+            if w & TAG_MASK as u64 != layout::TAG_HEADER {
+                // A pair: two words, each a value.
+                return Laid {
+                    pair: true,
+                    id: at.addr(),
+                    fields: std::slice::from_raw_parts(at.cast::<HeapWord>(), 2),
+                    end: at.addr() + 16,
+                };
+            }
+            let (main, fields) = if (w >> 3) & 0xff == KIND_EXTENSION {
+                (at.add(1), (w >> 11) as usize)
+            } else {
+                (at, ((w >> 14) & ((1 << 18) - 1)) as usize)
+            };
+            let h = *main;
+            let kind = (h >> 3) & 0xff;
+            let bytes = (h >> 32) as usize;
+            // A string's and a bytevector's trailer, which their header's
+            // count leaves out (C482, C483; Fixpt counts it).
+            let extra = usize::from(
+                fields == 0 && matches!(kind, 1 | 4) && *main.add(1) & TAG_MASK as u64 == 0b101,
+            );
+            let n = if untraced(kind) { 0 } else { fields };
+            Laid {
+                pair: false,
+                id: main.addr(),
+                fields: std::slice::from_raw_parts(main.add(1).cast::<HeapWord>(), n),
+                end: main.addr() + 8 * (1 + fields + extra + bytes.div_ceil(8)),
+            }
+        }
+    }
+
+    /// The first word of what `w` points to, if it is a pair's or an
+    /// object's word into the heap's space: a pair's first word, an
+    /// object's main header (its extension word before it not counted).
+    pub(crate) fn target(w: HeapWord) -> Option<usize> {
+        let t = if w.is_pair() {
+            w.raw() & !TAG_MASK
+        } else if w.is_object() {
+            let at = w.raw() & !TAG_MASK;
+            // Only a word into the space is read: another's object (a
+            // literal's, kayak-rt's own) is no collector's.
+            space::object_of(at.wrapping_sub(8))?;
+            // SAFETY: an object's word into the space, kayak-rt's, its
+            // object kept for the run.
+            unsafe { w.header_ptr() }.addr()
+        } else {
+            return None;
+        };
+        space::object_of(t).map(|_| t)
+    }
+
+    /// The objects of the allocation whose first word is `start`: one, or
+    /// a datatype's value's two (its product, then its sum, C500), each
+    /// after the last while a header follows.
+    ///
+    /// # Safety
+    /// `start` is an allocation's first word in the space (`object_of`'s).
+    pub(crate) unsafe fn allocation(start: usize) -> Vec<Laid> {
+        let mut out = Vec::new();
+        let mut at = start;
+        loop {
+            // SAFETY: the caller's, and then the next object of the same
+            // allocation, which a header begins.
+            let o = unsafe { self::at(at as *const u64) };
+            let (end, pair) = (o.end, o.pair);
+            out.push(o);
+            if pair || space::object_of(end) != Some(start) {
+                break;
+            }
+            // SAFETY: a word of the same allocation, past its last object.
+            if unsafe { *(end as *const u64) } & TAG_MASK as u64 != layout::TAG_HEADER {
+                break;
+            }
+            at = end;
+        }
+        out
+    }
+}
+
+#[cfg(test)]
+mod laid_tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    /// The allocations a word reaches, by layout alone.
+    fn reached(w: HeapWord) -> BTreeSet<usize> {
+        let mut seen = BTreeSet::new();
+        let mut work: Vec<usize> = laid::target(w)
+            .and_then(space::object_of)
+            .into_iter()
+            .collect();
+        while let Some(a) = work.pop() {
+            if seen.insert(a) {
+                // SAFETY: an allocation's first word in the space.
+                for o in unsafe { laid::allocation(a) } {
+                    work.extend(
+                        o.fields
+                            .iter()
+                            .filter_map(|&f| laid::target(f).and_then(space::object_of)),
+                    );
+                }
+            }
+        }
+        seen
+    }
+
+    #[test]
+    fn a_heap_traced_by_its_layout_alone() {
+        // A list of an array (of a string and a bignum's list), a pair of
+        // strings, a box, and a string; each object's allocation reached.
+        let s = crate::leak_string("a string".to_string());
+        let t = crate::leak_string("another".to_string());
+        let big = Int::of_i64(i64::MAX);
+        let bigs = crate::heap_cons(big, crate::nil());
+        let a = crate::list_to_array(crate::heap_cons(s, crate::nil()));
+        let b = crate::list_to_array(crate::heap_cons(bigs, crate::nil()));
+        let r = crate::heap_new(t);
+        let outer = crate::heap_cons(a, crate::nil());
+        let rb = crate::heap_new(b);
+        use crate::Trace;
+        // Each word's allocation: its object's, found as a trace finds it
+        // (an array's word is one past its trailer, its object no suffix).
+        let at = |w: HeapWord| {
+            laid::target(w)
+                .and_then(space::object_of)
+                .expect("in the space")
+        };
+        let set = |ws: &[HeapWord]| ws.iter().map(|&w| at(w)).collect::<BTreeSet<usize>>();
+        assert_eq!(
+            reached(outer.store()),
+            set(&[outer.store(), a.word(), HeapWord::of_str(s)])
+        );
+        assert_eq!(
+            reached(rb.store()),
+            set(&[rb.store(), b.word(), bigs.store(), big.store()])
+        );
+        // A box and its string: kind 10, then kind 1.
+        assert_eq!(reached(r.store()).len(), 2);
     }
 }

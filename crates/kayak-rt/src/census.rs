@@ -139,6 +139,95 @@ fn found<T>(
     if w < end(b) { Some(b) } else { None }
 }
 
+/// What the stack's words reach in the heap's space, traced twice (C508):
+/// by each object's type (`Trace`, a census's way), and by its layout
+/// alone (`obj::laid`, a collector's way), from the same roots, the
+/// objects the stack's words are in that a census noted; each as the
+/// allocations reached, by their first words. Said: how many each, and
+/// how many one reaches and the other not.
+fn by_layout(stack: &[usize], blocks: &[Block], ones: &[One]) {
+    use crate::obj::{laid, space};
+    use std::collections::{BTreeSet, HashSet};
+    let mut roots = BTreeSet::new();
+    for &w in stack {
+        if let Some(a) = space::object_of(w)
+            && (found(blocks, a, |b| b.start, |b| b.end).is_some_and(|b| b.start == a)
+                || found(ones, a, |o| o.start, |o| o.end).is_some_and(|o| o.start == a))
+        {
+            roots.insert(a);
+        }
+    }
+    // By type.
+    let mut t = Tracer::default();
+    let mut more: Vec<usize> = roots.iter().copied().collect();
+    let mut opened = HashSet::new();
+    while !more.is_empty() {
+        for a in more.drain(..) {
+            if !opened.insert(a) {
+                continue;
+            }
+            if let Some(b) = found(blocks, a, |b| b.start, |b| b.end) {
+                // SAFETY: a noted block's object, at its start.
+                unsafe { (b.trace)(b.start + (a - b.start) / b.cell * b.cell, &mut t) };
+            } else if let Some(o) = found(ones, a, |o| o.start, |o| o.end) {
+                // SAFETY: an object `one` noted, never freed.
+                t.reach(unsafe { &*o.it });
+            }
+        }
+        t.finish();
+        more = t
+            .take_opaque()
+            .into_iter()
+            .filter_map(space::object_of)
+            .collect();
+    }
+    let typed: BTreeSet<usize> = t
+        .seen()
+        .filter_map(space::object_of)
+        .chain(roots.iter().copied())
+        .collect();
+    // By layout.
+    let mut laid_out = BTreeSet::new();
+    let mut work: Vec<usize> = roots.iter().copied().collect();
+    while let Some(a) = work.pop() {
+        if !laid_out.insert(a) {
+            continue;
+        }
+        // SAFETY: an allocation's first word in the space.
+        for o in unsafe { laid::allocation(a) } {
+            for &w in o.fields {
+                if let Some(to) = laid::target(w).and_then(space::object_of)
+                    && !laid_out.contains(&to)
+                {
+                    work.push(to);
+                }
+            }
+        }
+    }
+    let mut kinds: std::collections::BTreeMap<u64, u64> = Default::default();
+    for &a in laid_out.difference(&typed) {
+        // SAFETY: an allocation's first word in the space.
+        let h = unsafe { *(a as *const u64) };
+        let k = if h & 7 == 0b110 {
+            (h >> 3) & 0xff
+        } else {
+            1000 + (h & 7)
+        };
+        *kinds.entry(k).or_default() += 1;
+    }
+    if !kinds.is_empty() {
+        eprintln!("mark:   by layout only, kinds (1000+ a pair, by its head's tag): {kinds:?}");
+    }
+    eprintln!(
+        "mark:   by layout, from {} roots: {} allocations, by type {}; by layout only {}, by type only {}",
+        roots.len(),
+        laid_out.len(),
+        typed.len(),
+        laid_out.difference(&typed).count(),
+        typed.difference(&laid_out).count()
+    );
+}
+
 /// What a mark found.
 #[derive(Default)]
 struct Found {
@@ -188,6 +277,11 @@ pub(crate) fn mark(allocated: u64) {
         at += 8;
         f.stack_words += 1;
     }
+    by_layout(
+        &words.iter().map(|&(w, _)| w).collect::<Vec<_>>(),
+        &blocks,
+        &ones,
+    );
     loop {
         while let Some((w, inside)) = words.pop() {
             if let Some(start) = crate::obj::space::object_of(w) {

@@ -38,6 +38,11 @@ pub trait Trace: Copy {
     /// as it is: Fixpt's own word for it, its shape its tag's or its
     /// object's kind's. So a list of it is a list of values as it is.
     const VALUE_WORD: bool = false;
+    /// Whether it is held as itself, no Fixpt word (`trace_whole!`'s,
+    /// `trace_bytes!`'s): what no heap object may hold (C508), so that an
+    /// object's fields are each a word its header says, traced by its
+    /// layout alone. A heap object's maker asserts it, as rustc builds.
+    const WHOLE: bool = false;
 }
 
 /// What a handle points to: visited by reference, once.
@@ -112,6 +117,12 @@ impl<'a> Tracer<'a> {
         self.opaque.push(p);
     }
 
+    /// The addresses of what it has reached (a census's, C508).
+    #[cfg(feature = "heap-stats")]
+    pub(crate) fn seen(&self) -> impl Iterator<Item = usize> + '_ {
+        self.seen.iter().copied()
+    }
+
     /// The plain references met since asked last.
     pub fn take_opaque(&mut self) -> Vec<usize> {
         std::mem::take(&mut self.opaque)
@@ -156,6 +167,7 @@ pub fn traced<'a, T: Trace + 'a>(root: T) -> Tracer<'a> {
 macro_rules! trace_bytes {
     ($($t:ty),*) => {
         $(impl $crate::Trace for $t {
+            const WHOLE: bool = true;
             #[inline(always)]
             fn trace<'a>(self, _: &mut $crate::Tracer<'a>) where Self: 'a {}
             type Stored = Self;
@@ -190,6 +202,7 @@ macro_rules! trace_word {
 macro_rules! trace_whole {
     () => {
         // Held as it is, for now (C495): no object of Fixpt's layout yet.
+        const WHOLE: bool = true;
         type Stored = Self;
         #[inline(always)]
         fn store(self) -> Self {
@@ -230,6 +243,7 @@ macro_rules! trace_product {
             type Words = $name<$($a::Stored),*>;
             #[inline(always)]
             fn words(self) -> Self::Words {
+                const { assert!(true $(&& !$a::WHOLE)*, "a product's field held as itself, no Fixpt word (C508)") };
                 $name($($crate::Trace::store(self.$i)),*)
             }
             #[inline(always)]
@@ -267,6 +281,12 @@ impl<T: Trace> Copy for Held<T> {}
 impl<T: Trace> Held<T> {
     #[inline(always)]
     pub fn new(v: T) -> Self {
+        const {
+            assert!(
+                !T::WHOLE,
+                "a value held as itself in a heap object, no Fixpt word (C508)"
+            )
+        };
         Held(v.store())
     }
     #[inline(always)]
@@ -364,6 +384,7 @@ macro_rules! trace_tuples {
                 $(self.$i.trace(t);)+
             }
             type Stored = ($($a::Stored,)+);
+            const WHOLE: bool = false $(|| $a::WHOLE)+;
             #[inline(always)]
             fn store(self) -> Self::Stored {
                 ($(self.$i.store(),)+)
@@ -377,6 +398,7 @@ macro_rules! trace_tuples {
             type Words = ($($a::Stored,)+);
             #[inline(always)]
             fn words(self) -> Self::Words {
+                const { assert!(!<Self as Trace>::WHOLE, "a closure's capture held as itself, no Fixpt word (C508)") };
                 self.store()
             }
             #[inline(always)]
@@ -1172,9 +1194,18 @@ impl Visit for () {
     fn visit<'a>(&'a self, _: &mut Tracer<'a>) {}
 }
 
-/// A bytevector's bytes, the heap's but holding none of it.
+/// A bytevector's bytes, the heap's but holding none of it: held as its
+/// word (C508), Fixpt's (kind 4).
 impl Trace for crate::BytesAt<'_> {
-    trace_whole!();
+    type Stored = crate::HeapWord;
+    #[inline(always)]
+    fn store(self) -> crate::HeapWord {
+        self.word()
+    }
+    #[inline(always)]
+    fn load(w: crate::HeapWord) -> Self {
+        crate::BytesAt::of_word(w)
+    }
     fn trace<'a>(self, _: &mut Tracer<'a>)
     where
         Self: 'a,
@@ -1373,8 +1404,21 @@ impl<T: Trace> Visit for Array<T> {
 /// it points to visited, precisely: an I-cell, a mailbox, a knot, a
 /// place, a module's state. (A continuation and a blobref into a suffix
 /// are opaque, each by its own impl.)
+///
+/// Held as its address (C508), a word of tag `000`, which a collector reads
+/// as a fixnum, neither tracing nor moving it: what it points to is
+/// kayak-rt's own, never the heap's space (checked in a debug build), and
+/// what that holds its roots' (`TODO.md` §54's step 3).
 impl<'r, T: Visit + 'r> Trace for &'r T {
-    trace_whole!();
+    type Stored = crate::HeapWord;
+    #[inline(always)]
+    fn store(self) -> crate::HeapWord {
+        crate::HeapWord::outside(self)
+    }
+    #[inline(always)]
+    fn load(w: crate::HeapWord) -> Self {
+        w.to_outside()
+    }
     #[inline]
     fn trace<'a>(self, t: &mut Tracer<'a>)
     where
@@ -1441,8 +1485,21 @@ mod tests {
     #[derive(Clone, Copy)]
     struct Link(Option<crate::Array<Link>>);
 
+    /// Held as a word (C508): its array's, or `#f`.
     impl Trace for Link {
-        trace_whole!();
+        type Stored = crate::HeapWord;
+        fn store(self) -> crate::HeapWord {
+            match self.0 {
+                Some(a) => a.word(),
+                None => crate::HeapWord::boolean(false),
+            }
+        }
+        fn load(w: crate::HeapWord) -> Self {
+            Link(
+                (w.raw() != crate::HeapWord::boolean(false).raw())
+                    .then(|| crate::Array::of_word(w)),
+            )
+        }
         fn trace<'a>(self, t: &mut Tracer<'a>)
         where
             Self: 'a,

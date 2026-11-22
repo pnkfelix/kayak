@@ -2014,12 +2014,26 @@ over its 1664 definitions, 335 of them refused:
      stack word's object by the bits, each a noted object's or a
      string's. Left: a big flat array of 0s (`zeroed_cells`, reserved,
      C139) not the space's; the space's chunks only appended to.
-  2. **What is held as itself, a word**: `Option`, a plain reference (a
-     place, a module's state, an I-cell, a mailbox, a knot), a handle, a
-     continuation, a blobref (`trace_whole!`'s), each a Fixpt word in the
-     heap, so that an object's fields are traced by its header alone, as
-     Fixpt's; kayak-rt's own leaked objects (continuations, mailboxes,
-     tables, marks) the space's, or roots scanned as the stack is.
+  2. ~~**What is held as itself, a word**~~ (done, C508): no heap object
+     holds a value as itself, asserted as rustc builds (`Trace::WHOLE`,
+     checked by each maker: a cell, a pair, a sum, a product's fields, a
+     closure's captures); a bytevector its word (kind 4); a plain
+     reference (an I-cell, a mailbox, a knot, a place, a module's state)
+     its address, a word of tag `000`, which a collector neither traces
+     nor moves, kayak-rt's own objects aligned to a word for it (one of
+     no bytes, an empty region's, fixnum 0). An object read by its layout
+     alone (`obj::laid`): a census traces the stack's roots both ways, and
+     the layout reaches every allocation the types do, and the bignums
+     and bytevectors the typed trace leaves uncounted (13 marks of a cold
+     build at 1000 procedures). Left: `Option`, a handle, a continuation,
+     a blobref and kayak-jit's `Code` still held as themselves, which the
+     assertion keeps out of every heap object (none is, in the
+     workspace's programs and the check's); an I-cell and a mailbox
+     kayak-rt's, not Fixpt's objects (kinds 46, 47), what they hold the
+     roots' (step 3), as the shared heap's to be (§55 item 2); a
+     string's and a bytevector's header counting no field though a
+     trailer follows it (C482, C483), where Fixpt counts the trailer in
+     F, read so by `laid`.
   3. **Roots**: each thread's stack from its base, its registers spilled;
      the constants (`once.rs`), the regions' arenas, a future's block
      (`Box::pin`, C493), each scanned or traced; a census of what they

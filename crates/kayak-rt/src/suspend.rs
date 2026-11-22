@@ -41,6 +41,8 @@ thread_local! {
 /// `(composable V R E r)`: resumed with a `V`, the body's rest up to the
 /// prompt, answering an `R`. A KFX value is `Copy`, so this is a reference;
 /// the body is taken out at its one resume.
+// Aligned to a word, so a heap object may hold its address (C508).
+#[repr(align(8))]
 pub struct Cont<V: 'static, R: 'static> {
     body: RefCell<Option<Body<R>>>,
     given: &'static Cell<Option<V>>,
