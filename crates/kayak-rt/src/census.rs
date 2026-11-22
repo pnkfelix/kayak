@@ -228,6 +228,57 @@ fn by_layout(stack: &[usize], blocks: &[Block], ones: &[One]) {
     );
 }
 
+/// The roots (`obj::roots`, `TODO.md` §54's step 3) and what they reach
+/// by the space's bits and headers alone, against what the typed trace
+/// reached of the space: each allocation the types reach should be one
+/// the roots do.
+fn by_roots(t: &Tracer<'static>) {
+    use crate::obj::space;
+    let typed: std::collections::BTreeSet<usize> = t.seen().filter_map(space::object_of).collect();
+    let r = crate::obj::roots::reached();
+    let typed_only: Vec<usize> = typed.difference(&r.allocations).copied().collect();
+    eprintln!(
+        "mark:   roots: {} register words, {} stack, {} constants', {} owned blocks' ({} words), {} thread locals', {} in the space; {} kept objects reached ({} words); by layout {} allocations, by type {}; by type only {}, by layout only {}",
+        r.registers,
+        r.stack,
+        r.constants,
+        r.owned_blocks,
+        r.owned,
+        r.locals,
+        r.roots_in_space,
+        r.kept,
+        r.kept_words,
+        r.allocations.len(),
+        typed.len(),
+        typed_only.len(),
+        r.allocations.difference(&typed).count()
+    );
+    let kinds = |set: &mut dyn Iterator<Item = usize>| {
+        let mut kinds: std::collections::BTreeMap<u64, u64> = Default::default();
+        for a in set {
+            // SAFETY: an allocation's first word in the space.
+            let h = unsafe { *(a as *const u64) };
+            let k = if h & 7 == 0b110 {
+                (h >> 3) & 0xff
+            } else {
+                1000 + (h & 7)
+            };
+            *kinds.entry(k).or_default() += 1;
+        }
+        kinds
+    };
+    if !typed_only.is_empty() {
+        eprintln!(
+            "mark:   by type only, kinds (1000+ a pair, by its head's tag): {:?}",
+            kinds(&mut typed_only.iter().copied())
+        );
+    }
+    eprintln!(
+        "mark:   by the roots' layout only, kinds: {:?}",
+        kinds(&mut r.allocations.difference(&typed).copied())
+    );
+}
+
 /// What a mark found.
 #[derive(Default)]
 struct Found {
@@ -248,8 +299,15 @@ struct Found {
 /// error, a line of numbers and the types reached the most.
 #[inline(never)]
 pub(crate) fn mark(allocated: u64) {
+    // The stack read from this frame, a small one: the mark's own (its
+    // locals, as they are first written) below it, not read as roots.
     let here = 0usize;
-    let from = std::ptr::from_ref(&here) as usize;
+    mark_from(allocated, std::ptr::from_ref(&here) as usize);
+    std::hint::black_box(&here);
+}
+
+#[inline(never)]
+fn mark_from(allocated: u64, from: usize) {
     let top = *TOP.lock().unwrap_or_else(|e| e.into_inner());
     if top <= from {
         return;
@@ -340,6 +398,7 @@ pub(crate) fn mark(allocated: u64) {
         }
         words.extend(more.into_iter().map(|p| (p, true)));
     }
+    by_roots(&t);
     let (rows, strings) = t.census();
     let (objects, bytes) = rows.iter().fold((0, 0), |(n, b), r| (n + r.1, b + r.2));
     eprintln!(

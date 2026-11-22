@@ -15986,3 +15986,85 @@ their own (46, 47, `layout.rs`'s `KINDS`), its eqtable 43.
 Not measured: no representation changed but a bytevector's in a heap
 object (its word, tagged, where it was its untagged address).
 - **The full check**: all passed in 503.9 s, its first run; nextest 5628.
+
+## C509. The heap's roots, and a mark by them and the layout alone (2026-11-22)
+
+The collector's third step (TODO §54; the user, after the strings'
+request: "Go ahead"). A collector of the space needs every word outside
+it that may be a word into it: Bartlett's ambiguous roots, each pinning
+what it may point to.
+
+Reviewed first: Fixpt's heap (`fixpt-heap/src/heap.rs`): a Cheney
+semispace, objects moved only at the engine's safepoints, its root set
+handed to it; allocation no safepoint. kcrt-core's collector (C453): its
+roots every word of kc's stack, each frame zeroed when made, so that no
+stale word is a root. kayak's census (C480, C507, C508): the stack from
+the run's top only, the constants of a thread, leaked blocks opaque.
+
+- **`obj::roots`** (`obj.rs`'s child, as `space` is, its `unsafe`
+  there), a registry for each thread (a lock its own, uncontended; taken
+  again by a new thread when its thread ends), and the roots it keeps:
+  - **The thread's stack**, from where it is to its base as the OS gives
+    it (`pthread_getattr_np` on Linux, `pthread_get_stackaddr_np` on
+    macOS; `libc` a dependency of kayak-rt's now), so that a frame from
+    before kayak-rt was first called counts; the callee-saved registers
+    spilled (`asm!`, x86-64's six, AArch64's twelve), in a small frame of
+    its own, a safepoint's, from which the stack is read: what the mark
+    writes below it is no root.
+  - **The constants**: each slot, once however many threads make it
+    (`once.rs`'s first make), read again as the reading thread reads it.
+  - **Blocks owned while they live**: a region's arena's blocks (a guard
+    of no `T` in the arena, so dropck asks nothing new); a future's box
+    (`pinned`, kayak-rt's `body`, `boxed`, `attempt`'s, a mark's, a
+    process's, `par`'s, `main`'s; and the emitter's async mode, which
+    wrote `Box::pin` at each awaited call); a place's datatype value's
+    box (`data_in`); an async process's failure closure.
+  - **What kayak-rt keeps of its own** (`leak`, `alloc`: a continuation,
+    a module's state, a knot, a mark's value, an escape's payload): each
+    scanned when a word reaches it, by its bytes; a mailbox, an I-cell
+    and a process's group by their type (`Scanned`: a mailbox's queue is
+    a block of its own). Found from any thread's word, interior or a
+    heap field's plain reference (C508).
+  - **A thread's thread locals**, a function of its own telling their
+    words: the marks, a process's group.
+- **A mark** (`roots::reached`): the roots' words ambiguous, the space's
+  objects read by their headers alone (`laid`), a kept object scanned when
+  reached; what it reaches, by first word. A census's now; a
+  collector's mark to come.
+- **A datatype's value with lifetimes** (`data_alloc`) in the space, as
+  `data_heap`'s is: it was in a block of its own, left from C507.
+- **The census** compares it with the typed trace: on a cold build at
+  1000 procedures, 13 marks, the roots reach every allocation the typed
+  trace does (by type only: 0, each mark), and 10 to 1,608 more:
+  strings, which the census notes no object of and so cannot start from
+  (31 to 1,832 stack words into strings a mark), lists of them, bignums
+  and a bytevector (uncounted by the typed trace, C508). Two of the
+  census's own faults found on the way and mended: an array keyed by its
+  word, which points past its last field, where the next object begins
+  (keyed by its header now); and the typed trace's stack read from
+  inside the mark's own frame, whose stale words (392 to 744 bytes above
+  it) it took for roots (read from a small frame of its own now).
+- **Tests**: a list on the stack, an owned block, a future's box
+  registered and released, a kept object scanned by its type, a region's
+  arena, a constant, a mailbox's message.
+
+Left (step 4's, recorded in TODO §54): a thread's roots are its own, so
+a future or region moved to another thread stays under the one that
+made it; a continuation never resumed keeps its future's box a root (it
+is never freed); a procedure given to native code (kayak-jit's
+`foreign_procedure`), a capture on its way to its prompt (`suspend`'s
+`CAPTURE`), a `spawn`'s closure before its thread runs: not yet roots;
+side tables keyed by an object's address (a sealed bloblet's copy, the
+string cursor) to be updated when an object moves; stale words in
+frames pin what they point to (kcrt-core zeroes its frames).
+
+Not measured: no hot path changed but a future's box (two uncontended
+locks each), which only the async mode makes; `leak` and `alloc` take
+one, a module's state's and a continuation's.
+
+Also: the request to Fixpt for strings in UTF-8
+(`docs/requests/fixpt-utf8-strings.md`; the user, 2026-11-22: "propose
+native utf8 support upstream to Fixpt ... it's table stakes for
+interchange"); kayak-rt's UTF-8 a gap kept till Fixpt answers (TODO §54,
+step 2's Left).
+- **The full check**: all passed in 555.3 s, its first run; nextest 5635.

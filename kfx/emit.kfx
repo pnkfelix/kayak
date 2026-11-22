@@ -2622,13 +2622,14 @@
       (call-box (subr kfx (ctx sexp) string)
         (lambda (c e)
           "The box of a call's future: `body`, of a `Result`'s; in the async
-           mode, a plain `Box::pin` where it is awaited, which needs no
-           `'static` future, so a region's data may be in it (C373), and none
-           where it is run to its end (`block`)."
+           mode, `pinned` where it is awaited, a box of the future's own type,
+           which needs no `'static` future, so a region's data may be in it
+           (C373), its block a root while it lives (TODO.md §54's step 3),
+           and none where it is run to its end (`block`)."
           (cond ((not (async-mode? c)) "kayak_rt::suspend::body(")
                 ;; Fuel paid where a cycle of calls may pass (C378), before it.
-                ((and (async-here? c) (charging? c)) "{ if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } Box::pin(")
-                ((async-here? c) "Box::pin(")
+                ((and (async-here? c) (charging? c)) "{ if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } kayak_rt::suspend::pinned(")
+                ((async-here? c) "kayak_rt::suspend::pinned(")
                 (else "("))))
 
       (put-call (subr kfx (ctx sexp sexps i64 tail chars) chars)

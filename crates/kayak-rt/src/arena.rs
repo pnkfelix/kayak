@@ -38,6 +38,10 @@ type Chunk<T> = Box<[OnceCell<Block<T>>]>;
 pub struct Arena<T> {
     chunks: [OnceCell<Chunk<T>>; CHUNKS],
     used: Cell<usize>,
+    /// Its blocks, each a root while the arena lives (`TODO.md` §54's
+    /// step 3): what a region holds may be the heap's words. Of no `T`, so
+    /// that dropping an arena asks nothing of what it holds.
+    rooted: std::cell::RefCell<Vec<crate::obj::roots::Owned>>,
 }
 
 impl<T> Default for Arena<T> {
@@ -45,6 +49,7 @@ impl<T> Default for Arena<T> {
         Arena {
             chunks: std::array::from_fn(|_| OnceCell::new()),
             used: Cell::new(0),
+            rooted: std::cell::RefCell::new(Vec::new()),
         }
     }
 }
@@ -71,7 +76,13 @@ impl<T> Arena<T> {
         let len = size.min(BLOCK);
         let blocks =
             self.chunks[k].get_or_init(|| (0..size / len).map(|_| OnceCell::new()).collect());
-        let block = blocks[at / len].get_or_init(|| (0..len).map(|_| OnceCell::new()).collect());
+        let block = blocks[at / len].get_or_init(|| {
+            let b: Block<T> = (0..len).map(|_| OnceCell::new()).collect();
+            if let Some(o) = crate::obj::roots::owned_val(&*b) {
+                self.rooted.borrow_mut().push(o);
+            }
+            b
+        });
         crate::Handle::made(block[at % len].get_or_init(|| v))
     }
 }

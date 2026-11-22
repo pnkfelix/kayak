@@ -71,6 +71,7 @@ dependencies = [
  "kayak-sched",
  "kayak-sync",
  "kayak-trace",
+ "libc",
 ]
 
 [[package]]

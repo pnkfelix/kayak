@@ -1382,7 +1382,9 @@ impl<T: Trace> Trace for Array<T> {
     where
         Self: 'a,
     {
-        t.reach_value(self.addr(), self);
+        // Keyed by its header: its word points past its last field (it
+        // has no suffix), where the next object begins.
+        t.reach_value(self.word().header_addr(), self);
     }
 }
 

@@ -12,6 +12,7 @@ kayak-runner = { path = "../kayak-runner" }
 kayak-sched = { path = "../kayak-sched" }
 kayak-trace = { path = "../kayak-trace" }
 kayak-sync = { path = "../kayak-sync", optional = true }
+libc = "0.2.189"
 
 [features]
 heap-stats = []

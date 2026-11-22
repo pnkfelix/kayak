@@ -5037,16 +5037,17 @@ pub mod emitter {
     }
 
     /// The box of a call's future: `body`, of a `Result`'s; in the async
-    /// mode, a plain `Box::pin` where it is awaited, which needs no
-    /// `'static` future, so a region's data may be in it (C373), and none
-    /// where it is run to its end (`block`).
+    /// mode, `pinned` where it is awaited, a box of the future's own type,
+    /// which needs no `'static` future, so a region's data may be in it
+    /// (C373), its block a root while it lives (TODO.md §54's step 3),
+    /// and none where it is run to its end (`block`).
     pub fn call_box(c: kayak_rt::data::DataAt<'static, Ctx>, e: kayak_rt::data::DataAt<'static, Sexp>) -> Str {
         if not(async_mode_p(c)) {
             str_lit!("kayak_rt::suspend::body(")
         } else if (async_here_p(c) && charging_p(c)) {
-            str_lit!("{ if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } Box::pin(")
+            str_lit!("{ if kayak_rt::suspend::spent() { kayak_rt::suspend::settle().await; } kayak_rt::suspend::pinned(")
         } else if async_here_p(c) {
-            str_lit!("Box::pin(")
+            str_lit!("kayak_rt::suspend::pinned(")
         } else {
             str_lit!("(")
         }

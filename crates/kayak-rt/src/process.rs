@@ -87,6 +87,23 @@ thread_local! {
     static GROUP: Cell<Option<&'static Group>> = const { Cell::new(None) };
 }
 
+/// The thread's group's address, kept for the run: a thread's root.
+fn group_words(f: &mut dyn FnMut(usize)) {
+    let _ = GROUP.try_with(|g| {
+        if let Some(g) = g.get() {
+            f(std::ptr::from_ref(g).addr());
+        }
+    });
+}
+
+/// A group: what its failure's closure holds (a watcher's address, a
+/// procedure), its words.
+impl crate::obj::roots::Scanned for Group {
+    fn scanned(&self, f: &mut dyn FnMut(usize)) {
+        crate::obj::roots::words_of_val(&*self.on_failure, f);
+    }
+}
+
 /// A process and its `par` branches (C108): what is done at its first
 /// failure, which then cancels the rest.
 struct Group {
@@ -247,6 +264,15 @@ pub struct ICellBox<T> {
 
 pub type ICell<T> = &'static ICellBox<T>;
 
+/// An I-cell: its value's words, once written (`obj::roots`).
+impl<T> crate::obj::roots::Scanned for ICellBox<T> {
+    fn scanned(&self, f: &mut dyn FnMut(usize)) {
+        if let Some(v) = &*held(&self.value) {
+            crate::obj::roots::words_of_val(v, f);
+        }
+    }
+}
+
 /// An I-cell: its value, once written, traced (C492).
 impl<T: crate::Trace> crate::Visit for ICellBox<T> {
     fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
@@ -259,7 +285,7 @@ impl<T: crate::Trace> crate::Visit for ICellBox<T> {
 
 /// `(make-icell)`: in the heap, wherever it was asked for, as FX-26's is.
 pub fn make_icell<T>() -> ICell<T> {
-    crate::leak(ICellBox {
+    crate::leak_scanned(ICellBox {
         value: Mutex::new(None),
     })
 }
@@ -297,6 +323,15 @@ pub fn icell_get<T: Copy>(c: ICell<T>) -> T {
 #[repr(align(8))]
 pub struct MailboxBox<M> {
     pub(crate) queue: Mutex<VecDeque<M>>,
+}
+
+/// A mailbox: its messages' words (`obj::roots`).
+impl<M> crate::obj::roots::Scanned for MailboxBox<M> {
+    fn scanned(&self, f: &mut dyn FnMut(usize)) {
+        for m in held(&self.queue).iter() {
+            crate::obj::roots::words_of_val(m, f);
+        }
+    }
 }
 
 /// A mailbox: the messages it holds, traced (C492).
@@ -513,10 +548,11 @@ pub fn spawn_monitored<W: Send + 'static, M: Send + 'static>(
 
 /// A process of group `group` on a thread of its own.
 fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + 'static) -> Addr<M> {
-    let mb: Addr<M> = crate::leak(MailboxBox {
+    let mb: Addr<M> = crate::leak_scanned(MailboxBox {
         queue: Mutex::new(VecDeque::new()),
     });
     let group: &'static Group = Box::leak(Box::new(group));
+    crate::obj::roots::kept_scanned(group);
     let program = program();
     {
         let mut g = lock();
@@ -528,6 +564,7 @@ fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + '
         .spawn(move || {
             counted(false);
             GROUP.with(|g| g.set(Some(group)));
+            crate::obj::roots::thread_locals(group_words);
             if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body(mb))) {
                 group_failed(&*e);
             }

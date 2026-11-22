@@ -131,6 +131,8 @@ pub type List<T> = ListAt<'static, T>;
 pub fn leak<'a, T: 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());
     let r: &'a T = Box::leak(Box::new(v));
+    // Kept for the run: scanned when a word reaches it (`obj::roots`).
+    obj::roots::kept(std::ptr::from_ref(r).addr(), std::mem::size_of::<T>());
     // An opaque block, for a census (C480): its size alone.
     #[cfg(feature = "heap-stats")]
     census::opaque(std::ptr::from_ref(r) as usize, std::mem::size_of::<T>());
@@ -143,7 +145,21 @@ pub fn leak<'a, T: 'a>(v: T) -> &'a T {
 #[inline]
 pub fn alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
     stats::note::<T>(std::mem::size_of::<T>());
-    Handle::made(Box::leak(Box::new(v)))
+    let r: &'a T = Box::leak(Box::new(v));
+    // Kept for the run: scanned when a word reaches it (`obj::roots`).
+    obj::roots::kept(std::ptr::from_ref(r).addr(), std::mem::size_of::<T>());
+    Handle::made(r)
+}
+
+/// `v` kept for the run, scanned as its type says when a word reaches it
+/// (`obj::roots`): kayak-rt's own (a mailbox, an I-cell).
+pub(crate) fn leak_scanned<T: obj::roots::Scanned + 'static>(v: T) -> &'static T {
+    stats::note::<T>(std::mem::size_of::<T>());
+    let r: &'static T = Box::leak(Box::new(v));
+    obj::roots::kept_scanned(r);
+    #[cfg(feature = "heap-stats")]
+    census::opaque(std::ptr::from_ref(r) as usize, std::mem::size_of::<T>());
+    r
 }
 
 /// `parts`, one after another, as one string kept for the run.
@@ -248,7 +264,7 @@ pub async fn attempt_async<T, H: std::future::Future<Output = T>>(
         }
     }
     quiet_hook();
-    match (Caught(Box::pin(body))).await {
+    match (Caught(obj::roots::pinned(body))).await {
         Ok(v) => v,
         Err(e) => on_failure(leak_string(panic_message(e))).await,
     }

@@ -14,6 +14,9 @@
 //! the top level polls with a no-op one.
 
 use crate::escape::{Tag, Unwind};
+/// A future boxed, its box a root while it lives (`TODO.md` §54's step
+/// 3): what the emitter's async mode awaits a call's future in.
+pub use crate::obj::roots::{Rooted, pinned};
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::future::Future;
@@ -60,7 +63,7 @@ pub type Resume<V, R> = crate::Proc1<'static, V, Body<R>>;
 /// call of a procedure that may suspend awaits (so that an `async fn` may
 /// call itself).
 pub fn body<'a, R>(f: impl Future<Output = Result<R, Unwind>> + 'a) -> BodyAt<'a, R> {
-    Box::pin(f)
+    pinned(f)
 }
 
 /// A future of a plain value, boxed: what a procedure value of the emitter's
@@ -73,7 +76,7 @@ pub type FutAt<'a, R> = Pin<Box<dyn Future<Output = R> + 'a>>;
 
 /// `body`'s, for a future of a plain value (C372).
 pub fn boxed<'a, R>(f: impl Future<Output = R> + 'a) -> FutAt<'a, R> {
-    Box::pin(f)
+    pinned(f)
 }
 
 /// The capture's future: `Pending` once, having registered; then the value

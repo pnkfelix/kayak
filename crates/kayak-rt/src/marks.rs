@@ -62,6 +62,28 @@ pub type Marks = Vec<(u64, &'static dyn Any)>;
 
 thread_local! {
     static MARKS: RefCell<Marks> = const { RefCell::new(Vec::new()) };
+    /// Whether the marks are told the thread's roots (`obj::roots`).
+    static ROOTED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The marks' values' addresses, each kept for the run (`leak`'s): a
+/// thread's roots.
+fn marks_words(f: &mut dyn FnMut(usize)) {
+    let _ = MARKS.try_with(|m| {
+        if let Ok(m) = m.try_borrow() {
+            for &(_, v) in m.iter() {
+                f(std::ptr::from_ref(v).cast::<()>().addr());
+            }
+        }
+    });
+}
+
+/// The marks made a root of this thread's, once.
+fn rooted() {
+    if !ROOTED.get() {
+        ROOTED.set(true);
+        crate::obj::roots::thread_locals(marks_words);
+    }
 }
 
 pub fn make_continuation_mark_key<T>() -> MarkKey<T> {
@@ -76,6 +98,7 @@ struct Pushed(usize);
 
 impl Pushed {
     fn new(key: u64, value: &'static dyn Any) -> Pushed {
+        rooted();
         MARKS.with(|m| {
             let mut m = m.borrow_mut();
             m.push((key, value));
@@ -141,10 +164,10 @@ pub fn with_mark_async<T: 'static, A: 'static>(
     v: T,
     body: impl Thunk<crate::suspend::Body<A>>,
 ) -> crate::suspend::Body<A> {
-    Box::pin(Marked {
+    crate::obj::roots::pinned(Marked {
         key: key.id,
         value: crate::leak(v),
-        body: Box::pin(body.run()),
+        body: crate::obj::roots::pinned(body.run()),
     })
 }
 
@@ -170,5 +193,6 @@ pub fn snapshot() -> Marks {
 
 /// A thread's marks, its `par` branch's maker's.
 pub fn install(marks: Marks) {
+    rooted();
     MARKS.with(|m| *m.borrow_mut() = marks);
 }

@@ -60,7 +60,7 @@ impl<T: Copy> OnceSlot<T> for kayak_sync::Global<T> {
 
 /// The value `slot` keeps, made by `make` the first time.
 #[inline]
-pub fn once<T: crate::Trace + 'static, S: OnceSlot<T> + ?Sized>(
+pub fn once<T: crate::Trace + 'static, S: OnceSlot<T> + 'static>(
     slot: &'static S,
     make: impl FnOnce() -> T,
 ) -> T {
@@ -72,12 +72,14 @@ pub fn once<T: crate::Trace + 'static, S: OnceSlot<T> + ?Sized>(
 
 #[cold]
 #[inline(never)]
-fn made_first<T: crate::Trace + 'static, S: OnceSlot<T> + ?Sized>(
+fn made_first<T: crate::Trace + 'static, S: OnceSlot<T> + 'static>(
     slot: &'static S,
     make: impl FnOnce() -> T,
 ) -> T {
     let mut make = Some(make);
     let v = slot.kept(&mut || (make.take().expect("a constant made twice"))());
+    // A root (`TODO.md` §54's step 3): the slot read again.
+    crate::obj::roots::constant(slot);
     // A root, for a census (C480): the slot read again, its value traced.
     #[cfg(feature = "heap-stats")]
     crate::census::constant_of(slot);

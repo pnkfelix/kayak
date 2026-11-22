@@ -194,6 +194,8 @@ pub fn sync<'a>(events: &'a [&'a dyn Waitable]) -> impl Future<Output = usize> +
 struct Process {
     body: Pin<Box<dyn Future<Output = ()>>>,
     on_failure: Option<Box<dyn Fn(String)>>,
+    /// The failure's closure's words, roots while the process lives.
+    _rooted: Option<crate::obj::roots::Owned>,
 }
 
 impl Future for Process {
@@ -229,15 +231,17 @@ fn start<M: 'static, F: Future<Output = ()> + 'static>(
     on_failure: Option<Box<dyn Fn(String)>>,
     body: impl FnOnce(Inbox<M>) -> F,
 ) -> Addr<M> {
-    let mb: Addr<M> = crate::leak(MailboxBox {
+    let mb: Addr<M> = crate::leak_scanned(MailboxBox {
         queue: Mutex::new(VecDeque::new()),
     });
     let Some(cx) = crate::suspend::task_cx() else {
         crate::fail("spawn: no scheduler to run the process")
     };
+    let _rooted = on_failure.as_deref().and_then(crate::obj::roots::owned_val);
     let process = Process {
-        body: Box::pin(body(mb)),
+        body: crate::obj::roots::pinned(body(mb)),
         on_failure,
+        _rooted,
     };
     let spawn = kayak_sched::Spawn::new("process").effect(kayak_sched::Effect::pure());
     cx.spawn(spawn, move |_| process);
@@ -275,16 +279,16 @@ pub fn par2<A, B>(
     g: impl Future<Output = B>,
 ) -> impl Future<Output = (A, B)> {
     Par2 {
-        f: Box::pin(f),
-        g: Box::pin(g),
+        f: crate::obj::roots::pinned(f),
+        g: crate::obj::roots::pinned(g),
         a: None,
         b: None,
     }
 }
 
 struct Par2<F: Future, G: Future> {
-    f: Pin<Box<F>>,
-    g: Pin<Box<G>>,
+    f: Pin<Box<crate::obj::roots::Rooted<F>>>,
+    g: Pin<Box<crate::obj::roots::Rooted<G>>>,
     a: Option<F::Output>,
     b: Option<G::Output>,
 }
@@ -318,11 +322,13 @@ impl<F: Future, G: Future> Unpin for Par2<F, G> {}
 
 /// The program's computation, `main`'s: its waits say what a deadlock is.
 pub(crate) fn program<T>(f: impl Future<Output = T>) -> impl Future<Output = T> {
-    Program { inner: Box::pin(f) }
+    Program {
+        inner: crate::obj::roots::pinned(f),
+    }
 }
 
 struct Program<F: Future> {
-    inner: Pin<Box<F>>,
+    inner: Pin<Box<crate::obj::roots::Rooted<F>>>,
 }
 
 impl<F: Future> Future for Program<F> {

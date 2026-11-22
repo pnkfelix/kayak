@@ -2033,11 +2033,35 @@ over its 1664 definitions, 335 of them refused:
      roots' (step 3), as the shared heap's to be (§55 item 2); a
      string's and a bytevector's header counting no field though a
      trailer follows it (C482, C483), where Fixpt counts the trailer in
-     F, read so by `laid`.
-  3. **Roots**: each thread's stack from its base, its registers spilled;
-     the constants (`once.rs`), the regions' arenas, a future's block
-     (`Box::pin`, C493), each scanned or traced; a census of what they
-     reach by the space's bits and headers alone, against the typed one.
+     F, read so by `laid`. Larger than that (found after C508): kayak-rt's
+     string is not Fixpt's at all. Fixpt's is UTF-32, no fields or a
+     length field, code points two a word (`docs/object-model.md`'s
+     table; kc's native runtime, `kcrt-core`, and kayak-jit's `string`
+     lay it so); kayak-rt's (C482) UTF-8 after a trailer, so that
+     `Str::as_str` lends a `&str` with no copy. The user's choice
+     (2026-11-22): UTF-8 put to Fixpt, as table stakes for interchange,
+     `docs/requests/fixpt-utf8-strings.md` (a length field, ASCII when
+     it equals the bytes, breadcrumbs every 64 characters, mutable
+     strings fixed-width); kayak-rt's UTF-8 a gap kept till Fixpt
+     answers, then made Fixpt's layout as it says.
+  3. ~~**Roots**~~ (done, C509): `obj::roots`, a registry for each
+     thread: its stack from its base (the OS's), the callee-saved
+     registers spilled in a small frame, a safepoint's; the constants'
+     slots; blocks owned while they live (a region's arena's, a future's
+     box, `pinned`, the emitter's async mode's too, a place's datatype
+     value's, an async process's failure closure); what kayak-rt keeps of
+     its own, scanned when reached (by its bytes, or a mailbox, an I-cell,
+     a group by its type); thread locals (the marks, a group). A mark by
+     them and the layout alone (`roots::reached`): on a cold build at
+     1000 procedures, 13 marks, every allocation the typed trace reaches,
+     and strings it cannot start from. Left: a thread's roots its own (a
+     future or region moved to another thread under its maker's); a
+     continuation never resumed keeps its future a root; not yet roots: a
+     procedure given to native code (`foreign_procedure`), a capture on
+     its way to its prompt (`CAPTURE`), a `spawn`'s closure before its
+     thread runs; tables keyed by address (a sealed bloblet's copy, the
+     string cursor) to update when an object moves; stale words in frames
+     pin (kcrt-core zeroes its frames, C453).
   4. **Collect**: a thread's pages, those its ambiguous roots reach pinned
      whole, the rest copied (Bartlett's); allocation the safepoint; its
      stress mode at every allocation under the suite; what another thread

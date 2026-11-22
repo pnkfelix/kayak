@@ -152,6 +152,7 @@ macro_rules! str_lit {
     }};
 }
 
+pub(crate) mod roots;
 pub(crate) mod space;
 
 /// The words of a new object of `w` words, zeroed, in the heap's space.

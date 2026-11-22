@@ -864,7 +864,7 @@ pub mod data {
     where
         <D as Variant<I>>::Fields: 'r,
     {
-        crate::alloc(DataObj::new(D::tag(), fields))
+        crate::Handle::made(crate::obj::space::put(DataObj::new(D::tag(), fields)))
             .to_ref()
             .placed()
     }
@@ -874,7 +874,13 @@ pub mod data {
     /// place. Its type no lifetime's, so that a place's arenas need not
     /// outlive the place (a box of a lifetime's object might, Rust's drop
     /// check supposes, read it as it is freed; this one's never does).
-    pub struct DataBox(Box<dyn crate::Visit + 'static>);
+    pub struct DataBox(
+        Box<dyn crate::Visit + 'static>,
+        /// Its object's words, roots while the place lives (`TODO.md`
+        /// §54's step 3): the box is no object of the space.
+        #[allow(dead_code)]
+        Option<crate::obj::roots::Owned>,
+    );
 
     /// A place's datatype's value: its object visited.
     impl crate::Visit for DataBox {
@@ -901,13 +907,14 @@ pub mod data {
         const { assert!(!std::mem::needs_drop::<Obj<D, I>>()) };
         let b = Box::new(DataObj::new(D::tag(), fields));
         let at: *const Obj<D, I> = &*b;
+        let rooted = crate::obj::roots::owned_val(&*b);
         let b: Box<dyn crate::Visit + 'r> = b;
         // SAFETY: only its lifetime's bound changed, not its layout. The
         // box is freed with the place's arena, borrowed for `'r`, and its
         // object visited only while the arena is (a trace of `'a`, within
         // `'r`); freeing it runs no code (asserted), so reads nothing.
         let b: Box<dyn crate::Visit + 'static> = unsafe { std::mem::transmute(b) };
-        p.arena().alloc(DataBox(b));
+        p.arena().alloc(DataBox(b, rooted));
         // SAFETY: the box's contents never move, and live while the arena
         // is borrowed, `'r`.
         unsafe { &*at }.placed()
