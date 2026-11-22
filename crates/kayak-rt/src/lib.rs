@@ -139,9 +139,9 @@ pub fn leak<'a, T: 'a>(v: T) -> &'a T {
     r
 }
 
-/// A KFX value allocated, as a handle (C478): a datatype's, a pair, a
-/// cell; what is kayak-rt's own (a continuation, a mailbox, a closure, so
-/// far) by `leak`, a reference.
+/// A KFX value allocated, as a handle (C478): a module's state (a pair's
+/// and a cell's are the space's, C510); what is kayak-rt's own (a
+/// continuation, a mailbox, a closure, so far) by `leak`, a reference.
 #[inline]
 pub fn alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
     stats::note::<T>(std::mem::size_of::<T>());
@@ -149,6 +149,14 @@ pub fn alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
     // Kept for the run: scanned when a word reaches it (`obj::roots`).
     obj::roots::kept(std::ptr::from_ref(r).addr(), std::mem::size_of::<T>());
     Handle::made(r)
+}
+
+/// `v` in the heap's space, whatever its lifetimes (a pair, a cell): of
+/// whole words, found there by a word, so not kept beside it.
+#[inline]
+fn space_alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
+    stats::note::<T>(std::mem::size_of::<T>());
+    Handle::made(obj::space::put(v))
 }
 
 /// `v` kept for the run, scanned as its type says when a word reaches it
@@ -335,7 +343,9 @@ pub fn nil<'r, T: Trace>() -> ListAt<'r, T> {
 
 #[inline]
 pub fn cons<'r, T: Trace>(car: T, cdr: ListAt<'r, T>) -> ListAt<'r, T> {
-    ListAt::of_pair(alloc(Cons::new(car, cdr)))
+    // In the space, as `heap_cons`'s, whatever its lifetimes: no `Box`, so
+    // nothing kept beside it for the roots (C510).
+    ListAt::of_pair(space_alloc(Cons::new(car, cdr)))
 }
 
 #[inline]
@@ -571,7 +581,7 @@ pub fn i64_to_string(n: i64) -> Str {
 
 #[inline]
 pub fn new<'r, T: Trace>(v: T) -> RefAt<'r, T> {
-    RefAt::of_obj(alloc(RefObj::new(v)))
+    RefAt::of_obj(space_alloc(RefObj::new(v)))
 }
 
 #[inline]

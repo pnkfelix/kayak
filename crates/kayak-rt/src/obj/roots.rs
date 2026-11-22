@@ -21,7 +21,8 @@
 //! `reached` is a mark by them and by the space's bits and headers alone
 //! (`laid`): a census's now, a collector's to come.
 
-use std::cell::Cell;
+use std::cell::{Cell, UnsafeCell};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard};
 
 /// A thread's registry: the blocks it owns, what it keeps of kayak-rt's
@@ -31,14 +32,40 @@ use std::sync::{Mutex, MutexGuard};
 /// share would be.
 pub(crate) struct Registry {
     inner: Mutex<Inner>,
+    /// The blocks owned, its thread's alone: no lock to own a future's
+    /// box, made and dropped at every boxed call (C510).
+    slab: UnsafeCell<Slab>,
+    /// Slots another thread gave back (`Inner::freed`) since its thread
+    /// last looked.
+    remote: AtomicBool,
+}
+
+// SAFETY: `slab` is touched by the registry's thread alone (`with_slab`,
+// `Owned::drop`); the rest is behind the lock or atomic.
+unsafe impl Sync for Registry {}
+
+/// Blocks owned while they live (`Owned`): each its first byte and its
+/// bytes. `life` counts the threads that have had the registry, so that a
+/// block owned by one gone gives back nothing of the next's.
+#[derive(Default)]
+struct Slab {
+    owned: Vec<Option<(usize, usize)>>,
+    free: Vec<usize>,
+    life: u64,
+}
+
+impl Slab {
+    fn give_back(&mut self, slot: usize) {
+        self.owned[slot] = None;
+        self.free.push(slot);
+    }
 }
 
 #[derive(Default)]
 struct Inner {
-    /// Blocks owned while they live (`Owned`): a slab, each its first
-    /// byte and its bytes.
-    owned: Vec<Option<(usize, usize)>>,
-    free: Vec<usize>,
+    /// Slots of blocks dropped on another thread, with their lives: given
+    /// back by the registry's own thread.
+    freed: Vec<(usize, u64)>,
     /// What is kept for the run: its first byte, bytes, how it is scanned.
     kept: Vec<Kept>,
     /// Functions telling the thread's thread locals' words.
@@ -76,9 +103,14 @@ impl Drop for Mine {
     fn drop(&mut self) {
         if let Some(r) = self.0.take() {
             {
+                // SAFETY: this thread's registry, ending; its slab touched
+                // by no one else until `FREE` gives it to another.
+                let s = unsafe { &mut *r.slab.get() };
+                s.owned.clear();
+                s.free.clear();
+                s.life += 1;
                 let mut i = r.lock();
-                i.owned.clear();
-                i.free.clear();
+                i.freed.clear();
                 i.locals.clear();
             }
             FREE.lock().unwrap_or_else(|e| e.into_inner()).push(r);
@@ -92,7 +124,19 @@ thread_local! {
 
 /// This thread's registry. `None` while the thread ends (its thread
 /// locals' destructors running), when nothing is registered.
+#[inline]
 fn mine() -> Option<&'static Registry> {
+    match MINE.try_with(|m| m.0.get()) {
+        Ok(Some(r)) => Some(r),
+        Ok(None) => first_mine(),
+        Err(_) => None,
+    }
+}
+
+/// This thread's registry, its first: one given back, or a new one.
+#[cold]
+#[inline(never)]
+fn first_mine() -> Option<&'static Registry> {
     MINE.try_with(|m| {
         m.0.get().unwrap_or_else(|| {
             let r = FREE
@@ -102,6 +146,8 @@ fn mine() -> Option<&'static Registry> {
                 .unwrap_or_else(|| {
                     let r: &'static Registry = Box::leak(Box::new(Registry {
                         inner: Mutex::new(Inner::default()),
+                        slab: UnsafeCell::new(Slab::default()),
+                        remote: AtomicBool::new(false),
                     }));
                     REGISTRIES.lock().unwrap_or_else(|e| e.into_inner()).push(r);
                     r
@@ -118,31 +164,79 @@ fn mine() -> Option<&'static Registry> {
 pub(crate) struct Owned {
     registry: &'static Registry,
     slot: usize,
+    life: u64,
 }
 
 impl Drop for Owned {
+    #[inline]
     fn drop(&mut self) {
-        let mut i = self.registry.lock();
-        i.owned[self.slot] = None;
-        i.free.push(self.slot);
+        if mine().is_some_and(|m| std::ptr::eq(m, self.registry)) {
+            // SAFETY: this thread's registry, so its slab this thread's
+            // alone; nothing here calls back into it.
+            let s = unsafe { &mut *self.registry.slab.get() };
+            // A block of a thread gone, the registry's since, is not in
+            // its slab.
+            if s.life == self.life {
+                s.give_back(self.slot);
+            }
+            return;
+        }
+        self.dropped_elsewhere();
     }
 }
 
+impl Owned {
+    /// Dropped on another thread (a task moved there), or while this
+    /// thread ends: its slot given back by its own thread, at its next
+    /// block or mark.
+    #[cold]
+    #[inline(never)]
+    fn dropped_elsewhere(&self) {
+        self.registry.lock().freed.push((self.slot, self.life));
+        self.registry.remote.store(true, Ordering::Release);
+    }
+}
+
+/// `f` of this thread's registry and its slab, with the slots another
+/// thread gave back given back.
+#[inline]
+fn with_slab<R>(f: impl FnOnce(&'static Registry, &mut Slab) -> R) -> Option<R> {
+    let r = mine()?;
+    // SAFETY: `r` is this thread's (`MINE`'s), so its slab this thread's
+    // alone, and `f` does not reach it again.
+    let s = unsafe { &mut *r.slab.get() };
+    if r.remote.load(Ordering::Acquire) {
+        r.remote.store(false, Ordering::Relaxed);
+        let freed = std::mem::take(&mut r.lock().freed);
+        for (slot, life) in freed {
+            if life == s.life {
+                s.give_back(slot);
+            }
+        }
+    }
+    Some(f(r, s))
+}
+
 /// The `len` bytes from `start`, roots while the answer lives.
+#[inline]
 pub(crate) fn owned(start: usize, len: usize) -> Option<Owned> {
-    let registry = mine()?;
-    let mut i = registry.lock();
-    let slot = match i.free.pop() {
-        Some(s) => {
-            i.owned[s] = Some((start, len));
-            s
+    with_slab(|registry, s| {
+        let slot = match s.free.pop() {
+            Some(slot) => {
+                s.owned[slot] = Some((start, len));
+                slot
+            }
+            None => {
+                s.owned.push(Some((start, len)));
+                s.owned.len() - 1
+            }
+        };
+        Owned {
+            registry,
+            slot,
+            life: s.life,
         }
-        None => {
-            i.owned.push(Some((start, len)));
-            i.owned.len() - 1
-        }
-    };
-    Some(Owned { registry, slot })
+    })
 }
 
 /// `v`'s bytes, roots while the answer lives (a closure's, boxed).
@@ -410,11 +504,11 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
     let mut owned: Vec<(usize, usize)> = Vec::new();
     let mut locals = Vec::new();
     let me = mine();
+    with_slab(|_, s| owned.extend(s.owned.iter().flatten()));
     for reg in REGISTRIES.lock().unwrap_or_else(|e| e.into_inner()).iter() {
         let i = reg.lock();
         kept.extend_from_slice(&i.kept);
         if me.is_some_and(|m| std::ptr::eq(m, *reg)) {
-            owned.extend(i.owned.iter().flatten());
             locals.extend_from_slice(&i.locals);
         }
     }
@@ -574,12 +668,29 @@ mod tests {
     fn a_future_box_is_owned() {
         let f = pinned(async { 1 });
         let at = std::ptr::from_ref::<Rooted<_>>(&*f).addr();
-        let i = mine().unwrap().lock();
-        assert!(i.owned.iter().flatten().any(|&(s, _)| s == at));
-        drop(i);
+        assert!(owned_now().contains(&at));
         drop(f);
-        let i = mine().unwrap().lock();
-        assert!(!i.owned.iter().flatten().any(|&(s, _)| s == at));
+        assert!(!owned_now().contains(&at));
+    }
+
+    fn owned_now() -> Vec<usize> {
+        with_slab(|_, s| s.owned.iter().flatten().map(|&(a, _)| a).collect()).unwrap()
+    }
+
+    #[test]
+    fn a_future_box_dropped_on_another_thread() {
+        let f = pinned(async { 1 });
+        let at = std::ptr::from_ref::<Rooted<_>>(&*f).addr();
+        let g = pinned(async { 2 });
+        let at_g = std::ptr::from_ref::<Rooted<_>>(&*g).addr();
+        // The box itself stays here; its `Owned` crosses, as a moved
+        // task's would.
+        let o = f.owned.take();
+        std::thread::spawn(move || drop(o)).join().unwrap();
+        assert!(!owned_now().contains(&at));
+        assert!(owned_now().contains(&at_g));
+        drop((f, g));
+        assert!(!owned_now().contains(&at_g));
     }
 
     struct Two(usize, usize);

@@ -4,7 +4,7 @@
 //! found by its `TypeId` at each allocation. Kept for the run (the heap is
 //! never freed yet). The emitter makes heap data so only where every type
 //! is `'static`: no `letrena`, no place, no region binder around (else
-//! `alloc`, a `Box` each).
+//! `cons` and `new`, in the space as well since C510).
 
 use crate::{Cons, List, Ref};
 

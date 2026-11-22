@@ -16068,3 +16068,38 @@ native utf8 support upstream to Fixpt ... it's table stakes for
 interchange"); kayak-rt's UTF-8 a gap kept till Fixpt answers (TODO §54,
 step 2's Left).
 - **The full check**: all passed in 555.3 s, its first run; nextest 5635.
+
+## C510. C509's cost: pairs and cells in the space, a future's box owned with no lock (2026-11-22)
+
+The user, after C509's check (async-check 171.3 s, 151.7 s before): "let's
+check that slowdown". Measured phase by phase, C508's tree beside C509's,
+one after the other, twice each: rustc's build of the async compiler
+about 3 s more, the rest of it the runs. And the synchronous compiler
+too, 5.7 s to 6.6 s, which C509 had not been thought to touch.
+
+- **A pair and a cell of code with lifetimes in the space.** `cons` and
+  `new` (not `heap_cons`, `heap_new`: code whose types are not all
+  `'static`) were still a `Box` each (`alloc`), which C509 made a kept
+  object as well: a lock and an entry in the thread's list, millions of
+  them (`roots::keep` and its `memmove` in the profile, callers
+  `reverse`, `read_all`, `base::put`). Now `obj::space::put`, as
+  `heap_cons`'s and `data_alloc`'s (C509): found by a word, nothing kept
+  beside it. The synchronous compiler 5.64 s, C508's 5.71 s.
+- **A future's box owned with no lock.** A thread's slab of owned blocks
+  its own (`Registry::slab`), read by its thread's mark alone: a box
+  owned and given back with no lock. One dropped on another thread (a
+  task moved there; none is yet, the scheduler is one thread, but K8)
+  queues its slot under the lock, given back by its own thread at its
+  next block or mark, a life counted per registry so that a block of a
+  thread gone frees nothing of the next's (a test drops one so).
+  `mine`'s first registry made in a cold function, so the hot one is
+  small and inlined; `owned`, `Owned::drop` inlined.
+- **Measured** (`kfx kfx/kfx.unit`, then `--async`, built async): C508
+  5.5 s and 8.5 s; C509 7.2 s and 11.6 s; now 6.4 s and 10.1 s. Left:
+  each boxed call's registering, and more `memmove` in the callers that
+  make futures (`map_at`, `run1`: 3.9% of the run, 2.3% at C508), `f`
+  moved into `Rooted` once more. `#[inline(always)]` on `pinned` made it
+  6.1 s and 9.7 s but rustc's build of the async crate 86.7 s, not about
+  77 s (noisy: 69 to 80 s over these runs); dropped (the user: "Drop
+  the inline(always)"). What would end it: TODO §54, step 3's cost.
+- **The full check**: all passed in 524.9 s, its first run; nextest 5636.

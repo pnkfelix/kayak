@@ -2061,7 +2061,14 @@ over its 1664 definitions, 335 of them refused:
      its way to its prompt (`CAPTURE`), a `spawn`'s closure before its
      thread runs; tables keyed by address (a sealed bloblet's copy, the
      string cursor) to update when an object moves; stale words in frames
-     pin (kcrt-core zeroes its frames, C453).
+     pin (kcrt-core zeroes its frames, C453). Its cost (C510): a pair
+     and a cell of code with lifetimes now the space's, not a `Box` kept
+     beside it (the synchronous compiler as fast as at C508); every
+     boxed future still registered and given back, its thread's slab
+     with no lock, which leaves the async compiler 11–14% slower than at
+     C508. To come, if it matters: only a task's first future
+     registered, the mark following words into kayak-sys's allocator's
+     blocks (C370's, made for these boxes) instead.
   4. **Collect**: a thread's pages, those its ambiguous roots reach pinned
      whole, the rest copied (Bartlett's); allocation the safepoint; its
      stress mode at every allocation under the suite; what another thread
