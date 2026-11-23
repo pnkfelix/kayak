@@ -224,3 +224,58 @@ where it was seen and what it would take.
     with no cost at run time; not now. (Such a type can't check the
     narrowing itself, since the union has already dropped the type by
     then; only something kept at run time can.)
+
+18. **For Fixpt, later: an exchange heap, with weak references in place of
+    linear types? (the user, 2026-11-23).** The idea comes from Rust 0.x:
+    task-local `@` heaps collected independently, and `~` boxes in an
+    exchange heap that are sent between tasks by move. FX-26 already has
+    most of it. The transmissible rule (Fixpt's `processes.md`) makes a
+    heap per process "a free choice for an implementation", and kayak's
+    plan is such heaps plus a shared heap (TODO §55 item 2). What it
+    lacks is a send that moves instead of copying, and Rust got that from
+    uniqueness, which FX-26 has no types for. Fixpt measured the copy
+    (H3): about 9 ns a word, plus about 0.87 µs per message whatever its
+    size.
+    - *The musing:* give each exchange object one owning reference, and
+      make every other reference weak, so that no linear types are
+      needed.
+    - *What that gives:* freeing. The collector frees the object once its
+      owner drops it, and every other holder then sees it gone.
+    - *What it doesn't give:* freedom from races. While the receiver keeps
+      the object alive, the sender's weak reference still reaches it. So
+      a send must *revoke* every other reference, and a revoked reference
+      must fail when used, not only read "gone" once the object dies.
+    - *What remains, with revocation:*
+      - Something must still stop the owning reference being copied,
+        which is what affine types do. The way around is to make the
+        owner a thread, not a reference. An object, or a graph that moves
+        as one, records the thread that owns it. Any reference may be
+        used only by that thread, and a send changes the owner. No
+        reference is then linear; all of them are checked.
+      - The cost moves to run time. There is a check on each use (a load
+        and a compare, against the thread or against a generation, as in
+        Vale's generational references). And programs get a new way to
+        fail: using a revoked reference. Fixpt's `weak-references.md`
+        already makes reading a weak reference an effect; this would be a
+        stronger one, a trap.
+    - *Precedents:*
+      - JavaScript's transferable `ArrayBuffer`: `postMessage` with a
+        transfer list detaches the buffer in the sender. It covers
+        buffers only, and is widely used.
+      - Kotlin/Native's first memory model: objects were confined to one
+        thread and moved only frozen or detached, checked at run time.
+        Kotlin dropped it in 2021 as too hard to use, for a shared heap.
+      - Pony's `iso`: the static form, built into its whole capability
+        system.
+      - Rust removed `@`/`~` around 2013–14. Partly that was for its own
+        reasons (no tracing collector was ever built, and Rust wanted no
+        runtime), partly because two kinds of pointer split the
+        libraries.
+    - *Recommendation:* don't propose it for object graphs. Copying, plus
+      sharing frozen data above some size (Erlang's refc binaries, the
+      revision H3 itself names), needs no checks. Consider the narrow
+      form only: a `transfer` of an `arrayof` or a bytevector that
+      revokes the sender's handle. FX-26 can't send such a buffer at all
+      today, and only those types would pay the owner check. Raise it
+      with Fixpt (FX-26 extensions go there first) once a program needs
+      to send one; kc does not.

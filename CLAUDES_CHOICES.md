@@ -16296,3 +16296,52 @@ held in quarantine till a collection finds no word into them.
   adopted by whichever thread collects first, which does their work
   alone.
 - **The full check**: all passed in 545.9 s, its first run; nextest 5643.
+
+## C514. The collector measured on kc and kfx (2026-11-23)
+
+TODO §54 step 4's step 5, its measuring half.
+- **`KAYAK_GC_STATS=1`** (`obj::collect::report_stats`, called by
+  `heap_stats_report`, which every driver calls as it ends): the run's
+  collections, their pauses (sum, mean, max, and how many below 1, 10,
+  100 ms), each phase's time summed (roots, mark, copy, fixup, end), and
+  per collection what was reached, moved, pinned, freed and the stack's
+  words. Summed in atomics over every thread's collections; nothing
+  timed unless asked. `KAYAK_GC_VERBOSE=1` adds each collection's pause
+  by phase.
+- **Measured** (this machine, today):
+
+  | run | wall | collections | in collection | mean pause | max |
+  |---|---|---|---|---|---|
+  | kfx making itself | 5.22 s | 25 | 3.11 s | 124 ms | 313 ms |
+  | kc building `expander-facts.fx` | 89.4 s | 539 | 52.0 s | 96 ms | 2066 ms |
+  | kc-bench, 1000 procedures, an edit's build | ~320 ms | 2–3 | ~110 ms | 36 ms | 46 ms |
+  | kc-bench, cold | 635 ms | 8 | 196 ms | 25 ms | 43 ms |
+  | kc-bench, `serve` over every step | | 22 | 758 ms | 34 ms | 59 ms |
+
+  Nearly everything reached is moved (kfx: 1.07 M reached, 1.05 M moved
+  a collection; kc: 0.99 M, 0.97 M; its longest, 22.3 M reached, 37
+  pages pinned), and the live set is much the same from one collection
+  to the next: each copies the program's long-lived state again. About
+  90–115 ns an object reached, all phases; the mark about half
+  (`HashSet`s of addresses, a page found for every field). Pinning is
+  small: 81 pages a collection (kfx), 221 (kc), against 3359 and 1758
+  freed.
+- **One cheap fix**: `follow` made two `Vec`s for every object followed;
+  now `Mark` keeps them. kfx's mark 1457 to 1245 ms, its collections
+  3.11 to 2.92 s, wall 5.22 to 5.05 s; its output the same.
+- **What it says** (for the design, to the user): the collector's time
+  is a third of an edit's build and over half of a large one; most of
+  it copies what the last collection copied. A nursery and a write
+  barrier (Fixpt's cards, `generational-gc.md`, built 2026-09-29) would
+  stop that, and is the barrier incremental collection (§54 step 6)
+  needs too. kayak-rt's stores are its own functions, so the barrier
+  goes there, not into generated code.
+- `docs/to-discuss.md` item 18: an exchange heap with weak references in
+  place of linear types (the user's musing), analysed.
+- **Found, not of this change**: the check's first run failed at
+  `gc-stress.sh`'s step at every allocation, poisoned:
+  `trace::tests::plain_references_visited_precisely` counted 4 strings
+  of 5. It fails so about once in 15 runs of kayak-rt's tests (C513's
+  build too, the same count), never alone (40 runs). Not yet explained;
+  TODO §54 step 4's list. The check run again.
+- **The full check**: all passed in 389.7 s, its second run (the first failed at the intermittent test above); nextest 5643.

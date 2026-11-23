@@ -44,6 +44,7 @@ use super::space::{self, View, Whose};
 use super::{HeapWord, laid};
 use std::collections::HashSet;
 use std::hash::{BuildHasherDefault, Hasher};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Fixpt's forwarding word's tag.
 const TAG_FORWARD: u64 = 0b111;
@@ -110,11 +111,13 @@ pub(crate) fn collect() {
 
 #[inline(never)]
 fn collect_from(saved: &[usize; 12], from: usize) {
+    let mut timer = Timer::start();
     space::begin_collection();
     // What threads ended with no heir left (a process's pages), this
     // thread's to collect from now.
     space::adopt_orphans();
     let roots = super::roots::roots_from(saved, from);
+    timer.lap();
     let view = View::new();
     let mine = space::my_pages();
     let mut m = Mark {
@@ -131,6 +134,8 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         whole: Set::default(),
         noting: false,
         report: Set::default(),
+        found: Vec::new(),
+        found_kept: Vec::new(),
     };
     // First what every thread may read, and what another may take as this
     // one runs (C512), each allocation it reaches pinned: the constants,
@@ -187,6 +192,7 @@ fn collect_from(saved: &[usize; 12], from: usize) {
 
     // From-space: this thread's pages that nothing pins, but those adopted
     // that a collection on another thread may still write.
+    timer.lap();
     let unsettled = space::unsettled();
     let from_pages: Vec<_> = mine
         .iter()
@@ -220,6 +226,7 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         }
         moved += 1;
     }
+    timer.lap();
 
     // Each reached object this thread may write, where it is now, its
     // fields made to point where their targets went. The space seen again,
@@ -258,6 +265,7 @@ fn collect_from(saved: &[usize; 12], from: usize) {
             }
         });
     }
+    timer.lap();
     // This thread's large objects not reached, freed (once no collection
     // running may read them).
     space::free_large(|a| others.contains(&a));
@@ -291,6 +299,9 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         kept_reached.contains(&k) || roots.kept.find(k).is_none_or(|i| i.start != k || !i.mine)
     });
     COLLECTIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    timer.lap();
+    let last = LAST.get();
+    timer.done(&last, roots.ends[0]);
 }
 
 /// Whether `a` is on a page a collection copies from. Asked only of this
@@ -300,6 +311,135 @@ fn collect_from(saved: &[usize; 12], from: usize) {
 #[inline(always)]
 fn in_from(view: &View, a: usize) -> bool {
     view.page_of(a).is_some_and(|(c, _)| c.is_from(a))
+}
+
+/// `KAYAK_GC_STATS=1`: each collection's phases timed, summed over the
+/// run's threads, and said when the run ends (`report_stats`).
+fn stats_on() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| std::env::var("KAYAK_GC_STATS").is_ok_and(|v| v != "0"))
+}
+
+/// The phases a collection is timed by: its roots read (and orphans
+/// adopted), its mark, its copy, its fields fixed, its end (large and kept
+/// objects freed, pages given back).
+const PHASES: [&str; 5] = ["roots", "mark", "copy", "fixup", "end"];
+
+/// The run's sums, in nanoseconds and counts, over every thread's
+/// collections.
+struct Stats {
+    phase_ns: [AtomicU64; 5],
+    max_ns: AtomicU64,
+    reached: AtomicU64,
+    moved: AtomicU64,
+    pinned_pages: AtomicU64,
+    freed_pages: AtomicU64,
+    stack_words: AtomicU64,
+    // Pauses by length: below 1 ms, 10 ms, 100 ms, and above.
+    buckets: [AtomicU64; 4],
+}
+
+static STATS: Stats = Stats {
+    phase_ns: [const { AtomicU64::new(0) }; 5],
+    max_ns: AtomicU64::new(0),
+    reached: AtomicU64::new(0),
+    moved: AtomicU64::new(0),
+    pinned_pages: AtomicU64::new(0),
+    freed_pages: AtomicU64::new(0),
+    stack_words: AtomicU64::new(0),
+    buckets: [const { AtomicU64::new(0) }; 4],
+};
+
+/// A collection's times, phase by phase.
+struct Timer(Option<(std::time::Instant, [u64; 5], usize)>);
+
+impl Timer {
+    fn start() -> Self {
+        Timer(stats_on().then(|| (std::time::Instant::now(), [0; 5], 0)))
+    }
+    /// The phase now ended.
+    fn lap(&mut self) {
+        if let Some((t, ns, i)) = &mut self.0 {
+            let now = std::time::Instant::now();
+            ns[*i] = (now - *t).as_nanos() as u64;
+            *t = now;
+            *i += 1;
+        }
+    }
+    fn done(self, l: &Last, stack_words: usize) {
+        let Some((_, ns, _)) = self.0 else { return };
+        let r = Ordering::Relaxed;
+        for (s, n) in STATS.phase_ns.iter().zip(ns) {
+            s.fetch_add(n, r);
+        }
+        let total: u64 = ns.iter().sum();
+        STATS.max_ns.fetch_max(total, r);
+        let b = match total {
+            0..1_000_000 => 0,
+            1_000_000..10_000_000 => 1,
+            10_000_000..100_000_000 => 2,
+            _ => 3,
+        };
+        STATS.buckets[b].fetch_add(1, r);
+        STATS.reached.fetch_add(l.reached as u64, r);
+        STATS.moved.fetch_add(l.moved as u64, r);
+        STATS.pinned_pages.fetch_add(l.pinned_pages as u64, r);
+        STATS.freed_pages.fetch_add(l.freed_pages as u64, r);
+        STATS.stack_words.fetch_add(stack_words as u64, r);
+        if verbose() {
+            eprintln!(
+                "kayak: pause {} us: {}",
+                total / 1000,
+                PHASES
+                    .iter()
+                    .zip(ns)
+                    .map(|(p, n)| format!("{p} {}", n / 1000))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
+    }
+}
+
+/// The run's collections, said on standard error under `KAYAK_GC_STATS=1`:
+/// for a program's driver to call as it ends (`crate::heap_stats_report`).
+pub(crate) fn report_stats() {
+    if !stats_on() {
+        return;
+    }
+    let r = Ordering::Relaxed;
+    let n = COLLECTIONS.load(r);
+    let ns: Vec<u64> = STATS.phase_ns.iter().map(|a| a.load(r)).collect();
+    let total: u64 = ns.iter().sum();
+    let ms = |x: u64| x as f64 / 1e6;
+    let per = |x: u64| if n == 0 { 0.0 } else { x as f64 / n as f64 };
+    eprintln!(
+        "kayak-gc: {n} collections, {:.1} ms in all, mean {:.3} ms, max {:.3} ms; pauses <1 ms {}, <10 ms {}, <100 ms {}, more {}",
+        ms(total),
+        per(total) / 1e6,
+        ms(STATS.max_ns.load(r)),
+        STATS.buckets[0].load(r),
+        STATS.buckets[1].load(r),
+        STATS.buckets[2].load(r),
+        STATS.buckets[3].load(r),
+    );
+    eprintln!(
+        "kayak-gc: phases (ms): {}",
+        PHASES
+            .iter()
+            .zip(&ns)
+            .map(|(p, &x)| format!("{p} {:.1}", ms(x)))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    eprintln!(
+        "kayak-gc: per collection: {:.0} reached, {:.0} moved, {:.1} pages pinned, {:.1} freed, {:.0} stack words",
+        per(STATS.reached.load(r)),
+        per(STATS.moved.load(r)),
+        per(STATS.pinned_pages.load(r)),
+        per(STATS.freed_pages.load(r)),
+        per(STATS.stack_words.load(r)),
+    );
 }
 
 /// `KAYAK_GC_VERBOSE=1`: each collection said.
@@ -375,6 +515,9 @@ struct Mark<'v> {
     /// Whether what is pinned whole now is noted in `whole`.
     noting: bool,
     report: Set<usize>,
+    /// `follow`'s buffers, kept between its calls.
+    found: Vec<usize>,
+    found_kept: Vec<super::roots::KeptAt>,
 }
 
 /// How an allocation's words are followed.
@@ -518,8 +661,8 @@ impl Mark<'_> {
         {
             let view = self.view;
             let kept = self.kept;
-            let mut found = Vec::new();
-            let mut found_kept = Vec::new();
+            let mut found = std::mem::take(&mut self.found);
+            let mut found_kept = std::mem::take(&mut self.found_kept);
             each_object(view, a, |o| {
                 for &f in o.fields {
                     if let Some(t) = target(view, f) {
@@ -537,12 +680,16 @@ impl Mark<'_> {
                 (_, Whose::Mine) => way,
                 _ => Way::Below,
             };
-            for t in found {
+            for &t in &found {
                 self.visit(t, pin, next);
             }
-            for k in found_kept {
+            for &k in &found_kept {
                 self.kept_visit(k, next);
             }
+            found.clear();
+            found_kept.clear();
+            self.found = found;
+            self.found_kept = found_kept;
         }
     }
 }

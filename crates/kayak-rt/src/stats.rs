@@ -113,6 +113,7 @@ pub(crate) fn note<T>(_bytes: usize) {
 
 /// The table, if the feature is on.
 pub fn heap_stats_report() {
+    crate::obj::collect::report_stats();
     #[cfg(feature = "heap-stats")]
     on::report();
 }

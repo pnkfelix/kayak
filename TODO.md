@@ -2113,14 +2113,23 @@ over its 1664 definitions, 335 of them refused:
      registry; a future's box a root while it lives (a cycle through a
      continuation's body keeps it); pages a thread takes after its end
      began (an allocation in a thread local's drop) never adopted;
+     `trace::tests::plain_references_visited_precisely` counting 4
+     strings of 5 about once in 15 runs of kayak-rt's tests at every
+     allocation, poisoned (C513's build too; never alone): a string held
+     only where no root shows it, likely, before it is kept;
      kayak-rt code holding values in a `Vec` across an allocation marked
      by hand (`space::NoCollect`: C513 found five unmarked, by the stress
      step at every allocation); a scheduler's boxed tasks not yet roots;
      aarch64's d8–d15 not spilled; a sealed bloblet's copy pinned through
      its table, not moved; the census's mark (`roots::reached`)
      heap-stats only.
-  5. **Measured on kc**, then incremental collection's design to the user
-     (§54's step 6 above).
+  5. **Measured on kc** (done in part, C514: `KAYAK_GC_STATS=1`), then
+     incremental collection's design to the user (§54's step 6 above).
+     Measured: collection takes 3.1 of kfx's 5.2 s making itself, 52 of
+     kc's 89 s building `expander-facts.fx` (pauses to 2.1 s, 22 M
+     objects reached), about 110 of an edit's 320 ms at 1000 procedures;
+     nearly all reached is moved, the same long-lived state each time,
+     at 90–115 ns an object.
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
   edit's build at 1000 procedures 154 MB, kept for the run (kayak-rt has
   no collector), half its time the kernel's page faults. Left, largest
