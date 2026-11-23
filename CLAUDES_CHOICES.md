@@ -16158,3 +16158,67 @@ thread's pages at a time (K8: no thread waits on another's pass).
   or freed; kept objects all roots, never freed; `NoCollect` by hand; a
   scheduler's boxed tasks not roots; aarch64's d8–d15 not spilled.
 - **The full check**: all passed in 556.6 s, its first run; nextest 5638.
+
+## C512. A thread collects as the others run, what they may reach of its own pinned whole (2026-11-23)
+
+The user, of C511's largest gap: "Let's address this: No thread collects
+while a process's or a par's threads are running". FX-26's processes
+share only what is transmissible, never written (I-cells, written once,
+and mailboxes apart); kayak-rt shares a message where Fixpt copies it
+(`docs/fx26.md`: "data deeply, I-cells, addresses and procedures
+shared"); Fixpt's tasks share one heap and one thread, so its collector
+never meets this.
+
+- **Each thread's list of what it reaches of others'** (`roots::Reach`):
+  what its last collection found (each object of another thread's, the
+  first on each path from its own roots and objects), what it took since
+  (a message, in its list before it leaves the mailbox, `roots::taken`),
+  and what its maker lent it (a process's body, a `par` branch's closure:
+  `roots::lend`, the list its own from its first step). A collection
+  pins whole, as it pins a constant's reach, what every other thread's
+  list reaches, and what shared kept objects hold (`kept_shared`: a
+  mailbox's messages, an I-cell's value, a group's failure closure),
+  read before the lists, so that a message being taken is seen in one or
+  the other. What crosses is never written, so what another thread can
+  come to read of this one's is what those reach.
+- **Another thread's objects**: a live thread's read (to find this
+  one's below them), never written, so what it holds of this thread's is
+  pinned; an ended thread's written where it points to what moved, and
+  reached first pinning whole if another thread may read it. An object
+  pinned whole and also this thread's own is followed again as its own,
+  for what of others' it holds (`Mark::whole`; not a constant's, which
+  every thread reaches for ever). Another thread's words may be read as
+  it writes them: an object past its page is no object (`each_object`).
+- **A `par` branch, joined**: its list given to its maker's, its kept
+  objects (not the shared, which every pass reads wherever they are) to
+  its maker's registry, its pages and large objects to its maker
+  (`space::hand_over`, `adopt`), so that what its value holds is the
+  maker's to collect (C511 left them an ended thread's for ever). A
+  branch's value cannot hold an eq table yet (not `Send`): the kept
+  objects' move is for what can.
+- **Left gated**: `par2_shared` (`unsafe-par`), whose branches write each
+  other's objects (`space::Concurrent`, now its alone).
+- **Tests**: a `par` branch putting cells before its maker's list as both
+  collect; a process putting cells before each list it is sent and
+  sending it back, the list then the sender's only below the process's
+  cells. Without the lists read, the second fails (its sum wrong: the
+  list freed and taken again). `gc-stress.sh` runs the corpus's programs
+  of processes and `par` at every allocation, freed pages poisoned (245
+  passes; 106 reach another thread's objects, 220 pin shared words), and
+  the `unsafe-par` build's too, once.
+- **Cost**: kfx making itself 5.45 s against C511's 5.41 s (interleaved
+  runs, the same machine), its output the same, 375 MB at its peak. The
+  mark's owner lookup carried in its work list, the from-space test
+  inlined and with no owner check (only this thread's objects and their
+  fields' targets are asked, and another thread copies from no page of
+  its this one reaches), the set of what was pinned whole asked only
+  when not empty: from 5.64 s to 5.45 s.
+- **C511's measurement corrected**: kfx with `KAYAK_GC=0` runs 3.85 s,
+  2.16 GB at its peak; C511's "no collector: 5.64 s, 3.17 GB" was
+  C510's build. The collector costs kfx 1.6 s (42%) for a heap 5.8
+  times smaller.
+- **A debt** (TODO §55 item 13): what crosses is followed whole by every
+  pass of every thread, and a message is shared, not copied; the
+  scalable way is §55 item 2's shared heap, which needs the emitter's
+  closures as heap objects first.
+- **The full check**: all passed in 539.2 s, its first run; nextest 5640.

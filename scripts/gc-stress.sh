@@ -19,6 +19,13 @@ for run in "97 SKIP" "9973 ONLY"; do
         || { echo "gc-stress: the corpus, every $1 ($2 the longest), differs or fails" >&2; exit 1; }
 done
 echo "gc-stress: the corpus gives Fixpt's answers, a collection every 97 allocations (its longest two, 9973)"
+# Its programs of processes and `par`, small, at every allocation, their
+# freed pages poisoned: each thread collecting as the others run (C512).
+threads=processes,tasks,monitors,promises,frozen-shared,responsive,process-load-place
+env KAYAK_GC_STRESS=1 KAYAK_GC_POISON=1 KAYAK_CORPUS_ONLY=$threads cargo nextest run --release -p kfx-corpus \
+    --hide-progress-bar --status-level fail -E 'test(every_program_gives_fixpts_answer)' > /dev/null 2>&1 \
+    || { echo "gc-stress: the corpus's programs of threads, at every allocation, differ or fail" >&2; exit 1; }
+echo "gc-stress: its programs of processes and par, a collection at every allocation"
 # The compiler making itself, every 300007th: boot/src/kfx/ again.
 cargo build --release --quiet -p kfx
 tmp=$(mktemp -d)

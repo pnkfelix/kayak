@@ -80,6 +80,9 @@ struct Kept {
     start: usize,
     len: usize,
     scan: Scan,
+    /// Read by other threads (a mailbox, an I-cell, a group's failure
+    /// closure): what it holds every collection pins whole (C512).
+    shared: bool,
 }
 
 /// How a kept object is scanned: its bytes, or by its type.
@@ -255,7 +258,7 @@ pub(crate) trait Scanned {
 /// The `len` bytes from `start`, kept for the run: scanned, word by word,
 /// when a word reaches them.
 pub(crate) fn kept(start: usize, len: usize) {
-    keep(start, len, None);
+    keep(start, len, None, false);
 }
 
 /// `r`, kept for the run: scanned as its type says when a word reaches it.
@@ -270,15 +273,41 @@ pub(crate) fn kept_scanned<'a, T: Scanned + 'a>(r: &'a T) {
         std::ptr::from_ref(r).addr(),
         std::mem::size_of::<T>(),
         Some(scan::<T>),
+        false,
     );
 }
 
-fn keep(start: usize, len: usize, scan: Scan) {
+/// `r`, kept for the run and read by other threads (a mailbox, an I-cell,
+/// a group): scanned as its type says, by every thread's collection, which
+/// pins whole what it holds (C512), as another thread may take it as it
+/// runs. Its scan locks what it reads, so a thread may scan it while
+/// another writes it.
+pub(crate) fn kept_shared<'a, T: Scanned + 'a>(r: &'a T) {
+    /// # Safety
+    /// `at` is a `T`'s address, kept for the run.
+    unsafe fn scan<T: Scanned>(at: usize, f: &mut dyn FnMut(usize)) {
+        // SAFETY: the caller's.
+        unsafe { &*(at as *const T) }.scanned(f);
+    }
+    keep(
+        std::ptr::from_ref(r).addr(),
+        std::mem::size_of::<T>(),
+        Some(scan::<T>),
+        true,
+    );
+}
+
+fn keep(start: usize, len: usize, scan: Scan, shared: bool) {
     if len == 0 {
         return;
     }
     if let Some(r) = mine() {
-        r.lock().kept.push(Kept { start, len, scan });
+        r.lock().kept.push(Kept {
+            start,
+            len,
+            scan,
+            shared,
+        });
     }
 }
 
@@ -290,6 +319,159 @@ pub(crate) fn thread_locals(f: Tell) {
         if !i.locals.contains(&f) {
             i.locals.push(f);
         }
+    }
+}
+
+/// What a thread reaches of other threads' objects (C512), for their
+/// collections: what its last collection found it reaching of theirs (an
+/// object of another's, the first on each path from its own), and since,
+/// what it took (a message, before it was taken), and what its maker lent
+/// it (a process's body, a `par` branch's closure). Every collection pins
+/// whole what the others' lists reach, as it pins a constant: what crosses
+/// is transmissible, never written, so what a thread may read of another's
+/// is what those reach. Each list locked by its thread to add to it, and
+/// by another's collection to read it.
+pub(crate) struct Reach {
+    words: Mutex<Vec<usize>>,
+}
+
+impl Reach {
+    fn lock(&self) -> MutexGuard<'_, Vec<usize>> {
+        self.words.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
+/// Every live thread's list, and a list lent to a thread not yet running.
+static REACHES: Mutex<Vec<std::sync::Arc<Reach>>> = Mutex::new(Vec::new());
+
+fn reach_made(words: Vec<usize>) -> std::sync::Arc<Reach> {
+    let r = std::sync::Arc::new(Reach {
+        words: Mutex::new(words),
+    });
+    REACHES
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(r.clone());
+    r
+}
+
+/// The thread's list, forgotten when the thread ends: what only it
+/// reached, no thread reaches.
+struct MyReach(std::cell::RefCell<Option<std::sync::Arc<Reach>>>);
+
+impl Drop for MyReach {
+    fn drop(&mut self) {
+        if let Some(r) = self.0.borrow_mut().take() {
+            REACHES
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .retain(|k| !std::sync::Arc::ptr_eq(k, &r));
+        }
+    }
+}
+
+thread_local! {
+    static MY_REACH: MyReach = const { MyReach(std::cell::RefCell::new(None)) };
+}
+
+/// This thread's list, made at first. `None` while the thread ends.
+fn my_reach() -> Option<std::sync::Arc<Reach>> {
+    MY_REACH
+        .try_with(|m| {
+            m.0.borrow_mut()
+                .get_or_insert_with(|| reach_made(Vec::new()))
+                .clone()
+        })
+        .ok()
+}
+
+/// `v`, taken from where other threads may reach it (a message from its
+/// mailbox): its words added to the thread's list, before it is taken, so
+/// that a collection sees it in one place or the other.
+pub(crate) fn taken<T: ?Sized>(v: &T) {
+    if let Some(r) = my_reach() {
+        let mut l = r.lock();
+        words_of_val(v, &mut |w| l.push(w));
+    }
+}
+
+/// What a thread about to run is lent of its maker's (a process's body, a
+/// `par` branch's closure): its list, from now, until the thread takes it
+/// as its own (`Lent::adopt`).
+pub(crate) struct Lent(std::sync::Arc<Reach>);
+
+pub(crate) fn lend<T: ?Sized>(v: &T) -> Lent {
+    let mut words = Vec::new();
+    words_of_val(v, &mut |w| words.push(w));
+    Lent(reach_made(words))
+}
+
+impl Lent {
+    /// The list lent, this thread's own, now that it runs.
+    pub(crate) fn adopt(self) {
+        let _ = MY_REACH.try_with(|m| {
+            let mut mine = m.0.borrow_mut();
+            if let Some(old) = mine.replace(self.0.clone()) {
+                // Made before (a thread's first allocation reached it): its
+                // words kept, then the list forgotten.
+                let words = std::mem::take(&mut *old.lock());
+                self.0.lock().extend(words);
+                REACHES
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .retain(|k| !std::sync::Arc::ptr_eq(k, &old));
+            }
+        });
+    }
+}
+
+/// The thread a thread it makes gives, as it ends (a `par` branch's,
+/// joined), what it reaches of others' (what its value holds of theirs)
+/// and what it keeps (an eq table its value holds): its list, and its
+/// registry.
+pub(crate) struct Heir(std::sync::Arc<Reach>, Option<&'static Registry>);
+
+/// This thread, as an heir of a thread it makes.
+pub(crate) fn heir() -> Option<Heir> {
+    my_reach().map(|r| Heir(r, mine()))
+}
+
+impl Heir {
+    /// This thread's list and what it keeps, given to the heir, before
+    /// this thread ends: what it keeps that other threads read (a
+    /// mailbox) left where it is, as every collection reads that from any
+    /// registry, ended or not.
+    pub(crate) fn inherit(&self) {
+        if let Some(r) = my_reach()
+            && !std::sync::Arc::ptr_eq(&r, &self.0)
+        {
+            let words = r.lock().clone();
+            self.0.lock().extend(words);
+        }
+        if let (Some(me), Some(to)) = (mine(), self.1)
+            && !std::ptr::eq(me, to)
+        {
+            let kept: Vec<Kept> = {
+                let mut i = me.lock();
+                let (shared, own): (Vec<Kept>, Vec<Kept>) = std::mem::take(&mut i.kept)
+                    .into_iter()
+                    .partition(|k| k.shared);
+                i.kept = shared;
+                own
+            };
+            to.lock().kept.extend(kept);
+        }
+    }
+}
+
+/// This thread's list, as its collection found it (`report`), and what
+/// was added to it since `from`, where the collection began.
+pub(super) fn reported(report: Vec<usize>, from: usize) {
+    if let Some(r) = my_reach() {
+        let mut l = r.lock();
+        let since: Vec<usize> = l.get(from..).map(<[usize]>::to_vec).unwrap_or_default();
+        *l = report;
+        l.extend(since);
     }
 }
 
@@ -602,10 +784,15 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
 /// thread's owned blocks and thread locals, and every kept object, each
 /// whole, by its bytes or its type (kept for the run, and perhaps reached
 /// where no root is seen: a thread local of its own, a scheduler's slot);
-/// and apart, the constants' words, which every thread may read.
+/// and apart, the constants' words, which every thread may read, and what
+/// other threads may take as this one collects (C512): what shared kept
+/// objects hold, and every other thread's list (`Reach`).
 pub(super) struct Roots {
     pub words: Vec<usize>,
     pub constants: Vec<usize>,
+    pub shared: Vec<usize>,
+    /// Where this thread's list ended as the collection began.
+    pub reach_from: usize,
     /// Where in `words` each source's words end: the registers' and
     /// stack's, the owned blocks', the kept objects' (the thread locals'
     /// after), for a report.
@@ -635,22 +822,30 @@ pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
     ends[1] = words.len();
     let me = mine();
     let mut locals = Vec::new();
+    let mut shared = Vec::new();
     // This thread's kept objects, and an ended thread's, which no thread
-    // writes; not a live thread's, which may be being written, and holds
-    // of this thread's only what is shared (`obj::collect`).
+    // writes; of a live thread's, only those shared, which lock what they
+    // hold to read it. Before the lists: a message taken from a mailbox is
+    // in its taker's list before it leaves the mailbox (`taken`).
     let ended: Vec<&'static Registry> = FREE.lock().unwrap_or_else(|e| e.into_inner()).clone();
     for reg in REGISTRIES.lock().unwrap_or_else(|e| e.into_inner()).iter() {
         let ours = me.is_some_and(|m| std::ptr::eq(m, *reg));
-        if !ours && !ended.iter().any(|e| std::ptr::eq(*e, *reg)) {
-            continue;
-        }
+        let whole = ours || ended.iter().any(|e| std::ptr::eq(*e, *reg));
         let i = reg.lock();
         for k in &i.kept {
+            let out = if k.shared {
+                &mut shared
+            } else if whole {
+                &mut words
+            } else {
+                continue;
+            };
             match k.scan {
                 // SAFETY: an object kept for the run, of its bytes.
-                None => unsafe { scan_words(k.start, k.len, &mut |w| words.push(w)) },
-                // SAFETY: a `T` kept for the run, by `kept_scanned`.
-                Some(scan) => unsafe { scan(k.start, &mut |w| words.push(w)) },
+                None => unsafe { scan_words(k.start, k.len, &mut |w| out.push(w)) },
+                // SAFETY: a `T` kept for the run, by `kept_scanned` or
+                // `kept_shared`.
+                Some(scan) => unsafe { scan(k.start, &mut |w| out.push(w)) },
             }
         }
         if me.is_some_and(|m| std::ptr::eq(m, *reg)) {
@@ -661,9 +856,23 @@ pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
     for f in locals {
         f(&mut |w| words.push(w));
     }
+    // Every other thread's list, and a list lent to one not yet running.
+    let own = my_reach();
+    let lists: Vec<std::sync::Arc<Reach>> =
+        REACHES.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let mut reach_from = 0;
+    for l in &lists {
+        if own.as_ref().is_some_and(|o| std::sync::Arc::ptr_eq(o, l)) {
+            reach_from = l.lock().len();
+        } else {
+            shared.extend_from_slice(&l.lock());
+        }
+    }
     Roots {
         words,
         constants,
+        shared,
+        reach_from,
         ends,
     }
 }

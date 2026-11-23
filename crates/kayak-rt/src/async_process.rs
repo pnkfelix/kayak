@@ -171,7 +171,7 @@ pub fn send<M>(a: Addr<M>, m: M) {
 /// `(receive box)`: the oldest message, once there is one.
 pub fn receive<M>(b: Inbox<M>) -> impl Future<Output = M> {
     Wait {
-        ready: move || held(&b.queue).pop_front(),
+        ready: move || crate::process::take(b),
         deadline: None,
         outside: false,
         deadlock: "a message no task is left to send: a deadlock",
@@ -231,7 +231,7 @@ fn start<M: 'static, F: Future<Output = ()> + 'static>(
     on_failure: Option<Box<dyn Fn(String)>>,
     body: impl FnOnce(Inbox<M>) -> F,
 ) -> Addr<M> {
-    let mb: Addr<M> = crate::leak_scanned(MailboxBox {
+    let mb: Addr<M> = crate::leak_shared(MailboxBox {
         queue: Mutex::new(VecDeque::new()),
     });
     let Some(cx) = crate::suspend::task_cx() else {

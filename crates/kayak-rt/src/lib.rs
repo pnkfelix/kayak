@@ -176,6 +176,18 @@ pub(crate) fn leak_scanned<'a, T: obj::roots::Scanned + 'a>(v: T) -> &'a T {
     r
 }
 
+/// `v` kept for the run as `leak_scanned` keeps it, read by other threads
+/// (a mailbox, an I-cell): what it holds every collection pins whole
+/// (`obj::roots::kept_shared`, C512).
+pub(crate) fn leak_shared<'a, T: obj::roots::Scanned + 'a>(v: T) -> &'a T {
+    stats::note::<T>(std::mem::size_of::<T>());
+    let r: &'a T = Box::leak(Box::new(v));
+    obj::roots::kept_shared(r);
+    #[cfg(feature = "heap-stats")]
+    census::opaque(std::ptr::from_ref(r) as usize, std::mem::size_of::<T>());
+    r
+}
+
 /// `parts`, one after another, as one string kept for the run.
 pub fn str_of_parts(parts: &[&str]) -> Str {
     let n: usize = parts.iter().map(|p| p.len()).sum();

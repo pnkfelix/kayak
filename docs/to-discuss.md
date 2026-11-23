@@ -195,9 +195,10 @@ where it was seen and what it would take.
     it does not. kc's collector today sees one thread's stack and one
     heap. Both decide what kc's heap is, so one design for both.
     Since C511 kayak-rt's own code (kfx's, kc's compiler) is collected
-    too: a thread's pages at a time, stopping that thread alone, none
-    while another thread runs kayak code; step 5 measures it on kc
-    before this design comes to the user.
+    too: a thread's pages at a time, stopping that thread alone; since
+    C512 as the other threads run, what they may reach of its own pinned
+    whole (each thread's list of what it reaches of others'). Step 5
+    measures it on kc before this design comes to the user.
 
 17. **A union's member narrowed by its kind, not its Rust type (C506).**
     With `Value` one Fixpt word, a union narrowed to a member (`unbox_other`,

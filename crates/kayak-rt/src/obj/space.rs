@@ -504,7 +504,8 @@ pub(crate) enum Whose {
     Mine,
     /// A thread's that has ended: read and written, never moved.
     Dead,
-    /// A live thread's: never read (it may be writing it).
+    /// A live thread's: never written, and read only where it crossed to
+    /// this thread, which no thread writes (C512).
     Live,
 }
 
@@ -657,6 +658,51 @@ pub(crate) fn end_collection(freed: &[(&'static Chunk, usize)]) {
     });
 }
 
+/// A thread's pages and large objects, given to another as the thread
+/// ends (a `par` branch's to its maker at the join, C512): what the
+/// branch's value holds, the maker's to collect.
+pub(crate) struct Parcel {
+    pages: Vec<(&'static Chunk, usize)>,
+    from: u64,
+}
+
+/// This thread's pages, given up as it ends: none bumped into again (a
+/// page taken after is its own, an ended thread's). Still its, as other
+/// threads see them, until `adopt`.
+pub(crate) fn hand_over() -> Parcel {
+    BUMP.with(|b| {
+        b.at.set(std::ptr::null_mut());
+        b.end.set(std::ptr::null_mut());
+        b.limit.set(std::ptr::null_mut());
+        b.chunk.set(None);
+        b.since.set(0);
+        Parcel {
+            pages: std::mem::take(&mut *b.pages.borrow_mut()),
+            from: thread_number(),
+        }
+    })
+}
+
+/// `p`'s pages and large objects, this thread's now, collected with its
+/// own; counted as taken, so that a collection comes as soon as if it had
+/// made them. The thread that gave them has ended (it was joined), so no
+/// collection of its runs.
+pub(crate) fn adopt(p: Parcel) {
+    let me = thread_number();
+    for &(c, page) in &p.pages {
+        c.owners[page].store(me, Ordering::Relaxed);
+    }
+    for l in LARGE.lock().unwrap_or_else(|e| e.into_inner()).iter_mut() {
+        if l.2 == p.from {
+            l.2 = me;
+        }
+    }
+    BUMP.with(|b| {
+        b.since.set(b.since.get() + p.pages.len());
+        b.pages.borrow_mut().extend(p.pages);
+    });
+}
+
 /// The word at `addr` of the space, to write (a collection's).
 ///
 /// # Safety
@@ -688,10 +734,12 @@ impl Drop for NoCollect {
     }
 }
 
-/// Threads kayak-rt runs beside the program's (a process's, a `par`
-/// branch's) while they live: one may hold another's words where no
-/// thread's collection sees, so none collects (`TODO.md` §54, step 4's
-/// cross-thread work).
+/// `par` branches that share what may be written (`par2_shared`, the
+/// `unsafe-par` feature) while they run: one writes into the other's
+/// objects, where no collection of the writer's sees, so none collects
+/// (`TODO.md` §54, step 4). A process or a plain `par` branch shares only
+/// what is never written, and collects beside the rest (C512).
+#[cfg_attr(not(feature = "unsafe-par"), allow(dead_code))]
 static CONCURRENT: AtomicUsize = AtomicUsize::new(0);
 
 fn concurrent() -> usize {
@@ -699,8 +747,10 @@ fn concurrent() -> usize {
 }
 
 /// A thread run beside the program's, while this lives.
+#[cfg_attr(not(feature = "unsafe-par"), allow(dead_code))]
 pub(crate) struct Concurrent(());
 
+#[cfg_attr(not(feature = "unsafe-par"), allow(dead_code))]
 impl Concurrent {
     pub(crate) fn new() -> Concurrent {
         CONCURRENT.fetch_add(1, Ordering::AcqRel);

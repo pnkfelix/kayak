@@ -2069,32 +2069,42 @@ over its 1664 definitions, 335 of them refused:
      C508. To come, if it matters: only a task's first future
      registered, the mark following words into kayak-sys's allocator's
      blocks (C370's, made for these boxes) instead.
-  4. **Collect** (done in part, C511): `obj::collect`, a thread's pages,
-     those its ambiguous roots reach pinned whole, the rest copied
+  4. **Collect** (done in part, C511, C512): `obj::collect`, a thread's
+     pages, those its ambiguous roots reach pinned whole, the rest copied
      (Bartlett's), each moved object's first word a forwarding word
      (Fixpt's tag 111), the precise fields found by the layout (`laid`);
      allocation the safepoint (`space::refill`, once the pages taken
      since the last pass reach twice those kept, 64 MB at least). Its
      stress mode (`KAYAK_GC_STRESS=n`, a pass every nth allocation) under
      the check (`scripts/gc-stress.sh`: kayak-rt's tests at 7, the corpus
-     at 97, kfx making itself at 300007, about 70 s). Another thread's
-     objects: a live thread's never read, an ended thread's read and
-     updated but never moved. Measured: kfx making itself 5.41 s, 375 MB
-     at its peak (no collector: 5.64 s, 3.17 GB); kc building
-     `expander-facts.fx` 136 s, 31.6 GB (no collector: 129 s, 48.2 GB;
-     what the rest is, step 5's). Left: what another thread may reach
-     made safe, so that a thread collects while others run (now none
-     does while a process's or a `par`'s threads run: `space::Concurrent`;
-     a message copied, as FX-26's processes have heaps of their own; a
-     `par` child's pages handed to its parent at the join; §55 item 2's
-     shared heap for the rest); an ended thread's pages never given back;
-     large objects never moved or freed; kept objects all roots, never
-     freed (a continuation, an eq table, a procedure given to native
-     code); kayak-rt code holding values in a `Vec` across an allocation
-     marked by hand (`space::NoCollect`); a scheduler's boxed tasks not
-     yet roots; aarch64's d8–d15 not spilled; a sealed bloblet's copy
-     pinned through its table, not moved; the census's mark
-     (`roots::reached`) heap-stats only.
+     at 97, its programs of processes and `par` at every allocation, kfx
+     making itself at 300007, about 75 s). A thread collects as the
+     others run (C512): a live thread's objects read, never written, what
+     they hold of its own pinned; an ended thread's written where they
+     point to what moved, never moved; what another thread may reach of
+     its own pinned whole, as a constant's: what each thread's list
+     (`roots::Reach`) reaches (what its last pass found it reaching of
+     others', what it took since, what its maker lent it) and what shared
+     kept objects hold (a mailbox's messages, an I-cell's value, a group's
+     failure closure); a `par` branch's pages, list and kept objects its
+     maker's at the join. Measured: kfx making itself 5.45 s, 375 MB at
+     its peak (`KAYAK_GC=0`: 3.85 s, 2.16 GB; C511 said 5.64 s, 3.17 GB,
+     C510's build); kc building `expander-facts.fx` 136 s, 31.6 GB (none:
+     129 s, 48.2 GB; what the rest is, step 5's). Left: `par2_shared`'s
+     branches (`unsafe-par`) collect not at all while they run
+     (`space::Concurrent`), as each writes the other's objects; an ended
+     thread's pages never given back (a process's); what other threads
+     reach followed whole at each pass (a large structure shared, read at
+     every pass of every thread), and other threads' objects read as they
+     run (a race a word wide, as a conservative collector's); a message
+     shared, not copied (Fixpt copies it); large objects never moved or
+     freed; kept objects all roots, never freed (a continuation, an eq
+     table, a procedure given to native code, every mailbox and I-cell,
+     scanned by every pass); kayak-rt code holding values in a `Vec`
+     across an allocation marked by hand (`space::NoCollect`); a
+     scheduler's boxed tasks not yet roots; aarch64's d8–d15 not spilled;
+     a sealed bloblet's copy pinned through its table, not moved; the
+     census's mark (`roots::reached`) heap-stats only.
   5. **Measured on kc**, then incremental collection's design to the user
      (§54's step 6 above).
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
@@ -2282,6 +2292,22 @@ of it chosen in C448–C464:
     files and shards use it, the head alone flushed. Done (C475): Fixpt's
     `write-file-unflushed` (6f7bd73, the pin since C474); an edit's save
     one flush, the head's.
+
+13. **What crosses between kayak-rt's threads, followed whole by every
+    pass** (C512): a thread collects as the others run, pinning whole
+    what they may reach of its own, found by following, at each pass,
+    everything each other thread's list reaches and every mailbox's and
+    I-cell's contents; and a message shared, not copied. A large
+    structure the threads share is read again at every pass of every
+    thread, its pages pinned for as long as one reaches it, and every
+    mailbox and I-cell ever made is scanned by every pass. The scalable
+    way is item 2's: a heap per thread and a shared heap, what crosses
+    promoted into it (copied, as Fixpt copies a message), so that a
+    thread's pass reads only its own heap and the shared heap's
+    remembered set. Not taken now: kayak-rt's Rust closures (a process's
+    body, a `par` branch) hold what crosses in words a collector cannot
+    rewrite, so promotion needs the emitter to make them heap objects
+    first.
 
 Order: 1 and 7, each a step of its own size, before kc grows more; 3 a
 table the process shares now (which is right under any design: kcrt's

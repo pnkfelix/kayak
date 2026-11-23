@@ -4,7 +4,7 @@
 //!
 //! - **The roots** (`roots::roots_from`) are ambiguous, each a word that
 //!   may be a pointer: the registers and stack, the thread's owned blocks
-//!   and thread locals, and every kept object, whole. An allocation one
+//!   and thread locals, and its kept objects and an ended thread's, whole. An allocation one
 //!   reaches is pinned, its page with it: nothing on a pinned page moves.
 //!   So is the allocation before a word that is an allocation's first, as
 //!   an object's word with no suffix points one past it.
@@ -16,9 +16,17 @@
 //!   copied to a new page, a forwarding word left in its first (Fixpt's
 //!   tag 7, as `kcrt-core`'s collector and Fixpt's leave one), and every
 //!   reached object's fields are then made to point where their targets
-//!   went, each word's offset into its allocation kept. An object of
-//!   another thread's (a page of its, or a large object it made) is never
-//!   written: its words are read as ambiguous, pinning what they reach.
+//!   went, each word's offset into its allocation kept.
+//! - **Other threads run as one collects** (C512): a live thread's object
+//!   is read, never written, and what it holds of this thread's pinned;
+//!   an ended thread's is written where it points to what moved, never
+//!   moved. What another thread may reach of this one's is pinned whole,
+//!   as a constant's is: what crosses is transmissible, never written, so
+//!   it is what the other threads' lists (`roots::Reach`) reach, and what
+//!   shared kept objects hold (a mailbox's messages, an I-cell's value,
+//!   a group's failure closure). And each collection tells what it found
+//!   the thread reaching of others', for theirs: each object of
+//!   another's, the first on each path from the thread's own.
 //! - **The pages copied from** are given back (`space::end_collection`);
 //!   the string cursor, keyed by address, forgotten. A large object is
 //!   never moved, nor yet freed.
@@ -105,16 +113,30 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         view: &view,
         order: Vec::new(),
         others: Set::default(),
+        read: Set::default(),
         pinned: Set::default(),
         work: Vec::new(),
+        whole: Set::default(),
+        noting: false,
+        report: Set::default(),
     };
+    // First what every thread may read, and what another may take as this
+    // one runs (C512), each allocation it reaches pinned: the constants,
+    // what shared kept objects hold, the other threads' lists.
     for &w in &roots.constants {
-        m.ambiguous(w);
+        m.ambiguous(w, Way::Whole);
     }
-    m.drain(true);
+    m.drain();
+    let constants = m.pinned.len();
+    m.noting = true;
+    for &w in &roots.shared {
+        m.ambiguous(w, Way::Whole);
+    }
+    m.drain();
+    m.noting = false;
     let mut pins = [m.pinned.len(); 5];
     for (i, &w) in roots.words.iter().enumerate() {
-        m.ambiguous(w);
+        m.ambiguous(w, Way::Own);
         for (k, &e) in roots.ends.iter().enumerate() {
             if i + 1 == e {
                 pins[k + 1] = m.pinned.len();
@@ -122,11 +144,12 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         }
     }
     pins[4] = m.pinned.len();
-    m.drain(false);
+    m.drain();
     if verbose() {
         eprintln!(
-            "kayak: pinned pages: constants {}, stack {}, owned {}, kept {}, locals {}; words: stack {}, owned {}, kept {}",
-            pins[0],
+            "kayak: pinned pages: constants {}, shared {}, stack {}, owned {}, kept {}, locals {}; words: stack {}, owned {}, kept {}, shared {}; others' objects reached {}",
+            constants,
+            pins[0] - constants,
             pins[1] - pins[0],
             pins[2] - pins[1],
             pins[3] - pins[2],
@@ -134,14 +157,20 @@ fn collect_from(saved: &[usize; 12], from: usize) {
             roots.ends[0],
             roots.ends[1] - roots.ends[0],
             roots.ends[2] - roots.ends[1],
+            roots.shared.len(),
+            m.report.len(),
         );
     }
     let Mark {
         order,
         others,
         pinned,
+        report,
         ..
     } = m;
+    // What this thread reaches of others', for their collections; not
+    // moved by this one, so told now.
+    super::roots::reported(report.into_iter().collect(), roots.reach_from);
 
     // From-space: this thread's pages that nothing pins.
     let from_pages: Vec<_> = mine
@@ -152,8 +181,6 @@ fn collect_from(saved: &[usize; 12], from: usize) {
     for &(c, p) in &from_pages {
         c.set_from(p, true);
     }
-    let in_from = |view: &View, a: usize| view.page_of(a).is_some_and(|(c, _)| c.is_from(a));
-
     // Each reached allocation of from-space copied, a forwarding word
     // left in its first.
     let mut moved = 0;
@@ -237,6 +264,15 @@ fn collect_from(saved: &[usize; 12], from: usize) {
     COLLECTIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// Whether `a` is on a page a collection copies from. Asked only of this
+/// thread's reached allocations and of their fields' targets: another
+/// thread copies from a page of its own nothing of this one's reaches
+/// (what this one reaches of its, it pins), so the page is this thread's.
+#[inline(always)]
+fn in_from(view: &View, a: usize) -> bool {
+    view.page_of(a).is_some_and(|(c, _)| c.is_from(a))
+}
+
 /// `KAYAK_GC_VERBOSE=1`: each collection said.
 fn verbose() -> bool {
     static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -264,6 +300,11 @@ fn each_object(view: &View, start: usize, mut f: impl FnMut(&laid::Laid)) {
         // SAFETY: an allocation's first word, or the next object of the
         // same allocation, which a header begins.
         let o = unsafe { laid::at(std::ptr::with_exposed_provenance::<u64>(at)) };
+        // Past where it may end: no object, but words read as another
+        // thread writes them (C512), or freed and poisoned.
+        if o.end > limit {
+            return;
+        }
         f(&o);
         if o.pair || o.end >= limit || chunk.is_some_and(|c| c.is_start(o.end)) {
             return;
@@ -279,71 +320,121 @@ fn each_object(view: &View, start: usize, mut f: impl FnMut(&laid::Laid)) {
 }
 
 /// The mark: this thread's allocations reached, in the order found (each
-/// marked on its page), and another's that may be followed (an ended
-/// thread's, a large object); the pages pinned.
+/// marked on its page); an ended thread's that may be followed and
+/// written, and a large object of this thread's or an ended one's
+/// (`others`); a live thread's, read but never written (`read`); the
+/// pages pinned; and what of others' this thread reaches (`report`).
 struct Mark<'v> {
     view: &'v View,
     order: Vec<usize>,
     others: Set<usize>,
+    read: Set<usize>,
     pinned: Set<(usize, usize)>,
-    work: Vec<usize>,
+    work: Vec<(usize, Way, Whose)>,
+    /// This thread's allocations marked while pinning whole what other
+    /// threads may take (not a constant, which every thread reaches for
+    /// ever), not yet followed as its own: what of others' they hold is
+    /// not yet told.
+    whole: Set<usize>,
+    /// Whether what is pinned whole now is noted in `whole`.
+    noting: bool,
+    report: Set<usize>,
+}
+
+/// How an allocation's words are followed.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Way {
+    /// From what every thread may read or another may take: every
+    /// allocation reached pinned, nothing of others' told.
+    Whole,
+    /// From this thread's roots and objects: each object of another's
+    /// reached first from them told (`report`).
+    Own,
+    /// Below an object of another's reached from this thread's own: told
+    /// already by that object, which every other collection follows.
+    Below,
 }
 
 impl Mark<'_> {
     /// An ambiguous word: the allocation it is a word of, and the one
     /// before when it is an allocation's first, reached and pinned.
-    fn ambiguous(&mut self, w: usize) {
+    fn ambiguous(&mut self, w: usize, way: Way) {
         let a = self.view.object_of(w);
         if let Some(a) = a {
-            self.visit(a, true);
+            self.visit(a, true, way);
         }
         if a.is_none_or(|a| a == w & !7)
             && let Some(b) = self.view.object_of((w & !7).wrapping_sub(8))
         {
-            self.visit(b, true);
+            self.visit(b, true, way);
         }
     }
 
+    /// The allocation at `a`, reached (`way`), its page pinned if `pin`.
     #[inline]
-    fn visit(&mut self, a: usize, pin: bool) {
-        // A live thread's object is not read: it may be being made. What
-        // it holds of this thread's, it holds only by what is shared, and
-        // nothing is while `space::Concurrent` lives but the constants,
-        // pinned whole.
-        if let Some((c, p)) = self.view.page_of(a) {
-            match self.view.whose_page(c, p) {
-                Whose::Live => {}
-                Whose::Mine => {
+    fn visit(&mut self, a: usize, pin: bool, way: Way) {
+        let (whose, large) = match self.view.page_of(a) {
+            Some((c, p)) => {
+                let whose = self.view.whose_page(c, p);
+                if whose == Whose::Mine {
                     if pin {
                         self.pinned.insert(space::page_key(c, p));
                     }
                     if c.mark(a) {
                         self.order.push(a);
-                        self.work.push(a);
+                        self.push(a, way, Whose::Mine);
+                    } else if way == Way::Own && !self.whole.is_empty() && self.whole.remove(&a) {
+                        // Pinned whole already; followed again as this
+                        // thread's own, for what of others' it holds.
+                        self.work.push((a, Way::Own, Whose::Mine));
                     }
+                    return;
                 }
-                Whose::Dead => {
-                    if self.others.insert(a) {
-                        self.work.push(a);
-                    }
-                }
+                (whose, false)
             }
-        } else if let Some((_, _, whose)) = self.view.large_owner(a)
-            && whose != Whose::Live
-            && self.others.insert(a)
+            None => match self.view.large_owner(a) {
+                Some((_, _, whose)) => (whose, true),
+                None => return,
+            },
+        };
+        if way == Way::Own && whose != Whose::Mine {
+            self.report.insert(a);
+        }
+        // A live thread's object is read, never written: what it holds of
+        // this thread's is pinned (C512). An ended thread's, or a large
+        // object, is written where it points to what moves; one another
+        // thread may read was reached first pinning whole, so nothing it
+        // points to moves.
+        let first = if whose == Whose::Live {
+            self.read.insert(a)
+        } else {
+            self.others.insert(a)
+        };
+        if first {
+            self.push(a, way, whose);
+        } else if large
+            && whose == Whose::Mine
+            && way == Way::Own
+            && !self.whole.is_empty()
+            && self.whole.remove(&a)
         {
-            self.work.push(a);
+            self.work.push((a, Way::Own, whose));
         }
     }
 
-    /// Each allocation reached, its words followed, precisely (this
-    /// thread's, or an ended thread's). Under a constant (`all`), each
-    /// allocation reached is pinned.
-    fn drain(&mut self, all: bool) {
-        while let Some(a) = self.work.pop() {
-            if all {
-                self.visit(a, true);
-            }
+    fn push(&mut self, a: usize, way: Way, whose: Whose) {
+        if way == Way::Whole && self.noting {
+            self.whole.insert(a);
+        }
+        self.work.push((a, way, whose));
+    }
+
+    /// Each allocation reached, its words followed, precisely (an object's
+    /// fields): pinning whole, each allocation reached pinned, and every
+    /// one a live thread's object holds; from this thread's own, what of
+    /// others' it holds told.
+    fn drain(&mut self) {
+        while let Some((a, way, whose)) = self.work.pop() {
             let view = self.view;
             let mut found = Vec::new();
             each_object(view, a, |o| {
@@ -353,8 +444,14 @@ impl Mark<'_> {
                     }
                 }
             });
+            let pin = way == Way::Whole || whose == Whose::Live;
+            let next = match (way, whose) {
+                (Way::Whole, _) => Way::Whole,
+                (_, Whose::Mine) => way,
+                _ => Way::Below,
+            };
             for t in found {
-                self.visit(t, all);
+                self.visit(t, pin, next);
             }
         }
     }
@@ -463,5 +560,99 @@ mod tests {
             "{l:?}"
         );
         assert_eq!(sum(r.get()), 1000 * 3999 * 4000 / 2);
+    }
+
+    /// Garbage made between collections: less under stress, where each
+    /// allocation may collect already.
+    fn garbage() -> i64 {
+        if crate::obj::space::stressed() {
+            100
+        } else {
+            3000
+        }
+    }
+
+    fn of_word(w: crate::obj::HeapWord) -> List<Int> {
+        crate::obj::ListAt(w, std::marker::PhantomData)
+    }
+
+    /// `n` cells of this thread's before `tail`: 0, 1, …, n - 1.
+    fn before(n: i64, tail: List<Int>) -> List<Int> {
+        (0..n)
+            .rev()
+            .fold(tail, |acc, i| heap_cons(i64_to_int(i), acc))
+    }
+
+    #[test]
+    fn a_par_branch_collects_beside_its_maker() {
+        // The branch puts cells of its own before its maker's list, which
+        // its closure holds, collecting as it goes; the maker collects all
+        // the while. After the join, the branch's pages are the maker's.
+        let xs = list(2000);
+        let w = xs.0;
+        let (mine, theirs) = crate::process::par2(
+            || {
+                for _ in 0..30 {
+                    let _ = std::hint::black_box(list(garbage()));
+                    super::collect();
+                }
+                sum(xs)
+            },
+            move || {
+                let mut ys = of_word(w);
+                for _ in 0..30 {
+                    ys = before(100, ys);
+                    let _ = std::hint::black_box(list(garbage()));
+                    super::collect();
+                }
+                ys.0
+            },
+        );
+        assert_eq!(mine, 1000 * 1999 * 2000 / 2);
+        for _ in 0..3 {
+            let _ = std::hint::black_box(list(garbage()));
+            super::collect();
+        }
+        assert_eq!(
+            sum(of_word(theirs)),
+            30 * 99 * 100 / 2 + 1000 * 1999 * 2000 / 2
+        );
+    }
+
+    #[inline(never)]
+    fn sent(
+        p: crate::Addr<(crate::obj::HeapWord, crate::ICell<crate::obj::HeapWord>)>,
+    ) -> crate::ICell<crate::obj::HeapWord> {
+        let c = crate::process::make_icell();
+        crate::process::send(p, (list(300).0, c));
+        c
+    }
+
+    #[test]
+    fn a_message_wrapped_and_sent_back_kept() {
+        // A process puts cells of its own before each list it is sent, and
+        // sends it back: the list then this thread's only below another's
+        // cells, each side collecting as it goes.
+        const ROUNDS: usize = 40;
+        let p = crate::process::spawn(
+            |b: crate::Inbox<(crate::obj::HeapWord, crate::ICell<crate::obj::HeapWord>)>| {
+                for _ in 0..ROUNDS {
+                    let (w, c) = crate::process::receive(b);
+                    let ys = before(100, of_word(w));
+                    let _ = std::hint::black_box(list(garbage()));
+                    super::collect();
+                    crate::process::icell_put_x(c, ys.0);
+                }
+            },
+        );
+        for _ in 0..ROUNDS {
+            let c = sent(p);
+            let _ = std::hint::black_box(list(garbage()));
+            super::collect();
+            let w = crate::process::icell_get(c);
+            let _ = std::hint::black_box(list(garbage()));
+            super::collect();
+            assert_eq!(sum(of_word(w)), 99 * 100 / 2 + 1000 * 299 * 300 / 2);
+        }
     }
 }

@@ -8,6 +8,10 @@
 //! transmissible value's Rust type is `Send`, so `spawn`'s, `send`'s and
 //! `par2`'s bounds are checked by rustc as well as by KFX's checker. A
 //! message is shared, not copied: what is transmissible is never written.
+//! So a thread collects as the others run (`obj::collect`, C512): what
+//! they may reach of its own is pinned whole, by what each has taken (a
+//! message), been lent (a process's body, a `par` branch's closure), or
+//! found reaching at its last collection.
 //!
 //! One lock, [`SCHED`], is held by every waiter while it looks, and one
 //! condition variable wakes them all when anything changes. The lock also
@@ -285,7 +289,7 @@ impl<T: crate::Trace> crate::Visit for ICellBox<T> {
 
 /// `(make-icell)`: in the heap, wherever it was asked for, as FX-26's is.
 pub fn make_icell<T>() -> ICell<T> {
-    crate::leak_scanned(ICellBox {
+    crate::leak_shared(ICellBox {
         value: Mutex::new(None),
     })
 }
@@ -357,13 +361,21 @@ pub fn send<M: Send>(a: Addr<M>, m: M) {
     changed(g);
 }
 
+/// The oldest message of `b`, if any, taken: in this thread's list
+/// before it leaves the mailbox (`obj::roots::taken`, C512).
+pub(crate) fn take<M>(b: &MailboxBox<M>) -> Option<M> {
+    let mut q = held(&b.queue);
+    crate::obj::roots::taken(q.front()?);
+    q.pop_front()
+}
+
 /// `(receive box)`: the oldest message, waiting for one.
 pub fn receive<M>(b: Inbox<M>) -> M {
     wait_until(
         program(),
         None,
         false,
-        || held(&b.queue).pop_front(),
+        || take(b),
         "a message no task is left to send: a deadlock",
     )
 }
@@ -548,23 +560,23 @@ pub fn spawn_monitored<W: Send + 'static, M: Send + 'static>(
 
 /// A process of group `group` on a thread of its own.
 fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + 'static) -> Addr<M> {
-    let mb: Addr<M> = crate::leak_scanned(MailboxBox {
+    let mb: Addr<M> = crate::leak_shared(MailboxBox {
         queue: Mutex::new(VecDeque::new()),
     });
     let group: &'static Group = Box::leak(Box::new(group));
-    crate::obj::roots::kept_scanned(group);
+    crate::obj::roots::kept_shared(group);
     let program = program();
     {
         let mut g = lock();
         check_failed(&g, program);
         g.running += 1;
     }
-    // No thread collects while this one lives (`obj::space`, C511).
-    let beside = crate::obj::space::Concurrent::new();
+    // What the body holds of this thread's, lent to the process (C512).
+    let lent = crate::obj::roots::lend(&body);
     std::thread::Builder::new()
         .stack_size(STACK)
         .spawn(move || {
-            let _beside = beside;
+            lent.adopt();
             counted(false);
             GROUP.with(|g| g.set(Some(group)));
             crate::obj::roots::thread_locals(group_words);
@@ -589,6 +601,25 @@ fn branch<B>(
     caught(g)
 }
 
+/// A `par` branch on a thread of its own (C512): lent what its closure
+/// holds of its maker's; as it ends, what it reaches of others' given to
+/// its maker's list, and its pages to its maker (`Parcel`), adopted at
+/// the join, so that what the branch's value holds is the maker's.
+fn branch_beside<B>(
+    program: bool,
+    group: Option<&'static Group>,
+    lent: crate::obj::roots::Lent,
+    heir: Option<crate::obj::roots::Heir>,
+    g: impl FnOnce() -> B,
+) -> (std::thread::Result<B>, crate::obj::space::Parcel) {
+    lent.adopt();
+    let r = branch(program, group, g);
+    if let Some(h) = &heir {
+        h.inherit();
+    }
+    (r, crate::obj::space::hand_over())
+}
+
 /// `f`'s value, or its failure, which is its group's at once, so that the
 /// rest of the group stops waiting.
 fn caught<A>(f: impl FnOnce() -> A) -> std::thread::Result<A> {
@@ -606,16 +637,21 @@ fn caught<A>(f: impl FnOnce() -> A) -> std::thread::Result<A> {
 pub fn par2<A, B: Send>(f: impl FnOnce() -> A, g: impl FnOnce() -> B + Send) -> (A, B) {
     let program = program();
     let group = group();
-    // No thread collects while the branch runs (`obj::space`, C511).
-    let _beside = crate::obj::space::Concurrent::new();
+    let lent = crate::obj::roots::lend(&g);
+    let heir = crate::obj::roots::heir();
     std::thread::scope(|scope| {
         lock().running += 1;
         let other = std::thread::Builder::new()
             .stack_size(STACK)
-            .spawn_scoped(scope, move || branch(program, group, g))
+            .spawn_scoped(scope, move || branch_beside(program, group, lent, heir, g))
             .unwrap_or_else(|e| crate::fail(&format!("par: no thread: {e}")));
         let a = caught(f);
-        joined(a, || other.join())
+        joined(a, || {
+            other.join().map(|(r, parcel)| {
+                crate::obj::space::adopt(parcel);
+                r
+            })
+        })
     })
 }
 
