@@ -9,6 +9,11 @@ cd "$(dirname "$0")/.."
 # collecting its own pages at once (the long loops left out: quadratic).
 KAYAK_GC_STRESS=7 cargo test --release --quiet -p kayak-rt --lib -- --skip a_long_ > /dev/null
 echo "gc-stress: kayak-rt's tests, a collection every 7 allocations"
+# And at every allocation, what is freed poisoned at once, the tests'
+# threads ending as the others collect, each one's pages then another's
+# (C513): a word to what moved, or was freed, read soon after.
+KAYAK_GC_STRESS=1 KAYAK_GC_POISON=1 cargo test --release --quiet -p kayak-rt --lib -- --skip a_long_ > /dev/null
+echo "gc-stress: kayak-rt's tests, a collection at every allocation, freed memory poisoned"
 # The corpus, every 97th; the two programs that run longest (400 s each
 # so), every 9973rd.
 big=made-generated-x86_64,made-frames-x86_64,made-generated-aarch64,made-frames-aarch64

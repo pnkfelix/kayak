@@ -123,6 +123,9 @@ impl Native for char {
 /// none tells pairs apart nor writes through one (C116).
 impl<T: Native + Clone + 'static + crate::Trace> Native for crate::List<T> {
     fn word(self) -> u64 {
+        // Values in a `Vec` of its own, which no root sees, across
+        // allocations.
+        let _held = crate::obj::space::NoCollect::new();
         let mut items = Vec::new();
         let mut at = self;
         while let Some(c) = at.pair() {
@@ -135,6 +138,9 @@ impl<T: Native + Clone + 'static + crate::Trace> Native for crate::List<T> {
             .fold(kayak_jit::layout::NULL, |l, x| kayak_jit::cons(x.word(), l))
     }
     fn of_word(w: u64) -> Self {
+        // Values in a `Vec` of its own, which no root sees, across
+        // allocations.
+        let _held = crate::obj::space::NoCollect::new();
         let mut items = Vec::new();
         let mut at = w;
         while let Some((car, cdr)) = kayak_jit::pair(at) {

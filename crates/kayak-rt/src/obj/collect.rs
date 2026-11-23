@@ -29,7 +29,12 @@
 //!   another's, the first on each path from the thread's own.
 //! - **The pages copied from** are given back (`space::end_collection`);
 //!   the string cursor, keyed by address, forgotten. A large object is
-//!   never moved, nor yet freed.
+//!   never moved, and freed once no collection of its thread's reaches it
+//!   (C513); so is what kayak-rt keeps (a continuation, a mailbox, an
+//!   eq table: `roots::kept_collected`), found where a word reaches it, a
+//!   root's ambiguous one or a plain word of an object (C508), as each
+//!   thread's list tells what it reaches of another's. An ended thread's
+//!   pages are the next collecting thread's (`space::adopt_orphans`).
 //!
 //! The mark is first and whole, the copy after it: a kept object reached
 //! late may pin what is reached early, and nothing is moved before every
@@ -106,11 +111,18 @@ pub(crate) fn collect() {
 #[inline(never)]
 fn collect_from(saved: &[usize; 12], from: usize) {
     space::begin_collection();
+    // What threads ended with no heir left (a process's pages), this
+    // thread's to collect from now.
+    space::adopt_orphans();
     let roots = super::roots::roots_from(saved, from);
     let view = View::new();
     let mine = space::my_pages();
     let mut m = Mark {
         view: &view,
+        kept: &roots.kept,
+        kept_reached: Set::default(),
+        kept_whole: Set::default(),
+        kept_work: Vec::new(),
         order: Vec::new(),
         others: Set::default(),
         read: Set::default(),
@@ -166,17 +178,23 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         others,
         pinned,
         report,
+        kept_reached,
         ..
     } = m;
     // What this thread reaches of others', for their collections; not
     // moved by this one, so told now.
     super::roots::reported(report.into_iter().collect(), roots.reach_from);
 
-    // From-space: this thread's pages that nothing pins.
+    // From-space: this thread's pages that nothing pins, but those adopted
+    // that a collection on another thread may still write.
+    let unsettled = space::unsettled();
     let from_pages: Vec<_> = mine
         .iter()
         .copied()
-        .filter(|&(c, p)| !pinned.contains(&space::page_key(c, p)))
+        .filter(|&(c, p)| {
+            let k = space::page_key(c, p);
+            !pinned.contains(&k) && !unsettled.contains(&k)
+        })
         .collect();
     for &(c, p) in &from_pages {
         c.set_from(p, true);
@@ -240,6 +258,9 @@ fn collect_from(saved: &[usize; 12], from: usize) {
             }
         });
     }
+    // This thread's large objects not reached, freed (once no collection
+    // running may read them).
+    space::free_large(|a| others.contains(&a));
     for &(c, p) in &mine {
         c.clear_marks(p);
     }
@@ -255,12 +276,20 @@ fn collect_from(saved: &[usize; 12], from: usize) {
     });
     if verbose() {
         let l = LAST.get();
+        let (kn, kb) = super::roots::kept_extent();
+        let (_, pages, large) = space::extent();
         eprintln!(
-            "kayak: collected: {} reached, {} moved, {} pages pinned, {} freed",
-            l.reached, l.moved, l.pinned_pages, l.freed_pages
+            "kayak: collected: {} reached, {} moved, {} pages pinned, {} freed; space {} pages, large {} B; kept {} objects, {} B",
+            l.reached, l.moved, l.pinned_pages, l.freed_pages, pages, large, kn, kb
         );
     }
     space::end_collection(&from_pages);
+    // What this thread keeps that no word reached (what was kept since
+    // the roots were read, left), freed once no collection running may
+    // scan it: after the collection, as a drop may allocate.
+    super::roots::retire_kept(|k| {
+        kept_reached.contains(&k) || roots.kept.find(k).is_none_or(|i| i.start != k || !i.mine)
+    });
     COLLECTIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 }
 
@@ -326,6 +355,13 @@ fn each_object(view: &View, start: usize, mut f: impl FnMut(&laid::Laid)) {
 /// pages pinned; and what of others' this thread reaches (`report`).
 struct Mark<'v> {
     view: &'v View,
+    /// What is kept that only a word to it keeps (C513): those reached,
+    /// those of this thread's reached pinning whole and not yet followed
+    /// as its own (as `whole`), and those to scan.
+    kept: &'v super::roots::KeptIndex,
+    kept_reached: Set<usize>,
+    kept_whole: Set<usize>,
+    kept_work: Vec<(super::roots::KeptAt, Way)>,
     order: Vec<usize>,
     others: Set<usize>,
     read: Set<usize>,
@@ -367,6 +403,33 @@ impl Mark<'_> {
             && let Some(b) = self.view.object_of((w & !7).wrapping_sub(8))
         {
             self.visit(b, true, way);
+        }
+        if a.is_none()
+            && let Some(k) = self.kept.find(w)
+        {
+            self.kept_visit(k, way);
+        }
+    }
+
+    /// The kept object `k`, reached (`way`): kept, told if another's and
+    /// reached from this thread's own, and scanned if this thread's and
+    /// not shared (a shared one's words every collection follows whole).
+    fn kept_visit(&mut self, k: super::roots::KeptAt, way: Way) {
+        if way == Way::Own && !k.mine {
+            self.report.insert(k.start);
+        }
+        if !k.mine || k.shared {
+            self.kept_reached.insert(k.start);
+            return;
+        }
+        if self.kept_reached.insert(k.start) {
+            if way == Way::Whole && self.noting {
+                self.kept_whole.insert(k.start);
+            }
+            self.kept_work.push((k, way));
+        } else if way == Way::Own && !self.kept_whole.is_empty() && self.kept_whole.remove(&k.start)
+        {
+            self.kept_work.push((k, Way::Own));
         }
     }
 
@@ -434,13 +497,37 @@ impl Mark<'_> {
     /// one a live thread's object holds; from this thread's own, what of
     /// others' it holds told.
     fn drain(&mut self) {
-        while let Some((a, way, whose)) = self.work.pop() {
+        loop {
+            if let Some((a, way, whose)) = self.work.pop() {
+                self.follow(a, way, whose);
+            } else if let Some((k, way)) = self.kept_work.pop() {
+                let mut words = Vec::new();
+                k.words(&mut |w| words.push(w));
+                for w in words {
+                    self.ambiguous(w, way);
+                }
+            } else {
+                return;
+            }
+        }
+    }
+
+    /// The allocation at `a`'s fields followed: what they point to in the
+    /// space, and what is kept that a plain word of one is (C508).
+    fn follow(&mut self, a: usize, way: Way, whose: Whose) {
+        {
             let view = self.view;
+            let kept = self.kept;
             let mut found = Vec::new();
+            let mut found_kept = Vec::new();
             each_object(view, a, |o| {
                 for &f in o.fields {
                     if let Some(t) = target(view, f) {
                         found.push(t);
+                    } else if f.raw() & 7 == 0
+                        && let Some(k) = kept.find(f.raw())
+                    {
+                        found_kept.push(k);
                     }
                 }
             });
@@ -452,6 +539,9 @@ impl Mark<'_> {
             };
             for t in found {
                 self.visit(t, pin, next);
+            }
+            for k in found_kept {
+                self.kept_visit(k, next);
             }
         }
     }
@@ -617,6 +707,107 @@ mod tests {
             sum(of_word(theirs)),
             30 * 99 * 100 / 2 + 1000 * 1999 * 2000 / 2
         );
+    }
+
+    #[test]
+    fn large_objects_not_reached_freed() {
+        // A large string held by the stack, kept as large garbage is made
+        // and freed around it.
+        let big = "ab".repeat(3 * crate::obj::space::PAGE_BYTES);
+        let held = std::hint::black_box(crate::str_of_parts(&[&big]));
+        for i in 0..40 {
+            let _ = std::hint::black_box(crate::str_of_parts(&[&big, &i.to_string()]));
+            if i % 8 == 0 {
+                super::collect();
+            }
+        }
+        super::collect();
+        // What is left: the string held, and perhaps one more a stale word
+        // pins.
+        assert!(
+            crate::obj::space::my_large_bytes() <= 2 * (big.len() + 64),
+            "{} bytes of large objects",
+            crate::obj::space::my_large_bytes()
+        );
+        assert_eq!(std::hint::black_box(held).as_str(), big);
+    }
+
+    #[test]
+    fn an_ended_threads_pages_adopted() {
+        // A thread makes garbage and a list, which it leaves in an I-cell,
+        // and ends: its pages are given to the next thread that collects,
+        // which frees those holding nothing and keeps the list.
+        let c = crate::process::make_icell::<crate::obj::HeapWord>();
+        let (pages, number) = std::thread::spawn(move || {
+            for _ in 0..20 {
+                let _ = std::hint::black_box(list(garbage()));
+            }
+            crate::process::icell_put_x(c, list(500).0);
+            (
+                crate::obj::space::my_page_words(),
+                crate::obj::space::my_number(),
+            )
+        })
+        .join()
+        .unwrap();
+        assert!(!pages.is_empty());
+        for _ in 0..3 {
+            let _ = std::hint::black_box(list(garbage()));
+            super::collect();
+        }
+        for p in pages {
+            assert_ne!(crate::obj::space::page_owner(p), number);
+        }
+        assert_eq!(
+            sum(of_word(crate::process::icell_get(c))),
+            1000 * 499 * 500 / 2
+        );
+    }
+
+    #[inline(never)]
+    fn marks_made(n: i64) -> i64 {
+        let key = crate::marks::make_continuation_mark_key::<i64>();
+        (0..n)
+            .map(|i| crate::marks::with_mark(key, i, || crate::marks::first_mark(key, -1)))
+            .sum()
+    }
+
+    /// `n` I-cells, each in a box, the boxes in a list: each I-cell held
+    /// by a plain word of the heap alone (C508).
+    #[inline(never)]
+    fn icells_in_boxes(n: i64) -> List<crate::Ref<crate::ICell<i64>>> {
+        (0..n).fold(nil(), |acc, i| {
+            let c = crate::process::make_icell::<i64>();
+            crate::process::icell_put_x(c, i);
+            heap_cons(heap_new(c), acc)
+        })
+    }
+
+    fn icells_sum(mut xs: List<crate::Ref<crate::ICell<i64>>>) -> i64 {
+        let mut s = 0;
+        while let Some(c) = xs.pair() {
+            s += crate::process::icell_get(c.car().get());
+            xs = c.cdr;
+        }
+        s
+    }
+
+    #[test]
+    fn kept_objects_no_word_reaches_freed() {
+        // Marks' values, each kept while its mark is pushed, then reached
+        // by no word: freed. I-cells the heap alone holds: kept, as their
+        // boxes move.
+        let bs = std::hint::black_box(icells_in_boxes(50));
+        let before = crate::obj::roots::my_kept();
+        assert_eq!(marks_made(300), 299 * 300 / 2);
+        for _ in 0..3 {
+            let _ = std::hint::black_box(list(garbage()));
+            super::collect();
+        }
+        let after = crate::obj::roots::my_kept();
+        assert!(after < before + 10, "{after} kept, {before} before");
+        assert!(after + 5 >= before, "{after} kept, {before} before");
+        assert_eq!(icells_sum(std::hint::black_box(bs)), 49 * 50 / 2);
     }
 
     #[inline(never)]

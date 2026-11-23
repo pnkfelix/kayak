@@ -130,14 +130,15 @@ impl<'r, T: Trace> Cons<'r, T> {
 /// `(listof T R)` in the heap (`ListAt`, `obj.rs`: one Fixpt word).
 pub type List<T> = ListAt<'static, T>;
 
-/// What kayak-rt keeps of its own (a continuation, a closure given to
-/// native code): a block never freed, its words roots (`obj::roots`), so
-/// it lives as long as anything wants, `'static` or a region's `'r`.
+/// What kayak-rt keeps of its own that no root would show (a closure given
+/// to native code): a block never freed, its words roots (`obj::roots`),
+/// so it lives as long as anything wants, `'static` or a region's `'r`.
+/// What a root shows is `leak_collected`'s, freed once no word reaches it.
 #[inline]
 pub fn leak<'a, T: 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());
     let r: &'a T = Box::leak(Box::new(v));
-    // Kept for the run: scanned when a word reaches it (`obj::roots`).
+    // Kept for the run, a root (`obj::roots`).
     obj::roots::kept(std::ptr::from_ref(r).addr(), std::mem::size_of::<T>());
     // An opaque block, for a census (C480): its size alone.
     #[cfg(feature = "heap-stats")]
@@ -146,15 +147,23 @@ pub fn leak<'a, T: 'a>(v: T) -> &'a T {
 }
 
 /// A KFX value allocated, as a handle (C478): a module's state (a pair's
-/// and a cell's are the space's, C510); what is kayak-rt's own (a
-/// continuation, a mailbox, a closure, so far) by `leak`, a reference.
+/// and a cell's are the space's, C510), kept while a word reaches it
+/// (C513).
 #[inline]
 pub fn alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
+    Handle::made(leak_collected(v))
+}
+
+/// `v` kept while a word reaches it (`obj::roots`, C513), scanned by its
+/// bytes: kayak-rt's own (a continuation, a mark's value, an escape's
+/// payload), and a module's state.
+pub(crate) fn leak_collected<'a, T: 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());
     let r: &'a T = Box::leak(Box::new(v));
-    // Kept for the run: scanned when a word reaches it (`obj::roots`).
-    obj::roots::kept(std::ptr::from_ref(r).addr(), std::mem::size_of::<T>());
-    Handle::made(r)
+    obj::roots::kept_collected(r);
+    #[cfg(feature = "heap-stats")]
+    census::opaque(std::ptr::from_ref(r) as usize, std::mem::size_of::<T>());
+    r
 }
 
 /// `v` in the heap's space, whatever its lifetimes (a pair, a cell): of
@@ -165,8 +174,8 @@ fn space_alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
     Handle::made(obj::space::put(v))
 }
 
-/// `v` kept for the run, scanned as its type says when a word reaches it
-/// (`obj::roots`): kayak-rt's own (a mailbox, an I-cell).
+/// `v` kept while a word reaches it, scanned as its type says
+/// (`obj::roots`, C513): kayak-rt's own (an eq table).
 pub(crate) fn leak_scanned<'a, T: obj::roots::Scanned + 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());
     let r: &'a T = Box::leak(Box::new(v));
@@ -176,8 +185,8 @@ pub(crate) fn leak_scanned<'a, T: obj::roots::Scanned + 'a>(v: T) -> &'a T {
     r
 }
 
-/// `v` kept for the run as `leak_scanned` keeps it, read by other threads
-/// (a mailbox, an I-cell): what it holds every collection pins whole
+/// `v` kept as `leak_scanned` keeps it, read by other threads (a mailbox,
+/// an I-cell, a group): what it holds every collection pins whole
 /// (`obj::roots::kept_shared`, C512).
 pub(crate) fn leak_shared<'a, T: obj::roots::Scanned + 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());

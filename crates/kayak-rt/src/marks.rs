@@ -139,7 +139,7 @@ impl<A> Thunk<A> for crate::Proc0s<'_, A> {
 
 /// `(with-mark key v body)`: `body` run with `v` the newest mark of `key`.
 pub fn with_mark<T: 'static, A>(key: MarkKey<T>, v: T, body: impl Thunk<A>) -> A {
-    let _pushed = Pushed::new(key.id, crate::leak(v));
+    let _pushed = Pushed::new(key.id, crate::leak_collected(v));
     body.run()
 }
 
@@ -166,7 +166,7 @@ pub fn with_mark_async<T: 'static, A: 'static>(
 ) -> crate::suspend::Body<A> {
     crate::obj::roots::pinned(Marked {
         key: key.id,
-        value: crate::leak(v),
+        value: crate::leak_collected(v),
         body: crate::obj::roots::pinned(body.run()),
     })
 }

@@ -197,8 +197,11 @@ where it was seen and what it would take.
     Since C511 kayak-rt's own code (kfx's, kc's compiler) is collected
     too: a thread's pages at a time, stopping that thread alone; since
     C512 as the other threads run, what they may reach of its own pinned
-    whole (each thread's list of what it reaches of others'). Step 5
-    measures it on kc before this design comes to the user.
+    whole (each thread's list of what it reaches of others'); since
+    C513 an ended thread's pages, large objects and what kayak-rt keeps
+    freed too (kc building `expander-facts.fx` peaked at 31.8 GB, large
+    objects never freed; now 1.97 GB). Step 5 measures it on kc before
+    this design comes to the user.
 
 17. **A union's member narrowed by its kind, not its Rust type (C506).**
     With `Value` one Fixpt word, a union narrowed to a member (`unbox_other`,

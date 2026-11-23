@@ -12,7 +12,13 @@
 //! Allocation is the safepoint (C511): where a page is full, or at every
 //! allocation under `KAYAK_GC_STRESS`, the thread's pages may be collected
 //! (`obj::collect`), and the pages it frees are taken again before a chunk
-//! is. A large object is never moved, nor freed yet.
+//! is. A large object is never moved; one no collection of its thread's
+//! reached is freed (C513), once every collection running as it was found
+//! so has ended (`Epochs`: one may hold it in its view, from a stale
+//! word). A thread that ends gives its pages and large objects to its
+//! heir (a `par` branch's maker, C512), or else to whichever thread
+//! collects next (`ORPHANS`), which copies from them once every collection
+//! that may have seen them an ended thread's, to write, has ended.
 
 use std::cell::{Cell, RefCell};
 use std::sync::Mutex;
@@ -92,6 +98,19 @@ struct Bump {
     held: Cell<usize>,
     /// Allocations under stress, counted.
     ticks: Cell<u64>,
+    /// The thread's number, noted as it takes its first page or large
+    /// object (its number's thread local may be gone as the thread ends).
+    me: Cell<u64>,
+    /// Pages the thread's large objects would fill, kept at its last
+    /// collection or made or adopted since: counted toward the next.
+    large_pages: Cell<usize>,
+    /// The number of the collection running on this thread
+    /// (`Epochs`).
+    epoch: Cell<u64>,
+    /// Pages adopted (an ended thread's) that no collection copies from
+    /// until every collection running when they were adopted has ended:
+    /// one of those may have seen them an ended thread's, to write.
+    probation: RefCell<Vec<((usize, usize), u64)>>,
 }
 
 thread_local! {
@@ -106,8 +125,39 @@ thread_local! {
             due: Cell::new(0),
             held: Cell::new(0),
             ticks: Cell::new(0),
+            me: Cell::new(0),
+            large_pages: Cell::new(0),
+            epoch: Cell::new(0),
+            probation: RefCell::new(Vec::new()),
         }
     };
+    /// Touched as the thread takes its first page or large object, so that
+    /// as it ends what it has is given to whichever thread collects next.
+    static ENDER: Ender = const { Ender };
+}
+
+/// As its thread ends: its pages and large objects orphans (`ORPHANS`).
+struct Ender;
+
+impl Drop for Ender {
+    fn drop(&mut self) {
+        let p = hand_over();
+        if !p.pages.is_empty() || p.large > 0 {
+            ORPHANS.lock().unwrap_or_else(|e| e.into_inner()).push(p);
+        }
+    }
+}
+
+/// The pages and large objects of threads ended with no heir (a
+/// process's), until a collection adopts them (`adopt_orphans`).
+static ORPHANS: Mutex<Vec<Parcel>> = Mutex::new(Vec::new());
+
+/// The thread's number, noted in its `Bump`, and its end awaited.
+fn note_me(b: &Bump) {
+    if b.me.get() == 0 {
+        b.me.set(thread_number());
+        let _ = ENDER.try_with(|_| ());
+    }
 }
 
 /// The words of a new object of `w` words, zeroed, its first noted an
@@ -313,7 +363,7 @@ fn refill(b: &Bump, w: usize) -> *mut u64 {
         }
     }
     if w * 8 > LARGE_BYTES {
-        return large(w);
+        return large(b, w);
     }
     let at = b.at.get();
     let room = (b.limit.get().addr() - at.addr()) / 8;
@@ -358,7 +408,8 @@ fn take_page(b: &Bump) {
         // SAFETY: the page's words, now this thread's alone.
         unsafe { start.write_bytes(0, PAGE_WORDS) };
     }
-    chunk.owners[page].store(thread_number(), Ordering::Relaxed);
+    note_me(b);
+    chunk.owners[page].store(b.me.get(), Ordering::Relaxed);
     b.pages.borrow_mut().push((chunk, page));
     b.since.set(b.since.get() + 1);
     b.chunk.set(Some(chunk));
@@ -391,11 +442,21 @@ fn new_chunk() -> &'static Chunk {
     }))
 }
 
-/// An object of `w` words, a block of its own, zeroed.
-fn large(w: usize) -> *mut u64 {
-    let layout = std::alloc::Layout::array::<u64>(w)
+/// The pages `w` words would fill.
+fn pages_of(w: usize) -> usize {
+    (8 * w).div_ceil(PAGE_BYTES)
+}
+
+fn large_layout(w: usize) -> std::alloc::Layout {
+    std::alloc::Layout::array::<u64>(w)
         .and_then(|l| l.align_to(PAGE_BYTES))
-        .expect("a large object");
+        .expect("a large object")
+}
+
+/// An object of `w` words, a block of its own, zeroed: counted as the
+/// pages it would fill, toward the next collection.
+fn large(b: &Bump, w: usize) -> *mut u64 {
+    let layout = large_layout(w);
     // SAFETY: a layout of nonzero size (`w` past a page's quarter).
     let p = unsafe { std::alloc::alloc_zeroed(layout) }.cast::<u64>();
     if p.is_null() {
@@ -403,9 +464,12 @@ fn large(w: usize) -> *mut u64 {
     }
     // Written again by a collection, by its address (`word_mut`).
     let _ = p.expose_provenance();
+    note_me(b);
+    b.since.set(b.since.get() + pages_of(w));
+    b.large_pages.set(b.large_pages.get() + pages_of(w));
     let mut large = LARGE.lock().unwrap_or_else(|e| e.into_inner());
     let i = large.partition_point(|&(q, _, _)| q < p.addr());
-    large.insert(i, (p.addr(), w, thread_number()));
+    large.insert(i, (p.addr(), w, b.me.get()));
     p
 }
 
@@ -466,7 +530,6 @@ fn large_of(large: &[(usize, usize, u64)], addr: usize) -> Option<(usize, usize,
 
 /// What the space holds: its chunks' bytes, the pages given, the large
 /// objects' bytes.
-#[cfg_attr(not(feature = "heap-stats"), allow(dead_code))]
 pub(crate) fn extent() -> (usize, usize, usize) {
     let pool = POOL.lock().unwrap_or_else(|e| e.into_inner());
     let pages = pool.chunks.len().saturating_sub(1) * CHUNK_PAGES
@@ -502,7 +565,8 @@ pub(crate) struct View {
 pub(crate) enum Whose {
     /// This thread's.
     Mine,
-    /// A thread's that has ended: read and written, never moved.
+    /// A thread's that has ended: read and written, never moved, till a
+    /// thread adopts it (`adopt`, `adopt_orphans`), its own then.
     Dead,
     /// A live thread's: never written, and read only where it crossed to
     /// this thread, which no thread writes (C512).
@@ -625,7 +689,9 @@ pub(crate) fn my_pages() -> Vec<(&'static Chunk, usize)> {
 /// A collection's start: no page bumped into until the next allocation
 /// takes one, and none started while it runs.
 pub(crate) fn begin_collection() {
+    let n = Epochs::begin();
     BUMP.with(|b| {
+        b.epoch.set(n);
         b.held.set(b.held.get() + 1);
         b.at.set(std::ptr::null_mut());
         b.end.set(std::ptr::null_mut());
@@ -652,18 +718,23 @@ pub(crate) fn end_collection(freed: &[(&'static Chunk, usize)]) {
         let mut pages = b.pages.borrow_mut();
         pages.retain(|&(c, p)| !keys.contains(&page_key(c, p)));
         // The heap may grow to three times what was kept before the next.
-        b.due.set(2 * pages.len());
+        b.due.set(2 * (pages.len() + b.large_pages.get()));
         b.since.set(0);
         b.held.set(b.held.get() - 1);
+        Epochs::end(b.epoch.get());
     });
+    free_retired();
 }
 
 /// A thread's pages and large objects, given to another as the thread
-/// ends (a `par` branch's to its maker at the join, C512): what the
-/// branch's value holds, the maker's to collect.
+/// ends: a `par` branch's to its maker at the join (C512), what the
+/// branch's value holds, the maker's to collect; any other's to whichever
+/// thread collects next (`ORPHANS`).
 pub(crate) struct Parcel {
     pages: Vec<(&'static Chunk, usize)>,
     from: u64,
+    /// The pages its large objects would fill.
+    large: usize,
 }
 
 /// This thread's pages, given up as it ends: none bumped into again (a
@@ -676,19 +747,30 @@ pub(crate) fn hand_over() -> Parcel {
         b.limit.set(std::ptr::null_mut());
         b.chunk.set(None);
         b.since.set(0);
+        b.probation.borrow_mut().clear();
         Parcel {
             pages: std::mem::take(&mut *b.pages.borrow_mut()),
-            from: thread_number(),
+            from: b.me.get(),
+            large: b.large_pages.replace(0),
         }
     })
 }
 
 /// `p`'s pages and large objects, this thread's now, collected with its
 /// own; counted as taken, so that a collection comes as soon as if it had
-/// made them. The thread that gave them has ended (it was joined), so no
-/// collection of its runs.
+/// made them. The thread that gave them has ended, so no collection of
+/// its runs; one running on another thread may have seen them an ended
+/// thread's, to write where they point to what it moves, so none of this
+/// thread's copies from them until every one running now has ended
+/// (`unsettled`).
 pub(crate) fn adopt(p: Parcel) {
-    let me = thread_number();
+    if p.from == 0 {
+        return;
+    }
+    let me = BUMP.with(|b| {
+        note_me(b);
+        b.me.get()
+    });
     for &(c, page) in &p.pages {
         c.owners[page].store(me, Ordering::Relaxed);
     }
@@ -697,10 +779,182 @@ pub(crate) fn adopt(p: Parcel) {
             l.2 = me;
         }
     }
+    let stamp = Epochs::lock().next;
     BUMP.with(|b| {
-        b.since.set(b.since.get() + p.pages.len());
+        b.since.set(b.since.get() + p.pages.len() + p.large);
+        b.large_pages.set(b.large_pages.get() + p.large);
+        b.probation
+            .borrow_mut()
+            .extend(p.pages.iter().map(|&(c, page)| (page_key(c, page), stamp)));
         b.pages.borrow_mut().extend(p.pages);
     });
+}
+
+/// The orphans whose threads have ended, this thread's (a collection's
+/// first act).
+pub(crate) fn adopt_orphans() {
+    let ready: Vec<Parcel> = {
+        let mut o = ORPHANS.lock().unwrap_or_else(|e| e.into_inner());
+        if o.is_empty() {
+            return;
+        }
+        let dead = DEAD.lock().unwrap_or_else(|e| e.into_inner());
+        let (ready, wait) = std::mem::take(&mut *o)
+            .into_iter()
+            .partition(|p| dead.contains(&p.from));
+        *o = wait;
+        ready
+    };
+    for p in ready {
+        adopt(p);
+    }
+}
+
+/// The thread's adopted pages a collection may not copy from yet: some
+/// collection running when they were adopted runs still.
+pub(crate) fn unsettled() -> std::collections::HashSet<(usize, usize)> {
+    BUMP.with(|b| {
+        let mut p = b.probation.borrow_mut();
+        if p.is_empty() {
+            return std::collections::HashSet::new();
+        }
+        let e = Epochs::lock();
+        p.retain(|&(_, stamp)| !e.quiesced(stamp, b.epoch.get()));
+        p.iter().map(|&(k, _)| k).collect()
+    })
+}
+
+/// The collections running, each by its number, given as it begins: what
+/// another thread frees or adopts as they run, one of them may have seen
+/// as it was (in its `View`), so it is freed, or copied from, once every
+/// one that began before has ended.
+struct Epochs {
+    next: u64,
+    running: Vec<u64>,
+}
+
+static EPOCHS: Mutex<Epochs> = Mutex::new(Epochs {
+    next: 1,
+    running: Vec::new(),
+});
+
+impl Epochs {
+    fn lock() -> std::sync::MutexGuard<'static, Epochs> {
+        EPOCHS.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn begin() -> u64 {
+        let mut e = Epochs::lock();
+        let n = e.next;
+        e.next += 1;
+        e.running.push(n);
+        n
+    }
+
+    fn end(n: u64) {
+        let mut e = Epochs::lock();
+        if let Some(i) = e.running.iter().position(|&k| k == n) {
+            e.running.swap_remove(i);
+        }
+    }
+
+    /// Whether every collection running but `except` began at `stamp` or
+    /// after (a stamp is `next` when taken).
+    fn quiesced(&self, stamp: u64, except: u64) -> bool {
+        self.running.iter().all(|&k| k == except || k >= stamp)
+    }
+}
+
+/// A stamp: what is retired now is freed once `quiesced` says.
+pub(crate) fn stamp() -> u64 {
+    Epochs::lock().next
+}
+
+/// Whether every collection running but this thread's began at `stamp`
+/// or after.
+pub(crate) fn quiesced(stamp: u64) -> bool {
+    let me = BUMP.with(|b| if b.held.get() > 0 { b.epoch.get() } else { 0 });
+    Epochs::lock().quiesced(stamp, me)
+}
+
+/// Whether freed memory is poisoned (under stress, or
+/// `KAYAK_GC_POISON`).
+pub(crate) fn poisoning() -> bool {
+    stress() > 0 || poison()
+}
+
+/// Large objects no collection reached, out of `LARGE`, each with the
+/// stamp of when: freed once every collection that began before has ended.
+static RETIRED: Mutex<Vec<(usize, usize, u64)>> = Mutex::new(Vec::new());
+
+/// This thread's large objects a collection did not reach (`reached`
+/// says), retired: no view taken from now has them. A collection running
+/// on another thread may have one in its view, and read it from a stale
+/// word, so it is freed once every such collection has ended
+/// (`free_retired`).
+pub(crate) fn free_large(reached: impl Fn(usize) -> bool) {
+    BUMP.with(|b| {
+        let me = b.me.get();
+        if me == 0 {
+            return;
+        }
+        let mut dead = Vec::new();
+        let mut kept = 0;
+        LARGE
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .retain(|&(p, w, o)| {
+                if o != me {
+                    true
+                } else if reached(p) {
+                    kept += pages_of(w);
+                    true
+                } else {
+                    dead.push((p, w));
+                    false
+                }
+            });
+        b.large_pages.set(kept);
+        if !dead.is_empty() {
+            let stamp = Epochs::lock().next;
+            RETIRED
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .extend(dead.into_iter().map(|(p, w)| (p, w, stamp)));
+        }
+    });
+}
+
+/// The large objects retired before every collection running now began,
+/// freed (poisoned first, under stress or `KAYAK_GC_POISON`).
+fn free_retired() {
+    let ready: Vec<(usize, usize, u64)> = {
+        let mut r = RETIRED.lock().unwrap_or_else(|e| e.into_inner());
+        if r.is_empty() {
+            return;
+        }
+        let e = Epochs::lock();
+        let (ready, wait) = std::mem::take(&mut *r)
+            .into_iter()
+            .partition(|&(_, _, stamp)| e.quiesced(stamp, 0));
+        *r = wait;
+        ready
+    };
+    let poison = stress() > 0 || poison();
+    for (p, w, _) in ready {
+        let at = std::ptr::with_exposed_provenance_mut::<u64>(p);
+        // SAFETY: a large object `large` made, of `w` words, which no
+        // thread reaches (no collection did) and no collection's view
+        // has; freed once, as it left `LARGE` once.
+        unsafe {
+            if poison {
+                for k in 0..w {
+                    at.add(k).write(0xdead_dead_dead_3ff6);
+                }
+            }
+            std::alloc::dealloc(at.cast(), large_layout(w));
+        }
+    }
 }
 
 /// The word at `addr` of the space, to write (a collection's).
@@ -802,6 +1056,42 @@ fn poison() -> bool {
 fn min_due() -> usize {
     static N: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
     *N.get_or_init(|| env_number("KAYAK_GC_PAGES").map_or((64 << 20) / PAGE_BYTES, |n| n as usize))
+}
+
+/// The bytes of this thread's large objects (a test's).
+#[cfg(test)]
+pub(crate) fn my_large_bytes() -> usize {
+    let me = BUMP.with(|b| b.me.get());
+    LARGE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .filter(|l| l.2 == me)
+        .map(|l| 8 * l.1)
+        .sum()
+}
+
+/// The thread a page is given to, by a word of it; 0, none (a test's).
+#[cfg(test)]
+pub(crate) fn page_owner(addr: usize) -> u64 {
+    let pool = POOL.lock().unwrap_or_else(|e| e.into_inner());
+    let c = chunk_of(&pool.chunks, addr).expect("a word of a page");
+    c.owners[(addr - c.base.addr()) / PAGE_BYTES].load(Ordering::Relaxed)
+}
+
+/// The thread's pages, a word of each (a test's).
+#[cfg(test)]
+pub(crate) fn my_page_words() -> Vec<usize> {
+    my_pages()
+        .iter()
+        .map(|&(c, p)| c.page_start(p).addr())
+        .collect()
+}
+
+/// This thread's number, as its pages say (a test's).
+#[cfg(test)]
+pub(crate) fn my_number() -> u64 {
+    BUMP.with(|b| b.me.get())
 }
 
 #[cfg(test)]

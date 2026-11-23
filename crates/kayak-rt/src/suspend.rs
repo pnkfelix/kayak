@@ -125,9 +125,9 @@ where
     R: 'static,
     H: 'static,
 {
-    let given: &'static Cell<Option<V>> = crate::leak(Cell::new(None));
+    let given: &'static Cell<Option<V>> = crate::leak_collected(Cell::new(None));
     let make: Make<R, H> = Box::new(move |body| {
-        let k: &'static Cont<V, R> = crate::leak(Cont {
+        let k: &'static Cont<V, R> = crate::leak_collected(Cont {
             body: RefCell::new(Some(body)),
             given,
         });

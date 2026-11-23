@@ -16222,3 +16222,77 @@ never meets this.
   scalable way is §55 item 2's shared heap, which needs the emitter's
   closures as heap objects first.
 - **The full check**: all passed in 539.2 s, its first run; nextest 5640.
+
+## C513. An ended thread's pages, large objects and kept objects freed (2026-11-23)
+
+The user, of C512's gaps: "Address these: pages of ended processes are
+never given back, and large objects and kept objects are never freed".
+Measured first: kc building `tests/kc/loads/expander-facts.fx` peaked at
+31.8 GB, of which large objects were 27.4 GB, and kept none; kfx making
+itself kept 42 objects (840 bytes), its large objects 6.8 MB. Fixpt's
+reaps are the precedent (`fixpt-heap`'s `regions.rs`): a large object
+marked where it is, not copied, given back if not reached; chunks freed
+held in quarantine till a collection finds no word into them.
+
+- **A grace period** (`space::Epochs`): each collection numbered as it
+  begins. What one thread frees or adopts as others run, one of those
+  may have in its view (a stale word, an ended thread's object to
+  write), so it waits till every collection that began before has ended.
+- **Large objects** (`space::free_large`): a thread's not reached by its
+  collection leave `LARGE` at once and are freed after the grace
+  (`free_retired`; poisoned first under stress or `KAYAK_GC_POISON`).
+  Each counts toward the next collection as the pages it would fill
+  (`Bump::large_pages`), as a page does: before, a program of large
+  objects alone never collected.
+- **An ended thread's pages** (`space::Ender`, `ORPHANS`,
+  `adopt_orphans`): as a thread ends with no heir (a process's, or any
+  other but a `par` branch, whose maker adopts at the join, C512), its
+  pages and large objects are orphans; the next collection on any thread
+  adopts those whose thread has ended (`DEAD`), and copies from them
+  once the grace has passed (`unsettled`): a collection running as they
+  were adopted may have seen them an ended thread's, to write. What they
+  hold that others reach is reached by their lists, constants and shared
+  kept objects, as before.
+- **Kept objects** (`roots::kept_collected`, `kept_scanned`,
+  `kept_shared`): no longer roots for the run, but found where a word
+  reaches them (an ambiguous root's, a kept object's, or a plain word of
+  an object, C508's references to kayak-rt's own), scanned then, and
+  freed after the grace by their own thread (`retire_kept`, after the
+  collection, as a drop may allocate). Another thread's, reached from a
+  thread's own, is told in its list (`Reach`), as an object is. A shared
+  one (mailbox, I-cell, group) is still scanned whole by every
+  collection (C512's safety kept), though only a word to it keeps it.
+  An ended thread's are roots till a thread takes its registry. Those of
+  them that are per operation now freed: continuations (`Cont`, its
+  cell), marks' values, escapes' payloads, eq tables, mailboxes,
+  I-cells, groups, module states (`alloc`). Left roots for the run: what
+  `leak` keeps, a procedure given to native code (no root shows it). A
+  process's mailbox and group are lent to it with its body
+  (`Lent::and`), as it holds them before it runs.
+- **Found by the new stress step, not of this change** (C511's era):
+  `value::datum_list_to_vector`, `list`, `boxed_list`, `spliced` and
+  `native.rs`'s list conversions held values in a `Vec` of their own
+  across allocations; at every allocation one moved under the `Vec`
+  (`d.show` read a page freed, poisoned). Each now holds `NoCollect`,
+  as `append` does. Seen only with kayak-rt's tests at every allocation,
+  poisoned, all in one process (adoption changing what moves when); rr's
+  chaos mode and a page history found it.
+- **Tests**: large objects not reached freed (a large string held kept
+  as 40 others are freed); an ended thread's pages adopted (none left
+  its, its list in an I-cell summed after); kept objects no word reaches
+  freed (300 marks' values gone, 50 I-cells only the heap's boxes hold
+  kept, by plain words). Each fails with its mechanism off (the I-cells'
+  under poison). `gc-stress.sh` adds kayak-rt's tests at every
+  allocation, poisoned (about 7 s).
+- **Measured**: kc building `expander-facts.fx` 89 s, 1.97 GB at its
+  peak (C512's build, the same machine today: 114 s, 31.8 GB), its answer
+  the same; 502 collections, not 186 (large objects count now). kfx
+  making itself 5.26 s against C512's 5.44 s (five runs each,
+  interleaved), 377 MB against 375 MB, its output the same; fewer large
+  objects in each collection's view, likely.
+- **Debts** (TODO §55 item 14): `LARGE` one sorted list under one lock,
+  copied into every view and walked by every collection's free; the
+  kept index rebuilt from every registry at each collection; orphans
+  adopted by whichever thread collects first, which does their work
+  alone.
+- **The full check**: all passed in 545.9 s, its first run; nextest 5643.

@@ -8,10 +8,14 @@
 //! - blocks a thread owns while they live, outside the space: a region's
 //!   arena's (`arena.rs`), a future's box (`pinned`, C493's, which Rust
 //!   lays out as it does a stack);
-//! - what kayak-rt keeps for the run of its own (a mailbox, an I-cell, a
-//!   continuation, a module's state, a mark's value): each scanned when a
-//!   word reaches it, as an object is traced, by its bytes or by how its
-//!   type says (a mailbox its messages);
+//! - what kayak-rt keeps of its own, outside the space, given by
+//!   `Box::leak` (a mailbox, an I-cell, a continuation, a module's state, a
+//!   mark's value, an eq table): a root for the run only if no root would
+//!   show it (a procedure given to native code); else scanned where a word
+//!   reaches it, as an object is traced, by its bytes or by how its type
+//!   says (a mailbox its messages), and freed once none does (C513). One
+//!   shared (a mailbox, an I-cell, a group) is scanned whole by every
+//!   collection still (C512), though only a word to it keeps it;
 //! - what a thread keeps in its thread locals (the marks), told by a
 //!   function of its own.
 //!
@@ -66,8 +70,13 @@ struct Inner {
     /// Slots of blocks dropped on another thread, with their lives: given
     /// back by the registry's own thread.
     freed: Vec<(usize, u64)>,
-    /// What is kept for the run: its first byte, bytes, how it is scanned.
+    /// What is kept: its first byte, bytes, how it is scanned and freed.
     kept: Vec<Kept>,
+    /// What was kept that no collection reached, out of `kept`, each with
+    /// the stamp of when (`space::stamp`): freed by the registry's thread
+    /// once every collection that began before has ended, as one may scan
+    /// it from a stale word.
+    retired: Vec<(Kept, u64)>,
     /// Functions telling the thread's thread locals' words.
     locals: Vec<Tell>,
 }
@@ -83,6 +92,30 @@ struct Kept {
     /// Read by other threads (a mailbox, an I-cell, a group's failure
     /// closure): what it holds every collection pins whole (C512).
     shared: bool,
+    /// How it is freed, once no word reaches it; `None`, never: it is a
+    /// root for the run (a procedure given to native code, which no root
+    /// shows).
+    free: Free,
+}
+
+/// A kept object's drop and free, by its first byte: its memory poisoned
+/// and kept, not given back, if asked (under stress), so that a word to
+/// it read after is seen at once.
+type Free = Option<unsafe fn(usize, bool)>;
+
+/// # Safety
+/// `at` is a `T` that `Box::leak` gave, which nothing reaches; freed once.
+unsafe fn free_boxed<T>(at: usize, poison: bool) {
+    let p = std::ptr::with_exposed_provenance_mut::<T>(at);
+    // SAFETY: the caller's.
+    unsafe {
+        if poison {
+            std::ptr::drop_in_place(p);
+            p.cast::<u8>().write_bytes(0xd5, std::mem::size_of::<T>());
+        } else {
+            drop(Box::from_raw(p));
+        }
+    }
 }
 
 /// How a kept object is scanned: its bytes, or by its type.
@@ -255,49 +288,60 @@ pub(crate) trait Scanned {
     fn scanned(&self, f: &mut dyn FnMut(usize));
 }
 
-/// The `len` bytes from `start`, kept for the run: scanned, word by word,
-/// when a word reaches them.
+/// The `len` bytes from `start`, kept for the run, a root: scanned, word
+/// by word, by each of its thread's collections (a procedure given to
+/// native code, which no root shows).
 pub(crate) fn kept(start: usize, len: usize) {
-    keep(start, len, None, false);
+    keep(start, len, None, false, None);
 }
 
-/// `r`, kept for the run: scanned as its type says when a word reaches it.
-pub(crate) fn kept_scanned<'a, T: Scanned + 'a>(r: &'a T) {
-    /// # Safety
-    /// `at` is a `T`'s address, kept for the run.
-    unsafe fn scan<T: Scanned>(at: usize, f: &mut dyn FnMut(usize)) {
-        // SAFETY: the caller's.
-        unsafe { &*(at as *const T) }.scanned(f);
-    }
+/// # Safety
+/// `at` is a `T`'s address, kept.
+unsafe fn scan_as<T: Scanned>(at: usize, f: &mut dyn FnMut(usize)) {
+    // SAFETY: the caller's.
+    unsafe { &*(at as *const T) }.scanned(f);
+}
+
+/// `r`, which `Box::leak` gave: scanned, word by word, when a word
+/// reaches it, and freed once none does (C513).
+pub(crate) fn kept_collected<'a, T: 'a>(r: &'a T) {
     keep(
         std::ptr::from_ref(r).addr(),
         std::mem::size_of::<T>(),
-        Some(scan::<T>),
+        None,
         false,
+        Some(free_boxed::<T>),
     );
 }
 
-/// `r`, kept for the run and read by other threads (a mailbox, an I-cell,
-/// a group): scanned as its type says, by every thread's collection, which
-/// pins whole what it holds (C512), as another thread may take it as it
-/// runs. Its scan locks what it reads, so a thread may scan it while
-/// another writes it.
-pub(crate) fn kept_shared<'a, T: Scanned + 'a>(r: &'a T) {
-    /// # Safety
-    /// `at` is a `T`'s address, kept for the run.
-    unsafe fn scan<T: Scanned>(at: usize, f: &mut dyn FnMut(usize)) {
-        // SAFETY: the caller's.
-        unsafe { &*(at as *const T) }.scanned(f);
-    }
+/// `r`, which `Box::leak` gave: scanned as its type says when a word
+/// reaches it, and freed once none does (an eq table).
+pub(crate) fn kept_scanned<'a, T: Scanned + 'a>(r: &'a T) {
     keep(
         std::ptr::from_ref(r).addr(),
         std::mem::size_of::<T>(),
-        Some(scan::<T>),
-        true,
+        Some(scan_as::<T>),
+        false,
+        Some(free_boxed::<T>),
     );
 }
 
-fn keep(start: usize, len: usize, scan: Scan, shared: bool) {
+/// `r`, which `Box::leak` gave, read by other threads (a mailbox, an
+/// I-cell, a group): scanned as its type says when a word reaches it, its
+/// words then followed whole (C512: another thread may take what it holds
+/// as it runs), and freed once no word does. Its scan locks what it reads,
+/// so a thread may scan it while another writes it.
+pub(crate) fn kept_shared<'a, T: Scanned + 'a>(r: &'a T) {
+    keep(
+        std::ptr::from_ref(r).addr(),
+        std::mem::size_of::<T>(),
+        Some(scan_as::<T>),
+        true,
+        Some(free_boxed::<T>),
+    );
+}
+
+fn keep(start: usize, len: usize, scan: Scan, shared: bool, free: Free) {
     if len == 0 {
         return;
     }
@@ -307,8 +351,133 @@ fn keep(start: usize, len: usize, scan: Scan, shared: bool) {
             len,
             scan,
             shared,
+            free,
         });
     }
+}
+
+/// What is kept that a collection reaches only by a word (`Kept::free`):
+/// this thread's, and a live thread's, by first byte, to find the one a
+/// word is in.
+#[derive(Default)]
+pub(super) struct KeptIndex {
+    at: Vec<KeptAt>,
+    /// The least first byte, and past the greatest last.
+    lo: usize,
+    hi: usize,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct KeptAt {
+    pub start: usize,
+    len: usize,
+    scan: Scan,
+    pub shared: bool,
+    /// This thread's: scanned when reached, and freed if not. Another
+    /// thread's is scanned only if shared (it locks what it reads), and
+    /// told in this thread's list (`Reach`) when reached from its own.
+    pub mine: bool,
+}
+
+impl KeptIndex {
+    fn made(mut at: Vec<KeptAt>) -> KeptIndex {
+        at.sort_unstable_by_key(|k| k.start);
+        let lo = at.first().map_or(0, |k| k.start);
+        let hi = at.iter().map(|k| k.start + k.len).max().unwrap_or(0);
+        KeptIndex { at, lo, hi }
+    }
+
+    /// The kept object `w` is a word of, if any.
+    #[inline]
+    pub(super) fn find(&self, w: usize) -> Option<KeptAt> {
+        if w < self.lo || w >= self.hi {
+            return None;
+        }
+        let i = self.at.partition_point(|k| k.start <= w);
+        (i > 0 && w < self.at[i - 1].start + self.at[i - 1].len).then(|| self.at[i - 1])
+    }
+}
+
+impl KeptAt {
+    /// Its words told.
+    pub(super) fn words(&self, f: &mut dyn FnMut(usize)) {
+        match self.scan {
+            // SAFETY: an object kept, of its bytes, not freed while a
+            // collection that began before it was retired runs.
+            None => unsafe { scan_words(self.start, self.len, f) },
+            // SAFETY: a `T` kept, as above.
+            Some(scan) => unsafe { scan(self.start, f) },
+        }
+    }
+}
+
+/// This thread's kept objects that its collection did not reach
+/// (`reached` says), retired; and those retired before every collection
+/// running now began, freed. A collection on another thread may scan one
+/// retired from a stale word in its view, so it waits.
+pub(super) fn retire_kept(reached: impl Fn(usize) -> bool) {
+    let Some(r) = mine() else { return };
+    let ready: Vec<Kept> = {
+        let mut i = r.lock();
+        if i.kept.is_empty() && i.retired.is_empty() {
+            return;
+        }
+        let stamp = super::space::stamp();
+        let mut dead = Vec::new();
+        i.kept.retain(|k| {
+            if k.free.is_none() || reached(k.start) {
+                true
+            } else {
+                dead.push((*k, stamp));
+                false
+            }
+        });
+        i.retired.extend(dead);
+        let (ready, wait): (Vec<_>, Vec<_>) = std::mem::take(&mut i.retired)
+            .into_iter()
+            .partition(|&(_, s)| super::space::quiesced(s));
+        i.retired = wait;
+        ready.into_iter().map(|(k, _)| k).collect()
+    };
+    if ready.is_empty() {
+        return;
+    }
+    // Their drops may allocate, or keep: no collection meanwhile, and the
+    // registry not locked.
+    let _held = super::space::NoCollect::new();
+    let poison = super::space::poisoning();
+    for k in ready {
+        if let Some(free) = k.free {
+            // SAFETY: a kept object `Box::leak` gave, which no collection
+            // reached and none running may scan; out of `kept`, so freed
+            // once.
+            unsafe { free(k.start, poison) };
+        }
+    }
+}
+
+/// This thread's kept objects freed once unreached, not yet retired (a
+/// test's).
+#[cfg(test)]
+pub(crate) fn my_kept() -> usize {
+    mine().map_or(0, |r| {
+        r.lock().kept.iter().filter(|k| k.free.is_some()).count()
+    })
+}
+
+/// What is kept, of every registry: its objects and their bytes.
+pub(crate) fn kept_extent() -> (usize, usize) {
+    REGISTRIES
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .fold((0, 0), |(n, b), r| {
+            let i = r.lock();
+            (
+                n + i.kept.len(),
+                b + i.kept.iter().map(|k| k.len).sum::<usize>(),
+            )
+        })
 }
 
 /// A function telling words the thread's thread locals hold (once for
@@ -407,6 +576,15 @@ pub(crate) fn lend<T: ?Sized>(v: &T) -> Lent {
 }
 
 impl Lent {
+    /// `v` lent as well (a process's mailbox, its group).
+    pub(crate) fn and<T: ?Sized>(self, v: &T) -> Lent {
+        {
+            let mut l = self.0.lock();
+            words_of_val(v, &mut |w| l.push(w));
+        }
+        self
+    }
+
     /// The list lent, this thread's own, now that it runs.
     pub(crate) fn adopt(self) {
         let _ = MY_REACH.try_with(|m| {
@@ -791,6 +969,8 @@ pub(super) struct Roots {
     pub words: Vec<usize>,
     pub constants: Vec<usize>,
     pub shared: Vec<usize>,
+    /// What is kept that is followed only where a word reaches it.
+    pub kept: KeptIndex,
     /// Where this thread's list ended as the collection began.
     pub reach_from: usize,
     /// Where in `words` each source's words end: the registers' and
@@ -828,11 +1008,30 @@ pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
     // hold to read it. Before the lists: a message taken from a mailbox is
     // in its taker's list before it leaves the mailbox (`taken`).
     let ended: Vec<&'static Registry> = FREE.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let mut index = Vec::new();
     for reg in REGISTRIES.lock().unwrap_or_else(|e| e.into_inner()).iter() {
         let ours = me.is_some_and(|m| std::ptr::eq(m, *reg));
-        let whole = ours || ended.iter().any(|e| std::ptr::eq(*e, *reg));
+        let ended = ended.iter().any(|e| std::ptr::eq(*e, *reg));
+        let whole = ours || ended;
         let i = reg.lock();
         for k in &i.kept {
+            // Freed once no word reaches it (C513): found by a word, and
+            // then scanned if this thread's and not shared. A shared one
+            // is scanned whole by every collection still (C512), what it
+            // holds pinned, though only a word to it keeps it; an ended
+            // thread's a root, till a thread takes its registry.
+            if k.free.is_some() {
+                index.push(KeptAt {
+                    start: k.start,
+                    len: k.len,
+                    scan: k.scan,
+                    shared: k.shared,
+                    mine: ours,
+                });
+                if !ended && !k.shared {
+                    continue;
+                }
+            }
             let out = if k.shared {
                 &mut shared
             } else if whole {
@@ -872,6 +1071,7 @@ pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
         words,
         constants,
         shared,
+        kept: KeptIndex::made(index),
         reach_from,
         ends,
     }

@@ -311,6 +311,8 @@ pub fn list<T: ToValue + crate::Trace + 'static>(xs: List<T>) -> Value {
     if T::VALUE_WORD {
         return Value::of_word(crate::Trace::store(xs));
     }
+    // Values in a `Vec` of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let mut items = Vec::new();
     let mut p = xs;
     while let Some(c) = p.pair() {
@@ -330,6 +332,8 @@ pub fn boxed_list<T: ToValue + crate::Trace>(xs: List<T>) -> List<Value> {
     if T::VALUE_WORD {
         return <List<Value> as crate::Trace>::load(crate::Trace::store(xs));
     }
+    // Values in a `Vec` of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let mut items = Vec::new();
     let mut p = xs;
     while let Some(c) = p.pair() {
@@ -350,6 +354,8 @@ pub fn cons<A: ToValue, B: ToValue>(a: A, b: B) -> Value {
 
 /// A quasiquote's `,@xs`: the list's elements, given, before `rest`.
 pub fn spliced<T: ToValue + crate::Trace>(xs: List<T>, rest: Value) -> Value {
+    // Values in a `Vec` of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let mut items = Vec::new();
     let mut p = xs;
     while let Some(c) = p.pair() {
@@ -401,6 +407,8 @@ pub fn unbox_list<T: crate::Trace + 'static>(v: Value) -> List<T> {
 
 /// `datum-list->vector`: a datum's list, its elements in a vector.
 pub fn datum_list_to_vector(d: Value) -> Value {
+    // Values in a `Vec` of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let mut v = Vec::new();
     let mut p = d;
     while let Some((a, rest)) = p.parts() {

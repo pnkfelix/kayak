@@ -563,8 +563,7 @@ fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + '
     let mb: Addr<M> = crate::leak_shared(MailboxBox {
         queue: Mutex::new(VecDeque::new()),
     });
-    let group: &'static Group = Box::leak(Box::new(group));
-    crate::obj::roots::kept_shared(group);
+    let group: &'static Group = crate::leak_shared(group);
     let program = program();
     {
         let mut g = lock();
@@ -572,7 +571,7 @@ fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + '
         g.running += 1;
     }
     // What the body holds of this thread's, lent to the process (C512).
-    let lent = crate::obj::roots::lend(&body);
+    let lent = crate::obj::roots::lend(&body).and(&(mb, group));
     std::thread::Builder::new()
         .stack_size(STACK)
         .spawn(move || {
