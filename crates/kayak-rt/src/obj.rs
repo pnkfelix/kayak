@@ -14,8 +14,10 @@
 //! The one place, with `sum.rs` and the census, where kayak-rt has
 //! `unsafe`: an object of a size known at run time, its bytes after its
 //! header, is none safe Rust allocates. Safe here: an object is made once,
-//! whole, and never written nor freed after (kayak-rt has no collector
-//! yet); its text is checked UTF-8 when made.
+//! whole, and its text never written after; it is moved or freed only by
+//! a collection (`obj::collect`, C511), which moves none that an ambiguous
+//! word (a `Str` on the stack) reaches, and frees none reached; its text is
+//! checked UTF-8 when made.
 
 #![allow(unsafe_code)]
 
@@ -152,6 +154,7 @@ macro_rules! str_lit {
     }};
 }
 
+pub(crate) mod collect;
 pub(crate) mod roots;
 pub(crate) mod space;
 
@@ -2217,6 +2220,75 @@ impl<T: crate::Trace> crate::Trace for RefAt<'_, T> {
     }
 }
 
+/// A knot (`letrec`'s, `knot`): a box of the space (Fixpt's, kind 10),
+/// its field the procedure's word once tied, fixnum 0 before (C511).
+pub struct Knot<'a, T: crate::Trace<Stored = HeapWord>>(RefAt<'a, T>);
+
+impl<T: crate::Trace<Stored = HeapWord>> Clone for Knot<'_, T> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: crate::Trace<Stored = HeapWord>> Copy for Knot<'_, T> {}
+
+// SAFETY: tied once, by the thread that made it, before any closure that
+// holds it is made, so before it may cross (C102); read only after.
+unsafe impl<T: crate::Trace<Stored = HeapWord> + Send + Sync> Send for Knot<'_, T> {}
+// SAFETY: as above.
+unsafe impl<T: crate::Trace<Stored = HeapWord> + Send + Sync> Sync for Knot<'_, T> {}
+
+impl<T: crate::Trace<Stored = HeapWord>> Knot<'_, T> {
+    #[inline]
+    pub fn get(&self) -> T {
+        if self.0.obj().cell.stored().raw() == 0 {
+            crate::fail("letrec: a procedure used before it is made")
+        }
+        self.0.get()
+    }
+
+    #[inline]
+    pub fn set(&self, v: T) {
+        if self.0.obj().cell.stored().raw() != 0 {
+            crate::fail("letrec: a procedure made twice")
+        }
+        self.0.set(v)
+    }
+}
+
+/// A knot: its box reached; held as its word.
+impl<T: crate::Trace<Stored = HeapWord>> crate::Trace for Knot<'_, T> {
+    #[inline]
+    fn trace<'a>(self, t: &mut crate::Tracer<'a>)
+    where
+        Self: 'a,
+    {
+        self.0.trace(t)
+    }
+    type Stored = HeapWord;
+    const VALUE_WORD: bool = true;
+    #[inline(always)]
+    fn store(self) -> HeapWord {
+        self.0.word()
+    }
+    #[inline(always)]
+    fn load(w: HeapWord) -> Self {
+        Knot(RefAt::load(w))
+    }
+}
+
+/// A knot, untied.
+#[inline]
+pub fn knot<'a, T: crate::Trace<Stored = HeapWord> + 'a>() -> Knot<'a, T> {
+    let o = space::put(RefObj {
+        header: layout::header(KIND_BOX, RefObj::<T>::TO_TRAILER, 0, false, false),
+        cell: crate::Slot::of_stored(HeapWord::fixnum(0)),
+        trailer: layout::trailer(RefObj::<T>::TO_TRAILER),
+    });
+    Knot(RefAt::of_obj(crate::Handle::made(o)))
+}
+
 // A reference as a union's member (C491): its box's word, kind 10 (C506).
 crate::word_member!([T: crate::Trace + 'static] RefAt<'static, T>; 10);
 
@@ -2572,6 +2644,9 @@ pub(crate) mod laid {
         #[allow(dead_code)]
         pub id: usize,
         pub fields: &'static [HeapWord],
+        /// Where its suffix starts, where an object's word points (0 for
+        /// a pair).
+        pub suffix: usize,
         pub end: usize,
     }
 
@@ -2595,6 +2670,7 @@ pub(crate) mod laid {
                     pair: true,
                     id: at.addr(),
                     fields: std::slice::from_raw_parts(at.cast::<HeapWord>(), 2),
+                    suffix: 0,
                     end: at.addr() + 16,
                 };
             }
@@ -2616,6 +2692,7 @@ pub(crate) mod laid {
                 pair: false,
                 id: main.addr(),
                 fields: std::slice::from_raw_parts(main.add(1).cast::<HeapWord>(), n),
+                suffix: main.addr() + 8 * (1 + fields + extra),
                 end: main.addr() + 8 * (1 + fields + extra + bytes.div_ceil(8)),
             }
         }

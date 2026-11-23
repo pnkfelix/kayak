@@ -16103,3 +16103,58 @@ too, 5.7 s to 6.6 s, which C509 had not been thought to touch.
   77 s (noisy: 69 to 80 s over these runs); dropped (the user: "Drop
   the inline(always)"). What would end it: TODO §54, step 3's cost.
 - **The full check**: all passed in 524.9 s, its first run; nextest 5636.
+
+## C511. A thread's pages collected, mostly copying (Bartlett's); a stress mode under the check (2026-11-22)
+
+The user: "Step 4" (TODO §54). Asked whether a thread collects alone or
+all threads stop together, with no answer, the plan's way taken: a
+thread's pages at a time (K8: no thread waits on another's pass).
+
+- **The collector** (`obj/collect.rs`, new). Its roots C509's: the
+  stack and spilled registers, owned blocks, thread locals and kept
+  objects, all ambiguous, each pinning the page it points into (and an
+  allocation whose first word a pointer just past another's names, that
+  one too); the constants' slots precise but whatever they reach pinned,
+  as code holds their objects' addresses. Marked by a bit per word
+  beside the object-start bits (C507), the rest of the thread's pages
+  from-space (a bit per page), each reached object there copied and its
+  first word a forwarding word (Fixpt's tag 111, as kcrt-core's), then
+  every reached object's fields updated through the layout (`laid`),
+  each word keeping its offset into its allocation. A live thread's
+  objects never read (C509's census read them, freed and poisoned
+  under a parallel stress run: a segfault, so its mark now skips them
+  too); an ended thread's read and updated, not moved.
+- **The safepoint is allocation**: `space::refill`, once the pages
+  taken since the last pass reach twice those kept after it (64 MB at
+  least). A chunk now aligned to its 2 MB and found by its number in a
+  hash map, so a word's page is a shift and a lookup.
+- **What it needed of the rest of kayak-rt.** `Knot`, a box kept per
+  knot (39,628 of them, all roots, 20,000 pages pinned), now an object
+  of the space, its cell untied while it holds fixnum 0. An eq table and
+  a procedure given to native code kept (`leak_scanned`, `leak`); a
+  capture on its way to its prompt a thread local's roots (`CAPTURE`);
+  a sealed bloblet's copy a root through its table; `Box::pin` of a
+  resumed continuation `pinned`. kayak-rt code holding values in a
+  `Vec` across an allocation (`append`, `list->array`, the reps) marked
+  `NoCollect`; a process's and a `par`'s threads `Concurrent`: no thread
+  collects while they run.
+- **Its stress mode** (`KAYAK_GC_STRESS=n`: a pass at every nth
+  allocation; `KAYAK_GC_POISON`, freed pages poisoned) under the check,
+  `scripts/gc-stress.sh`, a fifth job of `check.sh`: kayak-rt's tests at
+  7, the corpus at 97 (its longest two at 9973), kfx making itself at
+  300007, diffed against `boot/src/kfx`; about 70 s. Every pass at every
+  allocation is past nextest's 600 s for the corpus. Under it too, once:
+  the corpus whole at 97 (847 s), and kc's steps at 1000003 (17 min,
+  362 programs, none wrong). At 10007,
+  kc building `expander-facts.fx` ran 8.6 hours (stopped): no hang, each
+  of its 4682 passes in five minutes copying 300,000 to 1,900,000 live
+  objects, of a build that allocates billions.
+- **Measured.** kfx making itself 5.41 s, 375 MB at its peak; with no
+  collector (`KAYAK_GC=0`) 5.64 s, 3.17 GB; 27 passes, its output the
+  same. kc building `expander-facts.fx` 136 s, 31.6 GB; with none 129 s,
+  48.2 GB; its output the same. What the 31.6 GB holds is step 5's.
+- **Left** (TODO §54, step 4): a thread collecting while others run;
+  an ended thread's pages never given back; large objects never moved
+  or freed; kept objects all roots, never freed; `NoCollect` by hand; a
+  scheduler's boxed tasks not roots; aarch64's d8–d15 not spilled.
+- **The full check**: all passed in 556.6 s, its first run; nextest 5638.

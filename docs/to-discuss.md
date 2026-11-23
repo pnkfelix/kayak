@@ -176,6 +176,8 @@ where it was seen and what it would take.
     core written once in KFX, translated by kfx into kcrt-core (kfx's
     Rust needs kayak-rt, which links kcrt-core: a cycle to break first).
     Worth it now, or once generations or regions make both larger?
+    A third since C511: kayak-rt's (`obj/collect.rs`), mostly copying
+    (Bartlett's), for the Rust that kfx emits, its roots ambiguous.
 
 16. **Incremental collection: in TODO §54 or after it? (C457).** The plan
     puts the expander's state, its transformers and their code in kc's
@@ -192,6 +194,10 @@ where it was seen and what it would take.
     collector there later, kept incremental), so no design here assumes
     it does not. kc's collector today sees one thread's stack and one
     heap. Both decide what kc's heap is, so one design for both.
+    Since C511 kayak-rt's own code (kfx's, kc's compiler) is collected
+    too: a thread's pages at a time, stopping that thread alone, none
+    while another thread runs kayak code; step 5 measures it on kc
+    before this design comes to the user.
 
 17. **A union's member narrowed by its kind, not its Rust type (C506).**
     With `Value` one Fixpt word, a union narrowed to a member (`unbox_other`,

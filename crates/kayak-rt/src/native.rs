@@ -226,11 +226,14 @@ macro_rules! given {
     ($proc:ident $procs:ident; $($a:ident $i:tt),*) => {
         impl<$($a: Native + 'static,)* R: Native + 'static> Native for crate::$proc<'static, $($a,)* R> {
             fn word(self) -> u64 {
+                // Kept, so that its words are roots while native code
+                // holds it (C511).
+                let held = crate::leak(self);
                 kayak_jit::foreign_procedure(Box::new(move |args: &[u64]| {
                     if args.len() != given!(@count $($a)*) {
                         fail("native code: called a procedure with the wrong number of arguments");
                     }
-                    self.call($($a::of_word(args[$i])),*).word()
+                    held.call($($a::of_word(args[$i])),*).word()
                 }))
             }
             fn of_word(_: u64) -> Self {
@@ -250,11 +253,12 @@ macro_rules! given {
         /// native code waits for it, `block`.
         impl<$($a: Native + 'static,)* R: Native + 'static> Native for crate::$proc<'static, $($a,)* crate::suspend::Fut<R>> {
             fn word(self) -> u64 {
+                let held = crate::leak(self);
                 kayak_jit::foreign_procedure(Box::new(move |args: &[u64]| {
                     if args.len() != given!(@count $($a)*) {
                         fail("native code: called a procedure with the wrong number of arguments");
                     }
-                    crate::suspend::block(self.call($($a::of_word(args[$i])),*)).word()
+                    crate::suspend::block(held.call($($a::of_word(args[$i])),*)).word()
                 }))
             }
             fn of_word(_: u64) -> Self {

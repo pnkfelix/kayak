@@ -37,6 +37,19 @@ struct Pending {
     make: Box<dyn Any>,
 }
 
+/// The words of the capture on its way to its prompt, if one is: its
+/// closure's.
+fn capture_words(f: &mut dyn FnMut(usize)) {
+    let _ = CAPTURE.try_with(|c| {
+        let c = c
+            .try_borrow()
+            .unwrap_or_else(|_| crate::fail("a collection while a capture is changed"));
+        if let Some(p) = &*c {
+            crate::obj::roots::words_of_val(&*p.make, f);
+        }
+    });
+}
+
 thread_local! {
     static CAPTURE: RefCell<Option<Pending>> = const { RefCell::new(None) };
 }
@@ -121,7 +134,7 @@ where
         // A closure of the continuation (C481): its capture, `k`, scanned as
         // a stack is (C493).
         f(crate::closure1((k,), |(k,), v| -> Body<R> {
-            Box::pin(k.resume(v))
+            pinned(k.resume(v))
         }))
     });
     CAPTURE.with(|c| {
@@ -133,6 +146,8 @@ where
             make: Box::new(make),
         });
     });
+    // The capture's closure, on its way to its prompt, a root (C511).
+    crate::obj::roots::thread_locals(capture_words);
     Capture {
         given,
         registered: false,

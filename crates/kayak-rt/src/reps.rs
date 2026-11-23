@@ -75,6 +75,8 @@ fn small(n: Int) -> Result<i64, String> {
 /// The rep the checker's nodes make, made canonical; its binary form
 /// (Fixpt's `rep_of_nodes`).
 fn rep_of(nodes: List<RepNode>, holes: List<Symbol>, root: Int) -> Result<kayak_reps::Rep, String> {
+    // Values in a `Vec` of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let nodes = items(nodes);
     let slots = nodes
         .iter()
@@ -156,6 +158,8 @@ pub fn rep_nodes(
     bytes: BytesAt<'_>,
     gens: List<Str>,
 ) -> Product_11_12<List<RepNode>, List<Symbol>> {
+    // Values in `Vec`s of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let rep = match kayak_reps::binary::decode(&to_vec(bytes), kayak_reps::heap::validate_all()) {
         Ok(r) => r,
         Err(why) => fail(&format!("rep-nodes: {why}")),

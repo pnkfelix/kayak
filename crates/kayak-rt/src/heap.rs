@@ -1,8 +1,8 @@
 //! The heap's data, made by bumping (C43): since C507, in the heap's space
 //! (`obj/space.rs`), every object of every type in the thread's page, of
 //! Fixpt's layout or a pair, where each type had an arena of its own,
-//! found by its `TypeId` at each allocation. Kept for the run (the heap is
-//! never freed yet). The emitter makes heap data so only where every type
+//! found by its `TypeId` at each allocation. Collected since C511
+//! (`obj::collect`). The emitter makes heap data so only where every type
 //! is `'static`: no `letrena`, no place, no region binder around (else
 //! `cons` and `new`, in the space as well since C510).
 
@@ -66,6 +66,8 @@ mod tests {
             (r.get(), s.get(), ys.pair().unwrap().car().as_str()),
             (8, true, "a")
         );
+        // A `Vec` of what no root sees, held across allocations.
+        let _held = crate::obj::space::NoCollect::new();
         let many: Vec<Ref<i64>> = (0..1000).map(heap_new).collect();
         assert!(many.iter().enumerate().all(|(i, v)| v.get() == i as i64));
     }

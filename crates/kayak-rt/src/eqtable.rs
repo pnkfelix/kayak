@@ -115,9 +115,23 @@ pub type EqTable<K, V> = EqTableAt<'static, K, V>;
 
 /// `make-eqtable`.
 pub fn make_eqtable<'t, K: Identity + 't, V: Copy + 't>(_: IdentityOf<K>) -> EqTableAt<'t, K, V> {
-    crate::leak(EqTableBox {
+    // Scanned by its entries (C511): its keys and values roots, so that a
+    // key, found by its address, never moves.
+    crate::leak_scanned(EqTableBox {
         entries: RefCell::new(HashMap::default()),
     })
+}
+
+impl<K, V> crate::obj::roots::Scanned for EqTableBox<K, V> {
+    fn scanned(&self, f: &mut dyn FnMut(usize)) {
+        let entries = self
+            .entries
+            .try_borrow()
+            .unwrap_or_else(|_| crate::fail("a collection while an eqtable is changed"));
+        for e in entries.values() {
+            crate::obj::roots::words_of_val(e, f);
+        }
+    }
 }
 
 /// `eqtable-ref`: the value of `k`, or `none` if it has none.

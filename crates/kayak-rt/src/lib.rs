@@ -1,7 +1,12 @@
 //! What the Rust that KFX-0 generates calls (`PLAN.md` §2).
 //!
-//! Every KFX value is a `Copy` Rust value: a scalar, or a `&'static`
-//! reference to memory that is never freed. Each primitive is named by the
+//! Every KFX value is a `Copy` Rust value: a scalar, or a word into the
+//! heap. Since C511 the heap is collected (`obj::collect`): an object lives
+//! while a word the collector sees reaches it (the stack and registers, a
+//! registered block, what is kept, another object), and moves only where
+//! no ambiguous word does. Rust that keeps a value where the collector
+//! sees none (a `Vec` of its own) across an allocation holds a
+//! `obj::space::NoCollect` while it does. Each primitive is named by the
 //! mangling of its FX-26 name: `string->list` is `string_to_list`, `char=?`
 //! is `char_eq_p`, `i64+` is `i64_plus`.
 //!
@@ -125,8 +130,9 @@ impl<'r, T: Trace> Cons<'r, T> {
 /// `(listof T R)` in the heap (`ListAt`, `obj.rs`: one Fixpt word).
 pub type List<T> = ListAt<'static, T>;
 
-/// Allocation: the heap is never freed, so what it holds lives as long as
-/// anything wants, `'static` or a region's `'r`.
+/// What kayak-rt keeps of its own (a continuation, a closure given to
+/// native code): a block never freed, its words roots (`obj::roots`), so
+/// it lives as long as anything wants, `'static` or a region's `'r`.
 #[inline]
 pub fn leak<'a, T: 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());
@@ -161,9 +167,9 @@ fn space_alloc<'a, T: 'a>(v: T) -> Handle<'a, T> {
 
 /// `v` kept for the run, scanned as its type says when a word reaches it
 /// (`obj::roots`): kayak-rt's own (a mailbox, an I-cell).
-pub(crate) fn leak_scanned<T: obj::roots::Scanned + 'static>(v: T) -> &'static T {
+pub(crate) fn leak_scanned<'a, T: obj::roots::Scanned + 'a>(v: T) -> &'a T {
     stats::note::<T>(std::mem::size_of::<T>());
-    let r: &'static T = Box::leak(Box::new(v));
+    let r: &'a T = Box::leak(Box::new(v));
     obj::roots::kept_scanned(r);
     #[cfg(feature = "heap-stats")]
     census::opaque(std::ptr::from_ref(r) as usize, std::mem::size_of::<T>());
@@ -301,38 +307,11 @@ fn quiet_hook() {
 /// themselves, can name each other through it. FX-26's `letrec` binds only
 /// lambdas, so no knot is read before it is tied; tied once, it is `Sync`
 /// when the procedure is (C102), so a closure holding it may cross.
-// Aligned to a word, so a heap object may hold its address (C508).
-#[repr(align(8))]
-pub struct Knot<T>(std::sync::OnceLock<T>);
-
-/// A knot: its value, once tied, traced (C492).
-impl<T: Trace> Visit for Knot<T> {
-    fn visit<'a>(&'a self, t: &mut Tracer<'a>) {
-        if let Some(&v) = self.0.get() {
-            v.trace(t);
-        }
-    }
-}
-
-impl<T: Copy> Knot<T> {
-    pub fn get(&self) -> T {
-        *self
-            .0
-            .get()
-            .unwrap_or_else(|| fail("letrec: a procedure used before it is made"))
-    }
-
-    pub fn set(&self, v: T) {
-        if self.0.set(v).is_err() {
-            fail("letrec: a procedure made twice")
-        }
-    }
-}
-
-#[inline]
-pub fn knot<'a, T: Copy + 'a>() -> &'a Knot<T> {
-    leak(Knot(std::sync::OnceLock::new()))
-}
+///
+/// Since C511 a box of the space (`obj::Knot`), where it was a block kept
+/// for the run, a root: every closure a knot held, and all it held, was
+/// kept and pinned for the run.
+pub use obj::{Knot, knot};
 
 // Lists.
 
@@ -512,6 +491,12 @@ pub fn char_byte(s: Str, i: usize) -> Option<usize> {
     }
     CURSOR.set((key.0, key.1, ci, bi));
     Some(bi)
+}
+
+/// The cursor forgotten: its string may have moved, and another be made
+/// where it was (a collection, C511).
+pub(crate) fn forget_cursor() {
+    CURSOR.set((0, 0, 0, 0));
 }
 
 /// That the `i`th character of `s` starts at byte `b`, for `char_byte`.
@@ -708,6 +693,8 @@ pub fn string_append(a: Str, b: Str) -> Str {
 /// joined, in order, one new string: each copied once, where the KFX
 /// joins them pairwise, a new string each round.
 pub fn strings_joined(xs: List<Str>) -> Str {
+    // Values in a `Vec` of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let mut parts: Vec<&str> = Vec::new();
     let mut at = xs;
     while let Some(c) = at.pair() {
@@ -768,6 +755,8 @@ pub fn reverse<'b, T: Trace + 'b>(mut xs: ListAt<'_, T>) -> ListAt<'b, T> {
 
 #[inline]
 pub fn append<'b, T: Trace + 'b>(xs: ListAt<'_, T>, ys: ListAt<'b, T>) -> ListAt<'b, T> {
+    // Values in a `Vec` of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let mut items = Vec::new();
     let mut p = xs;
     while let Some(c) = p.pair() {

@@ -259,7 +259,7 @@ pub(crate) fn kept(start: usize, len: usize) {
 }
 
 /// `r`, kept for the run: scanned as its type says when a word reaches it.
-pub(crate) fn kept_scanned<T: Scanned + 'static>(r: &'static T) {
+pub(crate) fn kept_scanned<'a, T: Scanned + 'a>(r: &'a T) {
     /// # Safety
     /// `at` is a `T`'s address, kept for the run.
     unsafe fn scan<T: Scanned>(at: usize, f: &mut dyn FnMut(usize)) {
@@ -402,7 +402,7 @@ fn os_stack_base() -> usize {
 /// The registers a caller may keep a value in across a call (its
 /// callee-saved ones), spilled into `saved`.
 #[inline(always)]
-fn spill(saved: &mut [usize; 12]) {
+pub(super) fn spill(saved: &mut [usize; 12]) {
     #[cfg(target_arch = "x86_64")]
     // SAFETY: stores of the callee-saved registers into `saved`, twelve
     // words, of which six are written.
@@ -505,13 +505,23 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
     let mut locals = Vec::new();
     let me = mine();
     with_slab(|_, s| owned.extend(s.owned.iter().flatten()));
+    // As a collection reads them (`roots_from`): this thread's kept
+    // objects and an ended thread's, never a live one's.
+    let ended: Vec<&'static Registry> = FREE.lock().unwrap_or_else(|e| e.into_inner()).clone();
     for reg in REGISTRIES.lock().unwrap_or_else(|e| e.into_inner()).iter() {
+        let ours = me.is_some_and(|m| std::ptr::eq(m, *reg));
+        if !ours && !ended.iter().any(|e| std::ptr::eq(*e, *reg)) {
+            continue;
+        }
         let i = reg.lock();
         kept.extend_from_slice(&i.kept);
-        if me.is_some_and(|m| std::ptr::eq(m, *reg)) {
+        if ours {
             locals.extend_from_slice(&i.locals);
         }
     }
+    // Nor a live thread's object: another's collection may free its page.
+    let view = space::View::new();
+    let readable = |a: usize| view.whose_of(a) != space::Whose::Live;
     kept.sort_by_key(|k| k.start);
     for (start, len) in owned {
         r.owned_blocks += 1;
@@ -540,7 +550,7 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
     let mut ambiguous = words;
     loop {
         if let Some(w) = ambiguous.pop() {
-            if let Some(a) = space::object_of(w) {
+            if let Some(a) = view.object_of(w).filter(|&a| readable(a)) {
                 r.roots_in_space += 1;
                 if r.allocations.insert(a) {
                     // SAFETY: an allocation's first word in the space.
@@ -564,7 +574,10 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
                 }
             }
         } else if let Some(w) = heap.pop() {
-            if let Some(a) = laid::target(w).and_then(space::object_of) {
+            if let Some(a) = laid::target(w)
+                .and_then(|t| view.object_of(t))
+                .filter(|&a| readable(a))
+            {
                 if r.allocations.insert(a) {
                     // SAFETY: an allocation's first word in the space.
                     for o in unsafe { laid::allocation(a) } {
@@ -582,6 +595,77 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
         }
     }
     r
+}
+
+/// A collection's roots (`obj::collect`, C511), every word ambiguous:
+/// the registers spilled in `saved` and the stack from `from`, this
+/// thread's owned blocks and thread locals, and every kept object, each
+/// whole, by its bytes or its type (kept for the run, and perhaps reached
+/// where no root is seen: a thread local of its own, a scheduler's slot);
+/// and apart, the constants' words, which every thread may read.
+pub(super) struct Roots {
+    pub words: Vec<usize>,
+    pub constants: Vec<usize>,
+    /// Where in `words` each source's words end: the registers' and
+    /// stack's, the owned blocks', the kept objects' (the thread locals'
+    /// after), for a report.
+    pub ends: [usize; 3],
+}
+
+pub(super) fn roots_from(saved: &[usize; 12], from: usize) -> Roots {
+    let mut words: Vec<usize> = saved.to_vec();
+    let base = stack_base();
+    // SAFETY: this thread's own stack, from its caller's frame to its
+    // base, which the thread is running on.
+    unsafe { scan_words(from, base.saturating_sub(from), &mut |w| words.push(w)) };
+    let mut constants = Vec::new();
+    let made: Vec<(usize, ConstantRead)> =
+        CONSTANTS.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    for (at, read) in made {
+        // SAFETY: a slot `constant` noted, a static.
+        unsafe { read(at, &mut |w| constants.push(w)) };
+    }
+    let mut ends = [words.len(); 3];
+    with_slab(|_, s| {
+        for &(start, len) in s.owned.iter().flatten() {
+            // SAFETY: a block owned while registered, this thread's, alive.
+            unsafe { scan_words(start, len, &mut |w| words.push(w)) };
+        }
+    });
+    ends[1] = words.len();
+    let me = mine();
+    let mut locals = Vec::new();
+    // This thread's kept objects, and an ended thread's, which no thread
+    // writes; not a live thread's, which may be being written, and holds
+    // of this thread's only what is shared (`obj::collect`).
+    let ended: Vec<&'static Registry> = FREE.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    for reg in REGISTRIES.lock().unwrap_or_else(|e| e.into_inner()).iter() {
+        let ours = me.is_some_and(|m| std::ptr::eq(m, *reg));
+        if !ours && !ended.iter().any(|e| std::ptr::eq(*e, *reg)) {
+            continue;
+        }
+        let i = reg.lock();
+        for k in &i.kept {
+            match k.scan {
+                // SAFETY: an object kept for the run, of its bytes.
+                None => unsafe { scan_words(k.start, k.len, &mut |w| words.push(w)) },
+                // SAFETY: a `T` kept for the run, by `kept_scanned`.
+                Some(scan) => unsafe { scan(k.start, &mut |w| words.push(w)) },
+            }
+        }
+        if me.is_some_and(|m| std::ptr::eq(m, *reg)) {
+            locals.extend_from_slice(&i.locals);
+        }
+    }
+    ends[2] = words.len();
+    for f in locals {
+        f(&mut |w| words.push(w));
+    }
+    Roots {
+        words,
+        constants,
+        ends,
+    }
 }
 
 /// A future in a box of its own, its block a root while it lives (C493:

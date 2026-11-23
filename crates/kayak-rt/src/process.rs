@@ -559,9 +559,12 @@ fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + '
         check_failed(&g, program);
         g.running += 1;
     }
+    // No thread collects while this one lives (`obj::space`, C511).
+    let beside = crate::obj::space::Concurrent::new();
     std::thread::Builder::new()
         .stack_size(STACK)
         .spawn(move || {
+            let _beside = beside;
             counted(false);
             GROUP.with(|g| g.set(Some(group)));
             crate::obj::roots::thread_locals(group_words);
@@ -603,6 +606,8 @@ fn caught<A>(f: impl FnOnce() -> A) -> std::thread::Result<A> {
 pub fn par2<A, B: Send>(f: impl FnOnce() -> A, g: impl FnOnce() -> B + Send) -> (A, B) {
     let program = program();
     let group = group();
+    // No thread collects while the branch runs (`obj::space`, C511).
+    let _beside = crate::obj::space::Concurrent::new();
     std::thread::scope(|scope| {
         lock().running += 1;
         let other = std::thread::Builder::new()
@@ -645,6 +650,7 @@ pub fn par2_shared<A, B>(f: impl FnOnce() -> A, g: impl FnOnce() -> B) -> (A, B)
         lock().running += 1;
         // The branch's marks are its maker's, as FX-26's continuation has them.
         let marks = crate::marks::snapshot();
+        let _beside = crate::obj::space::Concurrent::new();
         let (a, b) = kayak_sync::par2_unchecked(
             move || caught(f),
             move || {

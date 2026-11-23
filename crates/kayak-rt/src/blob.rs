@@ -36,6 +36,18 @@ thread_local! {
     static SEALED: RefCell<HashMap<usize, (kayak_jit::Code, Resync)>> = RefCell::new(HashMap::new());
 }
 
+/// The sealed copies' addresses, each a word that pins its copy.
+fn sealed_words(f: &mut dyn FnMut(usize)) {
+    let _ = SEALED.try_with(|m| {
+        let m = m
+            .try_borrow()
+            .unwrap_or_else(|_| crate::fail("a collection while a sealed copy is noted"));
+        for &a in m.keys() {
+            f(a);
+        }
+    });
+}
+
 impl<'r, Fs> BlobletAt<'r, Fs> {
     fn byte(self, i: usize) -> u64 {
         (self.suffix()[i / 8].get() >> ((i % 8) * 8)) & 0xff
@@ -145,6 +157,9 @@ impl<Fs: crate::NativeFields + crate::Visit + Clone + 'static> BlobletAt<'_, Fs>
             }
         });
         SEALED.with(|m| m.borrow_mut().insert(b.addr(), (code, resync)));
+        // Its address the table's key and native code's: a root, so that
+        // it never moves (C511).
+        crate::obj::roots::thread_locals(sealed_words);
         b
     }
 }
@@ -177,7 +192,7 @@ pub fn bloblet_written<W: Written>(b: W, k: usize) {
     b.written(k)
 }
 
-/// `(make-bloblet bytes e …)`: in the heap, never freed.
+/// `(make-bloblet bytes e …)`: in the heap.
 pub fn make_bloblet<'a, Fs: crate::Visit + 'static>(bytes: Int, fields: Fs) -> BlobletAt<'a, Fs> {
     Bloblet::kept_new(
         fields,

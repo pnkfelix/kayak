@@ -1347,6 +1347,16 @@ impl<T: Trace> Slot<T> {
     pub fn set(&self, v: T) {
         self.0.set(Held::new(v))
     }
+    /// What it holds, as stored (a knot's, to see it is untied).
+    #[inline(always)]
+    pub(crate) fn stored(&self) -> T::Stored {
+        self.0.get().0
+    }
+    /// A cell holding `s`, as stored (a knot's, untied: fixnum 0).
+    #[inline(always)]
+    pub(crate) fn of_stored(s: T::Stored) -> Self {
+        Slot(Cell::new(Held(s)))
+    }
 }
 
 /// A copy of its value in a cell of its own, as `Cell`'s (a sealed
@@ -1520,8 +1530,8 @@ mod tests {
         let m: crate::Addr<Str> = crate::leak(crate::process::MailboxBox {
             queue: std::sync::Mutex::new([crate::str_lit("m")].into_iter().collect()),
         });
-        let k: &'static crate::Knot<Str> = crate::leak(crate::Knot(std::sync::OnceLock::new()));
-        let _ = k.0.set(crate::str_lit("k"));
+        let k: crate::Knot<'static, Str> = crate::knot();
+        k.set(crate::str_lit("k"));
         let arena: crate::Arena<Cons<'_, Str>> = crate::Arena::default();
         let xs = crate::ListAt::of_pair(arena.alloc(Cons::new(crate::str_lit("r"), crate::nil())));
         let ys = crate::ListAt::of_pair(arena.alloc(Cons::new(crate::str_lit("s"), xs)));
@@ -1536,7 +1546,8 @@ mod tests {
         };
         assert_eq!(of("ICellBox"), 1);
         assert_eq!(of("MailboxBox"), 1);
-        assert_eq!(of("Knot"), 1);
+        // A knot a box of the space (C511).
+        assert_eq!(of("RefObj<kayak_rt::obj::Str>"), 1);
         assert_eq!(of("Arena"), 1);
         // The arena's two pairs, each once, though `ys` reaches them too.
         let pairs = rows

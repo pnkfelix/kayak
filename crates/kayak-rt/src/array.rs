@@ -53,6 +53,8 @@ pub fn array_to_list<T: Copy + 'static + crate::Trace>(a: Array<T>) -> List<T> {
 }
 
 pub fn list_to_array<T: crate::Trace + 'static>(xs: List<T>) -> Array<T> {
+    // Values in a `Vec` of its own, which no root sees, across allocations.
+    let _held = crate::obj::space::NoCollect::new();
     let mut v = Vec::new();
     let mut at = xs;
     while let Some(c) = at.pair() {

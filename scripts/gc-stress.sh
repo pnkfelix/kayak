@@ -1,0 +1,28 @@
+#!/bin/sh
+# The collector's stress mode (C511; TODO §54, step 4): collections where
+# no threshold would make them, each at a different allocation, so that a
+# root missed, or a word not followed, shows. `KAYAK_GC_STRESS=n`: a
+# collection at every nth allocation; freed pages poisoned.
+set -eu
+cd "$(dirname "$0")/.."
+# kayak-rt's own tests, every 7th allocation, their threads each
+# collecting its own pages at once (the long loops left out: quadratic).
+KAYAK_GC_STRESS=7 cargo test --release --quiet -p kayak-rt --lib -- --skip a_long_ > /dev/null
+echo "gc-stress: kayak-rt's tests, a collection every 7 allocations"
+# The corpus, every 97th; the two programs that run longest (400 s each
+# so), every 9973rd.
+big=made-generated-x86_64,made-frames-x86_64,made-generated-aarch64,made-frames-aarch64
+for run in "97 SKIP" "9973 ONLY"; do
+    set -- $run
+    env KAYAK_GC_STRESS="$1" "KAYAK_CORPUS_$2=$big" cargo nextest run --release -p kfx-corpus \
+        --hide-progress-bar --status-level fail -E 'test(every_program_gives_fixpts_answer)' > /dev/null 2>&1 \
+        || { echo "gc-stress: the corpus, every $1 ($2 the longest), differs or fails" >&2; exit 1; }
+done
+echo "gc-stress: the corpus gives Fixpt's answers, a collection every 97 allocations (its longest two, 9973)"
+# The compiler making itself, every 300007th: boot/src/kfx/ again.
+cargo build --release --quiet -p kfx
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+KAYAK_GC_STRESS=300007 ./target/release/kfx kfx/kfx.unit "$tmp"
+diff -r "$tmp" boot/src/kfx
+echo "gc-stress: the compiler makes boot/src/kfx/ again, a collection every 300007 allocations"

@@ -2069,12 +2069,32 @@ over its 1664 definitions, 335 of them refused:
      C508. To come, if it matters: only a task's first future
      registered, the mark following words into kayak-sys's allocator's
      blocks (C370's, made for these boxes) instead.
-  4. **Collect**: a thread's pages, those its ambiguous roots reach pinned
-     whole, the rest copied (Bartlett's); allocation the safepoint; its
-     stress mode at every allocation under the suite; what another thread
-     may reach first made safe (a message copied, as FX-26's processes
-     have heaps of their own; a `par` child's pages handed to its parent
-     at the join; §55 item 2's shared heap for the rest).
+  4. **Collect** (done in part, C511): `obj::collect`, a thread's pages,
+     those its ambiguous roots reach pinned whole, the rest copied
+     (Bartlett's), each moved object's first word a forwarding word
+     (Fixpt's tag 111), the precise fields found by the layout (`laid`);
+     allocation the safepoint (`space::refill`, once the pages taken
+     since the last pass reach twice those kept, 64 MB at least). Its
+     stress mode (`KAYAK_GC_STRESS=n`, a pass every nth allocation) under
+     the check (`scripts/gc-stress.sh`: kayak-rt's tests at 7, the corpus
+     at 97, kfx making itself at 300007, about 70 s). Another thread's
+     objects: a live thread's never read, an ended thread's read and
+     updated but never moved. Measured: kfx making itself 5.41 s, 375 MB
+     at its peak (no collector: 5.64 s, 3.17 GB); kc building
+     `expander-facts.fx` 136 s, 31.6 GB (no collector: 129 s, 48.2 GB;
+     what the rest is, step 5's). Left: what another thread may reach
+     made safe, so that a thread collects while others run (now none
+     does while a process's or a `par`'s threads run: `space::Concurrent`;
+     a message copied, as FX-26's processes have heaps of their own; a
+     `par` child's pages handed to its parent at the join; §55 item 2's
+     shared heap for the rest); an ended thread's pages never given back;
+     large objects never moved or freed; kept objects all roots, never
+     freed (a continuation, an eq table, a procedure given to native
+     code); kayak-rt code holding values in a `Vec` across an allocation
+     marked by hand (`space::NoCollect`); a scheduler's boxed tasks not
+     yet roots; aarch64's d8–d15 not spilled; a sealed bloblet's copy
+     pinned through its table, not moved; the census's mark
+     (`roots::reached`) heap-stats only.
   5. **Measured on kc**, then incremental collection's design to the user
      (§54's step 6 above).
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
