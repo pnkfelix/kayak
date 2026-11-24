@@ -1537,12 +1537,10 @@ mod tests {
         // scanned: a mailbox's messages are in its queue's buffer, which
         // `leak`'s scan of the box's own bytes would not find (under
         // stress, "m" freed, about once in 15 runs).
-        let c: crate::ICell<Str> = crate::leak_shared(crate::process::ICellBox {
-            value: std::sync::Mutex::new(Some(crate::str_lit("i"))),
-        });
-        let m: crate::Addr<Str> = crate::leak_shared(crate::process::MailboxBox {
-            queue: std::sync::Mutex::new([crate::str_lit("m")].into_iter().collect()),
-        });
+        let c: crate::ICell<Str> =
+            crate::leak_shared(crate::process::ICellBox::holding(Some(crate::str_lit("i"))));
+        let m: crate::Addr<Str> =
+            crate::leak_shared(crate::process::MailboxBox::holding([crate::str_lit("m")]));
         let k: crate::Knot<'static, Str> = crate::knot();
         k.set(crate::str_lit("k"));
         let arena: crate::Arena<Cons<'_, Str>> = crate::Arena::default();

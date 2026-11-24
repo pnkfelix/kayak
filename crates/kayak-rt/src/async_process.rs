@@ -164,7 +164,8 @@ pub fn icell_get<T: Copy>(c: ICell<T>) -> impl Future<Output = T> {
 
 /// `(send a m)`: `m` to `a`'s process, after what was sent before.
 pub fn send<M>(a: Addr<M>, m: M) {
-    held(&a.queue).push_back(m);
+    // A task of this thread's takes it: its heap the sender's.
+    held(&a.queue).push_back(crate::process::Sent::local(m));
     changed();
 }
 

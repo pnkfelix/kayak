@@ -828,9 +828,8 @@ mod tests {
     #[test]
     #[should_panic(expected = "a wait where nothing may wait")]
     fn a_wait_in_block_is_said_so() {
-        let mailbox: crate::process::Inbox<i64> = crate::leak(crate::process::MailboxBox {
-            queue: std::sync::Mutex::new(std::collections::VecDeque::new()),
-        });
+        let mailbox: crate::process::Inbox<i64> =
+            crate::leak(crate::process::MailboxBox::holding([]));
         block(crate::async_process::receive(mailbox));
     }
 }

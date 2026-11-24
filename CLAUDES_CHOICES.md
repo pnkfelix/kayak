@@ -16489,3 +16489,50 @@ say the estimate before running them, as the Fixpt team does
   beside others there, they are slower than alone (the stress script 177
   s in the check, 73 s alone), so their means are kept apart.
 - **The full check**: all passed in 392.9 s, its first run (7 min 13 s under `timed`, kc-bench with it; predicted 8 min 05 s); nextest 5643.
+
+## C519. A message, a spawn's environment, an I-cell's value copied into a fragment (2026-11-24)
+
+TODO §54 step 4b's (b), as revised (the user chose Erlang's of two: a
+shared heap every send copies into would keep every message till its own
+collector, step (e)).
+- **Fragments** (`space::Fragment`): pages of no thread's (their owner
+  `FRAGMENT`), taken from the pool, bumped into by their holder alone, and
+  large objects of their own; a thread adopts one as its own young pages
+  (`adopt_fragment`), counted toward its nursery and copied from by none of
+  its collections till every collection that may have read them as no
+  thread's has ended (the adopted pages' probation). One never adopted (a
+  mailbox dropped with it in, an I-cell freed) is given back once no
+  collection running may read it (`RETIRED_PAGES`, freed with the large
+  objects in `free_retired`).
+- **The copier** (`obj::publish::copied`): a value's graph copied whole
+  into a fragment, precisely: the value's Fixpt words (`Trace::store`),
+  each object's fields by its layout (`each_object`), as a collection
+  finds them; each allocation once (shared structure and cycles kept so),
+  what is outside the space (a static, a kept block: a mailbox's or an
+  I-cell's address) left as it is. A value held as itself (`WHOLE`: a
+  handle, an `Option`, a continuation, a blobref, a flat array) is not
+  copied: shared, as before (a debt).
+- **Sends** (`process::send`): the message copied into a fragment that
+  waits with it in the mailbox (`Sent`); `take` adopts it as it hands the
+  message over. The async mode's tasks share their thread's heap: no copy.
+- **Spawns** (`spawn_env`, C517's): the environment copied into a
+  fragment the process adopts as it starts, before its body runs.
+- **I-cells**: `icell_put_x` copies the value into a fragment the I-cell
+  keeps; each `icell_get` copies it from there into a fragment of its own,
+  adopted at once, so each reader holds its own.
+- **Constants** made once for the program (a `static OnceLock`, or
+  `unsafe-par`'s `Global`): copied into one immortal fragment (`IMMORTAL`
+  in `once.rs`), which every thread reads and none collects. Those kept
+  per thread are each thread's own already. Symbols are not interned in
+  kayak-rt (each `string->symbol` an object of its own), so are copied as
+  data.
+- The census reads what is of no thread's (`View::of_no_thread`): no
+  collection frees it as another reads it.
+- **Measured**: kfx making itself 5 s, its output the same; kc building
+  `expander-facts.fx` 80 s, its executable the same byte for byte (C516's
+  day 83–89 s): neither sends much.
+- C512's lists stay till (c): a message taken is still told in the
+  taker's list, a mailbox's and an I-cell's words still read by every
+  collection, harmlessly (a fragment's objects read as another live
+  thread's).
+- **The full check**: all passed in 524.8 s, its first run (9 min 25 s under `timed`; predicted 8 min 04 s); nextest 5645.

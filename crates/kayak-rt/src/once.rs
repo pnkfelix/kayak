@@ -37,25 +37,37 @@ impl<T: Copy + 'static> OnceSlot<T> for LocalKey<OnceCell<T>> {
     }
 }
 
-impl<T: Copy> OnceSlot<T> for OnceLock<T> {
+impl<T: Copy + crate::Trace> OnceSlot<T> for OnceLock<T> {
     #[inline]
     fn made(&'static self) -> Option<T> {
         self.get().copied()
     }
     fn kept(&'static self, make: &mut dyn FnMut() -> T) -> T {
-        *self.get_or_init(make)
+        *self.get_or_init(|| immortal(make()))
     }
 }
 
 #[cfg(feature = "unsafe-par")]
-impl<T: Copy> OnceSlot<T> for kayak_sync::Global<T> {
+impl<T: Copy + crate::Trace> OnceSlot<T> for kayak_sync::Global<T> {
     #[inline]
     fn made(&'static self) -> Option<T> {
         self.get().copied()
     }
     fn kept(&'static self, make: &mut dyn FnMut() -> T) -> T {
-        *self.get_or_init(make)
+        *self.get_or_init(|| immortal(make()))
     }
+}
+
+/// What every thread's constants hold (TODO §54 step 4b's (b)): pages of
+/// no thread's, kept for the run, which every thread reads and none
+/// collects; so a constant made by one thread is in no thread's heap.
+static IMMORTAL: std::sync::Mutex<crate::obj::space::Fragment> =
+    std::sync::Mutex::new(crate::obj::space::Fragment::new());
+
+/// `v`'s graph copied into the immortal pages.
+fn immortal<T: crate::Trace>(v: T) -> T {
+    let mut f = IMMORTAL.lock().unwrap_or_else(|e| e.into_inner());
+    crate::obj::publish::copied(v, &mut f)
 }
 
 /// The value `slot` keeps, made by `make` the first time.

@@ -435,8 +435,9 @@ fn refill(b: &Bump, w: usize) -> *mut u64 {
     at
 }
 
-/// A page for the thread, freed by a collection or new, now its page.
-fn take_page(b: &Bump) {
+/// A page from the pool, freed by a collection or new, zeroed, given to
+/// `owner`.
+fn pool_page(owner: u64) -> (&'static Chunk, usize) {
     let (chunk, page, fresh) = {
         let mut pool = POOL.lock().unwrap_or_else(|e| e.into_inner());
         if let Some((c, p)) = pool.free.pop() {
@@ -458,11 +459,18 @@ fn take_page(b: &Bump) {
     };
     let start = chunk.page_start(page);
     if !fresh {
-        // SAFETY: the page's words, now this thread's alone.
+        // SAFETY: the page's words, now its taker's alone.
         unsafe { start.write_bytes(0, PAGE_WORDS) };
     }
+    chunk.owners[page].store(owner, Ordering::Relaxed);
+    (chunk, page)
+}
+
+/// A page for the thread, freed by a collection or new, now its page.
+fn take_page(b: &Bump) {
     note_me(b);
-    chunk.owners[page].store(b.me.get(), Ordering::Relaxed);
+    let (chunk, page) = pool_page(b.me.get());
+    let start = chunk.page_start(page);
     chunk.set_young(page, true);
     b.pages.borrow_mut().push((chunk, page));
     b.since.set(b.since.get() + 1);
@@ -712,6 +720,16 @@ impl View {
         large_of(&self.large, addr).map(|(p, _, _)| p)
     }
 
+    /// Whether the object at `start` (an object's first word) is of no
+    /// thread's (a fragment's: a message's, an I-cell's, the constants'),
+    /// which no collection frees as another reads it.
+    pub(crate) fn of_no_thread(&self, start: usize) -> bool {
+        if let Some((c, p)) = self.page_of(start) {
+            return c.owners[p].load(Ordering::Relaxed) == FRAGMENT;
+        }
+        large_of(&self.large, start).is_some_and(|(_, _, o)| o == FRAGMENT)
+    }
+
     /// Whose the object at `start` (an object's first word) is.
     pub(crate) fn whose_of(&self, start: usize) -> Whose {
         if let Some((c, p)) = self.page_of(start) {
@@ -730,6 +748,155 @@ impl View {
         debug_assert!(to >= end, "an allocation past the next");
         (to - start) / 8
     }
+}
+
+/// The owner of a fragment's pages and large objects: no thread's.
+pub(crate) const FRAGMENT: u64 = u64::MAX;
+
+/// Pages and large objects of no thread's (TODO §54 step 4b's (b),
+/// Erlang's): a message's, or a spawn's environment, copied into them by
+/// its sender (`obj::publish`), reached only from where it waits, till a
+/// thread adopts them as its own young ones (`adopt_fragment`). Given back
+/// if none does (`Drop`).
+pub(crate) struct Fragment {
+    pages: Vec<(&'static Chunk, usize)>,
+    large: Vec<(usize, usize)>,
+    at: *mut u64,
+    limit: *mut u64,
+}
+
+// SAFETY: its pages and large objects are no thread's while it holds them;
+// only its holder writes or adopts them.
+unsafe impl Send for Fragment {}
+
+impl Default for Fragment {
+    fn default() -> Self {
+        Fragment::new()
+    }
+}
+
+impl Fragment {
+    pub(crate) const fn new() -> Fragment {
+        Fragment {
+            pages: Vec::new(),
+            large: Vec::new(),
+            at: std::ptr::null_mut(),
+            limit: std::ptr::null_mut(),
+        }
+    }
+
+    /// Whether nothing was copied into it.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.pages.is_empty() && self.large.is_empty()
+    }
+
+    /// Whether the object at `a` (its first word) is one of its own.
+    pub(crate) fn holds(&self, a: usize) -> bool {
+        self.pages
+            .iter()
+            .any(|&(c, p)| c.holds(a) && (a - c.base.addr()) / PAGE_BYTES == p)
+            || self.large.iter().any(|&(p, w)| p <= a && a < p + 8 * w)
+    }
+
+    /// `w` new words, zeroed, their first noted an object's start.
+    pub(crate) fn words(&mut self, w: usize) -> *mut u64 {
+        if w * 8 > LARGE_BYTES {
+            let layout = large_layout(w);
+            // SAFETY: a layout of nonzero size.
+            let p = unsafe { std::alloc::alloc_zeroed(layout) }.cast::<u64>();
+            if p.is_null() {
+                std::alloc::handle_alloc_error(layout)
+            }
+            // Written again by a collection, by its address (`word_mut`).
+            let _ = p.expose_provenance();
+            let mut large = LARGE.lock().unwrap_or_else(|e| e.into_inner());
+            let i = large.partition_point(|&(q, _, _)| q < p.addr());
+            large.insert(i, (p.addr(), w, FRAGMENT));
+            self.large.push((p.addr(), w));
+            return p;
+        }
+        if self.at.is_null() || (self.limit.addr() - self.at.addr()) / 8 < w {
+            let (c, page) = pool_page(FRAGMENT);
+            self.pages.push((c, page));
+            self.at = c.page_start(page);
+            // SAFETY: the page's end, one past its last word.
+            self.limit = unsafe { self.at.add(PAGE_WORDS) };
+        }
+        let p = self.at;
+        // SAFETY: `w` words fit before the page's end.
+        self.at = unsafe { p.add(w) };
+        let (c, _) = *self.pages.last().expect("a page");
+        c.note_start(p);
+        p
+    }
+}
+
+impl Drop for Fragment {
+    /// Never adopted (a mailbox dropped with it in, an I-cell's freed): its
+    /// pages given back and its large objects freed, once no collection
+    /// running may have seen them (a mailbox's words are read by all).
+    fn drop(&mut self) {
+        if self.is_empty() {
+            return;
+        }
+        let stamp = Epochs::lock().next;
+        let large: std::collections::HashSet<usize> = self.large.iter().map(|&(p, _)| p).collect();
+        LARGE
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .retain(|&(p, _, _)| !large.contains(&p));
+        RETIRED
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .extend(self.large.iter().map(|&(p, w)| (p, w, stamp)));
+        RETIRED_PAGES
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .extend(self.pages.iter().map(|&(c, p)| (c, p, stamp)));
+    }
+}
+
+/// Pages of fragments dropped, each given back once no collection that
+/// began before is running (`free_retired`).
+static RETIRED_PAGES: Mutex<Vec<(&'static Chunk, usize, u64)>> = Mutex::new(Vec::new());
+
+/// `f`'s pages and large objects this thread's, young (`f` a message
+/// taken, a spawn's environment as its process starts): counted as taken,
+/// and copied from by none of its collections until every collection that
+/// may have read them as no thread's has ended (`unsettled`).
+pub(crate) fn adopt_fragment(mut f: Fragment) {
+    if f.is_empty() {
+        return;
+    }
+    let pages = std::mem::take(&mut f.pages);
+    let large = std::mem::take(&mut f.large);
+    let me = BUMP.with(|b| {
+        note_me(b);
+        b.me.get()
+    });
+    for &(c, page) in &pages {
+        c.owners[page].store(me, Ordering::Relaxed);
+        c.set_young(page, true);
+    }
+    let theirs: std::collections::HashSet<usize> = large.iter().map(|&(p, _)| p).collect();
+    for l in LARGE.lock().unwrap_or_else(|e| e.into_inner()).iter_mut() {
+        if theirs.contains(&l.0) {
+            l.2 = me;
+        }
+    }
+    let stamp = Epochs::lock().next;
+    BUMP.with(|b| {
+        let large_pages: usize = large.iter().map(|&(_, w)| pages_of(w)).sum();
+        b.since.set(b.since.get() + pages.len() + large_pages);
+        b.large_pages.set(b.large_pages.get() + large_pages);
+        b.young_large
+            .borrow_mut()
+            .extend(large.iter().map(|&(p, _)| p));
+        b.probation
+            .borrow_mut()
+            .extend(pages.iter().map(|&(c, page)| (page_key(c, page), stamp)));
+        b.pages.borrow_mut().extend(pages);
+    });
 }
 
 /// The write barrier (TODO §54 step 4's generations): the slot at
@@ -1066,6 +1233,30 @@ pub(crate) fn free_large(reached: impl Fn(usize) -> bool) {
 /// The large objects retired before every collection running now began,
 /// freed (poisoned first, under stress or `KAYAK_GC_POISON`).
 fn free_retired() {
+    // A dropped fragment's pages, given back once quiesced.
+    let pages: Vec<(&'static Chunk, usize, u64)> = {
+        let mut r = RETIRED_PAGES.lock().unwrap_or_else(|e| e.into_inner());
+        if r.is_empty() {
+            Vec::new()
+        } else {
+            let e = Epochs::lock();
+            let (ready, wait) = std::mem::take(&mut *r)
+                .into_iter()
+                .partition(|&(_, _, stamp)| e.quiesced(stamp, 0));
+            *r = wait;
+            ready
+        }
+    };
+    if !pages.is_empty() {
+        let poison = stress() > 0 || poison();
+        for &(c, p, _) in &pages {
+            c.clear_page(p, poison);
+        }
+        POOL.lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .free
+            .extend(pages.iter().map(|&(c, p, _)| (c, p)));
+    }
     let ready: Vec<(usize, usize, u64)> = {
         let mut r = RETIRED.lock().unwrap_or_else(|e| e.into_inner());
         if r.is_empty() {

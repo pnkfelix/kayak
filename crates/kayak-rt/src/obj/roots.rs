@@ -881,7 +881,7 @@ fn reached_from(saved: &[usize; 12], from: usize) -> Reached {
     }
     // Nor a live thread's object: another's collection may free its page.
     let view = space::View::new();
-    let readable = |a: usize| view.whose_of(a) != space::Whose::Live;
+    let readable = |a: usize| view.whose_of(a) != space::Whose::Live || view.of_no_thread(a);
     kept.sort_by_key(|k| k.start);
     for (start, len) in owned {
         r.owned_blocks += 1;
@@ -1248,9 +1248,7 @@ mod tests {
     fn a_mailbox_scanned() {
         let (word, a) = made_apart();
         let mb: &'static crate::process::MailboxBox<usize> =
-            crate::leak_scanned(crate::process::MailboxBox {
-                queue: std::sync::Mutex::new(std::collections::VecDeque::from([word])),
-            });
+            crate::leak_scanned(crate::process::MailboxBox::holding([word]));
         let r = reached();
         assert!(r.allocations.contains(&a));
         assert!(r.kept >= 1);

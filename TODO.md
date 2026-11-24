@@ -2167,6 +2167,23 @@ over its 1664 definitions, 335 of them refused:
         environment record) the closure holds the word of, which the
         spawn rewrites once it has published it. Other closures as they
         are.
+     2b. *Publishing, revised* (the user, 2026-11-24, of two, after C518):
+        a shared heap every send copies into would keep every message
+        till its own collector, step (e), exists. So Erlang's: a send
+        copies its message into a *fragment*, pages of no thread's,
+        reached only from its mailbox, which the receiver adopts at the
+        receive as young pages of its own, its collections reclaiming
+        them; a spawn's environment likewise, adopted as the process
+        starts; an I-cell's value copied into a fragment of the I-cell's,
+        each reader copying it into its own heap as it gets it; constants
+        and interned symbols in an immortal area, never collected. The
+        copy precise: a value's Fixpt word (`Trace::store`), each
+        object's fields by its layout, as the collector finds them. Step
+        (e) waits till something needs a shared heap that changes. Parts:
+        (b1) fragments and the copier; (b2) sends; (b3) spawns; (b4)
+        I-cells; (b5) the immortal area. Done (C519), all five; left:
+        a value held as itself (`WHOLE`) not copied, shared as before;
+        the copier's test of its own fragment's pages a walk of them.
      5. *Order*: (a) environment records at spawn sites (done, C517:
         `spawn_env`, the environment a tuple of what the body names, the
         body a function); (b) the shared

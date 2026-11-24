@@ -264,6 +264,21 @@ fn wait_until<R>(
 #[repr(align(8))]
 pub struct ICellBox<T> {
     pub(crate) value: Mutex<Option<T>>,
+    /// What its value's graph was copied into as it was written (TODO §54
+    /// step 4b's (b)): pages of no thread's, read by each reader, which
+    /// copies the value into its own heap; given back with the I-cell.
+    pub(crate) fragment: Mutex<crate::obj::space::Fragment>,
+}
+
+impl<T> ICellBox<T> {
+    /// An I-cell holding `v`, or none (a test's).
+    #[cfg(test)]
+    pub(crate) fn holding(v: Option<T>) -> ICellBox<T> {
+        ICellBox {
+            value: Mutex::new(v),
+            fragment: Mutex::new(crate::obj::space::Fragment::new()),
+        }
+    }
 }
 
 pub type ICell<T> = &'static ICellBox<T>;
@@ -291,11 +306,16 @@ impl<T: crate::Trace> crate::Visit for ICellBox<T> {
 pub fn make_icell<T>() -> ICell<T> {
     crate::leak_shared(ICellBox {
         value: Mutex::new(None),
+        fragment: Mutex::new(crate::obj::space::Fragment::new()),
     })
 }
 
-/// `(icell-put! c v)`: `c`'s one write, which wakes whoever waits for it.
-pub fn icell_put_x<T: Copy>(c: ICell<T>, v: T) {
+/// `(icell-put! c v)`: `c`'s one write, which wakes whoever waits for it;
+/// `v`'s graph copied whole into the I-cell's fragment first (TODO §54
+/// step 4b's (b)), no thread's heap reached from another's.
+pub fn icell_put_x<T: Copy + crate::Trace>(c: ICell<T>, v: T) {
+    let mut fragment = crate::obj::space::Fragment::new();
+    let v = crate::obj::publish::copied(v, &mut fragment);
     let program = program();
     let g = lock();
     check_failed(&g, program);
@@ -305,20 +325,27 @@ pub fn icell_put_x<T: Copy>(c: ICell<T>, v: T) {
         drop(g);
         crate::fail("an i-cell written twice")
     }
+    *held(&c.fragment) = fragment;
     *slot = Some(v);
     drop(slot);
     changed(g);
 }
 
-/// `(icell-get c)`: `c`'s value, waiting for its write.
-pub fn icell_get<T: Copy>(c: ICell<T>) -> T {
-    wait_until(
+/// `(icell-get c)`: `c`'s value, waiting for its write; copied from the
+/// I-cell's fragment into this thread's heap (a fragment of its own,
+/// adopted at once), as each reader has its own.
+pub fn icell_get<T: Copy + crate::Trace>(c: ICell<T>) -> T {
+    let v = wait_until(
         program(),
         None,
         false,
         || *held(&c.value),
         "an i-cell read before it was written, and no task is left to write it: a deadlock",
-    )
+    );
+    let mut fragment = crate::obj::space::Fragment::new();
+    let v = crate::obj::publish::copied(v, &mut fragment);
+    crate::obj::space::adopt_fragment(fragment);
+    v
 }
 
 /// A process's mailbox: `(addr M R)` the right to send to it, `(inbox M
@@ -326,14 +353,43 @@ pub fn icell_get<T: Copy>(c: ICell<T>) -> T {
 // Aligned to a word, so a heap object may hold its address (C508).
 #[repr(align(8))]
 pub struct MailboxBox<M> {
-    pub(crate) queue: Mutex<VecDeque<M>>,
+    pub(crate) queue: Mutex<VecDeque<Sent<M>>>,
+}
+
+/// A message waiting in a mailbox: its value, and the fragment its graph
+/// was copied into as it was sent (TODO §54 step 4b's (b), Erlang's),
+/// which the thread that takes it adopts; empty where the sender's thread
+/// is the receiver's (the async mode's tasks).
+pub(crate) struct Sent<M> {
+    pub(crate) m: M,
+    pub(crate) fragment: crate::obj::space::Fragment,
+}
+
+impl<M> Sent<M> {
+    /// A message whose words are of no fragment (a test's, a task's).
+    pub(crate) fn local(m: M) -> Sent<M> {
+        Sent {
+            m,
+            fragment: crate::obj::space::Fragment::new(),
+        }
+    }
+}
+
+impl<M> MailboxBox<M> {
+    /// A mailbox holding `ms` (a test's).
+    #[cfg(test)]
+    pub(crate) fn holding(ms: impl IntoIterator<Item = M>) -> MailboxBox<M> {
+        MailboxBox {
+            queue: Mutex::new(ms.into_iter().map(Sent::local).collect()),
+        }
+    }
 }
 
 /// A mailbox: its messages' words (`obj::roots`).
 impl<M> crate::obj::roots::Scanned for MailboxBox<M> {
     fn scanned(&self, f: &mut dyn FnMut(usize)) {
-        for m in held(&self.queue).iter() {
-            crate::obj::roots::words_of_val(m, f);
+        for s in held(&self.queue).iter() {
+            crate::obj::roots::words_of_val(&s.m, f);
         }
     }
 }
@@ -341,7 +397,7 @@ impl<M> crate::obj::roots::Scanned for MailboxBox<M> {
 /// A mailbox: the messages it holds, traced (C492).
 impl<M: crate::Trace> crate::Visit for MailboxBox<M> {
     fn visit<'a>(&'a self, t: &mut crate::Tracer<'a>) {
-        let ms: Vec<M> = held(&self.queue).iter().copied().collect();
+        let ms: Vec<M> = held(&self.queue).iter().map(|s| s.m).collect();
         for m in ms {
             m.trace(t);
         }
@@ -353,20 +409,30 @@ pub type Inbox<M> = &'static MailboxBox<M>;
 
 /// `(send a m)`: `m` to the process whose address is `a`; a sender's
 /// messages arrive in the order sent.
-pub fn send<M: Send>(a: Addr<M>, m: M) {
+pub fn send<M: Send + crate::Trace>(a: Addr<M>, m: M) {
+    // Its graph copied whole first (Fixpt's send, a deep copy; TODO §54
+    // step 4b's (b)), into a fragment the receiver adopts: no thread's heap
+    // reached from another's.
+    let mut fragment = crate::obj::space::Fragment::new();
+    let m = crate::obj::publish::copied(m, &mut fragment);
     let program = program();
     let g = lock();
     check_failed(&g, program);
-    held(&a.queue).push_back(m);
+    held(&a.queue).push_back(Sent { m, fragment });
     changed(g);
 }
 
 /// The oldest message of `b`, if any, taken: in this thread's list
-/// before it leaves the mailbox (`obj::roots::taken`, C512).
+/// before it leaves the mailbox (`obj::roots::taken`, C512), its fragment
+/// this thread's (`space::adopt_fragment`).
 pub(crate) fn take<M>(b: &MailboxBox<M>) -> Option<M> {
-    let mut q = held(&b.queue);
-    crate::obj::roots::taken(q.front()?);
-    q.pop_front()
+    let s = {
+        let mut q = held(&b.queue);
+        crate::obj::roots::taken(&q.front()?.m);
+        q.pop_front()?
+    };
+    crate::obj::space::adopt_fragment(s.fragment);
+    Some(s.m)
 }
 
 /// `(receive box)`: the oldest message, waiting for one.
@@ -543,7 +609,7 @@ pub fn spawn<M: Send + 'static>(body: impl FnOnce(Inbox<M>) + Send + 'static) ->
 /// `(spawn-monitored w on-failure (box M r) body ...)` (C108): `spawn`, but
 /// the process's failure is no failure of the program: `watcher` is sent
 /// `on_failure` of what the failure says, once.
-pub fn spawn_monitored<W: Send + 'static, M: Send + 'static>(
+pub fn spawn_monitored<W: Send + crate::Trace + 'static, M: Send + 'static>(
     watcher: Addr<W>,
     on_failure: crate::Proc1s<'static, crate::Str, W>,
     body: impl FnOnce(Inbox<M>) + Send + 'static,
@@ -564,18 +630,41 @@ pub fn spawn_monitored<W: Send + 'static, M: Send + 'static>(
 /// (a), C517): what the runtime may copy before the process runs (into the
 /// shared heap, to come), where a closure's captured words it could not
 /// rewrite.
-pub fn spawn_env<E: Send + 'static, M: Send + 'static>(env: E, body: fn(Inbox<M>, E)) -> Addr<M> {
-    spawn(move |b| body(b, env))
+pub fn spawn_env<E: Send + crate::Trace + 'static, M: Send + 'static>(
+    env: E,
+    body: fn(Inbox<M>, E),
+) -> Addr<M> {
+    let (env, fragment) = published(env);
+    spawn(move |b| {
+        crate::obj::space::adopt_fragment(fragment);
+        body(b, env)
+    })
+}
+
+/// `env` copied whole into a fragment (TODO §54 step 4b's (b)), which the
+/// process adopts as it starts, before its body runs.
+fn published<E: crate::Trace>(env: E) -> (E, crate::obj::space::Fragment) {
+    let mut fragment = crate::obj::space::Fragment::new();
+    let env = crate::obj::publish::copied(env, &mut fragment);
+    (env, fragment)
 }
 
 /// `spawn_monitored`, as `spawn_env` is `spawn`.
-pub fn spawn_monitored_env<W: Send + 'static, M: Send + 'static, E: Send + 'static>(
+pub fn spawn_monitored_env<
+    W: Send + crate::Trace + 'static,
+    M: Send + 'static,
+    E: Send + crate::Trace + 'static,
+>(
     watcher: Addr<W>,
     on_failure: crate::Proc1s<'static, crate::Str, W>,
     env: E,
     body: fn(Inbox<M>, E),
 ) -> Addr<M> {
-    spawn_monitored(watcher, on_failure, move |b| body(b, env))
+    let (env, fragment) = published(env);
+    spawn_monitored(watcher, on_failure, move |b| {
+        crate::obj::space::adopt_fragment(fragment);
+        body(b, env)
+    })
 }
 
 fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + 'static) -> Addr<M> {

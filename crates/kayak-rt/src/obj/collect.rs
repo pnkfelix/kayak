@@ -495,7 +495,7 @@ fn verbose() -> bool {
 /// Each object of the allocation at `start`, as `laid::allocation` finds
 /// them, with no `Vec`: one, or a datatype's value's two (C500).
 #[inline]
-fn each_object(view: &View, start: usize, mut f: impl FnMut(&laid::Laid)) {
+pub(super) fn each_object(view: &View, start: usize, mut f: impl FnMut(&laid::Laid)) {
     // Where the allocation may end at the most: its page's end, or its
     // large object's.
     let (chunk, limit) = match view.page_of(start) {
@@ -804,7 +804,12 @@ fn missed(obj: usize, slot: usize, target: usize) -> ! {
 /// into pages taken again since.
 #[inline]
 fn target(view: &View, f: HeapWord) -> Option<usize> {
-    let w = f.raw() as u64;
+    target_word(view, f.raw() as u64)
+}
+
+/// `target`, of a word's bits.
+#[inline]
+pub(super) fn target_word(view: &View, w: u64) -> Option<usize> {
     let read = |a: usize| -> u64 {
         // SAFETY: a word of an allocation of the space, read.
         unsafe { std::ptr::with_exposed_provenance::<u64>(a).read() }
@@ -986,12 +991,12 @@ mod tests {
         // A thread makes garbage and a list, which it leaves in an I-cell,
         // and ends: its pages are given to the next thread that collects,
         // which frees those holding nothing and keeps the list.
-        let c = crate::process::make_icell::<crate::obj::HeapWord>();
+        let c = crate::process::make_icell::<List<Int>>();
         let (pages, number) = std::thread::spawn(move || {
             for _ in 0..20 {
                 let _ = std::hint::black_box(list(garbage()));
             }
-            crate::process::icell_put_x(c, list(500).0);
+            crate::process::icell_put_x(c, list(500));
             (
                 crate::obj::space::my_page_words(),
                 crate::obj::space::my_number(),
@@ -1007,10 +1012,7 @@ mod tests {
         for p in pages {
             assert_ne!(crate::obj::space::page_owner(p), number);
         }
-        assert_eq!(
-            sum(of_word(crate::process::icell_get(c))),
-            1000 * 499 * 500 / 2
-        );
+        assert_eq!(sum(crate::process::icell_get(c)), 1000 * 499 * 500 / 2);
     }
 
     #[inline(never)]
@@ -1060,11 +1062,9 @@ mod tests {
     }
 
     #[inline(never)]
-    fn sent(
-        p: crate::Addr<(crate::obj::HeapWord, crate::ICell<crate::obj::HeapWord>)>,
-    ) -> crate::ICell<crate::obj::HeapWord> {
+    fn sent(p: crate::Addr<(List<Int>, crate::ICell<List<Int>>)>) -> crate::ICell<List<Int>> {
         let c = crate::process::make_icell();
-        crate::process::send(p, (list(300).0, c));
+        crate::process::send(p, (list(300), c));
         c
     }
 
@@ -1074,17 +1074,15 @@ mod tests {
         // sends it back: the list then this thread's only below another's
         // cells, each side collecting as it goes.
         const ROUNDS: usize = 40;
-        let p = crate::process::spawn(
-            |b: crate::Inbox<(crate::obj::HeapWord, crate::ICell<crate::obj::HeapWord>)>| {
-                for _ in 0..ROUNDS {
-                    let (w, c) = crate::process::receive(b);
-                    let ys = before(100, of_word(w));
-                    let _ = std::hint::black_box(list(garbage()));
-                    super::collect();
-                    crate::process::icell_put_x(c, ys.0);
-                }
-            },
-        );
+        let p = crate::process::spawn(|b: crate::Inbox<(List<Int>, crate::ICell<List<Int>>)>| {
+            for _ in 0..ROUNDS {
+                let (w, c) = crate::process::receive(b);
+                let ys = before(100, w);
+                let _ = std::hint::black_box(list(garbage()));
+                super::collect();
+                crate::process::icell_put_x(c, ys);
+            }
+        });
         for _ in 0..ROUNDS {
             let c = sent(p);
             let _ = std::hint::black_box(list(garbage()));
@@ -1092,7 +1090,7 @@ mod tests {
             let w = crate::process::icell_get(c);
             let _ = std::hint::black_box(list(garbage()));
             super::collect();
-            assert_eq!(sum(of_word(w)), 99 * 100 / 2 + 1000 * 299 * 300 / 2);
+            assert_eq!(sum(w), 99 * 100 / 2 + 1000 * 299 * 300 / 2);
         }
     }
 }
