@@ -95,7 +95,9 @@ struct Bump {
     chunk: Cell<Option<&'static Chunk>>,
     pages: RefCell<Vec<(&'static Chunk, usize)>>,
     since: Cell<usize>,
-    /// Pages to take before a collection is due.
+    /// The pages (with its large objects') at which its next major
+    /// collection is due: three times what its last kept (TODO §54 step
+    /// 4b's (d)).
     due: Cell<usize>,
     /// While a collection runs, or a caller holds what no root sees
     /// (`NoCollect`), none starts.
@@ -415,14 +417,37 @@ impl Chunk {
 fn refill(b: &Bump, w: usize) -> *mut u64 {
     let stress = stress();
     if b.held.get() == 0 && enabled() {
-        let due = if stress > 0 {
+        // A collection due: under stress, at every `stress`th allocation,
+        // three in four minor (Fixpt's); else a minor one once the pages
+        // taken since the last fill the nursery, the heap past its least
+        // (below it, what a young heap holds is mostly what it keeps, which
+        // a minor one would only promote); a major one once the old pages
+        // are three times what the last major one kept.
+        let nursery = nursery();
+        let (due, major) = if stress > 0 {
             b.ticks.set(b.ticks.get() + 1);
-            b.ticks.get().is_multiple_of(stress)
+            let due = b.ticks.get().is_multiple_of(stress);
+            (
+                due,
+                nursery == 0 || (b.ticks.get() / stress).is_multiple_of(4),
+            )
         } else {
-            b.since.get() >= b.due.get().max(min_due())
+            let total = b.pages.borrow().len() + b.large_pages.get();
+            let old = if nursery > 0 {
+                total.saturating_sub(b.since.get())
+            } else {
+                total
+            };
+            let major = old >= b.due.get().max(min_due());
+            let minor = nursery > 0 && b.since.get() >= nursery && total >= min_due();
+            (major || minor, major)
         };
         if due && concurrent() == 0 {
-            super::collect::collect();
+            if major {
+                super::collect::collect();
+            } else {
+                super::collect::collect_minor();
+            }
         }
     }
     if w * 8 > LARGE_BYTES {
@@ -1012,7 +1037,7 @@ pub(crate) fn begin_collection() {
 /// A collection's end: the pages it freed given back (each zeroed when
 /// taken again, poisoned now under stress), the thread's the rest, and the
 /// next due when as many pages again are taken.
-pub(crate) fn end_collection(freed: &[(&'static Chunk, usize)]) {
+pub(crate) fn end_collection(freed: &[(&'static Chunk, usize)], minor: bool) {
     let poison = stress() > 0 || poison();
     let keys: std::collections::HashSet<(usize, usize)> =
         freed.iter().map(|&(c, p)| page_key(c, p)).collect();
@@ -1040,8 +1065,11 @@ pub(crate) fn end_collection(freed: &[(&'static Chunk, usize)]) {
         b.end.set(std::ptr::null_mut());
         b.limit.set(std::ptr::null_mut());
         b.chunk.set(None);
-        // The heap may grow to three times what was kept before the next.
-        b.due.set(2 * (pages.len() + b.large_pages.get()));
+        // After a major one, the heap may grow to three times what it kept
+        // before the next.
+        if !minor {
+            b.due.set(3 * (pages.len() + b.large_pages.get()));
+        }
         b.since.set(0);
         b.held.set(b.held.get() - 1);
         Epochs::end(b.epoch.get());
@@ -1402,6 +1430,16 @@ pub(crate) fn stressed() -> bool {
 fn poison() -> bool {
     static P: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *P.get_or_init(|| env_number("KAYAK_GC_POISON").is_some_and(|n| n != 0))
+}
+
+/// The nursery's pages: those taken since the last collection that make a
+/// minor one due (TODO §54 step 4b's (d)): `KAYAK_GC_NURSERY`, else 1024
+/// (32 MB; Fixpt's is 8 MB, 2^20 words: kfx making itself and kc building
+/// `expander-facts.fx` were faster at 32 when measured, the parked work of
+/// 2026-11-24); 0, no minor collections.
+fn nursery() -> usize {
+    static N: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    *N.get_or_init(|| env_number("KAYAK_GC_NURSERY").map_or(1024, |n| n as usize))
 }
 
 /// Pages taken before a first collection, and at least between two:

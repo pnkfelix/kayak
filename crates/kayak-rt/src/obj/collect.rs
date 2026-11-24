@@ -102,25 +102,76 @@ pub(crate) fn last() -> Last {
 /// stack read from there.
 #[inline(never)]
 pub(crate) fn collect() {
+    collect_as(false);
+}
+
+/// A minor collection of this thread's pages, now (TODO §54 step 4b's
+/// (d)): its young pages alone, its old objects neither followed nor
+/// moved; the slots the barrier noted, and the fields of what it adopted
+/// since its last collection, roots that are made to point where what
+/// they hold went. Its thread's alone: no other thread reads its objects.
+#[inline(never)]
+pub(crate) fn collect_minor() {
+    collect_as(true);
+}
+
+#[inline(never)]
+fn collect_as(minor: bool) {
     let mut saved = [0usize; 12];
     super::roots::spill(&mut saved);
     let saved = std::hint::black_box(saved);
-    collect_from(&saved, std::ptr::from_ref(&saved).addr());
+    collect_from(&saved, std::ptr::from_ref(&saved).addr(), minor);
     std::hint::black_box(&saved);
 }
 
 #[inline(never)]
-fn collect_from(saved: &[usize; 12], from: usize) {
+fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
     let mut timer = Timer::start();
     let remembered = space::remembered_len();
     space::begin_collection();
     // What threads ended with no heir left (a process's pages), this
     // thread's to collect from now.
     space::adopt_orphans();
+    // A minor collection's: the young large objects; the slots the barrier
+    // noted (the store buffer emptied at the collection's end), and each
+    // field of what was adopted since the last collection (old, and what
+    // they hold of this thread's young objects no barrier saw).
+    let young_large: Set<usize> = if minor {
+        space::young_large().into_iter().collect()
+    } else {
+        Set::default()
+    };
+    let mut noted = if minor {
+        space::remembered()
+    } else {
+        Vec::new()
+    };
+    if minor {
+        let view = View::new();
+        let (pages, large) = space::received();
+        let mut field = |a: usize| {
+            each_object(&view, a, |o| {
+                for f in o.fields {
+                    noted.push(std::ptr::from_ref(f).addr());
+                }
+            });
+        };
+        for (c, p) in pages {
+            c.each_start(p, &mut field);
+        }
+        for a in large {
+            field(a);
+        }
+    }
     let roots = super::roots::roots_from(saved, from);
     timer.lap();
     let view = View::new();
     let mine = space::my_pages();
+    let young_at_start = if minor {
+        mine.iter().filter(|&&(c, p)| c.is_young(p)).count()
+    } else {
+        0
+    };
     let mut m = Mark {
         view: &view,
         kept: &roots.kept,
@@ -148,6 +199,8 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         }),
         found: Vec::new(),
         found_kept: Vec::new(),
+        minor,
+        young_large: &young_large,
     };
     // First what every thread may read, and what another may take as this
     // one runs (C512), each allocation it reaches pinned: the constants,
@@ -163,6 +216,27 @@ fn collect_from(saved: &[usize; 12], from: usize) {
     }
     m.drain();
     m.noting = false;
+    // A minor collection's noted slots, each of an old object of this
+    // thread's (a young one's is followed as its object is), taken as a
+    // field is: what it holds moved, the slot made to point where it went
+    // (`precise`). A slot no longer of the space (an arena's dropped, a
+    // stack's) left.
+    let mut precise = Vec::new();
+    for &slot in &noted {
+        let Some(o) = view.object_of(slot) else {
+            continue;
+        };
+        if young(&view, &young_large, o) || view.whose_of(o) != Whose::Mine {
+            continue;
+        }
+        // SAFETY: a word of an allocation of this thread's, read.
+        let w = unsafe { std::ptr::with_exposed_provenance::<u64>(slot).read() };
+        if let Some(t) = target_word(&view, w) {
+            m.visit(t, false, Way::Own);
+            precise.push(slot);
+        }
+    }
+    m.drain();
     let mut pins = [m.pinned.len(); 5];
     for (i, &w) in roots.words.iter().enumerate() {
         m.ambiguous(w, Way::Own);
@@ -200,7 +274,9 @@ fn collect_from(saved: &[usize; 12], from: usize) {
     } = m;
     // What this thread reaches of others', for their collections; not
     // moved by this one, so told now.
-    super::roots::reported(report.into_iter().collect(), roots.reach_from);
+    // A minor collection follows no old object, so what one of them
+    // reaches of others' kept objects it does not find: added to the list.
+    super::roots::reported(report.into_iter().collect(), roots.reach_from, minor);
 
     // From-space: this thread's pages that nothing pins, but those adopted
     // that a collection on another thread may still write.
@@ -211,7 +287,7 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         .copied()
         .filter(|&(c, p)| {
             let k = space::page_key(c, p);
-            !pinned.contains(&k) && !unsettled.contains(&k)
+            !pinned.contains(&k) && !unsettled.contains(&k) && (!minor || c.is_young(p))
         })
         .collect();
     for &(c, p) in &from_pages {
@@ -220,6 +296,7 @@ fn collect_from(saved: &[usize; 12], from: usize) {
     // Each reached allocation of from-space copied, a forwarding word
     // left in its first.
     let mut moved = 0;
+    let mut moved_words = 0;
     for &a in &order {
         if !in_from(&view, a) {
             continue;
@@ -237,6 +314,7 @@ fn collect_from(saved: &[usize; 12], from: usize) {
             at.write(to.addr() as u64 | TAG_FORWARD);
         }
         moved += 1;
+        moved_words += n;
     }
     timer.lap();
 
@@ -277,10 +355,32 @@ fn collect_from(saved: &[usize; 12], from: usize) {
             }
         });
     }
+    // The noted slots taken as roots, made to point where what they held
+    // went.
+    for &slot in &precise {
+        // SAFETY: a word of an allocation of this thread's, which only it
+        // reads.
+        let w = unsafe { std::ptr::with_exposed_provenance::<u64>(slot).read() };
+        let s = match w & TAG_MASK {
+            TAG_PAIR => (w & !TAG_MASK) as usize,
+            TAG_OBJECT => match view.object_of(((w & !TAG_MASK) as usize).wrapping_sub(8)) {
+                Some(s) => s,
+                None => continue,
+            },
+            _ => continue,
+        };
+        if let Some(to) = forwarded(s) {
+            // SAFETY: as above, the slot written.
+            unsafe {
+                space::word_mut(&view, slot)
+                    .write(w.wrapping_add(to as u64).wrapping_sub(s as u64));
+            }
+        }
+    }
     timer.lap();
     // This thread's large objects not reached, freed (once no collection
-    // running may read them).
-    space::free_large(|a| others.contains(&a));
+    // running may read them); by a minor collection, its young ones alone.
+    space::free_large(|a| others.contains(&a) || (minor && !young_large.contains(&a)));
     // Each allocation left on a page it pinned that it did not reach,
     // dead: its fields cleared (fixnum 0), so that a stale word that
     // reaches it later (an ambiguous root's) keeps nothing more alive and
@@ -293,7 +393,7 @@ fn collect_from(saved: &[usize; 12], from: usize) {
             .collect();
         for &(c, p) in &mine {
             let k = space::page_key(c, p);
-            if from.contains(&k) || unsettled.contains(&k) {
+            if from.contains(&k) || unsettled.contains(&k) || (minor && !c.is_young(p)) {
                 continue;
             }
             c.each_start(p, |a| {
@@ -313,8 +413,11 @@ fn collect_from(saved: &[usize; 12], from: usize) {
             });
         }
     }
+    // Marks are made only on young pages by a minor collection.
     for &(c, p) in &mine {
-        c.clear_marks(p);
+        if !minor || c.is_young(p) {
+            c.clear_marks(p);
+        }
     }
     for &(c, p) in &from_pages {
         c.set_from(p, false);
@@ -335,17 +438,30 @@ fn collect_from(saved: &[usize; 12], from: usize) {
             l.reached, l.moved, l.pinned_pages, l.freed_pages, pages, large, kn, kb
         );
     }
-    space::end_collection(&from_pages);
+    space::end_collection(&from_pages, minor);
     // What this thread keeps that no word reached (what was kept since
     // the roots were read, left), freed once no collection running may
-    // scan it: after the collection, as a drop may allocate.
-    super::roots::retire_kept(|k| {
-        kept_reached.contains(&k) || roots.kept.find(k).is_none_or(|i| i.start != k || !i.mine)
-    });
+    // scan it: after the collection, as a drop may allocate. Not after a
+    // minor one, which follows no old object that may reach one.
+    if minor && stats_on() {
+        let r = Ordering::Relaxed;
+        STATS.minor_young_pages.fetch_add(young_at_start as u64, r);
+        STATS.minor_moved_words.fetch_add(moved_words as u64, r);
+        let pinned_young = mine
+            .iter()
+            .filter(|&&(c, p)| pinned.contains(&space::page_key(c, p)))
+            .count();
+        STATS.minor_pinned_pages.fetch_add(pinned_young as u64, r);
+    }
+    if !minor {
+        super::roots::retire_kept(|k| {
+            kept_reached.contains(&k) || roots.kept.find(k).is_none_or(|i| i.start != k || !i.mine)
+        });
+    }
     COLLECTIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     timer.lap();
     let last = LAST.get();
-    timer.done(&last, roots.ends[0], remembered);
+    timer.done(&last, roots.ends[0], remembered, minor);
 }
 
 /// Whether `a` is on a page a collection copies from. Asked only of this
@@ -381,6 +497,14 @@ struct Stats {
     stack_words: AtomicU64,
     /// The store buffer's slots at each collection's start, summed.
     remembered: AtomicU64,
+    /// The minor collections, and their pauses' sum; their young pages as
+    /// each began, the words each copied, the young pages each pinned
+    /// (what survived, by bytes).
+    minors: AtomicU64,
+    minor_ns: AtomicU64,
+    minor_young_pages: AtomicU64,
+    minor_moved_words: AtomicU64,
+    minor_pinned_pages: AtomicU64,
     // Pauses by length: below 1 ms, 10 ms, 100 ms, and above.
     buckets: [AtomicU64; 4],
 }
@@ -394,6 +518,11 @@ static STATS: Stats = Stats {
     freed_pages: AtomicU64::new(0),
     stack_words: AtomicU64::new(0),
     remembered: AtomicU64::new(0),
+    minors: AtomicU64::new(0),
+    minor_ns: AtomicU64::new(0),
+    minor_young_pages: AtomicU64::new(0),
+    minor_moved_words: AtomicU64::new(0),
+    minor_pinned_pages: AtomicU64::new(0),
     buckets: [const { AtomicU64::new(0) }; 4],
 };
 
@@ -413,7 +542,7 @@ impl Timer {
             *i += 1;
         }
     }
-    fn done(self, l: &Last, stack_words: usize, remembered: usize) {
+    fn done(self, l: &Last, stack_words: usize, remembered: usize, minor: bool) {
         let Some((_, ns, _)) = self.0 else { return };
         let r = Ordering::Relaxed;
         for (s, n) in STATS.phase_ns.iter().zip(ns) {
@@ -421,6 +550,10 @@ impl Timer {
         }
         let total: u64 = ns.iter().sum();
         STATS.max_ns.fetch_max(total, r);
+        if minor {
+            STATS.minors.fetch_add(1, r);
+            STATS.minor_ns.fetch_add(total, r);
+        }
         let b = match total {
             0..1_000_000 => 0,
             1_000_000..10_000_000 => 1,
@@ -471,6 +604,24 @@ pub(crate) fn report_stats() {
         STATS.buckets[2].load(r),
         STATS.buckets[3].load(r),
     );
+    let minors = STATS.minors.load(r);
+    eprintln!(
+        "kayak-gc: {minors} minor, {:.1} ms; {} major, {:.1} ms",
+        ms(STATS.minor_ns.load(r)),
+        n - minors,
+        ms(total - STATS.minor_ns.load(r)),
+    );
+    if minors > 0 {
+        let young = STATS.minor_young_pages.load(r) as f64 * space::PAGE_BYTES as f64;
+        let moved = STATS.minor_moved_words.load(r) as f64 * 8.0;
+        let pinned = STATS.minor_pinned_pages.load(r) as f64 * space::PAGE_BYTES as f64;
+        eprintln!(
+            "kayak-gc: minor survival: {:.1}% of the young bytes copied, {:.1}% on young pages pinned whole ({:.1} pages a minor)",
+            100.0 * moved / young.max(1.0),
+            100.0 * pinned / young.max(1.0),
+            STATS.minor_pinned_pages.load(r) as f64 / minors as f64,
+        );
+    }
     eprintln!(
         "kayak-gc: phases (ms): {}",
         PHASES
@@ -568,6 +719,10 @@ struct Mark<'v> {
     /// `follow`'s buffers, kept between its calls.
     found: Vec<usize>,
     found_kept: Vec<super::roots::KeptAt>,
+    /// A minor collection's: this thread's old objects neither marked nor
+    /// followed; its young large objects.
+    minor: bool,
+    young_large: &'v Set<usize>,
 }
 
 /// What the verifier knows: the store buffer, the young large objects,
@@ -643,6 +798,9 @@ impl Mark<'_> {
             Some((c, p)) => {
                 let whose = self.view.whose_page(c, p);
                 if whose == Whose::Mine {
+                    if self.minor && !c.is_young(p) {
+                        return;
+                    }
                     if pin {
                         self.pinned.insert(space::page_key(c, p));
                     }
@@ -659,7 +817,12 @@ impl Mark<'_> {
                 (whose, false)
             }
             None => match self.view.large_owner(a) {
-                Some((_, _, whose)) => (whose, true),
+                Some((_, _, whose)) => {
+                    if self.minor && whose == Whose::Mine && !self.young_large.contains(&a) {
+                        return;
+                    }
+                    (whose, true)
+                }
                 None => return,
             },
         };
@@ -984,6 +1147,48 @@ mod tests {
             sum(of_word(theirs)),
             30 * 99 * 100 / 2 + 1000 * 1999 * 2000 / 2
         );
+    }
+
+    #[test]
+    fn a_minor_collection_reads_the_young_alone() {
+        // An old list (a major collection made it so) is neither read nor
+        // moved by a minor one: a major one right after reaches its 300
+        // cells more than the minor did, and both keep both lists.
+        let old = list(300);
+        super::collect();
+        let old_at = old.0.raw();
+        let young = list(300);
+        super::collect_minor();
+        let minor = super::last().reached;
+        assert_eq!(
+            old.0.raw(),
+            old_at,
+            "an old object moved by a minor collection"
+        );
+        super::collect();
+        let major = super::last().reached;
+        assert!(
+            minor + 300 <= major,
+            "a minor collection reached {minor}, a major {major}"
+        );
+        assert_eq!(sum(old), 1000 * 299 * 300 / 2);
+        assert_eq!(sum(young), 1000 * 299 * 300 / 2);
+    }
+
+    #[test]
+    fn a_young_list_an_old_box_holds_kept_by_a_minor_collection() {
+        // A box made old, then given a young list (the barrier notes its
+        // slot): a minor collection keeps the list through the slot alone
+        // and makes the slot point where the list went. Without the
+        // barrier (`Slot::set`'s `remember`), the list's pages are freed.
+        let r = heap_new(nil::<Int>());
+        super::collect();
+        crate::set(r, list(500));
+        for _ in 0..3 {
+            let _ = std::hint::black_box(list(garbage()));
+            super::collect_minor();
+        }
+        assert_eq!(sum(crate::get(r)), 1000 * 499 * 500 / 2);
     }
 
     #[test]

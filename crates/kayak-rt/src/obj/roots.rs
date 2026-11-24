@@ -643,10 +643,18 @@ impl Heir {
 }
 
 /// This thread's list, as its collection found it (`report`), and what
-/// was added to it since `from`, where the collection began.
-pub(super) fn reported(report: Vec<usize>, from: usize) {
+/// was added to it since `from`, where the collection began. After a minor
+/// collection (`merge`), what it found added to the list, which keeps what
+/// it had: what of others' kept objects its old objects reach, it does not
+/// see.
+pub(super) fn reported(report: Vec<usize>, from: usize, merge: bool) {
     if let Some(r) = my_reach() {
         let mut l = r.lock();
+        if merge {
+            let had: std::collections::HashSet<usize> = l.iter().copied().collect();
+            l.extend(report.into_iter().filter(|a| !had.contains(a)));
+            return;
+        }
         let since: Vec<usize> = l.get(from..).map(<[usize]>::to_vec).unwrap_or_default();
         *l = report;
         l.extend(since);

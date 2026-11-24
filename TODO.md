@@ -2192,7 +2192,8 @@ over its 1664 definitions, 335 of them refused:
         `WHOLE` values refused, the failure closure copied; its second
         done, C521: another thread's objects left by a collection, the
         lists telling kept objects only, as a capability another thread
-        holds is known only so) C512's lists
+        holds is known only so; (d) done, C522: minor collections, each
+        thread's alone; the policy) C512's lists
         gone; (d) generations, each thread's alone (C516's barrier and
         verifier, the parked work made simple); (e) the shared heap's
         own incremental collector. Till (b), processes need C512's

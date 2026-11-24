@@ -16596,3 +16596,44 @@ TODO §54 step 4b's (c), its second part.
 - Checked: kayak-rt's tests, the stress script, and kayak-rt's tests at
   every allocation, poisoned, 40 times (none failed).
 - **The full check**: all passed in 592.8 s, its first run (10 min 36 s under `timed`, predicted 8 min 07 s); nextest 5645.
+
+## C522. A minor collection, each thread's alone (2026-11-24)
+
+TODO §54 step 4b's (d): generations, with no protocol between threads
+(the parked work, made simple now that no thread reads another's heap).
+- **`collect_minor`**: a thread's young pages alone. Its old objects are
+  neither marked nor followed nor moved (`Mark::visit` stops at an old
+  page or an old large object); its roots the usual, and each slot the
+  barrier noted in an old object of its own, and each field of what it
+  adopted since its last collection (`space::received`, old since C520):
+  each taken as a field is, what it holds moved and the slot made to
+  point where it went. From-space its young pages no root pins; dead
+  objects' fields cleared on its young pinned pages only, its marks
+  cleared there only; its young large objects not reached freed. It
+  retires no kept object (one its old objects reach it does not see), and
+  adds what it reached of others' kept objects to its list rather than
+  replacing it (`reported`'s `merge`). C512's whole pinning of what
+  another thread may read, the parked work's when another thread ran, is
+  gone: none reads this thread's objects.
+- **The policy** (`refill`): no collection while the thread's heap is
+  below its least (64 MB): what a young heap holds is mostly what it
+  keeps. Then a minor collection once the pages taken since the last fill
+  the nursery (`KAYAK_GC_NURSERY`, 1024 pages, 32 MB; 0, none); a major one
+  once the old pages alone reach three times what the last major kept.
+  Under stress, three collections in four minor (Fixpt's).
+- **Measured**: kfx making itself 4 s (5 s before), 63 collections, 61
+  minor, 1.39 s collecting (2.9 s); its output the same. kc building
+  `expander-facts.fx` 63–64 s (80 s), 1488 minor and 40 major, 17.7 s
+  collecting, its longest pause 1.39 s, 1.88 GB at its peak; its
+  executable the same. kc-bench at 1000 procedures, an edit's build: 3
+  minor collections, 77 ms (as C514's day, the machine busier: Fixpt's
+  column 10% slower). Each minor collection keeps, of the young bytes,
+  9.2% copied and 2.2% on pages pinned whole (kfx), 12.3% and 3.4% (kc):
+  the float the user asked after, of the stack's stale words in part;
+  `KAYAK_GC_STATS` says it (`minor survival`).
+- **Tests**: a minor collection reads the young alone (a major one right
+  after reaches the 300 old cells more; with the stop at old pages taken
+  out, the minor reaches 600); a young list an old box holds kept through
+  the noted slot alone (without the barrier's `remember`, its sum wrong).
+  The stress script 38 s (89 s): its collections mostly minor now.
+- **The full check**: all passed in 549.7 s, its first run (9 min 49 s under `timed`, predicted 8 min 09 s); nextest 5647.
