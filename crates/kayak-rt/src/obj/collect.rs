@@ -136,10 +136,16 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         noting: false,
         report: Set::default(),
         verify: space::verifying().then(|| {
-            (
-                space::remembered().into_iter().collect(),
-                space::young_large().into_iter().collect(),
-            )
+            let (pages, large) = space::received();
+            Verify {
+                remembered: space::remembered().into_iter().collect(),
+                young_large: space::young_large().into_iter().collect(),
+                got: pages
+                    .into_iter()
+                    .map(|(c, p)| space::page_key(c, p))
+                    .collect(),
+                got_large: large.into_iter().collect(),
+            }
         }),
         found: Vec::new(),
         found_kept: Vec::new(),
@@ -559,12 +565,21 @@ struct Mark<'v> {
     /// Whether what is pinned whole now is noted in `whole`.
     noting: bool,
     report: Set<usize>,
-    /// The verifier's (`space::verifying`): the store buffer, the young
-    /// large objects.
-    verify: Option<(Set<usize>, Set<usize>)>,
+    /// The verifier's (`space::verifying`).
+    verify: Option<Verify>,
     /// `follow`'s buffers, kept between its calls.
     found: Vec<usize>,
     found_kept: Vec<super::roots::KeptAt>,
+}
+
+/// What the verifier knows: the store buffer, the young large objects,
+/// what was adopted since the last collection (pages' keys and large
+/// objects: `space::received`).
+struct Verify {
+    remembered: Set<usize>,
+    young_large: Set<usize>,
+    got: Set<(usize, usize)>,
+    got_large: Set<usize>,
 }
 
 /// How an allocation's words are followed.
@@ -709,10 +724,23 @@ impl Mark<'_> {
     #[cold]
     fn verify_old(&self, a: usize) {
         let view = self.view;
-        let Some((remembered, young_large)) = &self.verify else {
+        let Some(Verify {
+            remembered,
+            young_large,
+            got,
+            got_large,
+        }) = &self.verify
+        else {
             return;
         };
-        if young(view, young_large, a) {
+        // Adopted since the last collection: what it holds of this
+        // thread's young objects no barrier saw (`space::received`).
+        if young(view, young_large, a)
+            || got_large.contains(&a)
+            || view
+                .page_of(a)
+                .is_some_and(|(c, p)| got.contains(&space::page_key(c, p)))
+        {
             return;
         }
         each_object(view, a, |o| {

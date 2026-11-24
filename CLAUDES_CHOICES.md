@@ -16536,3 +16536,37 @@ collector, step (e)).
   collection, harmlessly (a fragment's objects read as another live
   thread's).
 - **The full check**: all passed in 524.8 s, its first run (9 min 25 s under `timed`; predicted 8 min 04 s); nextest 5645.
+
+## C520. `par`'s branches both on threads; what crosses still, closed (2026-11-24)
+
+TODO §54 step 4b's (c), its first part: what must not cross before C512's
+lists can go.
+- **`par2`** (the user's choice of three): both branches on threads of
+  their own, the maker waiting at the join (`joined_one`, then `joined`),
+  so its heap neither changes nor moves as they read it; each branch's
+  pages its maker's at the join. `f` was the maker's own, on its thread,
+  beside `g`, its heap collected as `g` read it. `f` now `Send` too, as the
+  checker found (rustc agrees: every generated branch builds). The async
+  `par2` polls both branches on the task's own thread, unchanged.
+- **Adopted pages old** (a `par` branch's at its join, an ended thread's):
+  a branch's objects may point to the maker's young ones, which it read
+  as the maker waited, and no barrier saw (found by the verifier, every
+  run at every 7th allocation, once the maker no longer collected during
+  the `par`: `a_par_branch_collects_beside_its_maker`). So what is adopted
+  is old, and noted (`space::received`), for a minor collection to take
+  their fields as noted slots, to come; the verifier leaves them. A
+  thread's store buffer no longer goes with its pages (`Parcel`).
+- **A value held as itself** (`Trace::WHOLE`) sent, given a process, put
+  in an I-cell or made a constant for the whole program: refused as rustc
+  builds (`publish::copied`'s assertion). No program does (every crate and
+  the corpus build so), so none is shared by mistake.
+- **`spawn_monitored`'s failure closure**, run on the failing process's
+  thread: copied into a fragment its group holds, given back with it.
+- `unsafe-par` keeps every constant once for the program, of no
+  transmissible type too, one a blobref (held as itself): those copied
+  into the immortal fragment where they have Fixpt words, a blobref left
+  where it is (`copied_if_words`), a debt of that feature's. The first
+  pre-check found it (and clippy, the verifier's tuple of four sets, now a
+  struct); the full check had been started after the pre-check failed,
+  so now waits on it.
+- **The full check**: all passed in 562.2 s, its second run (the first started after a failed pre-check, stopped at clippy); 10 min 10 s under `timed`, predicted 8 min 05 s; nextest 5645.

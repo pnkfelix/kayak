@@ -114,6 +114,10 @@ struct Group {
     monitored: bool,
     on_failure: Box<dyn Fn(String) + Send + Sync>,
     failed: AtomicBool,
+    /// What `on_failure` holds of the maker's, copied (TODO §54 step 4b's
+    /// (c)): it runs on the failing thread, which reads no other thread's
+    /// heap; given back with the group, which only holds it.
+    _fragment: crate::obj::space::Fragment,
 }
 
 /// The unwinding of a task its group cancelled: no failure of its own.
@@ -601,6 +605,7 @@ pub fn spawn<M: Send + 'static>(body: impl FnOnce(Inbox<M>) + Send + 'static) ->
                 changed(g)
             }),
             failed: AtomicBool::new(false),
+            _fragment: crate::obj::space::Fragment::new(),
         },
         body,
     )
@@ -614,11 +619,14 @@ pub fn spawn_monitored<W: Send + crate::Trace + 'static, M: Send + 'static>(
     on_failure: crate::Proc1s<'static, crate::Str, W>,
     body: impl FnOnce(Inbox<M>) + Send + 'static,
 ) -> Addr<M> {
+    let mut fragment = crate::obj::space::Fragment::new();
+    let on_failure = crate::obj::publish::copied(on_failure, &mut fragment);
     start(
         Group {
             monitored: true,
             on_failure: Box::new(move |m| send(watcher, on_failure.call(crate::leak_string(m)))),
             failed: AtomicBool::new(false),
+            _fragment: fragment,
         },
         body,
     )
@@ -737,22 +745,38 @@ fn caught<A>(f: impl FnOnce() -> A) -> std::thread::Result<A> {
     r
 }
 
-/// `par`'s two branches, `f` here and `g` on a thread of its own, at once;
-/// both their values. Each branch holds only what may cross (C102): rustc
-/// checks it, by `Send`. A branch's failure is the `par`'s, its message
-/// kept.
-pub fn par2<A, B: Send>(f: impl FnOnce() -> A, g: impl FnOnce() -> B + Send) -> (A, B) {
+/// `par`'s two branches, each on a thread of its own, at once, the maker
+/// waiting for both (TODO §54 step 4b's (c), the user's choice): so the
+/// maker's heap neither changes nor moves while they read it; both their
+/// values, each branch's pages its maker's at the join. Each branch holds
+/// only what may cross (C102): rustc checks it, by `Send`. A branch's
+/// failure is the `par`'s, its message kept.
+pub fn par2<A: Send, B: Send>(
+    f: impl FnOnce() -> A + Send,
+    g: impl FnOnce() -> B + Send,
+) -> (A, B) {
     let program = program();
     let group = group();
-    let lent = crate::obj::roots::lend(&g);
-    let heir = crate::obj::roots::heir();
+    let lent_f = crate::obj::roots::lend(&f);
+    let lent_g = crate::obj::roots::lend(&g);
+    let heir_f = crate::obj::roots::heir();
+    let heir_g = crate::obj::roots::heir();
     std::thread::scope(|scope| {
+        lock().running += 1;
+        let one = std::thread::Builder::new()
+            .stack_size(STACK)
+            .spawn_scoped(scope, move || {
+                branch_beside(program, group, lent_f, heir_f, f)
+            })
+            .unwrap_or_else(|e| crate::fail(&format!("par: no thread: {e}")));
         lock().running += 1;
         let other = std::thread::Builder::new()
             .stack_size(STACK)
-            .spawn_scoped(scope, move || branch_beside(program, group, lent, heir, g))
+            .spawn_scoped(scope, move || {
+                branch_beside(program, group, lent_g, heir_g, g)
+            })
             .unwrap_or_else(|e| crate::fail(&format!("par: no thread: {e}")));
-        let a = caught(f);
+        let a = joined_one(one);
         joined(a, || {
             other.join().map(|(r, parcel)| {
                 crate::obj::space::adopt(parcel);
@@ -760,6 +784,24 @@ pub fn par2<A, B: Send>(f: impl FnOnce() -> A, g: impl FnOnce() -> B + Send) -> 
             })
         })
     })
+}
+
+/// The first branch's value, waited for (its pages the maker's): the
+/// maker counted as not running while it waits, as at `joined`.
+fn joined_one<A>(
+    h: std::thread::ScopedJoinHandle<'_, (std::thread::Result<A>, crate::obj::space::Parcel)>,
+) -> std::thread::Result<A> {
+    lock().running -= 1;
+    WAKE.notify_all();
+    let r = h.join();
+    lock().running += 1;
+    match r {
+        Ok((r, parcel)) => {
+            crate::obj::space::adopt(parcel);
+            r
+        }
+        Err(e) => Err(e),
+    }
 }
 
 /// `f`'s value `a` and the other branch's, joined: joining is waiting, as

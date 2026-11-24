@@ -54,7 +54,14 @@ impl<T: Copy + crate::Trace> OnceSlot<T> for kayak_sync::Global<T> {
         self.get().copied()
     }
     fn kept(&'static self, make: &mut dyn FnMut() -> T) -> T {
-        *self.get_or_init(|| immortal(make()))
+        // Any constant, of no transmissible type too: one held as itself
+        // (a blobref) is not copied (`copied_if_words`), a debt of this
+        // feature's.
+        *self.get_or_init(|| {
+            let v = make();
+            let mut f = IMMORTAL.lock().unwrap_or_else(|e| e.into_inner());
+            crate::obj::publish::copied_if_words(v, &mut f)
+        })
     }
 }
 

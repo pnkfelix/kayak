@@ -124,6 +124,14 @@ struct Bump {
     /// (their first words): what a store as one is made puts in them
     /// passes no barrier.
     young_large: RefCell<Vec<usize>>,
+    /// Pages and large objects adopted (a `par` branch's at its join, an
+    /// ended thread's) since the last collection: old from then, as what
+    /// they hold may point to this thread's young objects, which no
+    /// barrier saw (the branch read its waiting maker's heap). A minor
+    /// collection, to come, takes their fields as noted slots; the
+    /// verifier leaves them (`received`).
+    received: RefCell<Vec<(&'static Chunk, usize)>>,
+    received_large: RefCell<Vec<usize>>,
 }
 
 thread_local! {
@@ -144,6 +152,8 @@ thread_local! {
             probation: RefCell::new(Vec::new()),
             remembered: RefCell::new(Vec::new()),
             young_large: RefCell::new(Vec::new()),
+            received: RefCell::new(Vec::new()),
+            received_large: RefCell::new(Vec::new()),
         }
     };
     /// Touched as the thread takes its first page or large object, so that
@@ -768,6 +778,9 @@ pub(crate) struct Fragment {
 // SAFETY: its pages and large objects are no thread's while it holds them;
 // only its holder writes or adopts them.
 unsafe impl Send for Fragment {}
+// SAFETY: shared, it is only read (`is_empty`, `holds`); what writes or
+// adopts it takes it by `&mut` or by value.
+unsafe impl Sync for Fragment {}
 
 impl Default for Fragment {
     fn default() -> Self {
@@ -940,6 +953,16 @@ pub(crate) fn remembered_len() -> usize {
     BUMP.with(|b| b.remembered.borrow().len())
 }
 
+/// The pages and large objects adopted since the last collection.
+pub(crate) fn received() -> (Vec<(&'static Chunk, usize)>, Vec<usize>) {
+    BUMP.with(|b| {
+        (
+            b.received.borrow().clone(),
+            b.received_large.borrow().clone(),
+        )
+    })
+}
+
 /// The thread's store buffer, a copy (the verifier's).
 pub(crate) fn remembered() -> Vec<usize> {
     BUMP.with(|b| b.remembered.borrow().clone())
@@ -1011,6 +1034,8 @@ pub(crate) fn end_collection(freed: &[(&'static Chunk, usize)]) {
         }
         b.remembered.borrow_mut().clear();
         b.young_large.borrow_mut().clear();
+        b.received.borrow_mut().clear();
+        b.received_large.borrow_mut().clear();
         b.at.set(std::ptr::null_mut());
         b.end.set(std::ptr::null_mut());
         b.limit.set(std::ptr::null_mut());
@@ -1033,9 +1058,6 @@ pub(crate) struct Parcel {
     from: u64,
     /// The pages its large objects would fill.
     large: usize,
-    /// Its store buffer and young large objects, its pages' ages kept.
-    remembered: Vec<usize>,
-    young_large: Vec<usize>,
 }
 
 /// This thread's pages, given up as it ends: none bumped into again (a
@@ -1053,8 +1075,6 @@ pub(crate) fn hand_over() -> Parcel {
             pages: std::mem::take(&mut *b.pages.borrow_mut()),
             from: b.me.get(),
             large: b.large_pages.replace(0),
-            remembered: std::mem::take(&mut *b.remembered.borrow_mut()),
-            young_large: std::mem::take(&mut *b.young_large.borrow_mut()),
         }
     })
 }
@@ -1074,12 +1094,16 @@ pub(crate) fn adopt(p: Parcel) {
         note_me(b);
         b.me.get()
     });
+    // Old, all of them (`received`): the giver's store buffer of no use.
     for &(c, page) in &p.pages {
         c.owners[page].store(me, Ordering::Relaxed);
+        c.set_young(page, false);
     }
+    let mut large_got = Vec::new();
     for l in LARGE.lock().unwrap_or_else(|e| e.into_inner()).iter_mut() {
         if l.2 == p.from {
             l.2 = me;
+            large_got.push(l.0);
         }
     }
     let stamp = Epochs::lock().next;
@@ -1089,9 +1113,9 @@ pub(crate) fn adopt(p: Parcel) {
         b.probation
             .borrow_mut()
             .extend(p.pages.iter().map(|&(c, page)| (page_key(c, page), stamp)));
+        b.received.borrow_mut().extend_from_slice(&p.pages);
+        b.received_large.borrow_mut().extend(large_got);
         b.pages.borrow_mut().extend(p.pages);
-        b.remembered.borrow_mut().extend(p.remembered);
-        b.young_large.borrow_mut().extend(p.young_large);
     });
 }
 

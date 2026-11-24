@@ -2187,7 +2187,9 @@ over its 1664 definitions, 335 of them refused:
      5. *Order*: (a) environment records at spawn sites (done, C517:
         `spawn_env`, the environment a tuple of what the body names, the
         body a function); (b) the shared
-        heap, publishing, constants and symbols there; (c) C512's lists
+        heap, publishing, constants and symbols there; (c) (its first
+        part done, C520: `par`'s branches on threads, adopted pages old,
+        `WHOLE` values refused, the failure closure copied) C512's lists
         gone; (d) generations, each thread's alone (C516's barrier and
         verifier, the parked work made simple); (e) the shared heap's
         own incremental collector. Till (b), processes need C512's

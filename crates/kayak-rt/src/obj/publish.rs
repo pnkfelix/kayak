@@ -13,12 +13,31 @@ use super::space::{self, Fragment, View};
 use std::collections::HashMap;
 
 /// `v`'s copy, its graph in `into`. A value held as itself (`Trace::WHOLE`,
-/// no Fixpt word yet) is returned as it is: shared, as before (a debt of
-/// §54 step 4b's (b)).
+/// no Fixpt word yet: a handle, an `Option`, a continuation, a blobref, a
+/// flat array) is refused as rustc builds: no program sends one, gives one
+/// a process, puts one in an I-cell or makes one a constant for the whole
+/// program (checked so, C520), and one that did would share it.
 pub(crate) fn copied<T: crate::Trace>(v: T, into: &mut Fragment) -> T {
-    if T::WHOLE {
-        return v;
-    }
+    const {
+        assert!(
+            !T::WHOLE,
+            "a value held as itself (no Fixpt word) sent, given a process or put in an I-cell: it cannot be copied"
+        )
+    };
+    copy_words(v, into)
+}
+
+/// `copied`, but a value held as itself returned as it is (`unsafe-par`'s
+/// constants of no transmissible type, kept once for the program, some a
+/// blobref: shared, as before, a debt of that feature's).
+#[cfg_attr(not(feature = "unsafe-par"), allow(dead_code))]
+pub(crate) fn copied_if_words<T: crate::Trace>(v: T, into: &mut Fragment) -> T {
+    if T::WHOLE { v } else { copy_words(v, into) }
+}
+
+/// `v`'s copy, its stored words (none of them `WHOLE`) each copied.
+fn copy_words<T: crate::Trace>(v: T, into: &mut Fragment) -> T {
+    debug_assert!(!T::WHOLE, "a value held as itself copied");
     const {
         assert!(
             std::mem::size_of::<T::Stored>().is_multiple_of(8),
