@@ -129,7 +129,6 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         kept_work: Vec::new(),
         order: Vec::new(),
         others: Set::default(),
-        read: Set::default(),
         pinned: Set::default(),
         work: Vec::new(),
         whole: Set::default(),
@@ -554,7 +553,6 @@ struct Mark<'v> {
     kept_work: Vec<(super::roots::KeptAt, Way)>,
     order: Vec<usize>,
     others: Set<usize>,
-    read: Set<usize>,
     pinned: Set<(usize, usize)>,
     work: Vec<(usize, Way, Whose)>,
     /// This thread's allocations marked while pinning whole what other
@@ -665,19 +663,16 @@ impl Mark<'_> {
                 None => return,
             },
         };
-        if way == Way::Own && whose != Whose::Mine {
-            self.report.insert(a);
+        // A live thread's object, or one of no thread's (a fragment's), is
+        // left, neither followed nor told: no thread's heap is reached from
+        // another's (TODO §54 step 4b's (c), C521), but a `par` branch's
+        // from its waiting maker's, which does not move as it waits, and a
+        // fragment's, which holds no thread's. An ended thread's, or a large
+        // object, is written where it points to what moves.
+        if whose == Whose::Live {
+            return;
         }
-        // A live thread's object is read, never written: what it holds of
-        // this thread's is pinned (C512). An ended thread's, or a large
-        // object, is written where it points to what moves; one another
-        // thread may read was reached first pinning whole, so nothing it
-        // points to moves.
-        let first = if whose == Whose::Live {
-            self.read.insert(a)
-        } else {
-            self.others.insert(a)
-        };
+        let first = self.others.insert(a);
         if first {
             self.push(a, way, whose);
         } else if large

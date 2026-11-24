@@ -16570,3 +16570,29 @@ lists can go.
   struct); the full check had been started after the pre-check failed,
   so now waits on it.
 - **The full check**: all passed in 562.2 s, its second run (the first started after a failed pre-check, stopped at clippy); 10 min 10 s under `timed`, predicted 8 min 05 s; nextest 5645.
+
+## C521. A collection leaves another thread's objects; the lists keep capabilities only (2026-11-24)
+
+TODO §54 step 4b's (c), its second part.
+- **A collection stops at another live thread's object, and at a
+  fragment's** (`Mark::visit`): neither followed, nor read, nor pinned,
+  nor told in its list. No thread's heap is reached from another's now
+  (C519, C520) but a `par` branch's from its waiting maker's, which does
+  not move as it waits, and a fragment's, which holds no thread's. C512
+  read a live thread's object and pinned what of its own it held.
+- **The lists stay, for kept objects alone**: a first try took them out
+  whole (each thread's list, lending at a spawn, a taken message's words,
+  a branch's list given its maker). Every process test then deadlocked
+  at once: a process's group and mailbox, and an I-cell, are kept
+  objects of the thread that made them, freed (C513) once its
+  collections reach them no more, and only the lists told it that
+  another thread held them (the process's closure and stack, which no
+  other collection reads). So a collection now tells in its list only
+  the kept objects of others it reached (`kept_visit`), as before, and no
+  heap object; every collection still reads the others' lists, finding
+  the kept objects they name, and leaving the heap objects (a fragment's,
+  another's) at once. The removal kept, for the record, as a patch in the
+  session's scratchpad.
+- Checked: kayak-rt's tests, the stress script, and kayak-rt's tests at
+  every allocation, poisoned, 40 times (none failed).
+- **The full check**: all passed in 592.8 s, its first run (10 min 36 s under `timed`, predicted 8 min 07 s); nextest 5645.
