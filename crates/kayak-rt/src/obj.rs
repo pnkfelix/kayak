@@ -1327,8 +1327,17 @@ pub(crate) fn array_made_of<T: crate::Trace + 'static>(
         }
         let cells = p.cast::<u8>().add(at).cast::<crate::Slot<T>>();
         let mut k = 0;
+        // An item made may allocate, and so collect: the array old then,
+        // what is written after it perhaps a young object's word, no
+        // barrier passed. So each cell written once one has run noted
+        // (`space::epoch`), as it is written: the next item's allocation
+        // may collect again.
+        let born = space::epoch();
         for x in items.take(n) {
             cells.add(k).write(crate::Slot::new(x));
+            if space::epoch() != born {
+                (*cells.add(k)).note();
+            }
             k += 1;
         }
         assert!(k == n, "an array's items fewer than it said");

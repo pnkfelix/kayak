@@ -49,6 +49,10 @@ pub(crate) struct Chunk {
     marks: &'static [AtomicU64],
     /// The pages a collection copies from, a bit each, while it runs.
     from: AtomicU64,
+    /// The pages taken since their thread's last collection, a bit each
+    /// (young: TODO §54 step 4's generations). Every other page given is
+    /// old: what its last collection kept, copied or pinned.
+    young: AtomicU64,
     /// For each page, the thread it is given to (its `ThreadId`'s
     /// number), 0 while no thread has it.
     owners: [AtomicU64; CHUNK_PAGES],
@@ -111,6 +115,15 @@ struct Bump {
     /// until every collection running when they were adopted has ended:
     /// one of those may have seen them an ended thread's, to write.
     probation: RefCell<Vec<((usize, usize), u64)>>,
+    /// The write barrier's store buffer (`remember`): the address of each
+    /// slot outside the thread's current page a heap pointer was stored
+    /// into since its last collection, perhaps an old object's that now
+    /// points to a young one. Kept by the thread alone, so no lock.
+    remembered: RefCell<Vec<usize>>,
+    /// The thread's large objects made since its last collection, young
+    /// (their first words): what a store as one is made puts in them
+    /// passes no barrier.
+    young_large: RefCell<Vec<usize>>,
 }
 
 thread_local! {
@@ -129,6 +142,8 @@ thread_local! {
             large_pages: Cell::new(0),
             epoch: Cell::new(0),
             probation: RefCell::new(Vec::new()),
+            remembered: RefCell::new(Vec::new()),
+            young_large: RefCell::new(Vec::new()),
         }
     };
     /// Touched as the thread takes its first page or large object, so that
@@ -295,6 +310,7 @@ impl Chunk {
             s.store(0, Ordering::Relaxed);
         }
         self.owners[page].store(0, Ordering::Relaxed);
+        self.set_young(page, false);
     }
 
     /// Whether an object starts at `addr`, a word of this chunk.
@@ -314,6 +330,26 @@ impl Chunk {
         was & 1 << (i % 64) == 0
     }
 
+    /// Each allocation's first word on page `page`, in order.
+    pub(crate) fn each_start(&self, page: usize, mut f: impl FnMut(usize)) {
+        let first = page * PAGE_WORDS;
+        for k in first / 64..(first + PAGE_WORDS) / 64 {
+            let mut bits = self.starts[k].load(Ordering::Relaxed);
+            while bits != 0 {
+                let j = k * 64 + bits.trailing_zeros() as usize;
+                f(self.base.addr() + 8 * j);
+                bits &= bits - 1;
+            }
+        }
+    }
+
+    /// Whether the allocation at `addr` (its first word) is marked.
+    #[inline]
+    pub(crate) fn is_marked(&self, addr: usize) -> bool {
+        let i = (addr - self.base.addr()) / 8;
+        self.marks[i / 64].load(Ordering::Relaxed) & 1 << (i % 64) != 0
+    }
+
     /// Page `page`'s marks cleared.
     pub(crate) fn clear_marks(&self, page: usize) {
         let first = page * PAGE_WORDS / 64;
@@ -330,6 +366,23 @@ impl Chunk {
         } else {
             self.from.fetch_and(!bit, Ordering::Relaxed);
         }
+    }
+
+    /// Page `page` young (taken since its thread's last collection), or
+    /// old.
+    fn set_young(&self, page: usize, young: bool) {
+        let bit = 1u64 << page;
+        if young {
+            self.young.fetch_or(bit, Ordering::Relaxed);
+        } else {
+            self.young.fetch_and(!bit, Ordering::Relaxed);
+        }
+    }
+
+    /// Whether page `page` is young.
+    #[inline]
+    pub(crate) fn is_young(&self, page: usize) -> bool {
+        self.young.load(Ordering::Relaxed) & 1 << page != 0
     }
 
     /// Whether `addr` is on a page a collection copies from.
@@ -410,6 +463,7 @@ fn take_page(b: &Bump) {
     }
     note_me(b);
     chunk.owners[page].store(b.me.get(), Ordering::Relaxed);
+    chunk.set_young(page, true);
     b.pages.borrow_mut().push((chunk, page));
     b.since.set(b.since.get() + 1);
     b.chunk.set(Some(chunk));
@@ -438,6 +492,7 @@ fn new_chunk() -> &'static Chunk {
         starts,
         marks,
         from: AtomicU64::new(0),
+        young: AtomicU64::new(0),
         owners: std::array::from_fn(|_| AtomicU64::new(0)),
     }))
 }
@@ -470,6 +525,7 @@ fn large(b: &Bump, w: usize) -> *mut u64 {
     let mut large = LARGE.lock().unwrap_or_else(|e| e.into_inner());
     let i = large.partition_point(|&(q, _, _)| q < p.addr());
     large.insert(i, (p.addr(), w, b.me.get()));
+    b.young_large.borrow_mut().push(p.addr());
     p
 }
 
@@ -676,6 +732,69 @@ impl View {
     }
 }
 
+/// The write barrier (TODO §54 step 4's generations): the slot at
+/// `slot`, a word just stored, noted if it now holds a heap pointer (a
+/// pair's or an object's tag) and is not in the thread's current page,
+/// where only young objects are. What is noted is checked when used, so a
+/// slot of a stack, an arena or a kept block noted too costs a word.
+#[inline]
+pub(crate) fn remember<T: Copy>(cell: &Cell<T>) {
+    const {
+        assert!(
+            std::mem::size_of::<T>() == 8,
+            "a slot of one word (a Fixpt word)"
+        )
+    };
+    let slot = cell.as_ptr().addr();
+    // SAFETY: the cell's one word, a `T` of 8 bytes, read as its bits.
+    let w = unsafe { cell.as_ptr().cast::<u64>().read() };
+    let tag = w & 0b111;
+    if tag != 0b001 && tag != 0b100 {
+        return;
+    }
+    BUMP.with(|b| {
+        let limit = b.limit.get().addr();
+        if limit != 0 && slot < limit && slot >= limit - PAGE_BYTES {
+            return;
+        }
+        b.remembered.borrow_mut().push(slot);
+    });
+}
+
+/// The number of the thread's last collection to begin (`Epochs`): one
+/// that differs from one read before says a collection ran since.
+#[inline]
+pub(crate) fn epoch() -> u64 {
+    BUMP.with(|b| b.epoch.get())
+}
+
+/// How many slots the thread's store buffer holds.
+pub(crate) fn remembered_len() -> usize {
+    BUMP.with(|b| b.remembered.borrow().len())
+}
+
+/// The thread's store buffer, a copy (the verifier's).
+pub(crate) fn remembered() -> Vec<usize> {
+    BUMP.with(|b| b.remembered.borrow().clone())
+}
+
+/// The thread's young large objects (their first words).
+pub(crate) fn young_large() -> Vec<usize> {
+    BUMP.with(|b| b.young_large.borrow().clone())
+}
+
+/// `KAYAK_GC_VERIFY=1`, or under stress: each collection checks that
+/// every old object of the thread's it reaches that points to a young one
+/// does so from a slot the barrier noted (Fixpt's verifier,
+/// `generational-gc.md`).
+pub(crate) fn verifying() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| match env_number("KAYAK_GC_VERIFY") {
+        Some(n) => n != 0,
+        None => stress() > 0,
+    })
+}
+
 /// A page's identity: its chunk's base and its number.
 pub(crate) fn page_key(c: &'static Chunk, page: usize) -> (usize, usize) {
     (c.base.addr(), page)
@@ -717,6 +836,18 @@ pub(crate) fn end_collection(freed: &[(&'static Chunk, usize)]) {
     BUMP.with(|b| {
         let mut pages = b.pages.borrow_mut();
         pages.retain(|&(c, p)| !keys.contains(&page_key(c, p)));
+        // What it kept, old now: no young object is left for an old one to
+        // point to, so the store buffer is emptied; the page its copies
+        // went to left, so that what is made next goes to a young one.
+        for &(c, p) in pages.iter() {
+            c.set_young(p, false);
+        }
+        b.remembered.borrow_mut().clear();
+        b.young_large.borrow_mut().clear();
+        b.at.set(std::ptr::null_mut());
+        b.end.set(std::ptr::null_mut());
+        b.limit.set(std::ptr::null_mut());
+        b.chunk.set(None);
         // The heap may grow to three times what was kept before the next.
         b.due.set(2 * (pages.len() + b.large_pages.get()));
         b.since.set(0);
@@ -735,6 +866,9 @@ pub(crate) struct Parcel {
     from: u64,
     /// The pages its large objects would fill.
     large: usize,
+    /// Its store buffer and young large objects, its pages' ages kept.
+    remembered: Vec<usize>,
+    young_large: Vec<usize>,
 }
 
 /// This thread's pages, given up as it ends: none bumped into again (a
@@ -752,6 +886,8 @@ pub(crate) fn hand_over() -> Parcel {
             pages: std::mem::take(&mut *b.pages.borrow_mut()),
             from: b.me.get(),
             large: b.large_pages.replace(0),
+            remembered: std::mem::take(&mut *b.remembered.borrow_mut()),
+            young_large: std::mem::take(&mut *b.young_large.borrow_mut()),
         }
     })
 }
@@ -787,6 +923,8 @@ pub(crate) fn adopt(p: Parcel) {
             .borrow_mut()
             .extend(p.pages.iter().map(|&(c, page)| (page_key(c, page), stamp)));
         b.pages.borrow_mut().extend(p.pages);
+        b.remembered.borrow_mut().extend(p.remembered);
+        b.young_large.borrow_mut().extend(p.young_large);
     });
 }
 

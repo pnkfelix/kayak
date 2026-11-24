@@ -112,6 +112,7 @@ pub(crate) fn collect() {
 #[inline(never)]
 fn collect_from(saved: &[usize; 12], from: usize) {
     let mut timer = Timer::start();
+    let remembered = space::remembered_len();
     space::begin_collection();
     // What threads ended with no heir left (a process's pages), this
     // thread's to collect from now.
@@ -134,6 +135,12 @@ fn collect_from(saved: &[usize; 12], from: usize) {
         whole: Set::default(),
         noting: false,
         report: Set::default(),
+        verify: space::verifying().then(|| {
+            (
+                space::remembered().into_iter().collect(),
+                space::young_large().into_iter().collect(),
+            )
+        }),
         found: Vec::new(),
         found_kept: Vec::new(),
     };
@@ -269,6 +276,38 @@ fn collect_from(saved: &[usize; 12], from: usize) {
     // This thread's large objects not reached, freed (once no collection
     // running may read them).
     space::free_large(|a| others.contains(&a));
+    // Each allocation left on a page it pinned that it did not reach,
+    // dead: its fields cleared (fixnum 0), so that a stale word that
+    // reaches it later (an ambiguous root's) keeps nothing more alive and
+    // reads no word into a page freed and taken again since. Not on a
+    // page adopted that another collection may still write.
+    {
+        let from: std::collections::HashSet<_> = from_pages
+            .iter()
+            .map(|&(c, p)| space::page_key(c, p))
+            .collect();
+        for &(c, p) in &mine {
+            let k = space::page_key(c, p);
+            if from.contains(&k) || unsettled.contains(&k) {
+                continue;
+            }
+            c.each_start(p, |a| {
+                if c.is_marked(a) {
+                    return;
+                }
+                each_object(&view, a, |o| {
+                    for f in o.fields {
+                        // SAFETY: a field of a dead object of this
+                        // thread's page, which no one reads but a stale
+                        // word's collection.
+                        unsafe {
+                            space::word_mut(&view, std::ptr::from_ref(f).addr()).write(0);
+                        }
+                    }
+                });
+            });
+        }
+    }
     for &(c, p) in &mine {
         c.clear_marks(p);
     }
@@ -301,7 +340,7 @@ fn collect_from(saved: &[usize; 12], from: usize) {
     COLLECTIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     timer.lap();
     let last = LAST.get();
-    timer.done(&last, roots.ends[0]);
+    timer.done(&last, roots.ends[0], remembered);
 }
 
 /// Whether `a` is on a page a collection copies from. Asked only of this
@@ -335,6 +374,8 @@ struct Stats {
     pinned_pages: AtomicU64,
     freed_pages: AtomicU64,
     stack_words: AtomicU64,
+    /// The store buffer's slots at each collection's start, summed.
+    remembered: AtomicU64,
     // Pauses by length: below 1 ms, 10 ms, 100 ms, and above.
     buckets: [AtomicU64; 4],
 }
@@ -347,6 +388,7 @@ static STATS: Stats = Stats {
     pinned_pages: AtomicU64::new(0),
     freed_pages: AtomicU64::new(0),
     stack_words: AtomicU64::new(0),
+    remembered: AtomicU64::new(0),
     buckets: [const { AtomicU64::new(0) }; 4],
 };
 
@@ -366,7 +408,7 @@ impl Timer {
             *i += 1;
         }
     }
-    fn done(self, l: &Last, stack_words: usize) {
+    fn done(self, l: &Last, stack_words: usize, remembered: usize) {
         let Some((_, ns, _)) = self.0 else { return };
         let r = Ordering::Relaxed;
         for (s, n) in STATS.phase_ns.iter().zip(ns) {
@@ -386,6 +428,7 @@ impl Timer {
         STATS.pinned_pages.fetch_add(l.pinned_pages as u64, r);
         STATS.freed_pages.fetch_add(l.freed_pages as u64, r);
         STATS.stack_words.fetch_add(stack_words as u64, r);
+        STATS.remembered.fetch_add(remembered as u64, r);
         if verbose() {
             eprintln!(
                 "kayak: pause {} us: {}",
@@ -433,12 +476,13 @@ pub(crate) fn report_stats() {
             .join(", ")
     );
     eprintln!(
-        "kayak-gc: per collection: {:.0} reached, {:.0} moved, {:.1} pages pinned, {:.1} freed, {:.0} stack words",
+        "kayak-gc: per collection: {:.0} reached, {:.0} moved, {:.1} pages pinned, {:.1} freed, {:.0} stack words, {:.0} slots remembered",
         per(STATS.reached.load(r)),
         per(STATS.moved.load(r)),
         per(STATS.pinned_pages.load(r)),
         per(STATS.freed_pages.load(r)),
         per(STATS.stack_words.load(r)),
+        per(STATS.remembered.load(r)),
     );
 }
 
@@ -515,6 +559,9 @@ struct Mark<'v> {
     /// Whether what is pinned whole now is noted in `whole`.
     noting: bool,
     report: Set<usize>,
+    /// The verifier's (`space::verifying`): the store buffer, the young
+    /// large objects.
+    verify: Option<(Set<usize>, Set<usize>)>,
     /// `follow`'s buffers, kept between its calls.
     found: Vec<usize>,
     found_kept: Vec<super::roots::KeptAt>,
@@ -655,6 +702,33 @@ impl Mark<'_> {
         }
     }
 
+    /// Under the verifier, if the allocation at `a` (this thread's) is
+    /// old: each field of it pointing to a young object of the thread's
+    /// must be a slot the barrier noted.
+    #[inline(never)]
+    #[cold]
+    fn verify_old(&self, a: usize) {
+        let view = self.view;
+        let Some((remembered, young_large)) = &self.verify else {
+            return;
+        };
+        if young(view, young_large, a) {
+            return;
+        }
+        each_object(view, a, |o| {
+            for f in o.fields {
+                let slot = std::ptr::from_ref(f).addr();
+                if let Some(t) = target(view, *f)
+                    && young(view, young_large, t)
+                    && view.whose_of(t) == Whose::Mine
+                    && !remembered.contains(&slot)
+                {
+                    missed(a, slot, t);
+                }
+            }
+        });
+    }
+
     /// The allocation at `a`'s fields followed: what they point to in the
     /// space, and what is kept that a plain word of one is (C508).
     fn follow(&mut self, a: usize, way: Way, whose: Whose) {
@@ -663,6 +737,9 @@ impl Mark<'_> {
             let kept = self.kept;
             let mut found = std::mem::take(&mut self.found);
             let mut found_kept = std::mem::take(&mut self.found_kept);
+            if self.verify.is_some() && whose == Whose::Mine {
+                self.verify_old(a);
+            }
             each_object(view, a, |o| {
                 for &f in o.fields {
                     if let Some(t) = target(view, f) {
@@ -692,6 +769,31 @@ impl Mark<'_> {
             self.found_kept = found_kept;
         }
     }
+}
+
+/// Whether the object at `a` (an allocation's first word) is young: on a
+/// young page, or a large object made since the last collection.
+fn young(view: &View, young_large: &Set<usize>, a: usize) -> bool {
+    match view.page_of(a) {
+        Some((c, p)) => c.is_young(p),
+        None => young_large.contains(&a),
+    }
+}
+
+/// A store the barrier missed, found by the verifier: an old object's
+/// slot pointing to a young object, not noted.
+#[cold]
+fn missed(obj: usize, slot: usize, target: usize) -> ! {
+    // SAFETY: the first words of two allocations of the space, read.
+    let (h, t) = unsafe {
+        (
+            std::ptr::with_exposed_provenance::<u64>(obj).read(),
+            std::ptr::with_exposed_provenance::<u64>(target).read(),
+        )
+    };
+    panic!(
+        "kayak: the write barrier missed a store: the old object at {obj:#x} (first word {h:#x}), its slot at {slot:#x}, points to the young object at {target:#x} (first word {t:#x})"
+    )
 }
 
 /// The allocation a field's word points to, if it is a pair's or an

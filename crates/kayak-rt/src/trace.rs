@@ -1343,9 +1343,18 @@ impl<T: Trace> Slot<T> {
     pub fn get(&self) -> T {
         self.0.get().get()
     }
+    /// Written, through the write barrier (`obj::space::remember`): an
+    /// old object's slot pointing to a young object is noted.
     #[inline(always)]
     pub fn set(&self, v: T) {
-        self.0.set(Held::new(v))
+        self.0.set(Held::new(v));
+        crate::obj::space::remember(&self.0);
+    }
+    /// Noted by the write barrier, as if just written (a cell filled
+    /// raw after its object may have turned old).
+    #[inline]
+    pub(crate) fn note(&self) {
+        crate::obj::space::remember(&self.0);
     }
     /// What it holds, as stored (a knot's, to see it is untied).
     #[inline(always)]

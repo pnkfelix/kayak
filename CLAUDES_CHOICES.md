@@ -16360,3 +16360,61 @@ in 60 runs of kayak-rt's tests so (about 4 expected before). No other
 `leak` holds heap words out of line (`suspend.rs`'s test mailbox holds
 `i64`s); not a runtime fault.
 - **The full check**: all passed in 588.7 s, its first run; nextest 5643.
+
+## C516. Pages young and old, a write barrier, and its verifier (2026-11-23)
+
+TODO §54 step 4's generations, their first part (the user, after C514:
+"Go ahead" with a nursery after the intermittent test): what a minor
+collection needs, built and checked before any minor collection runs;
+collections unchanged.
+- **Ages**: a bit per page of its chunk (`young`), set as a thread takes
+  it, cleared for every page a collection keeps (`end_collection`), which
+  now also leaves the page its copies went to, so that what is made
+  next goes to a young page. A large object young (`young_large`) until
+  its thread's next collection: what a store as it is made puts in it
+  passes no barrier.
+- **The barrier** (`space::remember`, from `Slot::set`, which every
+  store into a box, an array's element, a reference and a knot goes
+  through): a slot outside the thread's current page that now holds a
+  pair's or an object's word is pushed on the thread's store buffer, a
+  `Vec` of its own, no lock; emptied by each collection; carried with a
+  thread's pages to its heir or adopter (`Parcel`). Fixpt's are cards
+  over one reserved range (`generational-gc.md`); kayak's chunks are
+  separate allocations, so a store buffer, each slot checked when used.
+  A bloblet's suffix holds bytes and no value, so needs none; kept
+  blocks and arenas are scanned whole at every collection, so need none.
+- **The verifier** (`KAYAK_GC_VERIFY=1`, and on under stress, as
+  Fixpt's): each collection's mark checks every old object of the
+  thread's it follows: a field pointing to a young object of the
+  thread's must be a slot in the store buffer, or it panics, naming
+  both. Out of line (`verify_old`), so the mark pays nothing without it.
+- **What it found**:
+  - *A real gap*: an array made of items that allocate as they are
+    stored (boxed products) turns old if one collects partway, and its
+    later cells point to young objects with no barrier: each cell
+    written once a collection has run since its array was made is noted
+    as it is written (`space::epoch`). A minor collection would have
+    lost them.
+  - *A dead object a stale word reaches*: one left on a pinned page,
+    reached later by an ambiguous root, whose field points into a page
+    freed and taken again since (rr: its slot's last write the
+    collector's fixup, its target's page freed after). Each collection
+    now clears the fields of every allocation it did not reach on a page
+    it pinned (not on an adopted page another collection may still
+    write): such an object keeps nothing more alive, and reads no word
+    of a page freed since. A first fix, the objects each collection kept
+    noted in a bitmap, failed on kc: one reached again by a stale word
+    is kept from then on.
+- **Checked**: kayak-rt's tests at every 7th allocation and at every
+  one, poisoned; the corpus at every 97th; kfx making itself and kc
+  building `expander-facts.fx`, each with the verifier on, their output
+  the same (kc's executable byte for byte).
+- **Measured** (kfx making itself, five runs interleaved with C515's
+  build, the machine idle): 5.23 s against 5.07 s (+3%): the barrier
+  about 0.02 s, collection 0.14 s (the clearing, about 30 ms; each
+  collection reaching 3% more, its timing moved by the page left). The
+  store buffer: 2 slots a collection, on average. kc building
+  `expander-facts.fx`: 83 s, 605 collections, 42.6 s collecting
+  (C514's day: 89 s, 539, 52.0 s), not interleaved.
+- `KAYAK_GC_STATS` also says the store buffer's slots per collection.
+- **The full check**: all passed in 593.4 s, its first run; nextest 5643.

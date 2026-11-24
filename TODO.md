@@ -2119,6 +2119,13 @@ over its 1664 definitions, 335 of them refused:
      aarch64's d8–d15 not spilled; a sealed bloblet's copy pinned through
      its table, not moved; the census's mark (`roots::reached`)
      heap-stats only.
+  4b. **Generations** (the user, after C514): a nursery and an old
+     space, on a write barrier (Fixpt's, `generational-gc.md`). Done
+     (C516): pages young and old, the barrier (`Slot::set`'s store
+     buffer) and its verifier (on under stress); dead objects on pinned
+     pages cleared. To come: a minor collection, of the young pages
+     alone, its roots the store buffer's slots besides the usual; then
+     the major's trigger and the policy for both.
   5. **Measured on kc** (done in part, C514: `KAYAK_GC_STATS=1`), then
      incremental collection's design to the user (§54's step 6 above).
      Measured: collection takes 3.1 of kfx's 5.2 s making itself, 52 of
