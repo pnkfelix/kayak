@@ -11,12 +11,13 @@
 //! - **A constant's** every allocation it reaches is pinned, not only the
 //!   first: any thread may read it, as it runs.
 //! - **The heap's words are precise**: an object's fields, each a Fixpt
-//!   word, found by its header. Each is followed to its allocation; every
-//!   allocation reached on a page of this thread's that no root pins is
-//!   copied to a new page, a forwarding word left in its first (Fixpt's
-//!   tag 7, as `kcrt-core`'s collector and Fixpt's leave one), and every
-//!   reached object's fields are then made to point where their targets
-//!   went, each word's offset into its allocation kept.
+//!   word, found by its header. Cheney's copy (C523): each field of what
+//!   is reached is taken in turn; its target, if on a page of this
+//!   thread's that nothing pins, copied to a new page (once: a forwarding
+//!   word left in its first, Fixpt's tag 7, as `kcrt-core`'s collector
+//!   and Fixpt's leave one), the field made to point at the copy, its
+//!   offset into its allocation kept; else marked and scanned in place.
+//!   The copies are scanned in the order made, Cheney's queue.
 //! - **Other threads run as one collects** (C512): a live thread's object
 //!   is read, never written, and what it holds of this thread's pinned;
 //!   an ended thread's is written where it points to what moved, never
@@ -36,9 +37,10 @@
 //!   thread's list tells what it reaches of another's. An ended thread's
 //!   pages are the next collecting thread's (`space::adopt_orphans`).
 //!
-//! The mark is first and whole, the copy after it: a kept object reached
-//! late may pin what is reached early, and nothing is moved before every
-//! pin is known.
+//! Every pin is known before anything moves (Bartlett's): the ambiguous
+//! roots first, and what every kept object of this thread's holds (one
+//! may be found late, by a field the copy reaches, and what it holds must
+//! not have moved by then; a dead one's float a collection longer).
 
 use super::space::{self, View, Whose};
 use super::{HeapWord, laid};
@@ -163,80 +165,62 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
             field(a);
         }
     }
+    // Each slot once: one noted twice would be read, the second time,
+    // pointing into to-space.
+    noted.sort_unstable();
+    noted.dedup();
     let roots = super::roots::roots_from(saved, from);
-    timer.lap();
-    let view = View::new();
     let mine = space::my_pages();
+    let unsettled = space::unsettled();
+    if space::verifying() {
+        verify_barrier(&View::new(), &mine, &unsettled);
+    }
+    timer.lap();
     let young_at_start = if minor {
         mine.iter().filter(|&&(c, p)| c.is_young(p)).count()
     } else {
         0
     };
     let mut m = Mark {
-        view: &view,
+        view: View::new(),
         kept: &roots.kept,
         kept_reached: Set::default(),
         kept_whole: Set::default(),
         kept_work: Vec::new(),
-        order: Vec::new(),
+        marked: 0,
         others: Set::default(),
         pinned: Set::default(),
         work: Vec::new(),
         whole: Set::default(),
         noting: false,
         report: Set::default(),
-        verify: space::verifying().then(|| {
-            let (pages, large) = space::received();
-            Verify {
-                remembered: space::remembered().into_iter().collect(),
-                young_large: space::young_large().into_iter().collect(),
-                got: pages
-                    .into_iter()
-                    .map(|(c, p)| space::page_key(c, p))
-                    .collect(),
-                got_large: large.into_iter().collect(),
-            }
-        }),
         found: Vec::new(),
         found_kept: Vec::new(),
+        fields: Vec::new(),
         minor,
         young_large: &young_large,
+        moving: false,
+        checked: space::verifying(),
+        copies: Vec::new(),
+        moved_words: 0,
     };
-    // First what every thread may read, and what another may take as this
-    // one runs (C512), each allocation it reaches pinned: the constants,
-    // what shared kept objects hold, the other threads' lists.
+    // The pins, every one before anything moves (Bartlett's): first what
+    // every thread may read, and what another may take as this one runs
+    // (C512), each allocation it reaches pinned: the constants, what
+    // shared kept objects hold, the other threads' lists.
     for &w in &roots.constants {
         m.ambiguous(w, Way::Whole);
     }
-    m.drain();
+    m.drain_whole();
     let constants = m.pinned.len();
     m.noting = true;
     for &w in &roots.shared {
         m.ambiguous(w, Way::Whole);
     }
-    m.drain();
+    m.drain_whole();
     m.noting = false;
-    // A minor collection's noted slots, each of an old object of this
-    // thread's (a young one's is followed as its object is), taken as a
-    // field is: what it holds moved, the slot made to point where it went
-    // (`precise`). A slot no longer of the space (an arena's dropped, a
-    // stack's) left.
-    let mut precise = Vec::new();
-    for &slot in &noted {
-        let Some(o) = view.object_of(slot) else {
-            continue;
-        };
-        if young(&view, &young_large, o) || view.whose_of(o) != Whose::Mine {
-            continue;
-        }
-        // SAFETY: a word of an allocation of this thread's, read.
-        let w = unsafe { std::ptr::with_exposed_provenance::<u64>(slot).read() };
-        if let Some(t) = target_word(&view, w) {
-            m.visit(t, false, Way::Own);
-            precise.push(slot);
-        }
-    }
-    m.drain();
+    // Then the ambiguous roots, each allocation one reaches pinned and
+    // queued to be scanned in place, not yet followed.
     let mut pins = [m.pinned.len(); 5];
     for (i, &w) in roots.words.iter().enumerate() {
         m.ambiguous(w, Way::Own);
@@ -247,16 +231,31 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
         }
     }
     pins[4] = m.pinned.len();
-    m.drain();
+    // And what this thread's kept objects hold, by ambiguous words too:
+    // one may be found only by a field the copy reaches, late, and what
+    // it holds must not have moved by then. A minor collection, which
+    // follows no old object that may reach one, takes each as a root; a
+    // major one only pins what each holds, and scans one only once a word
+    // reaches it, which is what frees one no word does (C513).
+    let kept_mine: Vec<_> = roots.kept.mine_unshared().collect();
+    for k in kept_mine {
+        if minor {
+            m.kept_visit(k, Way::Own);
+        } else {
+            k.words(&mut |w| m.pin_word(w));
+        }
+    }
+    m.drain_kept();
     if verbose() {
         eprintln!(
-            "kayak: pinned pages: constants {}, shared {}, stack {}, owned {}, kept {}, locals {}; words: stack {}, owned {}, kept {}, shared {}; others' objects reached {}",
+            "kayak: pinned pages: constants {}, shared {}, stack {}, owned {}, kept {}, locals {}, kept objects {}; words: stack {}, owned {}, kept {}, shared {}; others' objects reached {}",
             constants,
             pins[0] - constants,
             pins[1] - pins[0],
             pins[2] - pins[1],
             pins[3] - pins[2],
             pins[4] - pins[3],
+            m.pinned.len() - pins[4],
             roots.ends[0],
             roots.ends[1] - roots.ends[0],
             roots.ends[2] - roots.ends[1],
@@ -264,120 +263,67 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
             m.report.len(),
         );
     }
-    let Mark {
-        order,
-        others,
-        pinned,
-        report,
-        kept_reached,
-        ..
-    } = m;
-    // What this thread reaches of others', for their collections; not
-    // moved by this one, so told now.
-    // A minor collection follows no old object, so what one of them
-    // reaches of others' kept objects it does not find: added to the list.
-    super::roots::reported(report.into_iter().collect(), roots.reach_from, minor);
 
     // From-space: this thread's pages that nothing pins, but those adopted
     // that a collection on another thread may still write.
-    timer.lap();
-    let unsettled = space::unsettled();
     let from_pages: Vec<_> = mine
         .iter()
         .copied()
         .filter(|&(c, p)| {
             let k = space::page_key(c, p);
-            !pinned.contains(&k) && !unsettled.contains(&k) && (!minor || c.is_young(p))
+            !m.pinned.contains(&k) && !unsettled.contains(&k) && (!minor || c.is_young(p))
         })
         .collect();
     for &(c, p) in &from_pages {
         c.set_from(p, true);
     }
-    // Each reached allocation of from-space copied, a forwarding word
-    // left in its first.
-    let mut moved = 0;
-    let mut moved_words = 0;
-    for &a in &order {
-        if !in_from(&view, a) {
-            continue;
-        }
-        let mut end = a;
-        each_object(&view, a, |o| end = o.end);
-        let n = view.extent_of(a, end);
-        let to = space::words(n);
-        // SAFETY: `n` words of the allocation, read whole into `n` new
-        // words of to-space, which no other object overlaps; then its
-        // first word, its forwarding word.
-        unsafe {
-            let at = space::word_mut(&view, a);
-            std::ptr::copy_nonoverlapping(at, to, n);
-            at.write(to.addr() as u64 | TAG_FORWARD);
-        }
-        moved += 1;
-        moved_words += n;
-    }
     timer.lap();
 
-    // Each reached object this thread may write, where it is now, its
-    // fields made to point where their targets went. The space seen again,
-    // with to-space's chunks.
-    let view = View::new();
-    let forwarded = |s: usize| -> Option<usize> {
-        if !in_from(&view, s) {
-            return None;
-        }
-        // SAFETY: an allocation's first word in from-space, its words kept
-        // till the collection's end.
-        let w = unsafe { std::ptr::with_exposed_provenance::<u64>(s).read() };
-        (w & TAG_MASK == TAG_FORWARD).then_some((w & !TAG_MASK) as usize)
-    };
-    for &a in order.iter().chain(others.iter()) {
-        let at = forwarded(a).unwrap_or(a);
-        each_object(&view, at, |o| {
-            for f in o.fields {
-                let w = f.raw() as u64;
-                let s = match w & TAG_MASK {
-                    TAG_PAIR => (w & !TAG_MASK) as usize,
-                    TAG_OBJECT => {
-                        match view.object_of(((w & !TAG_MASK) as usize).wrapping_sub(8)) {
-                            Some(s) => s,
-                            None => continue,
-                        }
-                    }
-                    _ => continue,
-                };
-                let Some(to) = forwarded(s) else { continue };
-                let new = w.wrapping_add(to as u64).wrapping_sub(s as u64);
-                // SAFETY: a field of a reached object this thread may write.
-                unsafe {
-                    space::word_mut(&view, std::ptr::from_ref(f).addr()).write(new);
-                }
-            }
-        });
-    }
-    // The noted slots taken as roots, made to point where what they held
-    // went.
-    for &slot in &precise {
-        // SAFETY: a word of an allocation of this thread's, which only it
-        // reads.
-        let w = unsafe { std::ptr::with_exposed_provenance::<u64>(slot).read() };
-        let s = match w & TAG_MASK {
-            TAG_PAIR => (w & !TAG_MASK) as usize,
-            TAG_OBJECT => match view.object_of(((w & !TAG_MASK) as usize).wrapping_sub(8)) {
-                Some(s) => s,
-                None => continue,
-            },
-            _ => continue,
+    // Cheney's copy: each field of what is reached, copied if its target
+    // is in from-space (once, a forwarding word left in its first word),
+    // made to point where its target went as it is scanned; each copy
+    // scanned in its turn.
+    m.moving = true;
+    // A minor collection's noted slots first, each of an old object of
+    // this thread's (a young one's is scanned as its object is), taken as
+    // a field is. A slot no longer of the space (an arena's dropped, a
+    // stack's) left.
+    for &slot in &noted {
+        let Some(o) = m.view.object_of(slot) else {
+            continue;
         };
-        if let Some(to) = forwarded(s) {
-            // SAFETY: as above, the slot written.
-            unsafe {
-                space::word_mut(&view, slot)
-                    .write(w.wrapping_add(to as u64).wrapping_sub(s as u64));
-            }
+        if young(&m.view, &young_large, o) || m.view.whose_of(o) != Whose::Mine {
+            continue;
+        }
+        // SAFETY: a word of an allocation of this thread's, read.
+        let w = unsafe { std::ptr::with_exposed_provenance::<u64>(slot).read() };
+        let new = m.field(w, Way::Own);
+        if new != w {
+            // SAFETY: as above, the slot written, by this thread alone.
+            unsafe { space::word_mut(&m.view, slot).write(new) };
         }
     }
+    m.cheney();
     timer.lap();
+
+    let Mark {
+        view,
+        marked,
+        others,
+        pinned,
+        report,
+        kept_reached,
+        copies,
+        moved_words,
+        ..
+    } = m;
+    let moved = copies.len();
+    drop(copies);
+    // What this thread reaches of others', for their collections; not
+    // moved by this one, so told now.
+    // A minor collection follows no old object, so what one of them
+    // reaches of others' kept objects it does not find: added to the list.
+    super::roots::reported(report.into_iter().collect(), roots.reach_from, minor);
     // This thread's large objects not reached, freed (once no collection
     // running may read them); by a minor collection, its young ones alone.
     space::free_large(|a| others.contains(&a) || (minor && !young_large.contains(&a)));
@@ -386,45 +332,50 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
     // reaches it later (an ambiguous root's) keeps nothing more alive and
     // reads no word into a page freed and taken again since. Not on a
     // page adopted that another collection may still write.
-    {
-        let from: std::collections::HashSet<_> = from_pages
-            .iter()
-            .map(|&(c, p)| space::page_key(c, p))
-            .collect();
-        for &(c, p) in &mine {
-            let k = space::page_key(c, p);
-            if from.contains(&k) || unsettled.contains(&k) || (minor && !c.is_young(p)) {
-                continue;
-            }
-            c.each_start(p, |a| {
-                if c.is_marked(a) {
-                    return;
-                }
-                each_object(&view, a, |o| {
-                    for f in o.fields {
-                        // SAFETY: a field of a dead object of this
-                        // thread's page, which no one reads but a stale
-                        // word's collection.
-                        unsafe {
-                            space::word_mut(&view, std::ptr::from_ref(f).addr()).write(0);
-                        }
-                    }
-                });
-            });
-        }
-    }
-    // Marks are made only on young pages by a minor collection.
+    // Each mark cleared too, so that none is left for the next collection
+    // to take as reached: made only on a page pinned, an unsettled one, or
+    // one of to-space (an object reached in place there).
     for &(c, p) in &mine {
-        if !minor || c.is_young(p) {
+        let k = space::page_key(c, p);
+        if unsettled.contains(&k) {
             c.clear_marks(p);
         }
+        if unsettled.contains(&k) || !pinned.contains(&k) {
+            continue;
+        }
+        c.each_start(p, |a| {
+            if c.is_marked(a) {
+                return;
+            }
+            each_object(&view, a, |o| {
+                for f in o.fields {
+                    // SAFETY: a field of a dead object of this thread's
+                    // page, which no one reads but a stale word's
+                    // collection.
+                    unsafe {
+                        space::word_mut(&view, std::ptr::from_ref(f).addr()).write(0);
+                    }
+                }
+            });
+        });
+        c.clear_marks(p);
+    }
+    // To-space: the pages taken since the collection began, after those it
+    // began with.
+    let now = space::my_pages();
+    debug_assert!(
+        now.len() >= mine.len(),
+        "a page given up as a collection runs"
+    );
+    for &(c, p) in &now[mine.len().min(now.len())..] {
+        c.clear_marks(p);
     }
     for &(c, p) in &from_pages {
         c.set_from(p, false);
     }
     crate::forget_cursor();
     LAST.set(Last {
-        reached: order.len() + others.len(),
+        reached: marked + others.len() + moved,
         moved,
         pinned_pages: pinned.len(),
         freed_pages: from_pages.len(),
@@ -439,10 +390,6 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
         );
     }
     space::end_collection(&from_pages, minor);
-    // What this thread keeps that no word reached (what was kept since
-    // the roots were read, left), freed once no collection running may
-    // scan it: after the collection, as a drop may allocate. Not after a
-    // minor one, which follows no old object that may reach one.
     if minor && stats_on() {
         let r = Ordering::Relaxed;
         STATS.minor_young_pages.fetch_add(young_at_start as u64, r);
@@ -453,6 +400,10 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
             .count();
         STATS.minor_pinned_pages.fetch_add(pinned_young as u64, r);
     }
+    // What this thread keeps that no word reached (what was kept since
+    // the roots were read, left), freed once no collection running may
+    // scan it: after the collection, as a drop may allocate. Not after a
+    // minor one, which takes every one as a root.
     if !minor {
         super::roots::retire_kept(|k| {
             kept_reached.contains(&k) || roots.kept.find(k).is_none_or(|i| i.start != k || !i.mine)
@@ -464,13 +415,52 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
     timer.done(&last, roots.ends[0], remembered, minor);
 }
 
-/// Whether `a` is on a page a collection copies from. Asked only of this
-/// thread's reached allocations and of their fields' targets: another
-/// thread copies from a page of its own nothing of this one's reaches
-/// (what this one reaches of its, it pins), so the page is this thread's.
-#[inline(always)]
-fn in_from(view: &View, a: usize) -> bool {
-    view.page_of(a).is_some_and(|(c, _)| c.is_from(a))
+/// The verifier's (`space::verifying`), as a collection begins: every old
+/// object of this thread's, each field of it pointing to a young object of
+/// the thread's a slot the barrier noted; but what was adopted since the
+/// last collection (`space::received`: what it holds of this thread's
+/// young objects no barrier saw), and a page adopted still unsettled.
+#[inline(never)]
+#[cold]
+fn verify_barrier(
+    view: &View,
+    mine: &[(&'static space::Chunk, usize)],
+    unsettled: &std::collections::HashSet<(usize, usize)>,
+) {
+    let remembered: Set<usize> = space::remembered().into_iter().collect();
+    let young_large: Set<usize> = space::young_large().into_iter().collect();
+    let (got, got_large) = space::received();
+    let got: Set<(usize, usize)> = got
+        .into_iter()
+        .map(|(c, p)| space::page_key(c, p))
+        .collect();
+    let got_large: Set<usize> = got_large.into_iter().collect();
+    let check = |a: usize| {
+        each_object(view, a, |o| {
+            for f in o.fields {
+                let slot = std::ptr::from_ref(f).addr();
+                if let Some(t) = target(view, *f)
+                    && young(view, &young_large, t)
+                    && view.whose_of(t) == Whose::Mine
+                    && !remembered.contains(&slot)
+                {
+                    missed(a, slot, t);
+                }
+            }
+        });
+    };
+    for &(c, p) in mine {
+        let k = space::page_key(c, p);
+        if c.is_young(p) || got.contains(&k) || unsettled.contains(&k) {
+            continue;
+        }
+        c.each_start(p, check);
+    }
+    for a in view.my_large() {
+        if !young_large.contains(&a) && !got_large.contains(&a) {
+            check(a);
+        }
+    }
 }
 
 /// `KAYAK_GC_STATS=1`: each collection's phases timed, summed over the
@@ -481,14 +471,14 @@ fn stats_on() -> bool {
 }
 
 /// The phases a collection is timed by: its roots read (and orphans
-/// adopted), its mark, its copy, its fields fixed, its end (large and kept
-/// objects freed, pages given back).
-const PHASES: [&str; 5] = ["roots", "mark", "copy", "fixup", "end"];
+/// adopted), its pins, its copy (Cheney's, its fields fixed as it goes),
+/// its end (large and kept objects freed, pages given back).
+const PHASES: [&str; 4] = ["roots", "pin", "copy", "end"];
 
 /// The run's sums, in nanoseconds and counts, over every thread's
 /// collections.
 struct Stats {
-    phase_ns: [AtomicU64; 5],
+    phase_ns: [AtomicU64; PHASES.len()],
     max_ns: AtomicU64,
     reached: AtomicU64,
     moved: AtomicU64,
@@ -510,7 +500,7 @@ struct Stats {
 }
 
 static STATS: Stats = Stats {
-    phase_ns: [const { AtomicU64::new(0) }; 5],
+    phase_ns: [const { AtomicU64::new(0) }; PHASES.len()],
     max_ns: AtomicU64::new(0),
     reached: AtomicU64::new(0),
     moved: AtomicU64::new(0),
@@ -527,11 +517,11 @@ static STATS: Stats = Stats {
 };
 
 /// A collection's times, phase by phase.
-struct Timer(Option<(std::time::Instant, [u64; 5], usize)>);
+struct Timer(Option<(std::time::Instant, [u64; PHASES.len()], usize)>);
 
 impl Timer {
     fn start() -> Self {
-        Timer(stats_on().then(|| (std::time::Instant::now(), [0; 5], 0)))
+        Timer(stats_on().then(|| (std::time::Instant::now(), [0; PHASES.len()], 0)))
     }
     /// The phase now ended.
     fn lap(&mut self) {
@@ -688,13 +678,16 @@ pub(super) fn each_object(view: &View, start: usize, mut f: impl FnMut(&laid::La
     }
 }
 
-/// The mark: this thread's allocations reached, in the order found (each
-/// marked on its page); an ended thread's that may be followed and
-/// written, and a large object of this thread's or an ended one's
-/// (`others`); a live thread's, read but never written (`read`); the
-/// pages pinned; and what of others' this thread reaches (`report`).
+/// A collection's work: the pins, then Cheney's copy. This thread's
+/// allocations reached in place (on a pinned page, or one adopted and
+/// unsettled), each marked on its page; an ended thread's, which may be
+/// followed and written, and a large object of this thread's or an ended
+/// one's (`others`); the pages pinned; the copies made, in order, each
+/// scanned in its turn (Cheney's queue); and what of others' this thread
+/// reaches (`report`).
 struct Mark<'v> {
-    view: &'v View,
+    /// The space, seen again when the copy takes a new chunk.
+    view: View,
     /// What is kept that only a word to it keeps (C513): those reached,
     /// those of this thread's reached pinning whole and not yet followed
     /// as its own (as `whole`), and those to scan.
@@ -702,9 +695,12 @@ struct Mark<'v> {
     kept_reached: Set<usize>,
     kept_whole: Set<usize>,
     kept_work: Vec<(super::roots::KeptAt, Way)>,
-    order: Vec<usize>,
+    /// This thread's allocations marked in place, counted.
+    marked: usize,
     others: Set<usize>,
     pinned: Set<(usize, usize)>,
+    /// What is reached in place, to be scanned: pinning whole, followed
+    /// at once (`drain_whole`); else, in the copy.
     work: Vec<(usize, Way, Whose)>,
     /// This thread's allocations marked while pinning whole what other
     /// threads may take (not a constant, which every thread reaches for
@@ -714,25 +710,22 @@ struct Mark<'v> {
     /// Whether what is pinned whole now is noted in `whole`.
     noting: bool,
     report: Set<usize>,
-    /// The verifier's (`space::verifying`).
-    verify: Option<Verify>,
-    /// `follow`'s buffers, kept between its calls.
+    /// `follow`'s and `scan`'s buffers, kept between their calls.
     found: Vec<usize>,
     found_kept: Vec<super::roots::KeptAt>,
+    fields: Vec<(usize, u64)>,
     /// A minor collection's: this thread's old objects neither marked nor
     /// followed; its young large objects.
     minor: bool,
     young_large: &'v Set<usize>,
-}
-
-/// What the verifier knows: the store buffer, the young large objects,
-/// what was adopted since the last collection (pages' keys and large
-/// objects: `space::received`).
-struct Verify {
-    remembered: Set<usize>,
-    young_large: Set<usize>,
-    got: Set<(usize, usize)>,
-    got_large: Set<usize>,
+    /// Whether the copy has begun: no page may be pinned now.
+    moving: bool,
+    /// Whether a field's word is checked as an ambiguous one is (under the
+    /// verifier): a precise word of a live object needs no check.
+    checked: bool,
+    /// Each copy's first word, in the order made: Cheney's queue.
+    copies: Vec<usize>,
+    moved_words: usize,
 }
 
 /// How an allocation's words are followed.
@@ -769,6 +762,30 @@ impl Mark<'_> {
         }
     }
 
+    /// The pages `ambiguous` would pin for the word `w`, pinned, and
+    /// nothing reached: what a kept object holds, before the copy, that a
+    /// word may reach later.
+    fn pin_word(&mut self, w: usize) {
+        let a = self.view.object_of(w);
+        if let Some(a) = a {
+            self.pin(a);
+        }
+        if a.is_none_or(|a| a == w & !7)
+            && let Some(b) = self.view.object_of((w & !7).wrapping_sub(8))
+        {
+            self.pin(b);
+        }
+    }
+
+    fn pin(&mut self, a: usize) {
+        if let Some((c, p)) = self.view.page_of(a)
+            && self.view.whose_page(c, p) == Whose::Mine
+            && (!self.minor || c.is_young(p))
+        {
+            self.pinned.insert(space::page_key(c, p));
+        }
+    }
+
     /// The kept object `k`, reached (`way`): kept, told if another's and
     /// reached from this thread's own, and scanned if this thread's and
     /// not shared (a shared one's words every collection follows whole).
@@ -791,7 +808,9 @@ impl Mark<'_> {
         }
     }
 
-    /// The allocation at `a`, reached (`way`), its page pinned if `pin`.
+    /// The allocation at `a`, reached in place (`way`), its page pinned
+    /// if `pin`: not in from-space (once the copy has begun, a field's
+    /// target there is copied, `field`).
     #[inline]
     fn visit(&mut self, a: usize, pin: bool, way: Way) {
         let (whose, large) = match self.view.page_of(a) {
@@ -802,10 +821,13 @@ impl Mark<'_> {
                         return;
                     }
                     if pin {
+                        if self.moving && c.is_from(a) {
+                            late_pin(a);
+                        }
                         self.pinned.insert(space::page_key(c, p));
                     }
                     if c.mark(a) {
-                        self.order.push(a);
+                        self.marked += 1;
                         self.push(a, way, Whose::Mine);
                     } else if way == Way::Own && !self.whole.is_empty() && self.whole.remove(&a) {
                         // Pinned whole already; followed again as this
@@ -855,106 +877,230 @@ impl Mark<'_> {
         self.work.push((a, way, whose));
     }
 
-    /// Each allocation reached, its words followed, precisely (an object's
-    /// fields): pinning whole, each allocation reached pinned, and every
-    /// one a live thread's object holds; from this thread's own, what of
-    /// others' it holds told.
-    fn drain(&mut self) {
+    /// Pinning whole: each allocation reached followed at once, its
+    /// fields' targets pinned, and what kept objects hold.
+    fn drain_whole(&mut self) {
         loop {
             if let Some((a, way, whose)) = self.work.pop() {
                 self.follow(a, way, whose);
-            } else if let Some((k, way)) = self.kept_work.pop() {
-                let mut words = Vec::new();
-                k.words(&mut |w| words.push(w));
-                for w in words {
-                    self.ambiguous(w, way);
+            } else if !self.drain_kept_one() {
+                return;
+            }
+        }
+    }
+
+    /// Before the copy: each kept object reached scanned, its words
+    /// ambiguous, what they reach pinned and queued, not yet followed.
+    fn drain_kept(&mut self) {
+        while self.drain_kept_one() {}
+    }
+
+    fn drain_kept_one(&mut self) -> bool {
+        let Some((k, way)) = self.kept_work.pop() else {
+            return false;
+        };
+        let mut words = Vec::new();
+        k.words(&mut |w| words.push(w));
+        for w in words {
+            self.ambiguous(w, way);
+        }
+        true
+    }
+
+    /// The allocation at `a`'s fields followed, pinning whole: what they
+    /// point to in the space, and what is kept that a plain word of one is
+    /// (C508).
+    fn follow(&mut self, a: usize, way: Way, whose: Whose) {
+        let mut found = std::mem::take(&mut self.found);
+        let mut found_kept = std::mem::take(&mut self.found_kept);
+        let view = &self.view;
+        let kept = self.kept;
+        each_object(view, a, |o| {
+            for &f in o.fields {
+                if let Some(t) = target(view, f) {
+                    found.push(t);
+                } else if f.raw() & 7 == 0
+                    && let Some(k) = kept.find(f.raw())
+                {
+                    found_kept.push(k);
                 }
+            }
+        });
+        let pin = way == Way::Whole || whose == Whose::Live;
+        let next = match (way, whose) {
+            (Way::Whole, _) => Way::Whole,
+            (_, Whose::Mine) => way,
+            _ => Way::Below,
+        };
+        for &t in &found {
+            self.visit(t, pin, next);
+        }
+        for &k in &found_kept {
+            self.kept_visit(k, next);
+        }
+        found.clear();
+        found_kept.clear();
+        self.found = found;
+        self.found_kept = found_kept;
+    }
+
+    /// Cheney's loop: what is reached in place scanned, and each kept
+    /// object reached, and each copy in the order made, till none is left.
+    fn cheney(&mut self) {
+        let mut next = 0;
+        loop {
+            if let Some((a, way, whose)) = self.work.pop() {
+                debug_assert!(way != Way::Whole, "pinning whole as objects move");
+                self.scan(a, way, whose);
+            } else if self.drain_kept_one() {
+            } else if let Some(&to) = self.copies.get(next) {
+                next += 1;
+                self.scan(to, Way::Own, Whose::Mine);
             } else {
                 return;
             }
         }
     }
 
-    /// Under the verifier, if the allocation at `a` (this thread's) is
-    /// old: each field of it pointing to a young object of the thread's
-    /// must be a slot the barrier noted.
-    #[inline(never)]
-    #[cold]
-    fn verify_old(&self, a: usize) {
-        let view = self.view;
-        let Some(Verify {
-            remembered,
-            young_large,
-            got,
-            got_large,
-        }) = &self.verify
-        else {
-            return;
+    /// The allocation at `a`'s fields, each taken (`field`) and written
+    /// where its target moved: an allocation of this thread's (a copy, or
+    /// one in place) or of an ended thread's, which runs no Rust.
+    fn scan(&mut self, a: usize, way: Way, whose: Whose) {
+        let next = if whose == Whose::Mine {
+            way
+        } else {
+            Way::Below
         };
-        // Adopted since the last collection: what it holds of this
-        // thread's young objects no barrier saw (`space::received`).
-        if young(view, young_large, a)
-            || got_large.contains(&a)
-            || view
-                .page_of(a)
-                .is_some_and(|(c, p)| got.contains(&space::page_key(c, p)))
-        {
-            return;
-        }
-        each_object(view, a, |o| {
+        let mut fields = std::mem::take(&mut self.fields);
+        each_object(&self.view, a, |o| {
             for f in o.fields {
-                let slot = std::ptr::from_ref(f).addr();
-                if let Some(t) = target(view, *f)
-                    && young(view, young_large, t)
-                    && view.whose_of(t) == Whose::Mine
-                    && !remembered.contains(&slot)
-                {
-                    missed(a, slot, t);
-                }
+                fields.push((std::ptr::from_ref(f).addr(), f.raw() as u64));
             }
         });
+        for &(slot, w) in &fields {
+            let new = self.field(w, next);
+            if new != w {
+                // SAFETY: a field of a reached allocation this thread may
+                // write.
+                unsafe { space::word_mut(&self.view, slot).write(new) };
+            }
+        }
+        fields.clear();
+        self.fields = fields;
     }
 
-    /// The allocation at `a`'s fields followed: what they point to in the
-    /// space, and what is kept that a plain word of one is (C508).
-    fn follow(&mut self, a: usize, way: Way, whose: Whose) {
-        {
-            let view = self.view;
-            let kept = self.kept;
-            let mut found = std::mem::take(&mut self.found);
-            let mut found_kept = std::mem::take(&mut self.found_kept);
-            if self.verify.is_some() && whose == Whose::Mine {
-                self.verify_old(a);
-            }
-            each_object(view, a, |o| {
-                for &f in o.fields {
-                    if let Some(t) = target(view, f) {
-                        found.push(t);
-                    } else if f.raw() & 7 == 0
-                        && let Some(k) = kept.find(f.raw())
-                    {
-                        found_kept.push(k);
-                    }
+    /// A precise word (a field's, a noted slot's), as the copy takes it:
+    /// its target, if in from-space, copied (once) and the word made to
+    /// point at the copy, its offset into the allocation kept; else
+    /// reached in place; a plain word of a kept object, that reached.
+    #[inline]
+    fn field(&mut self, w: u64, way: Way) -> u64 {
+        let s = match w & TAG_MASK {
+            TAG_PAIR => (w & !TAG_MASK) as usize,
+            TAG_OBJECT => match self
+                .view
+                .object_of(((w & !TAG_MASK) as usize).wrapping_sub(8))
+            {
+                Some(s) => s,
+                None => return w,
+            },
+            _ => {
+                if w & 7 == 0
+                    && let Some(k) = self.kept.find(w as usize)
+                {
+                    self.kept_visit(k, way);
                 }
-            });
-            let pin = way == Way::Whole || whose == Whose::Live;
-            let next = match (way, whose) {
-                (Way::Whole, _) => Way::Whole,
-                (_, Whose::Mine) => way,
-                _ => Way::Below,
-            };
-            for &t in &found {
-                self.visit(t, pin, next);
+                return w;
             }
-            for &k in &found_kept {
-                self.kept_visit(k, next);
+        };
+        let from = self.view.page_of(s).is_some_and(|(c, _)| c.is_from(s));
+        if from {
+            // SAFETY: a word of an allocation in from-space, its words
+            // kept till the collection's end.
+            let first = unsafe { std::ptr::with_exposed_provenance::<u64>(s).read() };
+            if first & TAG_MASK == TAG_FORWARD {
+                let to = (first & !TAG_MASK) as usize;
+                let moved = w.wrapping_add(to as u64).wrapping_sub(s as u64);
+                // Checked against the copy: the original's first word is
+                // its forwarding word now.
+                if self.checked && target_word(&self.view, moved) != Some(to) {
+                    bad_field(w, s);
+                }
+                debug_assert!(self.view.whose_of(s) == Whose::Mine, "another's from-space");
+                return moved;
             }
-            found.clear();
-            found_kept.clear();
-            self.found = found;
-            self.found_kept = found_kept;
         }
+        // Under the verifier, a word checked as an ambiguous one is (no
+        // word of a live object fails it).
+        if self.checked && target_word(&self.view, w) != Some(s) {
+            if self.view.object_of(s).is_none() {
+                return w;
+            }
+            bad_field(w, s);
+        }
+        if from {
+            // Another thread copies from a page of its own that nothing of
+            // this one's reaches (no thread's heap is reached from
+            // another's: C521), so the page is this thread's.
+            if self.checked && self.view.whose_of(s) != Whose::Mine {
+                panic!("kayak: a field's word {w:#x} reaches another thread's from-space");
+            }
+            let to = self.copy(s);
+            return w.wrapping_add(to as u64).wrapping_sub(s as u64);
+        }
+        self.visit(s, false, way);
+        w
     }
+
+    /// The allocation at `s` (its first word, in from-space) copied whole
+    /// to a new page of the thread's, a forwarding word left in its first;
+    /// the copy queued, to be scanned.
+    fn copy(&mut self, s: usize) -> usize {
+        let mut end = s;
+        each_object(&self.view, s, |o| end = o.end);
+        let n = self.view.extent_of(s, end);
+        let to = space::words(n);
+        // SAFETY: `n` words of the allocation, read whole into `n` new
+        // words of to-space, which no other object overlaps; then its
+        // first word, its forwarding word.
+        unsafe {
+            let at = space::word_mut(&self.view, s);
+            // Most are a pair's two words, or a few: copied in line.
+            if n <= 4 {
+                for i in 0..n {
+                    to.add(i).write(at.add(i).read());
+                }
+            } else {
+                std::ptr::copy_nonoverlapping(at, to, n);
+            }
+            at.write(to.addr() as u64 | TAG_FORWARD);
+        }
+        let to = to.addr();
+        // A new chunk taken for to-space: the space seen again.
+        if self.view.page_of(to).is_none() {
+            self.view = View::new();
+        }
+        self.copies.push(to);
+        self.moved_words += n;
+        to
+    }
+}
+
+/// A field's word that points into the space at no object (the
+/// verifier's): a word of a dead object not cleared, or a store of no
+/// Fixpt word.
+#[cold]
+fn bad_field(w: u64, s: usize) -> ! {
+    panic!("kayak: a field's word {w:#x} points into the allocation at {s:#x}, at no object")
+}
+
+/// An ambiguous word found as objects move, to an allocation in
+/// from-space: what a kept object holds that the pins did not see.
+#[cold]
+fn late_pin(a: usize) -> ! {
+    panic!(
+        "kayak: an ambiguous word found as the copy runs reaches the allocation at {a:#x}, in from-space"
+    )
 }
 
 /// Whether the object at `a` (an allocation's first word) is young: on a
@@ -1189,6 +1335,34 @@ mod tests {
             super::collect_minor();
         }
         assert_eq!(sum(crate::get(r)), 1000 * 499 * 500 / 2);
+    }
+
+    /// A box holding a kept cell (kayak-rt's own memory, whose stores no
+    /// barrier sees), made old, the cell then reached by the box alone.
+    #[inline(never)]
+    fn an_old_box_of_a_kept_cell() -> crate::Ref<&'static std::cell::Cell<List<Int>>> {
+        let r = heap_new(crate::leak_collected(std::cell::Cell::new(nil::<Int>())));
+        super::collect();
+        r
+    }
+
+    #[inline(never)]
+    fn given_a_young_list(r: crate::Ref<&'static std::cell::Cell<List<Int>>>) {
+        crate::get(r).set(list(500));
+    }
+
+    #[test]
+    fn a_young_list_a_kept_cell_an_old_box_holds_kept_by_a_minor_collection() {
+        // A minor collection follows no old object, so a kept object only
+        // an old one reaches it takes as a root (C523): else the young
+        // list the cell holds, which no barrier noted, freed.
+        let r = an_old_box_of_a_kept_cell();
+        given_a_young_list(r);
+        for _ in 0..3 {
+            let _ = std::hint::black_box(list(garbage()));
+            super::collect_minor();
+        }
+        assert_eq!(sum(crate::get(r).get()), 1000 * 499 * 500 / 2);
     }
 
     #[test]

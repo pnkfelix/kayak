@@ -300,22 +300,21 @@ impl Chunk {
         None
     }
 
-    /// Page `page` given back: its words zeroed or poisoned, its starts
-    /// cleared, no thread's.
+    /// Page `page` given back: its words poisoned under stress (else left,
+    /// zeroed as it is taken again: `pool_page`), its starts cleared, no
+    /// thread's.
     fn clear_page(&self, page: usize, poison: bool) {
         let first = page * PAGE_WORDS;
-        // SAFETY: the page's words, of this chunk, given to no one else
-        // while it is cleared.
-        unsafe {
-            let p = self.base.add(first);
-            if poison {
+        if poison {
+            // SAFETY: the page's words, of this chunk, given to no one
+            // else while it is cleared.
+            unsafe {
+                let p = self.base.add(first);
                 // A header of kind 0x7f and absurd counts: what reads it
                 // is wrong at once.
                 for k in 0..PAGE_WORDS {
                     p.add(k).write(0xdead_dead_dead_3ff6);
                 }
-            } else {
-                p.write_bytes(0, PAGE_WORDS);
             }
         }
         for s in &self.starts[first / 64..(first + PAGE_WORDS) / 64] {
@@ -652,12 +651,20 @@ pub(crate) fn extent() -> (usize, usize, usize) {
 /// The space as a collection sees it: the chunks and large objects, read
 /// once, and the thread's number.
 pub(crate) struct View {
+    /// The chunks by number (address shifted), less `lo`'s: a table, as
+    /// chunks lie near one another; a map where they lie too far apart.
+    table: Vec<Option<&'static Chunk>>,
+    lo: usize,
     chunks:
         std::collections::HashMap<usize, &'static Chunk, std::hash::BuildHasherDefault<Shifted>>,
     large: Vec<(usize, usize, u64)>,
     me: u64,
     dead: std::collections::HashSet<u64>,
 }
+
+/// The most chunks a view's table spans (by address, 128 GB), past which
+/// it keeps a map.
+const TABLE_CHUNKS: usize = 1 << 16;
 
 /// Whose an object is, as a collection sees it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -692,14 +699,32 @@ impl std::hash::Hasher for Shifted {
 
 impl View {
     pub(crate) fn new() -> View {
+        let all: Vec<&'static Chunk> = POOL
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .chunks
+            .clone();
+        // Sorted by address (`pool_page`).
+        let lo = all.first().map_or(0, |c| c.base.addr() >> CHUNK_SHIFT);
+        let hi = all.last().map_or(0, |c| c.base.addr() >> CHUNK_SHIFT);
+        let (table, chunks) = if hi - lo < TABLE_CHUNKS {
+            let mut t = vec![None; if all.is_empty() { 0 } else { hi - lo + 1 }];
+            for &c in &all {
+                t[(c.base.addr() >> CHUNK_SHIFT) - lo] = Some(c);
+            }
+            (t, std::collections::HashMap::default())
+        } else {
+            (
+                Vec::new(),
+                all.iter()
+                    .map(|&c| (c.base.addr() >> CHUNK_SHIFT, c))
+                    .collect(),
+            )
+        };
         View {
-            chunks: POOL
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .chunks
-                .iter()
-                .map(|&c| (c.base.addr() >> CHUNK_SHIFT, c))
-                .collect(),
+            table,
+            lo,
+            chunks,
             large: LARGE.lock().unwrap_or_else(|e| e.into_inner()).clone(),
             me: thread_number(),
             dead: DEAD
@@ -723,7 +748,11 @@ impl View {
 
     #[inline]
     fn chunk(&self, addr: usize) -> Option<&'static Chunk> {
-        self.chunks.get(&(addr >> CHUNK_SHIFT)).copied()
+        let n = addr >> CHUNK_SHIFT;
+        if !self.table.is_empty() {
+            return self.table.get(n.wrapping_sub(self.lo)).copied().flatten();
+        }
+        self.chunks.get(&n).copied()
     }
 
     /// The chunk `addr` is a word of, and its page.
@@ -744,6 +773,14 @@ impl View {
     #[inline]
     pub(crate) fn large_owner(&self, addr: usize) -> Option<(usize, usize, Whose)> {
         large_of(&self.large, addr).map(|(p, w, o)| (p, w, self.whose(o)))
+    }
+
+    /// This thread's large objects, each by its first word.
+    pub(crate) fn my_large(&self) -> impl Iterator<Item = usize> + '_ {
+        self.large
+            .iter()
+            .filter(|&&(_, _, o)| o == self.me)
+            .map(|&(p, _, _)| p)
     }
 
     /// `object_of`, against this view.
@@ -998,10 +1035,11 @@ pub(crate) fn young_large() -> Vec<usize> {
     BUMP.with(|b| b.young_large.borrow().clone())
 }
 
-/// `KAYAK_GC_VERIFY=1`, or under stress: each collection checks that
-/// every old object of the thread's it reaches that points to a young one
-/// does so from a slot the barrier noted (Fixpt's verifier,
-/// `generational-gc.md`).
+/// `KAYAK_GC_VERIFY=1`, or under stress: each collection checks, as it
+/// begins, that every old object of the thread's that points to a young
+/// one does so from a slot the barrier noted (Fixpt's verifier,
+/// `generational-gc.md`; every one, reached or not, since C523), and, as
+/// it copies, that each field's word points at an object.
 pub(crate) fn verifying() -> bool {
     static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *V.get_or_init(|| match env_number("KAYAK_GC_VERIFY") {

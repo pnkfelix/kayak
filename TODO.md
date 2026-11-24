@@ -2204,7 +2204,15 @@ over its 1664 definitions, 335 of them refused:
      kc's 89 s building `expander-facts.fx` (pauses to 2.1 s, 22 M
      objects reached), about 110 of an edit's 320 ms at 1000 procedures;
      nearly all reached is moved, the same long-lived state each time,
-     at 90–115 ns an object.
+     at 90–115 ns an object. The collector's cost per object (C523):
+     Cheney's copy in place of a mark, a copy and a fix-up, each object
+     read once and each field resolved once; a view's chunks a table; a
+     page zeroed once (as it is taken), not also as it is freed. kfx's
+     collections 1328 to 703 ms (a quiet machine), kc's 16.8 to 10.8 s,
+     its longest pause 1.32 to 0.79 s. Left: about 50 ns an object,
+     spread over the scan's calls (each field's page found, a header
+     decoded for each object's extent), and a page's zeroing as it is
+     taken (2.7% of kfx's run).
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
   edit's build at 1000 procedures 154 MB, kept for the run (kayak-rt has
   no collector), half its time the kernel's page faults. Left, largest

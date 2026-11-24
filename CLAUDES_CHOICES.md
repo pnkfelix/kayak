@@ -16637,3 +16637,63 @@ TODO §54 step 4b's (d): generations, with no protocol between threads
   the noted slot alone (without the barrier's `remember`, its sum wrong).
   The stress script 38 s (89 s): its collections mostly minor now.
 - **The full check**: all passed in 549.7 s, its first run (9 min 49 s under `timed`, predicted 8 min 09 s); nextest 5647.
+
+## C523. Cheney's copy, every pin known first (Bartlett's) (2026-11-24)
+
+TODO §54 step 5's per-object cost (the user: "Are you using a cheney copy
+loop?"; then "run the stats then rewrite as Bartlett-style Cheney").
+- **Measured first** (`KAYAK_GC_STATS=1`): kfx making itself, 1328 ms
+  collecting, its mark 549, copy 303, fix-up 286, end 189; kc building
+  `expander-facts.fx`, 16.8 s, its mark 7352, copy 3782, fix-up 3524,
+  end 2083. Each object read three times (marked, copied, fixed), each
+  field resolved twice, each by a hashed chunk and a header's check.
+- **The pins, then the copy** (`collect_from`): what every thread may
+  read pinned whole, as before (`drain_whole`); the ambiguous roots, each
+  allocation reached pinned and queued, not followed; then what each kept
+  object of the thread's holds (one may be found late, by a field the
+  copy reaches, and what it holds must not have moved: Bartlett's every
+  ambiguous word known first). A major collection only pins what a kept
+  object holds, and scans one only once a word reaches it, so that one no
+  word reaches is still freed (C513), what it held floating a collection
+  longer; a minor one takes each as a root. From-space then known, and
+  **Cheney's loop** (`Mark::cheney`): what is reached in place scanned,
+  each kept object reached, and each copy in the order made, each field
+  taken once (`field`): copied if its target is in from-space (a
+  forwarding word left), the field made to point at the copy; else
+  marked and scanned in place. No order, no fix-up. An ambiguous word
+  found as the copy runs into from-space is a panic (`late_pin`).
+- **A hole of C522's, closed**: a minor collection followed no old
+  object, so a kept object only old ones reach it never scanned, and the
+  young objects it held (stored in kayak-rt's own memory, which no
+  barrier sees: an eq table's entries, a continuation's cell, a module's
+  state) were freed. Every kept object is a minor collection's root now.
+  Test: a young list in a kept cell an old box alone holds (with the
+  minor's kept roots taken out, its sum wrong).
+- **Two bugs found on the way, under stress** (`suspend`'s `ping_pong`,
+  then rr): a noted slot read twice (the store buffer's and an adopted
+  object's) the second time pointing into to-space, its copy marked
+  there, and the mark never cleared, so the next collection took the
+  object as reached and scanned it never (the slots deduplicated; marks
+  cleared on every page they may be made on: pinned, unsettled,
+  to-space). And the verifier's check of a field's word read its
+  target's header, a forwarding word once the target moved: a field to
+  what moved left unchanged, its page freed (the check made against the
+  copy).
+- **The verifier, stricter** (`verify_barrier`): as a collection begins,
+  every old object of the thread's (reached or not: its stores are the
+  barrier's all the same), but what was adopted since the last and an
+  unsettled page; and, as it copies, a field's word into the space at no
+  object, or into another thread's from-space, a panic.
+- **Cheaper parts**: a view's chunks a table by number (a map past 128 GB
+  of addresses); a freed page no longer zeroed (it is as it is taken,
+  `pool_page`), only poisoned under stress; a copy of four words or
+  fewer in line.
+- **Measured** (on a quiet machine): kfx 1328 to 975 ms with Cheney's
+  loop alone, 703 ms with the rest (pin 11, copy 660, end 30); its output
+  the same. kc 16.8 to 10.8 s (pin 304, copy 9334, end 1056), 60 s in
+  all (64), its longest pause 1.32 to 0.79 s; its executable the same;
+  49 majors (40), 2.01 GB at its peak (1.88), the pins of what kept
+  objects hold among the float. Under `KAYAK_GC_VERIFY=1` kc's build 197
+  s, the same executable. About 50 ns an object left, spread over the
+  scan's calls.
+- **The full check**: all passed, its first run (8 min 59 s under `timed`, predicted 8 min 10 s; the pre-check 3 min 53 s); nextest's count not kept (its summary cut from the run's output).

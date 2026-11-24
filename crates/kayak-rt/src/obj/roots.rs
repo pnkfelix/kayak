@@ -387,6 +387,12 @@ impl KeptIndex {
         KeptIndex { at, lo, hi }
     }
 
+    /// This thread's kept objects that are not shared: scanned when
+    /// reached.
+    pub(super) fn mine_unshared(&self) -> impl Iterator<Item = KeptAt> + '_ {
+        self.at.iter().copied().filter(|k| k.mine && !k.shared)
+    }
+
     /// The kept object `w` is a word of, if any.
     #[inline]
     pub(super) fn find(&self, w: usize) -> Option<KeptAt> {
