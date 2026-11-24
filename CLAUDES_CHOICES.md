@@ -16418,3 +16418,41 @@ collections unchanged.
   (C514's day: 89 s, 539, 52.0 s), not interleaved.
 - `KAYAK_GC_STATS` also says the store buffer's slots per collection.
 - **The full check**: all passed in 593.4 s, its first run; nextest 5643.
+
+## C517. The heap per thread designed again; a spawn's environment one value (2026-11-24)
+
+- **A minor collection on C512's protocol, parked.** Built and measured
+  (kfx making itself 3.41 s against C515's 5.07; kc building
+  `expander-facts.fx` 59 s against 89, its outputs the same), it needed
+  each thread's list of others' objects merged by a minor collection,
+  adopted pages made old and scanned, noted slots pinned whole while
+  another thread runs, and its verifier told what another thread
+  believes it reaches (a dead object a stale entry brought back: float,
+  as the user foresaw from its survival rate). An attempt to drop each
+  collection's root-found entries gave wrong answers (24 runs of 25):
+  the protocol across threads was not understood well enough to change.
+  The user: "The generational GC should be entirely thread local".
+  Parked, uncommitted, at
+  `../kayak-refs/parked/minor-collection-wip-2026-11-24.patch`.
+- **The design agreed** (the user, "This sounds good"; TODO §54 step 4b):
+  a thread's heap reached only from that thread; a shared heap for
+  what a second may reach, published to by a send (a deep copy,
+  Fixpt's), a spawn's environment, an I-cell's fill, with constants and
+  symbols there from the start; `par`'s branches read their waiting
+  maker's heap as fixed, both on threads of their own (the user chose
+  that of three, the synchronous `par2` having run `f` on the maker's
+  thread beside `g`); then each thread's collections its own, minor and
+  major. Order: (a) environments at spawns, (b) the shared heap and
+  publishing, (c) C512's lists gone, (d) generations, (e) the shared
+  heap's incremental collector.
+- **(a), done**: a process's body was a `move` closure, whose captured
+  words no collector can rewrite. The emitter (`put-process`) now
+  writes the body apart, finds the locals it names as `closured` does,
+  and emits `spawn_env(ENV, |box: Inbox<M>, ENV| body)` (and
+  `spawn_monitored_env`): the environment one value the runtime is
+  given, the body a function rustc checks captures nothing else (a
+  closure that captures is no `fn` pointer, the async mode's too,
+  tried first). kayak-rt's `spawn_env` passes it on as it is, for now;
+  (b) copies it. Regenerated (`regen.sh --all`), the corpus and the I/O
+  programs blessed, every lang item's copy agreeing.
+- **The full check**: all passed in 584.5 s, its first run; nextest 5643.

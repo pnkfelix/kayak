@@ -42,7 +42,7 @@ pub fn score(r: Report) -> Int {
 // process's watcher is sent one message for its failure, however it
 // failed.
 pub fn start_collector(count: Int, out: ICell<Int>) -> Addr<Report> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<kayak_rt::Sum>| {
+    kayak_rt::process::spawn_env((count, out,), |r#box: kayak_rt::Inbox<kayak_rt::Sum>, (count, out,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -94,7 +94,7 @@ pub fn work(k: Int) -> Int {
 // A worker, which answers one number, or fails (Fixpt's worker-fails.fx).
 #[inline]
 pub fn start_worker(collector: Addr<Report>) -> Addr<Int> {
-    kayak_rt::process::spawn_monitored(collector, kayak_rt::as_proc(failed), move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_monitored_env(collector, kayak_rt::as_proc(failed), (collector,), |r#box: kayak_rt::Inbox<Int>, (collector,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -111,7 +111,7 @@ pub fn start_worker(collector: Addr<Report>) -> Addr<Int> {
 // A worker whose `par` branches may fail, the left at 0, the right too if
 // `both` (Fixpt's par-branch.fx, one-message.fx).
 pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
-    kayak_rt::process::spawn_monitored(collector, kayak_rt::as_proc(failed), move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_monitored_env(collector, kayak_rt::as_proc(failed), (collector, both,), |r#box: kayak_rt::Inbox<Int>, (collector, both,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -141,7 +141,7 @@ pub fn start_pair(collector: Addr<Report>, both: bool) -> Addr<Int> {
 // says of it, not `error` (Fixpt's trap.fx).
 #[inline]
 pub fn start_divider(collector: Addr<Report>) -> Addr<Int> {
-    kayak_rt::process::spawn_monitored(collector, kayak_rt::as_proc(failed), move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_monitored_env(collector, kayak_rt::as_proc(failed), (collector,), |r#box: kayak_rt::Inbox<Int>, (collector,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -191,7 +191,7 @@ pub fn divided() -> Int {
 // A process's own address, `(self box)`: it sends itself the rest of a
 // count down, and fills `out` at 0.
 pub fn start_counter(out: ICell<Int>) -> Addr<Int> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_env((out,), |r#box: kayak_rt::Inbox<Int>, (out,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }

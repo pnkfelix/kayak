@@ -30,7 +30,7 @@ kayak_rt::trace_product!(Product_4stop_5total, A0 0, A1 1);
 pub type Req = Product_1n_5reply<Int, ICell<Int>>;
 
 pub fn start_doubler() -> Addr<Req> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Product_1n_5reply<Int, ICell<Int>>>| {
+    kayak_rt::process::spawn_env((), |r#box: kayak_rt::Inbox<Product_1n_5reply<Int, ICell<Int>>>, ()| {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
@@ -64,7 +64,7 @@ pub fn ask(server: Addr<Req>, n: Int) -> Int {
 pub type Job = Product_1f_1x_3out<kayak_rt::Proc1s<'static, Int, Int>, Int, ICell<Int>>;
 
 pub fn start_worker() -> Addr<Job> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Product_1f_1x_3out<kayak_rt::Proc1s<'static, Int, Int>, Int, ICell<Int>>>| {
+    kayak_rt::process::spawn_env((), |r#box: kayak_rt::Inbox<Product_1f_1x_3out<kayak_rt::Proc1s<'static, Int, Int>, Int, ICell<Int>>>, ()| {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
@@ -94,7 +94,7 @@ pub fn start_worker() -> Addr<Job> {
 pub type Summing = Product_4stop_5total<ICell<()>, ICell<Int>>;
 
 pub fn start_summer(cells: Summing) -> Addr<Int> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_env((cells,), |r#box: kayak_rt::Inbox<Int>, (cells,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }

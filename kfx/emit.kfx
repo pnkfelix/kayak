@@ -3282,12 +3282,12 @@
                  "A form of processes that is a call (C101): the runtime's, whatever
                   the program names so."
                  (put ")" (put-joined c xs ", " n (put (string-append "kayak_rt::process::" (string-append (mangle h) "(")) acc))))
-                ((string=? h "spawn") (put-process c e xs n (put (if (async-mode? c) "kayak_rt::async_process::spawn(" "kayak_rt::process::spawn(") acc)))
+                ((string=? h "spawn") (put-process c e xs n (put (if (async-mode? c) "kayak_rt::async_process::spawn_env(" "kayak_rt::process::spawn_env(") acc)))
                 ((string=? h "spawn-monitored")
                  "`(spawn-monitored w on-failure (box M r) body ...)` (C108): the
                   watcher and what makes its message, then the process as `spawn`'s;
                   in the async mode, the message made at once (`blocking1`, C376)."
-                 (let* ((acc (put (if (async-mode? c) "kayak_rt::async_process::spawn_monitored(" "kayak_rt::process::spawn_monitored(") acc))
+                 (let* ((acc (put (if (async-mode? c) "kayak_rt::async_process::spawn_monitored_env(" "kayak_rt::process::spawn_monitored_env(") acc))
                         (acc (put ", " (put-exp c (car xs) n (value) acc)))
                         (acc (if (async-mode? c)
                                  (put "), " (put-exp c (second xs) n (value) (put "kayak_rt::suspend::blocking1(" acc)))
@@ -3551,16 +3551,25 @@
           (let* ((header (items (car xs)))
                  (box (sym-name (car header)))
                  (m (car (read-all (fact-with c e "spawn ") "" 1)))
-                 (acc (put "move |" acc))
+                 ;; The body written apart, so that what it captures of its
+                 ;; maker's is known: its environment, one value the runtime
+                 ;; is given (TODO §54 step 4b's (a), C517), so that it may
+                 ;; copy it (into the shared heap, to come); the body a
+                 ;; function, which rustc checks captures nothing else.
+                 (body (put "let _ = " (put-nl (i64+ n 1) nil)))
+                 (body (put-letrena (with-locals c (if (async-mode? c) (list "%async" "%infallible" box) (list box))) e (cons (third header) (cdr xs)) (i64+ n 1) body))
+                 (body (put "})" (put-nl n (put ";" body))))
+                 (env (env-tuple (captured (ctx-locals c) (rust-words (reverse body) #\space nil) nil)))
+                 (acc (put env acc))
+                 (acc (put ", |" acc))
                  (acc (put (mangle box) acc))
                  (acc (put ": kayak_rt::Inbox<" acc))
                  (acc (put-type c m acc))
+                 (acc (put ">, " acc))
+                 (acc (put env acc))
                  ;; In the async mode, a task's body, a future (C380).
-                 (acc (put (if (async-mode? c) ">| async move {" ">| {") acc))
-                 (acc (put-nl (i64+ n 1) acc))
-                 (acc (put "let _ = " acc))
-                 (acc (put-letrena (with-locals c (if (async-mode? c) (list "%async" "%infallible" box) (list box))) e (cons (third header) (cdr xs)) (i64+ n 1) acc)))
-            (put "})" (put-nl n (put ";" acc))))))
+                 (acc (put (if (async-mode? c) "| async move {" "| {") acc)))
+            (rev-onto (reverse body) acc))))
 
       (put-par (subr kfx (ctx sexp sexps i64 tail chars) chars)
         (lambda (c e xs n t acc)

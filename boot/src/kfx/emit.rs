@@ -6055,18 +6055,18 @@ pub mod emitter {
                 return put(str_lit!(")"), put_joined(c, xs, str_lit!(", "), n, put(string_append(str_lit!("kayak_rt::process::"), string_append(mangle(h), str_lit!("("))), acc)));
             } else if string_eq_p(h, str_lit!("spawn")) {
                 return put_process(c, e, xs, n, put(if async_mode_p(c) {
-                    str_lit!("kayak_rt::async_process::spawn(")
+                    str_lit!("kayak_rt::async_process::spawn_env(")
                 } else {
-                    str_lit!("kayak_rt::process::spawn(")
+                    str_lit!("kayak_rt::process::spawn_env(")
                 }, acc));
             } else if string_eq_p(h, str_lit!("spawn-monitored")) {
                 // `(spawn-monitored w on-failure (box M r) body ...)` (C108): the
                 // watcher and what makes its message, then the process as `spawn`'s;
                 // in the async mode, the message made at once (`blocking1`, C376).
                 let acc = put(if async_mode_p(c) {
-                    str_lit!("kayak_rt::async_process::spawn_monitored(")
+                    str_lit!("kayak_rt::async_process::spawn_monitored_env(")
                 } else {
-                    str_lit!("kayak_rt::process::spawn_monitored(")
+                    str_lit!("kayak_rt::process::spawn_monitored_env(")
                 }, acc);
                 let acc = put(str_lit!(", "), put_exp(c, car(xs), n, value(), acc));
                 let acc = if async_mode_p(c) {
@@ -6515,23 +6515,27 @@ pub mod emitter {
         let header = items(car(xs));
         let r#box = sym_name(car(header));
         let m = car(read_all(fact_with(c, e, str_lit!("spawn ")), str_lit!(""), 1i64));
-        let acc = put(str_lit!("move |"), acc);
-        let acc = put(mangle(r#box), acc);
-        let acc = put(str_lit!(": kayak_rt::Inbox<"), acc);
-        let acc = put_type(c, m, acc);
-        let acc = put(if async_mode_p(c) {
-            str_lit!(">| async move {")
-        } else {
-            str_lit!(">| {")
-        }, acc);
-        let acc = put_nl(i64_plus(n, 1i64), acc);
-        let acc = put(str_lit!("let _ = "), acc);
-        let acc = put_letrena(with_locals(c, if async_mode_p(c) {
+        let body = put(str_lit!("let _ = "), put_nl(i64_plus(n, 1i64), nil::<char>()));
+        let body = put_letrena(with_locals(c, if async_mode_p(c) {
             kayak_rt::heap_cons(str_lit!("%async"), kayak_rt::heap_cons(str_lit!("%infallible"), kayak_rt::heap_cons(r#box, kayak_rt::nil())))
         } else {
             kayak_rt::heap_cons(r#box, kayak_rt::nil())
-        }), e, kayak_rt::heap_cons(third(header), cdr(xs)), i64_plus(n, 1i64), acc);
-        put(str_lit!("})"), put_nl(n, put(str_lit!(";"), acc)))
+        }), e, kayak_rt::heap_cons(third(header), cdr(xs)), i64_plus(n, 1i64), body);
+        let body = put(str_lit!("})"), put_nl(n, put(str_lit!(";"), body)));
+        let env = env_tuple(captured(ctx_locals(c), rust_words(reverse(body), ' ', nil::<Str>()), nil::<Str>()));
+        let acc = put(env, acc);
+        let acc = put(str_lit!(", |"), acc);
+        let acc = put(mangle(r#box), acc);
+        let acc = put(str_lit!(": kayak_rt::Inbox<"), acc);
+        let acc = put_type(c, m, acc);
+        let acc = put(str_lit!(">, "), acc);
+        let acc = put(env, acc);
+        let acc = put(if async_mode_p(c) {
+            str_lit!("| async move {")
+        } else {
+            str_lit!("| {")
+        }, acc);
+        rev_onto(reverse(body), acc)
     }
 
     /// `(par ((x e) ...) body ...)` (C101, C102): the branches as closures,

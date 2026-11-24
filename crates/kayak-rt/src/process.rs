@@ -559,6 +559,25 @@ pub fn spawn_monitored<W: Send + 'static, M: Send + 'static>(
 }
 
 /// A process of group `group` on a thread of its own.
+/// `spawn`, its body given what it captures of its maker's as one value,
+/// `env`, and itself a function that captures nothing (TODO §54 step 4b's
+/// (a), C517): what the runtime may copy before the process runs (into the
+/// shared heap, to come), where a closure's captured words it could not
+/// rewrite.
+pub fn spawn_env<E: Send + 'static, M: Send + 'static>(env: E, body: fn(Inbox<M>, E)) -> Addr<M> {
+    spawn(move |b| body(b, env))
+}
+
+/// `spawn_monitored`, as `spawn_env` is `spawn`.
+pub fn spawn_monitored_env<W: Send + 'static, M: Send + 'static, E: Send + 'static>(
+    watcher: Addr<W>,
+    on_failure: crate::Proc1s<'static, crate::Str, W>,
+    env: E,
+    body: fn(Inbox<M>, E),
+) -> Addr<M> {
+    spawn_monitored(watcher, on_failure, move |b| body(b, env))
+}
+
 fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + 'static) -> Addr<M> {
     let mb: Addr<M> = crate::leak_shared(MailboxBox {
         queue: Mutex::new(VecDeque::new()),

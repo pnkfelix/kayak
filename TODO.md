@@ -2123,9 +2123,58 @@ over its 1664 definitions, 335 of them refused:
      space, on a write barrier (Fixpt's, `generational-gc.md`). Done
      (C516): pages young and old, the barrier (`Slot::set`'s store
      buffer) and its verifier (on under stress); dead objects on pinned
-     pages cleared. To come: a minor collection, of the young pages
-     alone, its roots the store buffer's slots besides the usual; then
-     the major's trigger and the policy for both.
+     pages cleared. A minor collection built on C512's protocol (each
+     thread's list of what it reaches of others') worked and was measured
+     (kfx making itself 3.41 s against 5.07, kc building
+     `expander-facts.fx` 59 s against 89), but needed the lists merged,
+     adopted pages made old and scanned, noted slots pinned whole when
+     another thread runs, and the verifier told what another thread
+     believes it reaches: float through stale entries, a protocol across
+     threads under a collector that should be its thread's alone (the
+     user, 2026-11-24: "The generational GC should be entirely thread
+     local"). Parked, uncommitted:
+     `../kayak-refs/parked/minor-collection-wip-2026-11-24.patch`.
+     **The design agreed** (the user, 2026-11-24, "This sounds good"):
+     1. *The invariant*: a thread's heap is reached only from that
+        thread (its stack, its objects, what it keeps); what a second
+        thread may reach is in a shared heap, which points into no
+        thread's heap. Each thread's collections, minor and major, then
+        read its heap alone: no lists, no pinning whole for others, no
+        merging, no probation; a thread that ends frees its pages.
+     2. *Publishing*, into the shared heap: a send (a deep copy,
+        Fixpt's meaning of a send, `processes.md`'s H3), a process's
+        captured values at its spawn, an I-cell's fill; module constants
+        and interned symbols there from the start. Transmissible types
+        hold nothing mutable but I-cells and mailboxes, so the shared
+        heap is nearly immutable: its own collector, incremental (§54
+        step 6), is simpler there. A copy at each send first; later,
+        what a send's own argument builds allocated in the shared heap
+        at once (the user: a bump nursery recovers nothing short of a
+        whole suffix, so an object certain to outlive the next minor
+        collection costs its words there and a copy).
+     3. *`par`*: the maker waits at the join, its heap unchanged and
+        unmoved while its branches run, so the branches read its objects
+        as fixed; the maker takes their pages at the join, as now.
+        Checked (2026-11-24): the async `par2` polls both branches on the
+        task's own thread, so shares nothing; the synchronous one ran `f`
+        on the maker's thread beside `g`, the maker's heap moving as `g`
+        read it. Chosen (the user): both branches on threads of their
+        own, the maker waiting (a thread more a `par`, which a pool may
+        save later); before (c).
+     4. *Closures at a spawn*: a process's body is a Rust closure, whose
+        captured words no collector rewrites; at spawn sites alone the
+        emitter passes what is captured in one heap object (an
+        environment record) the closure holds the word of, which the
+        spawn rewrites once it has published it. Other closures as they
+        are.
+     5. *Order*: (a) environment records at spawn sites (done, C517:
+        `spawn_env`, the environment a tuple of what the body names, the
+        body a function); (b) the shared
+        heap, publishing, constants and symbols there; (c) C512's lists
+        gone; (d) generations, each thread's alone (C516's barrier and
+        verifier, the parked work made simple); (e) the shared heap's
+        own incremental collector. Till (b), processes need C512's
+        protocol, so (d) waits.
   5. **Measured on kc** (done in part, C514: `KAYAK_GC_STATS=1`), then
      incremental collection's design to the user (§54's step 6 above).
      Measured: collection takes 3.1 of kfx's 5.2 s making itself, 52 of

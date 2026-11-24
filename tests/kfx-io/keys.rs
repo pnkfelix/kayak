@@ -72,7 +72,7 @@ pub fn terminal() -> Str {
 // A process that waits for a key or a message, whichever comes first, and
 // answers the key's code, or the message, in `out`.
 pub fn start_keyed(out: ICell<Int>) -> Addr<Int> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Int>| {
+    kayak_rt::process::spawn_env((out,), |r#box: kayak_rt::Inbox<Int>, (out,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }

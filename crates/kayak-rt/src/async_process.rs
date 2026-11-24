@@ -256,6 +256,27 @@ pub fn spawn<M: 'static, F: Future<Output = ()> + 'static>(
     start(None, body)
 }
 
+/// `spawn`, its body given what it captures as one value, `env`, and
+/// itself a function that captures nothing, as the synchronous mode's
+/// (`process::spawn_env`, C517): a task of this thread's, which shares its
+/// heap, so `env` is passed as it is.
+pub fn spawn_env<E: 'static, M: 'static, F: Future<Output = ()> + 'static>(
+    env: E,
+    body: fn(Inbox<M>, E) -> F,
+) -> Addr<M> {
+    start(None, move |b| body(b, env))
+}
+
+/// `spawn_monitored`, as `spawn_env` is `spawn`.
+pub fn spawn_monitored_env<W: 'static, M: 'static, E: 'static, F: Future<Output = ()> + 'static>(
+    watcher: Addr<W>,
+    on_failure: impl Fn(crate::Str) -> W + 'static,
+    env: E,
+    body: fn(Inbox<M>, E) -> F,
+) -> Addr<M> {
+    spawn_monitored(watcher, on_failure, move |b| body(b, env))
+}
+
 /// `(spawn-monitored w on-failure (box M r) body ...)` (C108): its
 /// failure no failure of the program: `watcher` is sent `on_failure` of
 /// what it says.

@@ -2108,7 +2108,7 @@ pub mod tasks {
     /// what it is sent, the outcome or the refusal, where this waits.
     pub fn worked(j: kayak_rt::data::DataAt<'static, Job>) -> kayak_rt::data::DataAt<'static, Done> {
         let out = the::<ICell<kayak_rt::data::DataAt<'static, Done>>>(make_icell());
-        let relay = the::<Addr<kayak_rt::data::DataAt<'static, Done>>>(kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Done>>| {
+        let relay = the::<Addr<kayak_rt::data::DataAt<'static, Done>>>(kayak_rt::process::spawn_env((out,), |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Done>>, (out,)| {
             let _ = {
                 struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
                 impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -2120,7 +2120,7 @@ pub mod tasks {
                 letrena__r(&r__arena, out, r#box)
             };
         }));
-        the::<Addr<()>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(refusal), move |r#box: kayak_rt::Inbox<()>| {
+        the::<Addr<()>>(kayak_rt::process::spawn_monitored_env(relay, kayak_rt::as_proc(refusal), (j, relay,), |r#box: kayak_rt::Inbox<()>, (j, relay,)| {
             let _ = {
                 struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
                 impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -2956,7 +2956,7 @@ pub mod tasks {
     // the oldest first, until the machine takes it, at once or once there is
     // some.
     pub fn relay_made() -> Addr<kayak_rt::data::DataAt<'static, Relayed>> {
-        kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Relayed>>| {
+        kayak_rt::process::spawn_env((), |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Relayed>>, ()| {
             let _ = {
                 struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                 impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
@@ -4693,7 +4693,7 @@ pub mod tasks {
             ()
         };
         let relay = relay_made();
-        let front = the::<Addr<kayak_rt::data::DataAt<'static, Told>>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(front_failure), move |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Told>>| {
+        let front = the::<Addr<kayak_rt::data::DataAt<'static, Told>>>(kayak_rt::process::spawn_monitored_env(relay, kayak_rt::as_proc(front_failure), (live, height, width, path, relay,), |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Told>>, (live, height, width, path, relay,)| {
             let _ = {
                 struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                 impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
@@ -4873,7 +4873,7 @@ pub mod tasks {
             repl_start_x();
             set(m_live(), true);
             let relay = relay_made();
-            let front = the::<Addr<kayak_rt::data::DataAt<'static, Told>>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(front_failure), move |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Told>>| {
+            let front = the::<Addr<kayak_rt::data::DataAt<'static, Told>>>(kayak_rt::process::spawn_monitored_env(relay, kayak_rt::as_proc(front_failure), (arrivals, relay,), |r#box: kayak_rt::Inbox<kayak_rt::data::DataAt<'static, tasks::Told>>, (arrivals, relay,)| {
                 let _ = {
                     struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
                     impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }

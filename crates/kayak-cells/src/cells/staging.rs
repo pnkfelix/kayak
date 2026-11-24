@@ -460,7 +460,7 @@ pub fn refusal_said(m: Str) -> Str {
 /// it is sent where this waits: `` if it passed, else the refusal.
 pub fn stage_worked(prog: kayak_rt::data::DataAt<'static, Sexp>, t: kayak_rt::data::DataAt<'static, Ty>) -> Str {
     let out = the::<ICell<Str>>(make_icell());
-    let relay = the::<Addr<Str>>(kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Str>| {
+    let relay = the::<Addr<Str>>(kayak_rt::process::spawn_env((out,), |r#box: kayak_rt::Inbox<Str>, (out,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -472,7 +472,7 @@ pub fn stage_worked(prog: kayak_rt::data::DataAt<'static, Sexp>, t: kayak_rt::da
             letrena__r(&r__arena, out, r#box)
         };
     }));
-    the::<Addr<()>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(stage_refused), move |r#box: kayak_rt::Inbox<()>| {
+    the::<Addr<()>>(kayak_rt::process::spawn_monitored_env(relay, kayak_rt::as_proc(stage_refused), (prog, t, relay,), |r#box: kayak_rt::Inbox<()>, (prog, t, relay,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -1703,7 +1703,7 @@ pub fn session_verdict(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::d
 
 pub fn session_worked(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::data::DataAt<'static, Sexp>, t: kayak_rt::data::DataAt<'static, Ty>, kind: i64) -> Str {
     let out = the::<ICell<Str>>(make_icell());
-    let relay = the::<Addr<Str>>(kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Str>| {
+    let relay = the::<Addr<Str>>(kayak_rt::process::spawn_env((out,), |r#box: kayak_rt::Inbox<Str>, (out,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }
@@ -1715,7 +1715,7 @@ pub fn session_worked(v: kayak_rt::data::DataAt<'static, Cv>, form: kayak_rt::da
             letrena__r(&r__arena, out, r#box)
         };
     }));
-    the::<Addr<()>>(kayak_rt::process::spawn_monitored(relay, kayak_rt::as_proc(stage_refused), move |r#box: kayak_rt::Inbox<()>| {
+    the::<Addr<()>>(kayak_rt::process::spawn_monitored_env(relay, kayak_rt::as_proc(stage_refused), (v, form, t, kind, relay,), |r#box: kayak_rt::Inbox<()>, (v, form, t, kind, relay,)| {
         let _ = {
             struct Region_R<'r> { phantom_: std::marker::PhantomData<(&'r (),)> }
             impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { phantom_: std::marker::PhantomData } } }

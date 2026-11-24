@@ -19,7 +19,7 @@ pub type Req = Product_1n_5reply<Int, ICell<Int>>;
 
 // The worker: it waits, for each request, and answers it.
 pub fn start_worker() -> Addr<Req> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<Product_1n_5reply<Int, ICell<Int>>>| {
+    kayak_rt::process::spawn_env((), |r#box: kayak_rt::Inbox<Product_1n_5reply<Int, ICell<Int>>>, ()| {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }

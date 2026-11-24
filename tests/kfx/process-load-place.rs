@@ -72,7 +72,7 @@ pub fn made__load__0__process_load_place<'p, Place_P: kayak_rt::Visit>(p: &'p Pl
 }
 
 pub fn start(out: ICell<i64>) -> Addr<()> {
-    kayak_rt::process::spawn(move |r#box: kayak_rt::Inbox<()>| {
+    kayak_rt::process::spawn_env((out,), |r#box: kayak_rt::Inbox<()>, (out,)| {
         let _ = {
             struct Region_P<'p> { phantom_: std::marker::PhantomData<(&'p (),)> }
             impl<'p> Default for Region_P<'p> { fn default() -> Self { Region_P { phantom_: std::marker::PhantomData } } }
