@@ -11,12 +11,22 @@
 set -eu
 cd "$(dirname "$0")/.."
 # Each step timed, to standard error: `time: N s  STEP`, and the whole.
+# The slow ones also through `scripts/timed`, by name, their history kept
+# (`tstep NAME COMMAND…`): run here beside others, each name ends
+# `-in-check`, which a script that times itself reads too.
+KAYAK_TIMED_IN=-in-check
+export KAYAK_TIMED_IN
 now() { date +%s.%N; }
 began=$(now)
 step() {
     t=$(now)
     "$@" || return $?
     printf 'time: %6.1f s  %s\n' "$(echo "$(now) - $t" | bc)" "$*" >&2
+}
+tstep() {
+    tstep_name=$1
+    shift
+    step scripts/timed "$tstep_name$KAYAK_TIMED_IN" "$@"
 }
 quick=
 case "${1-}" in
@@ -38,25 +48,25 @@ fixpoint=; tests=; selfhost=; asyncs=; stress=
 # Should a stage fail first, the five and everything they started stopped.
 killed() { for c in $(pgrep -P "$1" 2>/dev/null); do killed "$c"; done; kill "$1" 2>/dev/null || true; }
 trap 'for p in $fixpoint $tests $selfhost $asyncs $stress; do killed "$p"; done; rm -rf "$logs"' EXIT
-step scripts/fixpoint.sh $quick > "$logs/fixpoint" 2>&1 & fixpoint=$!
+tstep fixpoint${quick:+-quick} scripts/fixpoint.sh $quick > "$logs/fixpoint" 2>&1 & fixpoint=$!
 # The second self-hosting (C366): the compiler on tier 1 makes itself; not
 # with --quick, for its 100 s.
 if [ -z "$quick" ]; then
-    step scripts/selfhost-cells.sh > "$logs/selfhost" 2>&1 & selfhost=$!
+    tstep selfhost-cells scripts/selfhost-cells.sh > "$logs/selfhost" 2>&1 & selfhost=$!
     # The emitter's async mode (C371): the compiler built async makes itself.
-    step scripts/async-check.sh > "$logs/asyncs" 2>&1 & asyncs=$!
+    tstep async-check scripts/async-check.sh > "$logs/asyncs" 2>&1 & asyncs=$!
     # The collector's stress mode (C511): the corpus and the compiler, a
     # collection where no threshold would make one.
     step scripts/gc-stress.sh > "$logs/stress" 2>&1 & stress=$!
 fi
 rm -rf target/kayak-checks
-step env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace --hide-progress-bar --status-level fail > "$logs/tests" 2>&1 & tests=$!
+tstep workspace-tests${quick:+-quick} env ${quick:+KAYAK_CHECK_QUICK=1} cargo nextest run --release --workspace --hide-progress-bar --status-level fail > "$logs/tests" 2>&1 & tests=$!
 step python3 -I scripts/io-programs.py
 step cargo clippy --release --workspace --all-targets --quiet -- -D warnings
 step python3 -I scripts/corpus.py
-step python3 -I scripts/engine-programs.py
+tstep engine-programs python3 -I scripts/engine-programs.py
 # kc's steps (C399): each back end against Fixpt's answers.
-step python3 -I scripts/kc-steps.py
+tstep kc-steps python3 -I scripts/kc-steps.py
 # kc's assembler (C450): each object kc-steps' builds made, as `as` makes it.
 step python3 -I scripts/kc-objects.py
 # kc's expansion, a form at a time, against the engine's, a program at a
@@ -99,7 +109,7 @@ if [ -d "${KAYAK_COOPT_CLONE:-../kayak-refs/coopt}/.git" ]; then
     step python3 -I scripts/coopt-drift.py
 fi
 # Those that kfx accepts, run both ways.
-step python3 -I scripts/run-fixpt-programs.py
+tstep fixpt-programs python3 -I scripts/run-fixpt-programs.py
 step python3 -I scripts/refused-fixpt-programs.py
 # The five beside the rest, in order.
 for job in fixpoint tests selfhost asyncs stress; do

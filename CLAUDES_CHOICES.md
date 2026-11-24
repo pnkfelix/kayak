@@ -16456,3 +16456,36 @@ collections unchanged.
   (b) copies it. Regenerated (`regen.sh --all`), the corpus and the I/O
   programs blessed, every lang item's copy agreeing.
 - **The full check**: all passed in 584.5 s, its first run; nextest 5643.
+
+## C518. Every long step says first how long it is expected to take (2026-11-24)
+
+The user: keep methodical track of how long long-running steps take, and
+say the estimate before running them, as the Fixpt team does
+(`scripts/timed`, Fixpt 0692130c).
+- **`scripts/timed`**, Fixpt's taken whole: `scripts/timed [--at-least S]
+  NAME COMMAND…` says NAME's expected time (the mean of its recorded
+  runs) first, runs COMMAND, says how long it took, and records the run
+  only if it exited 0; `--expect NAME` says the prediction alone. Its
+  history kayak's own, per machine: `~/.local/state/kayak/timings.tsv`
+  (`$KAYAK_TIMINGS`), apart from Fixpt's, whose steps' names are its own.
+  Seeded from the ledger kept by hand till now: `full-check` 73 runs,
+  `regen-all` 27.
+- **Scripts that time themselves**, re-run under `timed` with a guard:
+  `check-snapshot.sh` (`full-check`, `quick-check`; not `--same` or
+  `--commit`), `regen.sh` (`regen`, `regen-all`, `regen-check`,
+  `regen-all-check`), `gc-stress.sh`, and `pre-check.sh`, new: what was
+  run by hand before each full check after a runtime or emitter change
+  (formatting and identity, the stress script, clippy of the workspace and
+  of kayak-rt with `heap-stats` and with `unsafe-par`, the rust-repl and
+  unsafe-par builds, Fixpt's programs), each step by name, every step run
+  and the script failing if any did, so that no failure is recorded as a
+  time. Its clippy runs and builds with `--at-least 5`: its first run
+  found them done already and recorded 0 s each (those five entries
+  taken out of the history again).
+- **Inside the check**, its slow steps by name through `tstep`
+  (`selfhost-cells`, `workspace-tests`, `async-check`, `engine-programs`,
+  `kc-steps`, `fixpt-programs`, `fixpoint`), each ending `-in-check`
+  (`$KAYAK_TIMED_IN`, which a script that times itself reads too):
+  beside others there, they are slower than alone (the stress script 177
+  s in the check, 73 s alone), so their means are kept apart.
+- **The full check**: all passed in 392.9 s, its first run (7 min 13 s under `timed`, kc-bench with it; predicted 8 min 05 s); nextest 5643.

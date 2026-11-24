@@ -31,6 +31,14 @@
 # recorded in bench/kc.tsv when the next check begins, under the commit
 # made on the snapshot's base: each step's rows go in with the step after.
 set -eu
+# A check timed whole (`scripts/timed`, its expected time said first):
+# `full-check`, or `quick-check`; --same and --commit, quick, not.
+if [ -z "${TIMED_CHECK-}" ]; then
+    case "${1-}" in
+    "") TIMED_CHECK=1 exec "$(dirname "$0")/timed" full-check "$0" "$@" ;;
+    --quick) TIMED_CHECK=1 exec "$(dirname "$0")/timed" quick-check "$0" "$@" ;;
+    esac
+fi
 # Run from a copy of this script: `sh` reads a script as it goes, and this
 # one may be edited while its check runs.
 if [ -z "${CHECK_SNAPSHOT_COPY-}" ]; then

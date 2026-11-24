@@ -4,6 +4,8 @@
 # root missed, or a word not followed, shows. `KAYAK_GC_STRESS=n`: a
 # collection at every nth allocation; freed pages poisoned.
 set -eu
+# Timed whole (`scripts/timed`): `gc-stress`, `-in-check` in the check.
+[ -z "${TIMED_GC_STRESS-}" ] && TIMED_GC_STRESS=1 exec "$(dirname "$0")/timed" "gc-stress${KAYAK_TIMED_IN-}" "$0" "$@"
 cd "$(dirname "$0")/.."
 # kayak-rt's own tests, every 7th allocation, their threads each
 # collecting its own pages at once (the long loops left out: quadratic).

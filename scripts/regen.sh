@@ -21,6 +21,14 @@
 # fixed point. (scripts/fixpoint.sh checks boot/ too, and more: a recorded
 # compile's replay, and Fixpt's stage 0.)
 set -eu
+# Timed whole (`scripts/timed`), by what it does: `regen`, `regen-all`,
+# `regen-check`, `regen-all-check`.
+if [ -z "${TIMED_REGEN-}" ]; then
+    name=regen
+    case " $* " in *" --all "*) name=$name-all ;; esac
+    case " $* " in *" --check "*) name=$name-check ;; esac
+    TIMED_REGEN=1 exec "$(dirname "$0")/timed" "$name" "$0" "$@"
+fi
 cd "$(dirname "$0")/.."
 all=no
 check=no
