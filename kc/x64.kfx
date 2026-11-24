@@ -785,8 +785,10 @@
           (lambda (c vs at si env)
             (if (null? vs)
                 c
-                (let ((c (x64-emit-expr c (car vs) si env)))
-                  (x64-letrec-values (x64-emit c (string-append "movq %rax, " (x64-slot at))) (cdr vs) (i64+ at 1) si env)))))
+                ;; Named apart from `c`, which a binding of it would hide,
+                ;; so that this call loops (C524).
+                (let ((done (x64-emit-expr c (car vs) si env)))
+                  (x64-letrec-values (x64-emit done (string-append "movq %rax, " (x64-slot at))) (cdr vs) (i64+ at 1) si env)))))
 
         (x64-emit-tagcase (subr kfx (x64-code sexp i64 (listof x64-at acyclic) string) x64-code)
           (lambda (c t si env fr)

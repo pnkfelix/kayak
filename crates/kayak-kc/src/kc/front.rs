@@ -124,13 +124,24 @@ pub mod kc_front {
         } else { kayak_rt::data::no_variant() }
     }
 
+    /// Each of `xs`, spaced, joined once (C524): a loop, not a frame for
+    /// each (each holding its datum's text, pinning a page as a
+    /// collection runs), nor a copy of the rest for each.
+    #[inline]
     pub fn kc_data(xs: Sexps) -> Str {
-        if null_p(xs) {
-            str_lit!("")
-        } else if null_p(cdr(xs)) {
-            kc_datum(car(xs))
-        } else {
-            string_append(kc_datum(car(xs)), string_append(str_lit!(" "), kc_data(cdr(xs))))
+        string_list_append(kc_data_onto(xs, nil::<Str>()))
+    }
+
+    pub fn kc_data_onto(mut xs: Sexps, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(xs) {
+                return reverse(acc);
+            } else if null_p(cdr(xs)) {
+                return reverse(kayak_rt::heap_cons(kc_datum(car(xs)), acc));
+            } else {
+                (xs, acc) = (cdr(xs), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(kc_datum(car(xs)), acc)));
+                continue;
+            }
         }
     }
 
@@ -311,12 +322,13 @@ pub mod kc_front {
             } else {
                 let n = form_name(car(fs));
                 if type_form_p(car(fs)) {
-                    let acc = kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!("(%type:"), kayak_rt::heap_cons(type_form_name(car(fs)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), acc);
-                    return forms_keyed(cdr(fs), k, if head_is_p(car(fs), str_lit!("define-datatype")) {
-                        constructors_keyed(cdr(cdr(items(car(fs)))), acc)
+                    let typed = kayak_rt::heap_cons(string_list_append(kayak_rt::heap_cons(str_lit!("(%type:"), kayak_rt::heap_cons(type_form_name(car(fs)), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(kc_datum(car(fs)), kayak_rt::heap_cons(str_lit!(")"), kayak_rt::nil())))))), acc);
+                    (fs, acc) = (cdr(fs), if head_is_p(car(fs), str_lit!("define-datatype")) {
+                        constructors_keyed(cdr(cdr(items(car(fs)))), typed)
                     } else {
-                        acc
+                        typed
                     });
+                    continue;
                 } else if head_is_p(car(fs), str_lit!("define-rec")) {
                     (fs, acc) = (cdr(fs), rec_members_keyed(cdr(items(car(fs))), false, acc));
                     continue;

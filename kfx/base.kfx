@@ -29,7 +29,7 @@
 "`map` of a short list recursive, as deep as it, which builds the list
  once; past `map-deepest` elements, the rest by `map-onto` and one
  `reverse`, so as deep as `map-deepest` whatever the list."
-(define map-deepest i64 4096)
+(define map-deepest i64 256)
 
 (define map-at (poly ((a type) (b type))
                  (subr kfx ((subr kfx (a) b) (listof a acyclic) i64) (listof b acyclic)))
@@ -48,8 +48,23 @@
 (define all? (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) bool))
   (lambda (p xs) (or (null? xs) (and (p (car xs)) (all? p (cdr xs))))))
 
+"`filter`'s loop (C524): of `xs`, those `p` keeps, in order, onto `acc`
+ reversed."
+(define filter-onto (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic) (listof a acyclic)) (listof a acyclic)))
+  (lambda (p xs acc) (cond ((null? xs) acc) ((p (car xs)) (filter-onto p (cdr xs) (cons (car xs) acc))) (else (filter-onto p (cdr xs) acc)))))
+
+"`filter` as `map` is (C524): recursive to `map-deepest` kept, the rest by
+ `filter-onto` and one `reverse`. A frame for each kept holds it, and
+ pins its page as a collection runs (`kfx` filtered 14,005 deep)."
+(define filter-at (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic) i64) (listof a acyclic)))
+  (lambda (p xs d)
+    (cond ((null? xs) nil)
+          ((i64> d map-deepest) (the (listof a acyclic) (reverse (filter-onto p xs nil))))
+          ((p (car xs)) (cons (car xs) (filter-at p (cdr xs) (i64+ d 1))))
+          (else (filter-at p (cdr xs) d)))))
+
 (define filter (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) (listof a acyclic)))
-  (lambda (p xs) (cond ((null? xs) nil) ((p (car xs)) (cons (car xs) (filter p (cdr xs)))) (else (filter p (cdr xs))))))
+  (lambda (p xs) (filter-at p xs 0)))
 
 (define map2 (poly ((a type) (b type) (c type))
                (subr kfx ((subr kfx (a b) c) (listof a acyclic) (listof b acyclic)) (listof c acyclic)))
@@ -64,11 +79,30 @@
 (define last (poly ((a type)) (subr kfx ((listof a acyclic)) a))
   (lambda (xs) (if (null? (cdr xs)) (car xs) (last (cdr xs)))))
 
-(define onto (poly ((a type)) (subr kfx ((listof a acyclic) (listof a acyclic)) (listof a acyclic)))
-  (lambda (xs ys) (if (null? xs) ys (cons (car xs) (onto (cdr xs) ys)))))
+"`xs` reversed onto `acc`."
+(define reverse-onto (poly ((a type)) (subr kfx ((listof a acyclic) (listof a acyclic)) (listof a acyclic)))
+  (lambda (xs acc) (if (null? xs) acc (reverse-onto (cdr xs) (cons (car xs) acc)))))
 
+"`onto` as `map` is (C524): recursive to `map-deepest`, the rest reversed
+ and reversed onto `ys` (`kfx` went 1,045,531 deep, onto a list of
+ characters)."
+(define onto-at (poly ((a type)) (subr kfx ((listof a acyclic) (listof a acyclic) i64) (listof a acyclic)))
+  (lambda (xs ys d)
+    (cond ((null? xs) ys)
+          ((i64> d map-deepest) (reverse-onto (the (listof a acyclic) (reverse xs)) ys))
+          (else (cons (car xs) (onto-at (cdr xs) ys (i64+ d 1)))))))
+
+(define onto (poly ((a type)) (subr kfx ((listof a acyclic) (listof a acyclic)) (listof a acyclic)))
+  (lambda (xs ys) (onto-at xs ys 0)))
+
+"`concat`'s loop (C524): the lists `rs`, last first, each onto `acc`."
+(define concat-onto (poly ((a type)) (subr kfx ((listof (listof a acyclic) acyclic) (listof a acyclic)) (listof a acyclic)))
+  (lambda (rs acc) (if (null? rs) acc (concat-onto (cdr rs) (onto (car rs) acc)))))
+
+"Lists `xss` joined, in order: from the last, so that each is copied once,
+ by a loop, not a frame for each list (C524; kc's went 12,188 deep)."
 (define concat (poly ((a type)) (subr kfx ((listof (listof a acyclic) acyclic)) (listof a acyclic)))
-  (lambda (xss) (if (null? xss) nil (onto (car xss) (concat (cdr xss))))))
+  (lambda (xss) (concat-onto (the (listof (listof a acyclic) acyclic) (reverse xss)) nil)))
 
 "Characters and strings"
 

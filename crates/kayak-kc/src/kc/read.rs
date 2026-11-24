@@ -1043,44 +1043,60 @@ pub fn read_datum(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str
     } else { kayak_rt::data::no_variant() }
 }
 
+#[inline]
 pub fn read_items(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str) -> kayak_rt::data::DataAt<'static, Gots> {
-    let h = skip(h);
-    let tagcase_ = h;
-    if Here::__is_Here(tagcase_) {
-        let (cs, line, pos,) = Here::__Here(tagcase_);
-        if null_p(cs) {
-            match read_error(file, line, str_lit!("a ( with no )")) {}
-        } else if char_eq_p(car(cs), ')') {
-            gots(nil::<kayak_rt::data::DataAt<'static, Sexp>>(), here(cdr(cs), line, i64_plus(pos, 1i64)))
-        } else {
-            let tagcase_ = read_datum(h, text, file);
-            if Got::__is_Got(tagcase_) {
-                let (x, after,) = Got::__Got(tagcase_);
-                let tagcase_ = read_items(after, text, file);
-                if Gots::__is_Gots(tagcase_) {
-                    let (xs, rest,) = Gots::__Gots(tagcase_);
-                    gots(kayak_rt::heap_cons(x, xs), rest)
-                } else { kayak_rt::data::no_variant() }
-            } else { kayak_rt::data::no_variant() }
-        }
-    } else { kayak_rt::data::no_variant() }
+    read_items_onto(h, text, file, nil::<kayak_rt::data::DataAt<'static, Sexp>>())
 }
 
+/// A list's items, onto `acc` reversed, to its `)`: a loop (C524), not a
+/// frame for each, each holding what it read (pinning a page as a
+/// collection runs). `at`, not `h`, which a binding of it would hide.
+pub fn read_items_onto(mut h: kayak_rt::data::DataAt<'static, Here>, mut text: Str, mut file: Str, mut acc: Sexps) -> kayak_rt::data::DataAt<'static, Gots> {
+    loop {
+        let at = skip(h);
+        let tagcase_ = at;
+        if Here::__is_Here(tagcase_) {
+            let (cs, line, pos,) = Here::__Here(tagcase_);
+            if null_p(cs) {
+                return match read_error(file, line, str_lit!("a ( with no )")) {};
+            } else if char_eq_p(car(cs), ')') {
+                return gots(reverse(acc), here(cdr(cs), line, i64_plus(pos, 1i64)));
+            } else {
+                let tagcase_ = read_datum(at, text, file);
+                if Got::__is_Got(tagcase_) {
+                    let (x, after,) = Got::__Got(tagcase_);
+                    (h, acc) = (after, kayak_rt::heap_cons(x, acc));
+                    continue;
+                } else { kayak_rt::data::no_variant() }
+            }
+        } else { kayak_rt::data::no_variant() }
+    }
+}
+
+// Each datum from `h`, onto `acc` reversed, then in order: a loop (C524).
+pub fn read_onto(mut h: kayak_rt::data::DataAt<'static, Here>, mut text: Str, mut file: Str, mut acc: Sexps) -> Sexps {
+    loop {
+        let at = skip(h);
+        let tagcase_ = at;
+        if Here::__is_Here(tagcase_) {
+            let (cs, line, pos,) = Here::__Here(tagcase_);
+            if null_p(cs) {
+                return reverse(acc);
+            } else {
+                let tagcase_ = read_datum(at, text, file);
+                if Got::__is_Got(tagcase_) {
+                    let (x, after,) = Got::__Got(tagcase_);
+                    (h, acc) = (after, kayak_rt::heap_cons(x, acc));
+                    continue;
+                } else { kayak_rt::data::no_variant() }
+            }
+        } else { kayak_rt::data::no_variant() }
+    }
+}
+
+#[inline]
 pub fn read_from(h: kayak_rt::data::DataAt<'static, Here>, text: Str, file: Str) -> Sexps {
-    let h = skip(h);
-    let tagcase_ = h;
-    if Here::__is_Here(tagcase_) {
-        let (cs, line, pos,) = Here::__Here(tagcase_);
-        if null_p(cs) {
-            nil::<kayak_rt::data::DataAt<'static, Sexp>>()
-        } else {
-            let tagcase_ = read_datum(h, text, file);
-            if Got::__is_Got(tagcase_) {
-                let (x, after,) = Got::__Got(tagcase_);
-                kayak_rt::heap_cons(x, read_from(after, text, file))
-            } else { kayak_rt::data::no_variant() }
-        }
-    } else { kayak_rt::data::no_variant() }
+    read_onto(h, text, file, nil::<kayak_rt::data::DataAt<'static, Sexp>>())
 }
 
 /// Every datum in `text`, of `file` from `line`.

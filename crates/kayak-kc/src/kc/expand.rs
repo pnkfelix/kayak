@@ -30528,12 +30528,22 @@ pub mod kc_expand {
         }
     }
 
+    /// Each of `xs` located, after a space, joined once (C524): a loop,
+    /// not a frame for each (each holding its text, pinning a page as
+    /// a collection runs: kc's deepest), nor a copy of the rest for each.
     #[inline]
     pub fn located_nodes(xs: Sexps) -> Str {
-        if null_p(xs) {
-            str_lit!("")
-        } else {
-            string_append(str_lit!(" "), string_append(located(car(xs)), located_nodes(cdr(xs))))
+        string_list_append(located_onto(xs, nil::<Str>()))
+    }
+
+    pub fn located_onto(mut xs: Sexps, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(xs) {
+                return reverse(acc);
+            } else {
+                (xs, acc) = (cdr(xs), kayak_rt::heap_cons(located(car(xs)), kayak_rt::heap_cons(str_lit!(" "), acc)));
+                continue;
+            }
         }
     }
 

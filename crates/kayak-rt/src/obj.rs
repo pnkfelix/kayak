@@ -155,6 +155,7 @@ macro_rules! str_lit {
 }
 
 pub(crate) mod collect;
+mod frames;
 pub(crate) mod publish;
 pub(crate) mod roots;
 pub(crate) mod space;

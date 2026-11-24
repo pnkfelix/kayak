@@ -84,9 +84,15 @@
             (lst (xs f l p) (string-append "(" (string-append (kc-data xs) ")"))))))
       (kc-data (subr kfx (sexps) string)
         (lambda (xs)
-          (cond ((null? xs) "")
-                ((null? (cdr xs)) (kc-datum (car xs)))
-                (else (string-append (kc-datum (car xs)) (string-append " " (kc-data (cdr xs)))))))))
+          "Each of `xs`, spaced, joined once (C524): a loop, not a frame for
+           each (each holding its datum's text, pinning a page as a
+           collection runs), nor a copy of the rest for each."
+          (string-list-append (kc-data-onto xs nil))))
+      (kc-data-onto (subr kfx (sexps strings) strings)
+        (lambda (xs acc)
+          (cond ((null? xs) (reverse acc))
+                ((null? (cdr xs)) (reverse (cons (kc-datum (car xs)) acc)))
+                (else (kc-data-onto (cdr xs) (cons " " (cons (kc-datum (car xs)) acc))))))))
 
     (hide
       ;;; ------------------------------------------------------------ the forms
@@ -176,8 +182,10 @@
                 acc
                 (let ((n (form-name (car fs))))
                   (cond ((type-form? (car fs))
-                         (let ((acc (cons (string-list-append (list "(%type:" (type-form-name (car fs)) " " (kc-datum (car fs)) ")")) acc)))
-                           (forms-keyed (cdr fs) k (if (head-is? (car fs) "define-datatype") (constructors-keyed (cdr (cdr (items (car fs)))) acc) acc))))
+                         ;; Named apart from `acc`, which a binding of it
+                         ;; would hide, so that this call loops (C524).
+                         (let ((typed (cons (string-list-append (list "(%type:" (type-form-name (car fs)) " " (kc-datum (car fs)) ")")) acc)))
+                           (forms-keyed (cdr fs) k (if (head-is? (car fs) "define-datatype") (constructors-keyed (cdr (cdr (items (car fs)))) typed) typed))))
                         ((head-is? (car fs) "define-rec")
                          ;; Each member a definition of its own, at one position
                          ;; (C426).

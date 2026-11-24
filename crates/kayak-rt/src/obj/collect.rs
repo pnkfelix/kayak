@@ -246,6 +246,18 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
         }
     }
     m.drain_kept();
+    if super::frames::on() {
+        let pinned = m.pinned.len();
+        super::frames::census(
+            from,
+            &roots.words[..roots.ends[0]],
+            minor,
+            pinned,
+            |w, out| {
+                m.word_pages(w, |_, k| out.push(k));
+            },
+        );
+    }
     if verbose() {
         eprintln!(
             "kayak: pinned pages: constants {}, shared {}, stack {}, owned {}, kept {}, locals {}, kept objects {}; words: stack {}, owned {}, kept {}, shared {}; others' objects reached {}",
@@ -766,24 +778,33 @@ impl Mark<'_> {
     /// nothing reached: what a kept object holds, before the copy, that a
     /// word may reach later.
     fn pin_word(&mut self, w: usize) {
+        self.word_pages(w, |m, k| {
+            m.pinned.insert(k);
+        });
+    }
+
+    /// The pages `ambiguous` would pin for the word `w`, each given to `f`.
+    fn word_pages(&mut self, w: usize, mut f: impl FnMut(&mut Self, (usize, usize))) {
         let a = self.view.object_of(w);
-        if let Some(a) = a {
-            self.pin(a);
+        if let Some(a) = a
+            && let Some(k) = self.pin_page(a)
+        {
+            f(self, k);
         }
         if a.is_none_or(|a| a == w & !7)
             && let Some(b) = self.view.object_of((w & !7).wrapping_sub(8))
+            && let Some(k) = self.pin_page(b)
         {
-            self.pin(b);
+            f(self, k);
         }
     }
 
-    fn pin(&mut self, a: usize) {
-        if let Some((c, p)) = self.view.page_of(a)
-            && self.view.whose_page(c, p) == Whose::Mine
-            && (!self.minor || c.is_young(p))
-        {
-            self.pinned.insert(space::page_key(c, p));
-        }
+    /// The page an allocation at `a` is on, if a pin of it is this
+    /// collection's: a page of this thread's, and young in a minor one.
+    fn pin_page(&self, a: usize) -> Option<(usize, usize)> {
+        let (c, p) = self.view.page_of(a)?;
+        (self.view.whose_page(c, p) == Whose::Mine && (!self.minor || c.is_young(p)))
+            .then(|| space::page_key(c, p))
     }
 
     /// The kept object `k`, reached (`way`): kept, told if another's and

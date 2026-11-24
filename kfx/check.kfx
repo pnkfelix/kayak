@@ -502,11 +502,18 @@
                  (and (has-prefix? (car a) "init:") (string-member? (string-append "write:" (after-prefix (car a) "init:")) b)))
              (effs-within? (cdr a) b)))))
 
+"`words-of`'s loop (C524): each of `xs`, spaced, onto `acc` reversed, and
+ then in order."
+(define words-onto (subr kfx (strings strings) strings)
+  (lambda (xs acc)
+    (cond ((null? xs) (reverse acc))
+          ((null? (cdr xs)) (reverse (cons (car xs) acc)))
+          (else (words-onto (cdr xs) (cons " " (cons (car xs) acc)))))))
+
+"Strings `xs`, spaced, joined once: a loop, not a frame for each, nor a
+ copy of the rest for each (C524)."
 (define words-of (subr kfx (strings) string)
-  (lambda (xs)
-    (cond ((null? xs) "")
-          ((null? (cdr xs)) (car xs))
-          (else (string-append (car xs) (string-append " " (words-of (cdr xs))))))))
+  (lambda (xs) (string-list-append (words-onto xs nil))))
 
 "The kinds of an effect atom on a region, `read:@a`: FX-26's store
  effects and control effects, and its processes' (C101): a message sent

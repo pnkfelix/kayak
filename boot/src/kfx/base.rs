@@ -42,7 +42,7 @@ pub fn map_onto<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_r
 // `reverse`, so as deep as `map-deepest` whatever the list.
 #[inline]
 pub fn map_deepest() -> i64 {
-    4096i64
+    256i64
 }
 
 pub fn map_at<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc1s<'static, A, B>, xs: List<A>, d: i64) -> List<B> {
@@ -90,17 +90,43 @@ pub fn all_p<A: Copy + 'static + kayak_rt::Trace>(mut p: kayak_rt::Proc1s<'stati
     }
 }
 
-pub fn filter<A: Copy + 'static + kayak_rt::Trace>(mut p: kayak_rt::Proc1s<'static, A, bool>, mut xs: List<A>) -> List<A> {
+// `filter`'s loop (C524): of `xs`, those `p` keeps, in order, onto `acc`
+// reversed.
+pub fn filter_onto<A: Copy + 'static + kayak_rt::Trace>(mut p: kayak_rt::Proc1s<'static, A, bool>, mut xs: List<A>, mut acc: List<A>) -> List<A> {
     loop {
         if null_p(xs) {
-            return nil::<A>();
+            return acc;
         } else if p.call(car(xs)) {
-            return kayak_rt::heap_cons(car(xs), filter(p, cdr(xs)));
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
         } else {
             xs = cdr(xs);
             continue;
         }
     }
+}
+
+// `filter` as `map` is (C524): recursive to `map-deepest` kept, the rest by
+// `filter-onto` and one `reverse`. A frame for each kept holds it, and
+// pins its page as a collection runs (`kfx` filtered 14,005 deep).
+pub fn filter_at<A: Copy + 'static + kayak_rt::Trace>(mut p: kayak_rt::Proc1s<'static, A, bool>, mut xs: List<A>, mut d: i64) -> List<A> {
+    loop {
+        if null_p(xs) {
+            return nil::<A>();
+        } else if i64_gt(d, map_deepest()) {
+            return the::<List<A>>(reverse(filter_onto(p, xs, nil::<A>())));
+        } else if p.call(car(xs)) {
+            return kayak_rt::heap_cons(car(xs), filter_at(p, cdr(xs), i64_plus(d, 1i64)));
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
+#[inline]
+pub fn filter<A: Copy + 'static + kayak_rt::Trace>(p: kayak_rt::Proc1s<'static, A, bool>, xs: List<A>) -> List<A> {
+    filter_at(p, xs, 0i64)
 }
 
 pub fn map2<A: Copy + 'static + kayak_rt::Trace, B: Copy + 'static + kayak_rt::Trace, C: Copy + 'static + kayak_rt::Trace>(f: kayak_rt::Proc2s<'static, A, B, C>, xs: List<A>, ys: List<B>) -> List<C> {
@@ -138,22 +164,53 @@ pub fn last<A: Copy + 'static + kayak_rt::Trace>(mut xs: List<A>) -> A {
     }
 }
 
-#[inline]
-pub fn onto<A: Copy + 'static + kayak_rt::Trace>(xs: List<A>, ys: List<A>) -> List<A> {
+// `xs` reversed onto `acc`.
+pub fn reverse_onto<A: Copy + 'static + kayak_rt::Trace>(mut xs: List<A>, mut acc: List<A>) -> List<A> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+// `onto` as `map` is (C524): recursive to `map-deepest`, the rest reversed
+// and reversed onto `ys` (`kfx` went 1,045,531 deep, onto a list of
+// characters).
+pub fn onto_at<A: Copy + 'static + kayak_rt::Trace>(xs: List<A>, ys: List<A>, d: i64) -> List<A> {
     if null_p(xs) {
         ys
+    } else if i64_gt(d, map_deepest()) {
+        reverse_onto(the::<List<A>>(reverse(xs)), ys)
     } else {
-        kayak_rt::heap_cons(car(xs), onto(cdr(xs), ys))
+        kayak_rt::heap_cons(car(xs), onto_at(cdr(xs), ys, i64_plus(d, 1i64)))
     }
 }
 
 #[inline]
-pub fn concat<A: Copy + 'static + kayak_rt::Trace>(xss: List<List<A>>) -> List<A> {
-    if null_p(xss) {
-        nil::<A>()
-    } else {
-        onto(car(xss), concat(cdr(xss)))
+pub fn onto<A: Copy + 'static + kayak_rt::Trace>(xs: List<A>, ys: List<A>) -> List<A> {
+    onto_at(xs, ys, 0i64)
+}
+
+// `concat`'s loop (C524): the lists `rs`, last first, each onto `acc`.
+pub fn concat_onto<A: Copy + 'static + kayak_rt::Trace>(mut rs: List<List<A>>, mut acc: List<A>) -> List<A> {
+    loop {
+        if null_p(rs) {
+            return acc;
+        } else {
+            (rs, acc) = (cdr(rs), onto(car(rs), acc));
+            continue;
+        }
     }
+}
+
+// Lists `xss` joined, in order: from the last, so that each is copied once,
+// by a loop, not a frame for each list (C524; kc's went 12,188 deep).
+#[inline]
+pub fn concat<A: Copy + 'static + kayak_rt::Trace>(xss: List<List<A>>) -> List<A> {
+    concat_onto(the::<List<List<A>>>(reverse(xss)), nil::<A>())
 }
 
 // Characters and strings

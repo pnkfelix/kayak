@@ -354,27 +354,34 @@
                    (tagcase (token-at cs text pos 0)
                      (tok (s after n) (got (token-atom s file line pos) (here after line (i64+ pos n))))))))))))
   (read-items (subr kfx (here string string) gots)
-    (lambda (h text file)
-      (let ((h (skip h)))
-        (tagcase h
+    (lambda (h text file) (read-items-onto h text file nil)))
+  (read-items-onto (subr kfx (here string string sexps) gots)
+    (lambda (h text file acc)
+      "A list's items, onto `acc` reversed, to its `)`: a loop (C524), not a
+       frame for each, each holding what it read (pinning a page as a
+       collection runs). `at`, not `h`, which a binding of it would hide."
+      (let ((at (skip h)))
+        (tagcase at
           (here (cs line pos)
             (cond ((null? cs) (read-error file line "a ( with no )"))
-                  ((char=? (car cs) #\)) (gots nil (here (cdr cs) line (i64+ pos 1))))
+                  ((char=? (car cs) #\)) (gots (reverse acc) (here (cdr cs) line (i64+ pos 1))))
                   (else
-                   (tagcase (read-datum h text file)
-                     (got (x after)
-                       (tagcase (read-items after text file)
-                         (gots (xs rest) (gots (cons x xs) rest)))))))))))))
+                   (tagcase (read-datum at text file)
+                     (got (x after) (read-items-onto after text file (cons x acc))))))))))))
 
-(define read-from (subr kfx (here string string) sexps)
-  (lambda (h text file)
-    (let ((h (skip h)))
-      (tagcase h
+"Each datum from `h`, onto `acc` reversed, then in order: a loop (C524)."
+(define read-onto (subr kfx (here string string sexps) sexps)
+  (lambda (h text file acc)
+    (let ((at (skip h)))
+      (tagcase at
         (here (cs line pos)
           (if (null? cs)
-              nil
-              (tagcase (read-datum h text file)
-                (got (x after) (cons x (read-from after text file))))))))))
+              (reverse acc)
+              (tagcase (read-datum at text file)
+                (got (x after) (read-onto after text file (cons x acc))))))))))
+
+(define read-from (subr kfx (here string string) sexps)
+  (lambda (h text file) (read-onto h text file nil)))
 
 (define read-all (subr kfx (string string i64) sexps)
   (lambda (text file line)

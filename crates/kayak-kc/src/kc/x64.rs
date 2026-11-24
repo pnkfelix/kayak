@@ -1341,12 +1341,15 @@ pub mod kc_x64 {
         }
     }
 
-    pub fn x64_letrec_values(c: kayak_rt::data::DataAt<'static, X64Code>, vs: Sexps, at: i64, si: i64, env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
-        if null_p(vs) {
-            c
-        } else {
-            let c = x64_emit_expr(c, car(vs), si, env);
-            x64_letrec_values(x64_emit(c, string_append(str_lit!("movq %rax, "), x64_slot(at))), cdr(vs), i64_plus(at, 1i64), si, env)
+    pub fn x64_letrec_values(mut c: kayak_rt::data::DataAt<'static, X64Code>, mut vs: Sexps, mut at: i64, mut si: i64, mut env: List<kayak_rt::data::DataAt<'static, X64At>>) -> kayak_rt::data::DataAt<'static, X64Code> {
+        loop {
+            if null_p(vs) {
+                return c;
+            } else {
+                let done = x64_emit_expr(c, car(vs), si, env);
+                (c, vs, at) = (x64_emit(done, string_append(str_lit!("movq %rax, "), x64_slot(at))), cdr(vs), i64_plus(at, 1i64));
+                continue;
+            }
         }
     }
 

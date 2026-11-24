@@ -127,7 +127,13 @@
               (lst (xs f l p) (string-list-append (list "(1 " (kc-datum (str f "" 0)) " " (i64->string l) " " (i64->string p) (located-nodes xs) ")")))
               (else other (string-list-append (list "(0 " (kc-datum (str (atom-file e) "" 0)) " 0 " (i64->string (datum-pos e)) " " (kc-datum e) ")"))))))
         (located-nodes (subr kfx (sexps) string)
-          (lambda (xs) (if (null? xs) "" (string-append " " (string-append (located (car xs)) (located-nodes (cdr xs))))))))
+          (lambda (xs)
+            "Each of `xs` located, after a space, joined once (C524): a loop,
+             not a frame for each (each holding its text, pinning a page as
+             a collection runs: kc's deepest), nor a copy of the rest for each."
+            (string-list-append (located-onto xs nil))))
+        (located-onto (subr kfx (sexps strings) strings)
+          (lambda (xs acc) (if (null? xs) (reverse acc) (located-onto (cdr xs) (cons (located (car xs)) (cons " " acc)))))))
 
       "The symbols of `e`, onto `out`, each once."
       (define-rec

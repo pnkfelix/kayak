@@ -2059,14 +2059,26 @@ pub fn effs_within_p(mut a: Strings, mut b: Strings) -> bool {
     }
 }
 
-pub fn words_of(xs: Strings) -> Str {
-    if null_p(xs) {
-        str_lit!("")
-    } else if null_p(cdr(xs)) {
-        car(xs)
-    } else {
-        string_append(car(xs), string_append(str_lit!(" "), words_of(cdr(xs))))
+// `words-of`'s loop (C524): each of `xs`, spaced, onto `acc` reversed, and
+// then in order.
+pub fn words_onto(mut xs: Strings, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return reverse(acc);
+        } else if null_p(cdr(xs)) {
+            return reverse(kayak_rt::heap_cons(car(xs), acc));
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(str_lit!(" "), kayak_rt::heap_cons(car(xs), acc)));
+            continue;
+        }
     }
+}
+
+// Strings `xs`, spaced, joined once: a loop, not a frame for each, nor a
+// copy of the rest for each (C524).
+#[inline]
+pub fn words_of(xs: Strings) -> Str {
+    string_list_append(words_onto(xs, nil::<Str>()))
 }
 
 // The kinds of an effect atom on a region, `read:@a`: FX-26's store

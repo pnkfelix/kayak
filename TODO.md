@@ -2213,6 +2213,36 @@ over its 1664 definitions, 335 of them refused:
      spread over the scan's calls (each field's page found, a header
      decoded for each object's extent), and a page's zeroing as it is
      taken (2.7% of kfx's run).
+     **Eq tables that rehash themselves** (the user, after C523): a
+     table's keys are pinned now (it hashes by address), and since C523
+     what every table holds is pinned before a major collection copies,
+     reached or not. Instead, the collector never rehashes: each entry
+     notes where its key was as it was hashed (this thread's young pages,
+     moved by every collection; its old ones, by a major; or what never
+     moves: a large object, a fragment, the immortal constants, a kept
+     block) and the thread's collection counts then (`space::epoch`, a
+     major's count beside it); a lookup that finds a count advanced for a
+     class its entries hold rehashes those entries first, as Ghuloum and
+     Dybvig's generation-friendly eq tables do (2007). Its scanner then
+     tells its key and value slots precisely, rewritten as fields are:
+     nothing pinned, no pin pass, an unreached table no float. A key on a
+     pinned page rehashed though it did not move (correct, and cheap to
+     know no better). Measured on kc (after C523): none: kc keeps no
+     kept object at all (its tables the heap's own), so this waits for a
+     program that uses eq tables. kc's pins are all the stack's: of its
+     1537 collections, 70 (those reaching 300 to 700 thousand objects, the
+     majors) pin 27.6 of its 35.4 thousand pages, at most 1631 (52 MB),
+     each a 32 KB page kept for a stray word or a few: the float behind
+     its majors' threshold. What those words are (C524): deep recursions
+     of kc's own, not stale frames' words, made loops; kc's float now 11
+     majors, 1.64 GB at its peak (2.01). Found by the frames' census
+     (`KAYAK_GC_FRAMES`, `scripts/deep-frames.py`): run it on a new load
+     to find the next. Left: pins of smaller lines than a page (Immix's),
+     promotion filling the free lines of pinned old pages, for programs
+     kayak does not write; and the emitter's self tail call where a
+     binding hides a parameter (`hide`, emit.kfx: a call, not a loop),
+     to be renamed by the emitter, not by hand (C524 renamed the two the
+     census found deep).
 - **What a fresh `kc` allocates** (C476; the user's "what the hell"): an
   edit's build at 1000 procedures 154 MB, kept for the run (kayak-rt has
   no collector), half its time the kernel's page faults. Left, largest

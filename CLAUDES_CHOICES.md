@@ -16697,3 +16697,44 @@ loop?"; then "run the stats then rewrite as Bartlett-style Cheney").
   s, the same executable. About 50 ns an object left, spread over the
   scan's calls.
 - **The full check**: all passed, its first run (8 min 59 s under `timed`, predicted 8 min 10 s; the pre-check 3 min 53 s); nextest's count not kept (its summary cut from the run's output).
+
+## C524. The frames' census; kc's deep recursions made loops (2026-11-24)
+
+TODO §54 step 5's float, after C523: what kc's stack pins (the user:
+"I'm surprised to hear that so many distinct pages are getting pinned";
+then, of finding more such recursions, "Go ahead").
+- **What pins** (a probe, then the census below): not stale frames'
+  words, but deep recursions of kc's own sources, each frame holding a
+  few live words of objects made at different times, on different pages,
+  the pages a median 14 to 20 % live: `located-nodes` (1317 frames, 1628
+  of a major's 1633 pages), `read-items` (1563), `kc-data` (1338),
+  `read-from` (483), `words-of`, each `(f (car xs) (g (cdr xs)))` over a
+  long list; `filter` 14,005 deep and `onto` 1,045,531 deep in `kfx`.
+  The word just past an object (a slice's end) pins about 5 % more.
+- **The frames' census** (`KAYAK_GC_FRAMES=PATH`, `obj/frames.rs`): at
+  each collection, the thread's frames by their frame pointers (the
+  workspace forces them), and of each call site met in 32 frames or
+  more, its frames, the stack words in them that pin, and the pages
+  those pin; `scripts/deep-frames.py` names each site's procedure by the
+  executable's symbols and ranks them by the pages they pinned over the
+  run. x86-64 and AArch64; elsewhere no frames found.
+- **Made loops**, each by an accumulator onto a list reversed, and the
+  strings joined once by `string-list-append` (kayak-rt's
+  `strings_joined`), not appended onto the rest at each element (a copy
+  of the rest each, quadratic): `located-nodes` (expand.kfx), `kc-data`
+  (front.kfx), `words-of` (check.kfx), `read-items` and `read-from`
+  (read.kfx). `filter` and `onto` as `map` is (C373), recursive to
+  `map-deepest` and by a loop and one `reverse` past it; `concat` by a
+  loop from its last list. `map-deepest` 4096 to 256: past it, `filter`
+  still pinned 755 pages in one collection of kc's.
+- **A self tail call the emitter left a call**: where a binding hides a
+  parameter (`hide`, emit.kfx), the call is no loop. `x64-letrec-values`
+  went 1515 deep for it, `forms-keyed` 178: each binding renamed in the
+  source. The emitter's own fix, a TODO §54 item.
+- **Measured** (on a quiet machine, `KAYAK_GC_STATS=1`): kc building
+  `expander-facts.fx`, 60 to 53 s in all, 10.8 to 7.3 s collecting, its
+  longest pause 0.79 to 0.65 s, 49 majors to 11, 1537 collections to
+  519, 2.01 to 1.64 GB at its peak; its executable the same. The census
+  after: no site of kc's or kfx's deeper than 350 frames. kfx making
+  itself 3 s, the same files.
+- **The full check**: all passed, its second run (8 min 22 s under `timed`, predicted 8 min 11 s; the pre-check 3 min 51 s, after a clippy fix; the first full run failed at the corpus, its `db` and `db-verify` programs compiling base.kfx and read.kfx, re-blessed); nextest 5648 passed, 1 skipped.
