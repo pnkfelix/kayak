@@ -1523,11 +1523,15 @@ mod tests {
     #[test]
     fn plain_references_visited_precisely() {
         // An I-cell, a mailbox and a knot, each holding a string; and a
-        // region's arena of pairs, reached through a reference to it.
-        let c: crate::ICell<Str> = crate::leak(crate::process::ICellBox {
+        // region's arena of pairs, reached through a reference to it. The
+        // I-cell and the mailbox kept as `process` keeps them, shared and
+        // scanned: a mailbox's messages are in its queue's buffer, which
+        // `leak`'s scan of the box's own bytes would not find (under
+        // stress, "m" freed, about once in 15 runs).
+        let c: crate::ICell<Str> = crate::leak_shared(crate::process::ICellBox {
             value: std::sync::Mutex::new(Some(crate::str_lit("i"))),
         });
-        let m: crate::Addr<Str> = crate::leak(crate::process::MailboxBox {
+        let m: crate::Addr<Str> = crate::leak_shared(crate::process::MailboxBox {
             queue: std::sync::Mutex::new([crate::str_lit("m")].into_iter().collect()),
         });
         let k: crate::Knot<'static, Str> = crate::knot();

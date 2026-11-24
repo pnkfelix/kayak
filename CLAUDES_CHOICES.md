@@ -16345,3 +16345,18 @@ TODO §54 step 4's step 5, its measuring half.
   build too, the same count), never alone (40 runs). Not yet explained;
   TODO §54 step 4's list. The check run again.
 - **The full check**: all passed in 389.7 s, its second run (the first failed at the intermittent test above); nextest 5643.
+
+## C515. A test's mailbox kept as a process keeps one (2026-11-23)
+
+C514's intermittent failure explained: `trace::tests::
+plain_references_visited_precisely` kept its mailbox with `leak`, which
+scans the box's own bytes; a mailbox's messages are in its queue's
+buffer, a Rust allocation of its own, so the string "m" had no root but
+a stale stack word, when one was left. Under stress at every allocation,
+poisoned, about one run in 15 freed it (C513's build too), and the
+census read 4 strings of 5. The test's I-cell and mailbox now kept as
+`process::start` keeps them (`leak_shared`: scanned, shared). 0 failures
+in 60 runs of kayak-rt's tests so (about 4 expected before). No other
+`leak` holds heap words out of line (`suspend.rs`'s test mailbox holds
+`i64`s); not a runtime fault.
+- **The full check**: all passed in 588.7 s, its first run; nextest 5643.

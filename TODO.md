@@ -2113,10 +2113,6 @@ over its 1664 definitions, 335 of them refused:
      registry; a future's box a root while it lives (a cycle through a
      continuation's body keeps it); pages a thread takes after its end
      began (an allocation in a thread local's drop) never adopted;
-     `trace::tests::plain_references_visited_precisely` counting 4
-     strings of 5 about once in 15 runs of kayak-rt's tests at every
-     allocation, poisoned (C513's build too; never alone): a string held
-     only where no root shows it, likely, before it is kept;
      kayak-rt code holding values in a `Vec` across an allocation marked
      by hand (`space::NoCollect`: C513 found five unmarked, by the stress
      step at every allocation); a scheduler's boxed tasks not yet roots;
