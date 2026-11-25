@@ -31,6 +31,13 @@ name = "kayak-hash"
 version = "0.1.0"
 
 [[package]]
+name = "kayak-heap"
+version = "0.1.0"
+dependencies = [
+ "kayak-layout",
+]
+
+[[package]]
 name = "kayak-jit"
 version = "0.1.0"
 dependencies = [
@@ -56,6 +63,7 @@ dependencies = [
 name = "kayak-kcrt-core"
 version = "0.1.0"
 dependencies = [
+ "kayak-heap",
  "kayak-layout",
 ]
 
@@ -74,6 +82,7 @@ dependencies = [
 name = "kayak-rt"
 version = "0.1.0"
 dependencies = [
+ "kayak-heap",
  "kayak-jit",
  "kayak-kcrt-core",
  "kayak-layout",

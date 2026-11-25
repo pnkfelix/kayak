@@ -2537,3 +2537,9 @@ than the shared runtime is said so when proposed.
 The plan, the user's to carry out without review (2026-11-25), is
 `docs/research/one-runtime.md`; step 1 done at C528 (kayak-layout,
 Fixpt's `layout.rs` and `value.rs`, every crate's constants from it).
+
+- A flaky collector test (C535): `what_the_stack_holds_kept_the_rest_freed`
+  fails about one run in ten (as before C535), its `moved > 0 &&
+  freed_pages > 0` resting on no stale stack word pinning the list's
+  pages. Make it hold its list only through the heap, as
+  `strings_of_each_length_moved` does (C533).

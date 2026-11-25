@@ -89,6 +89,8 @@ kayak-rt and kcrt-core alone, recorded at each step here.
 |---|---|---|---|
 | before | kayak-jit's `layout`, `state` | ~21k | 1.5k |
 | 1 (C528) | + kayak-layout: Fixpt's `layout.rs` and `value.rs` (1.5k), every tag, immediate and kind of the three crates drawn from it | ~21k | 1.5k |
+| 2 (C529–C534) | formats: every object either makes is Fixpt's; kcrt reads kayak-rt's strings, `utf8`s and bytevectors as its own | ~21k | 1.5k |
+| 3, the walk (C535) | + kayak-heap: one object walk (an object's extent, its traced fields, its header from its suffix), both collectors' | ~21k | 1.5k |
 
 ## Done
 
@@ -135,3 +137,11 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   collector's trailer guess (`laid::at`) gone with the last object that
   had one without fields. **Step 2 done: every object kayak-rt makes is of
   Fixpt's format.**
+- **Step 3, the walk (C535)**: `crates/kayak-heap`, its first piece:
+  `object_at` (where an object ends, which of its fields hold values, by
+  Fixpt's table's `traced`) and `header_of_suffix`, over a word-reading
+  function, so no `unsafe` there. kayak-rt's `laid::at` and
+  `HeapWord::header_ptr`, and kcrt's Cheney copy and scan, each call it;
+  their own readings of a header (kayak-rt's untraced kinds written
+  `1 | 4 | 5 | 6`) gone. Next in step 3: the space (pages, a thread's
+  heap) and the roots behind a `Roots` trait.

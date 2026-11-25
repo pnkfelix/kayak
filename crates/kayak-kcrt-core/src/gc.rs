@@ -25,7 +25,9 @@
 //!
 //! Only a word that points into the space being collected is followed:
 //! this runtime's symbols, the code's addresses and a literal's data are
-//! none of it. No generations, so no barrier.
+//! none of it. No generations, so no barrier. An object's extent and
+//! traced fields are read as kayak-rt's collector reads them
+//! (`kayak_heap::object_at`, C535).
 
 use std::cell::{Cell, RefCell};
 
@@ -162,8 +164,9 @@ impl Copy {
                 if head & LARGE != 0 {
                     return Err("kc: not yet: a large bloblet collected".to_string());
                 }
-                let f = (head >> 14) & 0x3_ffff;
-                let n = 1 + f + (head >> 32).div_ceil(8);
+                // Its extent as kayak-rt's collector reads one (C535).
+                let o = kayak_heap::object_at(h as usize, |a| get(a as u64));
+                let (f, n) = (o.fields as u64, (o.end - o.main) as u64 / 8);
                 let at = self.copied(h, n);
                 put(h, at | TAG_FORWARD);
                 if f > 0 && before & TAG_MASK != TAG_TRAILER {
@@ -188,11 +191,13 @@ impl Copy {
         while i < self.top {
             let w = get(i);
             if w & TAG_MASK == TAG_HEADER {
-                let f = (w >> 14) & 0x3_ffff;
-                for k in 1..=f {
+                // Its fields that hold values, Fixpt's table's (C535;
+                // `kayak_heap`'s walk, kayak-rt's collector's too).
+                let o = kayak_heap::object_at(i as usize, |a| get(a as u64));
+                for k in 1..=o.traced as u64 {
                     self.forward_at(i + 8 * k)?;
                 }
-                i += 8 * (1 + f + (w >> 32).div_ceil(8));
+                i = o.end as u64;
             } else {
                 self.forward_at(i)?;
                 self.forward_at(i + 8)?;

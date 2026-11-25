@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 # Fixpt's layout, the one table of tags and kinds (TODO §56, step 1).
 kayak-layout = { path = "../kayak-layout" }
+kayak-heap = { path = "../kayak-heap" }
 kayak-jit = { path = "../kayak-jit" }
 kayak-kcrt-core = { path = "../kayak-kcrt-core" }
 kayak-reps = { path = "../kayak-reps" }

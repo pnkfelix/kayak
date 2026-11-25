@@ -17148,3 +17148,31 @@ while doing 2(a): step 2(d)).
   header's alone, as Fixpt's and kcrt's collectors take it.
 - **Tests**: `bytes_tests::fixpt_words`; kayak-rt's 78, kcrt-core's 3.
 - **The full check**: `check: all passed`, 10 min 02 s (the mean of 92 runs 8 min 20 s); the pre-check passed first.
+
+## C535. One object walk: `kayak-heap` (2026-11-25)
+
+Step 3's first piece (`docs/research/one-runtime.md`): what both
+collectors read of an object, written once.
+- **`crates/kayak-heap`**: `object_at(at, word)`, an object from its first
+  word (a pair's, a header, or an extension word): its main header, kind,
+  fields, how many of them hold values (Fixpt's table's `traced`, made a
+  `const` table as `layout::settable` is), its suffix and its end; and
+  `header_of_suffix(p, word)`, Fixpt's way back from a suffix (the header
+  just before, or a trailer's distance). Each is given how to read a
+  word: the crate reads no memory, has no `unsafe`, and the caller's rules
+  for what it may read stay its own. Five tests (a pair, a string, a
+  product's trailer, an extension word, the traced kinds).
+- **kayak-rt**: `laid::at` and `HeapWord::header_ptr` call it, the
+  fields' slice and the header's pointer made of the caller's provenance;
+  a suffix with neither header nor trailer before it fails loudly, where
+  it was read as a trailer. Flagged: this moves kayak-rt's work into the
+  shared runtime, not deeper into kayak-rt.
+- **kcrt**: the Cheney copy's extent and the scan's traced fields by it
+  (C453's own reading gone; it traced every field of every kind, the same
+  where no untraced kind has fields).
+- **kc's identity** hashes `kayak-heap/src/lib.rs` too, its runtime's now.
+- **Seen**: `obj::collect::tests::what_the_stack_holds_kept_the_rest_freed`
+  fails now and then (2 of 15 runs here, 1 of 15 at C534, so not this
+  change): its `moved > 0 && freed_pages > 0` rests on no stale stack word
+  pinning the list's pages. Left as it is; noted in TODO §56.
+- **The full check**: `check: all passed`, 10 min 08 s (the mean of 94 runs 8 min 23 s); the pre-check passed first.

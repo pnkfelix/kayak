@@ -2156,14 +2156,13 @@ impl HeapWord {
     #[inline(always)]
     pub(crate) unsafe fn header_ptr(self) -> *const u64 {
         let at = self.object_ptr();
-        // SAFETY: the caller's.
-        unsafe {
-            let before = *at.sub(1);
-            if before & TAG_MASK as u64 == layout::TAG_HEADER {
-                return at.sub(1);
-            }
-            let back = ((before >> 3) & ((1 << 59) - 1)) as usize;
-            at.sub(1 + back)
+        // SAFETY: the caller's: the word before the suffix, and the header
+        // a trailer there says, are the object's (`kayak_heap`'s walk,
+        // C535, reads no other).
+        let h = kayak_heap::header_of_suffix(at.addr(), |a| unsafe { *at.byte_sub(at.addr() - a) });
+        match h {
+            Some(h) => at.wrapping_byte_sub(at.addr() - h),
+            None => crate::fail("a heap's word to what has no header"),
         }
     }
 
@@ -2956,46 +2955,32 @@ pub(crate) mod laid {
         pub end: usize,
     }
 
-    /// The kinds whose fields hold no value (Fixpt's untraced kinds).
-    fn untraced(kind: u64) -> bool {
-        matches!(kind, 1 | 4 | 5 | 6)
-    }
-
-    /// The object whose first word is `at`.
+    /// The object whose first word is `at`: its header read by the walk
+    /// kayak-rt's collector and kcrt's share (`kayak_heap::object_at`,
+    /// C535), its fields' slice made here, of `at`'s provenance.
     ///
     /// # Safety
     /// `at` is the first word of an object kayak-rt made, kept for the run.
     pub(crate) unsafe fn at(at: *const u64) -> Laid {
         // SAFETY: the caller's: its words are the object's, as its header
-        // says them.
-        unsafe {
-            let w = *at;
-            if w & TAG_MASK as u64 != layout::TAG_HEADER {
-                // A pair: two words, each a value.
-                return Laid {
-                    pair: true,
-                    id: at.addr(),
-                    fields: std::slice::from_raw_parts(at.cast::<HeapWord>(), 2),
-                    suffix: 0,
-                    end: at.addr() + 16,
-                };
-            }
-            let (main, fields) = if (w >> 3) & 0xff == KIND_EXTENSION {
-                (at.add(1), (w >> 11) as usize)
+        // says them; each word the walk reads is one of them.
+        let o = kayak_heap::object_at(at.addr(), |a| unsafe { *at.byte_add(a - at.addr()) });
+        // SAFETY: the object's words from its main header's next, `traced`
+        // of them, its own (a pair's two, from its first).
+        let fields = unsafe {
+            let first = if o.pair {
+                at
             } else {
-                (at, ((w >> 14) & ((1 << 18) - 1)) as usize)
+                at.byte_add(o.main - at.addr()).add(1)
             };
-            let h = *main;
-            let kind = (h >> 3) & 0xff;
-            let bytes = (h >> 32) as usize;
-            let n = if untraced(kind) { 0 } else { fields };
-            Laid {
-                pair: false,
-                id: main.addr(),
-                fields: std::slice::from_raw_parts(main.add(1).cast::<HeapWord>(), n),
-                suffix: main.addr() + 8 * (1 + fields),
-                end: main.addr() + 8 * (1 + fields + bytes.div_ceil(8)),
-            }
+            std::slice::from_raw_parts(first.cast::<HeapWord>(), o.traced)
+        };
+        Laid {
+            pair: o.pair,
+            id: o.main,
+            fields,
+            suffix: o.suffix,
+            end: o.end,
         }
     }
 

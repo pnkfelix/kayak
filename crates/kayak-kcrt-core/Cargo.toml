@@ -14,3 +14,4 @@ doctest = false
 [dependencies]
 # Fixpt's layout, the one table of tags and kinds (TODO §56, step 1).
 kayak-layout = { path = "../kayak-layout" }
+kayak-heap = { path = "../kayak-heap" }
