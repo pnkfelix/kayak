@@ -129,3 +129,9 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   itself: 2.96 s to 3.11 s, peak memory 197 MB to 294 MB, the compiler's
   text, mostly ASCII, four bytes a character now. The formats are one but
   for the bytevector (kayak's a trailer, Fixpt's a length word first).
+- **Step 2(d), `bytevector` Fixpt's (C534)**: kind 4, no fields, no
+  trailer, the suffix its length then its bytes, the header counting the
+  suffix's words, as Fixpt's `make_bytevector`; kcrt reads it so. The
+  collector's trailer guess (`laid::at`) gone with the last object that
+  had one without fields. **Step 2 done: every object kayak-rt makes is of
+  Fixpt's format.**

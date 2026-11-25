@@ -378,24 +378,25 @@ pub extern "C" fn kc_symbol_to_string(v: u64) -> u64 {
     word(v - TAG_BLOBLET - 40 + 8)
 }
 
-/// A bytevector's length (C529), its header's count of bytes, a fixnum.
+/// A bytevector's length (C529), its suffix's first word (Fixpt's, C534),
+/// a fixnum.
 #[unsafe(no_mangle)]
 pub extern "C" fn kc_bytevector_length(v: u64) -> u64 {
-    layout::H_BYTES.get(header(v)) << 3
+    word(v - TAG_BLOBLET) << 3
 }
 
 /// Bytevector `v`'s byte at fixnum `i`, plus one, a fixnum (kc's code
 /// takes the one off), or the index's failure: answered plus one so that
 /// in process a failure's 0 is no byte's.
 fn bytevector_u8_ref(v: u64, i: u64) -> Result<u64, String> {
-    let n = layout::H_BYTES.get(header(v));
+    let n = word(v - TAG_BLOBLET);
     let k = (i as i64) >> 3;
     if i & TAG_MASK != TAG_FIXNUM || k < 0 || k as u64 >= n {
         return Err(format!("bytevector index out of range (length {n})"));
     }
-    // SAFETY: a bytevector's suffix, its `n` bytes from the word's address,
+    // SAFETY: a bytevector's suffix, its length then its `n` bytes,
     // within its object, alive for the run.
-    let b = unsafe { *((v - TAG_BLOBLET + k as u64) as *const u8) };
+    let b = unsafe { *((v - TAG_BLOBLET + 8 + k as u64) as *const u8) };
     Ok((b as u64 + 1) << 3)
 }
 

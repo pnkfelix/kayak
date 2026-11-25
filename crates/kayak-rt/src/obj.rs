@@ -570,9 +570,12 @@ mod tests {
     }
 }
 
-/// `(bytevectorof R)` (C482): one word, to its object (kind 4, no fields,
-/// its bytes the suffix, which may be written: the object's words are
-/// cells). At a `letrena`'s region, `BytesAt<'r>`, its object in the
+/// `(bytevectorof R)`: one word, to its object, Fixpt's (C534; its
+/// `make_bytevector`): kind 4, no fields, no trailer, the suffix its
+/// length, a word, then its bytes, which may be written (the object's
+/// words are cells); the header's count the suffix's bytes, its words'.
+/// Before C534 the bytes followed a trailer, the header's count theirs
+/// (C482), kayak-rt's own. At a `letrena`'s region, `BytesAt<'r>`, its object in the
 /// region's arena, freed with it (C267); in the heap, `Bytes`, kept.
 #[derive(Clone, Copy)]
 pub struct BytesAt<'r>(NonNull<Cell<u64>>, std::marker::PhantomData<&'r [Cell<u8>]>);
@@ -582,12 +585,13 @@ pub type Bytes = BytesAt<'static>;
 pub type BytesCells = Box<[Cell<u64>]>;
 
 impl<'r> BytesAt<'r> {
-    /// Its length in bytes.
+    /// Its length in bytes: its suffix's first word.
     #[inline]
     pub fn len(self) -> usize {
         // SAFETY: a `BytesAt` is made only by this module, of an object
-        // whose header is its first word, alive for `'r`.
-        (unsafe { (*self.0.as_ptr()).get() } >> 32) as usize
+        // whose header is its first word and length its second, alive for
+        // `'r`.
+        unsafe { (*self.0.as_ptr().add(1)).get() as usize }
     }
 
     #[inline]
@@ -598,25 +602,36 @@ impl<'r> BytesAt<'r> {
     /// Its bytes, each a cell.
     #[inline]
     pub fn cells(self) -> &'r [Cell<u8>] {
-        // SAFETY: its bytes follow the header and trailer, `len` of them,
+        // SAFETY: its bytes follow the header and length, `len` of them,
         // within its object's words (whose pointer it keeps), alive for
         // `'r`; a `Cell<u64>`'s bytes are cells too, each `UnsafeCell`.
         unsafe { std::slice::from_raw_parts(self.0.as_ptr().add(2).cast::<Cell<u8>>(), self.len()) }
     }
 }
 
+/// The words a bytevector of `n` bytes takes: header, length, bytes.
+pub const fn bytes_words(n: usize) -> usize {
+    2 + n.div_ceil(8)
+}
+
+/// A bytevector's header, of `n` bytes: its suffix's bytes, the length's
+/// word and the bytes' words, as Fixpt's `alloc` counts them.
+const fn bytes_head(n: usize) -> u64 {
+    layout::header(
+        kayak_layout::kind("bytevector"),
+        0,
+        8 * (bytes_words(n) - 1),
+        true,
+        false,
+    )
+}
+
 /// A bytevector's object of `bytes`, to be kept in the heap or an arena.
 pub(crate) fn bytes_object(bytes: &[u8]) -> BytesCells {
     let n = bytes.len();
-    let ws: BytesCells = (0..string_words(n)).map(|_| Cell::new(0)).collect();
-    ws[0].set(layout::header(
-        kayak_layout::kind("bytevector"),
-        0,
-        n,
-        true,
-        false,
-    ));
-    ws[1].set(layout::trailer(1));
+    let ws: BytesCells = (0..bytes_words(n)).map(|_| Cell::new(0)).collect();
+    ws[0].set(bytes_head(n));
+    ws[1].set(n as u64);
     for (i, chunk) in bytes.chunks(8).enumerate() {
         let mut w = [0u8; 8];
         w[..chunk.len()].copy_from_slice(chunk);
@@ -626,17 +641,17 @@ pub(crate) fn bytes_object(bytes: &[u8]) -> BytesCells {
 }
 
 impl<'r> BytesAt<'r> {
-    /// Its word, as a heap object holds it (C508): its suffix's address,
-    /// past its header and trailer, tagged `100`, as Fixpt's.
+    /// Its word, as a heap object holds it (C508): its suffix's address
+    /// (its length's), past its header, tagged `100`, as Fixpt's.
     #[inline(always)]
     pub fn word(self) -> HeapWord {
-        HeapWord::object_at(self.0.as_ptr().cast_const().cast::<u64>().wrapping_add(2))
+        HeapWord::object_at(self.0.as_ptr().cast_const().cast::<u64>().wrapping_add(1))
     }
 
     /// The bytevector whose word is `w` (`word`'s).
     #[inline(always)]
     pub fn of_word(w: HeapWord) -> Self {
-        let p = w.0.map_addr(|a| a & !TAG_MASK).wrapping_sub(2);
+        let p = w.0.map_addr(|a| a & !TAG_MASK).wrapping_sub(1);
         match NonNull::new(p.cast_mut().cast::<Cell<u64>>()) {
             Some(p) => BytesAt(p, std::marker::PhantomData),
             None => crate::fail("a heap's word read as a bytevector, which it is not"),
@@ -662,15 +677,9 @@ pub(crate) fn kept_cells<T: Copy>(w: usize) -> &'static [Cell<T>] {
 /// A bytevector's object of `bytes`, in the heap's space (C507).
 pub(crate) fn bytes_kept(bytes: &[u8]) -> &'static [Cell<u64>] {
     let n = bytes.len();
-    let ws = kept_cells::<u64>(string_words(n));
-    ws[0].set(layout::header(
-        kayak_layout::kind("bytevector"),
-        0,
-        n,
-        true,
-        false,
-    ));
-    ws[1].set(layout::trailer(1));
+    let ws = kept_cells::<u64>(bytes_words(n));
+    ws[0].set(bytes_head(n));
+    ws[1].set(n as u64);
     for (i, chunk) in bytes.chunks(8).enumerate() {
         let mut w = [0u8; 8];
         w[..chunk.len()].copy_from_slice(chunk);
@@ -717,6 +726,22 @@ pub(crate) fn bytes_at(ws: &[Cell<u64>]) -> BytesAt<'_> {
 #[cfg(test)]
 mod bytes_tests {
     use super::*;
+
+    /// Fixpt's words (its `make_bytevector`): a header of kind 4 counting
+    /// the suffix's bytes, its length, then its bytes.
+    #[test]
+    fn fixpt_words() {
+        let ws = bytes_object(&[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        assert_eq!(ws.len(), 4);
+        assert_eq!((ws[0].get() >> 3) & 0xff, 4);
+        assert_eq!(kayak_layout::H_BYTES.get(ws[0].get()), 24);
+        assert_eq!(kayak_layout::H_FIELDS.get(ws[0].get()), 0);
+        assert_eq!(ws[1].get(), 9);
+        assert_eq!(ws[2].get(), u64::from_ne_bytes([1, 2, 3, 4, 5, 6, 7, 8]));
+        assert_eq!(ws[3].get(), 9);
+        let b = bytes_at(&ws);
+        assert_eq!(BytesAt::of_word(b.word()).len(), 9);
+    }
 
     #[test]
     fn a_bytevector_written_and_read() {
@@ -2963,18 +2988,13 @@ pub(crate) mod laid {
             let h = *main;
             let kind = (h >> 3) & 0xff;
             let bytes = (h >> 32) as usize;
-            // A bytevector's trailer, which its header's count leaves out
-            // (C483; Fixpt counts it). Not a string's since C533: it has
-            // none, and its second word is its count, any bits at all.
-            let extra =
-                usize::from(fields == 0 && kind == 4 && *main.add(1) & TAG_MASK as u64 == 0b101);
             let n = if untraced(kind) { 0 } else { fields };
             Laid {
                 pair: false,
                 id: main.addr(),
                 fields: std::slice::from_raw_parts(main.add(1).cast::<HeapWord>(), n),
-                suffix: main.addr() + 8 * (1 + fields + extra),
-                end: main.addr() + 8 * (1 + fields + extra + bytes.div_ceil(8)),
+                suffix: main.addr() + 8 * (1 + fields),
+                end: main.addr() + 8 * (1 + fields + bytes.div_ceil(8)),
             }
         }
     }

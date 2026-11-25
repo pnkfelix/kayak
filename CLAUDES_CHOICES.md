@@ -17128,3 +17128,23 @@ formats kayak-rt had of its own but the bytevector's.
   alike past the BMP, the large-object bound restated in UTF-32's bytes);
   every corpus and I/O answer unchanged.
 - **The full check**: `check: all passed`, 7 min 09 s (the mean of 90 runs 8 min 18 s); the pre-check passed first.
+
+## C534. kayak-rt's `bytevector` Fixpt's (2026-11-25)
+
+The last of kayak-rt's own formats (`docs/research/one-runtime.md`, found
+while doing 2(a): step 2(d)).
+- **The object**: Fixpt's `make_bytevector`: kind 4, no fields, no
+  trailer, the suffix its length (a word) then its bytes; the header's
+  count the suffix's bytes, its words', as Fixpt's `alloc` counts them.
+  C482's had a trailer, the header counting the bytes. `bytes_words`,
+  `bytes_head`; a bytevector's word one past its header now (was two).
+  C533 had sized bytevectors by `string_words`, four times their room
+  (no answer wrong, the header's count read): `bytes_words` now.
+- **kcrt**: `kc_bytevector_length` and `kcrt_bytevector_u8_ref` (C529)
+  read the length word, the bytes after it, so that kc's code in process
+  reads kayak-rt's bytevectors, both Fixpt's.
+- **The collector**: `laid::at`'s guess of a trailer in an object of no
+  fields gone: no such object is made now. Each object's size is its
+  header's alone, as Fixpt's and kcrt's collectors take it.
+- **Tests**: `bytes_tests::fixpt_words`; kayak-rt's 78, kcrt-core's 3.
+- **The full check**: `check: all passed`, 10 min 02 s (the mean of 92 runs 8 min 20 s); the pre-check passed first.
