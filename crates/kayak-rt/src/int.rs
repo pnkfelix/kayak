@@ -442,7 +442,7 @@ mod tests {
     use super::*;
 
     fn show(n: Int) -> String {
-        int_to_string(n).as_str().to_owned()
+        int_to_string(n).text().to_owned()
     }
 
     /// The bit at a time division, as it was before the fast paths.
@@ -703,7 +703,7 @@ mod bitwise_tests {
     }
 
     fn text(i: Int) -> String {
-        int_to_string(i).as_str().to_string()
+        int_to_string(i).text().to_string()
     }
 
     #[test]

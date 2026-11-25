@@ -1007,7 +1007,6 @@
 (emitter-call "abort_with_continuation" kayak)
 (emitter-call "alloc" kayak)
 (emitter-call "as_proc" kayak)
-(emitter-call "as_str" kayak)
 (emitter-call "at" kayak)
 (emitter-call "attempt" kayak)
 (emitter-call "bloblet_written" kayak)

@@ -6,10 +6,11 @@
 //! collector walking the heap, or reaching it from an interior word by its
 //! trailer, needs nothing else.
 //!
-//! Strings first: kind 1, no fields, the text the suffix. The trailer's
-//! payload is the runtime's (`docs/object-model.md` reserves it): Fixpt's
-//! keeps the distance alone; kayak keeps there too whether the text is
-//! ASCII (bit 62), which Fixpt finds again when it needs it.
+//! Strings first: Fixpt's (C533; its `Heap::string_with`, kcrt's
+//! `string_words`): kind 1, no fields, no trailer, the suffix the count of
+//! code points, a word, then the code points, UTF-32, two to a word, the
+//! first in the low half, so that `string-ref` is O(1). Before C533 the
+//! suffix was UTF-8 after a trailer (C482), kayak-rt's own.
 //!
 //! The one place, with `sum.rs` and the census, where kayak-rt has
 //! `unsafe`: an object of a size known at run time, its bytes after its
@@ -25,23 +26,45 @@ use kayak_jit::layout;
 use std::cell::Cell;
 use std::ptr::NonNull;
 
-/// The trailer's bit: the text is ASCII.
-const ASCII: u64 = 1 << 62;
+#[cfg(not(target_endian = "little"))]
+compile_error!(
+    "a string's code points are read as one `[u32]`: two to a word, the first in the low half, which is memory's order on a little-endian machine alone"
+);
 
-/// The words a string of `n` bytes takes: header, trailer, its bytes.
+/// The words a string of `n` code points takes: header, count, points.
 pub const fn string_words(n: usize) -> usize {
-    2 + n.div_ceil(8)
+    2 + n.div_ceil(2)
+}
+
+/// The code points of `text`, counted as rustc builds (a literal's).
+pub const fn text_points(text: &str) -> usize {
+    let b = text.as_bytes();
+    let (mut i, mut n) = (0, 0);
+    while i < b.len() {
+        if b[i] & 0xc0 != 0x80 {
+            n += 1;
+        }
+        i += 1;
+    }
+    n
+}
+
+/// The words a literal `text` takes.
+pub const fn str_lit_words(text: &str) -> usize {
+    string_words(text_points(text))
 }
 
 /// `string`: one word, to its object.
 #[derive(Clone, Copy)]
 pub struct Str(NonNull<u64>);
 
-// SAFETY: a string's object is never written after it is made, nor freed.
+// SAFETY: a string's object is never written after it is made, nor freed
+// but by a collection, which moves none a `Str` reaches.
 unsafe impl Send for Str {}
 unsafe impl Sync for Str {}
 
 impl Str {
+    #[cfg(test)]
     #[inline]
     fn header(self) -> u64 {
         // SAFETY: a `Str` is made only by this module, of an object whose
@@ -49,38 +72,55 @@ impl Str {
         unsafe { *self.0.as_ptr() }
     }
 
+    /// Its count of code points: its suffix's first word.
     #[inline]
-    fn trailer(self) -> u64 {
-        // SAFETY: as `header`; a string's trailer is its second word.
-        unsafe { *self.0.as_ptr().add(1) }
-    }
-
-    /// Its text's bytes.
-    #[inline]
-    pub fn len(self) -> usize {
-        (self.header() >> 32) as usize
+    pub fn char_count(self) -> usize {
+        // SAFETY: as `header`; the count is its second word.
+        unsafe { *self.0.as_ptr().add(1) as usize }
     }
 
     #[inline]
     pub fn is_empty(self) -> bool {
-        self.len() == 0
+        self.char_count() == 0
     }
 
+    /// Its code points, each a Unicode scalar value.
     #[inline]
-    pub fn is_ascii(self) -> bool {
-        self.trailer() & ASCII != 0
-    }
-
-    /// Its text.
-    #[inline]
-    pub fn as_str(self) -> &'static str {
-        // SAFETY: its bytes follow the trailer, `len` of them, within the
-        // words it was made of (whose pointer it keeps, so its provenance
-        // is theirs), checked UTF-8 when made, never written nor freed.
+    pub fn points(self) -> &'static [u32] {
+        // SAFETY: the code points follow the count, two to a word, the
+        // first in the low half (memory's order: little-endian, checked
+        // above), `char_count` of them, within the words it was made of
+        // (whose pointer it keeps), never written after, nor moved while a
+        // `Str` reaches them.
         unsafe {
-            let bytes = std::slice::from_raw_parts(self.0.as_ptr().add(2).cast::<u8>(), self.len());
-            std::str::from_utf8_unchecked(bytes)
+            std::slice::from_raw_parts(self.0.as_ptr().add(2).cast::<u32>(), self.char_count())
         }
+    }
+
+    /// Code point `i`, a character.
+    #[inline]
+    pub fn char_at(self, i: usize) -> Option<char> {
+        self.points().get(i).map(|&c| point_char(c))
+    }
+
+    /// Its characters.
+    #[inline]
+    pub fn chars(self) -> impl DoubleEndedIterator<Item = char> + Clone {
+        self.points().iter().map(|&c| point_char(c))
+    }
+
+    /// Its text, as UTF-8: a copy.
+    pub fn text(self) -> String {
+        let ps = self.points();
+        if ps.iter().all(|&c| c < 0x80) {
+            return ps.iter().map(|&c| c as u8 as char).collect();
+        }
+        self.chars().collect()
+    }
+
+    /// Whether its text is `t`.
+    pub fn is(self, t: &str) -> bool {
+        self.chars().eq(t.chars())
     }
 
     /// Its object's first word, for a census: where it is.
@@ -90,48 +130,73 @@ impl Str {
     }
 }
 
+/// A code point a string holds as the character it is: one made only of a
+/// `char`, so always a scalar value.
+#[inline(always)]
+fn point_char(c: u32) -> char {
+    char::from_u32(c).unwrap_or('\u{fffd}')
+}
+
 impl PartialEq for Str {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0 || self.as_str() == other.as_str()
+        self.0 == other.0 || self.points() == other.points()
     }
 }
 
 impl Eq for Str {}
 
-/// A string's header and trailer, of `n` bytes.
-const fn string_head(n: usize, ascii: bool) -> (u64, u64) {
-    (
-        layout::header(layout::KIND_STRING, 0, n, true, true),
-        layout::trailer(1) | if ascii { ASCII } else { 0 },
+/// A string's header, of `n` code points: its suffix's bytes, the count's
+/// word and the points'.
+const fn string_head(n: usize) -> u64 {
+    layout::header(
+        layout::KIND_STRING,
+        0,
+        8 * (string_words(n) - 1),
+        true,
+        true,
     )
 }
 
 /// A string's words, made at compile time (a literal): `W` is
-/// `string_words` of its length.
+/// `str_lit_words` of its text.
 pub struct StrLit<const W: usize> {
     words: [u64; W],
 }
 
 impl<const W: usize> StrLit<W> {
     pub const fn new(text: &str) -> Self {
-        let b = text.as_bytes();
-        let (h, t) = string_head(b.len(), text.is_ascii());
+        let n = text_points(text);
         let mut words = [0u64; W];
-        words[0] = h;
-        words[1] = t;
-        // The bytes in each word as memory has them, as a string made at
-        // run time writes them.
-        let mut w = 0;
-        while w * 8 < b.len() {
-            let mut chunk = [0u8; 8];
-            let mut i = 0;
-            while i < 8 && w * 8 + i < b.len() {
-                chunk[i] = b[w * 8 + i];
-                i += 1;
-            }
-            words[2 + w] = u64::from_ne_bytes(chunk);
-            w += 1;
+        words[0] = string_head(n);
+        words[1] = n as u64;
+        // UTF-8 decoded, as rustc builds: `text` is a `str`, so valid.
+        let b = text.as_bytes();
+        let (mut i, mut k) = (0, 0);
+        while i < b.len() {
+            let (c, w) = if b[i] < 0x80 {
+                (b[i] as u32, 1)
+            } else if b[i] < 0xe0 {
+                (((b[i] as u32 & 0x1f) << 6) | (b[i + 1] as u32 & 0x3f), 2)
+            } else if b[i] < 0xf0 {
+                (
+                    ((b[i] as u32 & 0x0f) << 12)
+                        | ((b[i + 1] as u32 & 0x3f) << 6)
+                        | (b[i + 2] as u32 & 0x3f),
+                    3,
+                )
+            } else {
+                (
+                    ((b[i] as u32 & 0x07) << 18)
+                        | ((b[i + 1] as u32 & 0x3f) << 12)
+                        | ((b[i + 2] as u32 & 0x3f) << 6)
+                        | (b[i + 3] as u32 & 0x3f),
+                    4,
+                )
+            };
+            words[2 + k / 2] |= (c as u64) << (32 * (k % 2));
+            i += w;
+            k += 1;
         }
         StrLit { words }
     }
@@ -149,7 +214,7 @@ impl<const W: usize> StrLit<W> {
 macro_rules! str_lit {
     ($s:expr) => {{
         const S: &str = $s;
-        static O: $crate::StrLit<{ $crate::string_words(S.len()) }> = $crate::StrLit::new(S);
+        static O: $crate::StrLit<{ $crate::str_lit_words(S) }> = $crate::StrLit::new(S);
         O.get()
     }};
 }
@@ -166,22 +231,17 @@ fn words(w: usize) -> &'static mut [u64] {
     space::words_slice(w)
 }
 
-/// A string of `n` bytes, which `fill` writes; `None` if they are no UTF-8.
-pub(crate) fn string_made(n: usize, fill: impl FnOnce(&mut [u8])) -> Option<Str> {
+/// A string of `n` code points, which `fill` writes, each a `char`'s.
+pub(crate) fn string_made(n: usize, fill: impl FnOnce(&mut [u32])) -> Str {
     let ws = words(string_words(n));
-    let (head, body) = ws.split_at_mut(2);
-    // SAFETY: the words after the header and trailer, `n` bytes of them
-    // (`string_words` made room), zeroed, borrowed only here.
-    let bytes: &mut [u8] =
-        unsafe { std::slice::from_raw_parts_mut(body.as_mut_ptr().cast::<u8>(), n) };
-    fill(bytes);
-    if std::str::from_utf8(bytes).is_err() {
-        return None;
-    }
-    let (h, t) = string_head(n, bytes.is_ascii());
-    head[0] = h;
-    head[1] = t;
-    Some(Str(NonNull::from(ws).cast()))
+    ws[0] = string_head(n);
+    ws[1] = n as u64;
+    // SAFETY: the words after the header and count, `n` code points of
+    // them (`string_words` made room), zeroed, borrowed only here.
+    let points: &mut [u32] =
+        unsafe { std::slice::from_raw_parts_mut(ws.as_mut_ptr().add(2).cast::<u32>(), n) };
+    fill(points);
+    Str(NonNull::from(ws).cast())
 }
 
 /// `utf8` (C530; Fixpt's, its 279c16cf): an object of its own, as Fixpt's
@@ -482,21 +542,31 @@ mod tests {
 
     #[test]
     fn a_literal_and_a_made_string_alike() {
-        let a = crate::str_lit!("héllo, world");
-        let b = string_made(13, |bs| bs.copy_from_slice("héllo, world".as_bytes())).unwrap();
-        assert_eq!(a.as_str(), "héllo, world");
+        let t = "héllo, w😀rld";
+        let a = crate::str_lit!("héllo, w😀rld");
+        let cs: Vec<u32> = t.chars().map(|c| c as u32).collect();
+        let b = string_made(cs.len(), |ps| ps.copy_from_slice(&cs));
+        assert_eq!(a.text(), t);
         assert!(a == b);
-        assert!(!a.is_ascii());
-        assert_eq!(a.len(), 13);
+        assert_eq!(a.char_count(), 12);
+        assert_eq!(a.char_at(8), Some('😀'));
         assert_eq!(std::mem::size_of::<Str>(), 8);
         assert_eq!(a.header() & layout::TAG_MASK, layout::TAG_HEADER);
         assert!(crate::str_lit!("").is_empty());
-        assert!(crate::str_lit!("abc").is_ascii());
+        assert_eq!(crate::str_lit!("abc").points(), &[97, 98, 99]);
     }
 
+    /// Fixpt's words, as kcrt makes them (`string_words`): a header of kind
+    /// 1 counting the suffix's bytes, the count, the points two a word.
     #[test]
-    fn not_utf8_refused() {
-        assert!(string_made(1, |bs| bs[0] = 0xff).is_none());
+    fn fixpt_words() {
+        let a = crate::str_lit!("abc");
+        // SAFETY: a literal's words, four of them.
+        let ws = unsafe { std::slice::from_raw_parts(a.0.as_ptr(), 4) };
+        assert_eq!(kayak_layout::H_BYTES.get(ws[0]), 24);
+        assert_eq!(ws[1], 3);
+        assert_eq!(ws[2], 97 | (98 << 32));
+        assert_eq!(ws[3], 99);
     }
 }
 
@@ -1754,7 +1824,7 @@ mod product_tests {
         let h = Held::new(p);
         assert_eq!(std::mem::size_of::<Held<P2<P2<i64, Str>, char>>>(), 8);
         let back = h.get();
-        assert_eq!((back.0.0, back.0.1.as_str(), back.1), (3, "x", 'c'));
+        assert_eq!((back.0.0, back.0.1.text().as_str(), back.1), (3, "x", 'c'));
         // Kind 37, two words (the inner product's, `'c'`'s) and its
         // trailer, Fixpt's count (C498), no suffix (C496).
         let w = crate::Prod::new(p).header();
@@ -1986,21 +2056,21 @@ impl HeapWord {
         }
     }
 
-    /// A string's word: its text's address (its suffix's), tagged.
+    /// A string's word: its suffix's address (its count's), tagged.
     #[inline(always)]
     pub fn of_str(s: Str) -> HeapWord {
         HeapWord(
             s.0.as_ptr()
                 .cast_const()
-                .wrapping_add(2)
+                .wrapping_add(1)
                 .map_addr(|a| a | TAG_OBJECT),
         )
     }
 
     /// A string literal's word, made as rustc builds (a tag's name, C499):
-    /// its suffix's address, two words past its start, tagged.
+    /// its suffix's address, a word past its start, tagged.
     pub const fn of_str_lit<const W: usize>(s: &'static StrLit<W>) -> HeapWord {
-        HeapWord::object_at(std::ptr::from_ref(s).cast::<u64>().wrapping_add(2))
+        HeapWord::object_at(std::ptr::from_ref(s).cast::<u64>().wrapping_add(1))
     }
 
     /// The word of a reference to what is kayak-rt's own, outside the
@@ -2053,8 +2123,7 @@ impl HeapWord {
     /// The header of the object a word points to (C503), as Fixpt finds
     /// it: the word just before where it points, if a header (an object of
     /// no fields: a flonum); else its trailer, which says how far back it is
-    /// (Fixpt's distance, in words; a string's trailer's bit 62, whether
-    /// its text is ASCII, not of it, C482).
+    /// (Fixpt's distance, in words).
     ///
     /// # Safety
     /// `self` is a word to an object kayak-rt made, of a reference to it
@@ -2144,7 +2213,7 @@ impl HeapWord {
     /// The string a word is.
     #[inline(always)]
     pub fn to_str(self) -> Str {
-        let p = self.0.map_addr(|a| a & !TAG_MASK).wrapping_sub(2);
+        let p = self.0.map_addr(|a| a & !TAG_MASK).wrapping_sub(1);
         match NonNull::new(p.cast_mut()) {
             Some(p) => Str(p),
             None => crate::fail("a heap's word read as a string, which it is not"),
@@ -2179,7 +2248,7 @@ mod word_tests {
         assert_eq!(f.to_f64(), 2.25);
         let s: Str = crate::str_lit("abc");
         assert_eq!(HeapWord::of_str(s).raw() & 7, 4);
-        assert_eq!(HeapWord::of_str(s).to_str().as_str(), "abc");
+        assert_eq!(HeapWord::of_str(s).to_str().text(), "abc");
         let big = Int::of_i64(i64::MAX);
         assert_eq!(HeapWord::of_int(big).to_int().small(), None);
         assert_eq!(HeapWord::of_int(Int::of_i64(7)).raw(), 56);
@@ -2894,11 +2963,11 @@ pub(crate) mod laid {
             let h = *main;
             let kind = (h >> 3) & 0xff;
             let bytes = (h >> 32) as usize;
-            // A string's and a bytevector's trailer, which their header's
-            // count leaves out (C482, C483; Fixpt counts it).
-            let extra = usize::from(
-                fields == 0 && matches!(kind, 1 | 4) && *main.add(1) & TAG_MASK as u64 == 0b101,
-            );
+            // A bytevector's trailer, which its header's count leaves out
+            // (C483; Fixpt counts it). Not a string's since C533: it has
+            // none, and its second word is its count, any bits at all.
+            let extra =
+                usize::from(fields == 0 && kind == 4 && *main.add(1) & TAG_MASK as u64 == 0b101);
             let n = if untraced(kind) { 0 } else { fields };
             Laid {
                 pair: false,

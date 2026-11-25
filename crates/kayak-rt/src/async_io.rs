@@ -157,7 +157,7 @@ async fn write(fd: u32, s: Str) -> Sum {
     };
     let token = submit(Op::Write {
         fd: Fd(fd),
-        bytes: s.as_str().as_bytes().to_vec(),
+        bytes: s.text().as_bytes().to_vec(),
     });
     written(Answer::decode(&cx.completion(token).await))
 }
@@ -176,7 +176,7 @@ pub async fn write_err(s: Str) -> Sum {
 pub(crate) fn write_now(fd: u32, s: Str) -> Sum {
     let token = submit(Op::Write {
         fd: Fd(fd),
-        bytes: s.as_str().as_bytes().to_vec(),
+        bytes: s.text().as_bytes().to_vec(),
     });
     if let Some(cx) = crate::suspend::task_cx() {
         cx.abandon(token);
@@ -335,7 +335,7 @@ async fn on_worker<R: Send + 'static>(
 
 /// `(read-file path)`.
 pub async fn read_file(path: Str) -> crate::Sum {
-    let path = path.as_str().to_string();
+    let path = path.text().to_string();
     crate::world::read_file_answer(
         on_worker("read-file", move || crate::world::read_regular_file(&path)).await,
     )
@@ -343,7 +343,7 @@ pub async fn read_file(path: Str) -> crate::Sum {
 
 /// `(write-file path data)`: the bytes taken now, written by a worker.
 pub async fn write_file(path: Str, data: BytesAt<'_>) -> Sum {
-    let (path, bytes) = (path.as_str().to_string(), crate::world::to_vec(data));
+    let (path, bytes) = (path.text().to_string(), crate::world::to_vec(data));
     crate::world::written(
         on_worker("write-file", move || {
             crate::world::write_file_bytes(&path, &bytes)
@@ -354,7 +354,7 @@ pub async fn write_file(path: Str, data: BytesAt<'_>) -> Sum {
 
 /// `(write-file-unflushed path data)` (C475): as `write-file`, not flushed.
 pub async fn write_file_unflushed(path: Str, data: BytesAt<'_>) -> Sum {
-    let (path, bytes) = (path.as_str().to_string(), crate::world::to_vec(data));
+    let (path, bytes) = (path.text().to_string(), crate::world::to_vec(data));
     crate::world::written(
         on_worker("write-file-unflushed", move || {
             crate::world::replace_file_bytes(&path, &bytes, false)
@@ -365,7 +365,7 @@ pub async fn write_file_unflushed(path: Str, data: BytesAt<'_>) -> Sum {
 
 /// `(list-dir path)`.
 pub async fn list_dir(path: Str) -> crate::Sum {
-    let path = path.as_str().to_string();
+    let path = path.text().to_string();
     crate::world::list_dir_answer(
         on_worker("list-dir", move || crate::world::list_dir_names(&path)).await,
     )
@@ -373,7 +373,7 @@ pub async fn list_dir(path: Str) -> crate::Sum {
 
 /// `(file-info path)`.
 pub async fn file_info(path: Str) -> crate::Sum {
-    let path = path.as_str().to_string();
+    let path = path.text().to_string();
     crate::world::file_info_answer(
         on_worker("file-info", move || std::fs::symlink_metadata(path)).await,
     )
@@ -381,7 +381,7 @@ pub async fn file_info(path: Str) -> crate::Sum {
 
 /// `(read-symlink path)`.
 pub async fn read_symlink(path: Str) -> crate::Sum {
-    let path = path.as_str().to_string();
+    let path = path.text().to_string();
     crate::world::read_symlink_answer(
         on_worker("read-symlink", move || std::fs::read_link(path)).await,
     )
@@ -409,7 +409,7 @@ pub async fn terminal_size() -> crate::Sum {
 pub async fn process_write(p: Int, text: Str) -> Sum {
     let (input, bytes) = (
         crate::world::process_input(p),
-        text.as_str().as_bytes().to_vec(),
+        text.text().as_bytes().to_vec(),
     );
     crate::world::written(
         on_worker("process-write", move || {

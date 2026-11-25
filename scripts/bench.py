@@ -86,7 +86,7 @@ fn time(name: &str, f: fn() -> kayak_rt::Str) {
         let t = std::time::Instant::now();
         let s = kayak_rt::with_big_stack(f);
         best = best.min(t.elapsed().as_secs_f64() * 1000.0);
-        answer = s.as_str().trim().lines().last().unwrap_or("").to_string();
+        answer = s.text().trim().lines().last().unwrap_or("").to_string();
     }
     println!("{name}\\t{answer}\\t{best:.1}");
 }

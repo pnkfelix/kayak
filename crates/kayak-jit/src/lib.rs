@@ -652,6 +652,12 @@ pub fn bloblet(fields: &[u64], suffix: &[u64], bytes: usize) -> u64 {
 /// word, the first in the low half.
 pub fn string(s: &str) -> u64 {
     let points: Vec<u32> = s.chars().map(|c| c as u32).collect();
+    string_of_points(&points)
+}
+
+/// A string of Fixpt's layout of code points `points` (C533: kayak-rt's
+/// strings' own, so copied word for word).
+pub fn string_of_points(points: &[u32]) -> u64 {
     let mut suffix = vec![points.len() as u64];
     suffix.extend(
         points

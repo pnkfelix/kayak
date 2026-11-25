@@ -123,7 +123,7 @@ impl Symbol {
 
     /// One named `name`, made in the heap.
     pub fn new(name: Str) -> Symbol {
-        let o = crate::heap_alloc(SymObj::of(HeapWord::of_str(name), name.as_str()));
+        let o = crate::heap_alloc(SymObj::of(HeapWord::of_str(name), &name.text()));
         Symbol::of_obj(o.to_ref())
     }
 
@@ -167,7 +167,7 @@ impl PartialEq for Symbol {
     fn eq(&self, other: &Symbol) -> bool {
         self.0 == other.0
             || (self.obj().hash.raw() == other.obj().hash.raw()
-                && self.name().as_str() == other.name().as_str())
+                && self.name().text() == other.name().text())
     }
 }
 
@@ -208,7 +208,7 @@ macro_rules! sym_lit {
 macro_rules! tag_lit {
     ($s:expr) => {{
         const S: &str = $s;
-        static N: $crate::StrLit<{ $crate::string_words(S.len()) }> = $crate::StrLit::new(S);
+        static N: $crate::StrLit<{ $crate::str_lit_words(S) }> = $crate::StrLit::new(S);
         static T: $crate::SymObj = $crate::SymObj::new(&N, S);
         &T
     }};
@@ -543,8 +543,8 @@ pub fn sum_tag(s: Sum) -> u64 {
 
 /// A sum's tag's name.
 #[inline]
-pub fn sum_name(s: Sum) -> &'static str {
-    s.tag_obj().name().as_str()
+pub fn sum_name(s: Sum) -> String {
+    s.tag_obj().name().text()
 }
 
 /// A sum's payload, at the type `T` its tag's is. The caller says `T`: kfx
@@ -569,7 +569,7 @@ pub fn sum_payload<T: crate::Trace + 'static>(s: Sum) -> T {
 impl Show for Sum {
     fn show(&self, out: &mut String) {
         out.push_str("#<sum ");
-        out.push_str(sum_name(*self));
+        out.extend(self.tag_obj().name().chars());
         out.push('>');
     }
 }
@@ -981,7 +981,7 @@ mod tests {
         let sym = s.tag_obj();
         assert_eq!((sym.header.get() >> 3) & 0xff, 2);
         assert_eq!(s.at(1) as usize, sym.word().raw());
-        assert_eq!(sym.name().as_str(), "circle");
+        assert_eq!(sym.name().text(), "circle");
         // In a pair, its word.
         let xs = crate::heap_cons(s, crate::nil());
         assert_eq!(sum_name(crate::car(xs)), "circle");
@@ -1112,7 +1112,7 @@ mod symbol_tests {
         // `eq?` as interning makes it: by name, whoever made it.
         assert!(quoted == made && made == quoted && quoted != other);
         assert_eq!(made.hash(), tag_hash("lambda"));
-        assert_eq!(crate::symbol_to_string(made).as_str(), "lambda");
+        assert_eq!(crate::symbol_to_string(made).text(), "lambda");
         // Its word Fixpt's, to its object's suffix (none), kind 2.
         use crate::Trace;
         let w = made.store();

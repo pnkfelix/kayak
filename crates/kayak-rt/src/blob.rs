@@ -472,7 +472,7 @@ mod tests {
         b.suffix().at(int_lit((1 << 21) - 1)).set(7);
         assert_eq!(b.suffix().at(int_lit((1 << 21) - 1)).get(), 7);
         assert_eq!(b.byte_size(), 8 << 21);
-        assert_eq!(b.fields().0.get().as_str(), "f");
+        assert_eq!(b.fields().0.get().text(), "f");
         assert_eq!(
             std::mem::size_of::<TBlobletAt<'_, (crate::Slot<i64>,), S>>(),
             8

@@ -170,11 +170,11 @@ impl Native for crate::FlatArray<i64> {
     }
 }
 
-/// A string, copied each way as one of Fixpt's layout (its code points two
-/// to a word): FX-26's strings are never written.
+/// A string, copied each way, of Fixpt's layout (its code points two to a
+/// word, kayak-rt's too since C533): FX-26's strings are never written.
 impl Native for crate::Str {
     fn word(self) -> u64 {
-        kayak_jit::string(self.as_str())
+        kayak_jit::string_of_points(self.points())
     }
     fn of_word(w: u64) -> Self {
         match kayak_jit::string_of(w) {

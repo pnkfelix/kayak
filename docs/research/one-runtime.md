@@ -118,3 +118,14 @@ kayak-rt and kcrt-core alone, recorded at each step here.
   routines), so the expander's shim is gone; the engine's bridge gives the
   expander `#utf8"…"` and `#u8(…)` as Fixpt's reader does, atoms, not the
   lists kayak's reader makes of them, and takes them back. Step 2(c) done.
+- **Step 2(a), `string` Fixpt's (C533)**: kayak-rt's `Str` is Fixpt's
+  object, kcrt's: kind 1, no fields, no trailer, the suffix the count and
+  the code points, UTF-32, two a word. `Str` gives its points as one
+  `&[u32]` (little-endian), so comparing, hashing, `string-ref` (O(1) now,
+  the cursor of C14 gone), `substring`, `string-append` and joining are
+  over points, nothing decoded; `text()` a copy where Rust wants a `str`
+  (printing, paths, syscalls). A string crosses to native code word for
+  word. Every answer unchanged. Its cost, measured on kfx compiling
+  itself: 2.96 s to 3.11 s, peak memory 197 MB to 294 MB, the compiler's
+  text, mostly ASCII, four bytes a character now. The formats are one but
+  for the bytevector (kayak's a trailer, Fixpt's a length word first).

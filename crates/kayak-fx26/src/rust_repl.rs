@@ -242,9 +242,9 @@ pub fn repl() -> i64 {
         thread(move || machine(live, start, machine_gets, sent, to_front));
     }
     let banner = s::session_start_x(live, rows, cols, leak_string(history));
-    let _ = out.write_all(banner.as_str().as_bytes());
+    let _ = out.write_all(banner.text().as_bytes());
     // The prompt, before the first key.
-    let _ = out.write_all(s::screen_x(0).as_str().as_bytes());
+    let _ = out.write_all(s::screen_x(0).text().as_bytes());
     let _ = out.flush();
     std::thread::spawn(move || {
         let mut stdin = std::io::stdin();
@@ -288,14 +288,14 @@ pub fn repl() -> i64 {
         send_requests(&to_machine, &sent);
         // What was typed, drawn before the draft is checked.
         if typed {
-            let _ = out.write_all(s::screen_x(now()).as_str().as_bytes());
+            let _ = out.write_all(s::screen_x(now()).text().as_bytes());
             let _ = out.flush();
         }
         let t1 = now();
         speculate(now());
         send_requests(&to_machine, &sent);
         let t2 = now();
-        let _ = out.write_all(s::screen_x(now()).as_str().as_bytes());
+        let _ = out.write_all(s::screen_x(now()).text().as_bytes());
         if std::env::var_os("KAYAK_TIMING").is_some() && now() - t0 > 5 {
             eprintln!(
                 "keys {} speculate {} screen {}",
@@ -380,7 +380,7 @@ pub fn scripted(path: &str) -> i64 {
     thread(move || machine_scripted(machine_gets, to_front));
     let mut out = std::io::stdout();
     let banner = s::session_start_x(true, 24, 80, leak_string(String::new()));
-    let _ = out.write_all(banner.as_str().as_bytes());
+    let _ = out.write_all(banner.text().as_bytes());
     let mut clock = 0i64;
     let mut ended = false;
     loop {
@@ -405,7 +405,7 @@ pub fn scripted(path: &str) -> i64 {
             });
         clock = ran.clock;
         ran.news.into_iter().for_each(|n| s::news_x(n, clock));
-        let _ = out.write_all(s::screen_x(clock).as_str().as_bytes());
+        let _ = out.write_all(s::screen_x(clock).text().as_bytes());
         if s::over_p() {
             let _ = out.write_all(b"\r\n");
             return 0;

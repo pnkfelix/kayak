@@ -1649,9 +1649,9 @@ pub mod writing {
             let acc = put(camel(d), acc);
             let acc = put(str_lit!("::"), acc);
             let acc = put(variant_name(tag), acc);
-            let acc = put(str_lit!("(..) => out.push_str(str_lit!(\"#<sum "), acc);
+            let acc = put(str_lit!("(..) => out.push_str(\"#<sum "), acc);
             let acc = put(tag, acc);
-            put_show_arms(d, cdr(variants), put(str_lit!(">\").as_str()),\n"), acc))
+            put_show_arms(d, cdr(variants), put(str_lit!(">\"),\n"), acc))
         }
     }
 

@@ -112,6 +112,15 @@ impl<'a> Tracer<'a> {
         }
     }
 
+    /// A string met (C533: its object's, by its address; its bytes the
+    /// object's).
+    pub fn str_object(&mut self, s: crate::Str) {
+        if !s.is_empty() && self.seen.insert(s.addr()) {
+            self.strings.0 += 1;
+            self.strings.1 += 8 * crate::string_words(s.char_count()) as u64;
+        }
+    }
+
     /// A plain reference met, to what no `Trace` says the parts of.
     pub fn opaque(&mut self, p: usize) {
         self.opaque.push(p);
@@ -1228,7 +1237,7 @@ impl Trace for Str {
     where
         Self: 'a,
     {
-        t.string(self.as_str());
+        t.str_object(self);
     }
 }
 
@@ -1616,6 +1625,6 @@ mod tests {
         let _: (crate::HeapWord, crate::HeapWord, crate::HeapWord) = w;
         assert_eq!(w.0.raw(), 3 << 3);
         let back = <(i64, Str, f64)>::load(w);
-        assert_eq!((back.0, back.1.as_str(), back.2), (3, "s", 2.5));
+        assert_eq!((back.0, back.1.text().as_str(), back.2), (3, "s", 2.5));
     }
 }

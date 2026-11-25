@@ -385,7 +385,6 @@ fn collect_from(saved: &[usize; 12], from: usize, minor: bool) {
     for &(c, p) in &from_pages {
         c.set_from(p, false);
     }
-    crate::forget_cursor();
     LAST.set(Last {
         reached: marked + others.len() + moved,
         moved,
@@ -1386,6 +1385,42 @@ mod tests {
         assert_eq!(sum(crate::get(r).get()), 1000 * 499 * 500 / 2);
     }
 
+    fn text_of(n: usize) -> String {
+        (0..n).map(|i| if i % 3 == 0 { 'é' } else { 'x' }).collect()
+    }
+
+    /// The strings of each length to 40 in a list, which a box alone holds,
+    /// made after them, so that no word of the stack reaches the strings'
+    /// pages.
+    #[inline(never)]
+    fn strings_boxed() -> crate::Ref<List<crate::Str>> {
+        let xs: List<crate::Str> = (0..40).rev().fold(nil(), |acc, n| {
+            heap_cons(crate::leak_string(text_of(n)), acc)
+        });
+        for _ in 0..4 {
+            let _ = std::hint::black_box(list(garbage()));
+        }
+        heap_new(xs)
+    }
+
+    /// Strings of each length, moved by collections, as they were made
+    /// (C533: a string's second word, its count, any bits at all, not read
+    /// as a trailer).
+    #[test]
+    fn strings_of_each_length_moved() {
+        let r = strings_boxed();
+        for _ in 0..3 {
+            let _ = std::hint::black_box(list(garbage()));
+            super::collect();
+        }
+        let mut at = crate::get(r);
+        for n in 0..40 {
+            let c = at.pair().expect("40 strings");
+            assert_eq!(c.car().text(), text_of(n));
+            at = c.cdr;
+        }
+    }
+
     #[test]
     fn large_objects_not_reached_freed() {
         // A large string held by the stack, kept as large garbage is made
@@ -1402,11 +1437,12 @@ mod tests {
         // What is left: the string held, and perhaps one more a stale word
         // pins.
         assert!(
-            crate::obj::space::my_large_bytes() <= 2 * (big.len() + 64),
+            // Its object's bytes: four a code point (C533).
+            crate::obj::space::my_large_bytes() <= 2 * (8 * crate::string_words(big.len()) + 64),
             "{} bytes of large objects",
             crate::obj::space::my_large_bytes()
         );
-        assert_eq!(std::hint::black_box(held).as_str(), big);
+        assert_eq!(std::hint::black_box(held).text(), big);
     }
 
     #[test]

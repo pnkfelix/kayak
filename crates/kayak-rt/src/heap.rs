@@ -63,7 +63,7 @@ mod tests {
             3
         );
         assert_eq!(
-            (r.get(), s.get(), ys.pair().unwrap().car().as_str()),
+            (r.get(), s.get(), ys.pair().unwrap().car().text().as_str()),
             (8, true, "a")
         );
         // A `Vec` of what no root sees, held across allocations.

@@ -430,7 +430,7 @@ def main():
         "/// A program's value, or its failure as `fixpt eval` says one: `! MESSAGE`.\n"
         "fn shown(name: &str, r: std::thread::Result<kayak_rt::Str>) {\n"
         "    match r {\n"
-        "        Ok(v) => println!(\"{}\\t{}\", name, v.as_str()),\n"
+        "        Ok(v) => println!(\"{}\\t{}\", name, v.text()),\n"
         "        Err(e) => {\n"
         "            let m = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default();\n"
         "            println!(\"{}\\t! {}\", name, m)\n"

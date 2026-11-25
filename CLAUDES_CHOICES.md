@@ -17084,3 +17084,47 @@ What C531 left (`docs/research/one-runtime.md`, step 2(c)).
   `bytevector?`'s narrowing (`… yes 2`). By hand, as Fixpt: the "is not a
   list" refusal of `#utf8"x"`, `#u8(1 2)` and `#u8"ab"`.
 - **The full check**: `check: all passed`, 10 min 21 s (the mean of 88 runs 8 min 20 s); the pre-check passed first.
+
+## C533. kayak-rt's `string` Fixpt's: UTF-32 (2026-11-25)
+
+The plan's step 2(a) (`docs/research/one-runtime.md`): the last of the
+formats kayak-rt had of its own but the bytevector's.
+- **The object**: Fixpt's `Heap::string_with`, kcrt's `string_words`: a
+  header of kind 1, no fields, no trailer, its bytes the suffix's; the
+  suffix the count of code points, then the points, two a word, the first
+  in the low half. C482's was UTF-8 after a trailer that kept an ASCII
+  bit. A `Str` still points to the header, a string's word to the suffix,
+  one word on now (was two).
+- **`Str`**: `points()`, one `&'static [u32]` (a little-endian machine's
+  order, a `compile_error!` else); `char_count`, `char_at`, `chars`;
+  `text()`, a copy, where Rust wants a `str`; `is(t)`. `as_str` gone: its
+  78 uses each `text()` (or a borrow of it), found by rustc and changed by
+  a script, then those on a hot path made of points (comparison, hashing,
+  search, `substring`, `string-append`, `string-list-append`,
+  `list->string`, `char->string`, showing a symbol or a sum, the UTF-8
+  length syscall, a string given native code).
+- **`str_lit!`**: the literal's words made as rustc builds, its UTF-8
+  decoded in a `const fn` (`text_points`, `str_lit_words`); `tag_lit!`'s
+  name the same.
+- **`string-ref`** O(1): C14's cursor (`char_byte`, `cursor_at`,
+  `forget_cursor`) gone.
+- **The collector**: `laid::at` took a string's or a bytevector's
+  trailer as there when its second word's tag said so; a string's second
+  word is its count now, so a string of 5 mod 8 characters was misread
+  (generation 1 of the regen failed, a product read as a string, with
+  collection on only). A bytevector's alone now. Test:
+  `strings_of_each_length_moved`, which fails on the old guess.
+- **The tracer**: a string counted by its object's address
+  (`str_object`), not a copy's.
+- **The emitter**: a datatype's `Show` arm writes `"#<sum T>"` as text,
+  not a `str_lit!`'s `as_str()`, so `lang/items.sexp` loses that
+  emitter call; the Rust the scripts write (`kc-steps.py`, `bench.py`,
+  `async-corpus.py`) reads a result's `text()`.
+- **Measured** (kfx compiling itself, twice each): 2.96 s to 3.11 s; peak
+  memory 197 MB to 294 MB, the compiler's text mostly ASCII, four bytes a
+  character. Fixpt's format, so the cost of one format; a compact string
+  would be Fixpt's to adopt first.
+- **Tests**: kayak-rt's 77 (`fixpt_words`, the literal and the made string
+  alike past the BMP, the large-object bound restated in UTF-32's bytes);
+  every corpus and I/O answer unchanged.
+- **The full check**: `check: all passed`, 7 min 09 s (the mean of 90 runs 8 min 18 s); the pre-check passed first.

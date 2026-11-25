@@ -194,7 +194,7 @@ pub fn f64_to_string(x: f64) -> Str {
 pub fn int_to_f64(n: Int) -> f64 {
     match n.small() {
         Some(v) => v as f64,
-        None => int_to_string(n).as_str().parse().unwrap_or(f64::NAN),
+        None => int_to_string(n).text().parse().unwrap_or(f64::NAN),
     }
 }
 
@@ -336,7 +336,7 @@ pub fn f32_to_string(x: f32) -> Str {
 pub fn int_to_f32(n: Int) -> f32 {
     match n.small() {
         Some(v) => v as f32,
-        None => int_to_string(n).as_str().parse().unwrap_or(f32::NAN),
+        None => int_to_string(n).text().parse().unwrap_or(f32::NAN),
     }
 }
 

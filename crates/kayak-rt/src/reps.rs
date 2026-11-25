@@ -88,18 +88,18 @@ fn rep_of(nodes: List<RepNode>, holes: List<Symbol>, root: Int) -> Result<kayak_
     }
     let mut hole_args = Vec::new();
     for h in items(holes) {
-        hole_args.push(b.hole(symbol_to_string(h).as_str()));
+        hole_args.push(b.hole(&symbol_to_string(h).text()));
     }
     for (node, slot) in nodes.iter().zip(&slots) {
-        let head = symbol_to_string(node.1).as_str().to_string();
+        let head = symbol_to_string(node.1).text().to_string();
         let set = node.2;
         let binders: Vec<String> = items(node.3)
             .into_iter()
-            .map(|s| symbol_to_string(s).as_str().to_string())
+            .map(|s| symbol_to_string(s).text().to_string())
             .collect();
         let mut args = Vec::new();
         for arg in items(node.4) {
-            args.push(match sum_name(arg) {
+            args.push(match sum_name(arg).as_str() {
                 "node" => Arg::Node(small(sum_payload::<Int>(arg))? as u32),
                 "bound" => {
                     let p = sum_payload::<Product_11_12<Int, Int>>(arg);
@@ -113,16 +113,16 @@ fn rep_of(nodes: List<RepNode>, holes: List<Symbol>, root: Int) -> Result<kayak_
                     .ok_or("a hole not named")?,
                 "const" => {
                     let p = sum_payload::<Product_11_12_13<Str, Int, Str>>(arg);
-                    let generative = p.0.as_str().to_string();
+                    let generative = p.0.text().to_string();
                     let which = small(p.1)? as u32;
-                    let kind = p.2.as_str().to_string();
+                    let kind = p.2.text().to_string();
                     b.konst(Const {
                         key: kayak_reps::generative_key(&generative, which),
                         name: generative,
                         kind,
                     })
                 }
-                "sym" => Arg::Sym(b.name(symbol_to_string(sum_payload::<Symbol>(arg)).as_str())),
+                "sym" => Arg::Sym(b.name(&symbol_to_string(sum_payload::<Symbol>(arg)).text())),
                 "int" => Arg::Int(small(sum_payload::<Int>(arg))?),
                 "flag" => Arg::Flag(sum_payload::<bool>(arg)),
                 other => return Err(format!("an operand tagged {other}")),
@@ -167,7 +167,7 @@ pub fn rep_nodes(
     let keys: Vec<u64> = items(gens)
         .iter()
         .enumerate()
-        .map(|(w, g)| kayak_reps::generative_key(g.as_str(), w as u32))
+        .map(|(w, g)| kayak_reps::generative_key(&g.text(), w as u32))
         .collect();
     let int = |k: i64| i64_to_int(k);
     let nodes: Vec<RepNode> = rep

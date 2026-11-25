@@ -160,7 +160,7 @@ const SYSCALLS: &[Syscall] = &[
         host: "kayak:note-code/1",
         canonical: "(subr (io sys) (int int string) unit)",
         run: |a| {
-            crate::world::code_noted(int(a[0]), int(a[1]), crate::Str::of_word(a[2]).as_str());
+            crate::world::code_noted(int(a[0]), int(a[1]), &crate::Str::of_word(a[2]).text());
             ().word()
         },
     },
@@ -176,8 +176,8 @@ const SYSCALLS: &[Syscall] = &[
                 crate::world::code_lines_noted(
                     int(a[0]),
                     int(a[1]),
-                    crate::Str::of_word(a[2]).as_str(),
-                    crate::Str::of_word(a[3]).as_str(),
+                    &crate::Str::of_word(a[2]).text(),
+                    &crate::Str::of_word(a[3]).text(),
                     &words,
                 );
                 ().word()
@@ -185,12 +185,18 @@ const SYSCALLS: &[Syscall] = &[
             Err(_) => fail("kayak:note-code-lines/1: a count out of bounds"),
         },
     },
-    // A string's length in UTF-8 bytes (Fixpt 5731f52, C263): pure, the
-    // length kayak-rt's strings have at hand.
+    // A string's length in UTF-8 bytes (Fixpt 5731f52, C263): pure, its
+    // code points' lengths summed (C533: UTF-32, so no longer at hand).
     Syscall {
         host: "kayak:string-utf8-length/1",
         canonical: "(subr pure (string) int)",
-        run: |a| (crate::Str::of_word(a[0]).as_str().len() as i64).word(),
+        run: |a| {
+            (crate::Str::of_word(a[0])
+                .chars()
+                .map(char::len_utf8)
+                .sum::<usize>() as i64)
+                .word()
+        },
     },
     // The address of the routine of kc's runtime that kc's code names
     // `name` (`kc_show`, ...), as it is called in process (C452, `kc run`:
@@ -201,7 +207,7 @@ const SYSCALLS: &[Syscall] = &[
     Syscall {
         host: "kayak:kc-routine/1",
         canonical: "(subr (io sys) (string) int)",
-        run: |a| (kayak_kcrt_core::routine(crate::Str::of_word(a[0]).as_str()) as i64).word(),
+        run: |a| (kayak_kcrt_core::routine(&crate::Str::of_word(a[0]).text()) as i64).word(),
     },
     // What the last of those routines that failed in process said, taken:
     // its words, which a built program would say before it ends.
@@ -216,7 +222,7 @@ const SYSCALLS: &[Syscall] = &[
         host: "kayak:kc-give/1",
         canonical: "(subr (io sys) (string) unit)",
         run: |a| {
-            kayak_kcrt_core::give(crate::Str::of_word(a[0]).as_str());
+            kayak_kcrt_core::give(&crate::Str::of_word(a[0]).text());
             ().word()
         },
     },
@@ -261,29 +267,26 @@ fn find(host: &str, text: &str) -> Result<&'static Syscall, Option<&'static str>
 
 /// A required syscall's check, as its declaration's definition is made.
 pub fn syscall_require(label: Str, host: Str, text: Str) {
-    match find(host.as_str(), text.as_str()) {
+    match find(&host.text(), &text.text()) {
         Ok(_) => {}
-        Err(None) => fail(&format!("{}: this runtime has none", label.as_str())),
+        Err(None) => fail(&format!("{}: this runtime has none", label.text())),
         Err(Some(theirs)) => fail(&format!(
             "{}: declared {}; this runtime's is {theirs}",
-            label.as_str(),
-            text.as_str()
+            label.text(),
+            text.text()
         )),
     }
 }
 
 /// Whether kayak-rt has `host` at the type `text`.
 pub fn syscall_available(host: Str, text: Str) -> bool {
-    find(host.as_str(), text.as_str()).is_ok()
+    find(&host.text(), &text.text()).is_ok()
 }
 
 fn call(label: Str, host: Str, text: Str, args: &[u64]) -> u64 {
-    match find(host.as_str(), text.as_str()) {
+    match find(&host.text(), &text.text()) {
         Ok(s) => (s.run)(args),
-        Err(_) => fail(&format!(
-            "{}: not available on this runtime",
-            label.as_str()
-        )),
+        Err(_) => fail(&format!("{}: not available on this runtime", label.text())),
     }
 }
 

@@ -2,9 +2,7 @@
 //! symbols beside those in `lib.rs` (Fixpt 17ac0c5's `standard.rs`, each as
 //! its runtime has it; `CLAUDES_CHOICES.md` C56).
 
-use crate::{
-    Int, Show, Str, Symbol, char_byte, cursor_at, fail, i64_to_int, int_to_i64, leak_string,
-};
+use crate::{Int, Show, Str, Symbol, fail, i64_to_int, int_to_i64, leak_string};
 
 /// FX-26's `char->integer` and `integer->char`, at `int`.
 #[inline]
@@ -51,69 +49,70 @@ pub fn char_downcase(c: char) -> char {
     c.to_lowercase().next().unwrap_or(c)
 }
 
-// Strings compare character by character, which is UTF-8's byte order.
+// Strings compare character by character: their code points'.
 
 #[inline]
 pub fn string_lt_p(a: Str, b: Str) -> bool {
-    a.as_str() < b.as_str()
+    a.points() < b.points()
 }
 #[inline]
 pub fn string_lt_eq_p(a: Str, b: Str) -> bool {
-    a.as_str() <= b.as_str()
+    a.points() <= b.points()
 }
 #[inline]
 pub fn string_gt_p(a: Str, b: Str) -> bool {
-    a.as_str() > b.as_str()
+    a.points() > b.points()
 }
 #[inline]
 pub fn string_gt_eq_p(a: Str, b: Str) -> bool {
-    a.as_str() >= b.as_str()
+    a.points() >= b.points()
 }
 
 /// -1, 0 or 1, as `a` comes before, is, or comes after `b`.
 pub fn string_compare(a: Str, b: Str) -> Int {
-    i64_to_int(a.as_str().cmp(b.as_str()) as i64)
+    i64_to_int(a.points().cmp(b.points()) as i64)
 }
 
 /// Where `sub` first occurs in `s` at or after character `from`, in
 /// characters; or -1.
 pub fn string_search(s: Str, sub: Str, from: Int) -> Int {
-    let from = int_to_i64(from).max(0);
-    let Some(start) = char_byte(s, from as usize) else {
+    let from = int_to_i64(from).max(0) as usize;
+    let (t, m) = (s.points(), sub.points());
+    if from > t.len() {
         return i64_to_int(-1);
+    }
+    let found = if m.is_empty() {
+        Some(from)
+    } else {
+        t[from..]
+            .windows(m.len())
+            .position(|w| w == m)
+            .map(|k| from + k)
     };
-    let t = s.as_str();
-    let Some(b) = t[start..].find(sub.as_str()) else {
-        return i64_to_int(-1);
-    };
-    let at = from as usize + t[start..start + b].chars().count();
-    cursor_at(s, at, start + b);
-    i64_to_int(at as i64)
+    i64_to_int(found.map_or(-1, |k| k as i64))
 }
 
 pub fn string_ci_eq_p(a: Str, b: Str) -> bool {
-    a.as_str().to_lowercase() == b.as_str().to_lowercase()
+    a.text().to_lowercase() == b.text().to_lowercase()
 }
 
 pub fn string_downcase(s: Str) -> Str {
-    leak_string(s.as_str().to_lowercase())
+    leak_string(s.text().to_lowercase())
 }
 
 /// The characters from `start` to `end`.
 pub fn substring(s: Str, start: Int, end: Int) -> Str {
     let (start, end) = (int_to_i64(start), int_to_i64(end));
-    let bytes = (start >= 0 && end >= start)
-        .then(|| Some((char_byte(s, start as usize)?, char_byte(s, end as usize)?)))
-        .flatten();
-    let Some((b0, b1)) = bytes else {
+    let ps = s.points();
+    if start < 0 || end < start || end as usize > ps.len() {
         fail("substring range out of bounds")
-    };
-    crate::str_of_parts(&[&s.as_str()[b0..b1]])
+    }
+    crate::str_of_points(&[&ps[start as usize..end as usize]])
 }
 
 impl Show for Symbol {
     fn show(&self, out: &mut String) {
-        out.push_str(self.name().as_str())
+        out.extend(self.name().chars())
     }
 }
 
@@ -146,9 +145,9 @@ pub fn symbol_name_hash(s: Symbol) -> Int {
 /// of the code points, shifted into a fixnum.
 pub fn string_hash(s: Str) -> Int {
     let h = s
-        .as_str()
-        .chars()
-        .fold(FNV_OFFSET, |h, c| (h ^ c as u64).wrapping_mul(FNV_PRIME));
+        .points()
+        .iter()
+        .fold(FNV_OFFSET, |h, &c| (h ^ c as u64).wrapping_mul(FNV_PRIME));
     i64_to_int((h >> 4) as i64)
 }
 
@@ -171,17 +170,17 @@ mod tests {
     #[test]
     fn made_in_place() {
         for n in [0, 7, -7, 10, 1234567890, i64::MAX, i64::MIN] {
-            assert_eq!(crate::i64_to_string(n).as_str(), n.to_string());
+            assert_eq!(crate::i64_to_string(n).text(), n.to_string());
         }
         for c in ['a', '…', '§', '\u{1F600}'] {
-            assert_eq!(crate::char_to_string(c).as_str(), c.to_string());
+            assert_eq!(crate::char_to_string(c).text(), c.to_string());
         }
         let t = "a…b§\u{1F600}c";
         assert_eq!(
-            crate::list_to_string(crate::string_to_list(crate::str_lit(t))).as_str(),
+            crate::list_to_string(crate::string_to_list(crate::str_lit(t))).text(),
             t
         );
-        assert_eq!(crate::list_to_string(crate::nil()).as_str(), "");
+        assert_eq!(crate::list_to_string(crate::nil()).text(), "");
     }
 
     /// Each character, search and substring of a non-ASCII string, in any
@@ -200,7 +199,7 @@ mod tests {
             for b in a..=n {
                 let want: String = cs[a..b].iter().collect();
                 let got = substring(s, int_lit(a as i64), int_lit(b as i64));
-                assert_eq!(got.as_str(), want);
+                assert_eq!(got.text(), want);
             }
         }
         for from in 0..=n + 1 {

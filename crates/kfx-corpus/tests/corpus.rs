@@ -35,7 +35,7 @@ fn every_program_gives_fixpts_answer() {
         // Each program's time, seen with `--nocapture` (a collector's
         // stress run, C511).
         eprintln!("corpus: {name} {:.2} s", started.elapsed().as_secs_f64());
-        if got.as_str() != want {
+        if got.text() != want {
             wrong.push(format!("{name}:\n  Fixpt: {want:?}\n  Rust:  {got:?}"));
         }
     }
@@ -57,5 +57,5 @@ fn self_tail_calls_run_in_constant_stack() {
         .unwrap()
         .join()
         .expect("tails.kfx overflows a small stack: its self tail calls do not loop");
-    assert!(got.as_str().starts_with("4499998500000 "), "{got}");
+    assert!(got.text().starts_with("4499998500000 "), "{got}");
 }

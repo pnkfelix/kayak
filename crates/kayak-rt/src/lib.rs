@@ -10,9 +10,9 @@
 //! mangling of its FX-26 name: `string->list` is `string_to_list`, `char=?`
 //! is `char_eq_p`, `i64+` is `i64_plus`.
 //!
-//! Strings are of characters, as FX-26's are: a `Str` knows whether it is
-//! ASCII, so that indexing one that is costs nothing, and indexing one that
-//! is not counts characters (`CLAUDES_CHOICES.md`, C14).
+//! Strings are of characters, as FX-26's are: a `Str` is Fixpt's object,
+//! its code points UTF-32, so that indexing one costs nothing (C533; it
+//! was UTF-8 before, counting characters past ASCII, C14).
 
 mod arena;
 mod array;
@@ -79,17 +79,20 @@ pub use value::{
 };
 pub use world::*;
 
-pub use obj::{Str, StrLit, Utf8, Utf8Lit, bytes_lit_made, string_words, utf8_words};
+pub use obj::{
+    Str, StrLit, Utf8, Utf8Lit, bytes_lit_made, str_lit_words, string_words, text_points,
+    utf8_words,
+};
 
 impl std::fmt::Display for Str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
+        f.write_str(&self.text())
     }
 }
 
 impl std::fmt::Debug for Str {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.as_str())
+        write!(f, "{:?}", self.text())
     }
 }
 
@@ -199,27 +202,35 @@ pub(crate) fn leak_shared<'a, T: obj::roots::Scanned + 'a>(v: T) -> &'a T {
 
 /// `parts`, one after another, as one string kept for the run.
 pub fn str_of_parts(parts: &[&str]) -> Str {
+    let n: usize = parts.iter().map(|p| p.chars().count()).sum();
+    str_made(n, |ps| {
+        for (slot, c) in ps.iter_mut().zip(parts.iter().flat_map(|p| p.chars())) {
+            *slot = c as u32;
+        }
+    })
+}
+
+/// Code points `parts`, one after another, as one string: strings joined,
+/// a piece of one.
+pub(crate) fn str_of_points(parts: &[&[u32]]) -> Str {
     let n: usize = parts.iter().map(|p| p.len()).sum();
-    str_made(n, |bytes| {
+    str_made(n, |ps| {
         let mut at = 0;
         for p in parts {
-            bytes[at..at + p.len()].copy_from_slice(p.as_bytes());
+            ps[at..at + p.len()].copy_from_slice(p);
             at += p.len();
         }
     })
 }
 
-/// A string of `n` bytes, which `fill` writes, kept for the run: its
-/// object, header and bytes (C482, `obj.rs`).
-fn str_made(n: usize, fill: impl FnOnce(&mut [u8])) -> Str {
+/// A string of `n` code points, which `fill` writes, kept for the run: its
+/// object (C533, `obj.rs`).
+fn str_made(n: usize, fill: impl FnOnce(&mut [u32])) -> Str {
     stats::note::<Str>(n);
     if n == 0 {
         return str_lit!("");
     }
-    match obj::string_made(n, fill) {
-        Some(s) => s,
-        None => fail("a string's parts are not UTF-8"),
-    }
+    obj::string_made(n, fill)
 }
 
 #[inline]
@@ -236,7 +247,7 @@ pub enum Void {}
 
 #[inline]
 pub fn error(message: Str) -> ! {
-    fail(message.as_str())
+    fail(&message.text())
 }
 
 /// A run-time error of the runtime's own, as `error` is a program's: a
@@ -460,85 +471,19 @@ pub fn i64_gt_eq(a: i64, b: i64) -> bool {
 
 // The prelude (`kfx/prelude.fx`): FX-26's `int` primitives, at `i64`.
 
-/// Characters, as FX-26 counts: bytes, if the string is ASCII.
+/// Characters, as FX-26 counts: code points, which its object counts.
 #[inline]
 pub fn string_length_i64(s: Str) -> i64 {
-    if s.is_ascii() {
-        s.as_str().len() as i64
-    } else {
-        s.as_str().chars().count() as i64
-    }
+    s.char_count() as i64
 }
 
-thread_local! {
-    /// Where the last character counted to in a non-ASCII string was: the
-    /// string's text's address and length, the character, its byte. A
-    /// program reading a string through (a line at a time, a character at
-    /// a time) counts each from the last rather than from the start.
-    static CURSOR: Cell<(usize, usize, usize, usize)> = const { Cell::new((0, 0, 0, 0)) };
-}
-
-/// Where the `i`th character of `s` starts, in bytes; `s.len()` for the
-/// character after the last; `None` past that.
-pub fn char_byte(s: Str, i: usize) -> Option<usize> {
-    let t = s.as_str();
-    if s.is_ascii() {
-        return (i <= t.len()).then_some(i);
-    }
-    let key = (t.as_ptr() as usize, t.len());
-    let (ptr, len, ci, bi) = CURSOR.get();
-    let (mut ci, mut bi) = if (ptr, len) == key && i.abs_diff(ci) < i {
-        (ci, bi)
-    } else {
-        (0, 0)
-    };
-    let b = t.as_bytes();
-    while ci < i {
-        if bi >= t.len() {
-            return None;
-        }
-        bi += 1;
-        while bi < t.len() && (b[bi] & 0xc0) == 0x80 {
-            bi += 1;
-        }
-        ci += 1;
-    }
-    while ci > i {
-        bi -= 1;
-        while (b[bi] & 0xc0) == 0x80 {
-            bi -= 1;
-        }
-        ci -= 1;
-    }
-    CURSOR.set((key.0, key.1, ci, bi));
-    Some(bi)
-}
-
-/// The cursor forgotten: its string may have moved, and another be made
-/// where it was (a collection, C511).
-pub(crate) fn forget_cursor() {
-    CURSOR.set((0, 0, 0, 0));
-}
-
-/// That the `i`th character of `s` starts at byte `b`, for `char_byte`.
-pub(crate) fn cursor_at(s: Str, i: usize, b: usize) {
-    if !s.is_ascii() {
-        CURSOR.set((s.as_str().as_ptr() as usize, s.as_str().len(), i, b));
-    }
-}
-
-/// The `i`th character: at once if the string is ASCII, else counted to
-/// (from the last counted to, `char_byte`).
+/// The `i`th character, at once (C533: UTF-32).
 #[inline]
 pub fn string_ref_i64(s: Str, i: i64) -> char {
-    let found = usize::try_from(i).ok().and_then(|i| {
-        if s.is_ascii() {
-            s.as_str().as_bytes().get(i).map(|&b| b as char)
-        } else {
-            char_byte(s, i).and_then(|b| s.as_str()[b..].chars().next())
-        }
-    });
-    found.unwrap_or_else(|| string_index_failed(s))
+    usize::try_from(i)
+        .ok()
+        .and_then(|i| s.char_at(i))
+        .unwrap_or_else(|| string_index_failed(s))
 }
 
 /// `string-ref` past a string's end, as Fixpt says it (C421).
@@ -695,7 +640,7 @@ pub fn char_upcase(c: char) -> char {
 
 #[inline]
 pub fn char_to_string(c: char) -> Str {
-    str_of_parts(&[c.encode_utf8(&mut [0u8; 4])])
+    str_made(1, |ps| ps[0] = c as u32)
 }
 
 // Strings.
@@ -707,7 +652,7 @@ pub fn string_eq_p(a: Str, b: Str) -> bool {
 
 #[inline]
 pub fn string_append(a: Str, b: Str) -> Str {
-    str_of_parts(&[a.as_str(), b.as_str()])
+    str_of_points(&[a.points(), b.points()])
 }
 
 /// kfx's `string-list-append` (C476; `kfx/base.kfx`): the strings of `xs`
@@ -716,16 +661,16 @@ pub fn string_append(a: Str, b: Str) -> Str {
 pub fn strings_joined(xs: List<Str>) -> Str {
     // Values in a `Vec` of its own, which no root sees, across allocations.
     let _held = crate::obj::space::NoCollect::new();
-    let mut parts: Vec<&str> = Vec::new();
+    let mut parts: Vec<&[u32]> = Vec::new();
     let mut at = xs;
     while let Some(c) = at.pair() {
-        parts.push(c.car().as_str());
+        parts.push(c.car().points());
         at = c.cdr;
     }
     match parts.len() {
         0 => str_lit(""),
         1 => at_one(xs),
-        _ => str_of_parts(&parts),
+        _ => str_of_points(&parts),
     }
 }
 
@@ -796,10 +741,7 @@ pub fn str_lit(text: &str) -> Str {
 
 #[inline]
 pub fn string_to_list(s: Str) -> List<char> {
-    s.as_str()
-        .chars()
-        .rev()
-        .fold(nil(), |rest, c| cons(c, rest))
+    s.text().chars().rev().fold(nil(), |rest, c| cons(c, rest))
 }
 
 #[inline]
@@ -809,13 +751,14 @@ pub fn list_to_string(cs: List<char>) -> Str {
     let mut n = 0;
     let mut at = cs;
     while let Some(p) = at.pair() {
-        n += p.car().len_utf8();
+        n += 1;
         at = p.cdr;
     }
-    str_made(n, |bytes| {
+    str_made(n, |points| {
         let (mut i, mut at) = (0, cs);
         while let Some(p) = at.pair() {
-            i += p.car().encode_utf8(&mut bytes[i..]).len();
+            points[i] = p.car() as u32;
+            i += 1;
             at = p.cdr;
         }
     })

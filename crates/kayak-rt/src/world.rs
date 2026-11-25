@@ -208,7 +208,7 @@ pub fn bytevector_eq_p(a: BytesAt<'_>, b: BytesAt<'_>) -> bool {
 /// `string->utf8` (Fixpt's, since its 279c16cf; C525): the text, as
 /// `utf8`, its own object (C530), a copy as Fixpt's is.
 pub fn string_to_utf8(s: Str) -> crate::Utf8 {
-    crate::Utf8::of_str(s.as_str())
+    crate::Utf8::of_str(&s.text())
 }
 
 /// `utf8->string`: the text, as a `string`.
@@ -297,7 +297,7 @@ pub fn write_out(s: Str) -> Sum {
     }
     let mut out = std::io::stdout().lock();
     written(
-        out.write_all(s.as_str().as_bytes())
+        out.write_all(s.text().as_bytes())
             .and_then(|()| out.flush()),
     )
 }
@@ -308,7 +308,7 @@ pub fn write_err(s: Str) -> Sum {
     }
     let mut err = std::io::stderr().lock();
     written(
-        err.write_all(s.as_str().as_bytes())
+        err.write_all(s.text().as_bytes())
             .and_then(|()| err.flush()),
     )
 }
@@ -964,7 +964,7 @@ pub fn args() -> List<Str> {
 }
 
 pub fn read_file(path: Str) -> Sum {
-    read_file_answer(read_regular_file(path.as_str()))
+    read_file_answer(read_regular_file(&path.text()))
 }
 
 /// A regular file's bytes; a directory, or anything else that could wait
@@ -1000,7 +1000,7 @@ pub(crate) fn read_file_answer(r: std::io::Result<Vec<u8>>) -> Sum {
 /// The names, sorted by their bytes; a name not UTF-8 an `invalid-data`
 /// failure.
 pub fn list_dir(path: Str) -> Sum {
-    list_dir_answer(list_dir_names(path.as_str()))
+    list_dir_answer(list_dir_names(&path.text()))
 }
 
 pub(crate) fn list_dir_names(path: &str) -> std::io::Result<Vec<String>> {
@@ -1040,7 +1040,7 @@ pub type FileKind = Sum;
 pub type FileInfo = Product_4kind_4size_8modified_4mode<FileKind, Int, Int, Int>;
 
 pub fn file_info(path: Str) -> Sum {
-    file_info_answer(std::fs::symlink_metadata(path.as_str()))
+    file_info_answer(std::fs::symlink_metadata(path.text()))
 }
 
 pub(crate) fn file_info_answer(r: std::io::Result<std::fs::Metadata>) -> Sum {
@@ -1074,7 +1074,7 @@ pub(crate) fn file_info_answer(r: std::io::Result<std::fs::Metadata>) -> Sum {
 /// The target of the symbolic link `path` names, as written; one not UTF-8
 /// an `invalid-data` failure (Fixpt's `read_symlink`).
 pub fn read_symlink(path: Str) -> Sum {
-    read_symlink_answer(std::fs::read_link(path.as_str()))
+    read_symlink_answer(std::fs::read_link(path.text()))
 }
 
 pub(crate) fn read_symlink_answer(r: std::io::Result<std::path::PathBuf>) -> Sum {
@@ -1093,7 +1093,7 @@ pub(crate) fn read_symlink_answer(r: std::io::Result<std::path::PathBuf>) -> Sum
 /// Replaces the file whole and atomically: written beside it, flushed to
 /// the disk, and renamed over it.
 pub fn write_file(path: Str, data: BytesAt<'_>) -> Sum {
-    written(write_file_bytes(path.as_str(), &to_vec(data)))
+    written(write_file_bytes(&path.text(), &to_vec(data)))
 }
 
 /// `(write-file-unflushed path data)` (C475; Fixpt's 6f7bd73, kayak's
@@ -1101,7 +1101,7 @@ pub fn write_file(path: Str, data: BytesAt<'_>) -> Sum {
 /// nothing flushed to the disk before the rename: after a crash the file
 /// may hold its old contents, its new, nothing, or be missing.
 pub fn write_file_unflushed(path: Str, data: BytesAt<'_>) -> Sum {
-    written(replace_file_bytes(path.as_str(), &to_vec(data), false))
+    written(replace_file_bytes(&path.text(), &to_vec(data), false))
 }
 
 pub(crate) fn write_file_bytes(path: &str, bytes: &[u8]) -> std::io::Result<()> {
@@ -1175,7 +1175,7 @@ pub fn process_start(argv: crate::ListAt<'_, Str>, dir: Str) -> Sum {
     let mut words = Vec::new();
     let mut l = argv;
     while let Some(c) = l.pair() {
-        words.push(c.car().as_str().to_string());
+        words.push(c.car().text().to_string());
         l = c.cdr;
     }
     let started = (|| {
@@ -1193,8 +1193,8 @@ pub fn process_start(argv: crate::ListAt<'_, Str>, dir: Str) -> Sum {
             .stdout(writer.try_clone()?)
             .stderr(writer)
             .process_group(0);
-        if !dir.as_str().is_empty() {
-            command.current_dir(dir.as_str());
+        if !dir.text().is_empty() {
+            command.current_dir(dir.text());
         }
         let mut child = command.spawn()?;
         drop(command);
@@ -1430,7 +1430,7 @@ pub fn process_wait(until: i64, stdin: bool) -> bool {
 pub fn process_write(p: Int, text: Str) -> Sum {
     written(process_write_bytes(
         process_input(p),
-        text.as_str().as_bytes(),
+        text.text().as_bytes(),
     ))
 }
 
@@ -1517,8 +1517,8 @@ mod tests {
         let r = list_dir(leak_string(dir.to_string_lossy().into_owned()));
         assert_eq!(sum_name(r), "names");
         assert_eq!(
-            sum_payload::<List<Str>>(r).pair().map(|c| c.car().as_str()),
-            Some("a.txt")
+            sum_payload::<List<Str>>(r).pair().map(|c| c.car().text()),
+            Some("a.txt".to_string())
         );
         let none = leak_string(dir.join("none").to_string_lossy().into_owned());
         let r = read_file(none);

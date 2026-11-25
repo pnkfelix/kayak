@@ -114,7 +114,7 @@ fn every_program_gives_fixpts_answer() {
         let path = if std::path::Path::new(&mine).exists() { mine } else { format!("{dir}/{name}.out") };
         let want = std::fs::read_to_string(&path).unwrap();
         let got = kayak_rt::with_big_stack(main);
-        if got.as_str() != want {
+        if got.text() != want {
             wrong.push(format!("{name}:\\n  Fixpt: {want:?}\\n  async: {got:?}"));
         }
     }

@@ -47,20 +47,20 @@ impl Show for u64 {
 
 impl Show for f32 {
     fn show(&self, out: &mut String) {
-        out.push_str(crate::f32_to_string(*self).as_str());
+        out.push_str(&crate::f32_to_string(*self).text());
     }
 }
 
 impl Show for f64 {
     fn show(&self, out: &mut String) {
         // As Fixpt shows a double: with a point, at 1e21 and above too.
-        out.push_str(crate::f64_to_string(*self).as_str());
+        out.push_str(&crate::f64_to_string(*self).text());
     }
 }
 
 impl Show for Int {
     fn show(&self, out: &mut String) {
-        out.push_str(int_to_string(*self).as_str());
+        out.push_str(&int_to_string(*self).text());
     }
 }
 
@@ -97,7 +97,7 @@ impl Show for char {
 impl Show for Str {
     fn show(&self, out: &mut String) {
         out.push('"');
-        for c in self.as_str().chars() {
+        for c in self.text().chars() {
             match c {
                 '"' => out.push_str("\\\""),
                 '\\' => out.push_str("\\\\"),
